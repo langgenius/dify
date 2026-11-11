@@ -1,8 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
-import Divider from '@/app/components/base/divider'
 
 type HeaderProps = {
   isInPipeline?: boolean
@@ -32,11 +32,11 @@ const Header = ({
         >
           {title}
         </div>
-        <Divider type="vertical" className="mx-1 h-3.5" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
         <Button
           variant="secondary"
           size="small"
-          className={cn(isInPipeline ? 'size-6 px-1' : 'gap-x-0.5 px-1.5')}
+          className={cn(isInPipeline ? 'size-6 px-1' : 'px-1.5')}
           onClick={onClickConfiguration}
         >
           <RiEqualizer2Line className="size-4" />

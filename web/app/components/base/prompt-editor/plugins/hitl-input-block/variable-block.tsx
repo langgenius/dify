@@ -3,7 +3,9 @@ import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import {
   PreviewCard,
-  PreviewCardContent,
+  PreviewCardPopup,
+  PreviewCardPortal,
+  PreviewCardPositioner,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -42,7 +44,7 @@ const HITLInputVariableBlockComponent = ({
   conversationVariables,
   ragVariables,
 }: HITLInputVariableBlockComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const variablesLength = variables.length
   const isRagVar = isRagVariableVar(variables)
@@ -96,7 +98,8 @@ const HITLInputVariableBlockComponent = ({
         UPDATE_WORKFLOW_NODES_MAP,
         (payload: UpdateWorkflowNodesMapPayload) => {
           setLocalWorkflowNodesMap(payload.workflowNodesMap)
-          return true
+          // Every rendered variable block must receive this broadcast update.
+          return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),
@@ -121,21 +124,25 @@ const HITLInputVariableBlockComponent = ({
   return (
     <PreviewCard>
       <PreviewCardTrigger delay={300} closeDelay={200} render={<div>{Item}</div>} />
-      <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
-        <VarFullPathPanel
-          nodeName={node.title}
-          path={variables.slice(1)}
-          varType={
-            getVarType
-              ? getVarType({
-                  nodeId: variables[0]!,
-                  valueSelector: variables,
-                })
-              : Type.string
-          }
-          nodeType={node?.type}
-        />
-      </PreviewCardContent>
+      <PreviewCardPortal>
+        <PreviewCardPositioner>
+          <PreviewCardPopup>
+            <VarFullPathPanel
+              nodeName={node.title}
+              path={variables.slice(1)}
+              varType={
+                getVarType
+                  ? getVarType({
+                      nodeId: variables[0]!,
+                      valueSelector: variables,
+                    })
+                  : Type.string
+              }
+              nodeType={node?.type}
+            />
+          </PreviewCardPopup>
+        </PreviewCardPositioner>
+      </PreviewCardPortal>
     </PreviewCard>
   )
 }

@@ -1,5 +1,4 @@
 import type { KeyValue } from '../types'
-import { useBoolean } from 'ahooks'
 import { uniqueId } from 'es-toolkit/compat'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -76,14 +75,14 @@ const useKeyValueList = (value: string, onChange: (value: string) => void, noFil
     ])
   }, [setList])
 
-  const [isKeyValueEdit, { toggle: toggleIsKeyValueEdit }] = useBoolean(true)
+  const [isKeyValueEdit, setIsKeyValueEdit] = useState(true)
 
   return {
     list: list.length === 0 ? [{ id: uniqueId(UNIQUE_ID_PREFIX), key: '', value: '' }] : list, // no item can not add new item
     setList,
     addItem,
     isKeyValueEdit,
-    toggleIsKeyValueEdit,
+    toggleIsKeyValueEdit: () => setIsKeyValueEdit((isEditing) => !isEditing),
   }
 }
 

@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 from configs import dify_config
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 
 # Determine queue names based on edition

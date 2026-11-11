@@ -30,8 +30,10 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return result
 
     @override
-    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
-        del session
+    def get_pipeline_template_detail(
+        self, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, Any] | None:
+        del current_tenant_id, session
         result = self.fetch_pipeline_template_detail_from_builtin(template_id)
         return result
 

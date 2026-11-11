@@ -1,22 +1,22 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { zPostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { createE2EResourceName } from '../../../support/naming'
+import { createE2EResourceName } from '../../../support/naming.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
-import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common'
-import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
+} from '../../agent-v2/support/agent-builder-resources.ts'
+import { normalAgentPrompt } from '../../agent-v2/support/agent-soul.ts'
+import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common.ts'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials.ts'
 import {
   expectProviderToolActionVisible,
   getCurrentAgentId,
   getPreseededAgent,
   openAgentKnowledgeRetrievalDialog,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string) => {
   const draft = await world
@@ -31,6 +31,7 @@ const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string)
   const knowledgeSets = asArray(asRecord(soul.knowledge).sets)
 
   return {
+    activeConfigIsPublished: draft.active_config_is_published,
     fileNames: files
       .map((file) => asString(asRecord(file).name))
       .filter(Boolean)
@@ -77,45 +78,88 @@ Given(
   },
 )
 
+async function duplicateAgentFromRoster(world: DifyWorld, agent: { id: string; name: string }) {
+  const page = world.getPage()
+  const copyName = createE2EResourceName('Agent', 'copy')
+
+  await page.goto('/agents')
+  const card = page.getByRole('listitem', { name: agent.name, exact: true })
+
+  await expect(card).toBeVisible({ timeout: 30_000 })
+  await card.hover()
+  await card.getByLabel(`More actions for ${agent.name}`).click()
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Duplicate agent' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('textbox', { name: /Name/ }).fill(copyName)
+
+  const copyResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith(`/console/api/agent/${agent.id}/copy`),
+  )
+  await dialog.getByRole('button', { exact: true, name: 'Duplicate' }).click()
+
+  const copyResponse = await copyResponsePromise
+  expect(copyResponse.status()).toBe(201)
+  const copiedAgent = zPostAgentByAgentIdCopyResponse.parse(await copyResponse.json())
+  if (!copiedAgent.id)
+    throw new Error('Agent v2 duplicate response did not include a copied Agent ID.')
+
+  world.createdAgentIds.push(copiedAgent.id)
+  world.lastCreatedAgentName = copiedAgent.name
+  world.lastCreatedAgentRole = copiedAgent.role ?? undefined
+
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('listitem', { name: copyName, exact: true })).toBeVisible()
+}
+
 When(
   'I duplicate the preseeded Agent v2 {string} from the Agent Roster',
   async function (this: DifyWorld, agentName: string) {
-    const page = this.getPage()
-    const agent = getPreseededAgent(this, agentName)
-    const copyName = createE2EResourceName('Agent', 'copy')
-
-    await page.goto('/agents')
-    const card = page.getByRole('article', { name: agentName, exact: true })
-
-    await expect(card).toBeVisible({ timeout: 30_000 })
-    await card.hover()
-    await card.getByLabel(`More actions for ${agentName}`).click()
-    await page.getByRole('menuitem', { name: 'Duplicate' }).click()
-
-    const dialog = page.getByRole('dialog', { name: 'Duplicate agent' })
-    await expect(dialog).toBeVisible()
-    await dialog.getByRole('textbox', { name: /Name/ }).fill(copyName)
-
-    const copyResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        new URL(response.url()).pathname.endsWith(`/console/api/agent/${agent.id}/copy`),
-    )
-    await dialog.getByRole('button', { exact: true, name: 'Duplicate' }).click()
-
-    const copyResponse = await copyResponsePromise
-    expect(copyResponse.status()).toBe(201)
-    const copiedAgent = zPostAgentByAgentIdCopyResponse.parse(await copyResponse.json())
-    if (!copiedAgent.id)
-      throw new Error('Agent v2 duplicate response did not include a copied Agent ID.')
-
-    this.createdAgentIds.push(copiedAgent.id)
-    this.lastCreatedAgentName = copiedAgent.name
-    this.lastCreatedAgentRole = copiedAgent.role ?? undefined
-
-    await expect(page.getByText('Agent duplicated.')).toBeVisible()
+    await duplicateAgentFromRoster(this, getPreseededAgent(this, agentName))
   },
 )
+
+When('I duplicate the configured Agent v2 from the Agent Roster', async function (this: DifyWorld) {
+  const source = { id: getCurrentAgentId(this), name: this.lastCreatedAgentName }
+  if (!source.name) throw new Error('Create a named Agent before duplicating it.')
+  this.agentBuilder.lifecycle.sourceAgent = { id: source.id, name: source.name }
+  await duplicateAgentFromRoster(this, { id: source.id, name: source.name })
+})
+
+Then(
+  'the copied Agent v2 should start with an unpublished configuration',
+  async function (this: DifyWorld) {
+    const source = this.agentBuilder.lifecycle.sourceAgent
+    if (!source) throw new Error('Duplicate an Agent before checking its publication state.')
+    const client = this.getConsoleClient()
+    const [original, copy] = await Promise.all([
+      client.agent.byAgentId.composer.get({ params: { agent_id: source.id } }),
+      client.agent.byAgentId.composer.get({ params: { agent_id: getCurrentAgentId(this) } }),
+    ])
+    expect(original.active_config_is_published).toBe(true)
+    expect(copy.active_config_is_published).toBe(false)
+    expect(copy.agent_soul?.prompt?.system_prompt).toBe(normalAgentPrompt)
+  },
+)
+
+When('I reopen the original Agent v2 configuration', async function (this: DifyWorld) {
+  const source = this.agentBuilder.lifecycle.sourceAgent
+  if (!source) throw new Error('Duplicate an Agent before reopening the original.')
+  await this.getPage().goto(`/agents/${source.id}/configure`)
+  await expect(this.getPage().getByRole('heading', { name: 'Configure' })).toBeVisible()
+})
+
+Then('the original Agent v2 draft should remain unchanged', async function (this: DifyWorld) {
+  const source = this.agentBuilder.lifecycle.sourceAgent
+  if (!source) throw new Error('Duplicate an Agent before checking the original draft.')
+  const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+    params: { agent_id: source.id },
+  })
+  expect(draft.agent_soul?.prompt?.system_prompt).toBe(normalAgentPrompt)
+})
 
 Then('I should see the Agent v2 full-config fixture sections', async function (this: DifyWorld) {
   const page = this.getPage()
@@ -173,12 +217,12 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
   await expect(advancedSettings).toBeVisible()
   await expect(
-    advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
+    advancedSettings.getByText('For power users, such as environment variables.'),
   ).toBeVisible()
 })
 
 Then(
-  'the duplicated Agent v2 should inherit the full-config fixture from {string}',
+  'the duplicated Agent v2 should inherit the full-config fixture from {string} without inheriting its publication state',
   async function (this: DifyWorld, agentName: string) {
     const sourceAgent = getPreseededAgent(this, agentName)
     const duplicatedAgentId = getCurrentAgentId(this)
@@ -189,8 +233,7 @@ Then(
       )
 
     const client = this.getConsoleClient()
-    const [sourceDetail, duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
-      client.agent.byAgentId.get({ params: { agent_id: sourceAgent.id } }),
+    const [duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
       client.agent.byAgentId.get({ params: { agent_id: duplicatedAgentId } }),
       getComposerInheritanceSnapshot(this, sourceAgent.id),
       getComposerInheritanceSnapshot(this, duplicatedAgentId),
@@ -198,9 +241,8 @@ Then(
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
     expect(duplicatedDetail.name).toBe(this.lastCreatedAgentName)
-    expect(duplicatedDetail.active_config_is_published).toBe(
-      sourceDetail.active_config_is_published,
-    )
+    expect(sourceSnapshot.activeConfigIsPublished).toBe(true)
+    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(false)
     expect(duplicatedSnapshot.model).toEqual({
       name: stableModel.name,
       provider: stableModel.provider,
@@ -249,11 +291,12 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
   const toolsSection = page.getByRole('region', { name: 'Tools' })
 
   await expect(toolsSection).toBeVisible({ timeout: 30_000 })
-  await expect(
-    toolsSection.getByRole('button', { exact: true, name: 'Not authorized' }),
-  ).toHaveCount(2)
 
-  const { action: jsonReplaceAction, tool: jsonTool } = await expectProviderToolActionVisible(
+  const {
+    action: jsonReplaceAction,
+    provider: jsonProvider,
+    tool: jsonTool,
+  } = await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
@@ -271,10 +314,16 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
     }),
   ).toBeVisible()
 
-  await expectProviderToolActionVisible(
+  const { provider: tavilyProvider } = await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.tavilySearchTool,
   )
+  await expect(
+    tavilyProvider.locator('..').getByRole('button', { exact: true, name: 'Not authorized' }),
+  ).toBeVisible()
+  await expect(
+    jsonProvider.locator('..').getByRole('button', { exact: true, name: 'Not authorized' }),
+  ).toHaveCount(0)
 })
 
 Then('I should see the Agent v2 dual retrieval fixture settings', async function (this: DifyWorld) {
@@ -285,37 +334,32 @@ Then('I should see the Agent v2 dual retrieval fixture settings', async function
   await expect(knowledgeSection.getByText('Retrieval 1', { exact: true })).toBeVisible()
   await expect(knowledgeSection.getByText('Retrieval 2', { exact: true })).toBeVisible()
 
-  const agentDecideDialog = await openAgentKnowledgeRetrievalDialog(knowledgeSection, 'Retrieval 1')
-  await expect(
-    agentDecideDialog.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {
-      exact: true,
-    }),
-  ).toBeVisible()
-  await expect(
-    agentDecideDialog.getByRole('radio', {
-      exact: true,
-      name: 'Agent decide',
-    }),
-  ).toBeChecked()
-  await agentDecideDialog.getByRole('button', { name: 'Close' }).click()
-  await expect(agentDecideDialog).not.toBeVisible()
+  const dialog = await openAgentKnowledgeRetrievalDialog(knowledgeSection, 'Retrieval 1')
+  await dialog.getByRole('button', { name: 'Advanced Settings', exact: true }).click()
+  const agentDecideSettings = dialog.getByRole('group', { name: 'Retrieval 1', exact: true })
+  const customQuerySettings = dialog.getByRole('group', { name: 'Retrieval 2', exact: true })
+  await expect(agentDecideSettings).toBeVisible()
+  await expect(customQuerySettings).toBeVisible()
 
-  const customQueryDialog = await openAgentKnowledgeRetrievalDialog(knowledgeSection, 'Retrieval 2')
   await expect(
-    customQueryDialog.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {
+    agentDecideSettings.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {
       exact: true,
     }),
   ).toBeVisible()
   await expect(
-    customQueryDialog.getByRole('radio', {
-      exact: true,
-      name: 'Custom query',
-    }),
+    agentDecideSettings.getByRole('radio', { exact: true, name: 'Agent decide' }),
   ).toBeChecked()
   await expect(
-    customQueryDialog.getByRole('textbox', {
+    customQuerySettings.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {
       exact: true,
-      name: 'Custom query text',
     }),
+  ).toBeVisible()
+  await expect(
+    customQuerySettings.getByRole('radio', { exact: true, name: 'Custom query' }),
+  ).toBeChecked()
+  await expect(
+    customQuerySettings.getByRole('textbox', { exact: true, name: 'Custom query text' }),
   ).toHaveValue(agentBuilderFixedInputs.customKnowledgeQuery)
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(dialog).toBeHidden()
 })

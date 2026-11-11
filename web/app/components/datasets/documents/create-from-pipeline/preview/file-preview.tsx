@@ -1,10 +1,11 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFilePreview } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
 import DocumentFileIcon from '../../../common/document-file-icon'
 import Loading from './loading'
@@ -15,8 +16,12 @@ type FilePreviewProps = {
 }
 
 const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
-  const { t } = useTranslation()
-  const { data: fileData, isFetching } = useFilePreview(file.id || '')
+  const { t } = useTranslation(['datasetPipeline'])
+  const { data: fileData, isFetching } = useQuery(
+    consoleQuery.files.byFileId.preview.get.queryOptions({
+      input: file.id ? { params: { file_id: file.id } } : skipToken,
+    }),
+  )
 
   const fileName = useMemo(() => {
     if (!file) return ''
@@ -31,7 +36,7 @@ const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
           <div className="system-2xs-semibold-uppercase text-text-accent">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
           </div>
-          <div className="text-tex-primary title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
+          <div className="title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <DocumentFileIcon
               className="size-3.5 shrink-0"
@@ -54,7 +59,7 @@ const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
           className="flex size-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
-          <RiCloseLine className="size-[18px]" />
+          <RiCloseLine className="size-4.5" />
         </button>
       </div>
       {isFetching && (

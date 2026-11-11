@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 import httpx
 from httpx import Response
 
+from core.helper import ssrf_proxy
 from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlAuthenticationError,
     WaterCrawlBadRequestError,
@@ -46,19 +47,13 @@ class BaseAPIClient:
     def __init__(self, api_key, base_url):
         self.api_key = api_key
         self.base_url = base_url
-        self.session = self.init_session()
-
-    def init_session(self):
-        headers = {
+        self.headers = {
             "X-API-Key": self.api_key,
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "WaterCrawl-Plugin",
             "Accept-Language": "en-US",
         }
-        # Regular requests use WATERCRAWL_REQUEST_TIMEOUT; the long-lived
-        # crawl-status stream overrides it with _STREAM_TIMEOUT in _request.
-        return httpx.Client(headers=headers, timeout=WATERCRAWL_REQUEST_TIMEOUT)
 
     def _request(
         self,
@@ -70,11 +65,19 @@ class BaseAPIClient:
     ) -> Response:
         stream = kwargs.pop("stream", False)
         url = urljoin(self.base_url, endpoint)
-        if stream:
-            request = self.session.build_request(method, url, params=query_params, json=data, timeout=_STREAM_TIMEOUT)
-            return self.session.send(request, stream=True, **kwargs)
-
-        return self.session.request(method, url, params=query_params, json=data, **kwargs)
+        headers = httpx.Headers(self.headers)
+        headers.update(kwargs.pop("headers", {}))
+        kwargs.setdefault("timeout", _STREAM_TIMEOUT if stream else WATERCRAWL_REQUEST_TIMEOUT)
+        return ssrf_proxy.make_request(
+            method,
+            url,
+            headers=dict(headers),
+            params=query_params,
+            json=data,
+            max_retries=0,
+            stream_response=stream,
+            **kwargs,
+        )
 
     def _get(self, endpoint: str, query_params: dict[str, Any] | None = None, **kwargs):
         return self._request("GET", endpoint, query_params=query_params, **kwargs)
@@ -232,7 +235,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict[str, Any]):
-        response = httpx.get(result_object["result"], timeout=30)
+        response = ssrf_proxy.get(result_object["result"], timeout=WATERCRAWL_REQUEST_TIMEOUT, max_retries=0)
         try:
             response.raise_for_status()
             result_object["result"] = response.json()

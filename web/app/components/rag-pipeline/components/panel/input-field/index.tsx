@@ -3,24 +3,26 @@ import type { Node } from '@/app/components/workflow/types'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useInputFieldPanel } from '../../../hooks/use-input-field-panel'
 import FieldList from './field-list'
 import FooterTip from './footer-tip'
 import Datasource from './label-right-content/datasource'
 import GlobalInputs from './label-right-content/global-inputs'
 
 const InputFieldPanel = () => {
-  const { t } = useTranslation()
+  const uniqueInputsLabelId = useId()
+
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const nodes = useNodes<DataSourceNodeType>()
   const { closeAllInputFieldPanels, toggleInputFieldPreviewPanel, isPreviewing, isEditing } =
     useInputFieldPanel()
@@ -99,7 +101,7 @@ const InputFieldPanel = () => {
   }, [ragPipelineVariables])
 
   return (
-    <div className="mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
+    <div className="mr-1 flex h-full w-100 flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center p-4 pb-0">
         <div className="grow system-xl-semibold text-text-primary">
           {t(($) => $['inputFieldPanel.title'], { ns: 'datasetPipeline' })}
@@ -107,19 +109,14 @@ const InputFieldPanel = () => {
         <Button
           variant="ghost"
           size="small"
-          className={cn(
-            'shrink-0 gap-x-px px-1.5',
-            isPreviewing && 'bg-state-accent-active text-text-accent',
-          )}
+          className={cn('shrink-0', isPreviewing && 'bg-state-accent-active text-text-accent')}
           onClick={togglePreviewPanel}
           disabled={isEditing}
         >
           <RiEyeLine className="size-3.5" />
-          <span className="px-[3px]">
-            {t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}
-          </span>
+          <span>{t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}</span>
         </Button>
-        <Divider type="vertical" className="mx-1 h-3" />
+        <Separator decorative orientation="vertical" className="mx-1 h-3" />
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -135,16 +132,17 @@ const InputFieldPanel = () => {
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
-          <span className="system-sm-semibold-uppercase text-text-secondary">
+          <span
+            id={uniqueInputsLabelId}
+            className="system-sm-semibold-uppercase text-text-secondary"
+          >
             {t(($) => $['inputFieldPanel.uniqueInputs.title'], { ns: 'datasetPipeline' })}
           </span>
-          <Infotip
-            aria-label={t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], {
-              ns: 'datasetPipeline',
-            })}
-            popupClassName="max-w-[240px]"
-          >
-            {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={uniqueInputsLabelId} />
+            <InfotipContent aria-labelledby={uniqueInputsLabelId} className="max-w-60">
+              {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">

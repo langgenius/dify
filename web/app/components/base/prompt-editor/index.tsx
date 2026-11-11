@@ -1,10 +1,10 @@
 'use client'
 
 import type { InitialConfigType } from '@lexical/react/LexicalComposer'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type {
-  Hotkey,
   ShortcutPopupDisplayMode,
   ShortcutPopupInsertHandler,
 } from './plugins/shortcuts-popup-plugin'
@@ -91,10 +91,18 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
 
 type PromptEditorAriaProps = Pick<
   React.AriaAttributes,
-  'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'
+  | 'aria-controls'
+  | 'aria-haspopup'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'aria-describedby'
+  | 'aria-invalid'
+  | 'aria-multiline'
+  | 'aria-disabled'
 >
 
-export type PromptEditorProps = PromptEditorAriaProps & {
+type PromptEditorProps = PromptEditorAriaProps & {
+  id?: string
   instanceId?: string
   children?: React.ReactNode
   compact?: boolean
@@ -125,7 +133,7 @@ export type PromptEditorProps = PromptEditorAriaProps & {
   disableSlashPicker?: boolean
   disableBracePicker?: boolean
   shortcutPopups?: Array<{
-    hotkey: Hotkey
+    hotkey: HotkeyChord
     displayMode?: ShortcutPopupDisplayMode
     Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>
   }>
@@ -136,6 +144,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
   'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-multiline': ariaMultiline,
+  'aria-disabled': ariaDisabled,
+  id,
   instanceId,
   children,
   compact,
@@ -237,10 +250,15 @@ const PromptEditor: FC<PromptEditorProps> = ({
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className={cn('relative', wrapperClassName)} ref={onRef}>
         <PromptEditorContent
+          id={id}
           aria-controls={ariaControls}
           aria-haspopup={ariaHasPopup}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
+          aria-multiline={ariaMultiline}
+          aria-disabled={ariaDisabled}
           compact={compact}
           className={className}
           placeholder={placeholder}

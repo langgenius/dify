@@ -1,21 +1,18 @@
-"""Client-safe DTOs for the Dify shell Agenton layer.
+"""Client-safe DTOs for the Dify shell layer.
 
-Server-only shellctl connection settings are injected by the runtime provider
-factory. Public config carries product-level Agent Soul settings that must affect
-the sandbox workspace itself: CLI tool bootstrap commands, normal environment
-variables, secret environment variable names, sandbox-provider metadata, and the
-Agent Stub drive ref used by shell-visible drive commands.
+Server-only Agent Stub and redaction settings are injected by the runtime
+runtime services. The Sandbox dependency supplies the active shellctl data
+plane. Public config carries product-level Agent Soul settings that affect the
+workspace itself: CLI tool bootstrap commands, normal environment variables,
+secret environment variable names. Sandbox selection is a deployment concern.
 """
 
 import re
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from agenton.layers import LayerConfig
 
-
-DIFY_SHELL_LAYER_TYPE_ID: Final[str] = "dify.shell"
 _ENV_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -67,41 +64,23 @@ class DifyShellCliToolConfig(BaseModel):
         return [command for command in (item.strip() for item in value) if command]
 
 
-class DifyShellSandboxConfig(BaseModel):
-    """Sandbox provider selection persisted in Agent Soul."""
+class DifyShellLayerConfig(BaseModel):
+    """Public product behavior for the Sandbox-backed Dify Shell layer."""
+
+    runtime: str = "runtime"
+    execution_context: str | None = "execution_context"
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    provider: str | None = Field(default=None, max_length=255)
-    config: dict[str, object] = Field(default_factory=dict)
-
-
-class DifyShellEnterpriseSandboxConfig(DifyShellSandboxConfig):
-    """Enterprise sandbox provider configuration."""
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-    gateway_endpoint: str = Field(..., max_length=255)
-
-
-class DifyShellLayerConfig(LayerConfig):
-    """Public config for the shellctl-backed Dify shell layer."""
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    # Optional because shell can be used without a drive layer.
-    agent_stub_drive_ref: str | None = Field(default=None, max_length=1024)
     cli_tools: list[DifyShellCliToolConfig] = Field(default_factory=list)
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
-    sandbox: DifyShellSandboxConfig | None = None
     redact_patterns: list[str] = Field(default_factory=list)
 
 
 __all__ = [
-    "DIFY_SHELL_LAYER_TYPE_ID",
     "DifyShellCliToolConfig",
     "DifyShellEnvVarConfig",
     "DifyShellLayerConfig",
-    "DifyShellSandboxConfig",
     "DifyShellSecretRefConfig",
 ]

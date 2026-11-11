@@ -40,7 +40,7 @@ const FeaturesDemo = () => {
 
   return (
     <FeaturesProvider features={features}>
-      <div className="flex h-[520px] items-center justify-center bg-background-default-subtle">
+      <div className="flex h-130 items-center justify-center bg-background-default-subtle">
         <div className="rounded-xl border border-divider-subtle bg-components-panel-bg p-6 text-sm text-text-secondary shadow-inner">
           <div className="mb-4 font-medium text-text-primary">Feature toggles preview</div>
           <div className="flex gap-3">

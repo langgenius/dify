@@ -1,8 +1,7 @@
 // Tests that `--help` renders correctly for every command and subcommand in
 // the cobra tree, including the hidden singular `config skill|file` aliases.
-// These lock the command surface so it stays identical to the original Python
-// (Typer) CLI: each help output must show the command's usage path, its
-// Short description, and its expected flags/subcommands.
+// These lock the installed command surface: each help output must show the
+// command's usage path, description, and expected flags/subcommands.
 package main
 
 import (
@@ -38,7 +37,7 @@ func TestCommandHelp(t *testing.T) {
 		{
 			name: "root",
 			args: []string{"--help"},
-			want: []string{"Usage:", "dify-agent", "config", "connect", "drive", "file"},
+			want: []string{"Usage:", "dify-agent", "config", "connect", "file"},
 		},
 		{
 			name: "connect",
@@ -53,7 +52,12 @@ func TestCommandHelp(t *testing.T) {
 		{
 			name: "file upload",
 			args: []string{"file", "upload", "--help"},
-			want: []string{"dify-agent file upload", "Upload one sandbox-local file"},
+			want: []string{
+				"dify-agent file upload",
+				"Upload one sandbox-local file",
+				"--no-download-link",
+				"Skip creating a public download link after upload.",
+			},
 		},
 		{
 			name: "file download",
@@ -61,29 +65,14 @@ func TestCommandHelp(t *testing.T) {
 			want: []string{"dify-agent file download", "Download one workflow file", "--to"},
 		},
 		{
-			name: "drive",
-			args: []string{"drive", "--help"},
-			want: []string{"dify-agent drive", "list", "pull", "push"},
-		},
-		{
-			name: "drive list",
-			args: []string{"drive", "list", "--help"},
-			want: []string{"dify-agent drive list", "List drive files", "--json"},
-		},
-		{
-			name: "drive pull",
-			args: []string{"drive", "pull", "--help"},
-			want: []string{"dify-agent drive pull", "Pull one or more drive", "--to", "--json"},
-		},
-		{
-			name: "drive push",
-			args: []string{"drive", "push", "--help"},
-			want: []string{"dify-agent drive push", "Upload one local file or directory", "--kind", "--json"},
+			name: "file public-url",
+			args: []string{"file", "public-url", "--help"},
+			want: []string{"dify-agent file public-url", "Create a browser-visible download URL"},
 		},
 		{
 			name: "config",
 			args: []string{"config", "--help"},
-			want: []string{"dify-agent config", "manifest", "skills", "files", "env", "note"},
+			want: []string{"dify-agent config", "manifest", "skills", "files", "env", "note", "prompt"},
 		},
 		{
 			name: "config manifest",
@@ -154,6 +143,21 @@ func TestCommandHelp(t *testing.T) {
 			name: "config note push",
 			args: []string{"config", "note", "push", "--help"},
 			want: []string{"dify-agent config note push", "Replace the current config note"},
+		},
+		{
+			name: "config prompt",
+			args: []string{"config", "prompt", "--help"},
+			want: []string{"dify-agent config prompt", "pull", "push"},
+		},
+		{
+			name: "config prompt pull",
+			args: []string{"config", "prompt", "pull", "--help"},
+			want: []string{"dify-agent config prompt pull", "./.dify_conf/prompt.md", "--to"},
+		},
+		{
+			name: "config prompt push",
+			args: []string{"config", "prompt", "push", "--help"},
+			want: []string{"dify-agent config prompt push [PATH|-]", "stdin", "already-built run requests keep their prompt"},
 		},
 		{
 			name: "config skill pull (hidden alias)",

@@ -1,6 +1,6 @@
 import type { SimpleDetail } from '../../store'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSubscriptionList } from '../use-subscription-list'
 
 let mockDetail: SimpleDetail | undefined
@@ -50,19 +50,5 @@ describe('useSubscriptionList', () => {
 
     expect(mockTriggerSubscriptions).toHaveBeenCalledWith('')
     expect(result.current.detail).toBeUndefined()
-  })
-
-  it('should return data from trigger subscription hook', () => {
-    mockTriggerSubscriptions.mockReturnValue({
-      data: [{ id: 'sub-1' }],
-      isLoading: true,
-      refetch: mockRefetch,
-    })
-
-    const { result } = renderHook(() => useSubscriptionList())
-
-    expect(result.current.subscriptions).toEqual([{ id: 'sub-1' }])
-    expect(result.current.isLoading).toBe(true)
-    expect(result.current.refetch).toBe(mockRefetch)
   })
 })

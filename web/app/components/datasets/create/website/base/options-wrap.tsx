@@ -6,7 +6,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const I18N_PREFIX = 'stepOne.website'
 
@@ -17,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const [fold, { toggle: foldToggle, setTrue: foldHide }] = useBoolean(false)
 
@@ -27,16 +26,22 @@ const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }
   return (
     <div className={cn(className, !fold ? 'mb-0' : 'mb-3')}>
       <div
-        className="flex h-[26px] cursor-pointer items-center gap-x-1 py-1 select-none"
+        className="flex h-6.5 cursor-pointer items-center gap-x-1 py-1 select-none"
         onClick={foldToggle}
       >
         <div className="flex grow items-center">
           <RiEqualizer2Line className="mr-1 size-4 text-text-secondary" />
-          <span className="text-[13px] leading-[16px] font-semibold text-text-secondary uppercase">
+          <span className="text-[13px] leading-4 font-semibold text-text-secondary uppercase">
             {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
         </div>
-        <ChevronRight className={cn(!fold && 'rotate-90', 'size-4 shrink-0 text-text-tertiary')} />
+        <span
+          aria-hidden
+          className={cn(
+            'i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5',
+            cn(!fold && 'rotate-90', 'size-4 shrink-0 text-text-tertiary'),
+          )}
+        />
       </div>
       {!fold && <div className="mb-4">{children}</div>}
     </div>

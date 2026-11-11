@@ -3,14 +3,16 @@ import type { ViewType } from '@/app/components/workflow/block-selector/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { selectRAGRecommendedPlugins } from '@/app/components/tools/utils/query-select'
 import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
+import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
-import { useRAGRecommendedPlugins } from '@/service/use-tools'
-import { getMarketplaceUrl } from '@/utils/var'
+import { consoleQuery } from '@/service/console'
 import List from './list'
 
 type RAGToolRecommendationsProps = {
@@ -24,14 +26,20 @@ export function RAGToolRecommendations({
   onSelect,
   onLoadMore,
 }: RAGToolRecommendationsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pipeline'])
   const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
+  const marketplace = useMarketplace()
 
   const {
     data: ragRecommendedPlugins,
     isLoading: isLoadingRAGRecommendedPlugins,
     isFetching: isFetchingRAGRecommendedPlugins,
-  } = useRAGRecommendedPlugins('tool')
+  } = useQuery(
+    consoleQuery.rag.pipelines.recommendedPlugins.get.queryOptions({
+      input: { query: { type: 'tool' } },
+      select: selectRAGRecommendedPlugins,
+    }),
+  )
 
   const recommendedPlugins = useMemo(() => {
     if (ragRecommendedPlugins) return ragRecommendedPlugins.installed_recommended_plugins
@@ -68,10 +76,11 @@ export function RAGToolRecommendations({
           {/* For first time loading, show loading */}
           {isLoadingRAGRecommendedPlugins && (
             <div className="py-2">
-              <Loading type="app" />
+              <LoadingPlaceholder className="h-full" />
             </div>
           )}
-          {!isFetchingRAGRecommendedPlugins &&
+          {marketplace &&
+            !isFetchingRAGRecommendedPlugins &&
             recommendedPlugins.length === 0 &&
             unInstalledPlugins.length === 0 && (
               <p className="px-3 py-1 system-xs-regular text-text-tertiary">
@@ -84,7 +93,7 @@ export function RAGToolRecommendations({
                         className="text-text-accent"
                         target="_blank"
                         rel="noopener noreferrer"
-                        href={getMarketplaceUrl('', { tags: 'rag' })}
+                        href={marketplace.page('', { tags: 'rag' })}
                       />
                     ),
                   }}
@@ -102,10 +111,10 @@ export function RAGToolRecommendations({
               <Button
                 variant="ghost"
                 size="medium"
-                className="w-full justify-start gap-x-2 pr-2 pl-3 text-left focus-visible:ring-inset"
+                className="w-full justify-start pr-2 pl-3 text-left focus-visible:ring-inset"
                 onClick={onLoadMore}
               >
-                <div className="px-1">
+                <div className="pl-1">
                   <span
                     aria-hidden="true"
                     className="i-ri-more-line block size-4 text-text-tertiary"

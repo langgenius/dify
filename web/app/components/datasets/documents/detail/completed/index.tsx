@@ -4,15 +4,9 @@ import type { SegmentListContextValue } from './segment-list-context'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import {
-  useChunkListAllKey,
-  useChunkListDisabledKey,
-  useChunkListEnabledKey,
-} from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../context'
 import BatchAction from './common/batch-action'
 import { DrawerGroup } from './components/drawer-group'
@@ -49,8 +43,9 @@ const Completed: FC<ICompletedProps> = ({
   importStatus,
   archived,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const docForm = useDocumentContext((s) => s.docForm)
+  const canEdit = useDocumentContext((s) => s.canEdit)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -68,34 +63,6 @@ const Completed: FC<ICompletedProps> = ({
 
   // Selection state
   const selectionState = useSegmentSelection()
-
-  // Invalidation hooks for child segment data
-  const invalidChunkListAll = useInvalid(useChunkListAllKey)
-  const invalidChunkListEnabled = useInvalid(useChunkListEnabledKey)
-  const invalidChunkListDisabled = useInvalid(useChunkListDisabledKey)
-
-  const refreshChunkListDataWithDetailChanged = useCallback(() => {
-    const refreshMap: Record<string, () => void> = {
-      all: () => {
-        invalidChunkListDisabled()
-        invalidChunkListEnabled()
-      },
-      true: () => {
-        invalidChunkListAll()
-        invalidChunkListDisabled()
-      },
-      false: () => {
-        invalidChunkListAll()
-        invalidChunkListEnabled()
-      },
-    }
-    refreshMap[String(searchFilter.selectedStatus)]?.()
-  }, [
-    searchFilter.selectedStatus,
-    invalidChunkListDisabled,
-    invalidChunkListEnabled,
-    invalidChunkListAll,
-  ])
 
   // Segment list data
   const segmentListDataHook = useSegmentListData({
@@ -141,7 +108,7 @@ const Completed: FC<ICompletedProps> = ({
     currChunkId: modalState.currChunkId,
     isFullDocMode: segmentListDataHook.isFullDocMode,
     onCloseChildSegmentDetail: modalState.onCloseChildSegmentDetail,
-    refreshChunkListDataWithDetailChanged,
+    refreshChunkListDataWithDetailChanged: segmentListDataHook.markOtherStatusListsStale,
     updateSegmentInCache: segmentListDataHook.updateSegmentInCache,
   })
 
@@ -240,7 +207,11 @@ const Completed: FC<ICompletedProps> = ({
       )}
 
       {/* Pagination */}
-      <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
+      <Separator
+        decorative
+        orientation="horizontal"
+        className="mx-6 my-0 w-auto bg-divider-subtle"
+      />
       <Pagination
         page={currentPage}
         totalPages={totalPages}
@@ -289,6 +260,7 @@ const Completed: FC<ICompletedProps> = ({
         <BatchAction
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectionState.selectedSegmentIds}
+          disabled={!canEdit}
           onBatchEnable={() => segmentListDataHook.onChangeSwitch(true, '')}
           onBatchDisable={() => segmentListDataHook.onChangeSwitch(false, '')}
           onBatchDelete={() => segmentListDataHook.onDelete('')}

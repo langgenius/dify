@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { createEnv } from '@t3-oss/env-core'
 import * as z from 'zod'
-import { e2eDir } from './common'
+import { e2eDir } from './common.ts'
 
 const booleanString = z.enum(['0', '1', 'false', 'true'])
 const jsonObjectString = z.string().refine((value) => {
@@ -79,6 +79,7 @@ export const validateE2eEnv = () =>
       E2E_AGENT_DECISION_MODEL_NAME: process.env.E2E_AGENT_DECISION_MODEL_NAME,
       E2E_AGENT_DECISION_MODEL_PROVIDER: process.env.E2E_AGENT_DECISION_MODEL_PROVIDER,
       E2E_AGENT_DECISION_MODEL_TYPE: process.env.E2E_AGENT_DECISION_MODEL_TYPE,
+      E2E_AGENT_OUTPUT_ROUTES_PREVIEW_APP_ID: process.env.E2E_AGENT_OUTPUT_ROUTES_PREVIEW_APP_ID,
       E2E_API_URL: process.env.E2E_API_URL,
       E2E_BASE_URL: process.env.E2E_BASE_URL,
       E2E_BROWSER: process.env.E2E_BROWSER,
@@ -112,6 +113,7 @@ export const validateE2eEnv = () =>
       E2E_AGENT_DECISION_MODEL_NAME: z.string().min(1).optional(),
       E2E_AGENT_DECISION_MODEL_PROVIDER: z.string().min(1).optional(),
       E2E_AGENT_DECISION_MODEL_TYPE: z.string().min(1).optional(),
+      E2E_AGENT_OUTPUT_ROUTES_PREVIEW_APP_ID: z.uuid().optional(),
       E2E_API_URL: z.url().optional(),
       E2E_BASE_URL: z.url().optional(),
       E2E_BROWSER: z.enum(['chromium', 'webkit']).optional(),

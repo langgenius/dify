@@ -1,9 +1,10 @@
+import type { Ref } from 'react'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiLink, RiUploadCloud2Line } from '@remixicon/react'
-import { useCallback } from 'react'
+import { useCallback, useImperativeHandle } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
@@ -17,14 +18,23 @@ type Option = {
   label: string
   icon: React.JSX.Element
 }
+export type FileUploaderInAttachmentRef = {
+  clear: () => void
+}
 type FileUploaderInAttachmentProps = {
+  ref?: Ref<FileUploaderInAttachmentRef>
   isDisabled?: boolean
   fileConfig: FileUpload
 }
-const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAttachmentProps) => {
-  const { t } = useTranslation()
+const FileUploaderInAttachment = ({
+  ref,
+  isDisabled,
+  fileConfig,
+}: FileUploaderInAttachmentProps) => {
+  const { t } = useTranslation(['common'])
   const files = useStore((s) => s.files)
-  const { handleRemoveFile, handleReUploadFile } = useFile(fileConfig)
+  const { handleRemoveFile, handleReUploadFile, handleClearFiles } = useFile(fileConfig)
+  useImperativeHandle(ref, () => ({ clear: handleClearFiles }), [handleClearFiles])
   const options = [
     {
       value: TransferMethod.local_file,
@@ -39,29 +49,23 @@ const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAtta
   ]
 
   const renderButton = useCallback(
-    (option: Option, open?: boolean) => {
+    (option: Option) => {
       return (
         <Button
           variant="tertiary"
           className={cn(
             'relative w-full min-w-0',
-            open && 'bg-components-button-tertiary-bg-hover',
+            'data-popup-open:bg-components-button-tertiary-bg-hover',
           )}
           disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
         >
           <span className="shrink-0">{option.icon}</span>
-          <span className="ml-1 min-w-0 truncate">{option.label}</span>
+          <span className="min-w-0 truncate">{option.label}</span>
           {option.value === TransferMethod.local_file && <FileInput fileConfig={fileConfig} />}
         </Button>
       )
     },
     [fileConfig, files.length],
-  )
-  const renderTrigger = useCallback(
-    (option: Option) => {
-      return (open: boolean) => renderButton(option, open)
-    },
-    [renderButton],
   )
   const renderOption = useCallback(
     (option: Option) => {
@@ -84,14 +88,14 @@ const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAtta
           <div key={option.value} className="min-w-0 flex-1">
             <FileFromLinkOrLocal
               showFromLocal={false}
-              trigger={renderTrigger(option)}
+              trigger={renderButton(option)}
               fileConfig={fileConfig}
             />
           </div>
         )
       }
     },
-    [renderButton, renderTrigger, fileConfig],
+    [renderButton, fileConfig],
   )
 
   return (
@@ -116,12 +120,14 @@ const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAtta
 }
 
 export type FileUploaderInAttachmentWrapperProps = {
+  ref?: Ref<FileUploaderInAttachmentRef>
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload
   isDisabled?: boolean
 }
 const FileUploaderInAttachmentWrapper = ({
+  ref,
   value,
   onChange,
   fileConfig,
@@ -129,7 +135,7 @@ const FileUploaderInAttachmentWrapper = ({
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
     <FileContextProvider value={value} onChange={onChange}>
-      <FileUploaderInAttachment isDisabled={isDisabled} fileConfig={fileConfig} />
+      <FileUploaderInAttachment ref={ref} isDisabled={isDisabled} fileConfig={fileConfig} />
     </FileContextProvider>
   )
 }

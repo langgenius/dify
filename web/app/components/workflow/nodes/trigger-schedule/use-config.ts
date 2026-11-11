@@ -1,9 +1,9 @@
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useCallback, useEffect, useMemo } from 'react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { getDefaultVisualConfig } from './constants'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
@@ -28,6 +28,13 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   }, [payload, timezone])
 
   const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload)
+
+  // The panel shows the profile timezone, but the backend falls back to UTC when the node has none.
+  // Save the shown timezone so the schedule runs at the time the user sees.
+  useEffect(() => {
+    if (readOnly || payload.timezone || !timezone) return
+    setInputs({ ...inputs, timezone })
+  }, [readOnly, payload.timezone, timezone, inputs, setInputs])
 
   const handleModeChange = useCallback(
     (mode: ScheduleMode) => {

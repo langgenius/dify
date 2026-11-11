@@ -1,5 +1,5 @@
 import type { FileEntity } from './types'
-import { createContext, use, useRef } from 'react'
+import { createContext, use, useState } from 'react'
 import { create, useStore } from 'zustand'
 
 type Shape = {
@@ -7,10 +7,7 @@ type Shape = {
   setFiles: (files: FileEntity[]) => void
 }
 
-export const createFileStore = (
-  value: FileEntity[] = [],
-  onChange?: (files: FileEntity[]) => void,
-) => {
+const createFileStore = (value: FileEntity[] = [], onChange?: (files: FileEntity[]) => void) => {
   return create<Shape>((set) => ({
     files: value ? [...value] : [],
     setFiles: (files) => {
@@ -40,9 +37,7 @@ type FileProviderProps = {
   onChange?: (files: FileEntity[]) => void
 }
 export const FileContextProvider = ({ children, value, onChange }: FileProviderProps) => {
-  const storeRef = useRef<FileStore | undefined>(undefined)
+  const [store] = useState(() => createFileStore(value, onChange))
 
-  if (!storeRef.current) storeRef.current = createFileStore(value, onChange)
-
-  return <FileContext.Provider value={storeRef.current}>{children}</FileContext.Provider>
+  return <FileContext.Provider value={store}>{children}</FileContext.Provider>
 }

@@ -1,8 +1,11 @@
 import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { act, render, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  getAnalyticsConsent,
+  setAnalyticsConsent,
+} from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import ExternalAttributionRecorder from '../external-attribution-recorder'
 
@@ -23,7 +26,7 @@ const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (search = '') => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(search) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(search) as ReturnType<typeof useSearchParams>,
   )
 }
 
@@ -33,11 +36,20 @@ const getUtmInfoCookie = () => {
 }
 
 describe('ExternalAttributionRecorder', () => {
+  let previousCookie: string | undefined
+  let previousConsent: AnalyticsConsent
   beforeEach(() => {
-    vi.clearAllMocks()
+    previousCookie = Cookies.get('utm_info')
+    previousConsent = getAnalyticsConsent()
     Cookies.remove('utm_info')
     setAnalyticsConsent('granted')
     setSearchParams()
+  })
+
+  afterEach(() => {
+    act(() => setAnalyticsConsent(previousConsent))
+    if (previousCookie === undefined) Cookies.remove('utm_info')
+    else Cookies.set('utm_info', previousCookie)
   })
 
   it.each<AnalyticsConsent>(['unknown', 'denied'])(

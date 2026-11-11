@@ -1,18 +1,22 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import PageSelector from './page-selector'
@@ -35,7 +39,7 @@ const OnlineDocuments = ({
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { documentsData, searchValue, selectedPagesId, currentCredentialId } =
     useDataSourceStoreWithSelector(
       useShallow((state) => ({
@@ -46,10 +50,11 @@ const OnlineDocuments = ({
       })),
     )
 
-  const { data: dataSourceAuth } = useGetDataSourceAuth({
-    pluginId: nodeData.plugin_id,
-    provider: nodeData.provider_name,
-  })
+  const { data: dataSourceAuth } = useQuery(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+      input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
+    }),
+  )
 
   const dataSourceStore = useDataSourceStore()
 
@@ -141,10 +146,8 @@ const OnlineDocuments = ({
   )
 
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -179,8 +182,8 @@ const OnlineDocuments = ({
               isMultipleChoice={supportBatchUpload}
             />
           ) : (
-            <div className="flex h-[296px] items-center justify-center">
-              <Loading type="app" />
+            <div className="flex h-74 items-center justify-center">
+              <LoadingPlaceholder className="h-full" />
             </div>
           )}
         </div>

@@ -1,0 +1,23 @@
+.singleLine {
+  @apply truncate;
+}
+
+.multipleLines {
+  -webkit-line-clamp: 2;
+}
+
+.noClamp {
+  line-clamp: none;
+}
+
+.zeroClamp {
+  -webkit-line-clamp: 0;
+}
+
+.unsetClamp {
+  line-clamp: unset !important;
+}
+
+.regular {
+  overflow: hidden;
+}

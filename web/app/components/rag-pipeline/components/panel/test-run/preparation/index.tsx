@@ -11,7 +11,7 @@ import {
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
-import { useWorkflowRun } from '@/app/components/workflow/hooks'
+import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'

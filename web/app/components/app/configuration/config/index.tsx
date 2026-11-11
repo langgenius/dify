@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import { produce } from 'immer'
@@ -7,7 +8,7 @@ import { useContext } from 'use-context-selector'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import HistoryPanel from '../config-prompt/conversation-history/history-panel'
 import ConfigVision from '../config-vision'
 import DatasetConfig from '../dataset-config'
@@ -30,9 +31,7 @@ const Config: FC = () => {
     setPrevPromptConfig,
     dataSets,
   } = useContext(ConfigContext)
-  const isChatApp = [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(
-    mode,
-  )
+  const isChatApp = mode === 'agent-chat' || mode === 'chat'
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const promptTemplate = modelConfig.configs.prompt_template
@@ -59,7 +58,7 @@ const Config: FC = () => {
 
   return (
     <>
-      <div className="relative h-0 grow overflow-y-auto px-6 pb-[50px]">
+      <div className="relative h-0 grow overflow-y-auto px-6 pb-12.5">
         {/* Template */}
         <ConfigPrompt
           mode={mode}

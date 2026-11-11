@@ -1,0 +1,262 @@
+'use client'
+
+import type { contract } from '@dify/contracts/api/console/account/orpc.gen'
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
+import type { TFunction } from 'i18next'
+import type { ReactNode } from 'react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { isDefinedError } from '@orpc/client'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { useDocLink } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import Link from '@/next/link'
+import { redirect, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { EducationStatusCard } from '../status-card'
+import UserInfo from '../user-info'
+
+const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
+  allowRefresh: allow_refresh,
+  isEducationAccount: is_student,
+})
+
+type EducationVerificationError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.account.education.verify.get>
+>
+
+function educationVerifyErrorMessage(
+  error: EducationVerificationError,
+  t: TFunction<['billing', 'education']>,
+) {
+  const code = isDefinedError(error) ? error.code : undefined
+  switch (code) {
+    case 'education_verify_failed':
+      return t(($) => $.verifyFailed, { ns: 'education' })
+    case 'education_verify_limit':
+      return t(($) => $.tooManyAttempts, { ns: 'education' })
+    default:
+      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+  }
+}
+
+const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
+
+export default function EducationVerifyPage() {
+  return <EducationVerifyFlow />
+}
+
+export function EducationVerifyFlow() {
+  const { t } = useTranslation(['billing', 'education'])
+  const router = useRouter()
+  const { data: userEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
+  const docLink = useDocLink()
+  const verificationStartedRef = useRef(false)
+  const featuresQuery = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEducationPlanEnabled }),
+  )
+  const enableEducationPlan = featuresQuery.data === true
+  const educationStatusQuery = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: featuresQuery.isSuccess && enableEducationPlan,
+      select: selectEducationStatus,
+    }),
+  )
+  const {
+    data: verification,
+    error: verificationError,
+    isError: isVerificationError,
+    mutate: verifyEducation,
+    reset: resetVerification,
+  } = useMutation(
+    consoleQuery.account.education.verify.get.mutationOptions({ context: { silent: true } }),
+  )
+
+  const startVerification = useCallback(() => {
+    if (verificationStartedRef.current) return
+
+    verificationStartedRef.current = true
+    verifyEducation(undefined, {
+      onSuccess: (result) => {
+        if (result.status === 'eligible')
+          router.replace(`/education/apply?token=${encodeURIComponent(result.token)}`)
+      },
+    })
+  }, [router, verifyEducation])
+
+  const educationStatus = educationStatusQuery.data
+  const isAlreadyVerified =
+    educationStatus?.isEducationAccount === true && !educationStatus.allowRefresh
+  const canVerify =
+    educationStatusQuery.isSuccess &&
+    educationStatus !== undefined &&
+    (!educationStatus.isEducationAccount || educationStatus.allowRefresh)
+
+  useEffect(() => {
+    if (canVerify) startVerification()
+  }, [canVerify, startVerification])
+
+  if (featuresQuery.isPending) return <EducationVerifyLoading />
+
+  if (!enableEducationPlan) return redirect('/')
+
+  if (educationStatusQuery.isPending) return <EducationVerifyLoading />
+
+  if (educationStatusQuery.isError)
+    return (
+      <EducationVerifyError
+        message={t(($) => $[billingErrorMessageKey(educationStatusQuery.error)], {
+          ns: 'billing',
+        })}
+        onRetry={() => {
+          void educationStatusQuery.refetch()
+        }}
+      />
+    )
+
+  if (isAlreadyVerified) return <EducationVerifiedContent />
+
+  if (verification?.status === 'not_eligible') {
+    return (
+      <EducationVerifyContent>
+        <EducationStatusCard
+          icon={
+            <span
+              className="i-ri-close-circle-fill size-6 text-text-destructive"
+              aria-hidden="true"
+            />
+          }
+          title={t(($) => $.rejectTitle, { ns: 'education' })}
+          actions={
+            <>
+              <Link className={buttonVariants({ variant: 'secondary' })} href="/">
+                <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
+                {t(($) => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
+              </Link>
+              <a
+                className={buttonVariants({ variant: 'ghost-accent' })}
+                href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t(($) => $.learn, { ns: 'education' })}
+                <span className="i-ri-external-link-line size-3" aria-hidden="true" />
+              </a>
+            </>
+          }
+        >
+          <p>{t(($) => $.rejectContent, { ns: 'education' })}</p>
+          <div className="mt-4">
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $.emailLabel, { ns: 'education' })}
+            </div>
+            <div className="mt-1 rounded-lg bg-components-input-bg-disabled px-3 py-2 system-sm-regular text-components-input-text-filled-disabled">
+              {userEmail}
+            </div>
+          </div>
+        </EducationStatusCard>
+      </EducationVerifyContent>
+    )
+  }
+
+  if (isVerificationError)
+    return (
+      <EducationVerifyError
+        message={educationVerifyErrorMessage(verificationError, t)}
+        onRetry={() => {
+          verificationStartedRef.current = false
+          resetVerification()
+          startVerification()
+        }}
+      />
+    )
+
+  return <EducationVerifyLoading />
+}
+
+function EducationVerifyContent({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <div className="mb-7">
+        <UserInfo />
+      </div>
+      {children}
+    </>
+  )
+}
+
+function EducationVerifyLoading() {
+  return (
+    <EducationStatusCard
+      icon={<LoadingPlaceholder />}
+      title={<span className="block h-5 w-40 animate-pulse rounded bg-background-section-burn" />}
+    >
+      <span className="block h-4 w-full max-w-100 animate-pulse rounded bg-background-section-burn" />
+    </EducationStatusCard>
+  )
+}
+
+function EducationVerifiedContent() {
+  const { t } = useTranslation(['education', 'navigation'])
+
+  return (
+    <EducationVerifyContent>
+      <EducationStatusCard
+        icon={
+          <span className="i-ri-checkbox-circle-fill size-6 text-text-success" aria-hidden="true" />
+        }
+        title={t(($) => $['applied.step1.description'], { ns: 'education' })}
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: 'primary' })} href="/?settings=billing">
+              {t(($) => $['settings.billing'], { ns: 'navigation' })}
+            </Link>
+            <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
+              <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
+              {t(($) => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
+            </Link>
+          </>
+        }
+      />
+    </EducationVerifyContent>
+  )
+}
+
+function EducationVerifyError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useTranslation(['common', 'education'])
+
+  return (
+    <EducationVerifyContent>
+      <EducationStatusCard
+        icon={
+          <span
+            className="i-ri-error-warning-fill size-6 text-text-warning-secondary"
+            aria-hidden="true"
+          />
+        }
+        title={t(($) => $['errorBoundary.title'], { ns: 'common' })}
+        actions={
+          <>
+            <Button variant="primary" onClick={onRetry}>
+              {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+            </Button>
+            <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
+              <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
+              {t(($) => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
+            </Link>
+          </>
+        }
+      >
+        {message}
+      </EducationStatusCard>
+    </EducationVerifyContent>
+  )
+}

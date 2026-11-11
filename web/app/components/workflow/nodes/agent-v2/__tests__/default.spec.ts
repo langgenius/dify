@@ -112,19 +112,34 @@ describe('agent/default', () => {
     })
   })
 
-  it('reuses the legacy agent node help document', () => {
-    expect(nodeDefault.metaData.helpLinkUri).toBe('agent')
+  it.each([
+    { enabled: false, conditions: [''], valid: true },
+    { enabled: true, conditions: [], valid: false },
+    { enabled: true, conditions: ['Accept'], valid: false },
+    { enabled: true, conditions: ['Accept', ' '], valid: false },
+    { enabled: true, conditions: ['Accept', 'Reject'], valid: true },
+  ])('requires at least two complete routes when enabled: %j', ({ enabled, conditions, valid }) => {
+    const result = nodeDefault.checkValid(
+      createPayload({
+        agent_output_routes: {
+          enabled,
+          routes: conditions.map((name, index) => ({ id: `route-${index}`, name })),
+        },
+      }),
+      t,
+    )
+
+    expect(result.isValid).toBe(valid)
   })
 
   it('identifies version 2 agent data as Agent v2', () => {
     expect(isAgentV2NodeData(createPayload({ type: BlockEnum.Agent }))).toBe(true)
-    expect(
-      isAgentV2NodeData({
-        title: 'Agent',
-        desc: '',
-        type: BlockEnum.Agent,
-        version: '2',
-      } as Parameters<typeof isAgentV2NodeData>[0]),
-    ).toBe(false)
+    const legacyAgent = {
+      title: 'Agent',
+      desc: '',
+      type: BlockEnum.Agent,
+      version: '2',
+    }
+    expect(isAgentV2NodeData(legacyAgent)).toBe(false)
   })
 })

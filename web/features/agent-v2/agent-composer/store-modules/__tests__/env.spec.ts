@@ -1,5 +1,5 @@
 import { createStore } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { defaultAgentSoulConfigFormState } from '../../form-state'
 import { agentComposerDraftAtom } from '../../store'
 import {
@@ -63,6 +63,11 @@ describe('agent composer env store', () => {
         value: 'enabled',
         scope: 'plain',
       },
+    ])
+    expect(store.get(agentComposerDraftAtom).envVariables).toEqual([
+      starterVariable,
+      { id: 'env-1', key: 'FIRST_KEY', value: '', scope: 'plain' },
+      { id: 'env-2', key: 'SECOND_KEY', value: 'enabled', scope: 'plain' },
     ])
     store.set(removeEnvVariableAtom, 'starter')
 

@@ -42,8 +42,8 @@ class AliyunLogStorePG:
             result = sock.connect_ex((host, port))
             sock.close()
             return result == 0
-        except Exception as e:
-            logger.debug("Port connectivity check failed for %s:%d: %s", host, port, str(e))
+        except Exception:
+            logger.debug("Port connectivity check failed for %s:%d", host, port, exc_info=True)
             return False
 
     def init_connection(self) -> bool:
@@ -100,7 +100,7 @@ class AliyunLogStorePG:
             )
             return True
 
-        except Exception as e:
+        except Exception:
             self._use_pg_protocol = False
             if self._engine:
                 try:
@@ -109,7 +109,7 @@ class AliyunLogStorePG:
                     logger.debug("Failed to dispose engine during cleanup, ignoring")
             self._engine = None
 
-            logger.debug("Using SDK mode for region: %s", str(e))
+            logger.debug("Using SDK mode for region", exc_info=True)
             return False
 
     @contextmanager
@@ -228,7 +228,7 @@ class AliyunLogStorePG:
                         result = []
                         for row in cursor.fetchall():
                             row_dict = {}
-                            for col, val in zip(columns, row):
+                            for col, val in zip(columns, row, strict=False):
                                 row_dict[col] = "" if val is None else str(val)
                             result.append(row_dict)
 

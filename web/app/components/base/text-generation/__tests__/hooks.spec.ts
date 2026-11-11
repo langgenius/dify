@@ -12,7 +12,7 @@ const mockSsePost =
     ) => void
   >()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -39,25 +39,18 @@ describe('useTextGeneration', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should return expected initial state and handlers', () => {
-      const { result } = renderHook(() => useTextGeneration())
-
-      expect(result.current.completion).toBe('')
-      expect(result.current.isResponding).toBe(false)
-      expect(result.current.messageId).toBeNull()
-      expect(result.current.setIsResponding).toBeInstanceOf(Function)
-      expect(result.current.handleSend).toBeInstanceOf(Function)
-    })
-  })
-
   describe('Send Flow', () => {
     it('should start streaming request and return true when not responding', async () => {
       const { result } = renderHook(() => useTextGeneration())
+      const onNotifyError = vi.fn()
       let sendResult: boolean | undefined
 
       await act(async () => {
-        sendResult = await result.current.handleSend('/console/api', { query: 'hello' })
+        sendResult = await result.current.handleSend(
+          '/console/api',
+          { query: 'hello' },
+          { onNotifyError },
+        )
       })
 
       expect(sendResult).toBe(true)
@@ -77,6 +70,7 @@ describe('useTextGeneration', () => {
           onMessageReplace: expect.any(Function),
           onCompleted: expect.any(Function),
           onError: expect.any(Function),
+          onNotifyError,
         }),
       )
     })
@@ -162,8 +156,8 @@ describe('useTextGeneration', () => {
       const { result } = renderHook(() => useTextGeneration())
       let sendResult: boolean | undefined
 
-      act(() => {
-        result.current.setIsResponding(true)
+      await act(async () => {
+        await result.current.handleSend('/console/api', { query: 'first' })
       })
 
       await act(async () => {
@@ -171,7 +165,7 @@ describe('useTextGeneration', () => {
       })
 
       expect(sendResult).toBe(false)
-      expect(mockSsePost).not.toHaveBeenCalled()
+      expect(mockSsePost).toHaveBeenCalledTimes(1)
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'info',
         message: 'appDebug.errorMessage.waitForResponse',

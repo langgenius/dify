@@ -143,7 +143,10 @@ class ExcelExtractor(BaseExtractor):
                     page_content = []
                     for k, v in series_row.items():
                         if pd.notna(v):
-                            page_content.append(f'"{k}":"{v}"')
+                            # Escape embedded double quotes like the .xlsx branch
+                            # does, so quoted cell values do not corrupt the row.
+                            value = str(v).replace('"', '\\"')
+                            page_content.append(f'"{k}":"{value}"')
                     documents.append(
                         Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                     )

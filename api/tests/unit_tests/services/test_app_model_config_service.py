@@ -1,13 +1,15 @@
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from models.model import AppMode
 from services.app_model_config_service import AppModelConfigService
 
 
 @pytest.fixture
-def mock_config_managers():
+def mock_config_managers() -> Iterator[dict[str, MagicMock]]:
     """Fixture that patches all app config manager validate methods.
 
     Returns a dictionary containing the mocked config_validate methods for each manager.
@@ -40,8 +42,12 @@ class TestAppModelConfigService:
         ],
     )
     def test_should_route_validation_to_correct_manager_based_on_app_mode(
-        self, app_mode, selected_manager, mock_config_managers
-    ):
+        self,
+        app_mode: AppMode,
+        selected_manager: str,
+        mock_config_managers: dict[str, MagicMock],
+        unbound_session: Session,
+    ) -> None:
         """Test configuration validation is delegated to the expected manager for each supported app mode."""
         tenant_id = "tenant-123"
         config = {"temperature": 0.5}
@@ -50,28 +56,28 @@ class TestAppModelConfigService:
         mock_agent_validate = mock_config_managers["agent"]
         mock_completion_validate = mock_config_managers["completion"]
 
-        session = MagicMock()
-
         result = AppModelConfigService.validate_configuration(
-            tenant_id=tenant_id, config=config, app_mode=app_mode, session=session
+            tenant_id=tenant_id, config=config, app_mode=app_mode, session=unbound_session
         )
 
         assert result == {"manager": selected_manager}
 
         if selected_manager == "chat":
-            mock_chat_validate.assert_called_once_with(tenant_id, config, session)
+            mock_chat_validate.assert_called_once_with(tenant_id, config, unbound_session)
             mock_agent_validate.assert_not_called()
             mock_completion_validate.assert_not_called()
         elif selected_manager == "agent":
-            mock_agent_validate.assert_called_once_with(tenant_id, config, session)
+            mock_agent_validate.assert_called_once_with(tenant_id, config, unbound_session)
             mock_chat_validate.assert_not_called()
             mock_completion_validate.assert_not_called()
         else:
-            mock_completion_validate.assert_called_once_with(tenant_id, config, session)
+            mock_completion_validate.assert_called_once_with(tenant_id, config, unbound_session)
             mock_chat_validate.assert_not_called()
             mock_agent_validate.assert_not_called()
 
-    def test_should_raise_value_error_when_app_mode_is_not_supported(self, mock_config_managers):
+    def test_should_raise_value_error_when_app_mode_is_not_supported(
+        self, mock_config_managers: dict[str, MagicMock], unbound_session: Session
+    ) -> None:
         """Test unsupported app modes raise ValueError with the invalid mode in the message."""
         tenant_id = "tenant-123"
         config = {"temperature": 0.5}
@@ -85,7 +91,7 @@ class TestAppModelConfigService:
                 tenant_id=tenant_id,
                 config=config,
                 app_mode=AppMode.WORKFLOW,
-                session=MagicMock(),
+                session=unbound_session,
             )
 
         mock_chat_validate.assert_not_called()

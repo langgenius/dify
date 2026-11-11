@@ -35,7 +35,7 @@ const Authorize = ({
   notAllowCustomCredential,
   onApiKeyClick,
 }: AuthorizeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { canCreateCredential } = useCredentialPermissions()
 
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {

@@ -71,6 +71,7 @@ def _add_agent(
             tenant_id="tenant-1",
             agent_id=agent_id,
             version=1,
+            home_snapshot_id=f"home-{agent_id}",
             config_snapshot=_agent_soul(),
         )
     )
@@ -245,6 +246,7 @@ def test_workflow_callable_filter_distinguishes_never_published_from_dirty_draft
             tenant_id="tenant-1",
             agent_id=stale_published_snapshot.id,
             version=2,
+            home_snapshot_id="home-stale-published-old",
             config_snapshot=_agent_soul(),
         )
     )

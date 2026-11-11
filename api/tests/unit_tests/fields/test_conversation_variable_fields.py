@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from types import SimpleNamespace
 
 import pytest
 
@@ -30,7 +29,7 @@ def test_conversation_variable_response_normalizes_callable_exposed_type() -> No
         {
             "id": "550e8400-e29b-41d4-a716-446655440000",
             "name": "foo",
-            "value_type": SimpleNamespace(exposed_type=lambda: SegmentType.STRING.exposed_type()),
+            "value_type": SegmentType.STRING,
         }
     )
 

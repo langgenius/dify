@@ -3,11 +3,12 @@
 import * as z from 'zod'
 
 /**
- * EmailPayload
+ * EmailCodeSendPayload
  */
-export const zEmailPayload = z.object({
+export const zEmailCodeSendPayload = z.object({
   email: z.string(),
   language: z.string().nullish(),
+  turnstile_token: z.string().max(2048).nullish(),
 })
 
 /**
@@ -19,6 +20,118 @@ export const zSimpleResultDataResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountBannedError
+ *
+ * Account is banned.
+ */
+export const zAccountBannedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_banned'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TurnstileVerificationFailedError
+ *
+ * Turnstile verification failed. Please try again.
+ */
+export const zTurnstileVerificationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('turnstile_verification_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailCodeLoginRateLimitExceededError
+ *
+ * Too many login emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailCodeLoginRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_login_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * EmailCodeLoginServiceUnavailableError
+ *
+ * Email code verification is temporarily unavailable. Please try again later.
+ */
+export const zEmailCodeLoginServiceUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_login_service_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * TurnstileServiceUnavailableError
+ *
+ * Turnstile verification is temporarily unavailable. Please try again later.
+ */
+export const zTurnstileServiceUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('turnstile_service_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * EmailCodeLoginPayload
  */
 export const zEmailCodeLoginPayload = z.object({
@@ -26,7 +139,8 @@ export const zEmailCodeLoginPayload = z.object({
   email: z.string(),
   language: z.string().nullish(),
   timezone: z.string().nullish(),
-  token: z.string(),
+  token: z.uuid(),
+  turnstile_token: z.string().max(2048).nullish(),
 })
 
 /**
@@ -36,7 +150,91 @@ export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
 
-export const zPostEmailCodeLoginBody = zEmailPayload
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * LimitExceededError
+ *
+ * Unable to create account because the licensed seats limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NormalizedEmailAlreadyInUseError
+ *
+ * An account with an equivalent email address already exists.
+ */
+export const zNormalizedEmailAlreadyInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('normalized_email_already_in_use'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotAllowedCreateWorkspaceError
+ *
+ * Workspace not found, please contact system admin to invite you to join in a workspace.
+ */
+export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_allowed_create_workspace'),
+    status: z.literal(400),
+  }),
+)
+
+export const zPostEmailCodeLoginBody = zEmailCodeSendPayload
 
 /**
  * Success

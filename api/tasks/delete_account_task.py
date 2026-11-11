@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from enums import DeploymentEdition
 from models import Account
 from services.billing_service import BillingService
 from tasks.mail_account_deletion_task import send_deletion_success_task
@@ -17,7 +18,7 @@ def delete_account_task(account_id):
     with session_factory.create_session() as session:
         account = session.scalar(select(Account).where(Account.id == account_id).limit(1))
         try:
-            if dify_config.BILLING_ENABLED:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
                 BillingService.delete_account(account_id)
         except Exception:
             logger.exception("Failed to delete account %s from billing service.", account_id)

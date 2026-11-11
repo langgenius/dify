@@ -135,3 +135,26 @@ func extractZip(archivePath string, targetDir string) error {
 	}
 	return nil
 }
+
+func shouldSkipDir(name string) bool {
+	skip := map[string]bool{
+		".git": true, "__pycache__": true, ".pytest_cache": true,
+		".mypy_cache": true, ".ruff_cache": true, ".venv": true, "node_modules": true,
+	}
+	return skip[name]
+}
+
+func buildSkillArchive(dirPath string) (string, error) {
+	tmpFile, err := os.CreateTemp("", "skill-archive-*.zip")
+	if err != nil {
+		return "", fmt.Errorf("create temp archive: %w", err)
+	}
+	archivePath := tmpFile.Name()
+	_ = tmpFile.Close()
+
+	if err := createZipArchive(archivePath, dirPath); err != nil {
+		_ = os.Remove(archivePath)
+		return "", err
+	}
+	return archivePath, nil
+}

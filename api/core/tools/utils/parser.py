@@ -46,7 +46,7 @@ class ApiBasedToolSchemaParser:
         server_url = openapi["servers"][0]["url"]
         request_env = request.headers.get("X-Request-Env") if has_request_context() else None
         if request_env:
-            matched_servers = [server["url"] for server in openapi["servers"] if server["env"] == request_env]
+            matched_servers = [server["url"] for server in openapi["servers"] if server.get("env") == request_env]
             server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces
@@ -238,7 +238,7 @@ class ApiBasedToolSchemaParser:
     @staticmethod
     def _get_tool_parameter_type(parameter: dict[str, Any]) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: str | None = None
+        typ: str | list[str] | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 
@@ -246,6 +246,11 @@ class ApiBasedToolSchemaParser:
             typ = parameter["type"]
         elif "schema" in parameter and "type" in parameter["schema"]:
             typ = parameter["schema"]["type"]
+
+        if isinstance(typ, list):
+            # OpenAPI 3.1 expresses nullable types as unions, e.g.
+            # ["integer", "null"]. Use the first non-null member.
+            typ = next((item for item in typ if item != "null"), None)
 
         if typ in {"integer", "number"}:
             return ToolParameter.ToolParameterType.NUMBER
@@ -319,22 +324,26 @@ class ApiBasedToolSchemaParser:
             raise ToolApiSchemaError("No paths found in the swagger yaml.")
 
         # convert paths
+        http_methods = ("get", "post", "put", "delete", "patch", "head", "options", "trace")
         for path, path_item in swagger["paths"].items():
             converted_openapi["paths"][path] = {}
             for method, operation in path_item.items():
+                # A Path Item Object may carry non-operation keys such as
+                # path-level parameters; only HTTP methods define operations.
+                method = str(method).lower()
+                if method not in http_methods:
+                    continue
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
 
-                if ("summary" not in operation or len(operation["summary"]) == 0) and (
-                    "description" not in operation or len(operation["description"]) == 0
-                ):
+                if not operation.get("summary") and not operation.get("description"):
                     if warning is not None:
                         warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
                 converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],
-                    "summary": operation.get("summary", ""),
-                    "description": operation.get("description", ""),
+                    "summary": operation.get("summary") or "",
+                    "description": operation.get("description") or "",
                     "parameters": operation.get("parameters", []),
                     "responses": operation.get("responses", {}),
                 }
@@ -369,8 +378,8 @@ class ApiBasedToolSchemaParser:
             api = openai_plugin["api"]
             api_url = api["url"]
             api_type = api["type"]
-        except JSONDecodeError:
-            raise ToolProviderNotFoundError("Invalid openai plugin json.")
+        except JSONDecodeError as caught_error:
+            raise ToolProviderNotFoundError("Invalid openai plugin json.") from caught_error
 
         if api_type != "openapi":
             raise ToolNotSupportedError("Only openapi is supported now.")

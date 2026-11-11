@@ -1,7 +1,7 @@
 import { request } from '@playwright/test'
-import { authStatePath } from '../../fixtures/auth'
-import { apiURL } from '../../test-env'
-import { createConsoleClient } from './console-client'
+import { authStatePath } from '../../fixtures/auth.ts'
+import { apiURL } from '../../test-env.ts'
+import { createConsoleClient } from './console-client.ts'
 
 export async function createStandaloneConsoleSession() {
   const requestContext = await request.newContext({

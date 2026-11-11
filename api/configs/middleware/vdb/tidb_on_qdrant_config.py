@@ -32,6 +32,11 @@ class TidbOnQdrantConfig(BaseSettings):
         default=6334,
     )
 
+    TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB: str = Field(
+        description="Cloud pre-write thresholds for projected TiDB vector storage usage, in plan:MB pairs.",
+        default="sandbox:60,professional:6400,team:25600",
+    )
+
     TIDB_PUBLIC_KEY: str | None = Field(
         description="Tidb account public key",
         default=None,

@@ -9,8 +9,8 @@ import {
 import { VarType } from '@/app/components/workflow/types'
 
 type VariableTypeSelectProps = {
-  value?: string
-  onChange: (value: string) => void
+  value?: VarType
+  onChange: (value: VarType) => void
 }
 const VariableTypeSelect = ({ value, onChange }: VariableTypeSelectProps) => {
   const options = [

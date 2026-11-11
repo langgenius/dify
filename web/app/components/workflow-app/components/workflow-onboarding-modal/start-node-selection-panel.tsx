@@ -17,7 +17,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectUserInput,
   onSelectTrigger,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
   const handleTriggerSelect = useCallback(
@@ -45,14 +45,15 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         open={showTriggerSelector}
         onOpenChange={setShowTriggerSelector}
         onSelect={handleTriggerSelect}
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         standalonePanel={TabType.Start}
         availableBlocksTypes={[
           BlockEnum.TriggerSchedule,
           BlockEnum.TriggerWebhook,
           BlockEnum.TriggerPlugin,
         ]}
-        trigger={() => (
+        trigger={
           <StartNodeOption
             icon={
               <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
@@ -63,7 +64,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
             description={t(($) => $['onboarding.triggerDescription'], { ns: 'workflow' })}
             onClick={() => setShowTriggerSelector(true)}
           />
-        )}
+        }
       />
     </div>
   )

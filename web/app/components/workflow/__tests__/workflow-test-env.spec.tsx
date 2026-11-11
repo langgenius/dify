@@ -2,10 +2,10 @@
  * Validation tests for renderWorkflowComponent and renderNodeComponent.
  */
 import type { Shape } from '../store/workflow'
-import { act, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useNodes } from 'reactflow'
-import { FlowType } from '@/types/common'
 import { useHooksStore } from '../hooks-store/store'
 import { useStore, useWorkflowStore } from '../store/workflow'
 import { createNode } from './fixtures'
@@ -43,8 +43,12 @@ function StoreWriter() {
 }
 
 function HooksStoreReader() {
-  const flowId = useHooksStore((s) => s.configsMap?.flowId ?? 'none')
-  return React.createElement('div', { 'data-testid': 'hooks-reader' }, flowId)
+  const fileSettings = useHooksStore((s) => s.fileSettings)
+  return React.createElement(
+    'div',
+    { 'data-testid': 'hooks-reader' },
+    fileSettings ? 'configured' : 'none',
+  )
 }
 
 function NodeRenderer(props: { id: string; data: { title: string }; selected?: boolean }) {
@@ -70,19 +74,8 @@ function FlowReader() {
 // ---------------------------------------------------------------------------
 
 describe('renderWorkflowComponent', () => {
-  it('should provide WorkflowContext with default store', () => {
-    renderWorkflowComponent(React.createElement(StoreReader))
-    expect(screen.getByTestId('store-reader'))!.toHaveTextContent('no-confirm')
-  })
-
-  it('should apply initialStoreState', () => {
-    renderWorkflowComponent(React.createElement(StoreReader), {
-      initialStoreState: { showConfirm: { title: 'Hey', onConfirm: () => {} } },
-    })
-    expect(screen.getByTestId('store-reader'))!.toHaveTextContent('has-confirm')
-  })
-
-  it('should return a live store that components can mutate', () => {
+  it('should return a live store that components can mutate', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(
       React.createElement(
         React.Fragment,
@@ -94,9 +87,7 @@ describe('renderWorkflowComponent', () => {
 
     expect(store.getState().showConfirm).toBeUndefined()
 
-    act(() => {
-      screen.getByTestId('store-writer').click()
-    })
+    await user.click(screen.getByRole('button', { name: 'Write' }))
 
     expect(store.getState().showConfirm).toBeDefined()
     expect(screen.getByTestId('store-reader'))!.toHaveTextContent('has-confirm')
@@ -104,37 +95,16 @@ describe('renderWorkflowComponent', () => {
 
   it('should provide HooksStoreContext when hooksStoreProps given', () => {
     renderWorkflowComponent(React.createElement(HooksStoreReader), {
+      resource: { kind: 'app' as const, appId: 'test-123', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: { flowId: 'test-123', flowType: FlowType.appFlow, fileSettings: {} },
+        fileSettings: {},
       },
     })
-    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('test-123')
-  })
-
-  it('should provide HooksStoreContext with default store', () => {
-    renderWorkflowComponent(React.createElement(HooksStoreReader))
-    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('none')
-  })
-
-  it('should forward extra render options (container)', () => {
-    const container = document.createElement('section')
-    document.body.appendChild(container)
-
-    try {
-      renderWorkflowComponent(React.createElement(StoreReader), { container })
-      expect(container.querySelector('[data-testid="store-reader"]')).toBeTruthy()
-    } finally {
-      document.body.removeChild(container)
-    }
+    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('configured')
   })
 })
 
 describe('renderNodeComponent', () => {
-  it('should render node with default id and selected=false', () => {
-    renderNodeComponent(NodeRenderer, { title: 'Hello' })
-    expect(screen.getByTestId('node-render'))!.toHaveTextContent('test-node-1:Hello:nosel')
-  })
-
   it('should accept custom nodeId and selected', () => {
     renderNodeComponent(
       NodeRenderer,

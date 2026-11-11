@@ -1,21 +1,11 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { createInputFieldSchema, TEXT_MAX_LENGTH } from '../schema'
+import { createInputFieldSchema } from '../schema'
 
-vi.mock('@/config', () => ({
-  MAX_VAR_KEY_LENGTH: 30,
-}))
-
-const t: TFunction = ((key: string) => key) as unknown as TFunction
+const t: TFunction<['appDebug']> = ((key: string) => key) as unknown as TFunction<['appDebug']>
 
 const defaultOptions = { maxFileUploadLimit: 10 }
-
-describe('TEXT_MAX_LENGTH', () => {
-  it('should be 256', () => {
-    expect(TEXT_MAX_LENGTH).toBe(256)
-  })
-})
 
 describe('createInputFieldSchema', () => {
   describe('common schema validation', () => {
@@ -32,31 +22,21 @@ describe('createInputFieldSchema', () => {
       expect(result.success).toBe(false)
     })
 
-    it('should reject variable starting with number', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, t, defaultOptions)
-      const result = schema.safeParse({
-        type: 'text-input',
-        variable: '123abc',
-        label: 'Test',
-        required: false,
-        maxLength: 48,
-      })
+    it.each(['123abc', 'invalid-name', 'a'.repeat(100)])(
+      'rejects invalid variable %s',
+      (variable) => {
+        const schema = createInputFieldSchema(PipelineInputVarType.textInput, t, defaultOptions)
+        const result = schema.safeParse({
+          type: 'text-input',
+          variable,
+          label: 'Test',
+          required: false,
+          maxLength: 48,
+        })
 
-      expect(result.success).toBe(false)
-    })
-
-    it('should accept valid variable name', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, t, defaultOptions)
-      const result = schema.safeParse({
-        type: 'text-input',
-        variable: 'valid_var',
-        label: 'Test',
-        required: false,
-        maxLength: 48,
-      })
-
-      expect(result.success).toBe(true)
-    })
+        expect(result.success).toBe(false)
+      },
+    )
 
     it('should reject empty label', () => {
       const schema = createInputFieldSchema(PipelineInputVarType.textInput, t, defaultOptions)
@@ -81,7 +61,7 @@ describe('createInputFieldSchema', () => {
         variable: 'text_var',
         label: 'Text',
         required: false,
-        maxLength: 100,
+        maxLength: 256,
       })
       expect(valid.success).toBe(true)
 
@@ -93,6 +73,15 @@ describe('createInputFieldSchema', () => {
         maxLength: 0,
       })
       expect(tooLow.success).toBe(false)
+      expect(
+        schema.safeParse({
+          type: 'text-input',
+          variable: 'text_var',
+          label: 'Text',
+          required: false,
+          maxLength: 257,
+        }).success,
+      ).toBe(false)
     })
 
     it('should allow optional default and tooltips', () => {
@@ -213,7 +202,7 @@ describe('createInputFieldSchema', () => {
         allowedTypesAndExtensions: {
           allowedFileTypes: ['image'],
         },
-        maxLength: 3,
+        maxLength: 5,
       })
       expect(valid.success).toBe(true)
 
@@ -226,25 +215,13 @@ describe('createInputFieldSchema', () => {
         allowedTypesAndExtensions: {
           allowedFileTypes: ['image'],
         },
-        maxLength: 10,
+        maxLength: 6,
       })
       expect(tooMany.success).toBe(false)
     })
   })
 
   describe('checkbox / default type', () => {
-    it('should use common schema for checkbox type', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.checkbox, t, defaultOptions)
-      const result = schema.safeParse({
-        type: 'checkbox',
-        variable: 'check_var',
-        label: 'Agree',
-        required: true,
-      })
-
-      expect(result.success).toBe(true)
-    })
-
     it('should allow passthrough of extra fields', () => {
       const schema = createInputFieldSchema(PipelineInputVarType.checkbox, t, defaultOptions)
       const result = schema.safeParse({
@@ -256,7 +233,10 @@ describe('createInputFieldSchema', () => {
         extraField: 'should pass through',
       })
 
-      expect(result.success).toBe(true)
+      expect(result).toMatchObject({
+        success: true,
+        data: { default: true, extraField: 'should pass through' },
+      })
     })
   })
 })

@@ -1,554 +1,331 @@
-import type { DataSourceAuth } from '../types'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
-import { CollectionType } from '@/app/components/tools/types'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import {
-  useGetDataSourceOAuthUrl,
-  useInvalidDataSourceAuth,
-  useInvalidDataSourceListAuth,
-  useInvalidDefaultDataSourceListAuth,
-} from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import Card from '../card'
-import { useDataSourceAuthUpdate } from '../hooks'
 
-let mockWorkspacePermissionKeys: string[] = [
-  'credential.use',
-  'credential.create',
-  'credential.manage',
-]
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  ApiKeyModal: vi.fn(
-    ({
-      onClose,
-      onUpdate,
-      onRemove,
-      disabled,
-      editValues,
-    }: {
-      onClose: () => void
-      onUpdate: () => void
-      onRemove: () => void
-      disabled: boolean
-      editValues: Record<string, unknown>
-    }) => (
-      <div data-testid="mock-api-key-modal" data-disabled={disabled}>
-        <button data-testid="modal-close" onClick={onClose}>
-          Close
-        </button>
-        <button data-testid="modal-update" onClick={onUpdate}>
-          Update
-        </button>
-        <button data-testid="modal-remove" onClick={onRemove}>
-          Remove
-        </button>
-        <div data-testid="edit-values">{JSON.stringify(editValues)}</div>
-      </div>
-    ),
-  ),
-  usePluginAuthAction: vi.fn(),
-  AuthCategory: {
-    datasource: 'datasource',
-  },
-  AddApiKeyButton: ({ onUpdate, disabled }: { onUpdate: () => void; disabled?: boolean }) => (
-    <button disabled={disabled} onClick={onUpdate}>
-      Add API Key
-    </button>
-  ),
-  AddOAuthButton: ({ onUpdate, disabled }: { onUpdate: () => void; disabled?: boolean }) => (
-    <button disabled={disabled} onClick={onUpdate}>
-      Add OAuth
-    </button>
-  ),
+const { mockRequest, mockGetPluginOAuthUrl } = vi.hoisted(() => ({
+  mockRequest: vi.fn(),
+  mockGetPluginOAuthUrl: vi.fn(),
 }))
-
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: vi.fn(),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: (...args: unknown[]) => mockRequest(...args),
 }))
-
-vi.mock('@/hooks/use-oauth', () => ({
+vi.mock('@/hooks/use-oauth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-oauth')>()),
   openOAuthPopup: vi.fn(),
 }))
-
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceOAuthUrl: vi.fn(),
-  useInvalidDataSourceAuth: vi.fn(() => vi.fn()),
-  useInvalidDataSourceListAuth: vi.fn(() => vi.fn()),
-  useInvalidDefaultDataSourceListAuth: vi.fn(() => vi.fn()),
-}))
-
-vi.mock('../hooks', () => ({
-  useDataSourceAuthUpdate: vi.fn(),
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(() => vi.fn()),
-}))
-
-type UsePluginAuthActionReturn = ReturnType<typeof usePluginAuthAction>
-type UseGetDataSourceOAuthUrlReturn = ReturnType<typeof useGetDataSourceOAuthUrl>
-type UseRenderI18nObjectReturn = ReturnType<typeof useRenderI18nObject>
-
-describe('Card Component', () => {
-  const mockGetPluginOAuthUrl = vi.fn()
-  const mockRenderI18nObjectResult = vi.fn((obj: Record<string, string>) => obj.en_US)
-  const mockInvalidateDataSourceListAuth = vi.fn()
-  const mockInvalidDefaultDataSourceListAuth = vi.fn()
-  const mockInvalidateDataSourceList = vi.fn()
-  const mockInvalidateDataSourceAuth = vi.fn()
-  const mockHandleAuthUpdate = vi.fn(() => {
-    mockInvalidateDataSourceListAuth()
-    mockInvalidDefaultDataSourceListAuth()
-    mockInvalidateDataSourceList()
-    mockInvalidateDataSourceAuth()
-  })
-
-  const createMockPluginAuthActionReturn = (
-    overrides: Partial<UsePluginAuthActionReturn> = {},
-  ): UsePluginAuthActionReturn => ({
-    deleteCredentialId: null,
-    doingAction: false,
-    handleConfirm: vi.fn(),
-    handleEdit: vi.fn(),
-    handleRemove: vi.fn(),
-    handleRename: vi.fn(),
-    handleSetDefault: vi.fn(),
-    handleSetDoingAction: vi.fn(),
-    setDeleteCredentialId: vi.fn(),
-    editValues: null,
-    setEditValues: vi.fn(),
-    openConfirm: vi.fn(),
-    closeConfirm: vi.fn(),
-    pendingOperationCredentialId: { current: null },
-    ...overrides,
-  })
-
-  const mockItem: DataSourceAuth = {
-    author: 'Test Author',
-    provider: 'test-provider',
-    plugin_id: 'test-plugin-id',
-    plugin_unique_identifier: 'test-author/test-name:1.2.0@checksum',
-    icon: 'test-icon-url',
-    name: 'test-name',
-    label: {
-      en_US: 'Test Label',
-      zh_Hans: '',
-    },
-    description: {
-      en_US: 'Test Description',
-      zh_Hans: '',
-    },
-    credentials_list: [
-      {
-        id: 'c1',
-        name: 'Credential 1',
-        credential: { apiKey: 'key1' },
-        type: CredentialTypeEnum.API_KEY,
-        is_default: true,
-        avatar_url: 'avatar1',
-      }!,
-    ],
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': (input) =>
+        mockGetPluginOAuthUrl(input),
+    }),
   }
+})
 
-  let mockPluginAuthActionReturn: UsePluginAuthActionReturn
+const item: DatasourceProviderAuthResponse = {
+  author: 'Test Author',
+  provider: 'test-provider',
+  plugin_id: 'test-plugin-id',
+  plugin_unique_identifier: 'test-author/test-name:1.2.0@checksum',
+  icon: 'test-icon-url',
+  name: 'test-name',
+  label: { en_US: 'Test Label' },
+  description: { en_US: 'Test Description' },
+  credential_schema: [
+    { name: 'apiKey', type: FormTypeEnum.textInput, label: { en_US: 'API Key' }, required: true },
+  ],
+  oauth_schema: null,
+  credentials_list: [
+    {
+      id: 'c1',
+      name: 'Credential 1',
+      credential: { apiKey: 'key1' },
+      type: CredentialTypeEnum.API_KEY,
+      is_default: true,
+      avatar_url: 'avatar1',
+    },
+  ],
+}
+const oauthItem: DatasourceProviderAuthResponse = {
+  ...item,
+  credentials_list: [{ ...item.credentials_list[0]!, type: CredentialTypeEnum.OAUTH2 }],
+}
+const providerId = 'test-plugin-id/test-name'
+const endpoint = `/console/api/auth/plugin/datasource/${encodeURIComponent(providerId)}`
 
+async function expectCommand(path: string, { body }: { body: unknown }) {
+  expect(mockRequest).toHaveBeenCalledOnce()
+  const request = mockRequest.mock.calls[0]![2].request as Request
+  expect(new URL(request.url).pathname).toBe(path)
+  expect(request.method).toBe('POST')
+  await expect(request.clone().json()).resolves.toEqual(body)
+}
+const renderCard = (
+  data = item,
+  permissions = ['credential.use', 'credential.create', 'credential.manage'],
+  disabled = false,
+) => {
+  const queryClient = createConsoleQueryClient()
+  const affectedKeys = [
+    consoleQuery.auth.plugin.datasource.list.get.queryKey(),
+    consoleQuery.auth.plugin.datasource.defaultList.get.queryKey(),
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryKey({
+      input: { params: { provider_id: providerId } },
+    }),
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey(),
+  ]
+  queryClient.setQueryData(consoleQuery.auth.plugin.datasource.list.get.queryKey(), { result: [] })
+  queryClient.setQueryData(consoleQuery.auth.plugin.datasource.defaultList.get.queryKey(), {
+    result: [],
+  })
+  queryClient.setQueryData(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryKey({
+      input: { params: { provider_id: providerId } },
+    }),
+    { result: [] },
+  )
+  queryClient.setQueryData(consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey(), [])
+  const unrelatedKeys = [
+    consoleQuery.account.profile.get.queryKey(),
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryKey({
+      input: { params: { provider_id: 'other-plugin/other-provider' } },
+    }),
+  ] as const
+  queryClient.setQueryData(unrelatedKeys[1], { result: [] })
+  const view = renderWithConsoleQuery(<Card item={data} disabled={disabled} />, {
+    queryClient,
+    workspacePermissionKeys: permissions,
+  })
+  const expectInvalidated = () => {
+    for (const key of affectedKeys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
+    for (const key of unrelatedKeys)
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+  }
+  const expectFresh = () => {
+    for (const key of affectedKeys)
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+  }
+  return { ...view, expectInvalidated, expectFresh }
+}
+const openActions = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole('button', { name: 'common.operation.more Credential 1' }))
+const chooseAction = async (user: ReturnType<typeof userEvent.setup>, name: string | RegExp) => {
+  await openActions(user)
+  await user.click(await screen.findByRole('menuitem', { name }))
+}
+
+describe('Datasource Card', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
-    mockPluginAuthActionReturn = createMockPluginAuthActionReturn()
-
-    vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: mockHandleAuthUpdate })
-    vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(mockInvalidateDataSourceListAuth)
-    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
-      mockInvalidDefaultDataSourceListAuth,
-    )
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
-    vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
-
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockPluginAuthActionReturn)
-    vi.mocked(useRenderI18nObject).mockReturnValue(
-      mockRenderI18nObjectResult as unknown as UseRenderI18nObjectReturn,
-    )
-    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
-      mutateAsync: mockGetPluginOAuthUrl,
-    } as unknown as UseGetDataSourceOAuthUrlReturn)
+    mockRequest.mockReset().mockImplementation(async () => Response.json({ result: 'success' }))
+    mockGetPluginOAuthUrl
+      .mockReset()
+      .mockResolvedValue({ authorization_url: 'https://oauth.example/authorize' })
   })
 
-  const expectAuthUpdated = () => {
-    expect(mockInvalidateDataSourceListAuth).toHaveBeenCalled()
-    expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalled()
-    expect(mockInvalidateDataSourceList).toHaveBeenCalled()
-    expect(mockInvalidateDataSourceAuth).toHaveBeenCalled()
-  }
-
-  describe('Rendering', () => {
-    it('should render the card with provided item data and initialize hooks correctly', () => {
-      // Act
-      render(<Card item={mockItem} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByText('Test Label'))!.toBeInTheDocument()
-      expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
-      expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
-      expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
-      expect(screen.getByRole('img', { name: 'Test Label' }))!.toHaveAttribute(
-        'src',
-        'test-icon-url',
-      )
-      expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
-      expect(screen.getByText(/plugin.auth.default/))!.toBeInTheDocument()
-
-      expect(usePluginAuthAction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          category: 'datasource',
-          provider: 'test-plugin-id/test-name',
-          providerType: CollectionType.datasource,
-        }),
-        mockHandleAuthUpdate,
-      )
-    })
-
-    it('should render empty state when credentials_list is empty', () => {
-      // Arrange
-      const emptyItem = { ...mockItem, credentials_list: [] }
-
-      // Act
-      render(<Card item={emptyItem} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByText(/plugin.auth.emptyAuth/))!.toBeInTheDocument()
-    })
+  it('identifies the provider and existing default credential', () => {
+    renderCard()
+    expect(screen.getByRole('heading', { name: 'Test Label' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Test Label' })).toHaveAttribute('src', 'test-icon-url')
+    expect(screen.getByText('1.2.0')).toBeInTheDocument()
+    expect(screen.getByText('Credential 1')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.default')).toBeInTheDocument()
   })
 
-  describe('Actions', () => {
-    const openDropdown = (text: string) => {
-      const item = screen.getByText(text).closest('.flex')
-      const trigger = within(item as HTMLElement).getByRole('button')
-      fireEvent.click(trigger)
+  it('shows the empty state when no credentials are connected', () => {
+    renderCard({ ...item, credentials_list: [] })
+    expect(screen.getByText('plugin.auth.emptyAuth')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /operation.more/ })).not.toBeInTheDocument()
+  })
+
+  it('edits an actual API-key form and invalidates datasource caches after success', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<Response>()
+    mockRequest.mockReturnValueOnce(pending.promise)
+    const { expectFresh, expectInvalidated } = renderCard()
+    await chooseAction(user, 'common.operation.edit')
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+    expect(within(dialog).getByDisplayValue('Credential 1')).toBeInTheDocument()
+    const keyInput = within(dialog).getByDisplayValue('key1')
+    await user.clear(keyInput)
+    await user.type(keyInput, 'new-key')
+    const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    await waitFor(() =>
+      expectCommand(`${endpoint}/update`, {
+        body: { credential_id: 'c1', name: 'Credential 1', credentials: { apiKey: 'new-key' } },
+      }),
+    )
+    expect(save).toBeDisabled()
+    expectFresh()
+    await act(async () => pending.resolve(Response.json({ result: 'success' })))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expectInvalidated()
+  })
+
+  it('cancels editing without sending a credential update', async () => {
+    const user = userEvent.setup()
+    const { expectFresh } = renderCard()
+    await chooseAction(user, 'common.operation.edit')
+    await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockRequest).not.toHaveBeenCalled()
+    expectFresh()
+  })
+
+  it('requires delete confirmation and waits for completion before invalidating', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<Response>()
+    mockRequest.mockReturnValueOnce(pending.promise)
+    const { expectFresh, expectInvalidated } = renderCard()
+    await chooseAction(user, 'common.operation.remove')
+    await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+    expect(mockRequest).not.toHaveBeenCalled()
+    await chooseAction(user, 'common.operation.remove')
+    const confirm = await screen.findByRole('button', { name: 'common.operation.confirm' })
+    await user.click(confirm)
+    await user.click(confirm)
+    expect(confirm).toBeDisabled()
+    await expectCommand(`${endpoint}/delete`, {
+      body: { credential_id: 'c1' },
+    })
+    expectFresh()
+    await act(async () => pending.resolve(Response.json({ result: 'success' })))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expectInvalidated()
+  })
+
+  it('sets a default credential with use permission and blocks management actions', async () => {
+    const user = userEvent.setup()
+    const { expectInvalidated } = renderCard(oauthItem, ['credential.use'])
+    await chooseAction(user, 'plugin.auth.setDefault')
+    await waitFor(() =>
+      expectCommand(`${endpoint}/default`, {
+        body: { id: 'c1' },
+      }),
+    )
+    await waitFor(expectInvalidated)
+    await openActions(user)
+    for (const name of [
+      'common.operation.rename',
+      'common.operation.remove',
+      'common.dataSource.notion.changeAuthorizedPages',
+    ]) {
+      const action = screen.getByRole('menuitem', { name })
+      expect(action).toHaveAttribute('aria-disabled', 'true')
+      await user.click(action)
     }
-
-    it('should handle "edit" action from Item component', async () => {
-      // Act
-      render(<Card item={mockItem} />)
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/operation.edit/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPluginAuthActionReturn.handleEdit).toHaveBeenCalledWith('c1', {
-          apiKey: 'key1',
-          __name__: 'Credential 1',
-          __credential_id__: 'c1',
-        })
-      })
-    })
-
-    it('should handle "delete" action from Item component', async () => {
-      // Act
-      render(<Card item={mockItem} />)
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/operation.remove/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPluginAuthActionReturn.openConfirm).toHaveBeenCalledWith('c1')
-      })
-    })
-
-    it('should handle "setDefault" action from Item component', async () => {
-      // Act
-      render(<Card item={mockItem} />)
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/auth.setDefault/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
-      })
-    })
-
-    it('should handle "rename" action from Item component', async () => {
-      // Arrange
-      const oAuthItem = {
-        ...mockItem,
-        credentials_list: [
-          {
-            ...mockItem.credentials_list[0]!,
-            type: CredentialTypeEnum.OAUTH2,
-          },
-        ],
-      }
-      render(<Card item={oAuthItem} />)
-
-      // Act
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/operation.rename/))
-
-      // Now it should show an input
-      const input = await screen.findByPlaceholderText(/placeholder.input/)
-      fireEvent.change(input, { target: { value: 'New Name' } })
-      fireEvent.click(screen.getByText(/operation.save/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPluginAuthActionReturn.handleRename).toHaveBeenCalledWith({
-          credential_id: 'c1',
-          name: 'New Name',
-        })
-      })
-    })
-
-    it('should handle "change" action and trigger OAuth flow', async () => {
-      // Arrange
-      const oAuthItem = {
-        ...mockItem,
-        credentials_list: [
-          {
-            ...mockItem.credentials_list[0]!,
-            type: CredentialTypeEnum.OAUTH2,
-          },
-        ],
-      }
-      mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: 'https://oauth.url' })
-      render(<Card item={oAuthItem} />)
-
-      // Act
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/dataSource.notion.changeAuthorizedPages/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
-        expect(openOAuthPopup).toHaveBeenCalledWith('https://oauth.url', mockHandleAuthUpdate)
-      })
-    })
-
-    it('should not trigger OAuth flow if authorization_url is missing', async () => {
-      // Arrange
-      const oAuthItem = {
-        ...mockItem,
-        credentials_list: [
-          {
-            ...mockItem.credentials_list[0]!,
-            type: CredentialTypeEnum.OAUTH2,
-          },
-        ],
-      }
-      mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: '' })
-      render(<Card item={oAuthItem} />)
-
-      // Act
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/dataSource.notion.changeAuthorizedPages/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
-      })
-      expect(openOAuthPopup).not.toHaveBeenCalled()
-    })
-
-    it('should allow credential.use to set default without allowing credential management actions', async () => {
-      // Arrange
-      mockWorkspacePermissionKeys = ['credential.use']
-
-      const oAuthItem = {
-        ...mockItem,
-        credentials_list: [
-          {
-            ...mockItem.credentials_list[0]!,
-            type: CredentialTypeEnum.OAUTH2,
-          },
-        ],
-      }
-      render(<Card item={oAuthItem} />)
-
-      // Act: setting the default is a credential-use action.
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/auth.setDefault/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
-      })
-
-      // Act: management actions remain blocked without credential.manage.
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/operation.rename/))
-      expect(screen.queryByPlaceholderText(/placeholder.input/)).not.toBeInTheDocument()
-
-      fireEvent.click(screen.getByText(/dataSource.notion.changeAuthorizedPages/))
-
-      // Assert
-      expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
-      expect(mockPluginAuthActionReturn.handleRename).not.toHaveBeenCalled()
-    })
-
-    it('should block credential actions when neither credential.use nor credential.manage is granted', async () => {
-      // Arrange
-      mockWorkspacePermissionKeys = []
-
-      render(<Card item={mockItem} />)
-
-      // Act
-      openDropdown('Credential 1')
-      fireEvent.click(screen.getByText(/auth.setDefault/))
-      fireEvent.click(screen.getByText(/operation.edit/))
-      fireEvent.click(screen.getByText(/operation.remove/))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPluginAuthActionReturn.handleSetDefault).not.toHaveBeenCalled()
-        expect(mockPluginAuthActionReturn.handleEdit).not.toHaveBeenCalled()
-        expect(mockPluginAuthActionReturn.openConfirm).not.toHaveBeenCalled()
-      })
-    })
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
+    expect(mockRequest).toHaveBeenCalledTimes(1)
   })
 
-  describe('Modals', () => {
-    it('should show Confirm dialog when deleteCredentialId is set and handle its actions', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn({
-        deleteCredentialId: 'c1',
-        doingAction: false,
-      })
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-
-      // Act
-      render(<Card item={mockItem} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByText(/list.delete.title/))!.toBeInTheDocument()
-      const confirmButton = screen.getByText(/operation.confirm/).closest('button')
-      expect(confirmButton)!.toBeEnabled()
-
-      // Act - Cancel
-      fireEvent.click(screen.getByText(/operation.cancel/))
-      expect(mockReturn.closeConfirm).toHaveBeenCalled()
-
-      // Act - Confirm (even if disabled in UI, fireEvent still works unless we check)
-      fireEvent.click(screen.getByText(/operation.confirm/))
-      expect(mockReturn.handleConfirm).toHaveBeenCalled()
-    })
-
-    it('should show ApiKeyModal when editValues is set and handle its actions', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn({
-        editValues: { some: 'value' },
-        doingAction: false,
-      })
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-      render(<Card item={mockItem} disabled={false} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('mock-api-key-modal'))!.toBeInTheDocument()
-      expect(screen.getByTestId('mock-api-key-modal'))!.toHaveAttribute('data-disabled', 'false')
-
-      // Act
-      fireEvent.click(screen.getByTestId('modal-close'))
-      expect(mockReturn.setEditValues).toHaveBeenCalledWith(null)
-
-      fireEvent.click(screen.getByTestId('modal-remove'))
-      expect(mockReturn.handleRemove).toHaveBeenCalled()
-    })
-
-    it('should disable ApiKeyModal when doingAction is true', () => {
-      // Arrange
-      const mockReturnDoing = createMockPluginAuthActionReturn({
-        editValues: { some: 'value' },
-        doingAction: true,
-      })
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturnDoing)
-
-      // Act
-      render(<Card item={mockItem} disabled={false} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('mock-api-key-modal'))!.toHaveAttribute('data-disabled', 'true')
-    })
-
-    it('should disable ApiKeyModal when user lacks credential.manage', () => {
-      // Arrange
-      mockWorkspacePermissionKeys = ['credential.use']
-      const mockReturn = createMockPluginAuthActionReturn({
-        editValues: { some: 'value' },
-        doingAction: false,
-      })
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-
-      // Act
-      render(<Card item={mockItem} disabled={false} />)
-
-      // Assert
-      expect(screen.getByTestId('mock-api-key-modal'))!.toHaveAttribute('data-disabled', 'true')
-    })
+  it('blocks credential operations without use or manage permission', async () => {
+    const user = userEvent.setup()
+    renderCard(item, [])
+    await openActions(user)
+    for (const name of [
+      'plugin.auth.setDefault',
+      'common.operation.edit',
+      'common.operation.remove',
+    ]) {
+      const action = screen.getByRole('menuitem', { name })
+      expect(action).toHaveAttribute('aria-disabled', 'true')
+      await user.click(action)
+    }
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(mockRequest).not.toHaveBeenCalled()
   })
 
-  describe('Integration', () => {
-    it('should call handleAuthUpdate when Configure component triggers update', async () => {
-      // Arrange
-      const configurableItem: DataSourceAuth = {
-        ...mockItem,
-        credential_schema: [
-          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
-        ],
-      }
-
-      // Act
-      render(<Card item={configurableItem} />)
-      fireEvent.click(screen.getByText(/dataSource.configure/))
-
-      // Find the add API key button and click it
-      fireEvent.click(screen.getByText('Add API Key'))
-
-      // Assert
-      expectAuthUpdated()
+  it('renames OAuth credentials through the inline editor', async () => {
+    const user = userEvent.setup()
+    const { expectInvalidated } = renderCard(oauthItem)
+    await chooseAction(user, 'common.operation.rename')
+    const input = await screen.findByRole('textbox', {
+      name: 'common.operation.rename Credential 1',
     })
+    expect(input).toHaveFocus()
+    await user.clear(input)
+    await user.type(input, 'New Name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() =>
+      expectCommand(`${endpoint}/update`, {
+        body: { credential_id: 'c1', name: 'New Name' },
+      }),
+    )
+    await waitFor(expectInvalidated)
+  })
 
-    it('should disable configure credential actions when user lacks credential.create', () => {
-      // Arrange
-      mockWorkspacePermissionKeys = ['credential.use']
-      const configurableItem: DataSourceAuth = {
-        ...mockItem,
-        credential_schema: [
-          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
-        ],
-        oauth_schema: {
-          client_schema: [
-            { name: 'oauth_key', type: FormTypeEnum.textInput, label: 'OAuth Key', required: true },
-          ],
-        },
-      }
-
-      // Act
-      render(<Card item={configurableItem} />)
-      fireEvent.click(screen.getByText(/dataSource.configure/))
-
-      // Assert
-      expect(screen.getByText('Add API Key')).toBeDisabled()
-      expect(screen.getByText('Add OAuth')).toBeDisabled()
-
-      fireEvent.click(screen.getByText('Add API Key'))
-      fireEvent.click(screen.getByText('Add OAuth'))
-      expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(0)
+  it('starts OAuth for the selected credential and refreshes caches only after completion', async () => {
+    const user = userEvent.setup()
+    const { expectFresh, expectInvalidated } = renderCard(oauthItem)
+    await chooseAction(user, 'common.dataSource.notion.changeAuthorizedPages')
+    await waitFor(() =>
+      expect(openOAuthPopup).toHaveBeenCalledExactlyOnceWith(
+        'https://oauth.example/authorize',
+        expect.any(Function),
+      ),
+    )
+    expect(mockGetPluginOAuthUrl).toHaveBeenCalledExactlyOnceWith({
+      params: { provider_id: providerId },
+      query: { credential_id: 'c1' },
     })
+    expectFresh()
+    act(() => vi.mocked(openOAuthPopup).mock.calls[0]![1]?.())
+    expectInvalidated()
+  })
+
+  it('keeps the current authorization if no OAuth URL is returned', async () => {
+    const user = userEvent.setup()
+    mockGetPluginOAuthUrl.mockResolvedValueOnce({ authorization_url: '' })
+    const { expectFresh } = renderCard(oauthItem)
+    await chooseAction(user, 'common.dataSource.notion.changeAuthorizedPages')
+    await waitFor(() => expect(mockGetPluginOAuthUrl).toHaveBeenCalledTimes(1))
+    expect(openOAuthPopup).not.toHaveBeenCalled()
+    expectFresh()
+  })
+
+  it('creates an API key through Configure and refreshes the datasource list', async () => {
+    const user = userEvent.setup()
+    const { expectInvalidated } = renderCard({ ...item, credentials_list: [] })
+    await user.click(screen.getByRole('button', { name: 'common.dataSource.configure Test Label' }))
+    await user.click(await screen.findByRole('button', { name: 'plugin.auth.addApi' }))
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+    const inputs = within(dialog).getAllByRole('textbox')
+    await user.type(inputs[0]!, 'New key')
+    await user.type(inputs[1]!, 'secret')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() =>
+      expectCommand(endpoint, {
+        body: expect.objectContaining({
+          name: 'New key',
+          credentials: { apiKey: 'secret' },
+        }),
+      }),
+    )
+    await waitFor(expectInvalidated)
+  })
+
+  it('prevents credential creation without create permission', async () => {
+    const user = userEvent.setup()
+    renderCard(item, ['credential.use'])
+    await user.click(screen.getByRole('button', { name: 'common.dataSource.configure Test Label' }))
+    const add = await screen.findByRole('button', { name: 'plugin.auth.addApi' })
+    expect(add).toBeDisabled()
+    await user.click(add)
+    expect(screen.queryByRole('dialog', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
+    expect(mockRequest).not.toHaveBeenCalled()
   })
 })

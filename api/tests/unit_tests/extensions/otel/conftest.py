@@ -7,7 +7,8 @@ Provides:
 - Test data factories
 """
 
-from unittest.mock import MagicMock, create_autospec
+from collections.abc import Iterator
+from unittest.mock import MagicMock
 
 import pytest
 from opentelemetry.sdk.trace import TracerProvider
@@ -15,15 +16,17 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import set_tracer_provider
 
+from models import Account, App, EndUser
+
 
 @pytest.fixture
-def memory_span_exporter():
+def memory_span_exporter() -> InMemorySpanExporter:
     """Provide an in-memory span exporter for testing."""
     return InMemorySpanExporter()
 
 
 @pytest.fixture
-def tracer_provider_with_memory_exporter(memory_span_exporter):
+def tracer_provider_with_memory_exporter(memory_span_exporter: InMemorySpanExporter) -> Iterator[TracerProvider]:
     """Provide a TracerProvider configured with memory exporter."""
     import opentelemetry.trace as trace_api
 
@@ -41,36 +44,27 @@ def tracer_provider_with_memory_exporter(memory_span_exporter):
 
 
 @pytest.fixture
-def mock_app_model():
-    """Create a mock App model."""
-    app = MagicMock()
-    app.id = "test-app-id"
-    app.tenant_id = "test-tenant-id"
-    return app
+def mock_app_model() -> App:
+    """Create a real transient App model."""
+    return App(id="test-app-id", tenant_id="test-tenant-id")
 
 
 @pytest.fixture
-def mock_account_user():
-    """Create a mock Account user."""
-    from models.model import Account
-
-    user = create_autospec(Account, instance=True)
+def mock_account_user() -> Account:
+    """Create a real transient Account user."""
+    user = Account(name="Test User", email="otel@example.com")
     user.id = "test-user-id"
     return user
 
 
 @pytest.fixture
-def mock_end_user():
-    """Create a mock EndUser."""
-    from models.model import EndUser
-
-    user = create_autospec(EndUser, instance=True)
-    user.id = "test-end-user-id"
-    return user
+def mock_end_user() -> EndUser:
+    """Create a real transient EndUser."""
+    return EndUser(id="test-end-user-id", tenant_id="test-tenant-id")
 
 
 @pytest.fixture
-def mock_workflow_runner():
+def mock_workflow_runner() -> MagicMock:
     """Create a mock WorkflowAppRunner."""
     runner = MagicMock()
     runner.application_generate_entity = MagicMock()
@@ -84,7 +78,7 @@ def mock_workflow_runner():
 
 
 @pytest.fixture(autouse=True)
-def reset_handler_instances():
+def reset_handler_instances() -> Iterator[None]:
     """Reset handler singleton instances before each test."""
     from extensions.otel.decorators.base import _HANDLER_INSTANCES
 

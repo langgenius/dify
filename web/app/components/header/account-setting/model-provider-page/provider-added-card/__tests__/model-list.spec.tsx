@@ -1,290 +1,134 @@
-import type { ModelItem, ModelProvider } from '../../declarations'
-import { fireEvent, screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import type { consoleClient } from '@/service/console'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import { toast } from '@/app/notifications'
+import { createDeferred } from '@/test/deferred'
 import { ConfigurationMethodEnum } from '../../declarations'
-import ModelList from '../model-list'
+import {
+  credentials,
+  dialogName,
+  provider,
+  providerResponse,
+  renderModelList,
+  summaryProvider,
+} from './model-list-test-env'
 
-const mockSetShowModelLoadBalancingModal = vi.fn()
-let mockWorkspacePermissionKeys: string[] = [
-  'plugin.model_config',
-  'credential.manage',
-  'credential.use',
-]
+const api = vi.hoisted(() => ({
+  detail: vi.fn<typeof consoleClient.workspaces.current.modelProviders.get>(),
+  save: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.post>(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.get': api.detail,
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': async () =>
+        structuredClone(credentials),
+      'workspaces.current.modelProviders.byProvider.models.post': api.save,
+    }),
+  }
+})
+const configureButtons = () => screen.getAllByRole('button', { name: 'common.operation.config' })
+beforeEach(() => {
+  api.detail.mockReset().mockResolvedValue({ data: [providerResponse] })
+  api.save.mockReset().mockResolvedValue({ result: 'success' })
+})
+afterEach(() => toast.dismiss())
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
+it('lets the keyboard collapse the expanded model list', async () => {
+  const { user, onCollapse } = renderModelList()
+  await user.tab()
+  expect(screen.getByRole('button', { name: /modelProvider.modelsNum/ })).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(onCollapse).toHaveBeenCalledOnce()
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (
-    selector: (state: {
-      setShowModelLoadBalancingModal: typeof mockSetShowModelLoadBalancingModal
-    }) => unknown,
-  ) => selector({ setShowModelLoadBalancingModal: mockSetShowModelLoadBalancingModal }),
-}))
+it('loads provider details for a summary card and prevents competing model selections until ready', async () => {
+  const pending = createDeferred<Awaited<ReturnType<typeof api.detail>>>()
+  api.detail.mockReturnValue(pending.promise)
+  const { user } = renderModelList({ currentProvider: summaryProvider })
+  const buttons = configureButtons()
+  await user.click(buttons[0]!)
+  await waitFor(() => expect(api.detail).toHaveBeenCalledOnce())
+  expect(buttons).toHaveLength(2)
+  expect(buttons[0]).toHaveAttribute('aria-disabled', 'true')
+  expect(buttons[1]).toBeDisabled()
+  await user.click(buttons[1]!)
+  expect(api.detail).toHaveBeenCalledOnce()
+  await act(async () => pending.resolve({ data: [providerResponse] }))
+  expect(await screen.findByRole('button', { name: 'common.operation.save' })).toBeEnabled()
+  expect(within(screen.getByRole('dialog', { name: dialogName })).getByText('gpt-4')).toBeVisible()
+})
 
-vi.mock('../model-list-item', () => ({
-  default: ({
-    model,
-    onModifyLoadBalancing,
-  }: {
-    model: ModelItem
-    onModifyLoadBalancing: (model: ModelItem) => void
-  }) => (
-    <button type="button" onClick={() => onModifyLoadBalancing(model)}>
-      {model.model}
-    </button>
-  ),
-}))
+it.each(['missing provider', 'request failure'])(
+  'reports %s without leaving controls disabled',
+  async (failure) => {
+    if (failure === 'missing provider') api.detail.mockResolvedValueOnce({ data: [] })
+    else api.detail.mockRejectedValueOnce(new Error('offline'))
+    const { user } = renderModelList({ currentProvider: summaryProvider })
+    await user.click(configureButtons()[0]!)
+    expect(await screen.findByText('common.api.actionFailed')).toBeVisible()
+    expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument()
+    expect(configureButtons()[0]).not.toHaveAttribute('aria-disabled', 'true')
+    if (failure === 'request failure') {
+      await user.click(configureButtons()[0]!)
+      expect(await screen.findByRole('button', { name: 'common.operation.save' })).toBeEnabled()
+    }
+  },
+)
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
-  ManageCustomModelCredentials: () => <div data-testid="manage-credentials" />,
-  AddCustomModel: () => <div data-testid="add-custom-model" />,
-}))
+it.each([
+  {
+    reason: 'missing permission',
+    permissions: [],
+    methods: [ConfigurationMethodEnum.customizableModel],
+  },
+  {
+    reason: 'predefined models only',
+    permissions: ['plugin.model_config'],
+    methods: [ConfigurationMethodEnum.predefinedModel],
+  },
+  {
+    reason: 'remote models only',
+    permissions: ['plugin.model_config'],
+    methods: [ConfigurationMethodEnum.fetchFromRemote],
+  },
+])('hides custom model actions for $reason', ({ permissions, methods }) => {
+  renderModelList({ currentProvider: { ...provider, configurate_methods: methods }, permissions })
+  expect(
+    screen.queryByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByText('gpt-4')).toBeVisible()
+})
 
-describe('ModelList', () => {
-  const mockProvider = {
-    provider: 'test-provider',
-    configurate_methods: ['customizableModel'],
-  } as unknown as ModelProvider
+it('offers Add Model without credential management when no custom models exist', () => {
+  renderModelList({ permissions: ['plugin.model_config'] })
+  expect(screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' })).toBeEnabled()
+  expect(
+    screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
+  ).not.toBeInTheDocument()
+})
 
-  const mockModels = [
-    { model: 'gpt-4', model_type: 'llm', fetch_from: 'system' },
-    { model: 'gpt-3.5', model_type: 'llm', fetch_from: 'system' },
-  ] as unknown as ModelItem[]
-
-  const mockOnCollapse = vi.fn()
-  const mockOnChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.manage', 'credential.use']
+it('saves the selected model through the real dialog, notifies its owner and closes', async () => {
+  const { user, onChange } = renderModelList()
+  await user.click(configureButtons()[1]!)
+  await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(onChange).toHaveBeenCalledExactlyOnceWith(provider.provider))
+  expect(api.save).toHaveBeenCalledExactlyOnceWith({
+    params: { provider: provider.provider },
+    body: {
+      model: 'gpt-3.5',
+      model_type: 'llm',
+      config_from: 'predefined-model',
+      credential_id: 'key-1',
+      load_balancing: { enabled: false, configs: [] },
+    },
   })
-
-  it('should render model count and model items', () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-    expect(screen.getAllByText(/modelProvider\.modelsNum/).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'gpt-4' }))!.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'gpt-3.5' }))!.toBeInTheDocument()
-  })
-
-  it('should trigger collapse when collapsed label is clicked', () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    const countElements = screen.getAllByText(/modelProvider\.modelsNum/)
-    fireEvent.click(countElements[1]!)
-    expect(mockOnCollapse).toHaveBeenCalled()
-  })
-
-  it('should open load balancing modal for selected model', () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
-    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
-  })
-
-  it('should hide custom model actions without plugin.model_config', () => {
-    mockWorkspacePermissionKeys = []
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
-  })
-
-  it('should hide custom model actions when provider uses predefinedModel only', () => {
-    const predefinedProvider = {
-      provider: 'test-provider',
-      configurate_methods: ['predefinedModel'],
-    } as unknown as ModelProvider
-
-    render(
-      <ModelList
-        provider={predefinedProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
-  })
-
-  it('should call onSave (onChange) and onClose from the load balancing modal callbacks', () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
-    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
-
-    const callArg = mockSetShowModelLoadBalancingModal.mock.calls[0]![0]
-
-    callArg.onSave('test-provider')
-    expect(mockOnChange).toHaveBeenCalledWith('test-provider')
-
-    callArg.onClose()
-    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalledWith(null)
-  })
-
-  it('should hide custom model actions when provider uses fetchFromRemote only', () => {
-    const fetchOnlyProvider = {
-      provider: 'test-provider',
-      configurate_methods: ['fetchFromRemote'],
-    } as unknown as ModelProvider
-
-    render(
-      <ModelList
-        provider={fetchOnlyProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
-  })
-
-  it('should show custom model actions when provider is configurable and user can configure models', () => {
-    const configurableProvider = {
-      provider: 'test-provider',
-      configurate_methods: [ConfigurationMethodEnum.customizableModel],
-    } as unknown as ModelProvider
-
-    mockWorkspacePermissionKeys = ['plugin.model_config']
-
-    render(
-      <ModelList
-        provider={configurableProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    expect(screen.getByTestId('manage-credentials'))!.toBeInTheDocument()
-    expect(screen.getByTestId('add-custom-model'))!.toBeInTheDocument()
-  })
-
-  it('should hide custom model actions when provider is configurable but user cannot configure models', () => {
-    const configurableProvider = {
-      provider: 'test-provider',
-      configurate_methods: [ConfigurationMethodEnum.customizableModel],
-    } as unknown as ModelProvider
-
-    mockWorkspacePermissionKeys = []
-
-    render(
-      <ModelList
-        provider={configurableProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
-  })
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument(),
+  )
 })

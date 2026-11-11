@@ -22,12 +22,12 @@ Convert audio file to text using speech-to-text service.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 413 | Audio file too large |  |
-| 415 | Unsupported audio type |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported audio type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages
 Create a chat message for conversational applications.
@@ -43,11 +43,12 @@ Create a chat message for conversational applications.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 Stop a running chat message task.
@@ -63,11 +64,11 @@ Stop a running chat message task.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Task Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages
 Create a completion message for text generation applications.
@@ -83,11 +84,11 @@ Create a completion message for text generation applications.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages/{task_id}/stop
 Stop a running completion message task.
@@ -103,11 +104,11 @@ Stop a running completion message task.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Task Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations
 Retrieve paginated list of conversations for a chat application.
@@ -126,11 +127,11 @@ Retrieve paginated list of conversations for a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found or Not a Chat App |  |
-| 500 | Internal Server Error |  |
+| 400 | Invalid conversation list query or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_cursor_not_found`: Cursor is outside the current list. `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /conversations/{c_id}
 Delete a specific conversation.
@@ -143,14 +144,14 @@ Delete a specific conversation.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Conversation deleted successfully |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Conversation Not Found or Not a Chat App |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Conversation deleted successfully |  |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /conversations/{c_id}/name
 Rename a specific conversation with a custom name or auto-generate one.
@@ -173,12 +174,13 @@ Rename a specific conversation with a custom name or auto-generate one.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
-| 500 | Internal Server Error |  |
+| 200 | Conversation renamed successfully; model failure preserves the existing name. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist. `conversation_first_message_not_found`: No first message is available for automatic naming. | **application/json**: [ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation rename payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /conversations/{c_id}/pin
 Pin a specific conversation to keep it at the top of the list.
@@ -194,14 +196,14 @@ Pin a specific conversation to keep it at the top of the list.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation pinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /conversations/{c_id}/unpin
-Unpin a specific conversation to remove it from the top of the list.
+Remove the current user's pin. Succeeds when the conversation is already unpinned.
 
 #### Parameters
 
@@ -214,11 +216,11 @@ Unpin a specific conversation to remove it from the top of the list.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation unpinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login
 Send email verification code for login
@@ -234,8 +236,10 @@ Send email verification code for login
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Email code sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad request - invalid email format |  |
-| 404 | Account not found |  |
+| 400 | Bad request - invalid email format | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login/validity
 Verify email code and complete login
@@ -251,9 +255,10 @@ Verify email code and complete login
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Email code verified and login successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
-| 400 | Bad request - invalid code or token |  |
-| 401 | Invalid token or expired code |  |
-| 404 | Account not found |  |
+| 400 | Bad request - invalid code or token | **application/json**: [AccountBannedError](#accountbannederror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid token or expired code | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /files/upload
 **Upload a file for use in web applications**
@@ -280,15 +285,17 @@ Raises:
     FilenameNotExistsError: File has no filename
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
+    BlockedFileExtensionError: File extension is blocked
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad request - invalid file or parameters |  |
-| 413 | File too large |  |
-| 415 | Unsupported file type |  |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password
 Send password reset email
@@ -304,9 +311,11 @@ Send password reset email
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Password reset email sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad request - invalid email format |  |
-| 404 | Account not found |  |
-| 429 | Too many requests - rate limit exceeded |  |
+| 400 | Bad request - invalid email format | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | Too many requests - rate limit exceeded | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/resets
 Reset user password with verification token
@@ -322,9 +331,10 @@ Reset user password with verification token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Password reset successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad request - invalid parameters or password mismatch |  |
-| 401 | Invalid or expired token |  |
-| 404 | Account not found |  |
+| 400 | Bad request - invalid parameters or password mismatch | **application/json**: [InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[PasswordMismatchError](#passwordmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid or expired token | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/validity
 Verify password reset token validity
@@ -340,8 +350,139 @@ Verify password reset token validity
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Token is valid | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
-| 400 | Bad request - invalid token format |  |
-| 401 | Invalid or expired token |  |
+| 400 | Bad request - invalid token format | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid or expired token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /form/human-input/v2/public/{form_token}
+Read a public v2 form definition by delivery token without an OTP or login session.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form definition | **application/json**: [FormDefinitionResponse](#formdefinitionresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}
+Submit a form with inputs, an action, and email verification proof.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputV2FormSubmitRequest](#humaninputv2formsubmitrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form submitted | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 400 | Invalid form or email proof | **application/json**: [HumanInputChallengeExpiredError](#humaninputchallengeexpirederror)<br>[HumanInputChallengeStaleError](#humaninputchallengestaleerror)<br>[HumanInputInvalidOtpError](#humaninputinvalidotperror)<br>[InvalidInputError](#invalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Workflow not active | **application/json**: [WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request body | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Email verification unavailable | **application/json**: [HumanInputV2UnavailableError](#humaninputv2unavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}/access-request
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormAccessRequestResponse](#formaccessrequestresponse)<br> |
+| 404 | Not Found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [HumanInputAccessRateLimitExceededError](#humaninputaccessratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [HumanInputAccessDeliveryFailedError](#humaninputaccessdeliveryfailederror)<br>[HumanInputV2UnavailableError](#humaninputv2unavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}/upload-token
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormUploadTokenResponse](#formuploadtokenresponse)<br> |
+| 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /form/human-input/v2/{form_token}
+Read a v2 form using the original EndUser's Web App passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form retrieved | **application/json**: [WebAppHumanInputV2FormDefinitionResponse](#webapphumaninputv2formdefinitionresponse)<br> |
+| 401 | Invalid passport | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Already submitted | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | Expired | **application/json**: [ExpiredError](#expirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/{form_token}
+Submit a v2 form using the original EndUser's Web App passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppHumanInputV2SubmitPayload](#webapphumaninputv2submitpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Approval accepted | **application/json**: [WebAppHumanInputV2SubmitResponse](#webapphumaninputv2submitresponse)<br> |
+| 400 | Invalid inputs | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid passport | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Already submitted or workflow not active | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | Expired | **application/json**: [ExpiredError](#expirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request body | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by token**
@@ -360,10 +501,11 @@ GET /api/form/human_input/<form_token>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
-| 403 | Forbidden |  |
-| 404 | Form not found |  |
-| 412 | Form already submitted or expired |  |
-| 429 | Too many requests |  |
+| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit human input form by token**
@@ -396,10 +538,11 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 400 | Bad request - invalid submission data |  |
-| 404 | Form not found |  |
-| 412 | Form already submitted or expired |  |
-| 429 | Too many requests |  |
+| 400 | Bad request - invalid submission data | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}/upload-token
 **Issue an upload token for a human input form**
@@ -418,9 +561,10 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Upload token issued successfully | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
-| 404 | Form not found |  |
-| 412 | Form already submitted or expired |  |
-| 429 | Too many requests |  |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /human-input-forms/files
 **Upload one local file or remote URL file for a HITL human input form**
@@ -430,6 +574,75 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
+| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[MalformedUploadTokenError](#malformeduploadtokenerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /human-input/v2/files
+Upload a file or a remote URL using a v2 upload grant.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Authorization | header | Bearer v2 upload grant | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **multipart/form-data**: { **"file"**: binary, **"url"**: string }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid upload | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[MalformedUploadTokenError](#malformeduploadtokenerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Grant required | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Invalid grant | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form inactive | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /human-input/v2/files/remote
+Fetch a remote file using a v2 upload grant.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Authorization | header |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputV2RemoteUploadPayload](#humaninputv2remoteuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid upload | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[MalformedUploadTokenError](#malformeduploadtokenerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Grant required | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Invalid grant | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [HumanInputFormNotFoundError](#humaninputformnotfounderror)<br>[RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form inactive | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /login
 **Authenticate user and login**
@@ -447,10 +660,10 @@ Authenticate user for web application access
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Authentication successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
-| 400 | Bad request - invalid email or password format |  |
-| 401 | Authentication failed - email or password mismatch |  |
-| 403 | Account banned or login disabled |  |
-| 404 | Account not found |  |
+| 400 | Bad request - invalid email or password format | **application/json**: [AccountBannedError](#accountbannederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Authentication failed - email or password mismatch | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /login/status
 Check login status
@@ -467,7 +680,10 @@ Check login status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Login status | **application/json**: [LoginStatusResponse](#loginstatusresponse)<br> |
-| 401 | Login status |  |
+| 401 | Login status | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Web app access service unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
 Logout user from web application
@@ -477,6 +693,7 @@ Logout user from web application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Logout successful | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
 Retrieve paginated list of messages from a conversation in a chat application.
@@ -494,11 +711,11 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebMessageInfiniteScrollPagination](#webmessageinfinitescrollpagination)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request - Not a chat app or app unavailable | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Conversation, First Message, or End User Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
 Submit feedback (like/dislike) for a specific message.
@@ -522,11 +739,12 @@ Submit feedback (like/dislike) for a specific message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Message Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/more-like-this
 Generate a new completion similar to an existing message (completion apps only).
@@ -543,14 +761,15 @@ Generate a new completion similar to an existing message (completion apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request - Not a completion app or feature disabled |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Message Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request - Not a completion app, app unavailable, or model invocation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - Access denied or more-like-this disabled | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested-questions
-Get suggested follow-up questions after a message (chat apps only).
+Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -563,11 +782,12 @@ Get suggested follow-up questions after a message (chat apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | Bad Request - Not a chat app or feature disabled |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Message Not Found or Conversation Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request - Not a chat app or app unavailable; `completion_request_error` when model invocation fails while counting history tokens. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - Access denied or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App, End User, Message, or Conversation Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /meta
 **Get app meta**
@@ -579,11 +799,11 @@ Retrieve the metadata for a specific app.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /parameters
 **Retrieve app parameters**
@@ -595,11 +815,11 @@ Retrieve the parameters for a specific app.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /passport
 Get authentication passport for web application access
@@ -615,8 +835,9 @@ Get authentication passport for web application access
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Passport retrieved successfully | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
-| 401 | Unauthorized - missing app code or invalid authentication |  |
-| 404 | Application or user not found |  |
+| 401 | Unauthorized - missing app code or invalid authentication | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Application or user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /remote-files/upload
 **Upload a file from a remote URL**
@@ -637,7 +858,12 @@ Returns:
     int: HTTP status code 201 for success
 
 Raises:
-    RemoteFileUploadError: Failed to fetch file from remote URL
+    RemoteFileInvalidUrlError: Remote file URL is invalid
+    RemoteFileUrlBlockedError: Remote file URL is blocked
+    RemoteFileNotFoundError: Remote file does not exist
+    RemoteFileAccessDeniedError: Remote file requires authorization
+    RemoteFileUnavailableError: Remote file is unavailable
+    RemoteFileInvalidResponseError: Remote file response is invalid
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
 
@@ -652,10 +878,14 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Remote file uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
-| 400 | Bad request - invalid URL or parameters |  |
-| 413 | File too large |  |
-| 415 | Unsupported file type |  |
-| 500 | Failed to fetch remote file |  |
+| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | File too large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Request payload validation failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 502 | Remote file unavailable or returned an invalid response | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /remote-files/{url}
 **Get information about a remote file**
@@ -686,9 +916,11 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Remote file information retrieved successfully | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
-| 400 | Bad request - invalid URL |  |
-| 404 | Remote file not found |  |
-| 500 | Failed to fetch remote file |  |
+| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: [RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 502 | Remote file unavailable or returned an invalid response | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /saved-messages
 Retrieve paginated list of saved messages for a completion application.
@@ -705,11 +937,11 @@ Retrieve paginated list of saved messages for a completion application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
-| 400 | Bad Request - Not a completion app |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /saved-messages
 Save a specific message for later reference.
@@ -731,11 +963,11 @@ Save a specific message for later reference.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message saved successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request - Not a completion app |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Message Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /saved-messages/{message_id}
 Remove a message from saved messages.
@@ -748,14 +980,14 @@ Remove a message from saved messages.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Message removed successfully |
-| 400 | Bad Request - Not a completion app |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Message Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Message removed successfully |  |
+| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /site
 **Retrieve app site info**
@@ -767,38 +999,29 @@ Retrieve app site information and configuration.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebAppSiteResponse](#webappsiteresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features
-**Get system feature flags and configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system feature flags and configuration
-Returns the current system feature flags and configuration
-that control various functionalities across the platform.
-
-Returns:
-    dict: System feature configuration object
-
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
 This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
 except it is intended for use by the web app, instead of the console dashboard.
 
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for webapp initialization.
-
-Authentication would create circular dependency (can't authenticate without webapp loading).
-
-Only non-sensitive configuration data should be returned by this endpoint.
+Authentication configuration must be available before the authentication flow can be selected.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | System features retrieved successfully | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
-| 500 | Internal server error |  |
+| 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /text-to-audio
 **Convert text to audio**
@@ -813,13 +1036,13 @@ Convert text to audio using text-to-speech service.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /webapp/access-mode
 Retrieve the access mode for a web application (public or restricted).
@@ -836,8 +1059,11 @@ Retrieve the access mode for a web application (public or restricted).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessModeResponse](#accessmoderesponse)<br> |
-| 400 | Bad Request |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Web App Access Service Unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /webapp/permission
 Check if user has permission to access a web application.
@@ -853,9 +1079,11 @@ Check if user has permission to access a web application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BooleanResultResponse](#booleanresultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Web App Access Service Unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/run
 **Run workflow**
@@ -873,11 +1101,13 @@ Execute a workflow with provided inputs and files.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -895,11 +1125,11 @@ Stop a running workflow task.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Task Not Found |  |
-| 500 | Internal Server Error |  |
+| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -923,6 +1153,8 @@ Returns Server-Sent Events stream.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ### Schemas
@@ -946,6 +1178,22 @@ Returns Server-Sent Events stream.
 | data | [AccessTokenData](#accesstokendata) |  | Yes |
 | result | string |  | Yes |
 
+#### AccountBannedError
+
+Account is banned.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AccountBannedError |  | Account is banned. |  |
+
+#### AgentNotPublishedError
+
+Agent has not been published. Please publish the Agent before using the web app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentNotPublishedError |  | Agent has not been published. Please publish the Agent before using the web app. |  |
+
 #### AgentThought
 
 | Name | Type | Description | Required |
@@ -961,7 +1209,27 @@ Returns Server-Sent Events stream.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
+
+#### AgentVersionNotFoundError
+
+Agent config version not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentVersionNotFoundError |  | Agent config version not found. |  |
+
+#### AlreadySubmittedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AlreadySubmittedError |  |  |  |
+
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
 
 #### AppAccessModeQuery
 
@@ -976,17 +1244,63 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object | Tool icon metadata keyed by tool name | No |
 
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
+
+#### AppMoreLikeThisDisabledError
+
+The 'More like this' feature is disabled. Please refresh your page.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMoreLikeThisDisabledError |  | The 'More like this' feature is disabled. Please refresh your page. |  |
+
 #### AppPermissionQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
+#### AppSuggestedQuestionsAfterAnswerDisabledError
+
+The 'Suggested Questions After Answer' feature is disabled. Please refresh your page.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSuggestedQuestionsAfterAnswerDisabledError |  | The 'Suggested Questions After Answer' feature is disabled. Please refresh your page. |  |
+
+#### AppUnavailableError
+
+App unavailable, please check your app configurations.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppUnavailableError |  | App unavailable, please check your app configurations. |  |
+
 #### AudioToTextResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | text | string |  | Yes |
+
+#### AudioTooLargeError
+
+Audio size exceeded. {message}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioTooLargeError |  | Audio size exceeded. {message} |  |
+
+#### AuthenticationFailedError
+
+Invalid email or password.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthenticationFailedError |  | Invalid email or password. |  |
 
 #### BooleanResultResponse
 
@@ -1021,7 +1335,7 @@ Button styles for user actions.
 | inputs | object | Input variables for the chat | Yes |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### CompletionMessagePayload
@@ -1031,8 +1345,32 @@ Button styles for user actions.
 | files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
+
+#### CompletionRequestError
+
+Completion request failed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CompletionRequestError |  | Completion request failed. |  |
+
+#### ConversationCursorNotFoundError
+
+The conversation cursor is not in the current list. Refresh the list and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationCursorNotFoundError |  | The conversation cursor is not in the current list. Refresh the list and try again. |  |
+
+#### ConversationFirstMessageNotFoundError
+
+The conversation has no message from which to generate a name.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationFirstMessageNotFoundError |  | The conversation has no message from which to generate a name. |  |
 
 #### ConversationInfiniteScrollPagination
 
@@ -1051,6 +1389,14 @@ Button styles for user actions.
 | pinned | boolean |  | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
+#### ConversationNotFoundError
+
+The conversation was not found for this user and app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationNotFoundError |  | The conversation was not found for this user and app. |  |
+
 #### ConversationRenamePayload
 
 | Name | Type | Description | Required |
@@ -1065,6 +1411,14 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
+#### EmailCodeError
+
+Email code is invalid or expired.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailCodeError |  | Email code is invalid or expired. |  |
 
 #### EmailCodeLoginSendPayload
 
@@ -1081,6 +1435,37 @@ Enum representing the deployment edition of the platform.
 | email | string |  | Yes |
 | token | string |  | Yes |
 
+#### EmailPasswordResetLimitError
+
+Too many failed password reset attempts. Please try again in 24 hours.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailPasswordResetLimitError |  | Too many failed password reset attempts. Please try again in 24 hours. |  |
+
+#### EmailSendIpLimitError
+
+Too many emails have been sent from this IP address recently. Please try again later.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
+
+#### ErrorResponse
+
+Documented non-2xx body emitted by ``register_external_error_handlers``.
+
+``params`` and ``details`` appear only on the errors that set them. The schema
+stays open because ``HTTPException.data`` may carry extra keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | object |  | No |
+| message | string |  | Yes |
+| params | string |  | No |
+| status | integer |  | Yes |
+
 #### EventStreamResponse
 
 | Name | Type | Description | Required |
@@ -1093,6 +1478,32 @@ Enum representing the deployment edition of the platform.
 | ---- | ---- | ----------- | -------- |
 | ExecutionContentType | string |  |  |
 
+#### ExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExpiredError |  |  |  |
+
+#### FileExtensionBlockedError
+
+The file extension is blocked for security reasons.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileExtensionBlockedError |  | The file extension is blocked for security reasons. |  |
+
+#### FileInput
+
+Resolved single-file input constraints.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -1100,6 +1511,19 @@ Enum representing the deployment edition of the platform.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInput
+
+Resolved multi-file input constraints and effective number limit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -1123,7 +1547,7 @@ Enum representing the deployment edition of the platform.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -1133,6 +1557,14 @@ Enum representing the deployment edition of the platform.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileTooLargeError
+
+File size exceeded. {message}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTooLargeError |  | File size exceeded. {message} |  |
 
 #### FileTransferMethod
 
@@ -1159,6 +1591,14 @@ Enum representing the deployment edition of the platform.
 | size | integer |  | Yes |
 | url | string |  | Yes |
 
+#### FilenameNotExistsError
+
+The specified filename does not exist.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FilenameNotExistsError |  | The specified filename does not exist. |  |
+
 #### ForgotPasswordCheckPayload
 
 | Name | Type | Description | Required |
@@ -1182,17 +1622,85 @@ Enum representing the deployment edition of the platform.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### FormAccessRequestResponse
+
+Response body returned after creating one OTP challenge.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| challenge_token | string | The token used to complete the OTP challenge. | Yes |
+| expires_in_seconds | integer | Seconds until the current OTP challenge expires. | Yes |
+| resend_after_seconds | integer | Seconds until another OTP challenge may be requested. | Yes |
+
+#### FormDefinitionResponse
+
+Response body containing a resolved human-input form definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer | Unix timestamp when the current form expires. | Yes |
+| form_content | string | Rendered form body shown to the approver. | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] | Resolved form input definitions. | No |
+| resolved_default_values | object | Default values after variable resolution and stringification. | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] | Action buttons that can complete the form. | No |
+
 #### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
+#### FormPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
+
+#### FormSubmitResponse
+
+Empty response body returned after a Human Input v2 form submission.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### FormUploadTokenResponse
+
+Response body returned when issuing a Human Input v2 upload token.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| upload_token | string |  | Yes |
+
 #### GeneratedAppResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | GeneratedAppResponse |  |  |  |
+
+#### HumanInputAccessDeliveryFailedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputAccessDeliveryFailedError |  |  |  |
+
+#### HumanInputAccessRateLimitExceededError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputAccessRateLimitExceededError |  |  |  |
+
+#### HumanInputChallengeExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputChallengeExpiredError |  |  |  |
+
+#### HumanInputChallengeStaleError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputChallengeStaleError |  |  |  |
 
 #### HumanInputContent
 
@@ -1222,6 +1730,7 @@ Parsed multipart form fields for HITL uploads.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -1238,6 +1747,18 @@ Parsed multipart form fields for HITL uploads.
 | site | [WebAppSiteResponse](#webappsiteresponse) |  | No |
 | user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
+#### HumanInputFormExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormExpiredError |  |  |  |
+
+#### HumanInputFormNotFoundError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormNotFoundError |  |  |  |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -1251,6 +1772,8 @@ Parsed multipart form fields for HITL uploads.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
@@ -1261,6 +1784,18 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### HumanInputFormSubmittedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmittedError |  |  |  |
+
+#### HumanInputInvalidOtpError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputInvalidOtpError |  |  |  |
+
 #### HumanInputUploadTokenResponse
 
 | Name | Type | Description | Required |
@@ -1268,17 +1803,70 @@ Parsed multipart form fields for HITL uploads.
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
 
-#### JSONObject
+#### HumanInputV2FormSubmitRequest
+
+Public Human Input v2 submit payload, independent from the v1 form contract.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONObject | object |  |  |
+| action | string | Identifier of the selected Human Input v2 action. | Yes |
+| challenge_token | string | OTP challenge token returned by the Human Input v2 access-request endpoint. | No |
+| inputs | object | Submitted form values keyed by output variable name. | Yes |
+| otp_code | string | OTP code required when the current Human Input v2 approver uses email proof. | No |
 
-#### JSONValue
+#### HumanInputV2RemoteUploadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+| url | string (uri) |  | Yes |
+
+#### HumanInputV2UnavailableError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputV2UnavailableError |  |  |  |
+
+#### InvalidEmailError
+
+The email address is not valid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidEmailError |  | The email address is not valid. |  |
+
+#### InvalidFormDataError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidFormDataError |  |  |  |
+
+#### InvalidInputError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidInputError |  |  |  |
+
+#### InvalidOrExpiredTokenError
+
+The token is invalid or has expired.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidOrExpiredTokenError |  | The token is invalid or has expired. |  |
+
+#### InvalidParamError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidParamError |  |  |  |
+
+#### InvalidUploadTokenError
+
+Upload token is invalid or expired.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidUploadTokenError |  | Upload token is invalid or expired. |  |
 
 #### JSONValueType
 
@@ -1291,6 +1879,26 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
+
+#### KnowledgeFsCitation
+
+Immutable evidence identity; no signed URLs, tokens or storage keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| control_space_id | string |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_title | string |  | No |
+| document_version | integer |  | No |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| node_id | string |  | Yes |
+| page_number | integer |  | No |
+| parse_artifact_id | string |  | No |
+| section_path | [ string ] |  | No |
+| space_name | string |  | Yes |
+| start_offset | integer |  | No |
 
 #### LicenseStatus
 
@@ -1325,12 +1933,37 @@ Parsed multipart form fields for HITL uploads.
 | app_logged_in | boolean |  | Yes |
 | logged_in | boolean |  | Yes |
 
+#### MalformedUploadTokenError
+
+The upload token is malformed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MalformedUploadTokenError |  | The upload token is malformed. |  |
+
+#### MarkdownFragment
+
+One source-ordered Markdown fragment in a resolved form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | No |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+
+#### MessageFeedbackRatingRequiredError
+
+A rating is required when there is no existing feedback to remove.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageFeedbackRatingRequiredError |  | A rating is required when there is no existing feedback to remove. |  |
 
 #### MessageFile
 
@@ -1338,7 +1971,7 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | belongs_to | string |  | No |
 | filename | string |  | Yes |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
 | transfer_method | string |  | Yes |
@@ -1360,13 +1993,71 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 
+#### ModelCurrentlyNotSupportError
+
+Dify Hosted OpenAI trial currently not support the GPT-4 model.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelCurrentlyNotSupportError |  | Dify Hosted OpenAI trial currently not support the GPT-4 model. |  |
+
+#### NoAudioUploadedError
+
+Please upload your audio.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NoAudioUploadedError |  | Please upload your audio. |  |
+
+#### NoFileUploadedError
+
+Please upload your file.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NoFileUploadedError |  | Please upload your file. |  |
+
+#### NotChatAppError
+
+Please check if your app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotChatAppError |  | Please check if your app mode matches the right API route. |  |
+
+#### NotCompletionAppError
+
+Please check if your Completion app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotCompletionAppError |  | Please check if your Completion app mode matches the right API route. |  |
+
+#### NotWorkflowAppError
+
+Please check if your Workflow app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotWorkflowAppError |  | Please check if your Workflow app mode matches the right API route. |  |
+
+#### ParagraphInput
+
+Resolved multiline text input.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### ParagraphInputConfig
 
 Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [StringSource](#stringsource) |  | No |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -1374,18 +2065,19 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
-| file_upload | [JSONObject](#jsonobject) |  | Yes |
-| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement |  |  | No |
-| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
-| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
-| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
-| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
-| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object ] |  | Yes |
 
 #### PassportAccessTokenResponse
 
@@ -1398,6 +2090,22 @@ Form input definition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | user_id | string | End user session ID | No |
+
+#### PasswordMismatchError
+
+The passwords do not match.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PasswordMismatchError |  | The passwords do not match. |  |
+
+#### PasswordResetRateLimitExceededError
+
+Too many password reset emails have been sent. Please try again in {minutes} minutes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PasswordResetRateLimitExceededError |  | Too many password reset emails have been sent. Please try again in {minutes} minutes. |  |
 
 #### PluginInstallationPermissionModel
 
@@ -1412,11 +2120,45 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
 
-#### PluginManagerModel
+#### ProviderNotInitializeError
+
+No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
+| ProviderNotInitializeError |  | No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. |  |
+
+#### ProviderNotSupportSpeechToTextError
+
+Provider not support speech to text.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderNotSupportSpeechToTextError |  | Provider not support speech to text. |  |
+
+#### ProviderQuotaExceededError
+
+Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderQuotaExceededError |  | Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. |  |
+
+#### RateLimitError
+
+Rate Limit Error
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RateLimitError |  | Rate Limit Error |  |
+
+#### RemoteFileAccessDeniedError
+
+The remote file cannot be accessed without authorization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RemoteFileAccessDeniedError |  | The remote file cannot be accessed without authorization. |  |
 
 #### RemoteFileInfo
 
@@ -1425,11 +2167,62 @@ Form input definition.
 | file_length | integer |  | Yes |
 | file_type | string |  | Yes |
 
+#### RemoteFileInvalidResponseError
+
+The remote file server returned an invalid response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RemoteFileInvalidResponseError |  | The remote file server returned an invalid response. |  |
+
+#### RemoteFileInvalidUrlError
+
+The remote file URL is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RemoteFileInvalidUrlError |  | The remote file URL is invalid. |  |
+
+#### RemoteFileNotFoundError
+
+The remote file could not be found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RemoteFileNotFoundError |  | The remote file could not be found. |  |
+
+#### RemoteFileUnavailableError
+
+The remote file is temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RemoteFileUnavailableError |  | The remote file is temporarily unavailable. |  |
+
 #### RemoteFileUploadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string (uri) | Remote file URL | Yes |
+
+#### RemoteFileUrlBlockedError
+
+The remote file URL is not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RemoteFileUrlBlockedError |  | The remote file URL is not allowed. |  |
+
+#### ResolvedForm
+
+Immutable authoritative presentation snapshot for one v2 form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [UserAction](#useraction) ] |  | Yes |
+| legacy_form_content | string |  | Yes |
+| parts | [ [FormPart](#formpart) ] |  | Yes |
+| title | string |  | Yes |
 
 #### ResultResponse
 
@@ -1446,18 +2239,33 @@ Form input definition.
 | data_source_type | string |  | No |
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
+| doc_metadata | object |  | No |
+| document_asset_id | string |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| document_revision | integer |  | No |
+| document_version | integer |  | No |
+| files | [ object ] |  | No |
 | hit_count | integer |  | No |
-| id | string |  | No |
+| id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
-| message_id | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
+| message_id | string (uuid) |  | No |
+| page | integer |  | No |
 | position | integer |  | Yes |
+| retriever_from | string |  | No |
 | score | number |  | No |
 | segment_id | string |  | No |
 | segment_position | integer |  | No |
 | summary | string |  | No |
+| title | string |  | No |
 | word_count | integer |  | No |
+
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
 
 #### SavedMessageCreatePayload
 
@@ -1492,20 +2300,37 @@ Form input definition.
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 
+#### SelectInput
+
+Resolved single-choice input with immutable concrete options.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### SelectInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### ShallowJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ShallowJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
 
 #### SimpleConversation
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | introduction | string |  | No |
 | name | string |  | Yes |
@@ -1529,15 +2354,23 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
+
+#### SpeechToTextDisabledError
+
+Speech to text is disabled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SpeechToTextDisabledError |  | Speech to text is disabled. |  |
 
 #### StringListSource
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [ValueSourceType](#valuesourcetype) |  | Yes |
-| value | [ string ] |  | No |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
 
 #### StringSource
 
@@ -1557,13 +2390,15 @@ Default configuration for form inputs.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
@@ -1572,18 +2407,13 @@ Default configuration for form inputs.
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
-| knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -1605,6 +2435,56 @@ Default configuration for form inputs.
 | text | string | Speech content to convert. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### TooManyFilesError
+
+Only one file is allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TooManyFilesError |  | Only one file is allowed. |  |
+
+#### TriggerWorkflowServiceModeUnavailableError
+
+This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerWorkflowServiceModeUnavailableError |  | This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
+
+#### UnsupportedAudioTypeError
+
+Audio type not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnsupportedAudioTypeError |  | Audio type not allowed. |  |
+
+#### UnsupportedFileTypeError
+
+File type not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnsupportedFileTypeError |  | File type not allowed. |  |
+
+#### UploadTokenRequiredError
+
+Upload token is required.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UploadTokenRequiredError |  | Upload token is required. |  |
+
+#### UserAction
+
+Resolved action values required for presentation and submission validation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
 #### UserActionConfig
 
 User action configuration.
@@ -1618,11 +2498,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 
@@ -1647,7 +2527,7 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
 #### WebAppCustomConfigResponse
 
@@ -1655,6 +2535,25 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | remove_webapp_brand | boolean |  | Yes |
 | replace_webapp_logo | string |  | No |
+
+#### WebAppHumanInputV2FormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | Yes |
+| resolved_form | [ResolvedForm](#resolvedform) |  | Yes |
+
+#### WebAppHumanInputV2SubmitPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| inputs | object |  | Yes |
+
+#### WebAppHumanInputV2SubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 
 #### WebAppSiteResponse
 
@@ -1665,9 +2564,18 @@ in form definiton, or a variable while the workflow is running.
 | custom_config | [WebAppCustomConfigResponse](#webappcustomconfigresponse) |  | No |
 | enable_site | boolean |  | Yes |
 | end_user_id | string |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [WebModelConfigResponse](#webmodelconfigresponse) |  | No |
 | plan | string |  | Yes |
 | site | [WebSiteResponse](#websiteresponse) |  | Yes |
+
+#### WebFormRateLimitExceededError
+
+Too many form requests. Please try again later.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebFormRateLimitExceededError |  | Too many form requests. Please try again later. |  |
 
 #### WebMessageInfiniteScrollPagination
 
@@ -1684,19 +2592,19 @@ in form definiton, or a variable while the workflow is running.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
-| conversation_id | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
+| provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
@@ -1736,9 +2644,15 @@ in form definiton, or a variable while the workflow is running.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### WorkflowNotActiveError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowNotActiveError |  |  |  |
+
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |

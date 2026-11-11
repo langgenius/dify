@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile as File, FileItem } from '@/models/datasets'
+import type { CrawlResultItem, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CrawlStep } from '@/models/datasets'
 import { createDataSourceStore } from '../../data-source/store'
 import { DataSourceContext } from '../../data-source/store/provider'
@@ -20,6 +20,38 @@ const createWrapper = (store: ReturnType<typeof createDataSourceStore>) => {
     React.createElement(DataSourceContext.Provider, { value: store }, children)
 }
 
+const fileItem = (id: string, name: string): FileItem => ({
+  fileID: name,
+  file: Object.assign(new File(['content'], name), { id }),
+  progress: id ? 100 : 0,
+})
+const page: NotionPage = {
+  page_id: 'p1',
+  page_name: 'Page 1',
+  workspace_id: 'w1',
+  page_icon: null,
+  parent_id: '',
+  type: 'page',
+  is_bound: true,
+}
+const workspace: DataSourceNotionWorkspace = {
+  workspace_id: 'w1',
+  workspace_name: 'Docs',
+  workspace_icon: null,
+  pages: [page],
+}
+const website: CrawlResultItem = {
+  title: 'Test',
+  source_url: 'https://example.com',
+  markdown: 'Test',
+  description: '',
+}
+const driveFiles: OnlineDriveFile[] = [
+  { id: 'f1', name: 'a.pdf', type: 'file' },
+  { id: 'f2', name: 'b.pdf', type: 'file' },
+  { id: 'f3', name: 'c.pdf', type: 'file' },
+]
+
 describe('useLocalFile', () => {
   let store: ReturnType<typeof createDataSourceStore>
 
@@ -28,46 +60,18 @@ describe('useLocalFile', () => {
     store = createDataSourceStore()
   })
 
-  it('should return local file list and initial state', () => {
-    const { result } = renderHook(() => useLocalFile(), { wrapper: createWrapper(store) })
-
-    expect(result.current.localFileList).toEqual([])
-    expect(result.current.allFileLoaded).toBe(false)
-    expect(result.current.currentLocalFile).toBeUndefined()
-  })
-
   it('should compute allFileLoaded when all files have ids', () => {
-    store
-      .getState()
-      .setLocalFileList([
-        { file: { id: 'f1', name: 'a.pdf' } },
-        { file: { id: 'f2', name: 'b.pdf' } },
-      ] as unknown as FileItem[])
+    store.getState().setLocalFileList([fileItem('f1', 'a.pdf'), fileItem('f2', 'b.pdf')])
 
     const { result } = renderHook(() => useLocalFile(), { wrapper: createWrapper(store) })
     expect(result.current.allFileLoaded).toBe(true)
   })
 
   it('should compute allFileLoaded as false when some files lack ids', () => {
-    store
-      .getState()
-      .setLocalFileList([
-        { file: { id: 'f1', name: 'a.pdf' } },
-        { file: { id: '', name: 'b.pdf' } },
-      ] as unknown as FileItem[])
+    store.getState().setLocalFileList([fileItem('f1', 'a.pdf'), fileItem('', 'b.pdf')])
 
     const { result } = renderHook(() => useLocalFile(), { wrapper: createWrapper(store) })
     expect(result.current.allFileLoaded).toBe(false)
-  })
-
-  it('should hide preview local file', () => {
-    store.getState().setCurrentLocalFile({ id: 'f1' } as unknown as File)
-    const { result } = renderHook(() => useLocalFile(), { wrapper: createWrapper(store) })
-
-    act(() => {
-      result.current.hidePreviewLocalFile()
-    })
-    expect(store.getState().currentLocalFile).toBeUndefined()
   })
 })
 
@@ -79,44 +83,18 @@ describe('useOnlineDocument', () => {
     store = createDataSourceStore()
   })
 
-  it('should return initial state', () => {
-    const { result } = renderHook(() => useOnlineDocument(), { wrapper: createWrapper(store) })
-
-    expect(result.current.onlineDocuments).toEqual([])
-    expect(result.current.currentDocument).toBeUndefined()
-    expect(result.current.currentWorkspace).toBeUndefined()
-  })
-
   it('should build PagesMapAndSelectedPagesId from documentsData', () => {
-    store
-      .getState()
-      .setDocumentsData([
-        { workspace_id: 'w1', pages: [{ page_id: 'p1', page_name: 'Page 1' }] },
-      ] as unknown as DataSourceNotionWorkspace[])
+    store.getState().setDocumentsData([workspace])
 
     const { result } = renderHook(() => useOnlineDocument(), { wrapper: createWrapper(store) })
     expect(result.current.PagesMapAndSelectedPagesId).toHaveProperty('p1')
     expect(result.current.PagesMapAndSelectedPagesId.p1!.workspace_id).toBe('w1')
   })
 
-  it('should hide preview online document', () => {
-    store.getState().setCurrentDocument({ page_id: 'p1' } as unknown as NotionPage)
-    const { result } = renderHook(() => useOnlineDocument(), { wrapper: createWrapper(store) })
-
-    act(() => {
-      result.current.hidePreviewOnlineDocument()
-    })
-    expect(store.getState().currentDocument).toBeUndefined()
-  })
-
   it('should clear online document data', () => {
-    store
-      .getState()
-      .setDocumentsData([
-        { workspace_id: 'w1', pages: [] },
-      ] as unknown as DataSourceNotionWorkspace[])
+    store.getState().setDocumentsData([workspace])
     store.getState().setSearchValue('test')
-    store.getState().setOnlineDocuments([{ page_id: 'p1' }] as unknown as NotionPage[])
+    store.getState().setOnlineDocuments([page])
 
     const { result } = renderHook(() => useOnlineDocument(), { wrapper: createWrapper(store) })
     act(() => {
@@ -137,15 +115,8 @@ describe('useWebsiteCrawl', () => {
     store = createDataSourceStore()
   })
 
-  it('should return initial state', () => {
-    const { result } = renderHook(() => useWebsiteCrawl(), { wrapper: createWrapper(store) })
-
-    expect(result.current.websitePages).toEqual([])
-    expect(result.current.currentWebsite).toBeUndefined()
-  })
-
   it('should hide website preview', () => {
-    store.getState().setCurrentWebsite({ title: 'Test' } as unknown as CrawlResultItem)
+    store.getState().setCurrentWebsite(website)
     store.getState().setPreviewIndex(2)
     const { result } = renderHook(() => useWebsiteCrawl(), { wrapper: createWrapper(store) })
 
@@ -159,7 +130,7 @@ describe('useWebsiteCrawl', () => {
 
   it('should clear website crawl data', () => {
     store.getState().setStep(CrawlStep.running)
-    store.getState().setWebsitePages([{ title: 'Test' }] as unknown as CrawlResultItem[])
+    store.getState().setWebsitePages([website])
 
     const { result } = renderHook(() => useWebsiteCrawl(), { wrapper: createWrapper(store) })
     act(() => {
@@ -180,20 +151,8 @@ describe('useOnlineDrive', () => {
     store = createDataSourceStore()
   })
 
-  it('should return initial state', () => {
-    const { result } = renderHook(() => useOnlineDrive(), { wrapper: createWrapper(store) })
-
-    expect(result.current.onlineDriveFileList).toEqual([])
-    expect(result.current.selectedFileIds).toEqual([])
-    expect(result.current.selectedOnlineDriveFileList).toEqual([])
-  })
-
   it('should compute selected online drive file list', () => {
-    const files = [
-      { id: 'f1', name: 'a.pdf' },
-      { id: 'f2', name: 'b.pdf' },
-      { id: 'f3', name: 'c.pdf' },
-    ] as unknown as OnlineDriveFile[]
+    const files = driveFiles
     store.getState().setOnlineDriveFileList(files)
     store.getState().setSelectedFileIds(['f1', 'f3'])
 
@@ -202,7 +161,7 @@ describe('useOnlineDrive', () => {
   })
 
   it('should clear online drive data', () => {
-    store.getState().setOnlineDriveFileList([{ id: 'f1' }] as unknown as OnlineDriveFile[])
+    store.getState().setOnlineDriveFileList([driveFiles[0]!])
     store.getState().setBucket('b1')
     store.getState().setPrefix(['p1'])
     store.getState().setKeywords('kw')

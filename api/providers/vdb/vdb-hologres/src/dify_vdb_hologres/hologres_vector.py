@@ -7,6 +7,7 @@ import holo_search_sdk as holo  # type: ignore
 from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
 from psycopg import sql as psql
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import parse_metadata_json
@@ -344,7 +345,9 @@ class HologresVectorFactory(AbstractVectorFactory):
     """Factory class for creating HologresVector instances."""
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> HologresVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> HologresVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

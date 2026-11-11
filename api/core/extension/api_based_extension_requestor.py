@@ -41,10 +41,10 @@ class APIBasedExtensionRequestor:
                     json={"point": point.value, "params": params},
                     headers=headers,
                 )
-        except httpx.TimeoutException:
-            raise ValueError("request timeout")
-        except httpx.RequestError:
-            raise ValueError("request connection error")
+        except httpx.TimeoutException as e:
+            raise ValueError("request timeout") from e
+        except httpx.RequestError as e:
+            raise ValueError("request connection error") from e
 
         if response.status_code != 200:
             raise ValueError(f"request error, status_code: {response.status_code}, content: {response.text[:100]}")

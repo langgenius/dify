@@ -1,21 +1,15 @@
 'use client'
+
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
+import type { ResolvedTheme } from '@/features/theme/theme'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Code,
-  KnowledgeRetrieval,
-  Schedule,
-  WebhookLine,
-  WindowCursor,
-} from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
-import { Theme } from '@/types/app'
 
 type TriggerByDisplayProps = {
   triggeredFrom: WorkflowRunTriggeredFrom
@@ -26,7 +20,7 @@ type TriggerByDisplayProps = {
 
 const getTriggerDisplayName = (
   triggeredFrom: WorkflowRunTriggeredFrom,
-  t: TFunction,
+  t: TFunction<['appLog']>,
   metadata?: TriggerMetadata,
 ) => {
   if (triggeredFrom === WorkflowRunTriggeredFrom.PLUGIN && metadata?.event_name)
@@ -45,11 +39,11 @@ const getTriggerDisplayName = (
   return nameMap[triggeredFrom] || triggeredFrom
 }
 
-const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
+const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: ResolvedTheme) => {
   if (!metadata) return null
 
   const icon =
-    theme === Theme.dark ? metadata.icon_dark || metadata.icon : metadata.icon || metadata.icon_dark
+    theme === 'dark' ? metadata.icon_dark || metadata.icon : metadata.icon || metadata.icon_dark
 
   if (!icon) return null
 
@@ -59,19 +53,25 @@ const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
 const getTriggerIcon = (
   triggeredFrom: WorkflowRunTriggeredFrom,
   metadata: TriggerMetadata | undefined,
-  theme: Theme,
+  theme: ResolvedTheme,
 ) => {
   switch (triggeredFrom) {
     case 'webhook':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
-          <WebhookLine className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-webhook-line size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'schedule':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md">
-          <Schedule className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-schedule size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'plugin':
@@ -81,14 +81,20 @@ const getTriggerIcon = (
     case 'debugging':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
-          <Code className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-code size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'rag-pipeline-run':
     case 'rag-pipeline-debugging':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-1 shadow-md">
-          <KnowledgeRetrieval className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-knowledge-retrieval size-4 text-text-primary-on-surface"
+          />
         </div>
       )
     case 'app-run':
@@ -96,7 +102,10 @@ const getTriggerIcon = (
       // For user input types (app-run, etc.), use webapp icon
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
-          <WindowCursor className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-workflow-window-cursor size-4 text-text-primary-on-surface"
+          />
         </div>
       )
   }
@@ -108,8 +117,8 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   showText = true,
   triggerMetadata,
 }) => {
-  const { t } = useTranslation()
-  const { theme } = useTheme()
+  const { t } = useTranslation(['appLog'])
+  const theme = useResolvedTheme()
 
   const displayName = getTriggerDisplayName(triggeredFrom, t, triggerMetadata)
   const icon = getTriggerIcon(triggeredFrom, triggerMetadata, theme)

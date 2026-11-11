@@ -28,7 +28,7 @@ type VarItemProps = {
 const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
   return (
     <div className="py-1">
-      <div className="flex items-center leading-[18px]">
+      <div className="flex items-center leading-4.5">
         <span className="code-sm-regular text-text-tertiary">{prefix}.</span>
         <span className="code-sm-semibold text-text-secondary">{name}</span>
         <span className="ml-2 system-xs-regular text-text-tertiary">{type}</span>

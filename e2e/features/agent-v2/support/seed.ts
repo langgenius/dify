@@ -4,34 +4,30 @@ import type {
   AgentSoulDifyToolConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { KnowledgeConfig } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed'
+import type { ModelType, ParserPostDefault } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed.ts'
 import { readFile } from 'node:fs/promises'
-import { createTestApp } from '../../../support/api/apps'
-import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
-import { sleep } from '../../../support/process'
-import { blocked, created, skipped, updated, verified } from '../../../support/seed'
-import { createTestAgent, saveAgentComposerDraft } from './agent'
+import { zModelType } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins.ts'
+import { sleep } from '../../../support/process.ts'
+import { blocked, created, skipped, updated, verified } from '../../../support/seed.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from './agent-builder-resources'
-import {
-  getAgentDriveSkills,
-  uploadAgentConfigFileToDraft,
-  uploadAgentConfigSkillToDraft,
-  uploadAgentDriveSkill,
-} from './agent-drive'
+} from './agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithKnowledgeDataset,
   createAgentSoulConfigWithModel,
   normalAgentSoulConfig,
-} from './agent-soul'
-import { isRecord, matchesNameOrLabel } from './fixtures/common'
-import { splitToolDisplayName } from './fixtures/tools'
-import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials'
-import { syncAgentV2WorkflowDraft } from './workflow'
+} from './agent-soul.ts'
+import { createTestAgent, saveAgentComposerDraft } from './agent.ts'
+import { uploadAgentConfigFileToDraft, uploadAgentConfigSkillToDraft } from './config-assets.ts'
+import { isRecord, matchesNameOrLabel } from './fixtures/common.ts'
+import { splitToolDisplayName } from './fixtures/tools.ts'
+import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials.ts'
+import { syncAgentV2WorkflowDraft } from './workflow.ts'
 
 type StableModel = {
   name: string
@@ -310,67 +306,87 @@ const seedAgentDecisionModel = async (context: SeedContext) =>
     title: agentBuilderPreseededResources.agentDecisionChatModel,
   })
 
-const seedSpeechToTextModel = async (context: SeedContext) => {
-  const config = speechToTextModelConfig()
-  const title = agentBuilderPreseededResources.speechToTextModel
-  const modelResult = await seedModel(context, { config, title })
-  if (modelResult.status === 'blocked' || modelResult.status === 'skipped') return modelResult
-
-  const model = await findModel(context.consoleClient, config)
-  if (!model || model.status !== activeModelStatus)
-    return blocked(title, `${config.provider}/${config.name} is not active after model setup.`)
-
-  const resource = {
-    id: `${model.provider}/${model.name}`,
-    kind: 'model',
-    name: title,
-  }
-  const defaultModelResponse = await context.consoleClient.workspaces.current.defaultModel.get({
-    query: { model_type: config.type },
-  })
-  const defaultModel = defaultModelResponse.data
-  const isExpectedDefault =
-    defaultModel?.model === model.name &&
-    matchesProvider(defaultModel.provider.provider, model.provider)
-
-  if (isExpectedDefault)
-    return modelResult.status === 'updated' ? modelResult : verified(title, resource)
-
-  if (context.dryRun)
-    return skipped(
-      title,
-      `Would set ${model.provider}/${model.name} as the workspace default Speech-to-Text model.`,
-    )
-
-  await context.consoleClient.workspaces.current.defaultModel.post({
-    body: {
-      model_settings: [
-        {
-          model: model.name,
-          model_type: config.type,
-          provider: model.provider,
-        },
-      ],
-    },
+const seedSpeechToTextModel = async (context: SeedContext) =>
+  seedModel(context, {
+    config: speechToTextModelConfig(),
+    title: agentBuilderPreseededResources.speechToTextModel,
   })
 
-  const updatedDefaultModelResponse =
-    await context.consoleClient.workspaces.current.defaultModel.get({
-      query: { model_type: config.type },
+const readWorkspaceDefaultModels = async (context: SeedContext) =>
+  new Map(
+    await Promise.all(
+      zModelType.options.map(async (modelType) => {
+        const response = await context.consoleClient.workspaces.current.defaultModel.get({
+          query: { model_type: modelType },
+        })
+        return [modelType, response.data] as const
+      }),
+    ),
+  )
+
+const seedWorkspaceDefaultModels = (includeSpeechToText: boolean): SeedTask => ({
+  id: 'workspace-default-models',
+  title: 'Workspace default models',
+  run: async (context) => {
+    const title = 'Workspace default models'
+    const chatModel = stableModelConfig()
+    if (chatModel.type !== 'llm')
+      return blocked(
+        title,
+        'E2E_STABLE_MODEL_TYPE must be llm for the workspace default chat model.',
+      )
+
+    const configs = includeSpeechToText ? [chatModel, speechToTextModelConfig()] : [chatModel]
+    const defaults = await readWorkspaceDefaultModels(context)
+    const settings = new Map<ModelType, ParserPostDefault['model_settings'][number]>()
+    for (const [modelType, model] of defaults) {
+      if (model)
+        settings.set(modelType, {
+          model: model.model,
+          model_type: modelType,
+          provider: model.provider.provider,
+        })
+    }
+
+    let needsUpdate = false
+    for (const config of configs) {
+      const model = await findModel(context.consoleClient, config)
+      if (!model || model.status !== activeModelStatus) {
+        const reason = `${config.provider}/${config.name} is not active after model setup.`
+        return context.dryRun ? skipped(title, reason) : blocked(title, reason)
+      }
+
+      const current = settings.get(config.type)
+      if (current?.model !== model.name || current.provider !== model.provider) needsUpdate = true
+      settings.set(config.type, {
+        model: model.name,
+        model_type: config.type,
+        provider: model.provider,
+      })
+    }
+
+    if (!needsUpdate) return verified(title)
+    if (context.dryRun)
+      return skipped(title, 'Would configure the seeded workspace default models.')
+
+    // Saving defaults replaces every type, so retain defaults outside this seed profile.
+    await context.consoleClient.workspaces.current.defaultModel.post({
+      body: { model_settings: [...settings.values()] },
     })
-  const updatedDefaultModel = updatedDefaultModelResponse.data
-  if (
-    updatedDefaultModel?.model !== model.name ||
-    !matchesProvider(updatedDefaultModel.provider.provider, model.provider)
-  ) {
-    return blocked(
-      title,
-      `${model.provider}/${model.name} was not selected as the workspace default Speech-to-Text model.`,
-    )
-  }
 
-  return updated(title, resource)
-}
+    const savedDefaults = await readWorkspaceDefaultModels(context)
+    for (const [modelType, setting] of settings) {
+      const saved = savedDefaults.get(modelType)
+      if (saved?.model !== setting.model || saved?.provider.provider !== setting.provider)
+        return blocked(
+          title,
+          `Workspace default ${modelType} was not saved as ${setting.provider}/${setting.model}.`,
+        )
+    }
+
+    return updated(title)
+  },
+})
 
 const findBuiltinTool = async (client: SeedContext['consoleClient'], displayName: string) => {
   const parsed = splitToolDisplayName(displayName)
@@ -428,7 +444,7 @@ const datasetHasKnowledgeSegment = async (
 ) => {
   const documents = await client.datasets.byDatasetId.documents.get({
     params: { dataset_id: datasetId },
-    query: { limit: '100', page: '1' },
+    query: { limit: 100, page: 1 },
   })
   for (const document of documents.data) {
     const body = await client.datasets.byDatasetId.documents.byDocumentId.segments.get({
@@ -627,17 +643,6 @@ const saveSeededAgentComposer = async (
   }
 }
 
-const ensureDriveSkill = async (client: SeedContext['consoleClient'], agentId: string) => {
-  const skills = await getAgentDriveSkills(client, agentId)
-  if (skills.some((skill) => skill.name === agentBuilderPreseededResources.summarySkill)) return
-
-  await uploadAgentDriveSkill(client, {
-    agentId,
-    fileName: agentBuilderTestMaterials.summarySkill,
-    filePath: getAgentBuilderTestMaterialPath('summarySkill'),
-  })
-}
-
 const seedFullConfigAgent = async (context: SeedContext) => {
   const title = agentBuilderPreseededResources.fullConfigAgent
   const model = getStableModelResource(context)
@@ -669,7 +674,6 @@ const seedFullConfigAgent = async (context: SeedContext) => {
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })
-  await ensureDriveSkill(context.consoleClient, agentId)
 
   await saveSeededAgentComposer(context.consoleClient, {
     agentId,
@@ -712,7 +716,6 @@ const seedToolStatesAgent = async (context: SeedContext) => {
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })
-  await ensureDriveSkill(context.consoleClient, agent.id)
   await saveSeededAgentComposer(context.consoleClient, {
     agentId: agent.id,
     config: {
@@ -867,6 +870,7 @@ const agentV2PreparedFixtureSeedTasks = (): SeedTask[] => [
 
 const agentV2PreparedSeedTasks = (): SeedTask[] => [
   ...agentV2BaseSeedTasks(),
+  seedWorkspaceDefaultModels(false),
   ...agentV2PreparedFixtureSeedTasks(),
 ]
 
@@ -877,6 +881,7 @@ const agentV2ExternalRuntimeSeedTasks = (): SeedTask[] => [
     title: agentBuilderPreseededResources.speechToTextModel,
     run: seedSpeechToTextModel,
   },
+  seedWorkspaceDefaultModels(true),
 ]
 
 const agentV2PostMergeSeedTasks = (): SeedTask[] => [

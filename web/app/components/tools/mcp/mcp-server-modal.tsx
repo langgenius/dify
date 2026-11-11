@@ -1,19 +1,23 @@
 'use client'
+import type { MCPServerParam } from './mcp-server-param-item'
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { RiCloseLine } from '@remixicon/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import {
-  useCreateMCPServer,
-  useInvalidateMCPServerDetail,
-  useUpdateMCPServer,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 
 type ModalProps = {
   appID: string
@@ -26,21 +30,26 @@ type ModalProps = {
   }
 }
 
-type MCPServerParam = {
-  variable?: string
-  label?: string
-  type?: string
-}
-
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
-  const { t } = useTranslation()
-  const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
-  const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
-  const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
+  const { t } = useTranslation(['common', 'tools'])
+  const queryClient = useQueryClient()
+  const { mutateAsync: createMCPServer, isPending: creating } = useMutation(
+    consoleQuery.apps.byAppId.server.post.mutationOptions(),
+  )
+  const { mutateAsync: updateMCPServer, isPending: updating } = useMutation(
+    consoleQuery.apps.byAppId.server.put.mutationOptions(),
+  )
+  const invalidateMCPServerDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+        input: { params: { app_id: appID } },
+      }),
+    })
 
   const defaultDescription = data?.description || appInfo?.description || ''
   const [description, setDescription] = React.useState(defaultDescription)
   const [params, setParams] = React.useState<Record<string, string>>(data?.parameters || {})
+  const descriptionId = React.useId()
 
   const handleParamChange = (variable: string, value: string) => {
     setParams((prev) => ({
@@ -60,54 +69,30 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
     return res
   }
 
-  const emitMcpServerUpdate = (action: 'created' | 'updated') => {
-    const socket = webSocketClient.getSocket(appID)
-    if (!socket) return
-
-    const timestamp = Date.now()
-    socket.emit('collaboration_event', {
-      type: 'mcp_server_update',
-      data: {
-        action,
-        timestamp,
-      },
-      timestamp,
-    })
-  }
-
   const submit = async () => {
     if (!data) {
-      const payload: {
-        appID: string
+      const body: {
         description?: string
         parameters: Record<string, string>
       } = {
-        appID,
         parameters: getParamValue(),
       }
 
-      if (description.trim()) payload.description = description
+      if (description.trim()) body.description = description
 
-      await createMCPServer(payload)
-      invalidateMCPServerDetail(appID)
-      emitMcpServerUpdate('created')
+      await createMCPServer({ params: { app_id: appID }, body })
+      invalidateMCPServerDetail()
       onHide()
     } else {
-      const payload: {
-        appID: string
-        id: string
-        description: string
-        parameters: Record<string, string>
-      } = {
-        appID,
-        id: data.id,
-        parameters: getParamValue(),
-        description,
-      }
-
-      await updateMCPServer(payload)
-      invalidateMCPServerDetail(appID)
-      emitMcpServerUpdate('updated')
+      await updateMCPServer({
+        params: { app_id: appID },
+        body: {
+          id: data.id,
+          parameters: getParamValue(),
+          description,
+        },
+      })
+      invalidateMCPServerDetail()
       onHide()
     }
   }
@@ -119,32 +104,39 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
         if (!open) onHide()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px]! flex-col overflow-hidden! border-none p-0! text-left align-middle transition-all duration-100 ease-in">
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onHide}
+      <DialogContent className="w-130">
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!description || creating || updating) return
+            void submit()
+          }}
         >
-          <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
-        </button>
-        <div className="relative shrink-0 p-6 pr-12 pb-3 title-2xl-semi-bold text-xl wrap-break-word text-text-primary">
-          {!data
-            ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
-            : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
-        </div>
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-          <div className="min-w-0 space-y-5 px-6 py-3">
+          <DialogHeader>
+            <DialogTitle>
+              {!data
+                ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
+                : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
+            </DialogTitle>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
+          <DialogBody className="min-w-0 space-y-5">
             <div className="space-y-0.5">
               <div className="flex h-6 items-center gap-1">
-                <div className="system-sm-medium text-text-secondary">
+                <label htmlFor={descriptionId} className="system-sm-medium text-text-secondary">
                   {t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
-                </div>
-                <div className="system-xs-regular text-text-destructive-secondary">*</div>
+                </label>
+                <span aria-hidden className="system-xs-regular text-text-destructive-secondary">
+                  *
+                </span>
               </div>
               <Textarea
-                aria-label={t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
-                className="h-[96px] resize-none"
+                id={descriptionId}
+                required
+                className="h-24 resize-none"
                 value={description}
                 placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
                   ns: 'tools',
@@ -159,7 +151,11 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                   <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
                     {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
                   </div>
-                  <Divider type="horizontal" className="m-0! h-px! grow bg-divider-subtle" />
+                  <Separator
+                    decorative
+                    orientation="horizontal"
+                    className="m-0 grow bg-divider-subtle"
+                  />
                 </div>
                 <div className="mb-2 body-xs-regular text-text-tertiary">
                   {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}
@@ -182,20 +178,21 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                 </div>
               </div>
             )}
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-row-reverse flex-wrap gap-2 p-6 pt-5">
-          <Button
-            disabled={!description || creating || updating}
-            variant="primary"
-            onClick={submit}
-          >
-            {data
-              ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
-              : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}
-          </Button>
-          <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-        </div>
+          </DialogBody>
+          <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
+            <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+            <Button
+              type="submit"
+              disabled={!description}
+              loading={creating || updating}
+              variant="primary"
+            >
+              {data
+                ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
+                : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

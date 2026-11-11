@@ -2,8 +2,8 @@
 
 import type { RefObject } from 'react'
 import type { ChatProps } from '../chat'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
-import type { Callback, ChatConfig, ChatItemInTree, Feedback } from '../types'
+import type { Theme } from '../embedded-chatbot/theme/theme'
+import type { Callback, ChatConfig, ChatItemInTree, OnFeedback } from '../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
@@ -23,7 +23,7 @@ export type ChatWithHistoryContextValue = {
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: (callback?: any) => void
+  handleStartChat: (callback?: () => void) => void
   handleChangeConversation: (conversationId: string) => void
   handlePinConversation: (conversationId: string) => void
   handleUnpinConversation: (conversationId: string) => void
@@ -32,12 +32,12 @@ export type ChatWithHistoryContextValue = {
   handleRenameConversation: (conversationId: string, newName: string, callback: Callback) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
-  isMobile: boolean
+  isBelowSm: boolean
   isInstalledApp: boolean
   appId?: string
-  handleFeedback: (messageId: string, feedback: Feedback) => void
+  handleFeedback: OnFeedback
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
-  themeBuilder?: ThemeBuilder
+  theme?: Theme
   sidebarCollapseState?: boolean
   handleSidebarCollapse: (state: boolean) => void
   clearChatList?: boolean
@@ -74,9 +74,9 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   handleRenameConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   isInstalledApp: false,
-  handleFeedback: noop,
+  handleFeedback: () => Promise.resolve(),
   currentChatInstanceRef: { current: { handleStop: noop } },
   sidebarCollapseState: false,
   handleSidebarCollapse: noop,

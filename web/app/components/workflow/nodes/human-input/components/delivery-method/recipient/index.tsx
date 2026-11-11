@@ -2,13 +2,14 @@ import type { RecipientData, Recipient as RecipientItem } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
-import { memo } from 'react'
+import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
-import { useMembers } from '@/service/use-common'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
 
@@ -20,10 +21,16 @@ type Props = Readonly<{
 }>
 
 const Recipient = ({ data, onChange }: Props) => {
-  const { t } = useTranslation()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { t } = useTranslation(['workflowHumanInput'])
+  const wholeWorkspaceId = useId()
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const { data: members } = useMembers()
+  const { data: members } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const accounts = members?.accounts || []
 
   const handleMemberSelect = (id: string) => {
@@ -67,11 +74,11 @@ const Recipient = ({ data, onChange }: Props) => {
             <RiGroupLine className="size-4 text-text-secondary" />
             <div className="system-sm-medium text-text-secondary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           </div>
-          <div className="w-[86px]">
+          <div className="w-21.5">
             <MemberSelector
               value={data.items}
               email={userProfileEmail}
@@ -95,13 +102,17 @@ const Recipient = ({ data, onChange }: Props) => {
             {currentWorkspace?.name[0]?.toLocaleUpperCase()}
           </span>
         </div>
-        <div className={cn('grow system-sm-medium text-text-secondary')}>
+        <label
+          htmlFor={wholeWorkspaceId}
+          className={cn('grow cursor-pointer system-sm-medium text-text-secondary')}
+        >
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], {
             workspaceName: currentWorkspace.name.replace(/'/g, '’'),
-            ns: 'workflow',
+            ns: 'workflowHumanInput',
           })}
-        </div>
+        </label>
         <Switch
+          id={wholeWorkspaceId}
           checked={data.whole_workspace}
           onCheckedChange={(checked) => onChange({ ...data, whole_workspace: checked })}
         />

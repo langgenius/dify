@@ -1,170 +1,23 @@
-import json
-import logging
-from datetime import datetime
+"""Cron rules, publication synchronization, polling, and schedule execution."""
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+import logging
+from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime
+from typing import Any, Protocol
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.workflow.nodes.trigger_schedule.entities import (
-    ScheduleConfig,
-    SchedulePlanUpdate,
-    TriggerScheduleNodeData,
-    VisualConfig,
-)
-from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, TriggerScheduleNodeData, VisualConfig
+from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleExecutionError
 from graphon.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
-from models.account import Account, TenantAccountJoin
-from models.trigger import WorkflowSchedulePlan
-from models.workflow import Workflow
-from services.errors.account import AccountNotFoundError
+from services.errors.app import QuotaExceededError
+from services.trigger.schedule_store import SchedulePublicationWriter, TriggerScheduleStore
 
 logger = logging.getLogger(__name__)
 
 
 class ScheduleService:
-    @staticmethod
-    def create_schedule(
-        tenant_id: str, app_id: str, config: ScheduleConfig, *, session: Session
-    ) -> WorkflowSchedulePlan:
-        """
-        Create a new schedule with validated configuration.
-
-        Args:
-            session: Database session
-            tenant_id: Tenant ID
-            app_id: Application ID
-            config: Validated schedule configuration
-
-        Returns:
-            Created WorkflowSchedulePlan instance
-        """
-        next_run_at = calculate_next_run_at(
-            config.cron_expression,
-            config.timezone,
-        )
-
-        schedule = WorkflowSchedulePlan(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            node_id=config.node_id,
-            cron_expression=config.cron_expression,
-            timezone=config.timezone,
-            next_run_at=next_run_at,
-        )
-
-        session.add(schedule)
-        session.flush()
-
-        return schedule
-
-    @staticmethod
-    def update_schedule(schedule_id: str, updates: SchedulePlanUpdate, *, session: Session) -> WorkflowSchedulePlan:
-        """
-        Update an existing schedule with validated configuration.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID to update
-            updates: Validated update configuration
-
-        Raises:
-            ScheduleNotFoundError: If schedule not found
-
-        Returns:
-            Updated WorkflowSchedulePlan instance
-        """
-        schedule = session.get(WorkflowSchedulePlan, schedule_id)
-        if not schedule:
-            raise ScheduleNotFoundError(f"Schedule not found: {schedule_id}")
-
-        # If time-related fields are updated, synchronously update the next_run_at.
-        time_fields_updated = False
-
-        if updates.node_id is not None:
-            schedule.node_id = updates.node_id
-
-        if updates.cron_expression is not None:
-            schedule.cron_expression = updates.cron_expression
-            time_fields_updated = True
-
-        if updates.timezone is not None:
-            schedule.timezone = updates.timezone
-            time_fields_updated = True
-
-        if time_fields_updated:
-            schedule.next_run_at = calculate_next_run_at(
-                schedule.cron_expression,
-                schedule.timezone,
-            )
-
-        session.flush()
-        return schedule
-
-    @staticmethod
-    def delete_schedule(schedule_id: str, *, session: Session) -> None:
-        """
-        Delete a schedule plan.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID to delete
-        """
-        schedule = session.get(WorkflowSchedulePlan, schedule_id)
-        if not schedule:
-            raise ScheduleNotFoundError(f"Schedule not found: {schedule_id}")
-
-        session.delete(schedule)
-        session.flush()
-
-    @staticmethod
-    def get_tenant_owner(tenant_id: str, *, session: Session) -> Account:
-        """
-        Returns an account to execute scheduled workflows on behalf of the tenant.
-        Prioritizes owner over admin to ensure proper authorization hierarchy.
-        """
-        result = session.execute(
-            select(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == "owner")
-            .limit(1)
-        ).scalar_one_or_none()
-
-        if not result:
-            # Owner may not exist in some tenant configurations, fallback to admin
-            result = session.execute(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == "admin")
-                .limit(1)
-            ).scalar_one_or_none()
-
-        if result:
-            account = session.get(Account, result.account_id)
-            if not account:
-                raise AccountNotFoundError(f"Account not found: {result.account_id}")
-            return account
-        else:
-            raise AccountNotFoundError(f"Account not found for tenant: {tenant_id}")
-
-    @staticmethod
-    def update_next_run_at(schedule_id: str, *, session: Session) -> datetime:
-        """
-        Advances the schedule to its next execution time after a successful trigger.
-        Uses current time as base to prevent missing executions during delays.
-        """
-        schedule = session.get(WorkflowSchedulePlan, schedule_id)
-        if not schedule:
-            raise ScheduleNotFoundError(f"Schedule not found: {schedule_id}")
-
-        # Base on current time to handle execution delays gracefully
-        next_run_at = calculate_next_run_at(
-            schedule.cron_expression,
-            schedule.timezone,
-        )
-
-        schedule.next_run_at = next_run_at
-        session.flush()
-        return next_run_at
+    """Pure schedule configuration rules shared by publication and debug execution."""
 
     @staticmethod
     def to_schedule_config(node_config: NodeConfigDict) -> ScheduleConfig:
@@ -195,7 +48,7 @@ class ScheduleService:
         return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
 
     @staticmethod
-    def extract_schedule_config(workflow: Workflow) -> ScheduleConfig | None:
+    def extract_schedule_config(graph_data: Mapping[str, Any]) -> ScheduleConfig | None:
         """
         Extracts schedule configuration from workflow graph.
 
@@ -203,7 +56,7 @@ class ScheduleService:
         its configuration (either visual or cron mode) into a unified ScheduleConfig.
 
         Args:
-            workflow: The workflow containing the graph definition
+            graph_data: The detached workflow graph definition
 
         Returns:
             ScheduleConfig if a valid schedule node is found, None if no schedule node exists
@@ -215,11 +68,6 @@ class ScheduleService:
             Currently only returns the first schedule node found.
             Multiple schedule nodes in the same workflow are not supported.
         """
-        try:
-            graph_data = workflow.graph_dict
-        except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}")
-
         if not graph_data:
             raise ScheduleConfigError("Workflow graph is empty")
 
@@ -230,26 +78,7 @@ class ScheduleService:
             if node_data.get("type") != TRIGGER_SCHEDULE_NODE_TYPE:
                 continue
 
-            node_id = node.get("id", "start")
-            trigger_data = TriggerScheduleNodeData.model_validate(node_data)
-            mode = trigger_data.mode
-            timezone = trigger_data.timezone
-
-            cron_expression = None
-            if mode == "cron":
-                cron_expression = trigger_data.cron_expression
-                if not cron_expression:
-                    raise ScheduleConfigError("Cron expression is required for cron mode")
-            elif mode == "visual":
-                frequency = trigger_data.frequency
-                if not frequency:
-                    raise ScheduleConfigError("Frequency is required for visual mode")
-                visual_config = VisualConfig.model_validate(trigger_data.visual_config or {})
-                cron_expression = ScheduleService.visual_to_cron(frequency, visual_config)
-            else:
-                raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
-
-            return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
+            return ScheduleService.to_schedule_config({"id": node.get("id", "start"), "data": node_data})
 
         return None
 
@@ -303,3 +132,112 @@ class ScheduleService:
 
         else:
             raise ScheduleConfigError(f"Unsupported frequency: {frequency}")
+
+
+class SchedulePublicationService:
+    def __init__(self, *, sync_schedule: SchedulePublicationWriter, now: Callable[[], datetime]) -> None:
+        self._sync_schedule = sync_schedule
+        self._now = now
+
+    def sync(self, *, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> None:
+        """Synchronize a published graph in the writer's transaction.
+
+        Invalid schedule configuration raises before the writer is called; a graph
+        without a schedule removes any existing plan.
+        """
+        config = ScheduleService.extract_schedule_config(graph)
+        next_run_at = (
+            calculate_next_run_at(config.cron_expression, config.timezone, self._now()) if config is not None else None
+        )
+        self._sync_schedule(tenant_id=tenant_id, app_id=app_id, config=config, next_run_at=next_run_at)
+
+
+class ScheduleQuotaCharge(Protocol):
+    def commit(self) -> None: ...
+    def refund(self) -> None: ...
+
+
+class ScheduleWorkflowDispatcher(Protocol):
+    def __call__(self, *, account_id: str, tenant_id: str, app_id: str, node_id: str) -> str: ...
+
+
+class TriggerScheduleService:
+    def __init__(
+        self,
+        *,
+        schedules: TriggerScheduleStore,
+        publish: Callable[[Sequence[str]], None],
+        dispatch: ScheduleWorkflowDispatcher,
+        reserve: Callable[[str], ScheduleQuotaCharge],
+        mark_rate_limited: Callable[[str], None],
+        now: Callable[[], datetime],
+        batch_size: int,
+        max_dispatch_per_tick: int,
+    ) -> None:
+        self._schedules = schedules
+        self._publish = publish
+        self._dispatch = dispatch
+        self._reserve = reserve
+        self._mark_rate_limited = mark_rate_limited
+        self._now = now
+        self._batch_size = batch_size
+        self._max_dispatch_per_tick = max_dispatch_per_tick
+
+    def poll(self) -> int:
+        """Claim due schedules, advance them, and return the number dispatched.
+
+        Each batch is published before its claim transaction commits; publication
+        failures propagate and roll back that batch's schedule updates.
+        """
+        total_dispatched = 0
+        has_more = True
+        while has_more:
+            with self._schedules.claim_due(now=self._now(), limit=self._batch_size) as claimed:
+                schedules = claimed.schedules
+                if schedules:
+                    next_run_times = {
+                        schedule.id: calculate_next_run_at(schedule.cron_expression, schedule.timezone, self._now())
+                        for schedule in schedules
+                    }
+                    claimed.advance(next_run_times)
+                    self._publish(tuple(schedule.id for schedule in schedules))
+            total_dispatched += len(schedules)
+            limit_reached = 0 < self._max_dispatch_per_tick <= total_dispatched
+            if limit_reached:
+                logger.warning(
+                    "Schedule dispatch limit reached after %d schedules; continuing next tick", total_dispatched
+                )
+            has_more = bool(schedules) and not limit_reached
+        if total_dispatched:
+            logger.info("Total processed: %d workflow schedule(s) dispatched", total_dispatched)
+        return total_dispatched
+
+    def execute(self, schedule_id: str) -> None:
+        """Dispatch an existing schedule using its tenant owner or admin.
+
+        Quota exhaustion marks the tenant rate-limited and skips dispatch. A
+        successful dispatch commits the reservation. Dispatch or commit failure
+        attempts a refund and raises ScheduleExecutionError if the refund succeeds.
+        """
+        execution = self._schedules.get_for_execution(schedule_id)
+        schedule = execution.schedule
+        try:
+            charge = self._reserve(schedule.tenant_id)
+        except QuotaExceededError:
+            self._mark_rate_limited(schedule.tenant_id)
+            logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
+            return
+        try:
+            trigger_log_id = self._dispatch(
+                account_id=execution.account_id,
+                tenant_id=schedule.tenant_id,
+                app_id=schedule.app_id,
+                node_id=schedule.node_id,
+            )
+            charge.commit()
+        except Exception as exc:
+            charge.refund()
+            raise ScheduleExecutionError(
+                f"Failed to trigger workflow for schedule {schedule_id}, app {schedule.app_id}"
+            ) from exc
+        logger.info("Schedule %s triggered workflow: %s", schedule_id, trigger_log_id)

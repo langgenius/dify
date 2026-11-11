@@ -7,7 +7,7 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 type RetryOnNodeProps = Pick<Node, 'id' | 'data'>
 const RetryOnNode = ({ data }: RetryOnNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { retry_config } = data
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const { isRunning, isSuccessful, isException, isFailed } = useMemo(() => {
@@ -28,7 +28,7 @@ const RetryOnNode = ({ data }: RetryOnNodeProps) => {
     <div className="mb-1 px-3">
       <div
         className={cn(
-          'flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-[5px] py-1 system-xs-medium-uppercase text-text-tertiary',
+          'flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-1.25 py-1 system-xs-medium-uppercase text-text-tertiary',
           isRunning && 'border-state-accent-active bg-state-accent-hover text-text-accent',
           isSuccessful && 'border-state-success-active bg-state-success-hover text-text-success',
           (isException || isFailed) &&

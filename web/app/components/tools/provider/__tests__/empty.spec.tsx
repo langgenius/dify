@@ -1,10 +1,8 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ToolType } from '../../../workflow/block-selector/types'
 import Empty from '../empty'
-
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 
 describe('Empty', () => {
   it.each([

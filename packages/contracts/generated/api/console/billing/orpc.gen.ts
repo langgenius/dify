@@ -2,14 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zBillingOperationFailedError, zBillingUnavailableError } from './zod.gen.ts'
 import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
   zGetBillingSubscriptionResponse,
-  zPutBillingPartnersByPartnerKeyTenantsBody,
-  zPutBillingPartnersByPartnerKeyTenantsPath,
-  zPutBillingPartnersByPartnerKeyTenantsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -20,41 +18,13 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetBillingInvoicesResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const invoices = {
   get,
-}
-
-/**
- * Sync partner tenants bindings
- */
-export const put = oc
-  .route({
-    description: 'Sync partner tenants bindings',
-    inputStructure: 'detailed',
-    method: 'PUT',
-    operationId: 'putBillingPartnersByPartnerKeyTenants',
-    path: '/billing/partners/{partner_key}/tenants',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPutBillingPartnersByPartnerKeyTenantsBody,
-      params: zPutBillingPartnersByPartnerKeyTenantsPath,
-    }),
-  )
-  .output(zPutBillingPartnersByPartnerKeyTenantsResponse)
-
-export const tenants = {
-  put,
-}
-
-export const byPartnerKey = {
-  tenants,
-}
-
-export const partners = {
-  byPartnerKey,
 }
 
 export const get2 = oc
@@ -67,6 +37,10 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const subscription = {
   get: get2,
@@ -74,7 +48,6 @@ export const subscription = {
 
 export const billing = {
   invoices,
-  partners,
   subscription,
 }
 

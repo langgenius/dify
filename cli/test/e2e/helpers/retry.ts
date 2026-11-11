@@ -41,7 +41,9 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}
       await sleep(delay)
     }
   }
-  throw lastErr
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error('Retry failed with a non-Error value.', { cause: lastErr })
 }
 
 function sleep(ms: number): Promise<void> {

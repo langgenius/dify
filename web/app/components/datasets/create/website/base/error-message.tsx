@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import * as React from 'react'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 type Props = Readonly<{
   className?: string
@@ -12,20 +11,10 @@ type Props = Readonly<{
 
 const ErrorMessage: FC<Props> = ({ className, title, errorMsg }) => {
   return (
-    <div
-      className={cn(
-        className,
-        'border-t border-divider-subtle bg-dataset-warning-message-bg px-4 py-2 opacity-40',
-      )}
-    >
-      <div className="flex h-5 items-center">
-        <AlertTriangle className="mr-2 size-4 text-text-warning-secondary" />
-        <div className="system-md-medium text-text-warning">{title}</div>
-      </div>
-      {errorMsg && (
-        <div className="mt-1 pl-6 system-xs-regular text-text-secondary">{errorMsg}</div>
-      )}
-    </div>
+    <Alert type="error" className={className}>
+      <AlertTitle>{title}</AlertTitle>
+      {errorMsg && <AlertDescription>{errorMsg}</AlertDescription>}
+    </Alert>
   )
 }
 export default React.memo(ErrorMessage)

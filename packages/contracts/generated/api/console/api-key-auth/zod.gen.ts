@@ -3,12 +3,19 @@
 import * as z from 'zod'
 
 /**
- * ApiKeyAuthBindingPayload
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
  */
-export const zApiKeyAuthBindingPayload = z.object({
-  category: z.string(),
-  credentials: z.record(z.string(), z.unknown()),
-  provider: z.string(),
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
 })
 
 /**
@@ -17,6 +24,30 @@ export const zApiKeyAuthBindingPayload = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * UnsupportedDataSourceApiKeyAuthProviderError
+ *
+ * The data-source API-key authentication provider is not supported.
+ */
+export const zUnsupportedDataSourceApiKeyAuthProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_data_source_api_key_auth_provider'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DataSourceApiKeyAuthProviderUnavailableError
+ *
+ * The data-source API-key authentication provider is temporarily unavailable.
+ */
+export const zDataSourceApiKeyAuthProviderUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('data_source_api_key_auth_provider_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * ApiKeyAuthDataSourceItem
@@ -35,6 +66,30 @@ export const zApiKeyAuthDataSourceItem = z.object({
  */
 export const zApiKeyAuthDataSourceListResponse = z.object({
   sources: z.array(zApiKeyAuthDataSourceItem),
+})
+
+/**
+ * ApiKeyAuthConfigPayload
+ */
+export const zApiKeyAuthConfigPayload = z.object({
+  api_key: z.string().min(1),
+})
+
+/**
+ * ApiKeyAuthCredentialsPayload
+ */
+export const zApiKeyAuthCredentialsPayload = z.object({
+  auth_type: z.string().min(1),
+  config: zApiKeyAuthConfigPayload,
+})
+
+/**
+ * ApiKeyAuthBindingPayload
+ */
+export const zApiKeyAuthBindingPayload = z.object({
+  category: z.string().min(1),
+  credentials: zApiKeyAuthCredentialsPayload,
+  provider: z.string().min(1),
 })
 
 /**

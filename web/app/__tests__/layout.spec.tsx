@@ -1,14 +1,17 @@
-import { QueryClient } from '@tanstack/react-query'
-
-let queryClient: QueryClient
+import { renderToStaticMarkup } from 'react-dom/server'
 
 const mocks = vi.hoisted(() => ({
-  getSystemFeatures: vi.fn(),
-  requestHeaders: new Headers(),
+  dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
+  getOptionalSystemFeatures: vi.fn(),
+  getDatasetMap: vi.fn<() => Record<string, string>>(() => ({})),
+  headers: vi.fn(async () => new Headers()),
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => queryClient,
+vi.mock('@/service/console/server', () => ({}))
+
+vi.mock('@/features/system-features/server', () => ({
+  dehydrateSystemFeatures: mocks.dehydrateSystemFeatures,
+  getOptionalSystemFeatures: mocks.getOptionalSystemFeatures,
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -16,56 +19,141 @@ vi.mock('@/env', async (importOriginal) => {
 
   return {
     ...actual,
-    getDatasetMap: () => ({}),
+    getDatasetMap: mocks.getDatasetMap,
   }
 })
 
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: () => ({
-          queryKey: ['console', 'system-features'],
-          queryFn: mocks.getSystemFeatures,
-          retry: false,
-        }),
-      },
-    },
-  },
-}))
-
-vi.mock('@/i18n-config/server', () => ({
+vi.mock('@/i18n/server', () => ({
   getLocaleOnServer: async () => 'en-US',
 }))
 
 vi.mock('@/next/headers', () => ({
-  headers: async () => mocks.requestHeaders,
+  headers: mocks.headers,
 }))
 
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    mocks.getDatasetMap.mockReturnValue({})
+    mocks.headers.mockResolvedValue(new Headers())
   })
 
-  it('caches the resolved System Features for dehydration', async () => {
-    mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
+  it.each([
+    ['zh-CN,zh;q=0.9', 'zh-Hans', 'ltr'],
+    ['ar-TN,ar;q=0.9', 'ar-TN', 'rtl'],
+    ['fa-IR,fa;q=0.9', 'fa-IR', 'rtl'],
+  ])(
+    'renders the terminal error document in %s without console bootstrap',
+    async (language, locale, direction) => {
+      mocks.headers.mockResolvedValue(
+        new Headers({
+          'x-dify-pathname': '/webapp-unavailable',
+          'accept-language': language,
+        }),
+      )
+      const { default: RootLayout, generateMetadata } = await import('../layout')
+
+      const html = renderToStaticMarkup(
+        await RootLayout({ children: <main>App unavailable</main> }),
+      )
+      const document = new DOMParser().parseFromString(html, 'text/html')
+
+      expect(document.documentElement.lang).toBe(locale)
+      expect(document.documentElement.dir).toBe(direction)
+      expect(document.body.querySelector('main')).toHaveTextContent('App unavailable')
+      await expect(generateMetadata()).resolves.toEqual({ icons: { icon: '/favicon.ico' } })
+
+      expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
+      expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
+    },
+  )
+
+  it('makes runtime configuration available on html before head scripts', async () => {
+    const dataset = {
+      'data-api-prefix': 'https://runtime.example.com/console/api',
+      'data-enable-hitl-im': 'true',
+    }
+    mocks.getDatasetMap.mockReturnValue(dataset)
+    mocks.headers.mockResolvedValue(new Headers({ 'x-dify-pathname': '/webapp-unavailable' }))
     const { default: RootLayout } = await import('../layout')
+    const html = renderToStaticMarkup(await RootLayout({ children: <main>App unavailable</main> }))
+    const document = new DOMParser().parseFromString(html, 'text/html')
+    for (const [key, value] of Object.entries(dataset)) {
+      expect(document.documentElement).toHaveAttribute(key, value)
+      expect(document.body).not.toHaveAttribute(key)
+    }
+  })
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
-
-    expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(queryClient.getQueryData(['console', 'system-features'])).toEqual({
+  it('uses optional System Features for branded metadata', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
+      branding: {
+        application_title: 'Acme AI',
+        enabled: true,
+      },
       deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      title: {
+        default: 'Acme AI',
+        template: '%s - Acme AI',
+      },
     })
   })
 
-  it('renders the client recovery path when the server prefetch fails', async () => {
-    mocks.getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
-    const { default: RootLayout } = await import('../layout')
+  it('points the icons at the branding favicon when one is configured', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
+      branding: {
+        application_title: 'Acme AI',
+        enabled: true,
+        favicon: 'https://cdn.example.com/brand.ico',
+      },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: {
+        icon: 'https://cdn.example.com/brand.ico',
+        apple: 'https://cdn.example.com/brand.ico',
+      },
+    })
+  })
 
-    expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
+  it('falls back to the static favicon without branding', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
+      branding: { enabled: false },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
+  it('falls back to the static favicon when branding is enabled without one', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue({
+      branding: { application_title: 'Acme AI', enabled: true, favicon: '' },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
+  it('uses default metadata when optional System Features are unavailable', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      title: {
+        default: 'Dify',
+        template: '%s - Dify',
+      },
+    })
   })
 })

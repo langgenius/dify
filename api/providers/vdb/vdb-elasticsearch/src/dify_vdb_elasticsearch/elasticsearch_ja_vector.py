@@ -3,6 +3,7 @@ import logging
 from typing import Any, override
 
 from flask import current_app
+from sqlalchemy.orm import Session
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -72,7 +73,10 @@ class ElasticSearchJaVector(ElasticSearchVector):
                         Field.METADATA_KEY: {
                             "type": "object",
                             "properties": {
-                                "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
+                                "document_id": {
+                                    "type": "keyword"
+                                },  # Map document_id to keyword type; required for document-scoped retrieval
                             },
                         },
                     }
@@ -84,14 +88,16 @@ class ElasticSearchJaVector(ElasticSearchVector):
 
 class ElasticSearchJaVectorFactory(ElasticSearchVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> ElasticSearchJaVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> ElasticSearchJaVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ELASTICSEARCH, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ELASTICSEARCH_JA, collection_name))
 
         config = current_app.config
         return ElasticSearchJaVector(

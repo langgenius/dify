@@ -1,0 +1,94 @@
+import type { EmbeddedFile } from '@/sys'
+import { readFile, stat } from 'node:fs/promises'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { z } from 'zod'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { embeddedFiles, isCompiledBinary } from '@/sys'
+import { ENTRY_KIND, walkTree } from '@/sys/tree'
+
+export const SKILL_NAME = 'difyctl'
+export const SKILL_FILE = 'SKILL.md'
+const EMBED_PREFIX = `${SKILL_NAME}/`
+const REPO_SKILL_DIR = fileURLToPath(new URL(`../../../skills/${EMBED_PREFIX}`, import.meta.url))
+const NO_EMBEDDED_SKILL =
+  'this difyctl build has no embedded skill; reinstall difyctl or pass --from <folder>'
+
+const EXECUTABLE_MODE = 0o755
+const FILE_MODE = 0o644
+const PERMISSION_BITS = 0o777
+const SHEBANG = [0x23, 0x21]
+
+export type SkillFile = {
+  readonly bytes: Uint8Array
+  readonly mode: number
+}
+
+export type SkillSource = {
+  readonly paths: readonly string[]
+  readonly read: (path: string) => Promise<SkillFile>
+}
+
+// Embedded files carry no permission bits, so a script is recognised by its shebang.
+function embeddedMode(bytes: Uint8Array): number {
+  return SHEBANG.every((byte, i) => bytes[i] === byte) ? EXECUTABLE_MODE : FILE_MODE
+}
+
+async function readLocal(abs: string): Promise<SkillFile> {
+  const [bytes, info] = await Promise.all([readFile(abs), stat(abs)])
+  return { bytes, mode: info.mode & PERMISSION_BITS }
+}
+
+export const FROM_FIELD = z
+  .string()
+  .min(1)
+  .optional()
+  .describe('A local skill folder to install instead of the one built into difyctl')
+
+export async function openDir(root: string): Promise<SkillSource> {
+  const found = await stat(join(root, SKILL_FILE)).then(
+    () => true,
+    () => false,
+  )
+  if (!found) {
+    throw new BaseError({
+      code: ErrorCode.UsageInvalidFlag,
+      message: `no ${SKILL_FILE} in "${root}"`,
+    })
+  }
+  const paths: string[] = []
+  for await (const entry of walkTree(root)) {
+    if (entry.kind === ENTRY_KIND.File) paths.push(entry.path)
+  }
+  return { paths, read: (path) => readLocal(join(root, path)) }
+}
+
+function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
+  const byPath = new Map(files.map((file) => [file.name.slice(EMBED_PREFIX.length), file]))
+  return {
+    paths: [...byPath.keys()],
+    read: async (path) => {
+      const file = byPath.get(path)
+      if (file === undefined)
+        throw new BaseError({
+          code: ErrorCode.SkillMissing,
+          message: `the embedded skill has no ${path}`,
+        })
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      return { bytes, mode: embeddedMode(bytes) }
+    },
+  }
+}
+
+async function defaultSource(): Promise<SkillSource> {
+  const files = embeddedFiles().filter((file) => file.name.startsWith(EMBED_PREFIX))
+  if (files.length > 0) return embeddedSource(files)
+  if (isCompiledBinary())
+    throw new BaseError({ code: ErrorCode.SkillMissing, message: NO_EMBEDDED_SKILL })
+  return openDir(REPO_SKILL_DIR)
+}
+
+export function openSource(from: string | undefined): Promise<SkillSource> {
+  return from === undefined ? defaultSource() : openDir(from)
+}

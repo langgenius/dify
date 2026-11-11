@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { replaceLoginRedirect } from '../login-redirect.client'
 
 describe('replaceLoginRedirect', () => {
@@ -6,11 +6,10 @@ describe('replaceLoginRedirect', () => {
   const locationReplace = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.stubGlobal('location', {
       ...window.location,
       replace: locationReplace,
-    } as unknown as Location)
+    })
   })
 
   afterEach(() => {

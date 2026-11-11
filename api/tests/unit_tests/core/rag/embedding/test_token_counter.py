@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -7,11 +7,12 @@ from models.dataset import Dataset
 
 
 def test_high_quality_counts_each_document_once() -> None:
-    dataset = Mock(spec=Dataset)
-    dataset.tenant_id = "tenant-1"
-    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-    dataset.embedding_model_provider = "provider"
-    dataset.embedding_model = "model"
+    dataset = Dataset(
+        tenant_id="tenant-1",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        embedding_model_provider="provider",
+        embedding_model="model",
+    )
     documents = [
         Document(page_content="first", metadata={}),
         Document(page_content="second", metadata={}),
@@ -31,8 +32,9 @@ def test_high_quality_counts_each_document_once() -> None:
 
 
 def test_economy_returns_zero_without_loading_model() -> None:
-    dataset = Mock(spec=Dataset)
-    dataset.indexing_technique = IndexTechniqueType.ECONOMY
+    dataset = Dataset(
+        indexing_technique=IndexTechniqueType.ECONOMY,
+    )
     documents = [
         Document(page_content="first", metadata={}),
         Document(page_content="second", metadata={}),
@@ -46,8 +48,9 @@ def test_economy_returns_zero_without_loading_model() -> None:
 
 
 def test_empty_documents_return_without_loading_model() -> None:
-    dataset = Mock(spec=Dataset)
-    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+    dataset = Dataset(
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+    )
 
     with patch("core.rag.embedding.token_counter.ModelManager.for_tenant") as model_manager_factory:
         result = calculate_segment_token_counts(dataset=dataset, documents=[])

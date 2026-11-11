@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A standalone text input primitive built on Base UI Input. Use it for labelled text boxes outside FieldControl, and keep FieldControl for full Field form composition.',
+          'The standalone Dify text input built on Base UI Input. Compose it with Field for labels, descriptions, and validation; use InputGroupInput for controls inside an InputGroup.',
       },
     },
   },
@@ -25,56 +25,10 @@ type Story = StoryObj<typeof meta>
 
 export const Basic: Story = {
   render: () => (
-    <div className="w-80">
-      <label
-        htmlFor="workspace-name"
-        className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary"
-      >
-        Workspace name
-      </label>
-      <Input
-        id="workspace-name"
-        name="workspaceName"
-        autoComplete="organization"
-        placeholder="e.g. Acme workspace…"
-      />
-    </div>
-  ),
-}
-
-export const Sizes: Story = {
-  render: () => (
-    <div className="grid w-80 gap-3">
-      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="small-input">
-        Small
-        <Input
-          id="small-input"
-          size="small"
-          name="smallInput"
-          placeholder="e.g. tag…"
-          autoComplete="off"
-        />
-      </label>
-      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="medium-input">
-        Medium
-        <Input
-          id="medium-input"
-          name="mediumInput"
-          placeholder="e.g. Production API…"
-          autoComplete="off"
-        />
-      </label>
-      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="large-input">
-        Large
-        <Input
-          id="large-input"
-          size="large"
-          name="largeInput"
-          placeholder="e.g. Customer portal…"
-          autoComplete="off"
-        />
-      </label>
-    </div>
+    <Field name="workspaceName" className="w-80">
+      <FieldLabel>Workspace name</FieldLabel>
+      <Input autoComplete="organization" placeholder="e.g. Acme workspace…" />
+    </Field>
   ),
 }
 
@@ -117,6 +71,16 @@ export const States: Story = {
           <FieldError match>Enter a full URL including https://.</FieldError>
         </Field>
       </div>
+      <Field name="readonlyRepositoryUrl" invalid>
+        <FieldLabel>Read-only invalid</FieldLabel>
+        <Input readOnly defaultValue="github.com/langgenius" />
+        <FieldError match>Enter a full URL including https://.</FieldError>
+      </Field>
+      <Field name="disabledRepositoryUrl" invalid>
+        <FieldLabel>Disabled invalid</FieldLabel>
+        <Input disabled defaultValue="github.com/langgenius" />
+        <FieldError match>Enter a full URL including https://.</FieldError>
+      </Field>
       <div className="grid gap-1">
         <label className="system-sm-medium text-text-secondary" htmlFor="disabled-state">
           Disabled

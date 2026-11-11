@@ -1,20 +1,28 @@
 'use client'
 
-import type { Input as BaseInputNS } from '@base-ui/react/input'
-import type { VariantProps } from 'class-variance-authority'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cn } from '../cn'
-import { textControlVariants } from '../form-control-shared'
+import { textControlClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-export type InputSize = NonNullable<VariantProps<typeof textControlVariants>['size']>
+type InputProps = Omit<BaseInput.Props, 'size'>
+type InputChangeEventReason = BaseInput.ChangeEventReason
+type InputChangeEventDetails = BaseInput.ChangeEventDetails
 
-export type InputProps = Omit<BaseInputNS.Props, 'className' | 'size'> &
-  VariantProps<typeof textControlVariants> & {
-    className?: string
-  }
-
-export type InputChangeEventDetails = BaseInputNS.ChangeEventDetails
-
-export function Input({ className, size = 'medium', ...props }: InputProps) {
-  return <BaseInput className={cn(textControlVariants({ size }), className)} {...props} />
+function Input({ className, ...props }: InputProps) {
+  return (
+    <BaseInput
+      className={(state) =>
+        cn(
+          textControlClassName,
+          'rounded-lg px-3 py-1.75 system-sm-regular',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
 }
+
+export { Input }
+export type { InputChangeEventDetails, InputChangeEventReason, InputProps }

@@ -8,6 +8,8 @@ import json
 from decimal import Decimal
 from typing import cast
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
@@ -79,6 +81,7 @@ class ModelInvocationUtils:
         return tokens
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.TOOL)
     def invoke(
         user_id: str,
         tenant_id: str,
@@ -146,17 +149,17 @@ class ModelInvocationUtils:
                 callbacks=[],
             )
         except InvokeRateLimitError as e:
-            raise InvokeModelError(f"Invoke rate limit error: {e}")
+            raise InvokeModelError(f"Invoke rate limit error: {e}") from e
         except InvokeBadRequestError as e:
-            raise InvokeModelError(f"Invoke bad request error: {e}")
+            raise InvokeModelError(f"Invoke bad request error: {e}") from e
         except InvokeConnectionError as e:
-            raise InvokeModelError(f"Invoke connection error: {e}")
+            raise InvokeModelError(f"Invoke connection error: {e}") from e
         except InvokeAuthorizationError as e:
-            raise InvokeModelError("Invoke authorization error")
+            raise InvokeModelError("Invoke authorization error") from e
         except InvokeServerUnavailableError as e:
-            raise InvokeModelError(f"Invoke server unavailable error: {e}")
+            raise InvokeModelError(f"Invoke server unavailable error: {e}") from e
         except Exception as e:
-            raise InvokeModelError(f"Invoke error: {e}")
+            raise InvokeModelError(f"Invoke error: {e}") from e
 
         # update tool model invoke
         tool_model_invoke.model_response = str(response.message.content)

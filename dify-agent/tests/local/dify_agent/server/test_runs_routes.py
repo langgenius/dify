@@ -1,9 +1,10 @@
 from fastapi.testclient import TestClient
 
-from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID
+from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, RunFailureType
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
+from dify_agent.storage.redis_run_store import RunNotFoundError
 
 
 class FakeScheduler:
@@ -20,6 +21,29 @@ class FakeStore:
     pass
 
 
+def test_get_run_status_returns_failure_type() -> None:
+    from fastapi import FastAPI
+
+    class FailedRunStore:
+        async def get_run(self, run_id: str) -> RunRecord:
+            return RunRecord(
+                run_id=run_id,
+                status="failed",
+                error="run limit reached",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            )
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FailedRunStore(), lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    response = TestClient(app).get("/runs/run-1")
+
+    assert response.status_code == 200
+    assert response.json()["error"] == "run limit reached"
+    assert response.json()["error_type"] == "agent_run_limit_exceeded"
+
+
 def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:
     from fastapi import FastAPI
 
@@ -33,8 +57,8 @@ def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": ["", "   "]}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": ["", "   "]}}],
             }
         },
     )
@@ -61,8 +85,8 @@ def test_create_run_returns_running_from_scheduler() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
@@ -106,6 +130,26 @@ def test_cancel_run_endpoint_maps_conflict() -> None:
     assert "already finished" in response.json()["detail"]
 
 
+def test_cancel_run_endpoint_maps_missing_run() -> None:
+    from fastapi import FastAPI
+
+    class MissingRunScheduler(FakeScheduler):
+        async def cancel_run(self, run_id: str, request: object) -> CancelRunResponse:
+            del request
+            raise RunNotFoundError(run_id)
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: MissingRunScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post("/runs/missing/cancel", json={})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "run not found"}
+
+
 def test_create_run_accepts_valid_full_plugin_graph() -> None:
     from fastapi import FastAPI
 
@@ -124,12 +168,11 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
+                "schema_version": 2,
                 "layers": [
-                    {"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}},
+                    {"name": "prompt", "config": {"user": "hello"}},
                     {
                         "name": "execution-context-renamed",
-                        "type": "dify.execution_context",
                         "config": {
                             "tenant_id": "tenant-1",
                             "user_from": "account",
@@ -139,8 +182,6 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
                     },
                     {
                         "name": DIFY_AGENT_MODEL_LAYER_ID,
-                        "type": "dify.plugin.llm",
-                        "deps": {"execution_context": "execution-context-renamed"},
                         "config": {
                             "plugin_id": "langgenius/openai",
                             "model_provider": "openai",
@@ -158,7 +199,7 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
     assert response.json() == {"run_id": "run-1", "status": "running"}
 
 
-def test_create_run_accepts_unknown_layer_exit_signal_request() -> None:
+def test_create_run_rejects_removed_layer_exit_signal_request() -> None:
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -171,15 +212,14 @@ def test_create_run_accepts_unknown_layer_exit_signal_request() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             },
             "on_exit": {"layers": {"missing": "delete"}},
         },
     )
 
-    assert response.status_code == 202
-    assert response.json() == {"run_id": "run-1", "status": "running"}
+    assert response.status_code == 422
 
 
 def test_create_run_accepts_closed_session_snapshot_request() -> None:
@@ -195,8 +235,8 @@ def test_create_run_accepts_closed_session_snapshot_request() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             },
             "session_snapshot": {
                 "schema_version": 1,
@@ -233,8 +273,8 @@ def test_create_run_returns_503_when_scheduler_is_stopping() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
@@ -261,8 +301,8 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )

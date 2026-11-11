@@ -9,11 +9,12 @@ from sqlalchemy.exc import SQLAlchemyError
 import app
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from enums.cloud_plan import CloudPlan
+from core.rag.index_processor.index_processor import IndexProcessorFactory
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.pagination import paginate_query
 from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.feature_service import FeatureService
 
 
@@ -55,8 +56,8 @@ def clean_unused_datasets_task():
                     select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                         Document.updated_at > clean_day,
                     )
                     .group_by(Document.dataset_id)
@@ -68,8 +69,8 @@ def clean_unused_datasets_task():
                     select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                         Document.updated_at < clean_day,
                     )
                     .group_by(Document.dataset_id)
@@ -126,8 +127,8 @@ def clean_unused_datasets_task():
                                         documents = session.scalars(
                                             select(Document).where(
                                                 Document.dataset_id == dataset.id,
-                                                Document.enabled == True,
-                                                Document.archived == False,
+                                                Document.enabled.is_(True),
+                                                Document.archived.is_(False),
                                             )
                                         ).all()
                                         for document in documents:
@@ -140,7 +141,7 @@ def clean_unused_datasets_task():
 
                                     # Remove index
                                     index_processor = IndexProcessorFactory(
-                                        dataset.get_doc_form(session=session)
+                                        get_dataset_doc_form(dataset, session=session)
                                     ).init_index_processor()
                                     index_processor.clean(dataset, None, session=session)
 

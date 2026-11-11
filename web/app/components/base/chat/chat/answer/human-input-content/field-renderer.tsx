@@ -2,11 +2,15 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
@@ -22,16 +26,17 @@ export type HumanInputFieldValue = string | FileEntity | FileEntity[] | null
 
 type Props = Readonly<{
   field: FormInputItem
+  label?: string
   value?: HumanInputFieldValue
   onChange: (value: HumanInputFieldValue) => void
 }>
 
-const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
+const HumanInputFieldRenderer = ({ field, label, value, onChange }: Props) => {
   if (isParagraphFormInput(field)) {
     return (
       <Textarea
-        aria-label={field.output_variable_name}
-        className="h-[104px] sm:text-xs"
+        aria-label={label ?? field.output_variable_name}
+        className="h-26 sm:text-xs"
         value={typeof value === 'string' ? value : ''}
         onValueChange={(nextValue) => onChange(nextValue)}
         data-testid="content-item-textarea"
@@ -53,17 +58,27 @@ const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
           onChange(nextValue)
         }}
       >
-        <SelectTrigger size="large" className="w-full" aria-label={field.output_variable_name}>
-          {typeof value === 'string' ? value : ''}
+        <SelectTrigger
+          size="large"
+          className="w-full"
+          aria-label={label ?? field.output_variable_name}
+        >
+          <SelectValue />
         </SelectTrigger>
-        <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              <SelectItemText>{option.name}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList className="max-h-35 overflow-y-auto">
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <SelectItemText>{option.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </Select>
     )
   }

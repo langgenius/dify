@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '.'
 import { Button } from '../button'
-import { Field, FieldDescription } from '../field'
+import { Field, FieldError } from '../field'
 import { Form } from '../form'
 
 const triggerWidth = 'w-64'
@@ -27,6 +27,20 @@ const cityItems = [
   { label: 'Paris', value: 'paris' },
 ]
 
+const timezoneItems = [
+  { label: 'UTC', value: 'utc' },
+  { label: 'Pacific (PST)', value: 'pst' },
+  { label: 'Japan (JST)', value: 'jst' },
+]
+
+const deploymentRegionItems = [
+  { label: 'US East', value: 'us-east' },
+  { label: 'Europe West', value: 'eu-west' },
+  { label: 'Asia Pacific', value: 'ap-southeast' },
+] as const
+
+type DeploymentRegion = (typeof deploymentRegionItems)[number]['value']
+
 const meta = {
   title: 'Base/Form/Select',
   component: Select,
@@ -35,7 +49,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
+          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single- or multiple-value pickers with groups, labels, separators, and keyboard selection.',
       },
     },
   },
@@ -52,7 +66,7 @@ export const Default: Story = {
         <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
-        <SelectContent listProps={{ 'aria-label': 'City options' }}>
+        <SelectContent>
           <SelectItem value="seattle">
             <SelectItemText>Seattle</SelectItemText>
             <SelectItemIndicator />
@@ -86,12 +100,22 @@ export const Default: Story = {
       await expect(body.getByRole('option', { name: 'Tokyo' })).toBeVisible()
     })
 
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
-    await expect(trigger).toHaveTextContent('Tokyo')
-
-    await userEvent.keyboard('{Escape}')
+    const listbox = body.getByRole('listbox')
     await waitFor(async () => {
-      await expect(body.queryByRole('listbox', { name: 'City options' })).not.toBeInTheDocument()
+      await expect(body.getByRole('option', { name: 'Seattle' })).toHaveFocus()
+    })
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'New York' })).toHaveFocus()
+    })
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'Tokyo' })).toHaveFocus()
+    })
+    await userEvent.keyboard('{Enter}')
+    await expect(trigger).toHaveTextContent('Tokyo')
+    await waitFor(async () => {
+      await expect(listbox).not.toBeVisible()
     })
   },
 }
@@ -290,7 +314,38 @@ export const ReadOnly: Story = {
   ),
 }
 
-const ControlledDemo = () => {
+export const Invalid: Story = {
+  render: () => (
+    <React.Fragment>
+      {(['Editable', 'Read only', 'Disabled'] as const).map((state) => (
+        <Field key={state} invalid>
+          <Select
+            items={cityItems}
+            defaultValue="seattle"
+            readOnly={state === 'Read only'}
+            disabled={state === 'Disabled'}
+          >
+            <SelectLabel>{state}</SelectLabel>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {cityItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  <SelectItemText>{item.label}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldError match>This city is no longer available.</FieldError>
+        </Field>
+      ))}
+    </React.Fragment>
+  ),
+}
+
+function ControlledDemo() {
   const [value, setValue] = React.useState<string | null>('balanced')
 
   return (
@@ -328,31 +383,90 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
+function MultipleControlledDemo() {
+  const [value, setValue] = React.useState<DeploymentRegion[]>(['us-east', 'eu-west'])
+
+  return (
+    <div className={triggerWidth}>
+      <Select<DeploymentRegion, true>
+        items={deploymentRegionItems}
+        multiple
+        value={value}
+        onValueChange={setValue}
+      >
+        <SelectLabel>Deployment regions</SelectLabel>
+        <SelectTrigger>
+          <SelectValue<DeploymentRegion, true>>
+            {(selectedRegions) => {
+              if (!selectedRegions?.length) return 'Choose regions'
+
+              const [firstSelectedRegion] = selectedRegions
+              if (!firstSelectedRegion) return 'Choose regions'
+
+              const firstRegion = deploymentRegionItems.find(
+                (item) => item.value === firstSelectedRegion,
+              )
+              const additionalRegionCount = selectedRegions.length - 1
+              const firstRegionLabel = firstRegion?.label ?? firstSelectedRegion
+
+              return additionalRegionCount > 0
+                ? `${firstRegionLabel} (+${additionalRegionCount} more)`
+                : firstRegionLabel
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {deploymentRegionItems.map((item) => (
+            <SelectItem<DeploymentRegion> key={item.value} value={item.value}>
+              <SelectItemText>{item.label}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+export const MultipleControlled: Story = {
+  render: () => <MultipleControlledDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Deployment regions' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveTextContent('US East (+1 more)')
+    await userEvent.click(trigger)
+
+    const asiaPacificOption = await body.findByRole('option', { name: 'Asia Pacific' })
+    await userEvent.click(asiaPacificOption)
+
+    await expect(trigger).toHaveTextContent('US East (+2 more)')
+    await expect(asiaPacificOption).toHaveAttribute('aria-selected', 'true')
+  },
+}
+
 export const InForm: Story = {
+  parameters: {
+    docs: { story: { autoplay: false } },
+  },
   render: () => (
     <Form aria-label="Timezone form" className="grid w-72 gap-3" onFormSubmit={() => undefined}>
       <Field name="timezone">
-        <Select name="timezone" defaultValue="utc">
+        <Select items={timezoneItems} required>
           <SelectLabel>Timezone</SelectLabel>
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Choose a timezone" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="utc">
-              <SelectItemText>UTC</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="pst">
-              <SelectItemText>Pacific (PST)</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="jst">
-              <SelectItemText>Japan (JST)</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
+            {timezoneItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.label}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        <FieldDescription>Used to schedule workflow runs.</FieldDescription>
+        <FieldError match="valueMissing">Timezone is required.</FieldError>
       </Field>
       <div className="flex justify-end">
         <Button type="submit" variant="primary">
@@ -361,4 +475,27 @@ export const InForm: Story = {
       </div>
     </Form>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Timezone' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).not.toHaveAttribute('data-invalid')
+    await expect(trigger).not.toHaveAttribute('data-valid')
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
+
+    await expect(await canvas.findByText('Timezone is required.')).toBeVisible()
+    await expect(trigger).toHaveAttribute('data-invalid')
+    await expect(trigger).toHaveAttribute('aria-invalid', 'true')
+
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await userEvent.click(await body.findByRole('option', { name: 'UTC' }))
+
+    await expect(trigger).toHaveTextContent('UTC')
+    await waitFor(async () => {
+      await expect(trigger).not.toHaveAttribute('data-invalid')
+      await expect(trigger).toHaveAttribute('data-valid')
+      await expect(canvas.queryByText('Timezone is required.')).not.toBeInTheDocument()
+    })
+  },
 }

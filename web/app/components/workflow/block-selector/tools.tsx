@@ -3,7 +3,7 @@ import type { ToolActionPreviewPayload } from './tool/action-item'
 import type { ToolDefaultValue, ToolType, ToolValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
-import { memo, useMemo, useRef } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
 import { IndexBar } from './index-bar'
@@ -40,7 +40,7 @@ const Tools = ({
   selectedTools,
 }: ToolsProps) => {
   const language = useGetLanguage()
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<ToolActionPreviewPayload>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<ToolActionPreviewPayload>())
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
 
@@ -91,9 +91,7 @@ const Tools = ({
           />
         ))}
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <ToolActionPreviewCard payload={payload as ToolActionPreviewPayload | undefined} />
-        )}
+        {({ payload }) => <ToolActionPreviewCard payload={payload} />}
       </PreviewCard>
     </div>
   )

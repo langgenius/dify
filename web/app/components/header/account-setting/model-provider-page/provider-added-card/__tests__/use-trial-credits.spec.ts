@@ -1,122 +1,136 @@
-import { renderHook } from '@testing-library/react'
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { act, waitFor } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useTrialCredits } from '../use-trial-credits'
 
-const { mockUseQuery } = vi.hoisted(() => ({
-  mockUseQuery: vi.fn(),
-}))
+const getCredits = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.credits.get': getCredits,
+    }),
+  }
+})
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: (options: unknown) => mockUseQuery(options),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        post: {
-          queryOptions: (options?: object) => ({
-            queryKey: ['console', 'workspaces', 'current', 'post'],
-            ...options,
-          }),
-        },
-      },
-    },
-  },
-}))
+const createCredits = (
+  overrides: Partial<ModelProviderCreditsResponse> = {},
+): ModelProviderCreditsResponse => ({
+  quota_limit: 100,
+  quota_used: 40,
+  remaining_credits: 60,
+  is_unlimited: false,
+  is_exhausted: false,
+  exhausted_at: null,
+  next_credit_reset_date: 1775001600,
+  pool_type: 'trial',
+  ...overrides,
+})
+const renderCredits = (data?: ModelProviderCreditsResponse) => {
+  const queryClient = createConsoleQueryClient()
+  if (data)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+      data,
+    )
+  return renderHookWithConsoleQuery(() => useTrialCredits(), { queryClient })
+}
 
 describe('useTrialCredits', () => {
-  const mockTrialCreditsQuery = (
-    data:
-      | {
-          trial_credits?: number
-          trial_credits_used?: number
-          trial_credits_exhausted_at?: number
-          next_credit_reset_date?: number
-        }
-      | undefined,
-    isPending = false,
-  ) => {
-    mockUseQuery.mockImplementation((options: { select?: (value: typeof data) => unknown }) => ({
-      data: data && options.select ? options.select(data) : data,
-      isPending,
-    }))
-  }
-
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockTrialCreditsQuery({
-      trial_credits: 100,
-      trial_credits_used: 40,
-      trial_credits_exhausted_at: undefined,
-      next_credit_reset_date: 1775001600,
+    getCredits.mockReset().mockImplementation(() => new Promise(() => {}))
+  })
+
+  it('returns the remaining credits and reset date', () => {
+    const { result } = renderCredits(createCredits())
+    expect(result.current).toEqual({
+      credits: 60,
+      usedCredits: 40,
+      totalCredits: 100,
+      isUnlimited: false,
+      isExhausted: false,
+      isLoading: false,
+      exhaustedAt: undefined,
+      nextCreditResetDate: 1775001600,
     })
   })
 
-  describe('when workspace data is available', () => {
-    it('should return the remaining credits and reset date', () => {
-      const { result } = renderHook(() => useTrialCredits())
-
-      expect(result.current).toEqual({
-        credits: 60,
-        usedCredits: 40,
-        totalCredits: 100,
-        isExhausted: false,
-        isLoading: false,
-        exhaustedAt: undefined,
-        nextCreditResetDate: 1775001600,
+  it('keeps cached credits visible while a background refetch is pending and updates after it settles', async () => {
+    const request = createDeferred<ModelProviderCreditsResponse>()
+    getCredits.mockReturnValue(request.promise)
+    const { result, queryClient } = renderCredits(createCredits())
+    act(() => {
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
       })
     })
+    await waitFor(() => expect(getCredits).toHaveBeenCalledOnce())
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.credits).toBe(60)
+    await act(async () => request.resolve(createCredits({ quota_used: 50, remaining_credits: 50 })))
+    await waitFor(() => expect(result.current.credits).toBe(50))
+    expect(result.current.usedCredits).toBe(50)
+    expect(result.current.isLoading).toBe(false)
+  })
 
-    it('should keep the hook out of loading state during a background refetch', () => {
-      mockTrialCreditsQuery(
-        {
-          trial_credits: 80,
-          trial_credits_used: 20,
-          next_credit_reset_date: 1777593600,
-        },
-        true,
-      )
+  it('reports loading before the first response and settles with server credits', async () => {
+    const request = createDeferred<ModelProviderCreditsResponse>()
+    getCredits.mockReturnValue(request.promise)
+    const { result } = renderCredits()
+    expect(result.current).toEqual({
+      credits: 0,
+      usedCredits: 0,
+      totalCredits: 0,
+      isUnlimited: false,
+      isExhausted: true,
+      isLoading: true,
+      exhaustedAt: undefined,
+      nextCreditResetDate: undefined,
+    })
+    await act(async () => request.resolve(createCredits()))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.credits).toBe(60)
+  })
 
-      const { result } = renderHook(() => useTrialCredits())
-
-      expect(result.current.isLoading).toBe(false)
-      expect(result.current.credits).toBe(60)
-      expect(result.current.usedCredits).toBe(20)
-      expect(result.current.isExhausted).toBe(false)
+  it('uses the backend exhausted state', () => {
+    const { result } = renderCredits(
+      createCredits({
+        quota_limit: 10,
+        quota_used: 10,
+        remaining_credits: 0,
+        is_exhausted: true,
+        exhausted_at: 1772323200,
+      }),
+    )
+    expect(result.current).toMatchObject({
+      credits: 0,
+      usedCredits: 10,
+      isExhausted: true,
+      exhaustedAt: 1772323200,
     })
   })
 
-  describe('when workspace data is missing or exhausted', () => {
-    it('should report loading while the first workspace request is pending', () => {
-      mockTrialCreditsQuery(undefined, true)
-
-      const { result } = renderHook(() => useTrialCredits())
-
-      expect(result.current).toEqual({
-        credits: 0,
-        usedCredits: 0,
-        totalCredits: 0,
-        isExhausted: true,
-        isLoading: true,
-        exhaustedAt: undefined,
-        nextCreditResetDate: undefined,
-      })
-    })
-
-    it('should clamp negative remaining credits to zero', () => {
-      mockTrialCreditsQuery({
-        trial_credits: 10,
-        trial_credits_used: 99,
-        trial_credits_exhausted_at: 1772323200,
-        next_credit_reset_date: undefined,
-      })
-
-      const { result } = renderHook(() => useTrialCredits())
-
-      expect(result.current.credits).toBe(0)
-      expect(result.current.usedCredits).toBe(10)
-      expect(result.current.isExhausted).toBe(true)
-      expect(result.current.exhaustedAt).toBe(1772323200)
+  it('preserves unlimited credits without interpreting sentinel values as usage', () => {
+    const { result } = renderCredits(
+      createCredits({
+        quota_limit: -1,
+        quota_used: 999,
+        remaining_credits: -1,
+        is_unlimited: true,
+        is_exhausted: false,
+        next_credit_reset_date: null,
+      }),
+    )
+    expect(result.current).toMatchObject({
+      credits: -1,
+      usedCredits: 999,
+      totalCredits: -1,
+      isUnlimited: true,
+      isExhausted: false,
     })
   })
 })

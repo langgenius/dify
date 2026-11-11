@@ -15,8 +15,8 @@ and semantic meaning.
 2. **TokenTextSplitter**: Splits text based on token count using tiktoken library,
    useful for LLM context window management.
 
-3. **EnhanceRecursiveCharacterTextSplitter**: Enhanced version with custom token
-   counting support via embedding models or GPT2 tokenizer.
+3. **EnhanceRecursiveCharacterTextSplitter**: Factory that uses character counts
+   for chunk limits, with or without an embedding model.
 
 4. **FixedRecursiveCharacterTextSplitter**: Prioritizes a fixed separator before
    falling back to recursive splitting, useful for structured documents.
@@ -130,7 +130,6 @@ import logging
 import string
 import sys
 import types
-from inspect import currentframe
 from unittest.mock import Mock, patch
 
 import pytest
@@ -142,6 +141,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import (
     RecursiveCharacterTextSplitter,
+    TextSplitter,
     Tokenizer,
     TokenTextSplitter,
     _split_text_with_regex,
@@ -803,65 +803,33 @@ class TestEnhanceRecursiveCharacterTextSplitter:
         # Should split into multiple chunks
         assert len(result) >= 2
 
-    def test_with_embedding_model_token_counting(self):
-        """Test token counting with embedding model."""
+    @pytest.mark.parametrize("use_model", [False, True])
+    def test_from_encoder_uses_character_lengths(self, use_model):
+        """Chunk limits count Unicode characters without invoking tokenization."""
         mock_model = Mock()
-        # Mock returns token counts for input texts
-        mock_model.get_text_embedding_num_tokens = Mock(side_effect=lambda texts: [len(t) // 2 for t in texts])
-
         splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-            embedding_model_instance=mock_model, chunk_size=50, chunk_overlap=5
+            embedding_model_instance=mock_model if use_model else None,
+            chunk_size=4,
+            chunk_overlap=0,
+            separators=[""],
         )
 
-        text = "This is a test text that should be split"
-        result = splitter.split_text(text)
+        assert splitter.split_text("aé中🙂b") == ["aé中🙂", "b"]
+        assert splitter.split_text("") == []
+        mock_model.get_text_embedding_num_tokens.assert_not_called()
 
-        assert len(result) > 0
-        assert all(isinstance(chunk, str) for chunk in result)
+    def test_character_fallback_preserves_single_newlines(self):
+        text = "\n".join(f"SKU{i:04d}" for i in range(20))
+        splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
+            embedding_model_instance=None,
+            separators=["\n\n", "。", ". ", " ", ""],
+            chunk_size=50,
+            chunk_overlap=0,
+        )
 
-    def test_from_encoder_internal_token_encoder_paths(self):
-        """
-        Test internal _token_encoder branches by capturing local closure from frame.
+        chunks = splitter.split_text(text)
 
-        This validates:
-        - empty texts path
-        - embedding model path
-        - GPT2Tokenizer fallback path
-        - _character_encoder empty-path branch
-        """
-
-        class _SpySplitter(EnhanceRecursiveCharacterTextSplitter):
-            captured_token_encoder = None
-            captured_character_encoder = None
-
-            def __init__(self, **kwargs):
-                frame = currentframe()
-                if frame and frame.f_back:
-                    _SpySplitter.captured_token_encoder = frame.f_back.f_locals.get("_token_encoder")
-                    _SpySplitter.captured_character_encoder = frame.f_back.f_locals.get("_character_encoder")
-                super().__init__(**kwargs)
-
-        mock_model = Mock()
-        mock_model.get_text_embedding_num_tokens.return_value = [3, 5]
-
-        _SpySplitter.from_encoder(embedding_model_instance=mock_model, chunk_size=10, chunk_overlap=1)
-        token_encoder = _SpySplitter.captured_token_encoder
-        character_encoder = _SpySplitter.captured_character_encoder
-
-        assert token_encoder is not None
-        assert character_encoder is not None
-        assert token_encoder([]) == []
-        assert token_encoder(["abc", "defgh"]) == [3, 5]
-        assert character_encoder([]) == []
-
-        with patch(
-            "core.rag.splitter.fixed_text_splitter.GPT2Tokenizer.get_num_tokens",
-            side_effect=lambda text: len(text) + 1,
-        ):
-            _SpySplitter.from_encoder(embedding_model_instance=None, chunk_size=10, chunk_overlap=1)
-            token_encoder_without_model = _SpySplitter.captured_token_encoder
-            assert token_encoder_without_model is not None
-            assert token_encoder_without_model(["ab", "cdef"]) == [3, 5]
+        assert chunks[0] == "SKU0000\nSKU0001\nSKU0002\nSKU0003\nSKU0004\nSKU0005\nSK"
 
 
 # ============================================================================
@@ -934,8 +902,9 @@ class TestFixedRecursiveCharacterTextSplitter:
 
         result = splitter.split_text(text)
 
-        assert len(result) > 0
+        assert len(result) > 1, "Chinese period separator should split text into multiple chunks"
         assert all(isinstance(chunk, str) for chunk in result)
+        assert result == ["这是第一句", "这是第二句", "这是第三句", ""]
 
     def test_space_separator_handling(self):
         """Test special handling of space separator."""
@@ -952,6 +921,21 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert "word1" in combined
         assert "word2" in combined
 
+    def test_preserves_spaces_when_recursively_splitting_long_paragraph(self):
+        """Ensure recursive space splitting preserves word boundaries."""
+        text = "여름철에는 항상 기상상황에 주목하며 주변 사람들과 함께 정보를 공유합니다."
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=20,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1
+        assert " ".join(result) == text
+
     def test_character_level_splitting(self):
         """Test character-level splitting when no separator works."""
         text = "verylongwordwithoutspaces"
@@ -965,6 +949,18 @@ class TestFixedRecursiveCharacterTextSplitter:
         # Verify chunks respect size with overlap
         for chunk in result:
             assert len(chunk) <= 12  # chunk_size + some tolerance for overlap
+
+    def test_character_fallback_preserves_single_newlines(self):
+        text = "\n".join(f"SKU{i:04d}" for i in range(20))
+        splitter = FixedRecursiveCharacterTextSplitter(
+            separators=["\n\n", "。", ". ", " ", ""],
+            chunk_size=50,
+            chunk_overlap=0,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert chunks[0] == "SKU0000\nSKU0001\nSKU0002\nSKU0003\nSKU0004\nSKU0005\nSK"
 
     def test_overlap_in_character_splitting(self):
         """Test that overlap is correctly applied in character-level splitting."""
@@ -1071,6 +1067,7 @@ class TestFixedRecursiveCharacterTextSplitter:
 
         assert chunks
         assert all(chunk != "" for chunk in chunks)
+        assert chunks == ["line1\n\nline2\n\nline3"]
         assert "line1" in "".join(chunks)
         assert "line2" in "".join(chunks)
         assert "line3" in "".join(chunks)
@@ -2095,3 +2092,117 @@ class TestPerformanceCharacteristics:
 
         # Small chunk size should produce more chunks
         assert len(result_small) > len(result_large)
+
+
+# ============================================================================
+# Additional regression tests (added by PR, kept alongside the original suite)
+# ============================================================================
+
+
+class TestSplitTextWithRegexParametrized:
+    @pytest.mark.parametrize(
+        ("text", "separator", "keep_separator", "expected"),
+        [
+            pytest.param("a,,b", ",", True, ["a,", ",", "b"], id="keeps-delimiters"),
+            pytest.param("a,,b", ",", False, ["a", "b"], id="drops-delimiters"),
+            pytest.param("abc", ",", True, ["abc"], id="separator-absent"),
+            pytest.param("", ",", True, [], id="empty-text"),
+            pytest.param("a\nb", "", True, ["a", "\n", "b"], id="empty-separator-splits-chars"),
+            pytest.param("a\nb", "", False, ["a", "\n", "b"], id="empty-separator-keeps-newlines"),
+        ],
+    )
+    def test_split_text_with_regex(self, text: str, separator: str, keep_separator: bool, expected: list[str]):
+        assert _split_text_with_regex(text, separator, keep_separator) == expected
+
+
+def test_text_splitter_rejects_overlap_larger_than_chunk_size():
+    with pytest.raises(ValueError, match="larger chunk overlap"):
+        RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=20)
+
+
+class TestRecursiveCharacterTextSplitterCoreCases:
+    def test_split_text_keeps_short_text_intact(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=0)
+        assert splitter.split_text("aaa\n\nbbb") == ["aaa\n\nbbb"]
+
+    def test_split_text_at_paragraph_separator(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        assert splitter.split_text("alpha\n\nbeta") == ["alpha", "beta"]
+
+    def test_split_text_recurses_to_word_level(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        assert splitter.split_text("short text with several words inside") == [
+            "short",
+            "text",
+            "with",
+            "several",
+            "words",
+            "inside",
+        ]
+
+    def test_split_text_word_separator_with_explicit_separators(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=4, chunk_overlap=0, separators=[" "])
+        assert splitter.split_text("aaaa bbbb cccc dddd") == ["aaaa ", "bbbb ", "cccc ", "dddd"]
+
+    def test_split_text_chunk_overlap_produces_shared_words(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=5, chunk_overlap=3, separators=[" "])
+        assert splitter.split_text("a b c d e f") == ["a b", "b c", "c d", "d e f"]
+
+    def test_oversized_chunk_without_separator_is_kept_whole(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=6, chunk_overlap=0, separators=[" "])
+        chunks = splitter.split_text("toolongword short")
+        assert chunks == ["toolongword ", "short"]
+
+    def test_split_documents_preserves_metadata(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        documents = [
+            Document(page_content="alpha\n\nbeta", metadata={"source": "a"}),
+            Document(page_content="gamma", metadata={"source": "b"}),
+        ]
+        result = splitter.split_documents(documents)
+        assert [(doc.page_content, doc.metadata) for doc in result] == [
+            ("alpha", {"source": "a"}),
+            ("beta", {"source": "a"}),
+            ("gamma", {"source": "b"}),
+        ]
+
+
+class TestCreateDocuments:
+    def test_metadata_is_mapped_per_text(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        docs = splitter.create_documents(["p1 p2", "p3"], [{"source": "x"}, {"source": "y"}])
+        assert [(doc.page_content, doc.metadata) for doc in docs] == [
+            ("p1 p2", {"source": "x"}),
+            ("p3", {"source": "y"}),
+        ]
+
+    def test_add_start_index_records_chunk_offsets(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=6, chunk_overlap=0, add_start_index=True)
+        docs = splitter.create_documents(["alpha beta gamma"])
+        assert [(doc.page_content, doc.metadata["start_index"]) for doc in docs] == [
+            ("alpha", 0),
+            ("beta", 6),
+            ("gamma", 11),
+        ]
+
+    def test_metadata_is_deep_copied_between_chunks(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=6, chunk_overlap=0)
+        docs = splitter.create_documents(["alpha beta gamma"], [{"k": "v"}])
+        assert len(docs) == 3
+        docs[0].metadata["k"] = "changed"
+        assert [doc.metadata["k"] for doc in docs] == ["changed", "v", "v"]
+
+
+def test_split_text_on_tokens_windows_with_overlap():
+    tokenizer = Tokenizer(
+        chunk_overlap=2,
+        tokens_per_chunk=4,
+        decode="".join,
+        encode=lambda text: list(text),
+    )
+    assert split_text_on_tokens(text="abcdefgh", tokenizer=tokenizer) == ["abcd", "cdef", "efgh", "gh"]
+
+
+def test_text_splitter_is_abstract():
+    with pytest.raises(TypeError):
+        TextSplitter()

@@ -1,16 +1,18 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
-import { useAllMCPTools } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -41,11 +43,15 @@ const MultipleToolSelector = ({
   availableNodes,
   nodeId,
 }: Props) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'plugin'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
-  const toolItemTriggerByKeyRef = React.useRef(new Map<string, HTMLButtonElement>())
+  const toolItemTriggerByKeyRef = useRefWithInit(() => new Map<string, HTMLButtonElement>())
   const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find((tool) => tool.id === item.provider_name)
@@ -65,7 +71,7 @@ const MultipleToolSelector = ({
 
     resolvedFocusTarget?.focus()
     pendingFocusTargetRef.current = null
-  }, [value])
+  }, [value, toolItemTriggerByKeyRef])
 
   // add tool
   const [selectorOpen, setSelectorOpen] = React.useState(false)
@@ -129,34 +135,35 @@ const MultipleToolSelector = ({
           {supportCollapse ? (
             <CollapsibleTrigger
               aria-label={label}
-              className="group/collapse h-6 min-h-0 w-auto min-w-0 justify-start gap-0.5 bg-transparent p-0 hover:not-data-disabled:bg-transparent"
+              className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary select-none hover:text-text-primary data-panel-open:text-text-primary"
             >
-              <span className="truncate system-sm-semibold-uppercase text-text-secondary">
+              <span
+                id={titleId}
+                className="truncate system-sm-semibold-uppercase text-text-secondary"
+              >
                 {label}
               </span>
               {required && <span className="text-red-500">*</span>}
               <span
                 aria-hidden
-                className={cn(
-                  'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary group-hover/collapse:text-text-secondary',
-                  !toolsOpen && 'rotate-270',
-                )}
+                className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
               />
             </CollapsibleTrigger>
           ) : (
             <>
-              <div className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary">
+              <div
+                id={titleId}
+                className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary"
+              >
                 {label}
               </div>
               {required && <div className="text-red-500">*</div>}
             </>
           )}
           {tooltip ? (
-            <Infotip
-              aria-label={typeof tooltip === 'string' ? tooltip : label}
-              className="size-3.5"
-            >
-              {tooltip}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           ) : null}
         </div>
@@ -166,7 +173,7 @@ const MultipleToolSelector = ({
               <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}</span>
             </div>
-            <Divider type="vertical" className="mr-1 ml-3 h-3" />
+            <Separator decorative orientation="vertical" className="mr-1 ml-3 h-3" />
           </>
         )}
         {!disabled && (
@@ -181,19 +188,19 @@ const MultipleToolSelector = ({
             controlledState={selectorOpen}
             onControlledStateChange={setSelectorOpen}
             trigger={
-              <Button
+              <IconButton
                 ref={addToolButtonRef}
                 variant="ghost"
-                size="small"
+                size="md"
                 aria-label={t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}
-                className="mx-1 size-6 min-h-0 p-0"
+                className="mx-1"
                 onClick={() => {
                   setToolsOpen(true)
                   setPanelShowState(true)
                 }}
               >
                 <span className="i-ri-add-line size-4" aria-hidden />
-              </Button>
+              </IconButton>
             }
             panelShowState={panelShowState}
             onPanelShowStateChange={setPanelShowState}

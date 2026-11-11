@@ -1,55 +1,38 @@
 # New RAG
 
-Renders the KnowledgeFS-backed knowledge list, creation flows, sources, documents, and processing
-tasks.
+This feature owns the KnowledgeFS-backed knowledge list, creation flows, sources, documents, revisions, retrieval evaluation, and processing tasks.
 
-## Internal Modules
+- Route surfaces live in `create/`, `documents/`, `sources/`, `retrieval/`, `quality/`, `settings/`, `space/`, and `overview/`; feature tests stay beside their owning surface.
+- `list/` owns the KnowledgeFS list integration used by the existing dataset list, while `upload/` owns upload behavior shared by creation and document-management flows.
+- `routes.ts` owns navigation only; shared source drafts, provider discovery, datasource parameters, and setup fields belong to `sources/setup/`.
+- `create/`, `sources/create/`, and source editing own their distinct submission lifecycles; setup modules do not submit those workflows.
+- `sources/connections/` owns provider identity matching and connection ranking across source flows.
+- `documents/` owns document list and detail behavior, query options, permission recovery, task recovery, and metadata editing.
+- Shared KnowledgeFS read contracts used by other features live under `service/knowledge-fs/`; feature-specific editing policy remains here.
+- Document query modules own server-state configuration. View components consume those options and coordinate only workflows that require one consistent page snapshot.
+- Document processing events live with `documents/tasks/`; retrieval event streams live with `retrieval/services/`.
+- Creation and processing overlays are feature compositions of Dify UI Dialog, AlertDialog, Drawer, and Popover primitives.
 
-- `add-source-page`
-- `components/create-knowledge-dialog-parts`
-- `components/create-knowledge-exit-dialog`
-- `components/knowledge-space-card`
-- `components/knowledge-view-switcher`
-- `components/new-knowledge-list-states`
-- `crawl-selection-form`
-- `create-knowledge-page`
-- `create-upload-queue`
-- `create-knowledge-workflow`
-- `document-list`
-- `document-chunk-detail`
-- `document-chunk-tree`
-- `document-detail-header`
-- `document-detail-model`
-- `document-detail-queries`
-- `document-detail-page`
-- `document-detail-status`
-- `document-revision-content`
-- `document-model`
-- `document-upload-policy`
-- `documents-page`
-- `knowledge-route-guard`
-- `knowledge-space-shell`
-- `new-knowledge-list`
-- `processing-tasks-drawer`
-- `routes`
-- `services/processing-task-events`
-- `sources-page`
-- `storage`
-- `task-event-observer`
-- `use-document-task-status`
-- `use-document-reindex`
-- `website-crawl-preview`
+Files in this directory remain feature-owned; direct consumers do not become their owners. Keep shared dataset APIs and permission policy in their existing owners rather than copying them into this feature.
 
-## External Modules
+## Translation loading
 
-- `app/components/base/corner-label`
-- `app/components/base/loading`
-- `app/components/base/search-input`
-- `app/components/base/skeleton`
-- `app/components/datasets/external-api/external-api-panel`
-- `app/components/datasets/extra-info/service-api`
-- `context/external-api-panel-context`
-- `context/permission-state`
-- `hooks/use-format-time-from-now`
-- `service/knowledge/use-dataset`
-- `utils/permission`
+`knowledgeSpace` contains list and shell copy, shared status labels, model readiness guidance, and labels reused across routes. Page and action owners request additional namespaces through their own translation hooks:
+
+| Namespace            | Owner                                                    |
+| -------------------- | -------------------------------------------------------- |
+| `knowledgeCreate`    | Creation and initial upload                              |
+| `knowledgeSources`   | Source connection, crawl preview, and sync configuration |
+| `knowledgeDocuments` | Document list, detail, and metadata actions              |
+| `knowledgeTasks`     | Processing task drawer controls                          |
+| `knowledgeOverview`  | Overview panels and activity history                     |
+| `knowledgeQuality`   | Golden questions, bad cases, and evaluations             |
+| `knowledgeRetrieval` | Retrieval composer, history, and results                 |
+| `knowledgeSettings`  | Configuration forms                                      |
+| `knowledgeUpgrade`   | Legacy knowledge upgrade actions and dialog              |
+| `knowledgeErrors`    | Structured task failures and settings mutation errors    |
+| `knowledgeCitation`  | Citation resolution errors shared with chat              |
+
+Keep shell navigation labels in `knowledgeSpace`: referencing a label from a page namespace loads the whole dictionary. Successful document and source rows do not request `knowledgeErrors`; conditional error surfaces have their own Suspense and translation boundary. The API Access dialog first mounts when requested and remains mounted afterwards to preserve closing transitions and its API Key handoff.
+
+Server rendering and client navigation use the same component-owned namespace declarations. Server metadata requests its explicit namespace separately; SSR streams only the resources requested by rendered owners for hydration. A mounted provider retains visited namespaces, so switching language reloads previously requested namespaces as well as those on the current screen.

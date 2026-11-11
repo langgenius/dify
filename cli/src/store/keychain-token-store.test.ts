@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
@@ -72,7 +72,7 @@ describe('KeychainTokenStore', () => {
     await expect(store.remove('h', 'absent')).resolves.not.toThrow()
   })
 
-  it('uses the legacy entry name tokens.<host>.<email> (back-compat)', async () => {
+  it('names the entry tokens.<host>.<email>', async () => {
     const store = new KeychainTokenStore(SERVICE)
     await store.write('https://cloud.dify.ai', 'a@x.com', 'dfoa_secret')
     expect(constructed).toContainEqual({
@@ -129,5 +129,13 @@ describe('KeychainTokenStore', () => {
     }
     expect(caught).toBeInstanceOf(BaseError)
     expect((caught as BaseError).code).toBe(ErrorCode.KeyringUnavailable)
+  })
+})
+
+it('a locked keychain points at login --no-keyring', async () => {
+  getPasswordError = new Error('keyring locked')
+  await expect(new KeychainTokenStore(SERVICE).read('h', 'e')).rejects.toMatchObject({
+    code: ErrorCode.KeyringUnavailable,
+    hint: expect.stringContaining('login --server <url> --no-keyring'),
   })
 })

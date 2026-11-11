@@ -24,7 +24,7 @@ export function AgentBuildDraftChangesPanel({
   changesLabel: string
   onToggle: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const sections = getChangeSections({ changeSummary, t })
 
   return (
@@ -42,7 +42,7 @@ export function AgentBuildDraftChangesPanel({
           <span aria-hidden className="i-ri-arrow-right-s-line size-4 shrink-0 rotate-90" />
         </button>
       </div>
-      <div className="flex max-h-[232px] flex-col gap-1 overflow-y-auto pt-2 pb-1">
+      <div className="flex max-h-58 flex-col gap-1 overflow-y-auto pt-2 pb-1">
         {sections.map((section) => (
           <AgentBuildDraftChangeSectionRow key={section.key} section={section} />
         ))}
@@ -55,7 +55,7 @@ function AgentBuildDraftChangeSectionRow({ section }: { section: AgentBuildDraft
   return (
     <div className="flex w-full items-start p-2">
       <div className="flex min-w-20 shrink-0 items-center gap-1.5">
-        <span aria-hidden className="size-[5px] rounded-full bg-text-warning" />
+        <span aria-hidden className="size-1.25 rounded-full bg-text-warning" />
         <p className="min-w-0 flex-1 truncate system-xs-medium-uppercase text-text-tertiary">
           {section.label}
         </p>
@@ -72,7 +72,7 @@ function AgentBuildDraftChangeSectionRow({ section }: { section: AgentBuildDraft
 }
 
 function AgentBuildDraftChangeItemRow({ item }: { item: AgentBuildDraftChangeItem }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const descriptionKey = item.descriptionKey
 
   return (
@@ -113,7 +113,7 @@ function getChangeSections({
   t,
 }: {
   changeSummary?: AgentBuildDraftChangeSummary
-  t: TFunction<'agentV2'>
+  t: TFunction<['agentV2']>
 }): AgentBuildDraftChangeSection[] {
   if (!changeSummary) return []
 

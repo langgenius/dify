@@ -26,7 +26,7 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
     error_handle_mode: ErrorHandleMode.Terminated,
     flatten_output: true,
   },
-  checkValid(payload: IterationNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: IterationNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     if (!errorMessages && (!payload.iterator_selector || payload.iterator_selector.length === 0)) {

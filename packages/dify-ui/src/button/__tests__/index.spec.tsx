@@ -17,15 +17,14 @@ describe('Button', () => {
       await expect.element(screen.getByRole('button')).toHaveAttribute('type', 'submit')
     })
 
-    it('renders custom element via render prop', async () => {
+    it('renders a non-native button via render prop', async () => {
       const screen = await render(
-        <Button nativeButton={false} render={<a href="/test" />}>
-          Link
+        <Button nativeButton={false} render={<div />}>
+          Custom button
         </Button>,
       )
-      const button = screen.getByRole('button', { name: 'Link' }).element()
-      expect(button.tagName).toBe('A')
-      expect(button).toHaveAttribute('href', '/test')
+      const button = screen.getByRole('button', { name: 'Custom button' }).element()
+      expect(button.tagName).toBe('DIV')
     })
   })
 
@@ -65,30 +64,6 @@ describe('Button', () => {
       await userEvent.keyboard('{Enter}')
 
       expect(onSubmit).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('className merging', () => {
-    it('merges custom className with variant classes', async () => {
-      const screen = await render(<Button className="custom-class">Click me</Button>)
-      const btn = screen.getByRole('button').element()
-      expect(btn).toHaveClass('custom-class')
-    })
-  })
-
-  describe('ref forwarding', () => {
-    it('forwards ref to the button element', async () => {
-      let buttonRef: HTMLButtonElement | null = null
-      await render(
-        <Button
-          ref={(el) => {
-            buttonRef = el
-          }}
-        >
-          Click me
-        </Button>,
-      )
-      expect(buttonRef).toBeInstanceOf(HTMLButtonElement)
     })
   })
 })

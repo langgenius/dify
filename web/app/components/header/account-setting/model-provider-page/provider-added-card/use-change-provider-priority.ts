@@ -1,13 +1,17 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 
-export function useChangeProviderPriority(provider: ModelProvider | undefined) {
-  const { t } = useTranslation()
+export function useChangeProviderPriority(
+  provider: ModelProvider | ModelProviderSummaryResponse | undefined,
+) {
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
@@ -23,8 +27,8 @@ export function useChangeProviderPriority(provider: ModelProvider | undefined) {
   const { mutate: changePriority, isPending: isChangingPriority } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           queryClient.invalidateQueries({
             queryKey: modelProviderModelListQueryKey,
             exact: true,
@@ -36,13 +40,17 @@ export function useChangeProviderPriority(provider: ModelProvider | undefined) {
               provider?.supported_model_types.forEach((modelType) => updateModelList(modelType))
           })
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),
   )
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {
+    if (!providerName) return
     changePriority({
       params: { provider: providerName },
       body: { preferred_provider_type: key },

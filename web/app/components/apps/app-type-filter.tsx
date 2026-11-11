@@ -1,108 +1,92 @@
 'use client'
 
-import type { AppListCategory } from './app-type-filter-shared'
+import type { AppListUrlQuery } from './query-params'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AppModeEnum } from '@/types/app'
-import { isAppListCategory } from './app-type-filter-shared'
+import { studioAppListCategories } from './query-params'
 
-const chipClassName =
-  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+type AppListCategory = AppListUrlQuery['category']
 
 type AppTypeFilterProps = {
   value: AppListCategory
-  onChange: (value: AppListCategory) => void
+  onValueChange: (value: AppListCategory) => void
 }
 
-export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
-  const { t } = useTranslation()
+export function AppTypeFilter({ value, onValueChange }: AppTypeFilterProps) {
+  const { t } = useTranslation(['app'])
 
-  const options = useMemo(
-    () => [
-      {
-        value: 'all',
-        text: t(($) => $['types.all'], { ns: 'app' }),
+  const options = useMemo(() => {
+    const optionsByCategory = {
+      all: {
+        label: t(($) => $['types.all'], { ns: 'app' }),
         iconClassName: 'i-ri-apps-2-line',
       },
-      {
-        value: AppModeEnum.WORKFLOW,
-        text: t(($) => $['types.workflow'], { ns: 'app' }),
+      workflow: {
+        label: t(($) => $['types.workflow'], { ns: 'app' }),
         iconClassName: 'i-ri-exchange-2-line',
       },
-      {
-        value: AppModeEnum.ADVANCED_CHAT,
-        text: t(($) => $['types.advanced'], { ns: 'app' }),
+      'advanced-chat': {
+        label: t(($) => $['types.advanced'], { ns: 'app' }),
         iconClassName: 'i-ri-message-3-line',
       },
-      {
-        value: AppModeEnum.CHAT,
-        text: t(($) => $['types.chatbot'], { ns: 'app' }),
+      chat: {
+        label: t(($) => $['types.chatbot'], { ns: 'app' }),
         iconClassName: 'i-ri-message-3-line',
       },
-      {
-        value: AppModeEnum.AGENT_CHAT,
-        text: t(($) => $['types.agent'], { ns: 'app' }),
+      'agent-chat': {
+        label: t(($) => $['types.agent'], { ns: 'app' }),
         iconClassName: 'i-ri-robot-3-line',
       },
-      {
-        value: AppModeEnum.COMPLETION,
-        text: t(($) => $['newApp.completeApp'], { ns: 'app' }),
+      completion: {
+        label: t(($) => $['newApp.completeApp'], { ns: 'app' }),
         iconClassName: 'i-ri-file-4-line',
       },
-    ],
-    [t],
-  )
+    } satisfies Record<AppListCategory, { label: string; iconClassName: string }>
 
-  const activeOption = options.find((option) => option.value === value)
-  const isSelected = value !== 'all'
-  const triggerLabel = isSelected
-    ? activeOption?.text
-    : t(($) => $['studio.filters.types'], { ns: 'app' })
+    return studioAppListCategories.map((value) => ({
+      value,
+      ...optionsByCategory[value],
+    }))
+  }, [t])
+
+  const isFiltered = value !== 'all'
+  const typesLabel = t(($) => $['studio.filters.types'], { ns: 'app' })
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              chipClassName,
-              isSelected
-                ? 'border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-state-base-hover'
-                : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
-            )}
-          />
-        }
-      >
-        <span className="px-1 text-text-tertiary">{triggerLabel}</span>
-        <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(nextValue) => isAppListCategory(nextValue) && onChange(nextValue)}
-        >
-          {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
-              <span
-                aria-hidden
-                className={cn('h-4 w-4 shrink-0 text-text-tertiary', option.iconClassName)}
-              />
-              <span>{option.text}</span>
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Select<AppListCategory>
+      items={options}
+      value={value}
+      onValueChange={(nextValue) => {
+        if (nextValue !== null) onValueChange(nextValue)
+      }}
+    >
+      <SelectTrigger aria-label={typesLabel} className="w-auto">
+        <SelectValue className="text-text-tertiary">
+          {isFiltered ? undefined : typesLabel}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="w-55">
+        {options.map((option) => (
+          <SelectItem<AppListCategory> key={option.value} value={option.value} className="gap-1">
+            <span
+              aria-hidden
+              className={cn('h-4 w-4 shrink-0 text-text-tertiary', option.iconClassName)}
+            />
+            <SelectItemText>{option.label}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

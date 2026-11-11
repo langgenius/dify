@@ -10,33 +10,26 @@ type Props = Readonly<{
 }>
 
 function ViewTypeSelect({ viewType, onChange }: Props) {
-  const { t } = useTranslation()
-
-  const handleValueChange = (value: ViewType[]) => {
-    const nextViewType = value[0]
-    if (!nextViewType || nextViewType === viewType) return
-
-    onChange(nextViewType)
-  }
+  const { t } = useTranslation(['common', 'workflow'])
 
   return (
     <SegmentedControl<ViewType>
-      value={[viewType]}
+      value={viewType}
       aria-label={t(($) => $['operation.view'], { ns: 'common' })}
       className="gap-0 rounded-lg p-px"
-      onValueChange={handleValueChange}
+      onValueChange={(value) => onChange(value)}
     >
       <SegmentedControlItem<ViewType>
         value={ViewType.flat}
         aria-label={t(($) => $['tabs.listView'], { ns: 'workflow' })}
-        className="size-5.5 rounded-lg border-0 p-0 text-text-tertiary"
+        className="size-5.5 border-0 p-0 text-text-tertiary"
       >
         <span aria-hidden className="i-ri-sort-alphabet-asc size-4" />
       </SegmentedControlItem>
       <SegmentedControlItem<ViewType>
         value={ViewType.tree}
         aria-label={t(($) => $['tabs.treeView'], { ns: 'workflow' })}
-        className="size-5.5 rounded-lg border-0 p-0 text-text-tertiary"
+        className="size-5.5 border-0 p-0 text-text-tertiary"
       >
         <span aria-hidden className="i-ri-node-tree size-4" />
       </SegmentedControlItem>

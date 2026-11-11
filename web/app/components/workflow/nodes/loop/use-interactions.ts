@@ -1,8 +1,8 @@
 import type { BlockEnum, Node } from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodesMetaData } from '../../hooks/use-nodes-meta-data'
 import { generateNewNode, getNodeCustomTypeByNodeDataType } from '../../utils'
 import {
   buildLoopChildCopy,

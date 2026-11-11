@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from '../external-trace-row'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,7 +12,6 @@ import {
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -21,10 +21,11 @@ type Props = {
   readonly list: NodeTracing[][]
   readonly onBack: () => void
   readonly iterDurationMap?: IterationDurationMap
+  readonly externalTraceRun?: ExternalTraceRun
 }
 
-const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
-  const { t } = useTranslation()
+const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap, externalTraceRun }) => {
+  const { t } = useTranslation(['workflow'])
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
 
   const toggleIteration = useCallback((index: number) => {
@@ -95,9 +96,11 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
             key={index}
             className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
           >
-            <div
+            <button
+              type="button"
+              aria-expanded={!!expandedIterations[index]}
               className={cn(
-                'flex w-full cursor-pointer items-center justify-between px-3',
+                'flex w-full cursor-pointer items-center justify-between px-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 expandedIterations[index] ? 'pt-3 pb-2' : 'py-3',
                 'rounded-xl text-left',
               )}
@@ -105,22 +108,31 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
             >
               <div className={cn('flex grow items-center gap-2')}>
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
-                  <Iteration className="size-3 text-text-primary-on-surface" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-workflow-iteration size-3 text-text-primary-on-surface"
+                  />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(($) => $[`${i18nPrefix}.iteration`], { ns: 'workflow' })} {index + 1}
                 </span>
                 {iterationStatusShow(index, iteration, iterDurationMap)}
               </div>
-            </div>
+            </button>
             {expandedIterations[index] && <div className="h-px grow bg-divider-subtle"></div>}
             <div
+              inert={!expandedIterations[index]}
+              aria-hidden={!expandedIterations[index]}
               className={cn(
                 'transition-all duration-200',
                 expandedIterations[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
               )}
             >
-              <TracingPanel list={iteration} className="bg-background-section-burn" />
+              <TracingPanel
+                list={iteration}
+                className="bg-background-section-burn"
+                externalTraceRun={externalTraceRun}
+              />
             </div>
           </div>
         ))}

@@ -2,7 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zPostResetPasswordBody, zPostResetPasswordResponse } from './zod.gen'
+import {
+  zAccountBannedError,
+  zAccountInFreezeError,
+  zEmailDomainSuspendedError,
+  zPasswordResetRateLimitExceededError,
+} from './zod.gen.ts'
+import { zPostResetPasswordBody, zPostResetPasswordResponse } from './zod.gen.ts'
 
 export const post = oc
   .route({
@@ -14,6 +20,12 @@ export const post = oc
   })
   .input(z.object({ body: zPostResetPasswordBody }))
   .output(zPostResetPasswordResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
+  })
 
 export const resetPassword = {
   post,

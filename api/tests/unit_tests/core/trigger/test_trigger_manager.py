@@ -2,21 +2,21 @@
 Tests for core.trigger.trigger_manager.TriggerManager.
 
 Covers: icon URL construction, provider listing with error resilience,
-double-check lock caching, error translation, EventIgnoreError -> cancelled,
+double-check lock caching, error translation,
 and delegation to provider controller.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from threading import Lock
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginDaemonError, PluginNotFoundError
-from core.trigger.errors import EventIgnoreError
+from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from tests.unit_tests.core.trigger.conftest import (
@@ -31,10 +31,9 @@ PID_STR = str(PID)
 
 
 class TestGetTriggerPluginIcon:
-    @patch("core.trigger.trigger_manager.dify_config")
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
-    def test_builds_correct_url(self, mock_client, mock_config):
-        mock_config.CONSOLE_API_URL = "https://console.example.com"
+    def test_builds_correct_url(self, mock_client: MagicMock, config_overrides: Callable[..., None]) -> None:
+        config_overrides(CONSOLE_API_URL="https://console.example.com")
         provider = MagicMock()
         provider.declaration.identity.icon = "my-icon.svg"
         mock_client.return_value.fetch_trigger_provider.return_value = provider
@@ -48,7 +47,7 @@ class TestGetTriggerPluginIcon:
 
 class TestListPluginTriggerProviders:
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
-    def test_wraps_entities_into_controllers(self, mock_client):
+    def test_wraps_entities_into_controllers(self, mock_client: MagicMock) -> None:
         entity = MagicMock()
         entity.declaration = make_provider_entity("p1")
         entity.plugin_id = "plugin-1"
@@ -62,7 +61,7 @@ class TestListPluginTriggerProviders:
         assert controllers[0].plugin_id == "plugin-1"
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
-    def test_skips_failing_providers(self, mock_client):
+    def test_skips_failing_providers(self, mock_client: MagicMock) -> None:
         good = MagicMock()
         good.declaration = make_provider_entity("good")
         good.plugin_id = "good-plugin"
@@ -86,9 +85,9 @@ class TestListPluginTriggerProviders:
 class TestGetTriggerProvider:
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_initializes_context_on_first_call(self, mock_ctx, mock_client):
+    def test_initializes_context_on_first_call(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
         # get() called 3 times: (1) try block, (2) after set, (3) under lock
-        mock_ctx.plugin_trigger_providers.get.side_effect = [LookupError, {}, {}]
+        mock_ctx.plugin_trigger_providers.get.side_effect = [LookupError, dict[str, object](), dict[str, object]()]
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         provider = MagicMock()
         provider.declaration = make_provider_entity()
@@ -104,7 +103,7 @@ class TestGetTriggerProvider:
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_returns_cached_without_fetch(self, mock_ctx, mock_client):
+    def test_returns_cached_without_fetch(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
         cached = make_controller()
         mock_ctx.plugin_trigger_providers.get.return_value = {PID_STR: cached}
 
@@ -115,10 +114,10 @@ class TestGetTriggerProvider:
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_double_check_lock_uses_cached_from_other_thread(self, mock_ctx, mock_client):
+    def test_double_check_lock_uses_cached_from_other_thread(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
         cached = make_controller()
         mock_ctx.plugin_trigger_providers.get.side_effect = [
-            {},  # first check misses
+            dict[str, object](),  # first check misses
             {PID_STR: cached},  # under-lock check hits
         ]
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
@@ -130,8 +129,8 @@ class TestGetTriggerProvider:
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_fetches_and_caches_on_miss(self, mock_ctx, mock_client):
-        cache: dict = {}
+    def test_fetches_and_caches_on_miss(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
+        cache: dict[str, PluginTriggerProviderController] = {}
         mock_ctx.plugin_trigger_providers.get.return_value = cache
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         provider = MagicMock()
@@ -147,28 +146,28 @@ class TestGetTriggerProvider:
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_none_fetch_raises_value_error(self, mock_ctx, mock_client):
-        mock_ctx.plugin_trigger_providers.get.return_value = {}
+    def test_none_fetch_raises_value_error(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
+        mock_ctx.plugin_trigger_providers.get.return_value = dict[str, object]()
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         mock_client.return_value.fetch_trigger_provider.return_value = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Trigger provider org/plug/missing not found"):
             TriggerManager.get_trigger_provider("t1", TriggerProviderID("org/plug/missing"))
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_plugin_not_found_becomes_value_error(self, mock_ctx, mock_client):
-        mock_ctx.plugin_trigger_providers.get.return_value = {}
+    def test_plugin_not_found_becomes_value_error(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
+        mock_ctx.plugin_trigger_providers.get.return_value = dict[str, object]()
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         mock_client.return_value.fetch_trigger_provider.side_effect = PluginNotFoundError("gone")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Trigger provider org/plug/miss not found"):
             TriggerManager.get_trigger_provider("t1", TriggerProviderID("org/plug/miss"))
 
     @patch("core.trigger.trigger_manager.PluginTriggerClient")
     @patch("core.trigger.trigger_manager.contexts")
-    def test_plugin_daemon_error_propagates(self, mock_ctx, mock_client):
-        mock_ctx.plugin_trigger_providers.get.return_value = {}
+    def test_plugin_daemon_error_propagates(self, mock_ctx: MagicMock, mock_client: MagicMock) -> None:
+        mock_ctx.plugin_trigger_providers.get.return_value = dict[str, object]()
         mock_ctx.plugin_trigger_providers_lock.get.return_value = Lock()
         mock_client.return_value.fetch_trigger_provider.side_effect = PluginDaemonError("test error")
 
@@ -178,7 +177,7 @@ class TestGetTriggerProvider:
 
 class TestListAllTriggerProviders:
     @patch.object(TriggerManager, "list_plugin_trigger_providers")
-    def test_delegates_to_list_plugin(self, mock_list):
+    def test_delegates_to_list_plugin(self, mock_list: MagicMock) -> None:
         expected = [make_controller()]
         mock_list.return_value = expected
 
@@ -186,68 +185,9 @@ class TestListAllTriggerProviders:
         mock_list.assert_called_once_with("t1")
 
 
-class TestListTriggersByProvider:
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_returns_provider_events(self, mock_get):
-        ctrl = make_controller()
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.list_triggers_by_provider("t1", PID)
-
-        assert result == ctrl.get_events()
-
-
-class TestInvokeTriggerEvent:
-    def _args(self):
-        return {
-            "tenant_id": "t1",
-            "user_id": "u1",
-            "provider_id": PID,
-            "event_name": "on_push",
-            "parameters": {"branch": "main"},
-            "credentials": {"token": "abc"},
-            "credential_type": CredentialType.API_KEY,
-            "subscription": make_subscription(),
-            "request": MagicMock(),
-            "payload": {"action": "push"},
-        }
-
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_returns_invoke_response(self, mock_get):
-        ctrl = MagicMock()
-        expected = TriggerInvokeEventResponse(variables={"v": "1"}, cancelled=False)
-        ctrl.invoke_trigger_event.return_value = expected
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.invoke_trigger_event(**self._args())
-
-        assert result is expected
-        assert result.cancelled is False
-
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_event_ignore_returns_cancelled(self, mock_get):
-        ctrl = MagicMock()
-        ctrl.invoke_trigger_event.side_effect = EventIgnoreError("skip")
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.invoke_trigger_event(**self._args())
-
-        assert result.cancelled is True
-        assert result.variables == {}
-
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_other_errors_propagate(self, mock_get):
-        ctrl = MagicMock()
-        ctrl.invoke_trigger_event.side_effect = RuntimeError("boom")
-        mock_get.return_value = ctrl
-
-        with pytest.raises(RuntimeError, match="boom"):
-            TriggerManager.invoke_trigger_event(**self._args())
-
-
 class TestSubscribeTrigger:
     @patch.object(TriggerManager, "get_trigger_provider")
-    def test_delegates_with_correct_args(self, mock_get):
+    def test_delegates_with_correct_args(self, mock_get: MagicMock) -> None:
         ctrl = MagicMock()
         expected = make_subscription()
         ctrl.subscribe_trigger.return_value = expected
@@ -265,43 +205,3 @@ class TestSubscribeTrigger:
 
         assert result is expected
         ctrl.subscribe_trigger.assert_called_once()
-
-
-class TestUnsubscribeTrigger:
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_delegates_with_correct_args(self, mock_get):
-        ctrl = MagicMock()
-        expected = MagicMock()
-        ctrl.unsubscribe_trigger.return_value = expected
-        mock_get.return_value = ctrl
-        sub = make_subscription()
-
-        result = TriggerManager.unsubscribe_trigger(
-            tenant_id="t1",
-            user_id="u1",
-            provider_id=PID,
-            subscription=sub,
-            credentials={"token": "x"},
-            credential_type=CredentialType.API_KEY,
-        )
-
-        assert result is expected
-
-
-class TestRefreshTrigger:
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_delegates_with_correct_args(self, mock_get):
-        ctrl = MagicMock()
-        expected = make_subscription()
-        ctrl.refresh_trigger.return_value = expected
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.refresh_trigger(
-            tenant_id="t1",
-            provider_id=PID,
-            subscription=make_subscription(),
-            credentials={"token": "x"},
-            credential_type=CredentialType.API_KEY,
-        )
-
-        assert result is expected

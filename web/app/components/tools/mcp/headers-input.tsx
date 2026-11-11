@@ -1,12 +1,12 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
-import ActionButton from '@/app/components/base/action-button'
 
 export type HeaderItem = {
   id: string
@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>
 
 const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = false }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
 
   const handleItemChange = (index: number, field: 'key' | 'value', value: string) => {
     const newItems = [...headersItems]
@@ -51,7 +51,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
         </div>
         {!readonly && (
           <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="size-4" />
             {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
           </Button>
         )}
@@ -68,10 +68,10 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
       )}
       <div className="overflow-hidden rounded-lg border border-divider-regular">
         <div className="bg-background-secondary flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
-          <div className="h-full w-1/2 border-r border-divider-regular pl-3">
+          <div className="h-full w-1/2 border-e border-divider-regular ps-3">
             {t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })}
           </div>
-          <div className="h-full w-1/2 pr-1 pl-3">
+          <div className="h-full w-1/2 ps-3 pe-1">
             {t(($) => $['mcp.modal.headerValue'], { ns: 'tools' })}
           </div>
         </div>
@@ -83,8 +83,9 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
               index < headersItems.length - 1 && 'border-b',
             )}
           >
-            <div className="w-1/2 border-r border-divider-regular">
+            <div className="w-1/2 border-e border-divider-regular">
               <Input
+                aria-label={t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })}
                 value={item.key}
                 onChange={(e) => handleItemChange(index, 'key', e.target.value)}
                 placeholder={t(($) => $['mcp.modal.headerKeyPlaceholder'], { ns: 'tools' })}
@@ -94,6 +95,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
             </div>
             <div className="flex w-1/2 items-center">
               <Input
+                aria-label={t(($) => $['mcp.modal.headerValue'], { ns: 'tools' })}
                 value={item.value}
                 onChange={(e) => handleItemChange(index, 'value', e.target.value)}
                 placeholder={t(($) => $['mcp.modal.headerValuePlaceholder'], { ns: 'tools' })}
@@ -101,9 +103,13 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
                 readOnly={readonly}
               />
               {!readonly && !!headersItems.length && (
-                <ActionButton onClick={() => handleRemoveItem(index)} className="mr-2">
-                  <RiDeleteBinLine className="size-4 text-text-destructive" />
-                </ActionButton>
+                <IconButton
+                  aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${item.key.trim() || t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })} ${index + 1}`}
+                  onClick={() => handleRemoveItem(index)}
+                  className="me-2"
+                >
+                  <RiDeleteBinLine aria-hidden className="size-4 text-text-destructive" />
+                </IconButton>
               )}
             </div>
           </div>
@@ -111,7 +117,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
       </div>
       {!readonly && (
         <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-          <RiAddLine className="mr-1 size-4" />
+          <RiAddLine className="size-4" />
           {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
         </Button>
       )}

@@ -19,6 +19,7 @@ from opentelemetry.trace.status import StatusCode
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.otel.runtime import is_celery_worker
+from extensions.otel.workflow_collaboration import init_workflow_collaboration_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,7 @@ class SupportsFlaskInstrumentor(Protocol):
 # pyrefly infers `NoneType`. Narrow the instances to just the methods we use
 # while leaving runtime behavior unchanged.
 def _new_celery_instrumentor() -> SupportsInstrument:
-    return cast(
-        SupportsInstrument,
-        CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()),
-    )
+    return cast(SupportsInstrument, CeleryInstrumentor())
 
 
 def _new_httpx_instrumentor() -> SupportsInstrument:
@@ -155,7 +153,10 @@ def init_httpx_instrumentor() -> None:
 def init_instruments(app: DifyApp) -> None:
     if not is_celery_worker():
         init_flask_instrumentor(app)
-        _new_celery_instrumentor().instrument()
+        init_workflow_collaboration_metrics(app)
+        _new_celery_instrumentor().instrument(
+            tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()
+        )
 
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)

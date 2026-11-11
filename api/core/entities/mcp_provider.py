@@ -16,6 +16,7 @@ from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTok
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from graphon.file import helpers as file_helpers
+from libs.datetime_utils import to_utc_timestamp
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider
@@ -59,7 +60,7 @@ class MCPProviderEntity(BaseModel):
 
     # Basic identification
     id: str
-    provider_id: str  # server_identifier
+    server_identifier: str
     name: str
     tenant_id: str
     user_id: str
@@ -91,7 +92,7 @@ class MCPProviderEntity(BaseModel):
 
         return cls(
             id=db_provider.id,
-            provider_id=db_provider.server_identifier,
+            server_identifier=db_provider.server_identifier,
             name=db_provider.name,
             tenant_id=db_provider.tenant_id,
             user_id=db_provider.user_id,
@@ -176,8 +177,8 @@ class MCPProviderEntity(BaseModel):
             "type": ToolProviderType.MCP.value,
             "is_team_authorization": self.authed,
             "server_url": self.masked_server_url(),
-            "server_identifier": self.provider_id,
-            "updated_at": int(self.updated_at.timestamp()),
+            "server_identifier": self.server_identifier,
+            "updated_at": to_utc_timestamp(self.updated_at),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
             "identity_mode": self.identity_mode,

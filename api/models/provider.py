@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum, auto
-from functools import cached_property
 from typing import override
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, select, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, String, func, text
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
-from core.db.session_factory import session_factory
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.uuid_utils import uuidv7
 
@@ -55,9 +53,9 @@ class Provider(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_type: Mapped[ProviderType] = mapped_column(
-        EnumText(ProviderType, length=40), nullable=False, server_default=text("'custom'"), default=ProviderType.CUSTOM
+        EnumText(ProviderType, length=40), nullable=False, default=ProviderType.CUSTOM
     )
-    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
@@ -73,6 +71,16 @@ class Provider(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
+    # The active credential row, or None when credential_id is unset or the row was deleted.
+    # lazy="raise" keeps reads from opening a session: callers load it with selectinload in their own session.
+    credential: Mapped[ProviderCredential | None] = relationship(
+        lambda: ProviderCredential,
+        primaryjoin=lambda: foreign(Provider.credential_id) == ProviderCredential.id,
+        lazy="raise",
+        viewonly=True,
+        init=False,
+        compare=False,
+    )
 
     @override
     def __repr__(self):
@@ -81,20 +89,15 @@ class Provider(TypeBase):
             f" provider_type='{self.provider_type}')>"
         )
 
-    @cached_property
-    def credential(self):
-        if self.credential_id:
-            with session_factory.create_session() as session:
-                return session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
-
     @property
     def credential_name(self):
-        credential = self.credential
+        # Records without credential_id, such as newly created system records, never need the relationship loaded.
+        credential = self.credential if self.credential_id else None
         return credential.credential_name if credential else None
 
     @property
     def encrypted_config(self):
-        credential = self.credential
+        credential = self.credential if self.credential_id else None
         return credential.encrypted_config if credential else None
 
     @property
@@ -137,31 +140,13 @@ class ProviderModel(TypeBase):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-
-    @cached_property
-    def credential(self):
-        if self.credential_id:
-            with session_factory.create_session() as session:
-                return session.scalar(
-                    select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
-                )
-
-    @property
-    def credential_name(self):
-        credential = self.credential
-        return credential.credential_name if credential else None
-
-    @property
-    def encrypted_config(self):
-        credential = self.credential
-        return credential.encrypted_config if credential else None
 
 
 class TenantDefaultModel(TypeBase):
@@ -259,10 +244,8 @@ class ProviderModelSetting(TypeBase):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"), default=True)
-    load_balancing_enabled: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=text("false"), default=False
-    )
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    load_balancing_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -295,7 +278,7 @@ class LoadBalancingModelConfig(TypeBase):
     credential_source_type: Mapped[CredentialSourceType | None] = mapped_column(
         EnumText(CredentialSourceType, length=40), nullable=True, default=None
     )
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"), default=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -324,10 +307,7 @@ class ProviderCredential(TypeBase):
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False)
     user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     visibility: Mapped[PermissionEnum] = mapped_column(
-        EnumText(PermissionEnum, length=40),
-        nullable=False,
-        server_default=sa.text("'all_team_members'"),
-        default=PermissionEnum.ALL_TEAM,
+        EnumText(PermissionEnum, length=40), nullable=False, default=PermissionEnum.ALL_TEAM
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False

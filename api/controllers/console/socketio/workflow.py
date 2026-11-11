@@ -5,12 +5,14 @@ from typing import cast
 from flask import Request as FlaskRequest
 
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
+from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.account_service import AccountService
-from services.workflow_collaboration_service import WorkflowCollaborationService
+from services.errors.billing import BillingUpstreamError
+from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
@@ -21,9 +23,10 @@ def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., objec
 
 
 @_sio_on("connect")
-def socket_connect(sid, environ, auth):
+@observe_workflow_event("connect", sio)
+def socket_connect(sid, environ, auth=None):
     """
-    WebSocket connect event, do authentication here.
+    Authenticate a connect with optional Socket.IO auth data; preserve token-based admission.
     """
     try:
         request_environ = FlaskRequest(environ)
@@ -43,8 +46,8 @@ def socket_connect(sid, environ, auth):
             logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
             return False
 
-        with sio.app.app_context(), session_factory.create_session() as session:
-            user = AccountService.load_logged_in_account(account_id=user_id, session=session)
+        with sio.app.app_context():
+            user = application_services().accounts.identity.load_user(user_id)
             if not user:
                 logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)
                 return False
@@ -61,6 +64,7 @@ def socket_connect(sid, environ, auth):
 
 
 @_sio_on("user_connect")
+@observe_workflow_event("user_connect", sio)
 def handle_user_connect(sid, data):
     """
     Handle user connect event. Each session (tab) is treated as an independent collaborator.
@@ -69,8 +73,14 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    with sio.app.app_context(), session_factory.create_session() as session:
-        result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    try:
+        with sio.app.app_context(), session_factory.create_session() as session:
+            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    except BillingUpstreamError:
+        logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
+        return {"msg": "collaboration_unavailable"}, 503
+    except WorkflowCollaborationNotEntitledError:
+        return {"msg": "not_entitled"}, 403
     if not result:
         return {"msg": "unauthorized"}, 401
 
@@ -78,32 +88,39 @@ def handle_user_connect(sid, data):
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
 
 
-@_sio_on("disconnect")
-def handle_disconnect(sid):
-    """
-    Handle session disconnect event. Remove the specific session from online users.
-    """
+@observe_workflow_event("disconnect", sio)
+def _handle_disconnect(sid):
+    """Remove the session from online users and observe the result."""
     collaboration_service.disconnect_session(sid)
 
 
+@_sio_on("disconnect")
+def handle_disconnect(sid):
+    """Let Socket.IO discard its reason before starting observable cleanup.
+
+    A cleanup TypeError must propagate without Socket.IO retrying the cleanup.
+    """
+    _handle_disconnect(sid)
+
+
 @_sio_on("collaboration_event")
+@observe_workflow_event("collaboration_event", sio)
 def handle_collaboration_event(sid, data):
     """
     Handle general collaboration events, include:
     1. mouse_move
     2. vars_and_features_update
     3. sync_request (ask leader to update graph)
-    4. app_state_update
-    5. mcp_server_update
-    6. workflow_update
-    7. comments_update
-    8. node_panel_presence
-    9. graph_view_state (session reports tab visibility; drives leader election)
+    4. workflow_update
+    5. comments_update
+    6. node_panel_presence
+    7. graph_view_state (session reports tab visibility; drives leader election)
     """
     return collaboration_service.relay_collaboration_event(sid, data)
 
 
 @_sio_on("graph_event")
+@observe_workflow_event("graph_event", sio)
 def handle_graph_event(sid, data):
     """
     Handle graph events - simple broadcast relay.

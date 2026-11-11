@@ -1,12 +1,11 @@
 import logging
 import uuid
 from collections.abc import Mapping
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from flask import Request, Response
-from pydantic import TypeAdapter
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse
@@ -20,158 +19,97 @@ from core.trigger.entities.entities import (
     SubscriptionConstructor,
 )
 from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import masked_credentials
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
-from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
-from services.trigger.trigger_provider_service import TriggerProviderService
 
 logger = logging.getLogger(__name__)
 
-_request_logs_adapter: TypeAdapter[list[RequestLog]] = TypeAdapter(list[RequestLog])
+
+class TriggerSubscriptionBuilderStore(Protocol):
+    """Persist temporary builders and validation logs without owning their policies."""
+
+    def get(self, *, subscription_id: str) -> SubscriptionBuilder | None: ...
+
+    def save(self, *, builder: SubscriptionBuilder) -> None: ...
+
+    def delete(self, *, subscription_id: str) -> None: ...
+
+    def lock(self, *, subscription_id: str) -> AbstractContextManager[None]: ...
+
+    def list_logs(self, *, endpoint_id: str) -> list[RequestLog]: ...
+
+    def append_log(self, *, log: RequestLog) -> None: ...
 
 
-class TriggerSubscriptionBuilderService:
-    """Service for managing trigger providers and credentials"""
-
-    ##########################
-    # Trigger provider
-    ##########################
-    __MAX_TRIGGER_PROVIDER_COUNT__ = 10
-
-    ##########################
-    # Builder endpoint
-    ##########################
-    __BUILDER_CACHE_EXPIRE_SECONDS__ = 30 * 60
-
-    __VALIDATION_REQUEST_CACHE_COUNT__ = 10
-    __VALIDATION_REQUEST_CACHE_EXPIRE_SECONDS__ = 30 * 60
-
-    ##########################
-    # Distributed lock
-    ##########################
-    __LOCK_EXPIRE_SECONDS__ = 30
-
-    @classmethod
-    def encode_cache_key(cls, subscription_id: str) -> str:
-        return f"trigger:subscription:builder:{subscription_id}"
-
-    @classmethod
-    def encode_lock_key(cls, subscription_id: str) -> str:
-        return f"trigger:subscription:builder:lock:{subscription_id}"
-
-    @classmethod
-    @contextmanager
-    def acquire_builder_lock(cls, subscription_id: str):
-        """
-        Acquire a distributed lock for a subscription builder.
-
-        :param subscription_id: The subscription builder ID
-        """
-        lock_key = cls.encode_lock_key(subscription_id)
-        with redis_client.lock(lock_key, timeout=cls.__LOCK_EXPIRE_SECONDS__):
-            yield
-
-    @classmethod
-    def verify_trigger_subscription_builder(
-        cls,
+class TriggerSubscriptionBuilderQuery(Protocol):
+    def get_subscription_builder(
+        self,
+        *,
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
         subscription_builder_id: str,
-    ) -> Mapping[str, Any]:
-        """Verify a trigger subscription builder"""
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-        if not provider_controller:
-            raise ValueError(f"Provider {provider_id} not found")
+    ) -> SubscriptionBuilder | None:
+        """Return the owned builder, or None if its temporary capability expired."""
+        ...
 
-        subscription_builder = cls.get_subscription_builder(subscription_builder_id)
-        if not subscription_builder:
-            raise ValueError(f"Subscription builder {subscription_builder_id} not found")
 
-        if subscription_builder.credential_type == CredentialType.OAUTH2:
-            return {"verified": bool(subscription_builder.credentials)}
+class TriggerSubscriptionProviderLookup(Protocol):
+    def __call__(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController: ...
 
-        if subscription_builder.credential_type == CredentialType.API_KEY:
-            credentials_to_validate = subscription_builder.credentials
-            try:
-                provider_controller.validate_credentials(user_id, credentials_to_validate)
-            except ToolProviderCredentialValidationError as e:
-                raise ValueError(f"Invalid credentials: {e}")
-            return {"verified": True}
 
-        return {"verified": True}
+class TriggerSubscriber(Protocol):
+    def __call__(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        endpoint: str,
+        parameters: Mapping[str, Any],
+        credentials: Mapping[str, str],
+        credential_type: CredentialType,
+    ) -> Subscription: ...
 
-    @classmethod
-    def build_trigger_subscription_builder(
-        cls, tenant_id: str, user_id: str, provider_id: TriggerProviderID, subscription_builder_id: str
+
+class TriggerSubscriptionWriter(Protocol):
+    def __call__(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        name: str,
+        provider_id: TriggerProviderID,
+        endpoint_id: str,
+        credential_type: CredentialType,
+        parameters: Mapping[str, Any],
+        properties: Mapping[str, Any],
+        credentials: Mapping[str, str],
+        subscription_id: str,
+        credential_expires_at: int,
+        expires_at: int,
+    ) -> Mapping[str, Any]: ...
+
+
+class TriggerSubscriptionBuilderService:
+    """Manage temporary subscription ownership, updates and provider verification."""
+
+    def __init__(
+        self,
+        *,
+        builders: TriggerSubscriptionBuilderStore,
+        get_provider: TriggerSubscriptionProviderLookup,
+        subscribe: TriggerSubscriber,
+        create_subscription: TriggerSubscriptionWriter,
     ) -> None:
-        """Build a trigger subscription builder"""
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-        if not provider_controller:
-            raise ValueError(f"Provider {provider_id} not found")
+        self._builders = builders
+        self._get_provider = get_provider
+        self._subscribe = subscribe
+        self._create_subscription = create_subscription
 
-        # Acquire lock to prevent concurrent build operations
-        with cls.acquire_builder_lock(subscription_builder_id):
-            subscription_builder = cls.get_subscription_builder(subscription_builder_id)
-            if not subscription_builder:
-                raise ValueError(f"Subscription builder {subscription_builder_id} not found")
-
-            if not subscription_builder.name:
-                raise ValueError("Subscription builder name is required")
-
-            credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED)
-            if credential_type == CredentialType.UNAUTHORIZED:
-                # manually create
-                TriggerProviderService.add_trigger_subscription(
-                    subscription_id=subscription_builder.id,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    name=subscription_builder.name,
-                    provider_id=provider_id,
-                    endpoint_id=subscription_builder.endpoint_id,
-                    parameters=subscription_builder.parameters,
-                    properties=subscription_builder.properties,
-                    credential_expires_at=subscription_builder.credential_expires_at or -1,
-                    expires_at=subscription_builder.expires_at,
-                    credentials=subscription_builder.credentials,
-                    credential_type=credential_type,
-                )
-            else:
-                # automatically create
-                subscription: Subscription = TriggerManager.subscribe_trigger(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    provider_id=provider_id,
-                    endpoint=generate_plugin_trigger_endpoint_url(subscription_builder.endpoint_id),
-                    parameters=subscription_builder.parameters,
-                    credentials=subscription_builder.credentials,
-                    credential_type=credential_type,
-                )
-
-                TriggerProviderService.add_trigger_subscription(
-                    subscription_id=subscription_builder.id,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    name=subscription_builder.name,
-                    provider_id=provider_id,
-                    endpoint_id=subscription_builder.endpoint_id,
-                    parameters=subscription_builder.parameters,
-                    properties=subscription.properties,
-                    credentials=subscription_builder.credentials,
-                    credential_type=credential_type,
-                    credential_expires_at=subscription_builder.credential_expires_at or -1,
-                    expires_at=subscription_builder.expires_at,
-                )
-
-            # Delete the builder after successful subscription creation
-            cache_key = cls.encode_cache_key(subscription_builder_id)
-            redis_client.delete(cache_key)
-
-    @classmethod
     def create_trigger_subscription_builder(
-        cls,
+        self,
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
@@ -180,7 +118,7 @@ class TriggerSubscriptionBuilderService:
         """
         Add a new trigger subscription validation.
         """
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
@@ -200,14 +138,13 @@ class TriggerSubscriptionBuilderService:
             credential_expires_at=-1,
             expires_at=-1,
         )
-        cache_key = cls.encode_cache_key(subscription_id)
-        redis_client.setex(cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder.model_dump_json())
-        return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder)
+        self._builders.save(builder=subscription_builder)
+        return self.builder_to_api_entity(controller=provider_controller, entity=subscription_builder)
 
-    @classmethod
     def update_trigger_subscription_builder(
-        cls,
+        self,
         tenant_id: str,
+        user_id: str,
         provider_id: TriggerProviderID,
         subscription_builder_id: str,
         subscription_builder_updater: SubscriptionBuilderUpdater,
@@ -216,54 +153,53 @@ class TriggerSubscriptionBuilderService:
         Update a trigger subscription validation.
         """
         subscription_id = subscription_builder_id
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
         # Acquire lock to prevent concurrent updates
-        with cls.acquire_builder_lock(subscription_id):
-            cache_key = cls.encode_cache_key(subscription_id)
-            subscription_builder_cache = cls.get_subscription_builder(subscription_builder_id)
-            if not subscription_builder_cache or subscription_builder_cache.tenant_id != tenant_id:
-                raise ValueError(f"Subscription {subscription_id} expired or not found")
+        with self._builders.lock(subscription_id=subscription_id):
+            subscription_builder_cache = self._require_owned_subscription_builder(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                provider_id=provider_id,
+                subscription_builder_id=subscription_builder_id,
+            )
 
             subscription_builder_updater.update(subscription_builder_cache)
 
-            redis_client.setex(
-                cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder_cache.model_dump_json()
-            )
-            return cls.builder_to_api_entity(controller=provider_controller, entity=subscription_builder_cache)
+            self._builders.save(builder=subscription_builder_cache)
+            return self.builder_to_api_entity(controller=provider_controller, entity=subscription_builder_cache)
 
-    @classmethod
     def update_and_verify_builder(
-        cls,
+        self,
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
         subscription_builder_id: str,
         subscription_builder_updater: SubscriptionBuilderUpdater,
-    ) -> Mapping[str, Any]:
+    ) -> Mapping[str, bool]:
         """
         Atomically update and verify a subscription builder.
         This ensures the verification is done on the exact data that was just updated.
         """
         subscription_id = subscription_builder_id
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
         # Acquire lock for the entire update + verify operation
-        with cls.acquire_builder_lock(subscription_id):
-            cache_key = cls.encode_cache_key(subscription_id)
-            subscription_builder_cache = cls.get_subscription_builder(subscription_builder_id)
-            if not subscription_builder_cache or subscription_builder_cache.tenant_id != tenant_id:
-                raise ValueError(f"Subscription {subscription_id} expired or not found")
+        with self._builders.lock(subscription_id=subscription_id):
+            subscription_builder_cache = self._require_owned_subscription_builder(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                provider_id=provider_id,
+                subscription_builder_id=subscription_builder_id,
+            )
 
             # Update
             subscription_builder_updater.update(subscription_builder_cache)
-            redis_client.setex(
-                cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder_cache.model_dump_json()
-            )
+            self._builders.save(builder=subscription_builder_cache)
 
             # Verify (using the just-updated data)
             if subscription_builder_cache.credential_type == CredentialType.OAUTH2:
@@ -274,14 +210,13 @@ class TriggerSubscriptionBuilderService:
                 try:
                     provider_controller.validate_credentials(user_id, credentials_to_validate)
                 except ToolProviderCredentialValidationError as e:
-                    raise ValueError(f"Invalid credentials: {e}")
+                    raise ValueError(f"Invalid credentials: {e}") from e
                 return {"verified": True}
 
             return {"verified": True}
 
-    @classmethod
     def update_and_build_builder(
-        cls,
+        self,
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
@@ -293,27 +228,22 @@ class TriggerSubscriptionBuilderService:
         This ensures the build uses the exact data that was just updated.
         """
         subscription_id = subscription_builder_id
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
         # Acquire lock for the entire update + build operation
-        with cls.acquire_builder_lock(subscription_id):
-            cache_key = cls.encode_cache_key(subscription_id)
-            subscription_builder_cache = cls.get_subscription_builder(subscription_builder_id)
-            if not subscription_builder_cache or subscription_builder_cache.tenant_id != tenant_id:
-                raise ValueError(f"Subscription {subscription_id} expired or not found")
-
-            # Update
-            subscription_builder_updater.update(subscription_builder_cache)
-            redis_client.setex(
-                cache_key, cls.__BUILDER_CACHE_EXPIRE_SECONDS__, subscription_builder_cache.model_dump_json()
+        with self._builders.lock(subscription_id=subscription_id):
+            subscription_builder = self._require_owned_subscription_builder(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                provider_id=provider_id,
+                subscription_builder_id=subscription_builder_id,
             )
 
-            # Re-fetch to ensure we have the latest data
-            subscription_builder = cls.get_subscription_builder(subscription_builder_id)
-            if not subscription_builder:
-                raise ValueError(f"Subscription builder {subscription_builder_id} not found")
+            # Update
+            subscription_builder_updater.update(subscription_builder)
+            self._builders.save(builder=subscription_builder)
 
             if not subscription_builder.name:
                 raise ValueError("Subscription builder name is required")
@@ -322,7 +252,7 @@ class TriggerSubscriptionBuilderService:
             credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED)
             if credential_type == CredentialType.UNAUTHORIZED:
                 # manually create
-                TriggerProviderService.add_trigger_subscription(
+                self._create_subscription(
                     subscription_id=subscription_builder.id,
                     tenant_id=tenant_id,
                     user_id=user_id,
@@ -338,7 +268,7 @@ class TriggerSubscriptionBuilderService:
                 )
             else:
                 # automatically create
-                subscription: Subscription = TriggerManager.subscribe_trigger(
+                subscription: Subscription = self._subscribe(
                     tenant_id=tenant_id,
                     user_id=user_id,
                     provider_id=provider_id,
@@ -348,7 +278,7 @@ class TriggerSubscriptionBuilderService:
                     credential_type=credential_type,
                 )
 
-                TriggerProviderService.add_trigger_subscription(
+                self._create_subscription(
                     subscription_id=subscription_builder.id,
                     tenant_id=tenant_id,
                     user_id=user_id,
@@ -360,16 +290,19 @@ class TriggerSubscriptionBuilderService:
                     credentials=subscription_builder.credentials,
                     credential_type=credential_type,
                     credential_expires_at=subscription_builder.credential_expires_at or -1,
-                    expires_at=subscription_builder.expires_at,
+                    expires_at=(
+                        subscription.expires_at
+                        if subscription.expires_at is not None
+                        else (subscription_builder.expires_at or -1)
+                    ),
                 )
 
             # Delete the builder after successful subscription creation
-            cache_key = cls.encode_cache_key(subscription_builder_id)
-            redis_client.delete(cache_key)
+            self._builders.delete(subscription_id=subscription_id)
 
-    @classmethod
+    @staticmethod
     def builder_to_api_entity(
-        cls, controller: PluginTriggerProviderController, entity: SubscriptionBuilder
+        controller: PluginTriggerProviderController, entity: SubscriptionBuilder
     ) -> SubscriptionBuilderApiEntity:
         credential_type = CredentialType.of(entity.credential_type or CredentialType.UNAUTHORIZED.value)
         return SubscriptionBuilderApiEntity(
@@ -388,21 +321,54 @@ class TriggerSubscriptionBuilderService:
             else {},
         )
 
-    @classmethod
-    def get_subscription_builder(cls, endpoint_id: str) -> SubscriptionBuilder | None:
-        """
-        Get a trigger subscription by the endpoint ID.
-        """
-        cache_key = cls.encode_cache_key(endpoint_id)
-        subscription_cache = redis_client.get(cache_key)
-        if subscription_cache:
-            return SubscriptionBuilder.model_validate_json(subscription_cache)
+    def _get_subscription_builder_by_endpoint_id(self, endpoint_id: str) -> SubscriptionBuilder | None:
+        """Resolve the public validation capability without authenticated owner context."""
+        subscription_builder = self._builders.get(subscription_id=endpoint_id)
+        if subscription_builder is not None and subscription_builder.endpoint_id == endpoint_id:
+            return subscription_builder
 
         return None
 
-    @classmethod
-    def append_log(cls, endpoint_id: str, request: Request, response: Response) -> None:
-        """Append validation request log to Redis."""
+    def get_subscription_builder(
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        subscription_builder_id: str,
+    ) -> SubscriptionBuilder | None:
+        """Return an owned temporary builder, or None when no temporary builder exists."""
+        subscription_builder = self._get_subscription_builder_by_endpoint_id(subscription_builder_id)
+        if subscription_builder is None:
+            return None
+        if (
+            subscription_builder.id != subscription_builder_id
+            or subscription_builder.tenant_id != tenant_id
+            or subscription_builder.user_id != user_id
+            or subscription_builder.provider_id != str(provider_id)
+        ):
+            raise ValueError(f"Subscription builder {subscription_builder_id} not found")
+        return subscription_builder
+
+    def _require_owned_subscription_builder(
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        subscription_builder_id: str,
+    ) -> SubscriptionBuilder:
+        """Return an owned temporary builder or reject an absent capability."""
+        subscription_builder = self.get_subscription_builder(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription_builder_id=subscription_builder_id,
+        )
+        if subscription_builder is None:
+            raise ValueError(f"Subscription builder {subscription_builder_id} not found")
+        return subscription_builder
+
+    def append_log(self, endpoint_id: str, request: Request, response: Response) -> None:
+        """Record the validation request and its response."""
         log = RequestLog(
             id=str(uuid.uuid4()),
             endpoint=endpoint_id,
@@ -420,29 +386,26 @@ class TriggerSubscriptionBuilderService:
             created_at=datetime.now(),
         )
 
-        key = f"trigger:subscription:builder:logs:{endpoint_id}"
-        logs = _request_logs_adapter.validate_json(redis_client.get(key) or b"[]")
-        logs.append(log)
+        self._builders.append_log(log=log)
 
-        # Keep last N logs
-        logs = logs[-cls.__VALIDATION_REQUEST_CACHE_COUNT__ :]
-        redis_client.setex(
-            key,
-            cls.__VALIDATION_REQUEST_CACHE_EXPIRE_SECONDS__,
-            _request_logs_adapter.dump_json(logs),
+    def list_logs(
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        subscription_builder_id: str,
+    ) -> list[RequestLog]:
+        """List request logs for validation endpoint."""
+        subscription_builder = self._require_owned_subscription_builder(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription_builder_id=subscription_builder_id,
         )
 
-    @classmethod
-    def list_logs(cls, endpoint_id: str) -> list[RequestLog]:
-        """List request logs for validation endpoint."""
-        key = f"trigger:subscription:builder:logs:{endpoint_id}"
-        logs_json = redis_client.get(key)
-        if not logs_json:
-            return []
-        return _request_logs_adapter.validate_json(logs_json)
+        return self._builders.list_logs(endpoint_id=subscription_builder.endpoint_id)
 
-    @classmethod
-    def process_builder_validation_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
+    def process_builder_validation_endpoint(self, endpoint_id: str, request: Request) -> Response | None:
         """
         Process a temporary endpoint request.
 
@@ -451,13 +414,13 @@ class TriggerSubscriptionBuilderService:
         :return: The Flask response object
         """
         # check if validation endpoint exists
-        subscription_builder: SubscriptionBuilder | None = cls.get_subscription_builder(endpoint_id)
+        subscription_builder: SubscriptionBuilder | None = self._get_subscription_builder_by_endpoint_id(endpoint_id)
         if not subscription_builder:
             return None
 
         try:
             # response to validation endpoint
-            controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            controller: PluginTriggerProviderController = self._get_provider(
                 tenant_id=subscription_builder.tenant_id,
                 provider_id=TriggerProviderID(subscription_builder.provider_id),
             )
@@ -469,7 +432,7 @@ class TriggerSubscriptionBuilderService:
             )
             response: Response = dispatch_response.response
             # append the request log
-            cls.append_log(
+            self.append_log(
                 endpoint_id=endpoint_id,
                 request=request,
                 response=response,
@@ -478,18 +441,24 @@ class TriggerSubscriptionBuilderService:
         except Exception:
             logger.exception("Error during validation endpoint dispatch for endpoint_id=%s", endpoint_id)
             error_response = Response(status=500, response="An internal error has occurred.")
-            cls.append_log(endpoint_id=endpoint_id, request=request, response=error_response)
+            self.append_log(endpoint_id=endpoint_id, request=request, response=error_response)
             return error_response
 
-    @classmethod
-    def get_subscription_builder_by_id(cls, subscription_builder_id: str) -> SubscriptionBuilderApiEntity:
+    def get_subscription_builder_by_id(
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        subscription_builder_id: str,
+    ) -> SubscriptionBuilderApiEntity:
         """Get a trigger subscription builder API entity."""
-        subscription_builder = cls.get_subscription_builder(subscription_builder_id)
-        if not subscription_builder:
-            raise ValueError(f"Subscription builder {subscription_builder_id} not found")
-        return cls.builder_to_api_entity(
-            controller=TriggerManager.get_trigger_provider(
-                subscription_builder.tenant_id, TriggerProviderID(subscription_builder.provider_id)
-            ),
+        subscription_builder = self._require_owned_subscription_builder(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription_builder_id=subscription_builder_id,
+        )
+        return self.builder_to_api_entity(
+            controller=self._get_provider(tenant_id=tenant_id, provider_id=provider_id),
             entity=subscription_builder,
         )

@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'
 
@@ -16,9 +15,7 @@ type IRunBatchProps = {
 }
 
 const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
-  const { t } = useTranslation()
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const { t } = useTranslation(['share'])
 
   const [csvData, setCsvData] = React.useState<string[][]>([])
   const [isParsed, setIsParsed] = React.useState(false)
@@ -39,12 +36,12 @@ const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
       <div className="flex justify-end">
         <Button
           variant="primary"
-          className={cn('mt-4 pr-4 pl-3', !isPC && 'grow')}
+          className="mt-4 ps-3 pe-4 max-md:grow"
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >
           <Icon
-            className={cn(!isAllFinished && 'animate-spin', 'mr-1 size-4 shrink-0')}
+            className={cn(!isAllFinished && 'animate-spin', 'size-4 shrink-0')}
             aria-hidden="true"
           />
           <span className="text-[13px] uppercase">

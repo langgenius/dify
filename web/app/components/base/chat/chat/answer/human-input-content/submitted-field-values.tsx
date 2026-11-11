@@ -63,7 +63,7 @@ const SubmittedFieldValues = ({ fields, values }: SubmittedFieldValuesProps) => 
         return (
           <div
             key={fieldName}
-            className="body-md-regular break-words text-text-primary"
+            className="body-md-regular wrap-break-word text-text-primary"
             data-testid={`submitted-field-${fieldName}`}
           >
             {String(value)}

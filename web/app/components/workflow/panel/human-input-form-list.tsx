@@ -1,3 +1,4 @@
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
@@ -6,10 +7,12 @@ import ContentWrapper from '@/app/components/base/chat/chat/answer/human-input-c
 import { UnsubmittedHumanInputContent } from '@/app/components/base/chat/chat/answer/human-input-content/unsubmitted'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { ENABLE_HITL_IM } from '@/config'
+import { WorkflowHumanInputForm } from '@/features/human-input/form/loaded-form-content'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 
 const HumanInputFormList = ({
@@ -17,6 +20,7 @@ const HumanInputFormList = ({
   onHumanInputFormSubmit,
 }: HumanInputFormListProps) => {
   const store = useStoreApi()
+  const FormContent = ENABLE_HITL_IM ? WorkflowHumanInputForm : UnsubmittedHumanInputContent
 
   const getHumanInputNodeData = useCallback(
     (nodeID: string) => {
@@ -77,12 +81,12 @@ const HumanInputFormList = ({
     <div className="flex flex-col gap-y-3">
       {filteredHumanInputFormDataList.map((formData) => (
         <ContentWrapper
-          key={formData.node_id}
+          key={formData.form_id}
           nodeTitle={formData.node_title}
-          className="bg-components-panel-bg"
+          className={ENABLE_HITL_IM ? 'bg-components-panel-bg shadow-xs' : 'bg-components-panel-bg'}
         >
-          <UnsubmittedHumanInputContent
-            key={formData.node_id}
+          <FormContent
+            key={formData.form_id}
             formData={formData}
             showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
             isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}

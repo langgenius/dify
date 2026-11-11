@@ -1,5 +1,5 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
-import type { Dispatch, SetStateAction } from 'react'
+import type { ComponentPropsWithRef, Dispatch, SetStateAction } from 'react'
 import type { Credential, CustomModel, ModelProvider } from '../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -33,7 +33,7 @@ const SwitchCredentialInLoadBalancing = ({
   onUpdate,
   onRemove,
 }: SwitchCredentialInLoadBalancingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const notAllowCustomCredential = provider.allow_custom_token === false
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialMenu = canUseCredential || canCreateCredential || canManageCredential
@@ -46,60 +46,64 @@ const SwitchCredentialInLoadBalancing = ({
     [canUseCredential, setCustomModelCredential],
   )
 
-  const renderTrigger = useCallback(() => {
-    const selectedCredentialId = customModelCredential?.credential_id
-    const currentCredential = credentials?.find((c) => c.credential_id === selectedCredentialId)
-    const empty = !credentials?.length
-    const authRemoved = selectedCredentialId && !currentCredential && !empty
-    const unavailable = currentCredential?.not_allowed_to_use
+  const renderTrigger = useCallback(
+    (_open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
+      const selectedCredentialId = customModelCredential?.credential_id
+      const currentCredential = credentials?.find((c) => c.credential_id === selectedCredentialId)
+      const empty = !credentials?.length
+      const authRemoved = selectedCredentialId && !currentCredential && !empty
+      const unavailable = currentCredential?.not_allowed_to_use
 
-    let color: StatusDotStatus = 'success'
-    if (authRemoved || unavailable) color = 'error'
+      let color: StatusDotStatus = 'success'
+      if (authRemoved || unavailable) color = 'error'
 
-    const Item = (
-      <Button
-        variant="secondary"
-        className={cn(
-          'shrink-0 space-x-1',
-          (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
-          (!canOpenCredentialMenu || (empty && !canCreateCredential)) &&
-            'cursor-not-allowed opacity-50',
-        )}
-      >
-        {!empty && <StatusDot className="mr-2" status={color} />}
-        {authRemoved && t(($) => $['modelProvider.auth.authRemoved'], { ns: 'common' })}
-        {unavailable && t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
-        {empty &&
-          canCreateCredential &&
-          !notAllowCustomCredential &&
-          t(($) => $['modelProvider.auth.addCredential'], { ns: 'common' })}
-        {empty &&
-          (!canCreateCredential || notAllowCustomCredential) &&
-          t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
-        {!authRemoved && !unavailable && !empty && customModelCredential?.credential_name}
-        {currentCredential?.from_enterprise && <Badge className="ml-2">Enterprise</Badge>}
-        <span className="i-ri-arrow-down-s-line size-4" />
-      </Button>
-    )
-    if ((empty && notAllowCustomCredential) || !canOpenCredentialMenu) {
-      return (
-        <Tooltip>
-          <TooltipTrigger render={Item} />
-          <TooltipContent>
-            {t(($) => $['auth.credentialUnavailable'], { ns: 'plugin' })}
-          </TooltipContent>
-        </Tooltip>
+      const Item = (
+        <Button
+          {...triggerProps}
+          variant="secondary"
+          className={cn(
+            'shrink-0',
+            (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
+            (!canOpenCredentialMenu || (empty && !canCreateCredential)) &&
+              'cursor-not-allowed opacity-50',
+          )}
+        >
+          {!empty && <StatusDot status={color} />}
+          {authRemoved && t(($) => $['modelProvider.auth.authRemoved'], { ns: 'modelProvider' })}
+          {unavailable && t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
+          {empty &&
+            canCreateCredential &&
+            !notAllowCustomCredential &&
+            t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
+          {empty &&
+            (!canCreateCredential || notAllowCustomCredential) &&
+            t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
+          {!authRemoved && !unavailable && !empty && customModelCredential?.credential_name}
+          {currentCredential?.from_enterprise && <Badge>Enterprise</Badge>}
+          <span className="i-ri-arrow-down-s-line size-4" />
+        </Button>
       )
-    }
-    return Item
-  }, [
-    canCreateCredential,
-    canOpenCredentialMenu,
-    customModelCredential,
-    t,
-    credentials,
-    notAllowCustomCredential,
-  ])
+      if ((empty && notAllowCustomCredential) || !canOpenCredentialMenu) {
+        return (
+          <Tooltip>
+            <TooltipTrigger render={Item} />
+            <TooltipContent>
+              {t(($) => $['auth.credentialUnavailable'], { ns: 'plugin' })}
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
+      return Item
+    },
+    [
+      canCreateCredential,
+      canOpenCredentialMenu,
+      customModelCredential,
+      t,
+      credentials,
+      notAllowCustomCredential,
+    ],
+  )
 
   return (
     <Authorized
@@ -136,7 +140,7 @@ const SwitchCredentialInLoadBalancing = ({
       enableAddModelCredential
       showItemSelectedIcon
       hideAddAction={!canCreateCredential}
-      popupTitle={t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'common' })}
+      popupTitle={t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })}
       triggerOnlyOpenModal={!credentials?.length && canCreateCredential}
     />
   )

@@ -11,12 +11,12 @@
 # actually start. dify-api is intentionally left lean.
 
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.13-slim-trixie AS base
 
 WORKDIR /app/api
 
 # Install uv
-ENV UV_VERSION=0.8.9
+ENV UV_VERSION=0.13.4
 
 RUN pip install --no-cache-dir uv==${UV_VERSION}
 

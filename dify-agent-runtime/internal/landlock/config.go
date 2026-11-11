@@ -19,7 +19,7 @@ type Config struct {
 
 var (
 	// DefaultRWPaths are directories granted read-write access besides HOME.
-	// Agent-specific paths (e.g. drive base) are added dynamically by the runner.
+	// Agent-specific paths are added dynamically by the runner.
 	DefaultRWPaths = []string{}
 
 	// DefaultROPaths are directories granted read-only + execute access.

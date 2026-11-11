@@ -5,8 +5,28 @@ export type ClientOptions = {
 }
 
 export type CodeBasedExtensionResponse = {
-  data: unknown
+  data: Array<CodeBasedExtensionItemResponse>
   module: string
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type CodeBasedExtensionItemResponse = {
+  form_schema?: Array<{
+    [key: string]: unknown
+  }> | null
+  label?: {
+    [key: string]: unknown
+  } | null
+  name: string
 }
 
 export type GetCodeBasedExtensionData = {
@@ -17,6 +37,13 @@ export type GetCodeBasedExtensionData = {
   }
   url: '/code-based-extension'
 }
+
+export type GetCodeBasedExtensionErrors = {
+  default: ErrorResponse
+}
+
+export type GetCodeBasedExtensionError =
+  GetCodeBasedExtensionErrors[keyof GetCodeBasedExtensionErrors]
 
 export type GetCodeBasedExtensionResponses = {
   200: CodeBasedExtensionResponse

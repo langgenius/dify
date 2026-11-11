@@ -1,21 +1,16 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuLinkItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { marketplaceQuery } from '@/service/client'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { marketplaceQuery } from '@/service/marketplace'
 import { downloadBlob } from '@/utils/download'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = Readonly<{
+  marketplace: MarketplaceLinks
   open: boolean
   onOpenChange: (v: boolean) => void
   author: string
@@ -23,9 +18,9 @@ type Props = Readonly<{
   version: string
 }>
 
-function OperationDropdown({ open, onOpenChange, author, name, version }: Props) {
-  const { t } = useTranslation()
-  const { theme } = useTheme()
+function OperationMenu({ marketplace, open, onOpenChange, author, name, version }: Props) {
+  const { t } = useTranslation(['common'])
+  const theme = useResolvedTheme()
 
   const downloadMutation = useMutation(
     marketplaceQuery.downloadPlugin.mutationOptions({
@@ -49,37 +44,37 @@ function OperationDropdown({ open, onOpenChange, author, name, version }: Props)
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={onOpenChange}>
+      <MenuTrigger
         render={
-          <Button
+          <IconButton
             variant="ghost"
-            size="small"
-            className="size-6 min-h-0 rounded-lg p-0 focus-visible:ring-inset data-popup-open:bg-state-base-hover"
+            size="md"
+            className="rounded-lg focus-visible:ring-inset data-popup-open:bg-state-base-hover"
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
           >
             <span
               aria-hidden
               className="i-ri-more-fill size-4 text-components-button-secondary-accent-text"
             />
-          </Button>
+          </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[176px]">
-        <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
+      <MenuContent align="end" className="min-w-44">
+        <MenuItem className="system-md-regular" onClick={handleDownload}>
           {t(($) => $['operation.download'], { ns: 'common' })}
-        </DropdownMenuItem>
-        <DropdownMenuLinkItem
+        </MenuItem>
+        <MenuLinkItem
           className="system-md-regular"
-          href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+          href={marketplace.plugin({ org: author, name }, { theme })}
           target="_blank"
           rel="noopener noreferrer"
         >
           {t(($) => $['operation.viewDetails'], { ns: 'common' })}
-        </DropdownMenuLinkItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuLinkItem>
+      </MenuContent>
+    </Menu>
   )
 }
 
-export default memo(OperationDropdown)
+export default memo(OperationMenu)

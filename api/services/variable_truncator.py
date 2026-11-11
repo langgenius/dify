@@ -140,20 +140,15 @@ class VariableTruncator(BaseTruncator):
 
     @staticmethod
     def _segment_need_truncation(segment: Segment) -> bool:
-        if isinstance(
-            segment,
-            (NoneSegment, FloatSegment, IntegerSegment, FileSegment, BooleanSegment, ArrayFileSegment),
-        ):
-            return False
-        return True
+        return not isinstance(
+            segment, (NoneSegment, FloatSegment, IntegerSegment, FileSegment, BooleanSegment, ArrayFileSegment)
+        )
 
     @staticmethod
     def _json_value_needs_truncation(value: Any) -> bool:
         if value is None:
             return False
-        if isinstance(value, (bool, int, float)):
-            return False
-        return True
+        return not isinstance(value, (bool, int, float))
 
     @override
     def truncate(self, segment: Segment) -> TruncationResult:
@@ -278,14 +273,14 @@ class VariableTruncator(BaseTruncator):
         target_length = self._array_element_limit
 
         for i, item in enumerate(value):
-            # Dirty fix:
-            # The output of `Start` node may contain list of `File` elements,
-            # causing `AssertionError` while invoking `_truncate_json_primitives`.
-            #
-            # This check ensures that `list[File]` are handled separately
-            if isinstance(item, File):
-                truncated_value.append(item)
-                continue
+            # ``File`` is routed through ``_truncate_json_primitives`` (whose
+            # dedicated ``File`` branch returns the file as-is with its real
+            # serialized size). That preserves the count cap
+            # (``array_element_limit``) and the byte budget (``target_size``)
+            # for ``list[File]`` — the original "Dirty fix" branch above this
+            # loop bypassed both guarantees and reported ``used_size=2`` even
+            # when the returned array serialized to well over the budget.
+            # See https://github.com/langgenius/dify/issues/39218.
             if i >= target_length:
                 return _PartResult(truncated_value, used_size, True)
             if i > 0:
@@ -295,7 +290,7 @@ class VariableTruncator(BaseTruncator):
                 break
 
             remaining_budget = target_size - used_size
-            if item is None or isinstance(item, (str, list, dict, bool, int, float, UpdatedVariable)):
+            if item is None or isinstance(item, (str, list, dict, bool, int, float, File, UpdatedVariable)):
                 part_result = self._truncate_json_primitives(item, remaining_budget)
             else:
                 raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")
@@ -309,9 +304,7 @@ class VariableTruncator(BaseTruncator):
         qa_chunks = m.get(_QAKeys.QA_CHUNKS)
         if qa_chunks is None:
             return False
-        if not isinstance(qa_chunks, list):
-            return False
-        return True
+        return isinstance(qa_chunks, list)
 
     @classmethod
     def _maybe_parent_child_structure(cls, m: Mapping[str, Any]) -> bool:
@@ -323,10 +316,7 @@ class VariableTruncator(BaseTruncator):
         parent_child_chunks = m.get(_PCKeys.PARENT_CHILD_CHUNKS)
         if parent_child_chunks is None:
             return False
-        if not isinstance(parent_child_chunks, list):
-            return False
-
-        return True
+        return isinstance(parent_child_chunks, list)
 
     def _truncate_object(self, mapping: Mapping[str, Any], target_size: int) -> _PartResult[Mapping[str, Any]]:
         """

@@ -4,12 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 
-enum BadgeState {
-  Warning = 'warning',
-  Accent = 'accent',
-  Default = '',
-}
-
 const BadgeVariants = cva('badge', {
   variants: {
     size: {
@@ -27,28 +21,17 @@ type BadgeProps = Readonly<{
   size?: 's' | 'm' | 'l'
   iconOnly?: boolean
   uppercase?: boolean
-  state?: BadgeState
+  variant?: 'default' | 'warning' | 'accent'
   styleCss?: CSSProperties
   children?: ReactNode
 }> &
   React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof BadgeVariants>
 
-function getBadgeState(state: BadgeState) {
-  switch (state) {
-    case BadgeState.Warning:
-      return 'badge-warning'
-    case BadgeState.Accent:
-      return 'badge-accent'
-    default:
-      return ''
-  }
-}
-
 const Badge: React.FC<BadgeProps> = ({
   className,
   size,
-  state = BadgeState.Default,
+  variant = 'default',
   iconOnly = false,
   uppercase = false,
   styleCss,
@@ -59,18 +42,19 @@ const Badge: React.FC<BadgeProps> = ({
     <div
       className={cn(
         BadgeVariants({ size, className }),
-        getBadgeState(state),
+        variant === 'warning' && 'badge-warning',
+        variant === 'accent' && 'badge-accent',
         size === 's'
           ? iconOnly
-            ? 'p-[3px]'
-            : 'px-[5px] py-[3px]'
+            ? 'p-0.75'
+            : 'px-1.25 py-0.75'
           : size === 'l'
             ? iconOnly
               ? 'p-1.5'
               : 'px-2 py-1'
             : iconOnly
               ? 'p-1'
-              : 'px-[5px] py-[2px]',
+              : 'px-1.25 py-0.5',
         uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium',
       )}
       style={styleCss}
@@ -83,4 +67,4 @@ const Badge: React.FC<BadgeProps> = ({
 Badge.displayName = 'Badge'
 
 export default Badge
-export { Badge, BadgeState }
+export { Badge }

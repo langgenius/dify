@@ -1,241 +1,40 @@
-import type { AppDetailResponse } from '@/models/app'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { AccessMode } from '@/models/access-control'
-import { AppModeEnum } from '@/types/app'
+import { gunzipSync } from 'node:zlib'
+import { InputVarType } from '@/app/components/workflow/types'
 import { basePath } from '@/utils/var'
 import {
   buildWorkflowLaunchUrl,
   compressAndEncodeBase64,
   createWorkflowLaunchInitialValues,
-  getAppCardDisplayState,
-  getAppCardOperationKeys,
-  getAppHiddenLaunchVariables,
   getEmbeddedIframeSnippet,
   getEmbeddedScriptSnippet,
-  getWorkflowHiddenStartVariables,
-  hasWorkflowStartNode,
-  isAppAccessConfigured,
   isWorkflowLaunchInputSupported,
 } from '../app-card-utils'
 
 describe('app-card-utils', () => {
-  const baseAppInfo = {
-    id: 'app-1',
-    mode: AppModeEnum.CHAT,
-    enable_site: true,
-    enable_api: false,
-    access_mode: AccessMode.PUBLIC,
-    api_base_url: 'https://api.example.com',
-    site: {
-      app_base_url: 'https://example.com',
-      access_token: 'token-1',
-    },
-  } as AppDetailResponse
-
-  it('should detect whether the workflow includes a start node', () => {
+  it('should create initial values from workflow launch defaults', () => {
     expect(
-      hasWorkflowStartNode({
-        graph: {
-          nodes: [{ data: { type: BlockEnum.Start } }],
+      createWorkflowLaunchInitialValues([
+        {
+          variable: 'secret',
+          label: 'Secret',
+          type: InputVarType.textInput,
+          hide: true,
+          default: 'prefilled',
+          required: false,
         },
-      }),
-    ).toBe(true)
-
-    expect(
-      hasWorkflowStartNode({
-        graph: {
-          nodes: [{ data: { type: BlockEnum.Answer } }],
+        {
+          variable: 'enabled',
+          label: 'Enabled',
+          type: InputVarType.checkbox,
+          hide: true,
+          default: true,
+          required: false,
         },
-      }),
-    ).toBe(false)
-  })
-
-  it('should return hidden workflow start variables and their initial launch values', () => {
-    const hiddenVariables = getWorkflowHiddenStartVariables({
-      graph: {
-        nodes: [
-          {
-            data: {
-              type: BlockEnum.Start,
-              variables: [
-                {
-                  variable: 'visible',
-                  label: 'Visible',
-                  type: InputVarType.textInput,
-                  hide: false,
-                  required: false,
-                },
-                {
-                  variable: 'secret',
-                  label: 'Secret',
-                  type: InputVarType.textInput,
-                  hide: true,
-                  default: 'prefilled',
-                  required: false,
-                },
-                {
-                  variable: 'enabled',
-                  label: 'Enabled',
-                  type: InputVarType.checkbox,
-                  hide: true,
-                  default: true,
-                  required: false,
-                },
-              ],
-            },
-          },
-        ],
-      },
-    })
-
-    expect(hiddenVariables.map((variable) => variable.variable)).toEqual(['secret', 'enabled'])
-    expect(createWorkflowLaunchInitialValues(hiddenVariables)).toEqual({
+      ]),
+    ).toEqual({
       secret: 'prefilled',
       enabled: true,
     })
-  })
-
-  it('should return hidden advanced-chat launch variables from the workflow start node first', () => {
-    const hiddenVariables = getAppHiddenLaunchVariables({
-      appInfo: {
-        ...baseAppInfo,
-        mode: AppModeEnum.ADVANCED_CHAT,
-        model_config: {
-          user_input_form: [
-            {
-              'text-input': {
-                label: 'Visible',
-                variable: 'visible',
-                required: true,
-                max_length: 48,
-                default: '',
-                hide: false,
-              },
-            },
-            {
-              checkbox: {
-                label: 'Hidden Toggle',
-                variable: 'hidden_toggle',
-                required: false,
-                default: true,
-                hide: true,
-              },
-            },
-          ],
-        },
-      } as AppDetailResponse,
-      currentWorkflow: {
-        graph: {
-          nodes: [
-            {
-              data: {
-                type: BlockEnum.Start,
-                variables: [
-                  {
-                    variable: 'start_secret',
-                    label: 'Start Secret',
-                    type: InputVarType.textInput,
-                    hide: true,
-                    default: 'from-start',
-                    required: false,
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-    })
-
-    expect(hiddenVariables).toEqual([
-      expect.objectContaining({
-        variable: 'start_secret',
-        type: InputVarType.textInput,
-        default: 'from-start',
-      }),
-    ])
-  })
-
-  it('should build the display state for a published web app', () => {
-    const state = getAppCardDisplayState({
-      appInfo: baseAppInfo,
-      cardType: 'webapp',
-      currentWorkflow: null,
-      canManageWebApp: true,
-      canManageApi: true,
-    })
-
-    expect(state.isApp).toBe(true)
-    expect(state.appMode).toBe(AppModeEnum.CHAT)
-    expect(state.runningStatus).toBe(true)
-    expect(state.accessibleUrl).toBe(`https://example.com${basePath}/chat/token-1`)
-  })
-
-  it('should disable workflow cards without a graph or start node', () => {
-    const unpublishedState = getAppCardDisplayState({
-      appInfo: { ...baseAppInfo, mode: AppModeEnum.WORKFLOW },
-      cardType: 'webapp',
-      currentWorkflow: null,
-      canManageWebApp: true,
-      canManageApi: true,
-    })
-    expect(unpublishedState.appUnpublished).toBe(true)
-    expect(unpublishedState.toggleDisabled).toBe(true)
-
-    const missingStartState = getAppCardDisplayState({
-      appInfo: { ...baseAppInfo, mode: AppModeEnum.WORKFLOW },
-      cardType: 'webapp',
-      currentWorkflow: {
-        graph: {
-          nodes: [{ data: { type: BlockEnum.Answer } }],
-        },
-      },
-      canManageWebApp: true,
-      canManageApi: true,
-    })
-    expect(missingStartState.missingStartNode).toBe(true)
-    expect(missingStartState.runningStatus).toBe(false)
-  })
-
-  it('should require specific access subjects only for the specific access mode', () => {
-    expect(
-      isAppAccessConfigured(
-        { ...baseAppInfo, access_mode: AccessMode.PUBLIC },
-        { groups: [], members: [] },
-      ),
-    ).toBe(true)
-
-    expect(
-      isAppAccessConfigured(
-        { ...baseAppInfo, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-        { groups: [], members: [] },
-      ),
-    ).toBe(false)
-
-    expect(
-      isAppAccessConfigured(
-        { ...baseAppInfo, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-        { groups: [{ id: 'group-1' }], members: [] },
-      ),
-    ).toBe(true)
-  })
-
-  it('should derive operation keys for api and webapp cards', () => {
-    expect(
-      getAppCardOperationKeys({
-        cardType: 'api',
-        appMode: AppModeEnum.COMPLETION,
-        canManageSettings: true,
-      }),
-    ).toEqual(['develop'])
-
-    expect(
-      getAppCardOperationKeys({
-        cardType: 'webapp',
-        appMode: AppModeEnum.CHAT,
-        canManageSettings: false,
-      }),
-    ).toEqual(['launch', 'embedded', 'customize'])
   })
 
   it('should build a workflow launch URL with serialized parameters', async () => {
@@ -324,7 +123,6 @@ describe('app-card-utils', () => {
       inputValues: {},
     })
 
-    expect(snippet).toContain('// You can define the inputs from the Start node here')
     expect(snippet).not.toContain('isDev: true')
   })
 
@@ -341,113 +139,44 @@ describe('app-card-utils', () => {
   })
 
   it('should compress and encode base64 using CompressionStream when available', async () => {
-    const result = await compressAndEncodeBase64('hello')
-    expect(typeof result).toBe('string')
-    expect(result.length).toBeGreaterThan(0)
+    const result = await compressAndEncodeBase64('Hello 世界')
+    const bytes = Uint8Array.from(atob(result), (char) => char.charCodeAt(0))
+    expect(gunzipSync(bytes).toString('utf8')).toBe('Hello 世界')
   })
 
   it('should fallback to plain base64 when CompressionStream is unavailable', async () => {
-    const original = globalThis.CompressionStream
-    // @ts-expect-error remove for test
-    delete globalThis.CompressionStream
-
-    const result = await compressAndEncodeBase64('hello')
-    expect(result).toBe(btoa('hello'))
-
-    globalThis.CompressionStream = original
+    vi.stubGlobal('CompressionStream', undefined)
+    try {
+      const result = await compressAndEncodeBase64('Hello 世界')
+      const bytes = Uint8Array.from(atob(result), (char) => char.charCodeAt(0))
+      expect(new TextDecoder().decode(bytes)).toBe('Hello 世界')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
-  it('should identify supported workflow launch input types', () => {
+  it.each([
+    ...[
+      InputVarType.textInput,
+      InputVarType.paragraph,
+      InputVarType.select,
+      InputVarType.number,
+      InputVarType.checkbox,
+      InputVarType.json,
+      InputVarType.jsonObject,
+      InputVarType.url,
+    ].map((type) => ({ type, supported: true })),
+    ...[InputVarType.files, InputVarType.singleFile].map((type) => ({ type, supported: false })),
+  ])('supports $type for launch inputs: $supported', ({ type, supported }) => {
     expect(
       isWorkflowLaunchInputSupported({
         variable: 'v',
         label: 'V',
-        type: InputVarType.textInput,
+        type,
         hide: true,
         required: false,
       }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.paragraph,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.select,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.number,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.checkbox,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.json,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.jsonObject,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.url,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.files,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(false)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.singleFile,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(false)
+    ).toBe(supported)
   })
 
   it('should coerce numeric defaults to string in createWorkflowLaunchInitialValues', () => {

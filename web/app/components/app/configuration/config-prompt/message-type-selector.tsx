@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean, useClickAway } from 'ahooks'
 import * as React from 'react'
-import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptRole } from '@/models/debug'
 
 type Props = Readonly<{
@@ -19,7 +18,7 @@ const MessageTypeSelector: FC<Props> = ({ value, onChange }) => {
     setHide()
   }, ref)
   return (
-    <div className="relative left-[-8px]" ref={ref}>
+    <div className="relative -left-2" ref={ref}>
       <div
         onClick={toggleShow}
         className={cn(
@@ -28,10 +27,13 @@ const MessageTypeSelector: FC<Props> = ({ value, onChange }) => {
         )}
       >
         <div className="text-sm font-semibold uppercase">{value}</div>
-        <ChevronSelectorVertical className="size-3" />
+        <span
+          aria-hidden
+          className="i-custom-vender-line-arrows-chevron-selector-vertical size-3"
+        />
       </div>
       {showOption && (
-        <div className="absolute top-[30px] z-10 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+        <div className="absolute top-7.5 z-10 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           {allTypes.map((type) => (
             <div
               key={type}
@@ -39,7 +41,7 @@ const MessageTypeSelector: FC<Props> = ({ value, onChange }) => {
                 setHide()
                 onChange(type)
               }}
-              className="flex h-9 min-w-[44px] cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-text-secondary uppercase hover:bg-state-base-hover"
+              className="flex h-9 min-w-11 cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-text-secondary uppercase hover:bg-state-base-hover"
             >
               {type}
             </div>

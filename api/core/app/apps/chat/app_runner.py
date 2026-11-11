@@ -9,6 +9,8 @@ from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.entities.app_invoke_entities import (
     ChatAppGenerateEntity,
+    get_credit_usage_app_type,
+    get_credit_usage_created_by,
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -231,12 +233,16 @@ class ChatAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
+        request_metadata: dict[str, object] = {"app_id": app_config.app_id}
+        request_metadata["app_type"] = get_credit_usage_app_type(app_config.app_mode)
+        request_metadata["created_by"] = get_credit_usage_created_by(app_config.app_mode)
+
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
-            request_metadata={"app_id": app_config.app_id},
+            request_metadata=request_metadata,
         )
 
         # handle invoke result

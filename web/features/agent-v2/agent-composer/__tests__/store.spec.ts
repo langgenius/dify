@@ -1,13 +1,11 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { createStore } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   rebaseAgentComposerDraftAtom,
 } from '../store'
 
@@ -91,23 +89,12 @@ describe('agent composer store conversions', () => {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Build draft prompt',
     }
-    const originalConfig = {
-      prompt: {
-        system_prompt: 'Build draft prompt',
-      },
-    } satisfies AgentSoulConfig
-
     store.set(rebaseAgentComposerDraftAtom, {
       draft: nextDraft,
-      originalConfig,
     })
 
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe(
-      'Build draft prompt',
-    )
+    expect(store.get(agentComposerSavedDraftAtom)?.prompt).toBe('Build draft prompt')
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
@@ -392,6 +379,82 @@ describe('agent composer store conversions', () => {
         }),
       ],
     })
+  })
+
+  it('should enable post-processing when publishing weighted score retrieval', () => {
+    const baseConfig = {
+      knowledge: {
+        sets: [
+          {
+            id: 'weighted',
+            name: 'Weighted Docs',
+            datasets: [
+              { id: 'dataset-1', name: 'Docs A' },
+              { id: 'dataset-2', name: 'Docs B' },
+            ],
+            query: { mode: 'generated_query' },
+            retrieval: {
+              mode: 'multiple',
+              top_k: 4,
+              reranking_mode: 'weighted_score',
+              reranking_enable: false,
+              weights: {
+                weight_type: 'customized',
+                vector_setting: {
+                  vector_weight: 0.7,
+                  embedding_provider_name: 'openai',
+                  embedding_model_name: 'text-embedding-3-small',
+                },
+                keyword_setting: { keyword_weight: 0.3 },
+              },
+            },
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(publishConfig.knowledge?.sets?.[0]?.retrieval).toMatchObject({
+      reranking_mode: 'weighted_score',
+      reranking_enable: true,
+      weights: { vector_setting: { vector_weight: 0.7 }, keyword_setting: { keyword_weight: 0.3 } },
+    })
+  })
+
+  it('should preserve a plugin tool identity when hydrating and publishing imported config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            plugin_id: 'langgenius/google',
+            provider_id: 'langgenius/google/google',
+            provider_type: 'plugin',
+            tool_name: 'search',
+            credential_type: 'unauthorized',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'langgenius/google/google',
+        name: 'google',
+        pluginId: 'langgenius/google',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        plugin_id: 'langgenius/google',
+        provider: 'google',
+        provider_id: 'langgenius/google/google',
+      }),
+    ])
   })
 
   it('should hydrate legacy secret refs from ref when value is absent', () => {
@@ -821,6 +884,26 @@ describe('agent composer store conversions', () => {
         },
       ],
     })
+  })
+
+  it('should treat null metadata filtering conditions as unset', () => {
+    const formState = agentSoulConfigToFormState({
+      knowledge: {
+        sets: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasets: [{ id: 'dataset-1', name: 'Docs' }],
+            query: { mode: 'generated_query' },
+            retrieval: { mode: 'multiple', top_k: 4 },
+            metadata_filtering: { mode: 'manual', conditions: null },
+          },
+        ],
+      },
+    })
+
+    expect(formState.knowledgeRetrievals[0]).toMatchObject({ metadataFilterMode: 'manual' })
+    expect(formState.knowledgeRetrievals[0]!.metadataFilteringConditions).toBeUndefined()
   })
 
   it('should omit incomplete environment variables from the config snapshot', () => {

@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { ValueType } from '@/app/components/workflow/types'
-import { useIsNodeInLoop, useWorkflow } from '../../hooks'
+import { useIsNodeInLoop, useWorkflow } from '../../hooks/use-workflow'
 import {
   buildUsedOutVars,
   createInputVarValues,
@@ -17,10 +17,10 @@ import {
 type Params = {
   id: string
   payload: LoopNodeType
-  runInputData: Record<string, any>
+  runInputData: Record<string, unknown>
   runResult: NodeTracing
   loopRunResult: NodeTracing[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
   varSelectorsToVarInputs: (variables: ValueSelector[]) => InputVar[]
 }
@@ -35,7 +35,7 @@ const useSingleRunFormParams = ({
   toVarInputs,
   varSelectorsToVarInputs,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { isNodeInLoop } = useIsNodeInLoop(id)
 
@@ -76,7 +76,7 @@ const useSingleRunFormParams = ({
   }, [runResult, loopRunResult, t])
 
   const setInputVarValues = useCallback(
-    (newPayload: Record<string, any>) => {
+    (newPayload: Record<string, unknown>) => {
       setRunInputData(newPayload)
     },
     [setRunInputData],

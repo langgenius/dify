@@ -1,87 +1,63 @@
-import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createPluginEntity } from '@/test/fixtures/plugin'
 import useCheckInstalled from '../use-check-installed'
 
-const mockPlugins = [
-  {
-    plugin_id: 'plugin-1',
-    id: 'installed-1',
-    declaration: { version: '1.0.0' },
-    plugin_unique_identifier: 'org/plugin-1',
-  },
-  {
-    plugin_id: 'plugin-2',
-    id: 'installed-2',
-    declaration: { version: '2.0.0' },
-    plugin_unique_identifier: 'org/plugin-2',
-  },
-]
+const request = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': request,
+    }),
+  }
+})
 
-vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[]; enabled: boolean }) => ({
-    data: enabled && pluginIds.length > 0 ? { plugins: mockPlugins } : undefined,
-    isLoading: false,
-    error: null,
-  }),
-}))
+beforeEach(() => {
+  request.mockResolvedValue({ plugins: [] })
+})
 
-describe('useCheckInstalled', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('waits for installed plugins and maps their server identities and versions', async () => {
+  const pending = createDeferred<{ plugins: ReturnType<typeof createPluginEntity>[] }>()
+  request.mockReturnValue(pending.promise)
+  const plugin = createPluginEntity()
+  const { result } = renderHook(() =>
+    useCheckInstalled({ pluginIds: [plugin.plugin_id], enabled: true }),
+  )
+  expect(result.current.isLoading).toBe(true)
+  expect(result.current.installedInfo).toBeUndefined()
+  await act(async () => pending.resolve({ plugins: [plugin] }))
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(request).toHaveBeenCalledWith({ body: { plugin_ids: [plugin.plugin_id] } })
+  expect(result.current.installedInfo).toEqual({
+    [plugin.plugin_id]: {
+      installedId: plugin.id,
+      installedVersion: plugin.declaration.version,
+      uniqueIdentifier: plugin.plugin_unique_identifier,
+    },
   })
+})
 
-  it('should return installed info when enabled and has plugin IDs', () => {
-    const { result } = renderHook(() =>
-      useCheckInstalled({
-        pluginIds: ['plugin-1', 'plugin-2'],
-        enabled: true,
-      }),
-    )
+it('starts the installation lookup only after the caller enables it', async () => {
+  const { result, rerender } = renderHook(
+    ({ enabled }) => useCheckInstalled({ pluginIds: ['plugin-1'], enabled }),
+    { initialProps: { enabled: false } },
+  )
+  expect(request).not.toHaveBeenCalled()
+  expect(result.current.installedInfo).toBeUndefined()
+  rerender({ enabled: true })
+  await waitFor(() => expect(result.current.installedInfo).toEqual({}))
+  expect(request).toHaveBeenCalledOnce()
+})
 
-    expect(result.current.installedInfo).toBeDefined()
-    expect(result.current.installedInfo?.['plugin-1']).toEqual({
-      installedId: 'installed-1',
-      installedVersion: '1.0.0',
-      uniqueIdentifier: 'org/plugin-1',
-    })
-    expect(result.current.installedInfo?.['plugin-2']).toEqual({
-      installedId: 'installed-2',
-      installedVersion: '2.0.0',
-      uniqueIdentifier: 'org/plugin-2',
-    })
-  })
-
-  it('should return undefined installedInfo when disabled', () => {
-    const { result } = renderHook(() =>
-      useCheckInstalled({
-        pluginIds: ['plugin-1'],
-        enabled: false,
-      }),
-    )
-
-    expect(result.current.installedInfo).toBeUndefined()
-  })
-
-  it('should return undefined installedInfo with empty plugin IDs', () => {
-    const { result } = renderHook(() =>
-      useCheckInstalled({
-        pluginIds: [],
-        enabled: true,
-      }),
-    )
-
-    expect(result.current.installedInfo).toBeUndefined()
-  })
-
-  it('should return isLoading and error states', () => {
-    const { result } = renderHook(() =>
-      useCheckInstalled({
-        pluginIds: ['plugin-1'],
-        enabled: true,
-      }),
-    )
-
-    expect(result.current.isLoading).toBe(false)
-    expect(result.current.error).toBeNull()
-  })
+it('exposes lookup failures without manufacturing an installed result', async () => {
+  const error = new Error('lookup failed')
+  request.mockRejectedValue(error)
+  const { result } = renderHook(() => useCheckInstalled({ pluginIds: ['plugin-1'], enabled: true }))
+  await waitFor(() => expect(result.current.error).toBe(error))
+  expect(result.current.installedInfo).toBeUndefined()
+  expect(result.current.isLoading).toBe(false)
 })

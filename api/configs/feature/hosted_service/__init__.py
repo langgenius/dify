@@ -451,6 +451,12 @@ class HostedFetchAppTemplateConfig(BaseSettings):
         default="https://tmpl.dify.ai",
     )
 
+    HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL: int = Field(
+        description="TTL in seconds for caching remote app template HTTP responses. 0 disables caching.",
+        default=600,
+        ge=0,
+    )
+
 
 class HostedFetchPipelineTemplateConfig(BaseSettings):
     """

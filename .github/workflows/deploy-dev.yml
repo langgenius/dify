@@ -2,9 +2,9 @@ name: Deploy Dev
 
 on:
   workflow_run:
-    workflows: ["Build and Push API & Web"]
+    workflows: ['Build and Push API & Web']
     branches:
-      - "deploy/dev"
+      - 'deploy/dev'
     types:
       - completed
 

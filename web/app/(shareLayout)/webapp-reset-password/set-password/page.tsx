@@ -1,18 +1,26 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
@@ -20,8 +28,11 @@ const ChangePasswordForm = () => {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  useDocumentTitle(
+    showSuccess
+      ? t(($) => $.passwordChangedTip, { ns: 'login' })
+      : t(($) => $.changePassword, { ns: 'login' }),
+  )
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)
@@ -50,7 +61,7 @@ const ChangePasswordForm = () => {
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
+      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'accountSettings' }))
       return false
     }
     return true
@@ -75,115 +86,82 @@ const ChangePasswordForm = () => {
   }, [password, token, valid, confirmPassword])
 
   return (
-    <div
-      className={cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )}
-    >
+    <>
       {!showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col">
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.changePassword, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-2 body-md-regular text-text-secondary">
               {t(($) => $.changePasswordTip, { ns: 'login' })}
             </p>
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <div className="bg-white">
-              {/* Password */}
-              <div className="mb-5">
-                <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
-                  {t(($) => $['account.newPassword'], { ns: 'common' })}
-                </label>
-                <div className="relative mt-1">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-                  />
-
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? '👀' : '😝'}
-                    </Button>
-                  </div>
+            <Form className="bg-white" onFormSubmit={() => void handleChangePassword()}>
+              <Field name="password" className="mb-5">
+                <div className="grid gap-0">
+                  <FieldLabel className="system-md-semibold">
+                    {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+                  </FieldLabel>
+                  <PasswordField>
+                    <PasswordFieldInput
+                      autoComplete="new-password"
+                      value={password}
+                      onValueChange={setPassword}
+                      placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+                    />
+                    <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                  </PasswordField>
                 </div>
-                <div className="mt-1 body-xs-regular text-text-secondary">
+                <FieldDescription className="py-0 body-xs-regular text-text-secondary">
                   {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-                </div>
-              </div>
-              {/* Confirm Password */}
-              <div className="mb-5">
-                <label
-                  htmlFor="confirmPassword"
-                  className="my-2 system-md-semibold text-text-secondary"
-                >
-                  {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-                </label>
-                <div className="relative mt-1">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
+                </FieldDescription>
+              </Field>
+              <Field name="confirmPassword" className="mb-5 gap-0">
+                <FieldLabel className="system-md-semibold">
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
+                <PasswordField>
+                  <PasswordFieldInput
+                    autoComplete="new-password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
+                    onValueChange={setConfirmPassword}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? '👀' : '😝'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Button variant="primary" className="w-full" onClick={handleChangePassword}>
-                  {t(($) => $.changePasswordBtn, { ns: 'login' })}
-                </Button>
-              </div>
-            </div>
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
+              </Field>
+              <Button type="submit" variant="primary" className="w-full">
+                {t(($) => $.changePasswordBtn, { ns: 'login' })}
+              </Button>
+            </Form>
           </div>
         </div>
       )}
       {showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col">
           <div className="mx-auto w-full">
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className="size-6 text-text-success" />
+              <RiCheckboxCircleFill aria-hidden="true" className="size-6 text-text-success" />
             </div>
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}
-            </h2>
+            </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => {
-                setLeftTime(undefined)
-                router.replace(getSignInUrl())
-              }}
+            <Link
+              href={getSignInUrl()}
+              replace
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
             >
               {t(($) => $.passwordChanged, { ns: 'login' })} ({Math.round(countdown / 1000)}){' '}
-            </Button>
+            </Link>
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 

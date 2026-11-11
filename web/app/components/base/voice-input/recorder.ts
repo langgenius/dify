@@ -198,7 +198,9 @@ export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRec
           await release()
           if (writeError) {
             await output!.cancel()
-            throw writeError
+            throw writeError instanceof Error
+              ? writeError
+              : new Error('Audio encoding failed with a non-Error value.', { cause: writeError })
           }
           await waitForCancellation(output!.finalize())
           if (!target.buffer?.byteLength) throw new Error('The MP3 encoder produced no audio data.')

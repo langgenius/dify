@@ -7,4 +7,4 @@ Feature: Create app
     And I enter a unique E2E app name
     And I confirm app creation
     Then I should land on the app editor
-    And I should see the "Orchestrate" text
+    And I should see the "Orchestrate" link

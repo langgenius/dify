@@ -1,47 +1,20 @@
-import type { ReactNode } from 'react'
 import type { Features } from '../../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../../context'
 import VoiceSettings from '../voice-settings'
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
-}))
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/test-app-id/configuration',
   useParams: () => ({ appId: 'test-app-id' }),
 }))
-
-vi.mock('@/service/use-apps', () => ({
-  useAppVoices: () => ({
-    data: [{ name: 'alloy', value: 'alloy' }],
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-    ...props
-  }: {
-    checked?: boolean
-    onCheckedChange?: (checked: boolean) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="switch"
-      data-checked={String(checked)}
-      onClick={() => onCheckedChange?.(!checked)}
-      {...props}
-    />
-  ),
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({ getAudioPlayer: () => ({ playAudio: vi.fn(), pauseAudio: vi.fn() }) }),
+  },
 }))
 
 const defaultFeatures: Features = {
@@ -56,83 +29,53 @@ const defaultFeatures: Features = {
   annotationReply: { enabled: false },
 }
 
-const renderWithProvider = (ui: ReactNode) => {
-  return render(<FeaturesProvider features={defaultFeatures}>{ui}</FeaturesProvider>)
+function Settings({ disabled = false }: { disabled?: boolean }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <VoiceSettings
+      open={open}
+      onOpen={setOpen}
+      disabled={disabled}
+      trigger={<button>Settings</button>}
+    />
+  )
+}
+function setup(disabled = false) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.textToAudio.voices.get.queryOptions({
+      input: { params: { app_id: 'test-app-id' }, query: { language: 'en-US' } },
+    }).queryKey,
+    [
+      { name: 'Alloy', value: 'alloy' },
+      { name: 'Echo', value: 'echo' },
+    ],
+  )
+  return renderWithConsoleQuery(
+    <FeaturesProvider features={defaultFeatures}>
+      <Settings disabled={disabled} />
+    </FeaturesProvider>,
+    { queryClient },
+  )
 }
 
-describe('VoiceSettings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+it('keeps the selected voice when settings are closed and reopened', async () => {
+  const user = userEvent.setup()
+  setup()
+  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  await user.click(await screen.findByRole('combobox', { name: /voiceSettings.voice/ }))
+  await user.click(await screen.findByRole('option', { name: 'Echo' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  expect(await screen.findByRole('combobox', { name: /voiceSettings.voice/ })).toHaveTextContent(
+    'Echo',
+  )
+})
 
-  it('should render children in trigger', () => {
-    renderWithProvider(
-      <VoiceSettings open={false} onOpen={vi.fn()}>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    expect(screen.getByText('Settings'))!.toBeInTheDocument()
-  })
-
-  it('should render ParamConfigContent in portal', () => {
-    renderWithProvider(
-      <VoiceSettings open={true} onOpen={vi.fn()}>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    expect(screen.getByText(/voice\.voiceSettings\.title/))!.toBeInTheDocument()
-  })
-
-  it('should call onOpen with toggle function when trigger is clicked', () => {
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <VoiceSettings open={false} onOpen={onOpen}>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    fireEvent.click(screen.getByText('Settings'))
-
-    expect(onOpen).toHaveBeenCalledWith(true)
-  })
-
-  it('should not call onOpen when disabled and trigger is clicked', () => {
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <VoiceSettings open={false} onOpen={onOpen} disabled>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    fireEvent.click(screen.getByText('Settings'))
-
-    expect(onOpen).not.toHaveBeenCalled()
-  })
-
-  it('should call onOpen with false when close is clicked', () => {
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <VoiceSettings open={true} onOpen={onOpen}>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(onOpen).toHaveBeenCalledWith(false)
-  })
-
-  it('should use top placement and mainAxis 4 when placementLeft is false', () => {
-    renderWithProvider(
-      <VoiceSettings open={true} onOpen={vi.fn()} placementLeft={false}>
-        <button>Settings</button>
-      </VoiceSettings>,
-    )
-
-    const content = screen.getByTestId('popover-content')
-    expect(content).toHaveAttribute('data-placement', 'top')
-    expect(content).toHaveAttribute('data-side-offset', '4')
-  })
+it('does not open settings while disabled', async () => {
+  const user = userEvent.setup()
+  setup(true)
+  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

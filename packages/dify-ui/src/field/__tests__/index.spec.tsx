@@ -3,7 +3,8 @@ import { Checkbox } from '../../checkbox'
 import { CheckboxGroup } from '../../checkbox-group'
 import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { Form } from '../../form'
-import { Field, FieldControl, FieldDescription, FieldError, FieldItem, FieldLabel } from '../index'
+import { Input } from '../../input'
+import { Field, FieldDescription, FieldError, FieldItem, FieldLabel } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -14,7 +15,7 @@ describe('Field primitives', () => {
       <Form aria-label="profile form" onFormSubmit={onFormSubmit}>
         <Field name="email">
           <FieldLabel>Email</FieldLabel>
-          <FieldControl type="email" required />
+          <Input type="email" required />
           <FieldDescription>Used for account notifications.</FieldDescription>
           <FieldError match="valueMissing">Email is required.</FieldError>
         </Field>
@@ -52,7 +53,7 @@ describe('Field primitives', () => {
       <Form aria-label="settings form" onFormSubmit={onFormSubmit}>
         <Field name="apiKey">
           <FieldLabel>API key</FieldLabel>
-          <FieldControl defaultValue="sk-test" required />
+          <Input defaultValue="sk-test" required />
         </Field>
         <button type="submit">Save</button>
       </Form>,
@@ -64,7 +65,7 @@ describe('Field primitives', () => {
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({ apiKey: 'sk-test' })
   })
 
-  it('should support external invalid state without requiring FieldControl', async () => {
+  it('should support external invalid state without requiring a text input', async () => {
     const screen = await render(
       <Field name="features" invalid>
         <Fieldset render={<CheckboxGroup value={['search']} />}>
@@ -90,7 +91,7 @@ describe('Field primitives', () => {
     const screen = await render(
       <Field name="token">
         <FieldLabel>Token</FieldLabel>
-        <FieldControl readOnly defaultValue="readonly-token" />
+        <Input readOnly defaultValue="readonly-token" />
       </Field>,
     )
 

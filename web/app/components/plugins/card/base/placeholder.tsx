@@ -5,7 +5,6 @@ import {
   SkeletonRectangle,
   SkeletonRow,
 } from '@/app/components/base/skeleton'
-import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
 
 type Props = Readonly<{
@@ -23,7 +22,10 @@ const Placeholder = ({ wrapClassName, loadingFileName }: Props) => {
       <SkeletonRow>
         <div className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default p-1 backdrop-blur-xs">
           <div className="flex size-5 items-center justify-center">
-            <Group className="text-text-tertiary" />
+            <span
+              aria-hidden
+              className="i-custom-vender-other-group h-4 w-3.5 text-text-tertiary"
+            />
           </div>
         </div>
         <div className="grow">
@@ -32,18 +34,18 @@ const Placeholder = ({ wrapClassName, loadingFileName }: Props) => {
               {loadingFileName ? (
                 <Title title={loadingFileName} />
               ) : (
-                <SkeletonRectangle className="w-[260px]" />
+                <SkeletonRectangle className="w-65" />
               )}
             </div>
             <SkeletonRow className="h-4">
-              <SkeletonRectangle className="w-[41px]" />
+              <SkeletonRectangle className="w-10.25" />
               <SkeletonPoint />
-              <SkeletonRectangle className="w-[180px]" />
+              <SkeletonRectangle className="w-45" />
             </SkeletonRow>
           </SkeletonContainer>
         </div>
       </SkeletonRow>
-      <SkeletonRectangle className="mt-3 w-[420px]" />
+      <SkeletonRectangle className="mt-3 w-105" />
     </div>
   )
 }

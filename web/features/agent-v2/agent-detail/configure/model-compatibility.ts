@@ -1,7 +1,7 @@
 import type {
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ModelSelectorModel,
+  ModelSelectorProvider,
+} from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
@@ -40,7 +40,6 @@ const agentIncompatibleModelPatterns: RegExp[] = [
   /^qwen2/i,
   /^qwen3-/i,
   /^qwen3\.5/i,
-  /^qwen.*flash/i,
   /^farui-plus$/i,
 
   // zhipu ai
@@ -65,39 +64,54 @@ const agentSuggestedModelPatterns: RegExp[] = [
   /^gpt[ .-]5\.5$/i,
   /^gpt[ .-]5\.5[ .-]pro$/i,
   /^gpt[ .-]5\.6(?:[ .-](?:sol|terra|luna))?$/i,
+  /^gpt[ .-]6[ .-](?:astra|sol|luna)$/i,
 
   // anthropic
-  /^(?:claude[ .-])?opus[ .-]4\.8$/i,
-  /^(?:claude[ .-])?opus[ .-]4\.7$/i,
-  /^(?:claude[ .-])?sonnet[ .-]4\.6$/i,
+  /^(?:claude[ .-])?opus[ .-]4[ .-]8$/i,
+  /^(?:claude[ .-])?opus[ .-]4[ .-]7$/i,
+  /^(?:claude[ .-])?sonnet[ .-]4[ .-]6$/i,
+  /^(?:claude[ .-])?opus[ .-]5[ .-]5$/i,
+  /^(?:claude[ .-])?sonnet[ .-]5[ .-]5$/i,
+  /^(?:claude[ .-])?fable[ .-]5[ .-]1$/i,
 
   // The Gemini model plugin quality is not strong enough yet, so do not recommend it for now.
   // /^gemini 3\.1 pro preview$/i,
 
   // x
   /^grok[ .-]4\.3$/i,
+  /^grok[ .-]4\.6$/i,
 
   // deepseek
   /^deepseek[ .-]v4[ .-]pro$/i,
+  /^deepseek[ .-]v4[ .-]flash$/i,
 
   // qwen
   /^qwen[ .-]?3\.7[ .-]max$/i,
+  /^qwen[ .-]?3\.8[ .-]max$/i,
   /^qwen[ .-]?3[ .-]coder[ .-]plus$/i,
 
   // moonshot
   /^kimi[ .-]k2\.6$/i,
+  /^kimi[ .-]k3\.1[ .-]pro$/i,
 
   // minimax
   /^minimax[ .-]m3$/i,
 
   // zhipuai
   /^glm[ .-]5\.1$/i,
+  /^glm[ .-]5\.3$/i,
 ]
 
-export function isAgentCompatibleModel(_provider: Model, modelItem: ModelItem) {
+export function isAgentCompatibleModel(
+  _provider: ModelSelectorProvider,
+  modelItem: ModelSelectorModel,
+) {
   return !agentIncompatibleModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }
 
-export function isAgentSuggestedModel(_provider: Model, modelItem: ModelItem) {
+export function isAgentSuggestedModel(
+  _provider: ModelSelectorProvider,
+  modelItem: ModelSelectorModel,
+) {
   return agentSuggestedModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }

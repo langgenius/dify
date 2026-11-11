@@ -1,26 +1,29 @@
 'use client'
-import type { SimpleDocumentDetail } from '@/models/datasets'
+
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { RenameDocumentPayload } from './rename-document-form'
+import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useBoolean } from 'ahooks'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
-import s from '../style.module.css'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import RenameModal from './rename-modal'
+import { RenameDocumentForm } from './rename-document-form'
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
 type PaginationProps = {
   className?: string
@@ -38,10 +41,11 @@ type DocumentListProps = {
   onSelectedIdChange: (selectedIds: string[]) => void
   datasetId: string
   pagination: PaginationProps
+  onDelete: (id: string, row: HTMLTableRowElement | null) => void
   onUpdate: () => void
   onManageMetadata: () => void
   remoteSortValue: string
-  onSortChange: (value: string) => void
+  onSortChange: (value: SortType) => void
 }
 
 /**
@@ -55,15 +59,19 @@ const DocumentList = ({
   datasetId,
   pagination,
   onUpdate,
+  onDelete,
   onManageMetadata,
   remoteSortValue,
   onSortChange,
 }: DocumentListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments', 'dataset', 'knowledgeSpace'])
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () =>
@@ -116,20 +124,9 @@ const DocumentList = ({
       onUpdate,
     })
 
-  // Rename modal
-  const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
-  const [
-    isShowRenameModal,
-    { setTrue: setShowRenameModalTrue, setFalse: setShowRenameModalFalse },
-  ] = useBoolean(false)
-
-  const handleShowRenameModal = useCallback(
-    (doc: LocalDoc) => {
-      setCurrDocument(doc)
-      setShowRenameModalTrue()
-    },
-    [setShowRenameModalTrue],
-  )
+  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
+  const handleShowRenameModal = (doc: LocalDoc) =>
+    renameDialog.openWithPayload({ id: doc.id, name: doc.name })
 
   const handleRenamed = useCallback(() => {
     onUpdate()
@@ -137,37 +134,50 @@ const DocumentList = ({
 
   return (
     <div className="relative mt-3 flex size-full flex-col">
+      <div role="status" aria-atomic="true" className="sr-only">
+        {t(($) => $.documentsSelected, {
+          ns: 'knowledgeSpace',
+          count: selectedIds.length,
+        })}
+      </div>
       <CheckboxGroup
         value={selectedIds}
         onValueChange={(nextSelectedIds) => onSelectedIdChange(nextSelectedIds)}
         allValues={documentIds}
         className="relative h-0 grow overflow-x-auto"
       >
-        <table
-          className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}
-        >
+        <table className="w-full max-w-full min-w-175 border-collapse border-0 text-sm">
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
-            <tr>
-              <td className="w-12">
-                <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+            <tr className="[&>th]:box-border [&>th]:max-w-50 [&>th]:py-0 [&>th]:ps-3 [&>th]:pe-2.5 [&>th]:text-start [&>th]:font-[weight:inherit]">
+              <th className="w-12">
+                <div className="flex items-center gap-2">
                   {embeddingAvailable && (
                     <Checkbox
-                      className="mr-2 shrink-0"
+                      className="shrink-0"
                       parent
                       aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
                     />
                   )}
                   #
                 </div>
-              </td>
-              <td>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</td>
-              <td className="w-[130px]">
+              </th>
+              <th>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</th>
+              <th className="w-32.5">
                 {t(($) => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-24">
+              </th>
+              <th className="w-24">
                 {t(($) => $['list.table.header.words'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'hit_count'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="hit_count"
                   label={t(($) => $['list.table.header.hitCount'], { ns: 'datasetDocuments' })}
@@ -175,8 +185,17 @@ const DocumentList = ({
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'created_at'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="created_at"
                   label={t(($) => $['list.table.header.uploadTime'], { ns: 'datasetDocuments' })}
@@ -184,16 +203,16 @@ const DocumentList = ({
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-40">
+              </th>
+              <th className="w-40">
                 {t(($) => $['list.table.header.status'], { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-20">
+              </th>
+              <th className="w-20">
                 {t(($) => $['list.table.header.action'], { ns: 'datasetDocuments' })}
-              </td>
+              </th>
             </tr>
           </thead>
-          <tbody className="text-text-secondary">
+          <tbody className="text-text-secondary [&>tr>td]:box-border [&>tr>td]:max-w-50 [&>tr>td]:py-1.25 [&>tr>td]:ps-3 [&>tr>td]:pe-2.5">
             {documents.map((doc, index) => (
               <DocumentTableRow
                 key={doc.id}
@@ -203,10 +222,9 @@ const DocumentList = ({
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                selectedIds={selectedIds}
-                onSelectedIdChange={onSelectedIdChange}
                 onShowRenameModal={handleShowRenameModal}
                 onUpdate={onUpdate}
+                onDelete={(row) => onDelete(doc.id, row)}
               />
             ))}
           </tbody>
@@ -215,7 +233,7 @@ const DocumentList = ({
 
       {selectedIds.length > 0 && (
         <BatchAction
-          className="absolute bottom-16 left-0 z-20"
+          className="absolute inset-s-0 bottom-16 z-20"
           selectedIds={selectedIds}
           onArchive={
             datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.archive) : undefined
@@ -276,15 +294,21 @@ const DocumentList = ({
         />
       )}
 
-      {isShowRenameModal && currDocument && (
-        <RenameModal
-          datasetId={datasetId}
-          documentId={currDocument.id}
-          name={currDocument.name}
-          onClose={setShowRenameModalFalse}
-          onSaved={handleRenamed}
-        />
-      )}
+      <Dialog handle={renameDialog}>
+        {({ payload }) => (
+          <DialogContent>
+            {payload && (
+              <RenameDocumentForm
+                datasetId={datasetId}
+                documentId={payload.id}
+                name={payload.name}
+                onSaved={handleRenamed}
+                onClose={() => renameDialog.close()}
+              />
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {isShowEditModal && (
         <EditMetadataBatchModal

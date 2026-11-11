@@ -1,202 +1,70 @@
 import type { FileEntity } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import ImageUploaderInRetrievalTestingWrapper from '../index'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { mockFixtureImageFetch } from '@/test/image-fetch'
+import ImageUploader from '../index'
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      image_file_batch_limit: 10,
-      single_chunk_attachment_limit: 20,
-      attachment_image_file_size_limit: 15,
-    },
-  })),
-}))
-
-vi.mock('@/app/components/datasets/common/image-previewer', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="image-previewer">
-      <button data-testid="close-preview" onClick={onClose}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
-describe('ImageUploaderInRetrievalTesting', () => {
-  const defaultProps = {
-    textArea: <textarea data-testid="text-area" />,
-    actionButton: <button data-testid="action-button">Submit</button>,
-    onChange: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => ({
+        image_file_batch_limit: 10,
+        single_chunk_attachment_limit: 20,
+        attachment_image_file_size_limit: 15,
+      }),
+    }),
   }
-
-  describe('Rendering', () => {
-    it('should render textArea prop', () => {
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />)
-      expect(screen.getByTestId('text-area')).toBeInTheDocument()
-    })
-
-    it('should render actionButton prop', () => {
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />)
-      expect(screen.getByTestId('action-button')).toBeInTheDocument()
-    })
-
-    it('should render ImageInput when showUploader is true (default)', () => {
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />)
-      expect(document.querySelector('input[type="file"]')).toBeInTheDocument()
-    })
-
-    it('should not render ImageInput when showUploader is false', () => {
-      render(
-        <ImageUploaderInRetrievalTestingWrapper
-          {...defaultProps}
-          value={[]}
-          showUploader={false}
-        />,
-      )
-      expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should render file list when files are provided', () => {
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test1.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          uploadedId: 'uploaded-1',
-          base64Url: 'data:image/png;base64,test1',
-          size: 1024,
-        },
-      ]
-
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={files} />)
-      const fileItems = document.querySelectorAll('.group\\/file-image')
-      expect(fileItems.length).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should not render file list when files are empty', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />,
-      )
-      // File list container should not be present
-      expect(container.querySelector('.bg-background-default')).not.toBeInTheDocument()
-    })
-
-    it('should not render file list when showUploader is false', () => {
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test1.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          uploadedId: 'uploaded-1',
-          base64Url: 'data:image/png;base64,test1',
-          size: 1024,
-        },
-      ]
-
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper
-          {...defaultProps}
-          value={files}
-          showUploader={false}
-        />,
-      )
-      expect(container.querySelector('.bg-background-default')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should show preview when image is clicked', () => {
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          uploadedId: 'uploaded-1',
-          base64Url: 'data:image/png;base64,test',
-          size: 1024,
-        },
-      ]
-
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={files} />)
-
-      const fileItem = document.querySelector('.group\\/file-image')
-      if (fileItem) {
-        fireEvent.click(fileItem)
-        expect(screen.getByTestId('image-previewer')).toBeInTheDocument()
-      }
-    })
-
-    it('should close preview when close button is clicked', () => {
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          uploadedId: 'uploaded-1',
-          base64Url: 'data:image/png;base64,test',
-          size: 1024,
-        },
-      ]
-
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={files} />)
-
-      const fileItem = document.querySelector('.group\\/file-image')
-      if (fileItem) {
-        fireEvent.click(fileItem)
-        const closeButton = screen.getByTestId('close-preview')
-        fireEvent.click(closeButton)
-        expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-      }
-    })
-  })
-
-  describe('Layout', () => {
-    it('should use justify-between when showUploader is true', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={[]} />,
-      )
-      expect(container.querySelector('.justify-between')).toBeInTheDocument()
-    })
-
-    it('should use justify-end when showUploader is false', () => {
-      const { container } = render(
-        <ImageUploaderInRetrievalTestingWrapper
-          {...defaultProps}
-          value={[]}
-          showUploader={false}
-        />,
-      )
-      expect(container.querySelector('.justify-end')).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle multiple files', () => {
-      const files: FileEntity[] = Array.from({ length: 5 }, (_, i) => ({
-        id: `file${i}`,
-        name: `test${i}.png`,
-        extension: 'png',
-        mimeType: 'image/png',
-        progress: 100,
-        uploadedId: `uploaded-${i}`,
-        base64Url: `data:image/png;base64,test${i}`,
-        size: 1024 * (i + 1),
-      }))
-
-      render(<ImageUploaderInRetrievalTestingWrapper {...defaultProps} value={files} />)
-      const fileItems = document.querySelectorAll('.group\\/file-image')
-      expect(fileItems.length).toBe(5)
-    })
-  })
 })
+const files: FileEntity[] = ['first.png', 'second.png'].map((name, index) => ({
+  id: `file-${index}`,
+  name,
+  extension: 'png',
+  mimeType: 'image/png',
+  progress: 100,
+  uploadedId: `upload-${index}`,
+  size: 1,
+  base64Url: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+}))
+
+it('opens the selected attachment and removes it without activating preview', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(
+    <ImageUploader
+      value={files}
+      onChange={onChange}
+      textArea={<textarea aria-label="Query" />}
+      actionButton={<button>Search</button>}
+    />,
+  )
+  await user.click(screen.getAllByRole('img', { name: 'Preview' })[1]!)
+  const preview = await screen.findByRole('dialog', { name: 'second.png' })
+  await user.click(within(preview).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[1]!)
+  expect(onChange).toHaveBeenLastCalledWith([files[0]])
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('hides image controls for text-only retrieval while leaving the query and action available', () => {
+  render(
+    <ImageUploader
+      value={files}
+      onChange={vi.fn()}
+      showUploader={false}
+      textArea={<textarea aria-label="Query" />}
+      actionButton={<button>Search</button>}
+    />,
+  )
+  expect(screen.getByRole('textbox', { name: 'Query' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+  expect(screen.queryByRole('img', { name: 'Preview' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+  expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument()
+})
+
+beforeEach(() => mockFixtureImageFetch())

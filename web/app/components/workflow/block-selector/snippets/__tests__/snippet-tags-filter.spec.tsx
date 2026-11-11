@@ -1,35 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import SnippetTagsFilter from '../snippet-tags-filter'
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    tags: {
-      get: {
-        queryOptions: vi.fn((input) => ({ queryKey: ['tags', input] })),
-      },
-    },
-  },
-}))
-
-const mockUseQuery = vi.mocked(useQuery)
+const render = (ui: React.ReactElement<ComponentProps<typeof SnippetTagsFilter>>) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.tags.get.queryKey({ input: { query: { type: 'snippet' } } }),
+    [
+      { id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' },
+      { id: 'tag-2', name: 'Support', type: 'snippet', binding_count: '' },
+    ],
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 describe('SnippetTagsFilter', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({
-      data: [
-        { id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' },
-        { id: 'tag-2', name: 'Support', type: 'snippet', binding_count: '' },
-      ],
-    } as ReturnType<typeof useQuery>)
-  })
-
   it('should show selected tag count and update selected tags', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -42,7 +30,7 @@ describe('SnippetTagsFilter', () => {
 
     await user.click(screen.getByText('Support'))
 
-    expect(onChange).toHaveBeenCalledWith(['tag-1', 'tag-2'], expect.anything())
+    expect(onChange.mock.lastCall?.[0]).toEqual(['tag-1', 'tag-2'])
   })
 
   it('should filter tags by search text and show an empty state', async () => {
@@ -51,9 +39,8 @@ describe('SnippetTagsFilter', () => {
     render(<SnippetTagsFilter value={[]} onChange={vi.fn()} />)
 
     const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
-    trigger.focus()
-    await user.keyboard('{Enter}')
-    const search = screen.getByRole('textbox', { name: 'pluginTags.searchTags' })
+    await user.click(trigger)
+    const search = screen.getByRole('searchbox', { name: 'pluginTags.searchTags' })
     await user.type(search, 'sup')
 
     expect(screen.getByText('Support')).toBeInTheDocument()
@@ -73,10 +60,11 @@ describe('SnippetTagsFilter', () => {
     const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
     await user.click(trigger)
     expect(screen.getByRole('dialog', { name: 'common.tag.placeholder' })).toBeInTheDocument()
-    await user.type(screen.getByRole('textbox', { name: 'pluginTags.searchTags' }), 'sup')
+    await user.type(screen.getByRole('searchbox', { name: 'pluginTags.searchTags' }), 'sup')
     expect(screen.queryByText('Sales')).not.toBeInTheDocument()
 
     await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(trigger)
 
     expect(screen.getByText('Sales')).toBeInTheDocument()

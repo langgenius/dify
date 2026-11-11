@@ -9,7 +9,7 @@ from uuid import uuid4
 import sqlalchemy as sa
 from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func, select
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
@@ -21,7 +21,6 @@ from core.tools.entities.tool_entities import (
 )
 
 from .base import TypeBase
-from .engine import db
 from .enums import PermissionEnum
 from .model import Account, App, Tenant
 from .types import EnumText, LongText, StringUUID
@@ -62,7 +61,7 @@ class ToolOAuthTenantClient(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), init=False)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), init=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False, init=False)
 
@@ -109,20 +108,14 @@ class BuiltinToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[CredentialType] = mapped_column(
-        EnumText(CredentialType, length=32),
-        nullable=False,
-        server_default=sa.text("'api-key'"),
-        default=CredentialType.API_KEY,
+        EnumText(CredentialType, length=32), nullable=False, default=CredentialType.API_KEY
     )
-    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
     visibility: Mapped[PermissionEnum] = mapped_column(
-        EnumText(PermissionEnum, length=40),
-        nullable=False,
-        server_default=sa.text("'all_team_members'"),
-        default=PermissionEnum.ALL_TEAM,
+        EnumText(PermissionEnum, length=40), nullable=False, default=PermissionEnum.ALL_TEAM
     )
 
     @property
@@ -197,15 +190,13 @@ class ApiToolProvider(TypeBase):
     def credentials(self) -> dict[str, Any]:
         return dict[str, Any](json.loads(self.credentials_str))
 
-    @property
-    def user(self) -> Account | None:
+    def user(self, session: Session) -> Account | None:
         if not self.user_id:
             return None
-        return db.session.scalar(select(Account).where(Account.id == self.user_id))
+        return session.scalar(select(Account).where(Account.id == self.user_id))
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
 
 class ToolLabelBinding(TypeBase):
@@ -277,13 +268,11 @@ class WorkflowToolProvider(TypeBase):
         init=False,
     )
 
-    @property
-    def user(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.user_id))
+    def user(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.user_id))
 
-    @property
-    def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+    def tenant(self, session: Session) -> Tenant | None:
+        return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
     @property
     def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
@@ -292,9 +281,8 @@ class WorkflowToolProvider(TypeBase):
             for config in json.loads(self.parameter_configuration)
         ]
 
-    @property
-    def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+    def app(self, session: Session) -> App | None:
+        return session.scalar(select(App).where(App.id == self.app_id))
 
 
 class MCPToolProvider(TypeBase):
@@ -343,10 +331,8 @@ class MCPToolProvider(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
-    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"), default=30.0)
-    sse_read_timeout: Mapped[float] = mapped_column(
-        sa.Float, nullable=False, server_default=sa.text("300"), default=300.0
-    )
+    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, default=30.0)
+    sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, default=300.0)
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
 
@@ -354,12 +340,10 @@ class MCPToolProvider(TypeBase):
     # this provider uses. Reserved values:
     #   "off"       — no forwarding (default; preserves pre-M2 behaviour).
     #   "idp_token" — forward an SSO access token minted by dify-enterprise.
-    identity_mode: Mapped[str] = mapped_column(
-        sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
-    )
+    identity_mode: Mapped[str] = mapped_column(sa.String(32), nullable=False, default="off")
 
-    def load_user(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.user_id))
+    def load_user(self, session: Session) -> Account | None:
+        return session.scalar(select(Account).where(Account.id == self.user_id))
 
     @property
     def credentials(self) -> dict[str, Any]:

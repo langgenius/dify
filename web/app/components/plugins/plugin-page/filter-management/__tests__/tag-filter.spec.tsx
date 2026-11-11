@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TagFilter from '../tag-filter'
 
 vi.mock('../../../hooks', () => ({
@@ -18,17 +20,9 @@ vi.mock('../../../hooks', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 describe('TagFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('renders the tags placeholder when nothing is selected', () => {
-    render(<TagFilter value={[]} onChange={vi.fn()} />)
-
-    expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
   })
 
   it('renders selected tag labels and the overflow counter', () => {
@@ -38,41 +32,58 @@ describe('TagFilter', () => {
     expect(screen.getByText('+1')).toBeInTheDocument()
   })
 
-  it('filters options by search text and toggles tag selection', () => {
+  it('filters options by search text and toggles tag selection', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
-    fireEvent.click(screen.getByTestId('popover-trigger'))
-    const portal = screen.getByTestId('popover-content')
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    const portal = await screen.findByRole('dialog')
 
-    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), {
-      target: { value: 'ra' },
-    })
+    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'ra')
 
     expect(within(portal).queryByText('Agent')).not.toBeInTheDocument()
     expect(within(portal).getByText('RAG')).toBeInTheDocument()
 
-    fireEvent.click(within(portal).getByText('RAG'))
+    await user.click(within(portal).getByText('RAG'))
 
     expect(onChange).toHaveBeenCalledWith(['agent', 'rag'])
   })
 
-  it('clears all selected tags when the clear icon is clicked', () => {
-    const onChange = vi.fn()
-    render(<TagFilter value={['agent']} onChange={onChange} />)
+  it('clears selected tags through a separate keyboard control and restores focus', async () => {
+    const user = userEvent.setup()
+    function Harness() {
+      const [tags, setTags] = useState(['agent'])
+      return <TagFilter value={tags} onChange={setTags} />
+    }
 
-    const trigger = screen.getByTestId('popover-trigger')
-    fireEvent.click(trigger.querySelector('.i-ri-close-circle-fill')!)
+    render(<Harness />)
 
-    expect(onChange).toHaveBeenCalledWith([])
+    const trigger = screen.getByRole('button', { name: 'Agent' })
+    const clearButton = screen.getByRole('button', {
+      name: /^pluginTags\.clearSelectedTags/,
+    })
+    expect(trigger).not.toContainElement(clearButton)
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.tab()
+    expect(clearButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(
+      screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.tag.tags' })).toHaveFocus()
   })
 
-  it('removes a selected tag when clicking the same option again', () => {
+  it('removes a selected tag when clicking the same option again', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
-    fireEvent.click(screen.getByTestId('popover-trigger'))
-    fireEvent.click(within(screen.getByTestId('popover-content')).getByText('Agent'))
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('Agent'))
 
     expect(onChange).toHaveBeenCalledWith([])
   })

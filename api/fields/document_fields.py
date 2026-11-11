@@ -1,16 +1,16 @@
 """Response schemas for dataset document endpoints."""
 
-from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import Field, field_validator
-from sqlalchemy.orm import Session
+from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator
 
 from fields.base import ResponseModel
+from fields.dataset_fields import MetadataValueType
 from libs.helper import to_timestamp
-from models.dataset import DocMetadataDetailItem, Document
+
+# Mirrors models.enums.IndexingStatus; response schemas do not import models.
+IndexingStatus = Literal["waiting", "parsing", "cleaning", "splitting", "indexing", "paused", "completed", "error"]
 
 
 def normalize_enum(value: Any) -> Any:
@@ -19,19 +19,62 @@ def normalize_enum(value: Any) -> Any:
     return getattr(value, "value", value)
 
 
+class DocumentPreProcessingRuleResponse(ResponseModel):
+    id: str
+    enabled: bool
+
+
+class DocumentSegmentationResponse(ResponseModel):
+    # Older rules store the separator as `delimiter`.
+    separator: str = Field(default="\n", validation_alias=AliasChoices("separator", "delimiter"))
+    max_tokens: int
+    chunk_overlap: int = 0
+
+
+class DocumentProcessRulesResponse(ResponseModel):
+    pre_processing_rules: list[DocumentPreProcessingRuleResponse] | None = None
+    segmentation: DocumentSegmentationResponse | None = None
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: DocumentSegmentationResponse | None = None
+
+
+class DocumentProcessRuleResponse(ResponseModel):
+    mode: str
+    rules: DocumentProcessRulesResponse | None = None
+
+
+class DocumentUploadFileDetailResponse(ResponseModel):
+    id: str
+    name: str
+    size: int
+    extension: str
+    mime_type: str | None = None
+    created_by: str
+    created_at: float
+
+
+class DocumentSourceDetailResponse(ResponseModel):
+    """The uploaded file for file documents; Notion and website documents repeat their source info."""
+
+    model_config = ConfigDict(extra="allow")
+
+    upload_file: DocumentUploadFileDetailResponse | None = Field(default=None, exclude_if=lambda value: value is None)
+
+
 class DocumentMetadataResponse(ResponseModel):
     id: str
     name: str
-    type: str
-    value: str | int | float | bool | None = None
+    type: MetadataValueType
+    value: str | int | float | None
 
 
 class DocumentResponse(ResponseModel):
     id: str
     position: int | None = None
     data_source_type: str | None = None
-    data_source_info: Any = Field(default=None, validation_alias="data_source_info_dict")
-    data_source_detail_dict: Any = None
+    # Source-specific settings, written by the data source that imported the document.
+    data_source_info: dict[str, JsonValue] | None = Field(default=None, validation_alias="data_source_info_dict")
+    data_source_detail_dict: DocumentSourceDetailResponse
     dataset_process_rule_id: str | None = None
     name: str
     created_from: str | None = None
@@ -70,39 +113,6 @@ class DocumentResponse(ResponseModel):
         return to_timestamp(value)
 
 
-@dataclass(frozen=True)
-class DocumentWithSession:
-    """Expose session-backed document fields during response validation."""
-
-    document: Document
-    session: Session
-
-    @property
-    def data_source_detail_dict(self) -> dict[str, Any]:
-        return self.document.get_data_source_detail_dict(session=self.session)
-
-    @property
-    def hit_count(self) -> int:
-        return self.document.get_hit_count(session=self.session)
-
-    @property
-    def doc_metadata_details(self) -> list[DocMetadataDetailItem] | None:
-        return self.document.get_doc_metadata_details(session=self.session)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.document, name)  # noqa: no-new-getattr response adapter delegates model fields
-
-
-def document_response(document: Document, *, session: Session) -> DocumentResponse:
-    return DocumentResponse.model_validate(
-        DocumentWithSession(document=document, session=session), from_attributes=True
-    )
-
-
-def document_responses(documents: Iterable[Document], *, session: Session) -> list[DocumentResponse]:
-    return [document_response(document, session=session) for document in documents]
-
-
 class DocumentListResponse(ResponseModel):
     data: list[DocumentResponse]
     has_more: bool
@@ -113,7 +123,7 @@ class DocumentListResponse(ResponseModel):
 
 class DocumentStatusResponse(ResponseModel):
     id: str
-    indexing_status: str
+    indexing_status: IndexingStatus
     processing_started_at: int | None
     parsing_completed_at: int | None
     cleaning_completed_at: int | None
@@ -121,6 +131,9 @@ class DocumentStatusResponse(ResponseModel):
     completed_at: int | None
     paused_at: int | None
     error: str | None
+    error_code: Literal["vector_space_estimate_exceeded"] | None = None
+    estimated_vector_space_mb: int | None = None
+    vector_space_limit_mb: int | None = None
     stopped_at: int | None
     completed_segments: int | None = None
     total_segments: int | None = None

@@ -1,45 +1,39 @@
 'use client'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
-import Loading from '@/app/components/base/loading'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { AppSourceType } from '@/service/share'
 import { EmbeddedChatbotContext, useEmbeddedChatbotContext } from './context'
 import { useEmbeddedChatbot } from './hooks'
-import { useThemeContext } from './theme/theme-context'
+import { createTheme } from './theme/theme'
 import { CssTransform } from './theme/utils'
 import { isDify } from './utils'
 
 const Chatbot = () => {
   const {
-    isMobile,
+    isBelowSm,
     allowResetChat,
     appData,
     appChatListDataLoading,
     chatShouldReloadKey,
     handleNewConversation,
-    themeBuilder,
+    theme,
   } = useEmbeddedChatbotContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const customConfig = appData?.custom_config
   const site = appData?.site
 
   const difyIcon = <LogoHeader />
-
-  useEffect(() => {
-    themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-  }, [site, customConfig, themeBuilder])
 
   useDocumentTitle(site?.title || 'Chat')
 
@@ -48,35 +42,33 @@ const Chatbot = () => {
       <div
         className={cn(
           'flex flex-col rounded-2xl',
-          isMobile ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
+          isBelowSm ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
         )}
         style={
-          isMobile
-            ? Object.assign({}, CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? ''))
-            : {}
+          isBelowSm ? Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? '')) : {}
         }
       >
         <Header
-          isMobile={isMobile}
+          isBelowSm={isBelowSm}
           allowResetChat={allowResetChat}
           title={site?.title || ''}
           customerIcon={isDify() ? difyIcon : ''}
-          theme={themeBuilder?.theme}
+          theme={theme}
           onCreateNewChat={handleNewConversation}
         />
         <div
           className={cn(
             'flex grow flex-col overflow-y-auto',
-            isMobile && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg',
+            isBelowSm && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg',
           )}
         >
-          {appChatListDataLoading && <Loading type="app" />}
+          {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
           {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
         </div>
       </div>
       {/* powered by */}
-      {isMobile && (
-        <div className="flex h-[60px] shrink-0 items-center pl-2">
+      {isBelowSm && (
+        <div className="flex h-15 shrink-0 items-center ps-2">
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn('flex shrink-0 items-center gap-1.5 px-2')}>
               <div className="system-2xs-medium-uppercase text-text-tertiary">
@@ -95,7 +87,7 @@ const Chatbot = () => {
                   className="block h-5 w-auto"
                 />
               ) : (
-                <DifyLogo size="small" />
+                <DifyLogo alt="Dify" size="small" />
               )}
             </div>
           )}
@@ -106,9 +98,7 @@ const Chatbot = () => {
 }
 
 const EmbeddedChatbotWrapper = () => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
-  const themeBuilder = useThemeContext()
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,
@@ -143,6 +133,10 @@ const EmbeddedChatbotWrapper = () => {
     allInputsHidden,
     initUserVariables,
   } = useEmbeddedChatbot(AppSourceType.webApp)
+  const theme = createTheme(
+    appData?.site?.chat_color_theme ?? null,
+    appData?.site?.chat_color_theme_inverted ?? false,
+  )
 
   return (
     <EmbeddedChatbotContext.Provider
@@ -166,13 +160,13 @@ const EmbeddedChatbotWrapper = () => {
         handleChangeConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
-        isMobile,
+        isBelowSm,
         isInstalledApp,
         allowResetChat,
         appId,
         handleFeedback,
         currentChatInstanceRef,
-        themeBuilder,
+        theme,
         clearChatList,
         setClearChatList,
         isResponding,

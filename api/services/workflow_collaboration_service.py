@@ -12,9 +12,13 @@ from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ig
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
+from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from services.enterprise.rbac_service import RBACService
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +26,10 @@ SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
 SYNC_REQUEST_TIMEOUT_SECONDS = 15
 _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
+
+
+class WorkflowCollaborationNotEntitledError(Exception):
+    """The workspace cannot use workflow collaboration."""
 
 
 def _get_process_server_id() -> str:
@@ -101,10 +109,11 @@ class WorkflowCollaborationService:
         self, workflow_id: str, sid: str, *, session: Session
     ) -> tuple[str, bool] | None:
         """
-        Join a collaboration room only after validating the socket session and tenant-scoped app access.
+        Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
+        `App.id`. Missing access returns `None`; an ineligible workspace raises
+        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
         """
         socket_session = self._socketio.get_session(sid)
         user_id = socket_session.get("user_id")
@@ -112,7 +121,7 @@ class WorkflowCollaborationService:
         if not user_id or not tenant_id:
             return None
 
-        if not self._can_access_workflow(workflow_id, str(tenant_id), session=session):
+        if not self._can_access_workflow(workflow_id, str(tenant_id), str(user_id), session=session):
             logger.warning(
                 "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
                 workflow_id,
@@ -121,6 +130,9 @@ class WorkflowCollaborationService:
                 sid,
             )
             return None
+
+        if not FeatureService.can_use_workflow_collaboration(str(tenant_id)):
+            raise WorkflowCollaborationNotEntitledError
 
         self._ensure_server_heartbeat_started()
 
@@ -148,10 +160,27 @@ class WorkflowCollaborationService:
 
         return str(user_id), is_leader
 
-    def _can_access_workflow(self, workflow_id: str, tenant_id: str, *, session: Session) -> bool:
-        """Check room access without relying on Flask's app-context-bound scoped session."""
-        app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
-        return app_id is not None
+    def _can_access_workflow(self, workflow_id: str, tenant_id: str, user_id: str, *, session: Session) -> bool:
+        """Check tenant and app permission without relying on Flask's scoped session."""
+        with session.begin():
+            app = session.execute(
+                select(App.id, App.maintainer).where(
+                    App.id == workflow_id, App.tenant_id == tenant_id, App.status == "normal"
+                )
+            ).one_or_none()
+        if app is None:
+            return False
+
+        app_id, maintainer = app
+        if not dify_config.RBAC_ENABLED or maintainer == user_id:
+            return True
+        return RBACService.CheckAccess.check(
+            tenant_id,
+            user_id,
+            scene=RBACPermission.APP_EDIT,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app_id,
+        )
 
     def disconnect_session(self, sid: str) -> None:
         mapping = self._repository.get_sid_mapping(sid)

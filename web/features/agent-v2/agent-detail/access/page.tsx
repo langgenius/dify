@@ -1,10 +1,18 @@
 'use client'
 
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
+import { AccessControlEntry } from '@/features/network-access/app-binding'
+import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { ServiceApiAccessCard } from './components/service-api-access-card'
 import { WebAppAccessCard } from './components/web-app-access-card'
@@ -15,7 +23,7 @@ type AgentAccessPageProps = {
 }
 
 export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({
@@ -26,10 +34,12 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
       },
     }),
   )
+  const agent = agentQuery.data
+  const capabilities = getAgentACLCapabilities(agent?.permission_keys)
 
   return (
     <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.access'])}>
-      <header className="h-15.5 shrink-0 px-6 pt-3 pb-2">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['agentDetail.access.title'])}
@@ -47,37 +57,51 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
             </a>
           </p>
         </div>
+        {agent?.app_id && !agent.hidden_app_backed && capabilities.canViewAccessPoint && (
+          <AccessControlEntry
+            appId={agent.app_id}
+            appMode="agent"
+            isPublished={agent.access_ready === true}
+            appIcon={agent}
+            canEditBinding={capabilities.canManageAccessPoint}
+          />
+        )}
       </header>
 
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        slotClassNames={{
-          content: 'px-6 pt-2 pb-8',
-        }}
-      >
-        <div className="w-full min-w-0 space-y-6">
-          <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-            <WebAppAccessCard
-              agent={agentQuery.data}
-              agentId={agentId}
-              isLoading={agentQuery.isPending}
-            />
-            <ServiceApiAccessCard agentId={agentId} />
-          </div>
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaViewport>
+          <ScrollAreaContent className="px-6 pt-2 pb-8">
+            <div className="w-full min-w-0 space-y-6">
+              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                <WebAppAccessCard
+                  agent={agentQuery.data}
+                  agentId={agentId}
+                  isLoading={agentQuery.isPending}
+                />
+                <ServiceApiAccessCard agentId={agentId} />
+              </div>
 
-          <section aria-labelledby="agent-workflow-access-title">
-            <div className="mb-3">
-              <h3 id="agent-workflow-access-title" className="system-md-semibold text-text-primary">
-                {t(($) => $['agentDetail.access.workflow.title'])}
-              </h3>
-              <p className="mt-0.5 system-xs-regular text-text-tertiary">
-                {t(($) => $['agentDetail.access.workflow.description'])}
-              </p>
+              <section aria-labelledby="agent-workflow-access-title">
+                <div className="mb-3">
+                  <h3
+                    id="agent-workflow-access-title"
+                    className="system-md-semibold text-text-primary"
+                  >
+                    {t(($) => $['agentDetail.access.workflow.title'])}
+                  </h3>
+                  <p className="mt-0.5 system-xs-regular text-text-tertiary">
+                    {t(($) => $['agentDetail.access.workflow.description'])}
+                  </p>
+                </div>
+
+                <WorkflowReferencesTable agentId={agentId} enabled={agentQuery.isSuccess} />
+              </section>
             </div>
-
-            <WorkflowReferencesTable agentId={agentId} enabled={agentQuery.isSuccess} />
-          </section>
-        </div>
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </AgentDetailSectionSurface>
   )

@@ -1,6 +1,7 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC, MouseEvent } from 'react'
 import type { ModelProvider } from '../declarations'
-import type { Plugin } from '@/app/components/plugins/types'
+import type { PluginManifestInMarket } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -10,28 +11,28 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
+import { fetchManifestFromMarketPlace, fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
-import { useMarketplaceAllPlugins } from '../hooks'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelNameMap,
-  providerIconMap,
   providerKeyToPluginId,
+  providerLogoMap,
 } from '../utils'
 import styles from './quota-panel.module.css'
 import { useTrialCredits } from './use-trial-credits'
 
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
   key,
-  Icon: providerIconMap[key],
+  logo: providerLogoMap[key],
 }))
 
 type QuotaInfotipProps = {
@@ -51,7 +52,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
         closeDelay={200}
         aria-label={tipText}
         onClick={handleClick}
-        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+        className="ms-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0"
       >
         <span
           aria-hidden
@@ -59,8 +60,8 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="top"
-        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+        side="top"
+        className="max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
       >
         {tipText}
       </PopoverContent>
@@ -69,19 +70,33 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
 }
 
 type QuotaPanelProps = {
-  providers: ModelProvider[]
+  providers: Array<ModelProviderSummaryResponse | ModelProvider>
 }
+
+type MarketplacePluginToInstall = {
+  manifest: PluginManifestInMarket
+  uniqueIdentifier: string
+}
+
 const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { usedCredits, totalCredits, isExhausted, isLoading, exhaustedAt, nextCreditResetDate } =
-    useTrialCredits()
-  const { data: trialModels = [] } = useQuery(
+  const {
+    usedCredits,
+    totalCredits,
+    isUnlimited,
+    isExhausted,
+    isLoading,
+    exhaustedAt,
+    nextCreditResetDate,
+  } = useTrialCredits()
+  const isCloud = deploymentEdition === 'CLOUD'
+  const { data: trialModels = [], isPending: isTrialModelsPending } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
+      enabled: isCloud,
       select: (data) => data.trial_models,
     }),
   )
@@ -94,8 +109,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     [providers],
   )
   const { formatMonthDay } = useTimestamp()
-  const { plugins: allPlugins } = useMarketplaceAllPlugins(providers, '')
-  const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null)
+  const [selectedPlugin, setSelectedPlugin] = useState<MarketplacePluginToInstall | null>(null)
+  const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null)
   const [
     isShowInstallModal,
     { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
@@ -105,19 +120,41 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback(
-    (key: ModelProviderQuotaGetPaid) => {
+    async (key: ModelProviderQuotaGetPaid) => {
+      if (loadingPluginId) return
+
       const isInstalled = providerMap.get(key)
-      if (!isInstalled && allPlugins && canInstallPlugin) {
+      if (!isInstalled && canInstallPlugin) {
         const pluginId = providerKeyToPluginId[key]
-        const plugin = allPlugins.find((p) => p.plugin_id === pluginId)
-        if (plugin) {
-          setSelectedPlugin(plugin)
+        const [org, name] = pluginId.split('/')
+        if (!org || !name) return
+
+        setLoadingPluginId(pluginId)
+        try {
+          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
+          const uniqueIdentifier = pluginInfo.data.plugin.latest_package_identifier
+          if (!uniqueIdentifier) return
+          const manifest = await fetchManifestFromMarketPlace(uniqueIdentifier)
+          setSelectedPlugin({
+            manifest: {
+              ...manifest.data.plugin,
+              org,
+              name,
+              from: 'marketplace',
+              icon: manifest.data.plugin.icon || 'marketplace',
+            },
+            uniqueIdentifier,
+          })
           selectedPluginIdRef.current = pluginId
           showInstallFromMarketplace()
+        } catch {
+          // Keep the provider actionable so the user can retry the marketplace request.
+        } finally {
+          setLoadingPluginId(null)
         }
       }
     },
-    [allPlugins, canInstallPlugin, providerMap, showInstallFromMarketplace],
+    [canInstallPlugin, loadingPluginId, providerMap, showInstallFromMarketplace],
   )
 
   useEffect(() => {
@@ -131,17 +168,29 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
 
   const tipText = t(($) => $['modelProvider.card.tip'], {
-    ns: 'common',
+    ns: 'modelProvider',
     modelNames: trialModels
       .map((key) => modelNameMap[key as keyof typeof modelNameMap])
       .filter(Boolean)
       .join(', '),
   })
 
-  if (isLoading) {
+  if (isLoading || (isCloud && isTrialModelsPending)) {
     return (
-      <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
-        <Loading />
+      <div
+        role="status"
+        aria-label={t(($) => $.loading, { ns: 'common' })}
+        className="relative h-16 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default ps-4 pe-2.5 pt-3 pb-2.5 shadow-xs"
+      >
+        <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
+        <div className="relative">
+          <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
+          </div>
+          <div className="flex h-6 items-center motion-safe:animate-pulse">
+            <SkeletonRectangle className="my-0 h-5 w-48" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -151,7 +200,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   return (
     <div
       className={cn(
-        'relative h-16 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
+        'relative h-16 min-w-18 shrink-0 overflow-hidden rounded-xl border-[0.5px] ps-4 pe-2.5 pt-3 pb-2.5 shadow-xs',
         isExhausted
           ? 'border-state-destructive-border hover:bg-state-destructive-hover'
           : 'border-components-panel-border bg-third-party-model-bg-default',
@@ -160,22 +209,30 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
         <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['modelProvider.quotaLabel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
           <QuotaInfotip tipText={tipText} />
         </div>
         <div className="flex h-6 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="flex shrink-0 items-baseline gap-1">
-              <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
-                {formatNumber(usedCredits)}
-              </span>
-              <span className="text-base leading-6 font-normal text-text-tertiary">/</span>
-              <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
-                {formatNumber(totalCredits)}
-              </span>
-              <span className={cn('system-md-medium', creditUsageTextClassName)}>
-                {t(($) => $['modelProvider.used'], { ns: 'common' })}
-              </span>
+              {isUnlimited ? (
+                <span className="system-xl-semibold text-text-secondary">
+                  {t(($) => $['license.unlimited'], { ns: 'common' })}
+                </span>
+              ) : (
+                <>
+                  <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
+                    {formatNumber(usedCredits)}
+                  </span>
+                  <span className="text-base leading-6 font-normal text-text-tertiary">/</span>
+                  <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
+                    {formatNumber(totalCredits)}
+                  </span>
+                  <span className={cn('system-md-medium', creditUsageTextClassName)}>
+                    {t(($) => $['modelProvider.used'], { ns: 'modelProvider' })}
+                  </span>
+                </>
+              )}
             </div>
             {isExhausted && exhaustedAt ? (
               <>
@@ -184,7 +241,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 </span>
                 <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.ranOutDate'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: formatMonthDay(exhaustedAt),
                     interpolation: { escapeValue: false },
                   })}
@@ -198,7 +255,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                 </span>
                 <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
                   {t(($) => $['modelProvider.resetDate'], {
-                    ns: 'common',
+                    ns: 'modelProvider',
                     date: formatMonthDay(nextCreditResetDate),
                     interpolation: { escapeValue: false },
                   })}
@@ -209,19 +266,24 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
           <div className="flex shrink-0 items-center gap-1">
             {allProviders
               .filter(({ key }) => trialModels.includes(key))
-              .map(({ key, Icon }) => {
+              .map(({ key, logo }) => {
                 const providerType = providerMap.get(key)
+                const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
                 const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
-                const getTooltipKey = () => {
-                  if (!providerType) return 'modelProvider.card.modelNotSupported'
-                  if (isConfigured && providerType === PreferredProviderTypeEnum.custom)
-                    return 'modelProvider.card.modelAPI'
-                  return 'modelProvider.card.modelSupported'
-                }
-                const tooltipText = t(($) => $[getTooltipKey()], {
-                  modelName: modelNameMap[key],
-                  ns: 'common',
-                })
+                const tooltipText = !providerType
+                  ? t(($) => $['modelProvider.card.modelNotSupported'], {
+                      modelName: modelNameMap[key],
+                      ns: 'modelProvider',
+                    })
+                  : isConfigured && providerType === PreferredProviderTypeEnum.custom
+                    ? t(($) => $['modelProvider.card.modelAPI'], {
+                        modelName: modelNameMap[key],
+                        ns: 'modelProvider',
+                      })
+                    : t(($) => $['modelProvider.card.modelSupported'], {
+                        modelName: modelNameMap[key],
+                        ns: 'modelProvider',
+                      })
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger
@@ -229,13 +291,35 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                       render={
                         <button
                           type="button"
+                          aria-busy={isLoadingPlugin}
+                          aria-disabled={isLoadingPlugin}
                           className={cn(
-                            'relative size-6 border-0 bg-transparent p-0',
+                            'relative size-6 border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                             !providerType && canInstallPlugin && 'cursor-pointer hover:opacity-80',
                           )}
                           onClick={() => handleIconClick(key)}
                         >
-                          <Icon className="size-6 rounded-lg" />
+                          {'image' in logo ? (
+                            <img
+                              aria-hidden
+                              src={logo.image.src}
+                              width={24}
+                              height={24}
+                              alt=""
+                              className="size-6 rounded-lg"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              className={cn(logo.iconClassName, 'size-6 rounded-lg')}
+                            />
+                          )}
+                          {isLoadingPlugin && (
+                            <span
+                              aria-hidden
+                              className="absolute inset-1 i-ri-loader-2-line animate-spin text-text-accent"
+                            />
+                          )}
                           {!providerType && (
                             <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                           )}
@@ -256,8 +340,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
           currentDifyVersion={currentDifyVersion}
         >
           <InstallFromMarketplace
-            manifest={selectedPlugin}
-            uniqueIdentifier={selectedPlugin.latest_package_identifier}
+            manifest={selectedPlugin.manifest}
+            uniqueIdentifier={selectedPlugin.uniqueIdentifier}
             onClose={hideInstallFromMarketplace}
             onSuccess={hideInstallFromMarketplace}
           />

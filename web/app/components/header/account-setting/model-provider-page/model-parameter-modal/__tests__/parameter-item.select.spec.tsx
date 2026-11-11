@@ -1,45 +1,14 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ParameterItem from '../parameter-item'
 
 vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
-
-  return {
-    ...actual,
-    Select: ({
-      children,
-      onValueChange,
-    }: {
-      children: ReactNode
-      onValueChange: (value: string | undefined) => void
-    }) => (
-      <div>
-        <button type="button" onClick={() => onValueChange('updated')}>
-          select-updated
-        </button>
-        <button type="button" onClick={() => onValueChange(undefined)}>
-          select-empty
-        </button>
-        {children}
-      </div>
-    ),
-    SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectLabel: () => null,
-    SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectValue: () => <div>SelectValue</div>,
-    SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-    SelectItemIndicator: () => <span data-testid="select-item-indicator" />,
-  }
-})
-
 describe('ParameterItem select mode', () => {
-  it('should propagate both explicit and empty select values', () => {
+  it('should propagate a selected value', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -57,10 +26,9 @@ describe('ParameterItem select mode', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'select-updated' }))
-    fireEvent.click(screen.getByRole('button', { name: 'select-empty' }))
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'text' }))
 
-    expect(onChange).toHaveBeenNthCalledWith(1, 'updated')
-    expect(onChange).toHaveBeenNthCalledWith(2, undefined)
+    expect(onChange).toHaveBeenCalledWith('text')
   })
 })

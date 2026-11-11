@@ -1,14 +1,15 @@
 'use client'
+import type { PluginInstallTaskStartResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { InstallPackageResponse, Plugin, PluginManifestInMarket } from '../../../types'
+import type { Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useInstallPackageFromMarketPlace,
   usePluginDeclarationFromMarketPlace,
@@ -45,7 +46,7 @@ const Installed: FC<Props> = ({
   onInstalled,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const toInstallVersion = payload.version || payload.latest_version
   const pluginId = (payload as Plugin).plugin_id
   const { installedInfo, isLoading } = useCheckInstalled({
@@ -78,7 +79,7 @@ const Installed: FC<Props> = ({
     try {
       let taskId
       let isInstalled
-      let installResponse: InstallPackageResponse | undefined
+      let installResponse: PluginInstallTaskStartResponse | undefined
       if (hasInstalled) {
         const response = await updatePackageFromMarketPlace({
           original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
@@ -126,15 +127,18 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langGeniusVersionInfo.current_version) return true
+    if (!pluginDeclaration || !currentVersion) return true
     return isEqualOrLaterThanVersion(
-      langGeniusVersionInfo.current_version,
+      currentVersion,
       pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
     )
-  }, [langGeniusVersionInfo.current_version, pluginDeclaration])
+  }, [currentVersion, pluginDeclaration])
 
   const { canInstall } = useInstallPluginLimit({
     ...payload,
@@ -149,7 +153,8 @@ const Installed: FC<Props> = ({
             <p className="system-md-regular text-text-warning">
               {t(($) => $.difyVersionNotCompatible, {
                 ns: 'plugin',
-                minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version,
+                minimalDifyVersion:
+                  pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
               })}
             </p>
           )}
@@ -174,13 +179,13 @@ const Installed: FC<Props> = ({
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+          <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="flex min-w-[72px] space-x-0.5"
+          className="flex min-w-18"
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >

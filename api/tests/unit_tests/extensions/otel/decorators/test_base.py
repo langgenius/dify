@@ -8,34 +8,40 @@ Test coverage:
 - Integration with OpenTelemetry SDK
 """
 
-from unittest.mock import patch
+from collections.abc import Callable
 
 import pytest
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode
 
 from extensions.otel.decorators.base import trace_span
 
 
+@pytest.fixture(autouse=True)
+def _otel_enabled(config_overrides: Callable[..., None]) -> None:
+    config_overrides(ENABLE_OTEL=True)
+
+
 class TestTraceSpanDecorator:
     """Test trace_span decorator basic functionality."""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_decorated_function_executes_normally(self, tracer_provider_with_memory_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_decorated_function_executes_normally(self) -> None:
         """Test that decorated function executes and returns correct value."""
 
         @trace_span()
-        def test_func(x, y):
+        def test_func(x: int, y: int) -> int:
             return x + y
 
         result = test_func(2, 3)
         assert result == 5
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_decorator_with_args_and_kwargs(self, tracer_provider_with_memory_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_decorator_with_args_and_kwargs(self) -> None:
         """Test that decorator correctly handles args and kwargs."""
 
         @trace_span()
-        def test_func(a, b, c=10):
+        def test_func(a: int, b: int, c: int = 10) -> int:
             return a + b + c
 
         result = test_func(1, 2, c=3)
@@ -45,12 +51,12 @@ class TestTraceSpanDecorator:
 class TestTraceSpanWithMemoryExporter:
     """Test trace_span with MemorySpanExporter to verify span creation."""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_span_is_created_and_exported(self, tracer_provider_with_memory_exporter, memory_span_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_span_is_created_and_exported(self, memory_span_exporter: InMemorySpanExporter) -> None:
         """Test that span is created and exported to memory exporter."""
 
         @trace_span()
-        def test_func():
+        def test_func() -> str:
             return "result"
 
         test_func()
@@ -58,12 +64,12 @@ class TestTraceSpanWithMemoryExporter:
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_span_name_matches_function(self, tracer_provider_with_memory_exporter, memory_span_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_span_name_matches_function(self, memory_span_exporter: InMemorySpanExporter) -> None:
         """Test that span name matches the decorated function."""
 
         @trace_span()
-        def my_test_function():
+        def my_test_function() -> str:
             return "result"
 
         my_test_function()
@@ -72,12 +78,12 @@ class TestTraceSpanWithMemoryExporter:
         assert len(spans) == 1
         assert "my_test_function" in spans[0].name
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_span_status_is_ok_on_success(self, tracer_provider_with_memory_exporter, memory_span_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_span_status_is_ok_on_success(self, memory_span_exporter: InMemorySpanExporter) -> None:
         """Test that span status is OK when function succeeds."""
 
         @trace_span()
-        def test_func():
+        def test_func() -> str:
             return "result"
 
         test_func()
@@ -86,12 +92,12 @@ class TestTraceSpanWithMemoryExporter:
         assert len(spans) == 1
         assert spans[0].status.status_code == StatusCode.OK
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_span_status_is_error_on_exception(self, tracer_provider_with_memory_exporter, memory_span_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_span_status_is_error_on_exception(self, memory_span_exporter: InMemorySpanExporter) -> None:
         """Test that span status is ERROR when function raises exception."""
 
         @trace_span()
-        def test_func():
+        def test_func() -> None:
             raise ValueError("test error")
 
         with pytest.raises(ValueError, match="test error"):
@@ -101,15 +107,15 @@ class TestTraceSpanWithMemoryExporter:
         assert len(spans) == 1
         assert spans[0].status.status_code == StatusCode.ERROR
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
-    def test_exception_is_recorded_in_span(self, tracer_provider_with_memory_exporter, memory_span_exporter):
+    @pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+    def test_exception_is_recorded_in_span(self, memory_span_exporter: InMemorySpanExporter) -> None:
         """Test that exception details are recorded in span events."""
 
         @trace_span()
-        def test_func():
+        def test_func() -> None:
             raise ValueError("test error")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="test error"):
             test_func()
 
         spans = memory_span_exporter.get_finished_spans()

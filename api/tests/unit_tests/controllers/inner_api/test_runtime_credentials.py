@@ -8,16 +8,20 @@ import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.runtime_credentials import (
     EnterpriseRuntimeCredentialsResolve,
     InnerRuntimeCredentialsResolvePayload,
 )
+from core.entities.provider_entities import ProviderConfig
+from graphon.model_runtime.entities.provider_entities import CredentialFormSchema
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
+from tests.helpers.unit.config_override import config_overrides_context
 
 
-def test_runtime_credentials_payload_accepts_items():
+def test_runtime_credentials_payload_accepts_items() -> None:
     payload = InnerRuntimeCredentialsResolvePayload.model_validate(
         {
             "tenant_id": "tenant-1",
@@ -41,15 +45,16 @@ def test_runtime_credentials_payload_accepts_items():
 @patch("controllers.inner_api.runtime_credentials.create_plugin_provider_manager")
 @pytest.mark.parametrize("sqlite_session", [(ProviderCredential,)], indirect=True)
 def test_runtime_model_credentials_resolve_returns_decrypted_values(
-    mock_provider_manager_factory,
-    mock_db,
-    mock_decrypt_token,
+    mock_provider_manager_factory: MagicMock,
+    mock_db: MagicMock,
+    mock_decrypt_token: MagicMock,
     app: Flask,
     sqlite_engine: Engine,
     sqlite_session: Session,
-):
+) -> None:
+    credential_form_schemas: list[CredentialFormSchema] = []
     provider_configuration = MagicMock()
-    provider_configuration.provider.provider_credential_schema.credential_form_schemas = []
+    provider_configuration.provider.provider_credential_schema.credential_form_schemas = credential_form_schemas
     provider_configuration.extract_secret_variables.return_value = ["openai_api_key"]
     provider_configuration._get_provider_names.return_value = ["langgenius/openai/openai", "openai"]
 
@@ -73,19 +78,18 @@ def test_runtime_model_credentials_resolve_returns_decrypted_values(
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [
-                    {
-                        "credential_id": "credential-1",
-                        "provider": "langgenius/openai/openai",
-                        "kind": "model",
-                    }
-                ],
+    payload = {
+        "tenant_id": "tenant-1",
+        "credentials": [
+            {
+                "credential_id": "credential-1",
+                "provider": "langgenius/openai/openai",
+                "kind": "model",
             }
-            body, status_code = unwrapped(handler)
+        ],
+    }
+    with app.test_request_context(json=payload):
+        body, status_code = unwrapped(handler, InnerRuntimeCredentialsResolvePayload.model_validate(payload))
 
     assert status_code == 200
     assert body["credentials"][0]["kind"] == "model"
@@ -95,7 +99,9 @@ def test_runtime_model_credentials_resolve_returns_decrypted_values(
 
 
 @patch("controllers.inner_api.runtime_credentials.create_plugin_provider_manager")
-def test_runtime_model_credentials_resolve_rejects_unknown_provider(mock_provider_manager_factory, app: Flask):
+def test_runtime_model_credentials_resolve_rejects_unknown_provider(
+    mock_provider_manager_factory: MagicMock, app: Flask
+) -> None:
     provider_configurations = MagicMock()
     provider_configurations.get.return_value = None
     provider_manager = MagicMock()
@@ -104,34 +110,32 @@ def test_runtime_model_credentials_resolve_rejects_unknown_provider(mock_provide
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [{"credential_id": "credential-1", "provider": "missing", "kind": "model"}],
-            }
-            body, status_code = unwrapped(handler)
+    payload = {
+        "tenant_id": "tenant-1",
+        "credentials": [{"credential_id": "credential-1", "provider": "missing", "kind": "model"}],
+    }
+    with app.test_request_context(json=payload):
+        body, status_code = unwrapped(handler, InnerRuntimeCredentialsResolvePayload.model_validate(payload))
 
     assert status_code == 404
     assert "provider" in body["message"]
 
 
 @patch("controllers.inner_api.runtime_credentials.create_provider_encrypter")
-@patch("controllers.inner_api.runtime_credentials.ToolProviderCredentialsCache")
 @patch("controllers.inner_api.runtime_credentials.db")
 @patch("controllers.inner_api.runtime_credentials.ToolManager")
 @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
 def test_runtime_tool_credentials_resolve_returns_decrypted_values(
-    mock_tool_manager,
-    mock_db,
-    mock_cache_cls,
-    mock_create_encrypter,
+    mock_tool_manager: MagicMock,
+    mock_db: MagicMock,
+    mock_create_encrypter: MagicMock,
     app: Flask,
     sqlite_engine: Engine,
     sqlite_session: Session,
-):
+) -> None:
+    credentials_schema: list[ProviderConfig] = []
     provider_controller = MagicMock()
-    provider_controller.get_credentials_schema_by_type.return_value = []
+    provider_controller.get_credentials_schema_by_type.return_value = credentials_schema
     mock_tool_manager.get_builtin_provider.return_value = provider_controller
 
     builtin_provider = BuiltinToolProvider(
@@ -152,19 +156,18 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [
-                    {
-                        "credential_id": "credential-1",
-                        "provider": "langgenius/tavily/tavily",
-                        "kind": "tool",
-                    }
-                ],
+    payload = {
+        "tenant_id": "tenant-1",
+        "credentials": [
+            {
+                "credential_id": "credential-1",
+                "provider": "langgenius/tavily/tavily",
+                "kind": "tool",
             }
-            body, status_code = unwrapped(handler)
+        ],
+    }
+    with app.test_request_context(json=payload):
+        body, status_code = unwrapped(handler, InnerRuntimeCredentialsResolvePayload.model_validate(payload))
 
     assert status_code == 200
     assert body["credentials"][0]["kind"] == "tool"
@@ -177,12 +180,12 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
 @patch("controllers.inner_api.runtime_credentials.ToolManager")
 @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
 def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
-    mock_tool_manager,
-    mock_db,
+    mock_tool_manager: MagicMock,
+    mock_db: MagicMock,
     app: Flask,
     sqlite_engine: Engine,
     sqlite_session: Session,
-):
+) -> None:
     mock_tool_manager.get_builtin_provider.return_value = MagicMock()
 
     # The requested id exists for another tenant, proving the resolver does not
@@ -201,28 +204,43 @@ def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [{"credential_id": "missing", "provider": "langgenius/tavily/tavily", "kind": "tool"}],
-            }
-            body, status_code = unwrapped(handler)
+    payload = {
+        "tenant_id": "tenant-1",
+        "credentials": [{"credential_id": "missing", "provider": "langgenius/tavily/tavily", "kind": "tool"}],
+    }
+    with app.test_request_context(json=payload):
+        body, status_code = unwrapped(handler, InnerRuntimeCredentialsResolvePayload.model_validate(payload))
 
     assert status_code == 404
     assert "credential" in body["message"]
 
 
-def test_runtime_credentials_resolve_rejects_unknown_kind(app: Flask):
+def test_runtime_credentials_resolve_rejects_unknown_kind(app: Flask) -> None:
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
-    with app.test_request_context():
-        with patch("controllers.inner_api.runtime_credentials.inner_api_ns") as mock_ns:
-            mock_ns.payload = {
-                "tenant_id": "tenant-1",
-                "credentials": [{"credential_id": "credential-1", "provider": "x", "kind": "secret"}],
-            }
-            body, status_code = unwrapped(handler)
+    payload = {
+        "tenant_id": "tenant-1",
+        "credentials": [{"credential_id": "credential-1", "provider": "x", "kind": "secret"}],
+    }
+    with app.test_request_context(json=payload):
+        body, status_code = unwrapped(handler, InnerRuntimeCredentialsResolvePayload.model_validate(payload))
 
     assert status_code == 400
     assert "kind" in body["message"]
+
+
+def test_invalid_body_is_rejected_before_the_handler_runs(app: Flask) -> None:
+    """The tests above unwrap the view, so this is what covers the decorator."""
+    handler = EnterpriseRuntimeCredentialsResolve()
+
+    with (
+        patch("controllers.console.wraps._is_setup_completed", return_value=True),
+        config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
+        app.test_request_context(
+            method="POST",
+            json={},
+            headers={"X-Inner-Api-Key": "inner-api-key"},
+        ),
+        pytest.raises(UnprocessableEntity),
+    ):
+        handler.post()

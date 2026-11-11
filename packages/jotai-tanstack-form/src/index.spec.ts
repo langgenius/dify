@@ -1,5 +1,5 @@
 import { createStore } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { atomWithForm, createFormAtoms } from './index'
 
 type TestFormValues = {

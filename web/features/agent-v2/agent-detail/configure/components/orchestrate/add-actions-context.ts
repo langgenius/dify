@@ -15,7 +15,8 @@ export type AgentOrchestrateAddedItem =
   | AgentSkill
 
 export type AgentOrchestrateAddActionOptions = {
-  onAdded?: (item: AgentOrchestrateAddedItem) => void
+  onAdded?: (items: AgentOrchestrateAddedItem[]) => void
+  skillSource?: 'library' | 'upload'
 }
 
 export type AgentOrchestrateAddAction = (options?: AgentOrchestrateAddActionOptions) => void
@@ -50,7 +51,9 @@ export function useRegisterAgentOrchestrateAddAction(
   const registerAction = context?.registerAction
   const actionRef = useRef(action)
 
-  actionRef.current = action
+  useEffect(() => {
+    actionRef.current = action
+  }, [action])
 
   const stableAction = useCallback<AgentOrchestrateAddAction>((options) => {
     actionRef.current(options)

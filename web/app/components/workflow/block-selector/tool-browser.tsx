@@ -8,17 +8,15 @@ import type {
 } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
 import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
@@ -47,7 +45,7 @@ function ToolsEmptyState({ title, action }: { title: string; action?: ReactNode 
 }
 
 function ToolCategoryEmptyState({ type }: { type: ToolType }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const title = t(($) => $[`addToolModal.${type}.title`], { ns: 'tools' })
   const tip = t(($) => $[`addToolModal.${type}.tip`], { ns: 'tools' })
   const href = (() => {
@@ -83,6 +81,8 @@ type ToolBrowserProps = {
   searchText: string
   tags: ListProps['tags']
   buildInTools: ToolWithProvider[]
+  /** Full installed plugin IDs when selectable providers are scoped. */
+  installedPluginIds?: ReadonlySet<string>
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
@@ -109,6 +109,7 @@ function ToolBrowser({
   canNotSelectMultiple,
   onSelectMultiple,
   buildInTools,
+  installedPluginIds,
   workflowTools,
   customTools,
   mcpTools = [],
@@ -120,7 +121,7 @@ function ToolBrowser({
   showFeatured = false,
   onFeaturedInstallSuccess,
 }: ToolBrowserProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'tools', 'workflow'])
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState<ToolType>(ToolType.All)
@@ -216,26 +217,27 @@ function ToolBrowser({
     language,
   ])
 
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const marketplaceSearchParams = useMemo(
     () =>
-      enable_marketplace && hasFilter && isMarketplaceSearchSettled
+      marketplace && hasFilter && isMarketplaceSearchSettled
         ? {
             query: debouncedMarketplaceFilters.query,
             tags: debouncedMarketplaceFilters.tags,
             category: PluginCategoryEnum.tool,
           }
         : undefined,
-    [debouncedMarketplaceFilters, enable_marketplace, hasFilter, isMarketplaceSearchSettled],
+    [debouncedMarketplaceFilters, marketplace, hasFilter, isMarketplaceSearchSettled],
   )
   const { data: marketplacePluginsData, isFetching: isMarketplaceFetching } =
     useMarketplacePlugins(marketplaceSearchParams)
+  const installedPluginLookup = installedPluginIds ?? providerMap
   const notInstalledPlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !installedPluginLookup.has(plugin.plugin_id)),
+      ) ?? [],
+    [marketplacePluginsData?.pages, installedPluginLookup],
   )
 
   const pluginRef = useRef<ListRef>(null)
@@ -244,20 +246,15 @@ function ToolBrowser({
 
   const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolType.All && !hasFilter
   const hasToolsListContent = tools.length > 0 || isShowRAGRecommendations
-  const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
+  const hasPluginContent = marketplace !== null && notInstalledPlugins.length > 0
   const isMarketplaceSearchPending =
-    enable_marketplace && hasFilter && (!isMarketplaceSearchSettled || isMarketplaceFetching)
+    marketplace !== null && hasFilter && (!isMarketplaceSearchSettled || isMarketplaceFetching)
   const shouldShowEmptyState =
     hasFilter && !isMarketplaceSearchPending && !hasToolsListContent && !hasPluginContent
   const shouldShowCategoryEmptyState =
     !hasFilter && activeTab !== ToolType.All && !hasToolsListContent
   const shouldShowFeatured =
-    showFeatured &&
-    enable_marketplace &&
-    !isInRAGPipeline &&
-    activeTab === ToolType.All &&
-    !hasFilter
-  const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
+    showFeatured && !isInRAGPipeline && activeTab === ToolType.All && !hasFilter
 
   const handleRAGSelect = useCallback<OnSelectBlock>(
     (type, pluginDefaultValue) => {
@@ -310,9 +307,10 @@ function ToolBrowser({
                 onLoadMore={handleLoadMoreRAGTools}
               />
             )}
-            {shouldShowFeatured && (
+            {marketplace && shouldShowFeatured && (
               <>
                 <FeaturedTools
+                  marketplace={marketplace}
                   plugins={featuredPlugins}
                   providerMap={providerMap}
                   onSelect={onSelect}
@@ -323,7 +321,7 @@ function ToolBrowser({
                   }}
                 />
                 <div className="px-3">
-                  <Divider className="h-px!" />
+                  <Separator className="my-2" />
                 </div>
               </>
             )}
@@ -345,8 +343,9 @@ function ToolBrowser({
               </>
             )}
             {shouldShowCategoryEmptyState && <ToolCategoryEmptyState type={activeTab} />}
-            {enable_marketplace && (
+            {marketplace && (
               <PluginList
+                marketplace={marketplace}
                 ref={pluginRef}
                 wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
                 list={notInstalledPlugins}
@@ -375,11 +374,11 @@ function ToolBrowser({
             />
           )}
         </div>
-        {shouldShowMarketplaceFooter && (
+        {marketplace && !hasFilter && (
           <footer className={marketplaceFooterClassName}>
             <Link
               className="inline-flex items-center rounded-md text-text-accent-light-mode-only focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
+              href={marketplace.category(PluginCategoryEnum.tool)}
               target="_blank"
               rel="noopener noreferrer"
             >

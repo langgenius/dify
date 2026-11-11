@@ -1,6 +1,7 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { When } from '@cucumber/cucumber'
-import { adminCredentials } from '../../../fixtures/auth'
+import { expect } from '@playwright/test'
+import { adminCredentials } from '../../../fixtures/auth.ts'
 
 When('I open the sign-in page', async function (this: DifyWorld) {
   await this.getPage().goto('/signin')
@@ -18,7 +19,13 @@ When(
 When('I sign in as the default E2E admin', async function (this: DifyWorld) {
   const page = this.getPage()
 
-  await page.getByLabel('Email address').fill(adminCredentials.email)
-  await page.getByLabel('Password', { exact: true }).fill(adminCredentials.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  const email = page.getByLabel('Email address')
+  const password = page.getByLabel('Password', { exact: true })
+  const submit = page.getByRole('button', { name: 'Sign in', exact: true })
+  await expect(email).toBeVisible({ timeout: 15_000 })
+  await expect(password).toBeEditable()
+  await email.fill(adminCredentials.email)
+  await password.fill(adminCredentials.password)
+  await expect(submit).toBeEnabled()
+  await submit.click()
 })

@@ -8,12 +8,12 @@ type ActionsProps = {
 }
 
 const Actions = ({ disabled, handleNextStep }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <div className="flex justify-end p-4 pt-2">
       <Button disabled={disabled} variant="primary" onClick={handleNextStep}>
-        <span className="px-0.5">{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
+        <span>{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
       </Button>
     </div>
   )

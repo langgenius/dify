@@ -31,18 +31,19 @@ from flask import Response
 from flask_restx import Resource
 
 from controllers.common.fields import EventStreamResponse
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     rbac_permission_required,
     setup_required,
 )
 from extensions.ext_database import db
-from libs.exception import BaseHTTPException
+from libs.exception import BaseHTTPException, RelayedHTTPError
+from libs.external_api import error_responses
 from libs.login import login_required
 from models import App, AppMode
 from services.workflow import inspector_events
@@ -97,7 +98,7 @@ def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
             app_model=app_model, workflow_run_id=str(run_id), session=db.session()
         )
     except NodeOutputInspectorError as error:
-        raise _InspectorNotFound(error) from error
+        raise _inspector_not_found(error) from error
     return snapshot.model_dump(mode="json")
 
 
@@ -111,7 +112,7 @@ def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
             session=db.session(),
         )
     except NodeOutputInspectorError as error:
-        raise _InspectorNotFound(error) from error
+        raise _inspector_not_found(error) from error
     return view.model_dump(mode="json")
 
 
@@ -126,29 +127,55 @@ def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_nam
             session=db.session(),
         )
     except NodeOutputInspectorError as error:
-        raise _InspectorNotFound(error) from error
+        raise _inspector_not_found(error) from error
     return preview.model_dump(mode="json")
 
 
 class _InspectorNotFound(BaseHTTPException):
-    """404 that preserves the inspector's specific error code.
+    """404 that keeps the inspector's own error code and message.
 
-    Without this the response body collapses to a generic ``not_found`` code
-    and clients lose the ability to distinguish, e.g.,
-    ``workflow_run_not_found`` from ``published_run_inspector_not_implemented``.
+    Without this the response body collapses to a generic ``not_found`` code and
+    clients cannot tell ``workflow_run_not_found`` from ``node_not_in_workflow_run``.
+    Each code the service raises is a subclass, so the contract documents it.
     """
 
     code = 404
 
     def __init__(self, error: NodeOutputInspectorError) -> None:
-        self.error_code = error.code
         super().__init__(description=str(error))
+
+
+class WorkflowRunNotFoundError(_InspectorNotFound):
+    error_code = "workflow_run_not_found"
+    description = "Workflow run not found."
+
+
+class NodeNotInWorkflowRunError(_InspectorNotFound):
+    error_code = "node_not_in_workflow_run"
+    description = "The node is not part of this workflow run."
+
+
+class NodeOutputNotDeclaredError(_InspectorNotFound):
+    error_code = "node_output_not_declared"
+    description = "The node does not declare this output."
+
+
+def _inspector_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
+    """The 404 for an inspector error; a code the service adds later is relayed as is."""
+    if error.code == WorkflowRunNotFoundError.error_code:
+        return WorkflowRunNotFoundError(error)
+    if error.code == NodeNotInWorkflowRunError.error_code:
+        return NodeNotInWorkflowRunError(error)
+    if error.code == NodeOutputNotDeclaredError.error_code:
+        return NodeOutputNotDeclaredError(error)
+    return RelayedHTTPError(status=404, error_code=error.code, message=str(error))
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs")
 class WorkflowDraftRunNodeOutputsApi(Resource):
     """Whole-run snapshot organized by producer node."""
 
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_draft_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -157,7 +184,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return _serve_snapshot(app_model, run_id)
@@ -167,6 +194,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
 class WorkflowDraftRunNodeOutputDetailApi(Resource):
     """One node's declared outputs + per-output status."""
 
+    @error_responses(NodeNotInWorkflowRunError, RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_draft_run_node_output_detail")
     @console_ns.doc(description="One node's declared outputs for a draft workflow run.")
     @console_ns.doc(
@@ -181,7 +209,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
         return _serve_node_detail(app_model, run_id, node_id)
@@ -193,6 +221,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
 class WorkflowDraftRunNodeOutputPreviewApi(Resource):
     """Full value for one declared output (with signed URL for file refs)."""
 
+    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_draft_run_node_output_preview")
     @console_ns.doc(description="Full value for one declared output, including signed download URL for files.")
     @console_ns.doc(
@@ -208,7 +237,7 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
         return _serve_output_preview(app_model, run_id, node_id, output_name)
@@ -229,11 +258,25 @@ def _sse_envelope(event: str, data: dict | str, event_id: int) -> str:
     return f"event: {event}\nid: {event_id}\ndata: {payload}\n\n"
 
 
-def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
+def _initial_snapshot(app_model: App, run_id: UUID) -> WorkflowRunSnapshotView:
+    """The snapshot an event stream opens with, or the run's 404.
+
+    Called before the streaming ``Response`` is built: once a generator is handed to
+    ``Response`` the 200 status has already gone out, so an error raised inside it cannot
+    become an HTTP error. Resolving the run here keeps a missing run a plain 404.
+    """
+    try:
+        return _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id), session=db.session())
+    except NodeOutputInspectorError as error:
+        raise _inspector_not_found(error) from error
+
+
+def _stream_inspector_events(app_model: App, run_id: UUID, snapshot: WorkflowRunSnapshotView) -> Iterator[str]:
     """Yield SSE-framed strings for one workflow run.
 
-    The stream begins with a full ``snapshot`` event so the client has a
-    starting state without needing a separate REST GET. Then for every
+    The stream begins with the full ``snapshot`` event (resolved by ``_initial_snapshot``
+    before the response started) so the client has a starting state without needing a
+    separate REST GET. Then for every
     ``node_changed`` message from the pub/sub channel we re-read that node
     from DB and push a fresh ``node_changed`` event. When the workflow run
     reaches a terminal state we push one final ``workflow_run_completed``
@@ -245,14 +288,6 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
     """
     service = _service()
     run_id_str = str(run_id)
-
-    # Initial snapshot — also flushes a 404 back at the client right away
-    # if the run is gone (raised before yielding any bytes, so Flask turns it
-    # into the normal HTTP 404 path).
-    try:
-        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str, session=db.session())
-    except NodeOutputInspectorError as error:
-        raise _InspectorNotFound(error) from error
 
     event_id = 0
     yield _sse_envelope("snapshot", snapshot.model_dump(mode="json"), event_id)
@@ -341,6 +376,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
 class WorkflowDraftRunNodeOutputEventsApi(Resource):
     """SSE stream of inspector deltas for a draft run."""
 
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -353,11 +389,12 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
+        snapshot = _initial_snapshot(app_model, run_id)
         return Response(
-            _stream_inspector_events(app_model, run_id),
+            _stream_inspector_events(app_model, run_id, snapshot),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
@@ -376,6 +413,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     based on which page (Composer test-run vs. Run History) is mounted.
     """
 
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_published_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -384,7 +422,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return _serve_snapshot(app_model, run_id)
@@ -394,6 +432,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
 class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     """One node's declared outputs + per-output status (published run)."""
 
+    @error_responses(NodeNotInWorkflowRunError, RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_published_run_node_output_detail")
     @console_ns.doc(description="One node's declared outputs for a published workflow run.")
     @console_ns.doc(
@@ -408,7 +447,7 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
         return _serve_node_detail(app_model, run_id, node_id)
@@ -421,6 +460,7 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
 class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
     """Full value for one declared output of a published run."""
 
+    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_published_run_node_output_preview")
     @console_ns.doc(description="Full value for one declared output of a published run.")
     @console_ns.doc(
@@ -436,7 +476,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
         return _serve_output_preview(app_model, run_id, node_id, output_name)
@@ -446,6 +486,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
 class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     """SSE stream of inspector deltas for a published run."""
 
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -458,11 +499,12 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
+        snapshot = _initial_snapshot(app_model, run_id)
         return Response(
-            _stream_inspector_events(app_model, run_id),
+            _stream_inspector_events(app_model, run_id, snapshot),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

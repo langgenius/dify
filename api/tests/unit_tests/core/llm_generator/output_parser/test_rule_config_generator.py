@@ -10,7 +10,7 @@ from core.llm_generator.prompts import (
 
 
 class TestRuleConfigGeneratorOutputParser:
-    def test_get_format_instructions(self):
+    def test_get_format_instructions(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         instructions = parser.get_format_instructions()
         assert instructions == (
@@ -19,7 +19,7 @@ class TestRuleConfigGeneratorOutputParser:
             RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
         )
 
-    def test_parse_success(self):
+    def test_parse_success(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         text = """
 ```json
@@ -35,7 +35,7 @@ class TestRuleConfigGeneratorOutputParser:
         assert result["variables"] == ["var1", "var2"]
         assert result["opening_statement"] == "Hello!"
 
-    def test_parse_invalid_json(self):
+    def test_parse_invalid_json(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         text = "invalid json"
         with pytest.raises(OutputParserError) as excinfo:
@@ -43,7 +43,7 @@ class TestRuleConfigGeneratorOutputParser:
         assert "Parsing text" in str(excinfo.value)
         assert "could not find json block in the output" in str(excinfo.value)
 
-    def test_parse_missing_keys(self):
+    def test_parse_missing_keys(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         text = """
 ```json
@@ -57,7 +57,7 @@ class TestRuleConfigGeneratorOutputParser:
             parser.parse(text)
         assert "expected key `opening_statement` to be present" in str(excinfo.value)
 
-    def test_parse_wrong_type_prompt(self):
+    def test_parse_wrong_type_prompt(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         text = """
 ```json
@@ -72,7 +72,7 @@ class TestRuleConfigGeneratorOutputParser:
             parser.parse(text)
         assert "Expected 'prompt' to be a string" in str(excinfo.value)
 
-    def test_parse_wrong_type_variables(self):
+    def test_parse_wrong_type_variables(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         text = """
 ```json
@@ -87,7 +87,7 @@ class TestRuleConfigGeneratorOutputParser:
             parser.parse(text)
         assert "Expected 'variables' to be a list" in str(excinfo.value)
 
-    def test_parse_wrong_type_opening_statement(self):
+    def test_parse_wrong_type_opening_statement(self) -> None:
         parser = RuleConfigGeneratorOutputParser()
         text = """
 ```json

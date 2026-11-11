@@ -1,121 +1,22 @@
-import type { ReactNode } from 'react'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import type { CommonNodeType, Edge } from '@/app/components/workflow/types'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
+import { useEdges } from 'reactflow'
+import { CanvasNodesCatalogProbe } from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import Operator from '../operator'
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
-  const React = await import('react')
-  const DropdownMenuContext = React.createContext<{
-    open: boolean
-    setOpen: (open: boolean) => void
-  } | null>(null)
-
-  const useDropdownMenuContext = () => {
-    const context = React.use(DropdownMenuContext)
-    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
-    return context
-  }
-
-  return {
-    DropdownMenu: ({
-      children,
-      open,
-      onOpenChange,
-    }: {
-      children: ReactNode
-      open: boolean
-      onOpenChange?: (open: boolean) => void
-    }) => (
-      <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div>{children}</div>
-      </DropdownMenuContext>
-    ),
-    DropdownMenuTrigger: ({
-      children,
-      render,
-    }: {
-      children: ReactNode
-      render?: React.ReactElement<{ children?: ReactNode }>
-    }) => {
-      const { open, setOpen } = useDropdownMenuContext()
-      if (render) {
-        return React.cloneElement(
-          render,
-          { onClick: () => setOpen(!open) } as Record<string, unknown>,
-          children ?? render.props.children,
-        )
-      }
-
-      return (
-        <button type="button" onClick={() => setOpen(!open)}>
-          {children}
-        </button>
-      )
-    },
-    DropdownMenuContent: ({ children }: { children: ReactNode }) => {
-      const { open } = useDropdownMenuContext()
-      return open ? <div>{children}</div> : null
-    },
-  }
-})
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    className,
-    onClick,
-  }: {
-    children: ReactNode
-    className?: string
-    onClick?: React.MouseEventHandler<HTMLButtonElement>
-  }) => (
-    <button type="button" className={className} onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    trigger,
-    onSelect,
-  }: {
-    trigger: ((open: boolean) => ReactNode) | ReactNode
-    onSelect: (type: BlockEnum) => void
-  }) => (
-    <div>
-      {typeof trigger === 'function' ? trigger(false) : trigger}
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
-        select-http
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
-  return {
-    ...actual,
-    useAvailableBlocks: vi.fn(),
-    useNodesInteractions: vi.fn(),
-  }
-})
-
-const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
-const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
-
-const mockHandleNodeChange = vi.fn()
-const mockHandleNodeDelete = vi.fn()
-const mockHandleNodeDisconnect = vi.fn()
 
 const defaultNodeData = {
   type: BlockEnum.Code,
   title: 'Code Node',
-} as CommonNodeType
+  desc: '',
+} satisfies CommonNodeType
 
 const TestHarness = () => {
   const [open, setOpen] = useState(false)
@@ -130,58 +31,89 @@ const TestHarness = () => {
   )
 }
 
+function CanvasEdgesProbe() {
+  const edges = useEdges<Edge['data']>()
+  return <output aria-label="Canvas edges">{edges.map((edge) => edge.id).join(',')}</output>
+}
+
+function renderOperator() {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '1.0.0' })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  return renderWorkflowFlowComponent(
+    <>
+      <TestHarness />
+      <CanvasNodesCatalogProbe />
+      <CanvasEdgesProbe />
+    </>,
+    {
+      nodes: [
+        createNode({ id: 'previous', width: 240, height: 80 }),
+        createNode({
+          id: 'node-1',
+          position: { x: 320, y: 0 },
+          width: 240,
+          height: 80,
+          data: defaultNodeData,
+        }),
+        createNode({ id: 'next', position: { x: 640, y: 0 }, width: 240, height: 80 }),
+      ],
+      edges: [
+        createEdge({ id: 'incoming', source: 'previous', target: 'node-1' }),
+        createEdge({ id: 'outgoing', source: 'node-1', target: 'next' }),
+        createEdge({ id: 'unrelated', source: 'previous', target: 'next' }),
+      ],
+      queryClient,
+      hooksStoreProps: { doSyncWorkflowDraft: async () => undefined },
+      reactFlowProps: { fitView: false },
+    },
+  )
+}
+
+const canvasNodeIds = () =>
+  (screen.getByLabelText('Canvas nodes').textContent ?? '')
+    .split(',')
+    .filter(Boolean)
+    .map((id) => id.replace(/\*$/, ''))
+
 describe('NextStep operator', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseAvailableBlocks.mockReturnValue({
-      availablePrevBlocks: [BlockEnum.HttpRequest],
-      availableNextBlocks: [BlockEnum.HttpRequest],
-      getAvailableBlocks: vi.fn(),
-    } as ReturnType<typeof useAvailableBlocks>)
-    mockUseNodesInteractions.mockReturnValue({
-      handleNodeChange: mockHandleNodeChange,
-      handleNodeDelete: mockHandleNodeDelete,
-      handleNodeDisconnect: mockHandleNodeDisconnect,
-    } as unknown as ReturnType<typeof useNodesInteractions>)
-  })
-
-  it('opens the menu and keeps the change action available', async () => {
+  it('disconnects incident edges, then deletes the next step and closes the menu', async () => {
     const user = userEvent.setup()
-    render(<TestHarness />)
+    renderOperator()
 
-    await user.click(screen.getAllByRole('button')[0]!)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.disconnect' }))
 
-    expect(screen.getByText('workflow.panel.change')).toBeInTheDocument()
-    expect(screen.getByText('workflow.common.disconnect')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-  })
-
-  it('changes the next-step block through the nested selector trigger', async () => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('select-http'))
-
-    expect(mockHandleNodeChange).toHaveBeenCalledWith(
-      'node-1',
-      BlockEnum.HttpRequest,
-      'source',
-      undefined,
+    await waitFor(() =>
+      expect(screen.getByLabelText('Canvas edges')).toHaveTextContent('unrelated'),
     )
+    expect(screen.getByLabelText('Canvas edges')).not.toHaveTextContent('incoming')
+    expect(screen.getByLabelText('Canvas edges')).not.toHaveTextContent('outgoing')
+    expect(canvasNodeIds()).toEqual(['previous', 'node-1', 'next'])
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    await waitFor(() => expect(canvasNodeIds()).toEqual(['previous', 'next']))
+    expect(screen.getByLabelText('Canvas edges')).toHaveTextContent('unrelated')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('disconnects and deletes the next step from the menu', async () => {
+  it('opens the node selector from the change menu item', async () => {
     const user = userEvent.setup()
-    render(<TestHarness />)
+    renderOperator()
 
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('workflow.common.disconnect'))
-    expect(mockHandleNodeDisconnect).toHaveBeenCalledWith('node-1')
-    expect(screen.queryByText('workflow.common.disconnect')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.panel.change' }))
 
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('common.operation.delete'))
-    expect(mockHandleNodeDelete).toHaveBeenCalledWith('node-1')
+    expect(
+      await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).toBeInTheDocument()
   })
 })

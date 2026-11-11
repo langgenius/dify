@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetCodeBasedExtensionQuery, zGetCodeBasedExtensionResponse } from './zod.gen'
+import { zGetCodeBasedExtensionQuery, zGetCodeBasedExtensionResponse } from './zod.gen.ts'
 
 /**
  * Get code-based extension data by module name

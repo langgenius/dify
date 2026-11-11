@@ -4,13 +4,23 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   isWebAppSigninPath,
+  navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
+import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
   setWebAppAccessToken,
   setWebAppPassport,
@@ -22,7 +32,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
 function Splash({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
@@ -45,20 +55,29 @@ function Splash({ children }: PropsWithChildren) {
 
   const backToHome = useCallback(async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
-    const effectiveShareCode = loginRedirect?.appCode || shareCode
-    if (!effectiveShareCode || (isWebAppSigninPath(pathname) && !loginRedirect)) {
+    const address = loginRedirect?.address || resolveWebAppAddress()
+    if (!address || (isWebAppSigninPath(pathname) && !loginRedirect)) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
-    await webAppLogout(effectiveShareCode)
+    await webAppLogout(address)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, pathname, redirectUrl, router, shareCode])
+  }, [getSigninUrl, pathname, redirectUrl, router])
 
   const [isLoading, setIsLoading] = useState(true)
-  const [unavailableShareCode, setUnavailableShareCode] = useState<string>()
+  const [initializationError, setInitializationError] = useState<{
+    shareCode: string
+    status?: number
+  }>()
   useEffect(() => {
+    const scope = captureAppAccessScope()
+    let cancelled = false
+    const canContinue = () =>
+      !cancelled && (scope === null || isAppAccessScopeCurrent(scope)) && !hasAppAccessError(scope)
+    if (!canContinue()) return
+
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     const isSigninRoute = isWebAppSigninPath(pathname)
     if ((redirectUrl !== null && !loginRedirect) || (isSigninRoute && !loginRedirect)) {
@@ -66,53 +85,94 @@ function Splash({ children }: PropsWithChildren) {
       return
     }
 
-    const effectiveShareCode = loginRedirect?.appCode || shareCode
-    if (!effectiveShareCode) return
+    const address = loginRedirect?.address || resolveWebAppAddress()
+    if (!address) return
+    const effectiveShareCode = address.code
 
     if (message) return
 
     if (tokenFromUrl) setWebAppAccessToken(tokenFromUrl)
 
     const redirectOrFinish = () => {
-      if (loginRedirect) replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+      if (!canContinue()) return
+      if (loginRedirect) navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       else setIsLoading(false)
     }
 
-    const proceedToAuth = () => {
+    const proceedToAuth = (authenticationRequired: boolean) => {
+      if (!canContinue()) return
+      if (
+        authenticationRequired &&
+        address.kind === 'environment' &&
+        webAppAccessMode !== AccessMode.PUBLIC &&
+        !isSigninRoute
+      ) {
+        const redirectSearchParams = new URLSearchParams(searchParams)
+        redirectSearchParams.delete('web_sso_token')
+        const redirectSearch = redirectSearchParams.toString()
+        const redirectTarget = redirectSearch ? `${pathname}?${redirectSearch}` : pathname
+        const signinSearchParams = new URLSearchParams({ redirect_url: redirectTarget })
+        router.replace(`/webapp-signin?${signinSearchParams.toString()}`)
+        return
+      }
       setIsLoading(false)
     }
 
-    ;(async () => {
-      // if access mode is public, user login is always true, but the app login(passport) may be expired
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
-        effectiveShareCode,
-        embeddedUserId || undefined,
-      )
-      if (userLoggedIn && appLoggedIn) {
-        redirectOrFinish()
-      } else if (!userLoggedIn && !appLoggedIn) {
-        proceedToAuth()
-      } else if (!userLoggedIn && appLoggedIn) {
-        redirectOrFinish()
-      } else if (userLoggedIn && !appLoggedIn) {
-        try {
-          const { access_token } = await fetchAccessToken({
-            appCode: effectiveShareCode,
-            userId: embeddedUserId || undefined,
-          })
-          setWebAppPassport(effectiveShareCode, access_token)
+    const initialize = async () => {
+      try {
+        // Public apps still need a valid app passport even when user login is not required.
+        const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
+          effectiveShareCode,
+          embeddedUserId || undefined,
+        )
+        if (!canContinue()) return
+
+        if (appLoggedIn) {
           redirectOrFinish()
-        } catch (error) {
-          if (error instanceof Response && error.status === 404) {
-            setUnavailableShareCode(effectiveShareCode)
-            await webAppLogout(effectiveShareCode)
-            return
+        } else if (!userLoggedIn) {
+          proceedToAuth(true)
+        } else {
+          try {
+            const { access_token } = await fetchAccessToken({
+              appCode: effectiveShareCode,
+              userId: embeddedUserId || undefined,
+            })
+            if (!canContinue()) return
+
+            setWebAppPassport(address, access_token)
+            redirectOrFinish()
+          } catch (error) {
+            if (!canContinue() || isAppAccessError(error)) return
+
+            if ((getHttpErrorStatus(error) ?? 0) >= 500) {
+              setInitializationError({
+                shareCode: effectiveShareCode,
+                status: getHttpErrorStatus(error),
+              })
+              return
+            }
+            if (getHttpErrorStatus(error) === 404) {
+              setInitializationError({ shareCode: effectiveShareCode, status: 404 })
+              return
+            }
+            await webAppLogout(address)
+            proceedToAuth(getHttpErrorStatus(error) === 401)
           }
-          await webAppLogout(effectiveShareCode)
-          proceedToAuth()
         }
+      } catch (error) {
+        if (!canContinue() || isAppAccessError(error)) return
+
+        setInitializationError({
+          shareCode: effectiveShareCode,
+          status: getHttpErrorStatus(error),
+        })
       }
-    })()
+    }
+
+    void initialize()
+    return () => {
+      cancelled = true
+    }
   }, [
     shareCode,
     redirectUrl,
@@ -122,6 +182,7 @@ function Splash({ children }: PropsWithChildren) {
     webAppAccessMode,
     tokenFromUrl,
     embeddedUserId,
+    searchParams,
   ])
 
   if (message) {
@@ -145,10 +206,13 @@ function Splash({ children }: PropsWithChildren) {
     )
   }
 
-  if (unavailableShareCode === shareCode) {
+  if (initializationError?.shareCode === shareCode) {
     return (
       <div className="flex h-full items-center justify-center">
-        <AppUnavailable />
+        <AppUnavailable
+          code={initializationError.status ?? t(($) => $['common.appUnavailable'], { ns: 'share' })}
+          isUnknownReason={initializationError.status !== 404}
+        />
       </div>
     )
   }
@@ -158,7 +222,7 @@ function Splash({ children }: PropsWithChildren) {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }
