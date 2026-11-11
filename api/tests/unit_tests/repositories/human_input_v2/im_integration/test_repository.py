@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pytest
 from sqlalchemy import Engine, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun, SyncResultFact
+from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import IMSyncResultId, IMSyncRunId
-from models.human_input_v2 import HumanInputIMSyncResult
+from models.human_input_v2 import HumanInputIMSyncResult, HumanInputIMSyncRun
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
@@ -44,7 +47,7 @@ def _run() -> IMSyncRun:
         sync_run_id=IMSyncRunId("00000000-0000-0000-0000-000000000201"),
         channel_revision=IMChannelRevision(str(_CHANNEL_ID), 1),
         provider=IMProvider.FEISHU,
-        started_by_account_id=None,
+        started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
         now=_NOW,
     )
 
@@ -88,3 +91,29 @@ def test_diagnostic_append_uses_the_supplied_session_transaction(sqlite_engine: 
 
     with Session(sqlite_engine) as session:
         assert session.scalar(select(func.count(HumanInputIMSyncResult.id))) == 0
+
+
+@pytest.mark.parametrize(
+    ("account_id", "sys_user_id"),
+    [
+        (None, None),
+        ("00000000-0000-0000-0000-000000000501", "00000000-0000-0000-0000-000000000601"),
+    ],
+    ids=["missing-initiator", "multiple-initiators"],
+)
+def test_sync_run_requires_exactly_one_initiator(
+    sqlite_engine: Engine, account_id: str | None, sys_user_id: str | None
+) -> None:
+    with Session(sqlite_engine) as session:
+        session.add(
+            HumanInputIMSyncRun(
+                channel_id=str(_CHANNEL_ID),
+                channel_config_version=1,
+                provider=IMProvider.FEISHU,
+                status=_run().status,
+                started_by_account_id=account_id,
+                started_by_sys_user_id=sys_user_id,
+            )
+        )
+        with pytest.raises(IntegrityError, match="initiator_exclusive"):
+            session.flush()

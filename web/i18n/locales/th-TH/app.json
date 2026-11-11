@@ -70,7 +70,7 @@
   "gotoAnything.actions.searchApplications": "ค้นหาแอปพลิเคชัน",
   "gotoAnything.actions.slashDesc": "ใช้คำสั่งเช่น /theme, /lang",
   "gotoAnything.actions.slashTitle": "คำสั่ง",
-  "gotoAnything.actions.themeCategoryDesc": "เปลี่ยนธีม",
+  "gotoAnything.actions.themeCategoryDesc": "เปลี่ยนรูปลักษณ์",
   "gotoAnything.actions.themeDarkDesc": "ใช้รูปลักษณ์เข้ม",
   "gotoAnything.actions.themeLightDesc": "ใช้รูปลักษณ์ที่มีความสว่าง",
   "gotoAnything.actions.themeSystemDesc": "ติดตามรูปลักษณ์ของระบบปฏิบัติการของคุณ",

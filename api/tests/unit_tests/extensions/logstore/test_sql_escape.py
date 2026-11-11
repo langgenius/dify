@@ -13,29 +13,29 @@ from extensions.logstore.sql_escape import escape_identifier, escape_sql_string
 class TestEscapeSQLString:
     """Test escape_sql_string function."""
 
-    def test_escape_empty_string(self):
+    def test_escape_empty_string(self) -> None:
         """Test escaping empty string."""
         assert escape_sql_string("") == ""
 
-    def test_escape_normal_string(self):
+    def test_escape_normal_string(self) -> None:
         """Test escaping string without special characters."""
         assert escape_sql_string("tenant_abc123") == "tenant_abc123"
         assert escape_sql_string("app-uuid-1234") == "app-uuid-1234"
 
-    def test_escape_single_quote(self):
+    def test_escape_single_quote(self) -> None:
         """Test escaping single quote."""
         # Single quote should be doubled
         assert escape_sql_string("tenant'id") == "tenant''id"
         assert escape_sql_string("O'Reilly") == "O''Reilly"
 
-    def test_escape_multiple_quotes(self):
+    def test_escape_multiple_quotes(self) -> None:
         """Test escaping multiple single quotes."""
         assert escape_sql_string("a'b'c") == "a''b''c"
         assert escape_sql_string("'''") == "''''''"
 
     # === SQL Injection Attack Scenarios ===
 
-    def test_prevent_boolean_injection(self):
+    def test_prevent_boolean_injection(self) -> None:
         """Test prevention of boolean injection attacks."""
         # Classic OR 1=1 attack
         malicious_input = "tenant' OR '1'='1"
@@ -47,7 +47,7 @@ class TestEscapeSQLString:
         assert sql == "WHERE tenant_id='tenant'' OR ''1''=''1'"
         # The entire input is now a string literal that won't match any tenant
 
-    def test_prevent_or_injection(self):
+    def test_prevent_or_injection(self) -> None:
         """Test prevention of OR-based injection."""
         malicious_input = "tenant_a' OR tenant_id='tenant_b"
         escaped = escape_sql_string(malicious_input)
@@ -59,7 +59,7 @@ class TestEscapeSQLString:
         # The SQL has: opening ', doubled internal quotes '', and closing '
         assert sql == "WHERE tenant_id='tenant_a'' OR tenant_id=''tenant_b'"
 
-    def test_prevent_union_injection(self):
+    def test_prevent_union_injection(self) -> None:
         """Test prevention of UNION-based injection."""
         malicious_input = "xxx' UNION SELECT password FROM users WHERE '1'='1"
         escaped = escape_sql_string(malicious_input)
@@ -69,7 +69,7 @@ class TestEscapeSQLString:
         assert "UNION" in escaped
         assert escaped.count("''") == 4  # All internal quotes are doubled
 
-    def test_prevent_comment_injection(self):
+    def test_prevent_comment_injection(self) -> None:
         """Test prevention of comment-based injection."""
         # SQL comment to bypass remaining conditions
         malicious_input = "tenant' --"
@@ -81,7 +81,7 @@ class TestEscapeSQLString:
         assert "--" in sql
         assert "AND deleted=false" in sql  # This part is NOT commented out
 
-    def test_prevent_semicolon_injection(self):
+    def test_prevent_semicolon_injection(self) -> None:
         """Test prevention of semicolon-based multi-statement injection."""
         malicious_input = "tenant'; DROP TABLE users; --"
         escaped = escape_sql_string(malicious_input)
@@ -90,7 +90,7 @@ class TestEscapeSQLString:
         # Semicolons and DROP are now part of the string
         assert "DROP TABLE" in escaped
 
-    def test_prevent_time_based_blind_injection(self):
+    def test_prevent_time_based_blind_injection(self) -> None:
         """Test prevention of time-based blind SQL injection."""
         malicious_input = "tenant' AND SLEEP(5) --"
         escaped = escape_sql_string(malicious_input)
@@ -99,7 +99,7 @@ class TestEscapeSQLString:
         # SLEEP becomes part of the string
         assert "SLEEP" in escaped
 
-    def test_prevent_wildcard_injection(self):
+    def test_prevent_wildcard_injection(self) -> None:
         """Test prevention of wildcard-based injection."""
         malicious_input = "tenant' OR tenant_id LIKE '%"
         escaped = escape_sql_string(malicious_input)
@@ -108,7 +108,7 @@ class TestEscapeSQLString:
         # The LIKE and wildcard are now part of the string
         assert "LIKE" in escaped
 
-    def test_prevent_null_byte_injection(self):
+    def test_prevent_null_byte_injection(self) -> None:
         """Test handling of null bytes."""
         # Null bytes can sometimes bypass filters
         malicious_input = "tenant\x00' OR '1'='1"
@@ -118,7 +118,7 @@ class TestEscapeSQLString:
 
     # === Real-world SAAS Scenarios ===
 
-    def test_cross_tenant_access_attempt(self):
+    def test_cross_tenant_access_attempt(self) -> None:
         """Test prevention of cross-tenant data access."""
         # Attacker tries to access another tenant's data
         attacker_input = "tenant_b' OR tenant_id='tenant_a"
@@ -129,7 +129,7 @@ class TestEscapeSQLString:
         # which doesn't exist - preventing access to either tenant's data
         assert "tenant_b'' OR tenant_id=''tenant_a" in sql
 
-    def test_cross_app_access_attempt(self):
+    def test_cross_app_access_attempt(self) -> None:
         """Test prevention of cross-application data access."""
         attacker_input = "app1' OR app_id='app2"
         escaped = escape_sql_string(attacker_input)
@@ -138,7 +138,7 @@ class TestEscapeSQLString:
         # Cannot access app2's data
         assert "app1'' OR app_id=''app2" in sql
 
-    def test_bypass_status_filter(self):
+    def test_bypass_status_filter(self) -> None:
         """Test prevention of bypassing status filters."""
         # Try to see all statuses instead of just 'running'
         attacker_input = "running' OR status LIKE '%"
@@ -150,18 +150,18 @@ class TestEscapeSQLString:
 
     # === Edge Cases ===
 
-    def test_escape_only_quotes(self):
+    def test_escape_only_quotes(self) -> None:
         """Test string with only quotes."""
         assert escape_sql_string("'") == "''"
         assert escape_sql_string("''") == "''''"
 
-    def test_escape_mixed_content(self):
+    def test_escape_mixed_content(self) -> None:
         """Test string with mixed quotes and other chars."""
         input_str = "It's a 'test' of O'Reilly's code"
         escaped = escape_sql_string(input_str)
         assert escaped == "It''s a ''test'' of O''Reilly''s code"
 
-    def test_escape_unicode_with_quotes(self):
+    def test_escape_unicode_with_quotes(self) -> None:
         """Test Unicode strings with quotes."""
         input_str = "租户' OR '1'='1"
         escaped = escape_sql_string(input_str)
@@ -171,23 +171,23 @@ class TestEscapeSQLString:
 class TestEscapeIdentifier:
     """Test escape_identifier function."""
 
-    def test_escape_uuid(self):
+    def test_escape_uuid(self) -> None:
         """Test escaping UUID identifiers."""
         uuid = "550e8400-e29b-41d4-a716-446655440000"
         assert escape_identifier(uuid) == uuid
 
-    def test_escape_alphanumeric_id(self):
+    def test_escape_alphanumeric_id(self) -> None:
         """Test escaping alphanumeric identifiers."""
         assert escape_identifier("tenant_123") == "tenant_123"
         assert escape_identifier("app-abc-123") == "app-abc-123"
 
-    def test_escape_identifier_with_quote(self):
+    def test_escape_identifier_with_quote(self) -> None:
         """Test escaping identifier with single quote."""
         malicious = "tenant' OR '1'='1"
         escaped = escape_identifier(malicious)
         assert escaped == "tenant'' OR ''1''=''1"
 
-    def test_identifier_injection_attempt(self):
+    def test_identifier_injection_attempt(self) -> None:
         """Test prevention of injection through identifiers."""
         # Common identifier injection patterns
         test_cases = [
@@ -203,7 +203,7 @@ class TestEscapeIdentifier:
 class TestSQLInjectionIntegration:
     """Integration tests simulating real SQL construction scenarios."""
 
-    def test_complete_where_clause_safety(self):
+    def test_complete_where_clause_safety(self) -> None:
         """Test that a complete WHERE clause is safe from injection."""
         # Simulating typical query construction
         tenant_id = "tenant' OR '1'='1"
@@ -229,7 +229,7 @@ class TestSQLInjectionIntegration:
         # Verify SQL structure is preserved (3 conditions with AND)
         assert sql.count("AND") == 2
 
-    def test_multiple_conditions_with_injection_attempts(self):
+    def test_multiple_conditions_with_injection_attempts(self) -> None:
         """Test multiple conditions all attempting injection."""
         conditions = {
             "tenant_id": "t1' OR tenant_id='t2",
@@ -265,7 +265,7 @@ class TestSQLInjectionIntegration:
             ("' OR 1=1 LIMIT 1 --", "Limit bypass"),
         ],
     )
-    def test_common_injection_vectors(self, attack_vector, description):
+    def test_common_injection_vectors(self, attack_vector: str, description: str) -> None:
         """Test protection against common injection attack vectors."""
         escaped = escape_sql_string(attack_vector)
 
@@ -283,7 +283,7 @@ class TestSQLInjectionIntegration:
         # Verify SQL has exactly 2 quotes (opening and closing)
         assert sql.count("'") >= 2  # At least opening and closing
 
-    def test_logstore_specific_scenario(self):
+    def test_logstore_specific_scenario(self) -> None:
         """Test SQL injection prevention in LogStore-specific scenarios."""
         # Simulate LogStore query with window function
         tenant_id = "tenant' OR '1'='1"

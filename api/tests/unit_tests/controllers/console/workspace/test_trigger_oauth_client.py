@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN, HIDDEN_VALUE, UNKNOWN_VALUE
+from controllers.console.workspace.plugin import (
+    PluginFetchDynamicSelectOptionsApi,
+    PluginFetchDynamicSelectOptionsWithCredentialsApi,
+)
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
@@ -228,7 +232,7 @@ def harness(
             clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
             providers=metadata,
         )
-        services = replace(services, workspaces=replace(services.workspaces, trigger_oauth_clients=oauth_clients))
+        services = replace(services, triggers=replace(services.triggers, oauth_clients=oauth_clients))
         app.extensions["application_services"] = services
         bind_account_loader(app, services.accounts.identity.load_user)
         login_manager = DifyLoginManager()
@@ -237,6 +241,11 @@ def harness(
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+        api.add_resource(
+            PluginFetchDynamicSelectOptionsWithCredentialsApi,
+            "/workspaces/current/plugin/parameters/dynamic-options-with-credentials",
+        )
         api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
         api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
         api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
@@ -417,7 +426,7 @@ def test_concurrent_save_preserves_winning_secret(harness: _Harness, existing: b
         assert response.status_code == HTTPStatus.OK
 
     def save_during_provider_lookup() -> None:
-        application_services().workspaces.trigger_oauth_clients.save(
+        application_services().triggers.oauth_clients.save(
             tenant_id=harness.tenant_id,
             provider_id=TriggerProviderID(_PROVIDER),
             client_params={"client_id": "winning-client", "client_secret": winning_secret},

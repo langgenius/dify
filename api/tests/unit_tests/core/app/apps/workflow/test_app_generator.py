@@ -3,6 +3,8 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import json
+from datetime import timedelta
+from functools import partial
 from types import SimpleNamespace
 from typing import Never
 from unittest.mock import MagicMock, Mock
@@ -33,22 +35,31 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.app.workflow.persistence_ports import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.human_input_v2.resolved_form import ResolvedForm
+from core.human_input_v2.shared.values import RecipientId, TenantId
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import build_file_reference
 from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import GraphRunSucceededEvent
 from graphon.enums import WorkflowExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from graphon.variables.input_entities import VariableEntity
+from graphon.variables.segments import ArrayFileSegment, FileSegment
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from repositories.human_input_v2.form_repository import Form, FormCreateParams
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
 from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.file_request_service import FileRequestService
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
@@ -201,6 +212,140 @@ class TestWorkflowAppGeneratorCases:
     @pytest.fixture(autouse=True)
     def disable_enterprise_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
+
+    @staticmethod
+    @pytest.mark.parametrize("file_list", [False, True], ids=["single-file", "file-list"])
+    @pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+    def test_resumed_end_user_can_output_accepted_hitl_files(
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        file_list: bool,
+        invoke_from: InvokeFrom,
+    ) -> None:
+        app, workflow, end_user = _persist_generator_rows(sqlite_session)
+        uploaded = make_upload_file(tenant_id=app.tenant_id, created_by="approver")
+        unrelated = make_upload_file(tenant_id=app.tenant_id, created_by="approver")
+        workflow.graph = json.dumps(
+            {
+                "nodes": [
+                    {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                    {
+                        "id": "end",
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "result", "value_selector": ["approval", "file"]}],
+                        },
+                    },
+                ],
+                "edges": [{"source": "start", "target": "end"}],
+            }
+        )
+        sqlite_session.add_all(
+            [
+                uploaded,
+                unrelated,
+                WorkflowRun(
+                    id="run",
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    workflow_id=workflow.id,
+                    type=workflow.type,
+                    triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                    version=workflow.version,
+                    graph=workflow.graph,
+                    inputs="{}",
+                    status=WorkflowExecutionStatus.PAUSED,
+                    created_by_role=CreatorUserRole.END_USER,
+                    created_by=end_user.id,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        file = File(
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id=uploaded.id),
+            filename=uploaded.name,
+            extension=".txt",
+            mime_type=uploaded.mime_type,
+            size=uploaded.size,
+        )
+        submitted = ArrayFileSegment(value=[file]) if file_list else FileSegment(value=file)
+        now = naive_utc_now()
+        with sqlite_session_factory.begin() as session:
+            repository = SQLAlchemyFormRepository(session, TenantId(app.tenant_id), app.id)
+            form = repository.create_form(
+                FormCreateParams(
+                    workflow_run_id="run",
+                    node_execution_id="approval-execution",
+                    resolved_form=ResolvedForm(title="Approval", parts=(), actions=(), legacy_form_content=""),
+                    expiration_time=now + timedelta(hours=1),
+                    global_timeout_deadline=now + timedelta(days=1),
+                )
+            )
+            accepted = repository.submit_form(
+                form.id,
+                submitted_by_recipient_id=RecipientId("recipient"),
+                submitted_by_delivery_id="delivery",
+                selected_action_id="approve",
+                raw_submission_inputs={},
+                normalized_submission_data={"file": submitted},
+            )
+            assert isinstance(accepted, Form)
+        state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0)
+        state.variable_pool.add(["approval", "file"], submitted)
+        state.variable_pool.add(["sys", "workflow_run_id"], "run")
+        state.variable_pool.add(["sys", "app_id"], app.id)
+        file_runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+        monkeypatch.setattr(file_runtime, "_secret_key", lambda: b"test-key")
+        completed: list[GraphRunSucceededEvent] = []
+
+        def execute(
+            runner: WorkflowBasedAppRunner,
+            _pause_config: PauseStateLayerConfig | None,
+            _executions: WorkflowExecutionRepository,
+            _nodes: WorkflowNodeExecutionRepository,
+        ) -> None:
+            prepared = runner.prepare()
+            assert prepared is not None
+            events = list(prepared.entry.run())
+            completed.extend(event for event in events if isinstance(event, GraphRunSucceededEvent))
+
+        def respond(**_kwargs: object) -> dict[str, object]:
+            assert file_runtime.resolve_upload_file_uri(upload_file_id=uploaded.id).startswith(
+                f"/files/{uploaded.id}/file-preview?"
+            )
+            with pytest.raises(ValueError, match="not found"):
+                file_runtime.resolve_upload_file_uri(upload_file_id=unrelated.id)
+            return {}
+
+        generator = WorkflowAppGenerator(execution_driver=execute)
+        monkeypatch.setattr(generator, "_handle_response", respond)
+        monkeypatch.setattr(
+            _workflow_app_generator.WorkflowAppGenerateResponseConverter,
+            "convert",
+            lambda response, invoke_from: response,
+        )
+        execution_repository, node_repository = _repositories(sqlite_session_factory, app, end_user)
+        generator.resume(
+            app_model=app,
+            workflow=workflow,
+            user=end_user,
+            application_generate_entity=_generate_entity(app, workflow, end_user, invoke_from=invoke_from),
+            graph_runtime_state=state,
+            workflow_execution_repository=execution_repository,
+            workflow_node_execution_repository=node_repository,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=sqlite_session_factory).grant_submitted_file_access,
+                app_id=app.id,
+                workflow_run_id="run",
+            ),
+        )
+
+        assert len(completed) == 1
+        assert completed[0].outputs["result"] == submitted.value
 
     @staticmethod
     def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(

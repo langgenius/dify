@@ -3,7 +3,6 @@ import type { SelfHostedPlan } from '../../../config'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { useResolvedTheme } from '@/features/theme/hooks'
 import { SELF_HOSTED_PLAN_URLS } from '../../../config'
 import Community from '../../assets/community'
 import Enterprise from '../../assets/enterprise'
@@ -40,7 +39,6 @@ const STYLE_MAP = {
 
 export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
   const { t } = useTranslation(['billing'])
-  const theme = useResolvedTheme()
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'community'
   const isPremiumPlan = plan === 'premium'
@@ -91,17 +89,14 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
             )}
             {isPremiumPlan && (
               <span aria-hidden className="pt-1.75 pb-px">
-                {theme === 'light' ? (
-                  <span
-                    aria-hidden
-                    className="i-custom-public-billing-aws-marketplace-light h-6 w-31.5"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="i-custom-public-billing-aws-marketplace-dark h-6 w-31.5"
-                  />
-                )}
+                <span
+                  aria-hidden
+                  className="i-custom-public-billing-aws-marketplace-light h-6 w-31.5 dark:hidden"
+                />
+                <span
+                  aria-hidden
+                  className="i-custom-public-billing-aws-marketplace-dark h-6 w-31.5 not-dark:hidden"
+                />
               </span>
             )}
           </span>
