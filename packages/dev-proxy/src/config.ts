@@ -97,7 +97,7 @@ export function assertDevProxyConfig(config: unknown): asserts config is DevProx
   if (!isRecord(config)) throw new Error('Dev proxy config must export an object.')
 
   if (!Array.isArray(config.routes))
-    throw new Error('Dev proxy config must include a routes array.')
+    throw new TypeError('Dev proxy config must include a routes array.')
 }
 
 const resolveDotenvOptions = (

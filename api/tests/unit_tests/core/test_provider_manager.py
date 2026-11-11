@@ -16,21 +16,24 @@ from core.entities.model_entities import (
     ModelWithProviderEntity,
     SimpleModelProviderEntity,
 )
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
     ModelSettings,
     ProviderQuotaType,
+    SystemConfiguration,
 )
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.base import TypeBase
 from models.provider import (
     LoadBalancingModelConfig,
@@ -381,14 +384,22 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
             "core.plugin.plugin_service.PluginService.is_plugin_verified",
             return_value=True,
         ),
+        patch("core.provider_manager.FeatureService.get_workspace_plan") as get_workspace_plan,
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
             side_effect=[trial_pool, paid_pool],
         ) as get_pool,
     ):
+        get_workspace_plan.side_effect = [CloudPlan.SANDBOX, CloudPlan.TEAM]
         with ThreadPoolExecutor(max_workers=1) as executor:
             assert executor.submit(has_app_context).result() is False
             configuration = executor.submit(
+                manager._to_system_configuration,
+                "tenant-id",
+                provider_entity,
+                [_build_trial_provider_record()],
+            ).result()
+            executor.submit(
                 manager._to_system_configuration,
                 "tenant-id",
                 provider_entity,
@@ -400,9 +411,7 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
         ProviderQuotaType.TRIAL,
         ProviderQuotaType.PAID,
     ]
-    owned_sessions = [call.kwargs["session"] for call in get_pool.call_args_list]
-    assert all(isinstance(session, Session) for session in owned_sessions)
-    assert owned_sessions[0] is owned_sessions[1]
+    assert all(isinstance(call.kwargs["session"], Session) for call in get_pool.call_args_list)
 
 
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
@@ -937,30 +946,100 @@ def test_get_provider_model_bundle_returns_selected_model_type_instance():
     assert result is expected_bundle
 
 
-def test_get_first_provider_first_model_returns_none_when_no_models():
-    manager = _build_provider_manager()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = []
+def _fallback_provider_configuration(
+    *, provider: str, models: list[str], configured: bool, disabled_models: tuple[str, ...] = ()
+) -> ProviderConfiguration:
+    """Build a real local provider catalog; predefined schemas require no plugin requests."""
+    return ProviderConfiguration(
+        tenant_id="tenant-id",
+        provider=ProviderEntity(
+            provider=provider,
+            label=I18nObject(en_US=provider),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            models=[
+                AIModelEntity(
+                    model=model,
+                    label=I18nObject(en_US=model),
+                    model_type=ModelType.LLM,
+                    fetch_from=FetchFrom.PREDEFINED_MODEL,
+                    model_properties={},
+                )
+                for model in models
+            ],
+        ),
+        preferred_provider_type=ProviderType.CUSTOM,
+        using_provider_type=ProviderType.CUSTOM,
+        system_configuration=SystemConfiguration(enabled=False),
+        custom_configuration=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"api_key": "synthetic"}) if configured else None
+        ),
+        model_settings=[
+            ModelSettings(model=model, model_type=ModelType.LLM, enabled=False) for model in disabled_models
+        ],
+    )
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.get_first_provider_first_model("tenant-id", ModelType.LLM)
 
-    assert result == (None, None)
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=False)
+def _fallback_provider_manager(*configurations: ProviderConfiguration) -> ProviderManager:
+    """Use the real request cache and catalog filtering without DB or plugin I/O."""
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+    catalog = ProviderConfigurations(tenant_id="tenant-id")
+    for configuration in configurations:
+        catalog[configuration.provider.provider] = configuration
+    manager._configurations_cache["tenant-id"] = catalog
+    return manager
 
 
-def test_get_first_provider_first_model_returns_first_model_and_provider():
-    manager = _build_provider_manager()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = [
-        Mock(model="gpt-4", provider=Mock(provider="openai")),
-        Mock(model="gpt-4o", provider=Mock(provider="openai")),
-    ]
+def test_get_first_provider_first_model_returns_none_when_no_models() -> None:
+    manager = _fallback_provider_manager()
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.get_first_provider_first_model("tenant-id", ModelType.LLM)
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (None, None)
 
-    assert result == ("openai", "gpt-4")
+
+@pytest.mark.parametrize(("configured", "disabled"), [(False, ()), (True, ("unavailable",))])
+def test_get_first_provider_first_model_returns_none_when_no_active_models(
+    configured: bool, disabled: tuple[str, ...]
+) -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai",
+            models=["unavailable"],
+            configured=configured,
+            disabled_models=disabled,
+        )
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (None, None)
+
+
+def test_get_first_provider_first_model_skips_unconfigured_provider() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="langgenius/x/x", models=["unconfigured-first"], configured=False),
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai", models=["active-second"], configured=True
+        ),
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (
+        "langgenius/openai/openai",
+        "active-second",
+    )
+
+
+def test_get_first_provider_first_model_skips_disabled_model() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai",
+            models=["disabled-first", "active-second", "active-third"],
+            configured=True,
+            disabled_models=("disabled-first",),
+        )
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (
+        "langgenius/openai/openai",
+        "active-second",
+    )
 
 
 def test_update_default_model_record_raises_for_unknown_provider():

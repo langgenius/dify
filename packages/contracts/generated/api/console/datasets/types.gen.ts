@@ -252,7 +252,7 @@ export type KnowledgeConfig = {
   duplicate?: boolean
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique: 'economy' | 'high_quality'
+  indexing_technique: IndexTechniqueType
   is_multimodal?: boolean
   name?: string | null
   original_document_id?: string | null

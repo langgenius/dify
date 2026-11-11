@@ -40,14 +40,23 @@ def test_provider_reads_return_scoped_snapshots_and_preserve_default_selection(
     assert [record.id for record in records] == [selected_id, other_id]
     assert all(isinstance(record, DatasourceCredentialRecord) for record in records)
     assert records[0].encrypted_credentials == {"integration_secret": "encrypted"}
-    default = repository.get_provider_credential(
+    for credential_id in (None, ""):
+        default = repository.get_provider_credential(
+            workspace_id="workspace-1",
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+            credential_id=credential_id,
+        )
+        assert default is not None
+        assert default.id == selected_id
+    explicit = repository.get_provider_credential(
         workspace_id="workspace-1",
         provider="notion_datasource",
         plugin_id="langgenius/notion_datasource",
-        credential_id=None,
+        credential_id=other_id,
     )
-    assert default is not None
-    assert default.id == selected_id
+    assert explicit is not None
+    assert explicit.id == other_id
     for credential_id in forbidden_ids:
         assert (
             repository.get_provider_credential(

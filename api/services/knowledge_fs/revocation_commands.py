@@ -67,6 +67,14 @@ class KnowledgeFSRevocationCommandProducer:
         reason_code: str,
         caller_kinds: Sequence[str] = (),
     ) -> tuple[KnowledgeFSLifecycleOutbox, ...]:
+        """Append exact Space grant revokes in the caller's transaction.
+
+        Preconditions: the tenant-scoped Space and revision exist, and matching
+        audit and reservation bindings are intact. Invalid bindings raise.
+        Postconditions: each distinct UUID grant from applicable records gets
+        one ordered revoke command; namespace batch-summary audits produce none.
+        No commit occurs.
+        """
         normalized_subject = subject.strip()
         normalized_callers = tuple(dict.fromkeys(kind.strip() for kind in caller_kinds if kind.strip()))
         if not normalized_subject:
@@ -140,13 +148,23 @@ class KnowledgeFSRevocationCommandProducer:
             grant_id = claims.get("grant_id")
             if not isinstance(grant_id, str):
                 raise KnowledgeFSRevocationCommandError("Capability audit grant id is invalid")
-            try:
-                normalized_grant_id = str(uuid.UUID(grant_id))
-            except ValueError as exc:
-                raise KnowledgeFSRevocationCommandError("Capability audit grant id is not a UUID") from exc
-            if normalized_grant_id not in seen:
-                seen.add(normalized_grant_id)
-                grant_ids.append(normalized_grant_id)
+            # The batch-summary audit is bound to its first control Space for
+            # provenance, but its namespace grant is not a grant on that Space.
+            is_batch_namespace_grant = (
+                claims.get("operation_id") == "batchKnowledgeSpaceProductSummaries"
+                and claims.get("resource_type") == "namespace"
+                and claims.get("resource_id") == tenant_id
+                and claims.get("namespace_id") == tenant_id
+                and claims.get("control_space_id") == control_space_id
+            )
+            if not is_batch_namespace_grant:
+                try:
+                    normalized_grant_id = str(uuid.UUID(grant_id))
+                except ValueError as exc:
+                    raise KnowledgeFSRevocationCommandError("Capability audit grant id is not a UUID") from exc
+                if normalized_grant_id not in seen:
+                    seen.add(normalized_grant_id)
+                    grant_ids.append(normalized_grant_id)
         for reservation in reservations:
             reservation_summary = reservation.request_summary
             if reservation_summary.get("subject") != normalized_subject or reservation.subject != normalized_subject:

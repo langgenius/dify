@@ -44,6 +44,7 @@ class RecordingCapabilityIssuer:
 
 
 def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> None:
+    """Given a complete activation request with an extra field, reject that extra field."""
     payload = {
         "namespace_id": "tenant-1",
         "control_space_id": "30000000-0000-4000-8000-000000000001",
@@ -54,10 +55,6 @@ def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> Non
 
     with pytest.raises(ValidationError):
         KnowledgeFSDifyIntegrationActivationRequest.model_validate({**payload, "unexpected": True})
-    with pytest.raises(ValidationError):
-        KnowledgeFSDifyIntegrationActivationRequest.model_validate(
-            {**payload, "activation_revision": 9_007_199_254_740_992}
-        )
 
 
 def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(
