@@ -1,12 +1,16 @@
 """Composition of the Agent App console use cases."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from enums import CloudPlan, DeploymentEdition
+from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
@@ -22,6 +26,7 @@ from services.app.console_gateway import (
     AppLifecycleGateway,
     notify_agent_app_updated,
 )
+from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
 from services.rbac.members import MemberService
 
@@ -34,6 +39,11 @@ class AgentAppServices:
     detail: AgentAppDetailService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
+
+
+def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
+    """Require a paid plan for Cloud restores; other editions do not query billing."""
+    return edition != DeploymentEdition.CLOUD or get_plan(tenant_id).is_paid
 
 
 def build_agent_app_services(
@@ -56,5 +66,15 @@ def build_agent_app_services(
                 file_requests=FileRequestService(),
                 files_url=dify_config.FILES_URL,
             ),
+        ),
+    )
+
+
+def build_agent_version_service(*, database_client: sessionmaker[Session]) -> AgentVersionService:
+    """Wire roster version history with tenant-scoped storage and Cloud plan checks."""
+    return AgentVersionService(
+        store=SQLAlchemyAgentVersionRepository(session_factory=database_client),
+        restore_allowed=lambda tenant_id: _can_restore_version(
+            tenant_id, edition=dify_config.DEPLOYMENT_EDITION, get_plan=FeatureService.get_workspace_plan
         ),
     )
