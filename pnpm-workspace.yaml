@@ -47,9 +47,17 @@ packages:
   - cli
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
+  # Upgrade public matcher APIs; glob 13 still needs RegExp internals until its v14 upgrade.
+  '@eslint/config-array>minimatch': 11.0.7
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  '@tsslint/cli>minimatch': 11.0.7
+  '@tsslint/config>minimatch': 11.0.7
+  '@tsslint/core>minimatch': 11.0.7
+  '@typescript-eslint/typescript-estree>minimatch': 11.0.7
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  eslint-plugin-no-barrel-files>minimatch: 11.0.7
+  eslint>minimatch: 11.0.7
   fflate@>=0.7.0 <0.7.5: 0.7.5
   # Keep Vitest's optional DOM peer aligned with Web so browser matcher types augment one Vitest instance.
   happy-dom: 'catalog:'

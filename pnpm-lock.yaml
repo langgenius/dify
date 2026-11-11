@@ -798,9 +798,16 @@ catalogs:
 
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
+  '@eslint/config-array>minimatch': 11.0.7
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  '@tsslint/cli>minimatch': 11.0.7
+  '@tsslint/config>minimatch': 11.0.7
+  '@tsslint/core>minimatch': 11.0.7
+  '@typescript-eslint/typescript-estree>minimatch': 11.0.7
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  eslint-plugin-no-barrel-files>minimatch: 11.0.7
+  eslint>minimatch: 11.0.7
   fflate@>=0.7.0 <0.7.5: 0.7.5
   happy-dom: 21.0.4
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
@@ -2902,6 +2909,9 @@ packages:
   '@isaacs/fs-minipass@4.0.1':
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
     engines: {node: '>=18.0.0'}
+
+  '@isaacs/nonrecursive-glob-match@1.1.0':
+    resolution: {integrity: sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw==}
 
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0':
     resolution: {integrity: sha512-qvsTEwEFefhdirGOPnu9Wp6ChfIwy2dBCRuETU3uE+4cC+PFoxMSiiEhxk4lOluA34eARHA0OxqsEUYDqRMgeQ==}
@@ -7577,6 +7587,10 @@ packages:
     resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
     engines: {node: 18 || 20 || >=22}
 
+  minimatch@11.0.7:
+    resolution: {integrity: sha512-Tnk+M9mPjqKDZlUd77eMSjPjhnlBIa1mABOwetMryIshUwi1YmOBdGFfQnHgn4Z8A66eLT8ENzJrxwYmKfqrZg==}
+    engines: {node: 20 || >=22}
+
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
@@ -9979,7 +9993,7 @@ snapshots:
     dependencies:
       '@eslint/object-schema': 3.0.5
       debug: 4.4.3(supports-color@11.0.0)
-      minimatch: 10.2.6
+      minimatch: 11.0.7
     transitivePeerDependencies:
       - supports-color
 
@@ -10284,6 +10298,8 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.3
+
+  '@isaacs/nonrecursive-glob-match@1.1.0': {}
 
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0(@typescript/typescript6@6.0.2)(@voidzero-dev/vite-plus-core@1.6.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))':
     dependencies:
@@ -11797,7 +11813,7 @@ snapshots:
       '@volar/language-core': 2.4.28
       '@volar/language-hub': 0.0.1
       '@volar/typescript': 2.4.28(@typescript/typescript6@6.0.2)
-      minimatch: 10.2.6
+      minimatch: 11.0.7
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - '@tsslint/compat-eslint'
@@ -11812,14 +11828,14 @@ snapshots:
   '@tsslint/config@3.1.4(@tsslint/compat-eslint@3.1.4(@typescript/typescript6@6.0.2))':
     dependencies:
       '@tsslint/types': 3.1.4
-      minimatch: 10.2.6
+      minimatch: 11.0.7
     optionalDependencies:
       '@tsslint/compat-eslint': 3.1.4(@typescript/typescript6@6.0.2)
 
   '@tsslint/core@3.1.4':
     dependencies:
       '@tsslint/types': 3.1.4
-      minimatch: 10.2.6
+      minimatch: 11.0.7
 
   '@tsslint/types@3.1.4': {}
 
@@ -12103,7 +12119,7 @@ snapshots:
       '@typescript-eslint/types': 8.72.2
       '@typescript-eslint/visitor-keys': 8.72.2
       debug: 4.4.3(supports-color@11.0.0)
-      minimatch: 10.2.6
+      minimatch: 11.0.7
       semver: 7.8.6
       tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(@typescript/typescript6@6.0.2)
@@ -13435,7 +13451,7 @@ snapshots:
       '@typescript-eslint/parser': 8.72.2(@typescript/typescript6@6.0.2)(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       '@typescript-eslint/utils': 8.72.2(@typescript/typescript6@6.0.2)(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint: 10.14.0(jiti@2.7.0)(supports-color@11.0.0)
-      minimatch: 10.2.6
+      minimatch: 11.0.7
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
@@ -13637,7 +13653,7 @@ snapshots:
       imurmurhash: 0.1.4
       is-glob: 4.0.3
       json-stable-stringify-without-jsonify: 1.0.1
-      minimatch: 10.2.6
+      minimatch: 11.0.7
       natural-compare: 1.4.0
       optionator: 0.9.4
     optionalDependencies:
@@ -14801,6 +14817,11 @@ snapshots:
 
   minimatch@10.2.6:
     dependencies:
+      brace-expansion: 5.0.12
+
+  minimatch@11.0.7:
+    dependencies:
+      '@isaacs/nonrecursive-glob-match': 1.1.0
       brace-expansion: 5.0.12
 
   minimist@1.2.8: {}
