@@ -8,14 +8,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services.workflow_writers import build_workflow_offload_uploader
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.enums import WorkflowType
@@ -35,6 +34,8 @@ from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFor
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -265,6 +266,9 @@ class TestHumanInputResumeNodeExecutionIntegration:
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=build_workflow_offload_uploader(
+                session_factory=self.session.get_bind(), tenant_id=self.tenant.id, user=self.account
+            ),
         )
         history = node_execution_repo.get_by_workflow_execution(execution_id, include_paused=True) if resuming else ()
         run_index = WorkflowRunIndex(history)

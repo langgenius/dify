@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
-from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.billing_client.billing import SubscriptionPlanItem
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from services.workflow.run_entities import WorkflowRunCleanupRef
 from tests.helpers import billing_builders as builders
 
 """
@@ -434,7 +434,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
         @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
         def test_count_node_executions(self, cleanup, sqlite_session: Session):
             with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.workflow_storage"
             ) as factory:
                 repo = factory.create_api_workflow_node_execution_repository.return_value
                 repo.count_by_runs.return_value = (10, 2)
@@ -444,7 +444,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
         @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
         def test_delete_node_executions(self, cleanup, sqlite_session: Session):
             with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.workflow_storage"
             ) as factory:
                 repo = factory.create_api_workflow_node_execution_repository.return_value
                 repo.delete_by_runs.return_value = (5, 1)

@@ -19,8 +19,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import WorkflowFinishStreamResponse
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.repositories.factory import DifyCoreRepositoryFactory
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from extensions.application_services import workflow_storage, workflow_writers
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
@@ -29,13 +28,10 @@ from models import Account, EndUser, WorkflowRun
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_execution import WorkflowExecution
-from repositories.entities.workflow_pause import WorkflowPauseEntity
-from repositories.sqlalchemy_api_workflow_run_repository import (
-    DifyAPISQLAlchemyWorkflowRunRepository,
-    WorkflowTaskOwnerMismatchError,
-)
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
+from services.workflow.run_entities import WorkflowPauseEntity
+from services.workflow.run_repository import APIWorkflowRunRepository, WorkflowTaskOwnerMismatchError
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +171,7 @@ class AppTaskService:
         app_id: str,
         task_id: str,
         owner: tuple[CreatorUserRole, str] | None,
-        repository: DifyAPISQLAlchemyWorkflowRunRepository,
+        repository: APIWorkflowRunRepository,
     ) -> None:
         # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
         after_id: str | None = None
@@ -208,7 +204,7 @@ class AppTaskService:
         owner: tuple[CreatorUserRole, str] | None,
         redis: RedisClientWrapper,
     ) -> WorkflowStopOutcome:
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
+        repository = workflow_storage.create_api_workflow_run_repository(sessionmaker(bind=db.engine))
         run = repository.get_workflow_run_by_id_and_tenant_id(tenant_id, run_id)
         if run is None:
             return WorkflowStopOutcome.NOT_FOUND
@@ -256,7 +252,7 @@ class AppTaskService:
         Omitted Redis uses the compatibility transport; injected callers supply theirs.
         """
         task_id = AppTaskService._parse_task_id(task_id)
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
+        repository = workflow_storage.create_api_workflow_run_repository(sessionmaker(bind=db.engine))
         try:
             run = repository.stop_paused_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner)
             if run is None:
@@ -336,8 +332,8 @@ class AppTaskService:
         # history through the configured backend without holding its run lock.
         user = Account(name="", email="") if run.created_by_role == CreatorUserRole.ACCOUNT else EndUser()
         user.id = run.created_by
-        repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
-            session_factory=sessionmaker(bind=db.engine),
+        repository = workflow_writers.create_workflow_execution_repository(
+            sessionmaker(bind=db.engine),
             tenant_id=run.tenant_id,
             user=user,
             app_id=run.app_id,
@@ -382,6 +378,9 @@ class AppTaskService:
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,
+                upload_file=workflow_writers.build_workflow_offload_uploader(
+                    session_factory=factory, tenant_id=run.tenant_id, user=user
+                ),
             )
             stopped_nodes = [
                 execution
@@ -390,8 +389,8 @@ class AppTaskService:
                 and execution.finished_at == run.finished_at
                 and execution.error == run.error
             ]
-            target = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=factory,
+            target = workflow_writers.create_workflow_node_execution_repository(
+                factory,
                 tenant_id=run.tenant_id,
                 user=user,
                 app_id=app_id,

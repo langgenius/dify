@@ -47,11 +47,11 @@ class TestRagPipelineServiceGetPipeline:
     ) -> RagPipelineService:
         with (
             patch(
-                "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+                "services.rag_pipeline.rag_pipeline.workflow_storage.create_api_workflow_node_execution_repository",
                 return_value=None,
             ),
             patch(
-                "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                "services.rag_pipeline.rag_pipeline.workflow_storage.create_api_workflow_run_repository",
                 return_value=None,
             ),
         ):

@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Never
 from uuid import uuid4
 
 import pytest
@@ -20,8 +21,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_storage import storage
@@ -57,6 +56,8 @@ from models.workflow import (
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input_v2.form_repository import Form
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerExecutionRepository
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.agent.workspace_service import AgentWorkspaceService
 from services.trigger.execution_layer import TriggerPostLayer
 from services.trigger.execution_store import TriggerExecutionRef
@@ -73,6 +74,10 @@ from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _in
 from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
 
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
+
+
+def _unexpected_upload_file(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
 
 
 def _pipeline_tool_runner(
@@ -161,7 +166,12 @@ def _pipeline_tool_runner(
         else WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
     )
     nodes = SQLAlchemyWorkflowNodeExecutionRepository(
-        sqlite_engine, "tenant", user, "pipe", WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN
+        sqlite_engine,
+        "tenant",
+        user,
+        "pipe",
+        WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+        upload_file=_unexpected_upload_file,
     )
     return runner, runs, nodes
 
@@ -352,6 +362,7 @@ def make_workflow_runner(
         user=user,
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        upload_file=_unexpected_upload_file,
     )
     runner = WorkflowAppRunner(
         application_generate_entity=entity,
@@ -447,7 +458,7 @@ class TestWorkflowRunAggCases:
             raise RuntimeError("pause-write-failed")
 
         monkeypatch.setattr(
-            "repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository.create_workflow_pause",
+            "repositories.workflow.run_repository.DifyAPISQLAlchemyWorkflowRunRepository.create_workflow_pause",
             fail_pause,
         )
         retirements: list[dict[str, object]] = []
@@ -995,7 +1006,7 @@ class TestWorkflowRunAggCases:
         from core.workflow.nodes.human_input.enums import HumanInputFormStatus
         from graphon.enums import WorkflowExecutionStatus
         from models.human_input import HumanInputForm
-        from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+        from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
         runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
         entity = runner.application_generate_entity

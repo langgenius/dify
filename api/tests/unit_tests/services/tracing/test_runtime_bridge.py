@@ -31,9 +31,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from domain.tracing.trace_run_agg import TraceRunState, TraceSourceKind
+from extensions.application_services import workflow_storage
 from extensions.tracing import application_tracing_hooks, bind_tracing
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import VariablePool
@@ -61,8 +61,8 @@ from models.workflow import (
 )
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings, AppTracingSnapshot, TraceRun, workflow_has_agent_v2
@@ -130,7 +130,11 @@ class _FreezeFails(ApplicationTraceRepository):
     """The real ledger, except that reading the tracing snapshot a run freezes fails with ``failure``."""
 
     def __init__(self, sessions: sessionmaker[Session], failure: Exception) -> None:
-        super().__init__(sessions)
+        super().__init__(
+            sessions,
+            workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+            node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
+        )
         self._failure = failure
 
     @override
@@ -141,10 +145,18 @@ class _FreezeFails(ApplicationTraceRepository):
 def record_source(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(
         sessions,
-        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
-        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
         files_url="https://files.test",
         enterprise_details=False,
+    )
+
+
+def trace_repository(sessions: sessionmaker[Session]) -> ApplicationTraceRepository:
+    return ApplicationTraceRepository(
+        sessions,
+        workflow_runs=workflow_storage.create_api_workflow_run_repository(sessions),
+        node_executions=workflow_storage.create_api_workflow_node_execution_repository(sessions),
     )
 
 
@@ -249,7 +261,7 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
                 tracing_config=langfuse_config(tenant_id, "https://langfuse.test"),
             )
         )
-    repository = ApplicationTraceRepository(sessions)
+    repository = trace_repository(sessions)
     run = tracing_service(sessions, repository, no_egress(), [], AGENT_TRACE_SETTINGS).start(
         tenant_id=tenant_id,
         app_id=app_id,
@@ -701,9 +713,7 @@ class TestApplicationTraceHandoffCases:
         unreachable = create_engine(URL.create("sqlite", database=str(tmp_path / "missing" / "ledger.sqlite3")))
         destination = no_egress()
         try:
-            collector = handoff(
-                case.collection, ApplicationTraceRepository(sessionmaker(bind=unreachable)), no_egress()
-            )
+            collector = handoff(case.collection, trace_repository(sessionmaker(bind=unreachable)), no_egress())
             with pytest.raises(TraceCollectorUnavailableError):
                 deliver(collector, message_event(case), destination)
         finally:
@@ -966,7 +976,7 @@ class TestRuntimeBridgeCases:
                     from_source=ConversationFromSource.CONSOLE,
                 )
             )
-        traces = ApplicationTraceRepository(sqlite_session_factory)
+        traces = trace_repository(sqlite_session_factory)
         return Bridge(
             sqlite_session_factory, traces, bridge_hooks(sqlite_session_factory, traces, AGENT_TRACE_SETTINGS)
         )
@@ -1266,7 +1276,7 @@ def _workflow_tool_tracing_boundary_seed(
             )
             node_record.created_at = now
             session.add(node_record)
-    traces = ApplicationTraceRepository(sessions)
+    traces = trace_repository(sessions)
     hooks = bridge_hooks(sessions, traces, AGENT_TRACE_SETTINGS)
     entity = workflow_entity({})
     entity.app_config = entity.app_config.model_copy(
@@ -1389,6 +1399,7 @@ class TestWorkflowToolTracingBoundaryCases:
             user=actor,
             app_id=ids["root"],
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=lambda **_kwargs: pytest.fail("Payload uploads are not expected for this trace"),
         )
         info = WorkflowTraceInfo(
             node_executions=nodes.get_by_workflow_execution(ids["run"]),

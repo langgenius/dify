@@ -7,14 +7,17 @@ from functools import partial
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from extensions.application_services import workflow_storage
 from libs.datetime_utils import naive_utc_now
+from models.model import App, EndUser
+from models.workflow import Workflow
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.dsl_import_repository import DslImportRepository
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.app.web_workflow_repository import WebWorkflowRepository
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -29,7 +32,9 @@ from services.app.enterprise_app_service import EnterpriseAppService
 from services.app.export_service import AppExportService
 from services.app.import_service import AppImportService
 from services.app.query_service import AppDiscoveryService
+from services.app.web_workflow_service import WebWorkflowService, WorkflowTaskControl
 from services.app_dsl_service import AppDslService
+from services.app_generate_service import AppGenerateService
 from services.app_package_service import AppPackageService
 from services.app_tracing_config_service import AppTracingConfigService
 from services.oauth_server_service import OAuthServerService
@@ -47,6 +52,7 @@ class AppServices:
     dsl_imports: DslImportService
     discovery: AppDiscoveryService
     console: ConsoleAppService
+    web_workflows: WebWorkflowService[App, EndUser, Workflow]
     enterprise: EnterpriseAppService
     triggers: AppTriggerStore
     trigger_status: AppTriggerService
@@ -57,6 +63,7 @@ def build_app_services(
     *,
     database_client: sessionmaker[Session],
     oauth: OAuthServerService,
+    tasks: WorkflowTaskControl,
     recommended_packages: RecommendedAppPackageService,
     repository: ConsoleAppRepository,
     rbac_members: MemberService,
@@ -90,13 +97,18 @@ def build_app_services(
             tracing=tracing_configs,
             lifecycle=AppLifecycleGateway(session_factory=database_client),
         ),
+        web_workflows=WebWorkflowService(
+            queries=WebWorkflowRepository(session_factory=database_client),
+            runtime=AppGenerateService.generate_web_workflow,
+            tasks=tasks,
+        ),
         enterprise=EnterpriseAppService(
             apps=EnterpriseAppRepository(
                 session_factory=database_client,
                 app_web_url=dify_config.APP_WEB_URL,
                 service_api_url=dify_config.SERVICE_API_URL,
             ),
-            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=database_client),
+            workflow_runs=workflow_storage.create_api_workflow_run_repository(session_maker=database_client),
             now=naive_utc_now,
         ),
         triggers=triggers,

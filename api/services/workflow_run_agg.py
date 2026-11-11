@@ -21,8 +21,8 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.app.workflow.persistence_ports import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.db.session_factory import session_factory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_factory import DifyNodeFactory
@@ -37,6 +37,7 @@ from core.workflow.nodes.human_input_v2.presentation import resolve_human_input_
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
+from extensions.application_services import workflow_storage
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
@@ -56,11 +57,10 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
 from graphon.runtime.container_state import CustomContainerRunState
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_variable_updater import ConversationVariableUpdater
+from services.workflow.run_repository import WorkflowPauseStoppedError
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
@@ -314,7 +314,7 @@ class WorkflowRunAgg:
         factory = session_factory.get_session_maker() if config is None else config.session_factory
         if isinstance(factory, Engine):
             factory = sessionmaker(factory)
-        return DifyAPIRepositoryFactory.create_api_workflow_run_repository(factory)
+        return workflow_storage.create_api_workflow_run_repository(factory)
 
     def _refresh_form_completions(self) -> None:
         pending = {key: reason for key, reason in self._pending_forms.items() if key not in self._published_form_ids}

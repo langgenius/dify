@@ -11,10 +11,10 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from services.file_service import FileService
 from services.human_input_service import FormExpiredError, FormNotFoundError, FormSubmittedError
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 HITL_UPLOAD_TOKEN_PREFIX = "hitl_upload_"
 _TOKEN_RANDOM_BYTES = 32

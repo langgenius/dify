@@ -4,13 +4,13 @@ from datetime import datetime
 
 from machinery.context import RequestContext
 from models.enums import WorkflowRunTriggeredFrom
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.types import (
+from services.workflow.run_entities import (
     AverageInteractionStats,
     DailyRunsStats,
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 
 class WorkflowStatisticQueryService:

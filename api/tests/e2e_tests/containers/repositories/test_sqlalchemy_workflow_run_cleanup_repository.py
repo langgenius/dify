@@ -22,7 +22,7 @@ from models.workflow import (
 from models.workflow import (
     WorkflowType as ModelWorkflowType,
 )
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
 @dataclass

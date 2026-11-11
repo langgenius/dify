@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Iterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Never, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
 from uuid import uuid4
 
@@ -18,8 +18,6 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine as _workflow_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -34,10 +32,8 @@ from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceSto
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
-from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
-    LogstoreWorkflowNodeExecutionRepository,
-)
 from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -70,7 +66,9 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.celery_node_execution_writer import CeleryWorkflowNodeExecutionRepository
+from repositories.workflow.logstore.node_execution_writer import LogstoreWorkflowNodeExecutionWriter
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
@@ -98,6 +96,10 @@ This test suite covers:
 - Version management
 - Execution triggering
 """
+
+
+def _unexpected_upload_file(*, filename: str, content: bytes) -> Never:
+    pytest.fail(f"Unexpected workflow node payload offload: {filename} ({len(content)} bytes)")
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -3364,7 +3366,7 @@ class TestWorkflowServiceCases:
                 patch("services.workflow_service._setup_variable_pool"),
                 patch("services.workflow_service.DraftVarLoader"),
                 patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-                patch("services.workflow_service.DifyCoreRepositoryFactory") as mock_repo_factory,
+                patch("services.workflow_service.workflow_writers") as mock_repo_factory,
                 patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
                 patch("services.workflow_service.storage"),
             ):
@@ -3445,7 +3447,7 @@ class TestWorkflowServiceCases:
                 patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
                 patch("services.workflow_service.DraftVarLoader"),
                 patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-                patch("services.workflow_service.DifyCoreRepositoryFactory"),
+                patch("services.workflow_service.workflow_writers"),
                 patch("services.workflow_service.DraftVariableSaver"),
                 patch("services.workflow_service.storage"),
             ):
@@ -3499,7 +3501,7 @@ class TestWorkflowServiceCases:
             [
                 SQLAlchemyWorkflowNodeExecutionRepository,
                 CeleryWorkflowNodeExecutionRepository,
-                LogstoreWorkflowNodeExecutionRepository,
+                LogstoreWorkflowNodeExecutionWriter,
             ],
         )
         @pytest.mark.parametrize("status", [WorkflowNodeExecutionStatus.SUCCEEDED, WorkflowNodeExecutionStatus.FAILED])
@@ -3510,7 +3512,7 @@ class TestWorkflowServiceCases:
             config_overrides: Callable[..., None],
             repository_type: type[SQLAlchemyWorkflowNodeExecutionRepository]
             | type[CeleryWorkflowNodeExecutionRepository]
-            | type[LogstoreWorkflowNodeExecutionRepository],
+            | type[LogstoreWorkflowNodeExecutionWriter],
             status: WorkflowNodeExecutionStatus,
         ) -> None:
             app = TestWorkflowAssociatedDataFactory.create_app()
@@ -3549,11 +3551,11 @@ class TestWorkflowServiceCases:
             logstore.execute_sql.side_effect = lambda **_kwargs: logstore_records[-1:]
             with (
                 patch(
-                    "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore",
+                    "repositories.workflow.logstore.node_execution_writer.AliyunLogStore",
                     return_value=logstore,
                 ),
                 patch(
-                    "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore",
+                    "repositories.workflow.logstore.node_execution_repository.AliyunLogStore",
                     return_value=logstore,
                 ),
             ):
@@ -3563,16 +3565,12 @@ class TestWorkflowServiceCases:
                     user=account,
                     app_id=app.id,
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                    upload_file=MagicMock(),
                 )
-                if repository_type is LogstoreWorkflowNodeExecutionRepository:
-                    config_overrides(
-                        API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
-                            "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
-                            "LogstoreAPIWorkflowNodeExecutionRepository"
-                        )
-                    )
+                if repository_type is LogstoreWorkflowNodeExecutionWriter:
+                    config_overrides(WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND="logstore")
                     service._node_execution_service_repo = (
-                        DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                        workflow_storage.create_api_workflow_node_execution_repository(
                             session_maker=sessionmaker(sqlite_engine)
                         )
                     )
@@ -3631,13 +3629,13 @@ class TestWorkflowServiceCases:
                     side_effect=lambda **kwargs: (node, node_events(kwargs["variable_pool"])),
                 ),
                 patch(
-                    "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                    "services.workflow_service.workflow_writers.create_workflow_node_execution_repository",
                     return_value=repository,
                 ),
                 patch("services.workflow_service.DraftVariableSaver"),
                 patch("services.workflow_service.enqueue_draft_node_execution_trace"),
                 patch(
-                    "core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task.delay"
+                    "repositories.workflow.celery_node_execution_writer.save_workflow_node_execution_task.delay"
                 ) as async_save,
             ):
                 result = service.run_draft_workflow_node(
@@ -3668,7 +3666,7 @@ class TestWorkflowServiceCases:
                 assert async_save.call_args.kwargs["execution_data"]["status"] == status
             else:
                 async_save.assert_not_called()
-            if repository_type is LogstoreWorkflowNodeExecutionRepository:
+            if repository_type is LogstoreWorkflowNodeExecutionWriter:
                 assert len(logstore_records) == 1
                 assert logstore_records[0]["status"] == status
 
@@ -4200,11 +4198,18 @@ class TestWorkflowHumanInputDeliveryCases:
             return_value=("form-1", [])
         )
 
-        test_service_instance = MagicMock()
+        sent_methods: list[Any] = []
+
+        class RecordingDeliveryTestService:
+            def send_test(self, *, context: Any, method: Any) -> None:
+                _ = context
+                sent_methods.append(method)
+
+        test_service_instance = RecordingDeliveryTestService()
         monkeypatch.setattr(
             workflow_service_module,
             "HumanInputDeliveryTestService",
-            MagicMock(return_value=test_service_instance),
+            lambda: test_service_instance,
         )
 
         app_model = _app()
@@ -4218,8 +4223,8 @@ class TestWorkflowHumanInputDeliveryCases:
             session=sqlite_session,
         )
 
-        test_service_instance.send_test.assert_called_once()
-        sent_method = test_service_instance.send_test.call_args.kwargs["method"]
+        assert len(sent_methods) == 1
+        sent_method = sent_methods[0]
         assert isinstance(sent_method, EmailDeliveryMethod)
         assert sent_method.config.debug_mode is True
         assert sent_method.config.recipients.include_bound_group is False
@@ -4309,7 +4314,12 @@ class TestWorkflowAgentPreviewIdentityCases:
         with sessions.begin() as session:
             session.add_all([app, account, workflow, agent, snapshot, binding])
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            sessions, tenant_id, account, app_id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+            sessions,
+            tenant_id,
+            account,
+            app_id,
+            WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            upload_file=_unexpected_upload_file,
         )
         observed_created_at = []
         execution_ids: list[str] = []
@@ -4382,7 +4392,7 @@ class TestWorkflowAgentPreviewIdentityCases:
             ),
             patch.object(DifyAgentNode, "run", events),
             patch(
-                "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "services.workflow_service.workflow_writers.create_workflow_node_execution_repository",
                 return_value=repository,
             ),
             patch("services.workflow_service.DraftVariableSaver.save"),

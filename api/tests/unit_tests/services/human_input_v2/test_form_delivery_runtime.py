@@ -69,7 +69,7 @@ from repositories.human_input_v2.email_channel.entities import ResendCandidate, 
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+from repositories.workflow.node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from services.human_input_v2.email_otp_service import AccessChallenge
@@ -1531,7 +1531,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     from graphon.entities import WorkflowStartReason
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
-    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services import workflow_event_snapshot_service
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
@@ -1539,7 +1539,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         _workflow_response_converter_human_input_build_converter as _build_converter,
     )
 
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.save", lambda *_args: None)
     prepared = DifyHumanInputRuntime(
         form_service=context.service,
         delivery_service=build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions),
@@ -1564,7 +1564,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     )
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     state = _pause_state(prepared.form.id)
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", lambda _key: state.encode())
     repository.create_workflow_pause(
         workflow_run_id=_RUN, state_owner_user_id=_ACCOUNT, state=state, pause_reasons=[reason]
     )
@@ -1667,7 +1667,7 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(
     from graphon.entities.pause_reason import HitlRequired, SchedulingPause
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
-    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.workflow_pause_service import load_workflow_pause_snapshot
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
@@ -1708,8 +1708,8 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(
     runtime.graph_execution.pause(scheduling)
     resumption = resumption.model_copy(update={"serialized_graph_runtime_state": runtime.dumps()})
     state = resumption.dumps()
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", lambda _key: state.encode())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     repository.create_workflow_pause(
         workflow_run_id=_RUN,
@@ -1750,7 +1750,7 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
     from machinery.context import RequestContext
     from models.human_input import HumanInputForm as LegacyForm
     from models.human_input import HumanInputFormRecipient, RecipientType
-    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.workflow_run_service import WorkflowRunPausedNode, WorkflowRunService
 
@@ -1797,8 +1797,8 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
     runtime = RuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
     runtime.graph_execution.pause(HitlRequired(session_id=legacy_id, node_id="legacy-node", node_title="Legacy title"))
     state = resumption.model_copy(update={"serialized_graph_runtime_state": runtime.dumps()}).dumps()
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", lambda _key: state.encode())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     pause = repository.create_workflow_pause(
         workflow_run_id=_RUN,
@@ -1843,12 +1843,12 @@ def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(
     context: Context, monkeypatch: pytest.MonkeyPatch, checkpoint: str
 ) -> None:
     from machinery.context import RequestContext
-    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.workflow_run_service import WorkflowRunService
 
     state = "invalid checkpoint" if checkpoint == "invalid" else _pause_state(str(uuid4()))
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.load", lambda _key: state.encode())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     repository.create_workflow_pause(workflow_run_id=_RUN, state_owner_user_id=_ACCOUNT, state=state, pause_reasons=[])
     service = WorkflowRunService(
@@ -1864,10 +1864,10 @@ def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(
 
 def test_missing_v1_pause_form_does_not_fall_back_to_v2(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.workflow.pause_repository.storage.save", lambda *_args: None)
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     repository.create_workflow_pause(
         workflow_run_id=_RUN,

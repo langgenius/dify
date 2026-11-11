@@ -48,6 +48,7 @@ from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.agent_app_service import AgentAppAccessService
+from services.app_task_service import AppTaskControlService
 from services.app_tracing_config_service import AppTracingConfigService
 from services.entities.message_entities import MessageAccount
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -191,6 +192,7 @@ def harness(
             provider=deployment_provider_configs(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis),
+        tasks=AppTaskControlService(redis_client=redis),
         recommended_packages=RecommendedAppPackageService(
             sources=DatabaseRecommendedAppCatalogRepository(sqlite_session_factory, redis=redis),
             exporter=RosterAgentPackageExporter(),

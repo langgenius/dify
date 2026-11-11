@@ -15,7 +15,11 @@ from models.enums import CreatorUserRole, EndUserType
 from models.workflow import WorkflowAppLogCreatedFrom
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_app_log_query_service import (
+    WorkflowAppLogItem,
+    WorkflowAppLogQueryService,
+    WorkflowAppLogRunSummary,
+)
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
 from tests.e2e_tests.containers.helpers import generate_valid_password
 
@@ -43,7 +47,7 @@ class _WorkflowAppLogTestClient:
         }
 
 
-def _workflow_run(log):
+def _workflow_run(log: WorkflowAppLogItem) -> WorkflowAppLogRunSummary:
     assert log.workflow_run is not None
     return log.workflow_run
 

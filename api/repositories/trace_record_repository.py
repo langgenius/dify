@@ -41,11 +41,6 @@ from models.model import Conversation, EndUser, Message, MessageFile
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.api_workflow_node_execution_repository import (
-    DifyAPIWorkflowNodeExecutionRepository,
-    WorkflowNodeExecutionPayloads,
-)
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.tracing_store_errors import tracing_store_errors
 from services.tracing.delivery import TraceRecordSource
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError
@@ -62,6 +57,11 @@ from services.tracing.records import (
     TraceMessage,
     WorkflowTraceInfo,
 )
+from services.workflow.node_execution_queries import (
+    DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
+)
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 _TERMINAL_WORKFLOW_STATUSES = frozenset(
     {

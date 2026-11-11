@@ -20,12 +20,15 @@ from typing import TypedDict
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
 from models.workflow import WorkflowArchiveLog, WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME, ARCHIVE_SCHEMA_VERSION
+from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
+from services.workflow.run_entities import RunsWithRelatedCountsDict
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 logger = logging.getLogger(__name__)
 
@@ -383,7 +386,6 @@ class ArchivedWorkflowRunDeletion:
 
     @staticmethod
     def _run_restore_dry_run_sample(archive_log: WorkflowArchiveLog) -> bool:
-        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
         restorer = WorkflowRunRestore(dry_run=True, workers=1)
         # Reuse restore's dry-run path so the runbook exercises the actual restore code.
@@ -424,10 +426,9 @@ class ArchivedWorkflowRunDeletion:
         session: Session,
         runs: Sequence[WorkflowRun],
     ) -> tuple[int, int]:
-        from repositories.factory import DifyAPIRepositoryFactory
 
         run_ids = [run.id for run in runs]
-        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.delete_by_runs(session, run_ids)
@@ -437,10 +438,9 @@ class ArchivedWorkflowRunDeletion:
         session: Session,
         runs: Sequence[WorkflowRun],
     ) -> tuple[int, int]:
-        from repositories.factory import DifyAPIRepositoryFactory
 
         run_ids = [run.id for run in runs]
-        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.count_by_runs(session, run_ids)
@@ -449,9 +449,7 @@ class ArchivedWorkflowRunDeletion:
         if self.workflow_run_repo is not None:
             return self.workflow_run_repo
 
-        from repositories.factory import DifyAPIRepositoryFactory
-
-        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+        self.workflow_run_repo = workflow_storage.create_api_workflow_run_repository(
             sessionmaker(bind=db.engine, expire_on_commit=False)
         )
         return self.workflow_run_repo

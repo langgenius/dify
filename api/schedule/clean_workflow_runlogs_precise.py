@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import app
 from configs import dify_config
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from models.model import (
     AppAnnotationHitHistory,
@@ -23,7 +24,6 @@ from models.model import (
 )
 from models.web import SavedMessage
 from models.workflow import ConversationVariable, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def clean_workflow_runlogs_precise() -> None:
     retention_days = dify_config.WORKFLOW_LOG_RETENTION_DAYS
     cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
     session_factory = sessionmaker(db.engine, expire_on_commit=False)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+    workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_factory)
     workflow_ids = _get_specific_workflow_ids()
     workflow_ids_filter = workflow_ids or None
 
@@ -146,7 +146,7 @@ def _delete_batch(
 
             def _delete_node_executions(active_session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
                 run_ids = [run.id for run in runs]
-                repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                repo = workflow_storage.create_api_workflow_node_execution_repository(
                     session_maker=sessionmaker(bind=active_session.get_bind(), expire_on_commit=False)
                 )
                 return repo.delete_by_runs(active_session, run_ids)

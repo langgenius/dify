@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.enums import WorkflowRunTriggeredFrom
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 
 

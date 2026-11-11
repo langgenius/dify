@@ -50,10 +50,10 @@ from models.enums import (
 from models.model import ApiToken, AppMCPServer, AppMode, Message, Site
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow, WorkflowRun, WorkflowType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app.enterprise_app_service import EnterpriseAppService
+from services.workflow.run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
 
 WS_A = "11111111-1111-1111-1111-111111111111"
 WS_B = "22222222-2222-2222-2222-222222222222"
