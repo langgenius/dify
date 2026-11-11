@@ -35,12 +35,10 @@ from models.enums import (
 from models.model import AppMode
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
-from services.errors.document import DocumentIndexingError
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.documents.application import DocumentInvalidActionError
 from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
