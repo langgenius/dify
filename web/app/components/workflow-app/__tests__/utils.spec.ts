@@ -4,6 +4,30 @@ import { TransferMethod } from '@/types/app'
 import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from '../utils'
 
 describe('workflow-app utils', () => {
+  it.each([
+    { statement: 'Hello', questions: [], enabled: true },
+    { statement: '', questions: ['What can you do?'], enabled: true },
+    { statement: '', questions: [], enabled: false },
+    { statement: '   ', questions: ['   '], enabled: false },
+  ])(
+    'should derive opening enabled=$enabled from "$statement" and $questions',
+    ({ statement, questions, enabled }) => {
+      expect(
+        buildInitialFeatures(
+          {
+            opening_statement: statement,
+            suggested_questions: questions,
+          },
+          undefined,
+        ).opening,
+      ).toEqual({
+        enabled,
+        opening_statement: statement,
+        suggested_questions: questions,
+      })
+    },
+  )
+
   it('should map trigger statuses to enabled and disabled states', () => {
     expect(
       buildTriggerStatusMap([

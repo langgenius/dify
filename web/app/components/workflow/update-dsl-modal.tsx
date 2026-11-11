@@ -33,7 +33,6 @@ import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   getImportNotificationPayload,
   isImportCompleted,
-  normalizeWorkflowFeatures,
   validateDSLContent,
 } from './update-dsl-modal.helpers'
 import { initialEdges, initialNodes } from './utils'
@@ -81,7 +80,7 @@ function UpdateDSLModal({
           nodes: importedNodes,
           edges: importedEdges,
           viewport,
-          features: normalizeWorkflowFeatures(features),
+          features,
           hash,
           conversation_variables: conversation_variables || [],
           environment_variables: environment_variables || [],
