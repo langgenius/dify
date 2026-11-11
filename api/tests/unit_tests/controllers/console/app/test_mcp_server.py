@@ -27,9 +27,14 @@ from models.account import TenantAccountRole
 from services.app.mcp_server_service import (
     AppMCPServerAlreadyExistsError,
     AppMCPServerAppNotFoundError,
+    AppMCPServerDraft,
     AppMCPServerNotFoundError,
     AppMCPServerRecord,
+    AppMCPServerService,
     AppMCPServerStatus,
+    AppMCPServerStore,
+    AppMCPServerUpdate,
+    PublishedApp,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
@@ -48,6 +53,49 @@ _MCP_SERVER_ADMISSION_RECORD = AppMCPServerRecord(
     created_at=_mcp_server_admission_datetime(2024, 1, 1),
     updated_at=_mcp_server_admission_datetime(2024, 1, 1),
 )
+
+
+@dataclass
+class _InMemoryMcpServerStore(AppMCPServerStore):
+    """In-memory MCP server store serving the admission fixture's app and server."""
+
+    record: AppMCPServerRecord | None
+
+    def find_app(self, *, workspace_id: str, app_id: str) -> PublishedApp | None:
+        return PublishedApp(
+            name=_MCP_SERVER_ADMISSION_RECORD.name,
+            description=_MCP_SERVER_ADMISSION_RECORD.description,
+        )
+
+    def find_server(self, *, workspace_id: str, app_id: str) -> AppMCPServerRecord | None:
+        return self.record
+
+    def insert_server(self, *, workspace_id: str, app_id: str, draft: AppMCPServerDraft) -> AppMCPServerRecord:
+        raise AssertionError("insert_server is not exercised by the admission tests")
+
+    def update_server(
+        self, *, workspace_id: str, app_id: str, server_id: str, update: AppMCPServerUpdate
+    ) -> AppMCPServerRecord:
+        raise AssertionError("update_server is not exercised by the admission tests")
+
+    def rotate_server_code(self, *, workspace_id: str, app_id: str) -> AppMCPServerRecord:
+        raise AssertionError("rotate_server_code is not exercised by the admission tests")
+
+
+@dataclass
+class _AdmissionApplicationServices:
+    """Application services exposing the real MCP server service for admission tests."""
+
+    app_mcp_servers: AppMCPServerService
+
+
+def _admission_application_services() -> _AdmissionApplicationServices:
+    """Build application services with the real MCP server service over the fixture store."""
+    return _AdmissionApplicationServices(
+        app_mcp_servers=AppMCPServerService(servers=_InMemoryMcpServerStore(record=_MCP_SERVER_ADMISSION_RECORD))
+    )
+
+
 MUTATIONS = [
     AppMCPServerController.post,
     AppMCPServerController.put,
@@ -141,13 +189,7 @@ class TestMcpServerAdmissionCases:
             "batch_get",
             lambda _tenant_id, _account_id, _app_ids, **_kwargs: {str(_MCP_SERVER_ADMISSION_APP_ID): permission_keys},
         )
-        monkeypatch.setattr(
-            mcp_server,
-            "application_services",
-            lambda: SimpleNamespace(
-                app_mcp_servers=SimpleNamespace(get=lambda _context, _app_id: _MCP_SERVER_ADMISSION_RECORD)
-            ),
-        )
+        monkeypatch.setattr(mcp_server, "application_services", _admission_application_services)
         with app.test_request_context():
             response = admission(AppMCPServerController.get)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
         assert response["id"] == _MCP_SERVER_ADMISSION_RECORD.id
@@ -176,13 +218,7 @@ class TestMcpServerAdmissionCases:
             "batch_get",
             lambda _tenant_id, _account_id, _app_ids, **_kwargs: {str(_MCP_SERVER_ADMISSION_APP_ID): permission_keys},
         )
-        monkeypatch.setattr(
-            mcp_server,
-            "application_services",
-            lambda: SimpleNamespace(
-                app_mcp_servers=SimpleNamespace(get=lambda _context, _app_id: _MCP_SERVER_ADMISSION_RECORD)
-            ),
-        )
+        monkeypatch.setattr(mcp_server, "application_services", _admission_application_services)
         with app.test_request_context(), pytest.raises(Forbidden):
             admission(AppMCPServerController.get)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
 
@@ -197,13 +233,7 @@ class TestMcpServerAdmissionCases:
         )
         monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
         monkeypatch.setattr(RBACService.AppPermissions, "batch_get", lambda *_args, **_kwargs: {})
-        monkeypatch.setattr(
-            mcp_server,
-            "application_services",
-            lambda: SimpleNamespace(
-                app_mcp_servers=SimpleNamespace(get=lambda _context, _app_id: _MCP_SERVER_ADMISSION_RECORD)
-            ),
-        )
+        monkeypatch.setattr(mcp_server, "application_services", _admission_application_services)
         with app.test_request_context(), pytest.raises(Forbidden):
             admission(AppMCPServerController.get)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
 
