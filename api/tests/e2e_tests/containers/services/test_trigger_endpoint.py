@@ -247,10 +247,12 @@ def test_events_are_persisted_before_real_task_publication_with_trusted_subscrip
     assert not publication.open_transactions
     assert json.loads(publication.persisted_payload) == {"repository": "dify", "nested": {"count": 0, "empty": []}}
     assert deserialize_request(publication.persisted_request).get_data() == b"persisted-webhook-body"
-    restored = TriggerHttpRequestCachingService.get_request(data.request_id)
+    restored = TriggerHttpRequestCachingService(storage=storage).get_request(data.request_id)
     assert restored.get_data() == b"persisted-webhook-body"
     assert restored.headers["X-Webhook-Signature"] == "signed"
-    assert TriggerHttpRequestCachingService.get_payload(data.request_id) == json.loads(publication.persisted_payload)
+    assert TriggerHttpRequestCachingService(storage=storage).get_payload(data.request_id) == json.loads(
+        publication.persisted_payload
+    )
     messages = runtime.take_messages()
     assert len(messages) == 1
     assert messages[0].headers["task"] == dispatch_triggered_workflows_async.name

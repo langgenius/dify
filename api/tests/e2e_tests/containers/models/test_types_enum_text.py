@@ -95,13 +95,13 @@ def _enum_text_schema(engine_with_containers: Engine) -> Iterable[None]:
 
 
 class TestEnumText:
-    def test_column_impl(self, engine_with_containers: Engine):
+    def test_column_impl(self, engine_with_containers: Engine) -> None:
         inspector = sa.inspect(engine_with_containers)
         columns = inspector.get_columns(_COLUMN_TABLE)
 
         user_type_column = _first(c for c in columns if c["name"] == "user_type")
         sql_type = user_type_column["type"]
-        assert isinstance(user_type_column["type"], VARCHAR)
+        assert isinstance(sql_type, VARCHAR)
         assert sql_type.length == 20
         assert user_type_column["nullable"] is False
 
@@ -116,7 +116,7 @@ class TestEnumText:
         assert isinstance(sql_type, VARCHAR)
         assert sql_type.length == len(_EnumWithLongValue.a_really_long_enum_values)
 
-    def test_insert_and_select(self, engine_with_containers: Engine):
+    def test_insert_and_select(self, engine_with_containers: Engine) -> None:
         with Session(engine_with_containers) as session:
             admin_user = _User(
                 name="admin",
@@ -139,21 +139,23 @@ class TestEnumText:
 
         with Session(engine_with_containers) as session:
             user = session.scalar(select(_User).where(_User.id == admin_user_id).limit(1))
+            assert user is not None
             assert user.user_type == _UserType.admin
             assert user.user_type_nullable is None
 
         with Session(engine_with_containers) as session:
             user = session.scalar(select(_User).where(_User.id == normal_user_id).limit(1))
+            assert user is not None
             assert user.user_type == _UserType.normal
             assert user.user_type_nullable == _UserType.normal
 
-    def test_insert_invalid_values(self, engine_with_containers: Engine):
-        def _session_insert_with_value(sess: Session, user_type: Any):
+    def test_insert_invalid_values(self, engine_with_containers: Engine) -> None:
+        def _session_insert_with_value(sess: Session, user_type: Any) -> None:
             user = _User(name="test_user", user_type=user_type)
             sess.add(user)
             sess.flush()
 
-        def _insert_with_user(sess: Session, user_type: Any):
+        def _insert_with_user(sess: Session, user_type: Any) -> None:
             stmt = insert(_User).values(
                 {
                     "name": "test_user",
@@ -196,7 +198,7 @@ class TestEnumText:
 
             assert isinstance(exc.value.orig, c.exc_type), f"test case {idx} failed, name={c.name}"
 
-    def test_select_invalid_values(self, engine_with_containers: Engine):
+    def test_select_invalid_values(self, engine_with_containers: Engine) -> None:
         insertion_sql = f"""
                         INSERT INTO {_USER_TABLE} (id, name, user_type) VALUES
                             (1, 'invalid_value', 'invalid');
@@ -211,7 +213,7 @@ class TestEnumText:
 
         assert str(exc.value) == "'invalid' is not a valid _UserType"
 
-    def test_select_rejects_legacy_model_type_values(self, engine_with_containers: Engine):
+    def test_select_rejects_legacy_model_type_values(self, engine_with_containers: Engine) -> None:
         insertion_sql = """
                         INSERT INTO enum_text_legacy_model_type_test (id, model_type) VALUES
                             (1, 'text-generation'),

@@ -1,45 +1,48 @@
-"""
-AppTrigger management service.
-
-Handles AppTrigger model CRUD operations and status management.
-This service centralizes all AppTrigger-related business logic.
-"""
+"""Publication policy and best-effort quota status updates for application triggers."""
 
 import logging
+from collections.abc import Iterable, Mapping
+from typing import Any
 
-from sqlalchemy import update
-from sqlalchemy.orm import sessionmaker
-
-from extensions.ext_database import db
-from models.enums import AppTriggerStatus
-from models.trigger import AppTrigger
+from core.trigger.constants import TRIGGER_NODE_TYPES
+from services.trigger.app_trigger_store import (
+    AppTriggerPublicationWriter,
+    AppTriggerStatusWriter,
+    PublishedAppTrigger,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class AppTriggerService:
-    """Service for managing AppTrigger lifecycle and status."""
+    """Keep status persistence failures from replacing the original quota rejection."""
 
-    @staticmethod
-    def mark_tenant_triggers_rate_limited(tenant_id: str) -> None:
-        """
-        Mark all enabled triggers for a tenant as rate limited due to quota exceeded.
+    def __init__(self, *, triggers: AppTriggerStatusWriter) -> None:
+        self._triggers = triggers
 
-        This method is called when a tenant's quota is exhausted. It updates all
-        enabled triggers to RATE_LIMITED status to prevent further executions until
-        quota is restored.
-
-        Args:
-            tenant_id: Tenant ID whose triggers should be marked as rate limited
-
-        """
+    def mark_tenant_triggers_rate_limited(self, tenant_id: str) -> None:
         try:
-            with sessionmaker(bind=db.engine).begin() as session:
-                session.execute(
-                    update(AppTrigger)
-                    .where(AppTrigger.tenant_id == tenant_id, AppTrigger.status == AppTriggerStatus.ENABLED)
-                    .values(status=AppTriggerStatus.RATE_LIMITED)
-                )
-                logger.info("Marked all enabled triggers as rate limited for tenant %s", tenant_id)
+            self._triggers.mark_tenant_triggers_rate_limited(tenant_id)
+            logger.info("Marked all enabled triggers as rate limited for tenant %s", tenant_id)
         except Exception:
             logger.exception("Failed to mark all enabled triggers as rate limited for tenant %s", tenant_id)
+
+
+class AppTriggerPublicationService:
+    """Derive published trigger registration without changing existing enablement."""
+
+    def __init__(self, *, sync_triggers: AppTriggerPublicationWriter) -> None:
+        self._sync_triggers = sync_triggers
+
+    def sync(self, *, tenant_id: str, app_id: str, nodes: Iterable[Mapping[str, Any]]) -> None:
+        triggers = tuple(
+            PublishedAppTrigger(
+                node_id=node["id"],
+                trigger_type=node["data"]["type"],
+                title=node["data"].get("title"),
+                provider_name=node["data"].get("provider_name"),
+            )
+            for node in nodes
+            if node.get("data", {}).get("type") in TRIGGER_NODE_TYPES
+        )
+        self._sync_triggers(tenant_id=tenant_id, app_id=app_id, triggers=triggers)
