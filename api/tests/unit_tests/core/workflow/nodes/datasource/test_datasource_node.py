@@ -91,6 +91,7 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
 
     mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
 
+    load_credentials = mocker.Mock(return_value={})
     node = DatasourceNode(
         node_id="n",
         data=DatasourceNodeData(
@@ -104,12 +105,13 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
         ),
         init_params=gp,
         runtime_state=gs,
-        datasource_credentials=lambda _tenant, _provider, _plugin, _credential: {},
+        datasource_credentials=load_credentials,
     )
 
     evts = list(node._run())
     assert isinstance(evts[0], StreamChunkEvent)
     assert isinstance(evts[-1], StreamCompletedEvent)
+    load_credentials.assert_called_once_with("t1", "p", "plug", None)
 
 
 """Unit coverage for datasource node event streaming."""
