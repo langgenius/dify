@@ -20,7 +20,6 @@
   "selectedFiles": "Ausgewählte Dateien ({{valid}} von {{total}} gültig)",
   "startWith": "Beginnen Sie mit",
   "startWithHelp": "Sie können jederzeit weitere Quellen oder Dokumente hinzufügen.",
-  "uploadCharactersUnavailable": "Zeichen: —",
   "uploadCompleted": "Hinzugefügt",
   "uploadDocuments": "Dokumente hochladen",
   "uploadDropZoneTitle": "Dateien ziehen und ablegen oder durchsuchen",

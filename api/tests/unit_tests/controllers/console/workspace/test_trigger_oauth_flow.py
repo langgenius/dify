@@ -11,11 +11,11 @@ from pydantic import TypeAdapter
 from werkzeug.test import TestResponse
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from extensions.ext_application_services import application_services
 from models.account import TenantAccountRole
 from models.provider_ids import TriggerProviderID
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
 from services.trigger.oauth_service import (
     TriggerOAuthCallbackRequest,
     TriggerOAuthContext,
@@ -175,13 +175,13 @@ def flow(harness: _Harness) -> _Flow:
     with harness.app.app_context():
         services = application_services()
         oauth = TriggerOAuthService(
-            clients=services.workspaces.trigger_oauth_clients,
+            clients=services.triggers.oauth_clients,
             providers=plugin,
             contexts=contexts,
             builders=builders,
         )
         harness.app.extensions["application_services"] = replace(
-            services, workspaces=replace(services.workspaces, trigger_oauth=oauth)
+            services, triggers=replace(services.triggers, oauth=oauth)
         )
     return _Flow(harness, plugin, contexts, builders)
 

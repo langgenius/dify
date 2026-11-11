@@ -7,19 +7,20 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
+from services.trigger.plugin_provider import PluginTriggerProvider
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 
 
 class DaemonPluginParameterGateway:
+    def __init__(self, *, providers: PluginTriggerProviderLoader) -> None:
+        self._providers = providers
+
     def get_tool_provider(self, *, tenant_id: str, provider: str) -> PluginToolProviderController:
         return ToolManager.get_plugin_provider(provider=provider, tenant_id=tenant_id)
 
-    def get_trigger_provider(
-        self, *, tenant_id: str, provider_id: TriggerProviderID
-    ) -> PluginTriggerProviderController:
-        return TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+    def get_trigger_provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProvider:
+        return self._providers.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
 
     def fetch_options(
         self,

@@ -3149,6 +3149,8 @@ class KnowledgeFSSpaceSourcePagesApi(Resource):
             source_id=source_id,
             cursor=query.cursor,
             limit=query.limit,
+            parent_id=query.parent_id,
+            view=query.view,
         )
         return dump_response(KnowledgeFSSourcePagesResponse, result)
 

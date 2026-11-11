@@ -9,9 +9,7 @@ min-severity = "warn"
 # Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
   "commands/test_legacy_model_type_migration.py",
-  "controllers/console/app/test_chat_conversation_status_count_api.py",
   "controllers/console/app/test_workflow_draft_variable.py",
-  "controllers/console/workspace/test_workspace_wraps.py",
   "controllers/openapi/test_account_sessions.py",
   "controllers/openapi/test_workspaces.py",
   "controllers/web/test_site.py",

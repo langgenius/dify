@@ -89,7 +89,7 @@ it('ignores the old join acknowledgement after a socket reconnects', async () =>
   manager.onJoinFailure(failures)
   receive('connect')
   const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
-  if (typeof oldAck !== 'function') throw new Error('Missing initial join acknowledgement')
+  if (typeof oldAck !== 'function') throw new TypeError('Missing initial join acknowledgement')
 
   receive('disconnect', 'transport close')
   socket.id = 'new-session'
@@ -137,7 +137,8 @@ it.each(['before', 'after'] as const)(
     const failures = vi.fn()
     manager.onJoinFailure(failures)
     const initialAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
-    if (typeof initialAck !== 'function') throw new Error('Missing initial join acknowledgement')
+    if (typeof initialAck !== 'function')
+      throw new TypeError('Missing initial join acknowledgement')
 
     receive('status', { isLeader: true })
     manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
@@ -158,7 +159,7 @@ it('ignores a rejoin acknowledgement after the editor disconnects', async () => 
   manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
   acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   const rejoinAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
-  if (typeof rejoinAck !== 'function') throw new Error('Missing rejoin acknowledgement')
+  if (typeof rejoinAck !== 'function') throw new TypeError('Missing rejoin acknowledgement')
 
   manager.disconnect(connectionId)
   rejoinAck({ msg: 'not_entitled' }, 403)

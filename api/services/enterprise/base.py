@@ -1,7 +1,10 @@
+import atexit
 import logging
 import os
+import threading
 from collections.abc import Mapping
-from typing import Any
+from http.cookiejar import CookieJar, DefaultCookiePolicy
+from typing import Any, ClassVar
 
 import httpx
 
@@ -159,6 +162,34 @@ class EnterpriseRequest(BaseRequest):
     secret_key = os.environ.get("ENTERPRISE_API_SECRET_KEY", "ENTERPRISE_API_SECRET_KEY")
     secret_key_header = "Enterprise-Api-Secret-Key"
 
+    _rbac_client: ClassVar[httpx.Client | None] = None
+    _rbac_client_lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def _close_rbac_clients(cls) -> None:
+        """Close this process's RBAC connections during shutdown."""
+        with cls._rbac_client_lock:
+            if cls._rbac_client is not None:
+                cls._rbac_client.close()
+                cls._rbac_client = None
+
+    @classmethod
+    def _get_rbac_client(cls) -> httpx.Client:
+        """Return a process-local client for fixed endpoint/proxy settings.
+
+        Initialize only in workers after process startup, never before forking.
+        Connections are shared; credentials and tenant headers remain request-local.
+        Response cookies are rejected so one account cannot affect another call.
+        The pool owns shutdown; callers must not close the returned client.
+        """
+        with cls._rbac_client_lock:
+            if cls._rbac_client is None:
+                cls._rbac_client = httpx.Client(
+                    mounts=cls._build_mounts(),
+                    cookies=CookieJar(policy=DefaultCookiePolicy(allowed_domains=())),
+                )
+            return cls._rbac_client
+
     @classmethod
     def send_inner_rbac_request(
         cls,
@@ -194,7 +225,6 @@ class EnterpriseRequest(BaseRequest):
             raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
 
         url = f"{cls.rbac_base_url}{endpoint}"
-        mounts = cls._build_mounts()
 
         try:
             traceparent = generate_traceparent_header()
@@ -204,17 +234,20 @@ class EnterpriseRequest(BaseRequest):
         except Exception:
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
-        with httpx.Client(mounts=mounts) as client:
-            request_kwargs: dict[str, Any] = {
-                "json": json,
-                "params": params,
-                "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers},
-                "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
-            }
-            response = client.request(method, url, **request_kwargs)
-            if not response.is_success:
-                cls._handle_error_response(response)
+        client = cls._get_rbac_client()
+        request_kwargs: dict[str, Any] = {
+            "json": json,
+            "params": params,
+            "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers},
+            "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
+        }
+        response = client.request(method, url, **request_kwargs)
+        if not response.is_success:
+            cls._handle_error_response(response)
         return response.json()
+
+
+atexit.register(EnterpriseRequest._close_rbac_clients)
 
 
 class EnterprisePluginManagerRequest(BaseRequest):
