@@ -33,6 +33,7 @@ from services.dify_builder.application.cognition_policy import CognitionPolicyDe
 from services.dify_builder.generated_graph_completeness import generated_build_completeness_problems
 from services.dify_builder.knowledge_source_intent import (
     INTENT_INSTRUCTION,
+    KNOWLEDGE_SOURCE_DOMAIN_INSTRUCTION,
     SOURCE_INPUT,
     bind_planning_source_intent,
     parse_source_intent,
@@ -961,9 +962,11 @@ def discover_resources(
         "do not shorten an Agent id to its UUID. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected resource id>": "<reason>"}}.'
     )
+    system += KNOWLEDGE_SOURCE_DOMAIN_INSTRUCTION
     system += (
         " Include boolean knowledge_requires_clarification: true when the original goal or confirmed requirements "
-        "depend on workspace knowledge or answering from company/product documents, even with no available IDs. "
+        "depend on a Workspace dataset or native Knowledge source, even with no available IDs. "
+        "Company/product documents accessed only through external Tools or MCP do not establish that dependency. "
         "This hint only asks the user about unsupported retrieval; false never authorizes omitting a source constraint."
     )
     if inv.dataset_source_error:
