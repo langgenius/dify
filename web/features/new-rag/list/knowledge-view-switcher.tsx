@@ -38,7 +38,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   }
 
   return (
-    <div className="relative flex max-w-full shrink-0">
+    <div className="relative flex w-fit max-w-full shrink-0">
       <SegmentedControl
         className="max-w-full rounded-md p-px"
         aria-label={t(($) => $.viewLabel)}
@@ -46,17 +46,17 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         onValueChange={(value) => onChange(value)}
       >
         <SegmentedControlItem
-          className="h-5.5 rounded-md px-1 py-px system-xs-medium"
+          className="h-5.5 rounded-md px-1 py-px system-xs-medium focus-visible:ring-inset"
           value="classic"
         >
           {t(($) => $['view.classic'])}
         </SegmentedControlItem>
         <SegmentedControlItem
-          className="h-5.5 rounded-md py-px pr-5 pl-1 system-xs-medium"
+          className="h-5.5 rounded-md py-px ps-1 pe-5 system-xs-medium focus-visible:ring-inset"
           value="agent"
         >
           {t(($) => $['view.agent'])}
-          <span className="ml-1 inline-flex items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-px system-2xs-medium-uppercase text-text-tertiary">
+          <span className="ms-1 inline-flex items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-px system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['view.beta'])}
           </span>
         </SegmentedControlItem>
@@ -67,7 +67,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           render={
             <button
               type="button"
-              className="absolute top-1.25 right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary"
+              className="absolute inset-e-1 top-1.25 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-question-line size-3.5" />
             </button>
@@ -79,7 +79,12 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           className="relative flex max-h-[calc(100dvh-2rem)] min-h-40.5 w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
           <PopoverArrow className="h-[9.728px] w-[19.456px] overflow-clip data-[side=bottom]:top-[-9.728px] data-[side=top]:bottom-[-9.728px] data-[side=top]:rotate-180">
-            <span className="absolute bottom-0 left-1/2 size-[13.757px] -translate-x-1/2 translate-y-1/2 -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
+            <svg aria-hidden="true" viewBox="0 0 20 10" className="block size-full">
+              <path
+                d="M-1 11.7 8.94 1.76a1.5 1.5 0 0 1 2.12 0L21 11.7"
+                className="fill-components-panel-bg stroke-divider-subtle"
+              />
+            </svg>
           </PopoverArrow>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">

@@ -185,17 +185,6 @@ class TestListAllTriggerProviders:
         mock_list.assert_called_once_with("t1")
 
 
-class TestListTriggersByProvider:
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_returns_provider_events(self, mock_get: MagicMock) -> None:
-        ctrl = make_controller()
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.list_triggers_by_provider("t1", PID)
-
-        assert result == ctrl.get_events()
-
-
 class TestSubscribeTrigger:
     @patch.object(TriggerManager, "get_trigger_provider")
     def test_delegates_with_correct_args(self, mock_get: MagicMock) -> None:
@@ -216,43 +205,3 @@ class TestSubscribeTrigger:
 
         assert result is expected
         ctrl.subscribe_trigger.assert_called_once()
-
-
-class TestUnsubscribeTrigger:
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_delegates_with_correct_args(self, mock_get: MagicMock) -> None:
-        ctrl = MagicMock()
-        expected = MagicMock()
-        ctrl.unsubscribe_trigger.return_value = expected
-        mock_get.return_value = ctrl
-        sub = make_subscription()
-
-        result = TriggerManager.unsubscribe_trigger(
-            tenant_id="t1",
-            user_id="u1",
-            provider_id=PID,
-            subscription=sub,
-            credentials={"token": "x"},
-            credential_type=CredentialType.API_KEY,
-        )
-
-        assert result is expected
-
-
-class TestRefreshTrigger:
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_delegates_with_correct_args(self, mock_get: MagicMock) -> None:
-        ctrl = MagicMock()
-        expected = make_subscription()
-        ctrl.refresh_trigger.return_value = expected
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.refresh_trigger(
-            tenant_id="t1",
-            provider_id=PID,
-            subscription=make_subscription(),
-            credentials={"token": "x"},
-            credential_type=CredentialType.API_KEY,
-        )
-
-        assert result is expected

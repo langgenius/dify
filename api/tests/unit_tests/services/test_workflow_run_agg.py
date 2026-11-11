@@ -22,7 +22,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -61,15 +60,15 @@ from models.workflow import (
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input_v2.form_repository import Form
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerExecutionRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.agent.workspace_service import AgentWorkspaceService
-from services.workflow.entities import WorkflowScheduleCFSPlanEntity
+from services.trigger.execution_layer import TriggerPostLayer
+from services.trigger.execution_store import TriggerExecutionRef
 from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfig
 from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
 from services.workflow_run_agg import WorkflowRunAgg
-from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
-from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
     _build_app_generate_entity,
     _document,
@@ -607,11 +606,18 @@ class TestWorkflowRunAggCases:
             session.add(trigger_log)
             session.commit()
         start_time = datetime.now(UTC) - timedelta(seconds=10)
-        plan = AsyncWorkflowCFSPlanEntity(
-            schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.Nop,
-            queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
+        runner._graph_engine_layers = (
+            TriggerPostLayer(
+                logs=SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=sessionmaker(sqlite_engine)),
+                log=TriggerExecutionRef(
+                    id=trigger_log.id,
+                    tenant_id=trigger_log.tenant_id,
+                    app_id=trigger_log.app_id,
+                    queue_name=trigger_log.queue_name,
+                ),
+                start_time=start_time,
+            ),
         )
-        runner._graph_engine_layers = (TriggerPostLayer(plan, start_time, trigger_log.id),)
         WorkflowRunAgg.run(
             runner,
             PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id),
