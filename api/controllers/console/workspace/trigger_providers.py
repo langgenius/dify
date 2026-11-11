@@ -33,12 +33,6 @@ from controllers.console.wraps import (
 )
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import (
-    SubscriptionBuilderApiEntity,
-    TriggerProviderApiEntity,
-    TriggerProviderSubscriptionApiEntity,
-)
-from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -46,6 +40,12 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.provider_ids import TriggerProviderID
+from services.trigger.api_entities import (
+    SubscriptionBuilderApiEntity,
+    TriggerProviderApiEntity,
+    TriggerProviderSubscriptionApiEntity,
+)
+from services.trigger.builder_entities import RequestLog, SubscriptionBuilderUpdater
 from services.trigger.oauth_client_service import TriggerOAuthClientChangedError as TriggerOAuthClientChanged
 from services.trigger.oauth_client_service import TriggerOAuthClientConfigError
 from services.trigger.oauth_service import (

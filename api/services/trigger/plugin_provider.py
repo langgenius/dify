@@ -1,5 +1,5 @@
 """
-Trigger Provider Controller for managing trigger providers
+Plugin trigger schema access and package-pinned dispatch.
 """
 
 import logging
@@ -16,27 +16,27 @@ from core.plugin.entities.request import (
 )
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.plugin.plugin_service import PluginService
-from core.trigger.entities.api_entities import EventApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     EventEntity,
     EventParameter,
     ProviderConfig,
     Subscription,
     SubscriptionConstructor,
-    TriggerCreationMethod,
     TriggerProviderEntity,
     TriggerProviderIdentity,
     UnsubscribeResult,
 )
 from core.trigger.errors import TriggerProviderCredentialValidationError
 from models.provider_ids import TriggerProviderID
+from services.trigger.api_entities import EventApiEntity, TriggerProviderApiEntity
+from services.trigger.builder_entities import TriggerCreationMethod
 
 logger = logging.getLogger(__name__)
 
 
-class PluginTriggerProviderController:
+class PluginTriggerProvider:
     """
-    Controller for plugin trigger providers
+    Runtime for a plugin trigger provider in one workspace.
     """
 
     def __init__(
@@ -46,7 +46,7 @@ class PluginTriggerProviderController:
         plugin_unique_identifier: str,
         provider_id: TriggerProviderID,
         tenant_id: str,
-    ):
+    ) -> None:
         """
         Initialize plugin trigger provider controller
 
@@ -56,11 +56,11 @@ class PluginTriggerProviderController:
         :param provider_id: Provider ID
         :param tenant_id: Tenant ID
         """
-        self.entity = entity
-        self.tenant_id = tenant_id
-        self.plugin_id = plugin_id
-        self.provider_id = provider_id
-        self.plugin_unique_identifier = plugin_unique_identifier
+        self.entity: TriggerProviderEntity = entity
+        self.tenant_id: str = tenant_id
+        self.plugin_id: str = plugin_id
+        self.provider_id: TriggerProviderID = provider_id
+        self.plugin_unique_identifier: str = plugin_unique_identifier
 
     def get_provider_id(self) -> TriggerProviderID:
         """
@@ -382,4 +382,4 @@ class PluginTriggerProviderController:
         return Subscription.model_validate(response.subscription)
 
 
-__all__ = ["PluginTriggerProviderController"]
+__all__ = ["PluginTriggerProvider"]
