@@ -289,8 +289,8 @@ def _get_message_context_by_app(
 ) -> MessageContext | None:
     """Look up a non-suspended or running Advanced Chat reconnect snapshot by app and workflow run.
 
-    This compatibility path applies only when no resumption context is expected. The app-scoped query is not optimal;
-    a dedicated index or stronger lookup key would be preferable.
+    This compatibility path applies only when no resumption context is expected. Its predicates match
+    ``message_app_workflow_run_idx``; selecting the latest matching message still requires ordering by creation time.
     """
     with session_maker() as session:
         stmt = (
