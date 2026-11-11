@@ -37,7 +37,7 @@ Example:
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, TypedDict
+from typing import Any, Protocol, TypedDict
 
 from sqlalchemy.orm import Session
 
@@ -568,6 +568,47 @@ class APIWorkflowRunRepository(Protocol):
         """
         ...
 
+    def pause_workflow_run(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+        *,
+        outputs: Mapping[str, Any] | None,
+        total_tokens: int,
+        total_steps: int,
+        exceptions_count: int,
+    ) -> WorkflowPauseEntity:
+        """Persist a workflow pause as a single atomic transition.
+
+        This is the only transaction owner for the pause transition: in one
+        database transaction it updates the workflow run row (status to
+        ``PAUSED``, outputs, and execution statistics), replaces the
+        ``WorkflowPause`` and ``WorkflowPauseReason`` records of the run, and
+        commits the reference to the resumption snapshot.
+
+        The immutable snapshot object is written to storage *before* the
+        transaction commits its reference; the superseded snapshot object is
+        deleted on a best-effort basis while its record is replaced inside the
+        same transaction. A failed cleanup may leave an orphan object but must
+        not invalidate workflow state.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run to pause
+            state_owner_user_id: User ID who owns the pause state for file storage
+            state: Serialized workflow execution state (JSON string)
+            pause_reasons: Reasons why the workflow is pausing
+            outputs: Workflow run outputs to persist with the paused status
+            total_tokens: Accumulated token usage at pause time
+            total_steps: Accumulated node steps at pause time
+            exceptions_count: Accumulated exceptions at pause time
+
+        Returns:
+            WorkflowPauseEntity representing the created pause state
+        """
+        ...
+
     def create_workflow_pause(
         self,
         workflow_run_id: str,
@@ -604,7 +645,13 @@ class APIWorkflowRunRepository(Protocol):
         ...
 
     def stop_paused_workflow_task(
-        self, *, tenant_id: str, app_id: str, task_id: str, owner: tuple[CreatorUserRole, str] | None
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        force: bool = False,
     ) -> WorkflowRun | None:
         """Admit a task by its durable owner, record stop intent, and finish a paused run."""
         ...

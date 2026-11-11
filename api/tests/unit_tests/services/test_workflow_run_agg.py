@@ -447,6 +447,10 @@ class TestWorkflowRunAggCases:
             raise RuntimeError("pause-write-failed")
 
         monkeypatch.setattr(
+            "repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository.pause_workflow_run",
+            fail_pause,
+        )
+        monkeypatch.setattr(
             "repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository.create_workflow_pause",
             fail_pause,
         )
