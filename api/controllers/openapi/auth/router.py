@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import canonical_view_args
 from controllers.openapi.auth.pipelines import pipeline_for_subject
 from controllers.openapi.auth.requirements import assert_license_valid
 from controllers.openapi.auth.resource_access import authenticate_resource_token
@@ -26,7 +27,7 @@ class AuthRouter:
         def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(view)
             def decorated(*args: Any, **kwargs: Any) -> Any:
-                return self._execute(spec, partial(view, *args, **kwargs))
+                return self._execute(spec, partial(view, *args, **canonical_view_args(kwargs)))
 
             return decorated
 
@@ -67,7 +68,7 @@ class AuthRouter:
             ctx = Context(
                 subject,
                 session,
-                dict(request.view_args or {}),
+                canonical_view_args(request.view_args or {}),
                 trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
             )
             try:

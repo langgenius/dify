@@ -34,15 +34,8 @@ class AgentAccessFilter:
 
     def apply_to_app_params(self, params: AppListBaseParams, *, tenant_id: str, session: Session) -> None:
         """Translate visible Agent ids to their Agent App ids before pagination."""
-        if self.accessible_agent_ids is None:
-            return
-        if not self.accessible_agent_ids:
-            params.accessible_app_ids = []
-            return
-
-        params.accessible_app_ids = AgentRosterService(session).load_app_ids_for_agents(
-            tenant_id=tenant_id,
-            agent_ids=sorted(self.accessible_agent_ids),
+        AgentRosterService(session).limit_to_accessible_agents(
+            params, tenant_id=tenant_id, accessible_agent_ids=self.accessible_agent_ids
         )
 
 
