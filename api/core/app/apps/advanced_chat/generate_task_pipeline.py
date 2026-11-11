@@ -749,6 +749,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle workflow failed events."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
+        replacement = self._base_task_pipeline.workflow_moderation_replacement(event.error)
+        if replacement is not None:
+            # Terminal workflow events stop the public topic reader. Emit and
+            # persist the replacement before that boundary so WebApp clients can
+            # actually receive the configured reply and message completion.
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session, graph_runtime_state=validated_state)
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
 
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
@@ -758,21 +774,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             error=event.error,
             exceptions_count=event.exceptions_count,
         )
-
-        replacement = self._base_task_pipeline.workflow_moderation_replacement(event.error)
         if replacement is not None:
-            had_answer = bool(self._task_state.answer)
-            self._task_state.answer = replacement[0]
-            with self._database_session() as session:
-                self._save_message(session=session, graph_runtime_state=validated_state)
             yield workflow_finish_resp
-            if had_answer:
-                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
-            else:
-                yield self._message_cycle_manager.message_to_stream_response(
-                    answer=replacement[0], message_id=self._message_id
-                )
-            yield self._message_end_to_stream_response()
             return
 
         with self._database_session() as session:
