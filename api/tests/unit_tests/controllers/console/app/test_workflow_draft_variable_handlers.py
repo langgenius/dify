@@ -1,11 +1,12 @@
 """Direct-call tests for the app draft-variable handlers converted to `@with_session`."""
 
 import json
+from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from controllers.console.app import workflow_draft_variable as module
@@ -81,9 +82,15 @@ def _make_system_variable(variable_id: str, *, name: str) -> WorkflowDraftVariab
     return variable
 
 
+@dataclass
+class _Database:
+    engine: Engine
+
+
 @pytest.fixture
-def app() -> Flask:
+def app(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Flask:
     app = Flask("test_workflow_draft_variable_handlers")
+    monkeypatch.setattr("services.workflow_service.db", _Database(sqlite_engine))
     app.config["TESTING"] = True
     return app
 
@@ -169,12 +176,7 @@ def test_variable_reset_returns_default_value(app: Flask, sqlite_session: Sessio
     api = module.VariableResetApi()
     handler = unwrap(api.put)
 
-    workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = workflow
-    with (
-        app.test_request_context("/", method="PUT"),
-        patch.object(module, "WorkflowService", return_value=workflow_service),
-    ):
+    with app.test_request_context("/", method="PUT"):
         response = handler(api, sqlite_session, _make_account(), app_model=_make_app_model(), variable_id="var-1")
 
     # A node variable without an associated execution has no default to restore, so the
@@ -196,12 +198,7 @@ def test_conversation_variable_collection_get_lists_conversation_variables(app: 
     api = module.ConversationVariableCollectionApi()
     handler = unwrap(api.get)
 
-    workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = workflow
-    with (
-        app.test_request_context("/"),
-        patch.object(module, "WorkflowService", return_value=workflow_service),
-    ):
+    with app.test_request_context("/"):
         result = handler(api, sqlite_session, _make_account(), app_model=_make_app_model())
 
     assert [item["id"] for item in result["items"]] == ["conv-1"]

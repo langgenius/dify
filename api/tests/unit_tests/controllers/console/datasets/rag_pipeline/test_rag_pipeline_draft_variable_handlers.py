@@ -1,11 +1,12 @@
 """Direct-call tests for the rag-pipeline draft-variable handlers converted to `@with_session`."""
 
 import json
+from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_draft_variable as module
@@ -67,9 +68,15 @@ def _make_node_variable(variable_id: str, *, node_id: str = "extract-1") -> Work
     return variable
 
 
+@dataclass
+class _Database:
+    engine: Engine
+
+
 @pytest.fixture
-def app() -> Flask:
+def app(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Flask:
     app = Flask("test_rag_pipeline_draft_variable_handlers")
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline.db", _Database(sqlite_engine))
     app.config["TESTING"] = True
     return app
 
@@ -132,12 +139,7 @@ def test_variable_reset_removes_variable_without_default(app: Flask, sqlite_sess
     api = module.RagPipelineVariableResetApi()
     handler = unwrap(api.put)
 
-    rag_pipeline_service = MagicMock()
-    rag_pipeline_service.get_draft_workflow.return_value = workflow
-    with (
-        app.test_request_context("/", method="PUT"),
-        patch.object(module, "RagPipelineService", return_value=rag_pipeline_service),
-    ):
+    with app.test_request_context("/", method="PUT"):
         response = handler(api, sqlite_session, _make_account(), pipeline=_make_pipeline(), variable_id="var-1")
 
     assert response.status_code == 204
