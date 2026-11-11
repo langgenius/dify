@@ -210,7 +210,7 @@ class DocumentValidationTestDataFactory:
             data_source=data_source,
             process_rule=process_rule,
             doc_form=doc_form,
-            indexing_technique=indexing_technique.value,
+            indexing_technique=indexing_technique,
             **kwargs,
         )
 

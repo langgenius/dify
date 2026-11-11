@@ -27733,6 +27733,11 @@ This invitation was sent to another account. Please sign in with the invited acc
 
 #### KnowledgeConfig
 
+Document ingestion configuration with a validated indexing technique.
+
+The indexing technique remains an IndexTechniqueType enum after validation.
+JSON serialization preserves its public economy or high_quality value.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data_source | [DataSource](#datasource) | Document data source configuration. | No |
@@ -27741,7 +27746,7 @@ This invitation was sent to another account. Please sign in with the invited acc
 | duplicate | boolean, <br>**Default:** true | Whether duplicate document content is allowed. | No |
 | embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted.<br>*Enum:* `"economy"`, `"high_quality"` | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | Yes |
 | is_multimodal | boolean | Whether the document uses multimodal indexing. | No |
 | name | string | Document name. | No |
 | original_document_id | string | Original document ID for replacement updates. | No |
