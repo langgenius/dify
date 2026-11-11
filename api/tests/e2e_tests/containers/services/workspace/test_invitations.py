@@ -137,6 +137,42 @@ def test_previous_workspace_scoped_token_format_can_be_accepted_and_revoked(
     assert services.workspaces.members.get_role(tenant.id, invited.id) == TenantAccountRole.NORMAL
 
 
+@pytest.mark.usefixtures("flask_app_with_containers")
+def test_subject_revocation_without_an_active_invitation_has_a_bounded_ttl() -> None:
+    workspace_id = str(uuid4())
+    account_id = str(uuid4())
+    state_key = f"member_invite:subject:{workspace_id}:{account_id}:state"
+    store = RedisInvitationTokenStore(redis=redis_client)
+    try:
+        store.revoke_subject(workspace_id, account_id)
+
+        ttl = redis_client.pttl(state_key)
+        assert redis_client.get(state_key) == b"revoked"
+        assert 0 < ttl <= dify_config.INVITE_EXPIRY_HOURS * 60 * 60 * 1000
+    finally:
+        redis_client.delete(state_key)
+
+
+@pytest.mark.usefixtures("flask_app_with_containers")
+def test_subject_revocation_preserves_an_active_invitation_remaining_ttl() -> None:
+    workspace_id = str(uuid4())
+    account_id = str(uuid4())
+    state_key = f"member_invite:subject:{workspace_id}:{account_id}:state"
+    store = RedisInvitationTokenStore(redis=redis_client)
+    try:
+        redis_client.set(state_key, "active-token", px=60_000)
+        ttl_before = redis_client.pttl(state_key)
+
+        store.revoke_subject(workspace_id, account_id)
+
+        ttl_after = redis_client.pttl(state_key)
+        assert redis_client.get(state_key) == b"revoked"
+        assert 0 < ttl_after <= ttl_before
+        assert ttl_after >= ttl_before - 2_000
+    finally:
+        redis_client.delete(state_key)
+
+
 @pytest.mark.parametrize("reason", ["expired", "missing-account", "missing-workspace", "archived", "wrong-email"])
 def test_invalid_invitation_state_is_rejected(
     workspace: tuple[Tenant, Account, Account], db_session_with_containers: Session, reason: str

@@ -5,10 +5,10 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.variables.segments import StringSegment
 from models import Tenant
-from models.enums import CreatorUserRole
 from models.model import App, UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from tasks.remove_app_and_related_data_task import (
@@ -363,21 +363,23 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
         assert "test/file2.json" in storage_keys_deleted
 
     @patch("extensions.ext_storage.storage")
-    def test_delete_draft_variables_storage_failure_continues_cleanup(self, mock_storage, setup_offload_test_data):
+    def test_delete_draft_variables_storage_failure_preserves_rows_for_retry(
+        self, mock_storage, setup_offload_test_data
+    ):
         data = setup_offload_test_data
         app_id = data["app"].id
         upload_file_ids = [uf.id for uf in data["upload_files"]]
         variable_file_ids = [vf.id for vf in data["variable_files"]]
-        mock_storage.delete.side_effect = [Exception("Storage error"), None]
+        mock_storage.delete.side_effect = Exception("Storage error")
 
-        deleted_count = delete_draft_variables_batch(app_id, batch_size=10)
-        assert deleted_count == 3
+        with pytest.raises(Exception, match="Storage error"):
+            delete_draft_variables_batch(app_id, batch_size=10)
 
         with session_factory.create_session() as session:
             draft_vars_after = session.scalar(
                 select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
             )
-        assert draft_vars_after == 0
+        assert draft_vars_after == 3
 
         with session_factory.create_session() as session:
             var_files_after = session.scalar(
@@ -388,8 +390,12 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
             upload_files_after = session.scalar(
                 select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
             )
-        assert var_files_after == 0
-        assert upload_files_after == 0
+        assert var_files_after == 2
+        assert upload_files_after == 2
+
+        mock_storage.reset_mock()
+        mock_storage.delete.side_effect = [FileNotFoundError("test/file1.json"), None]
+        assert delete_draft_variables_batch(app_id, batch_size=10) == 3
 
         assert mock_storage.delete.call_count == 2
 

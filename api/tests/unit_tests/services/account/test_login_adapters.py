@@ -5,7 +5,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import override
+from typing import Never, override
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -30,19 +30,30 @@ from services.account.adapters import (
     RBACWorkspaceMemberAccessSync,
     RedisInvitationTokenStore,
 )
-from services.account_activation_service import AccountActivationService
+from services.account_activation_service import (
+    AccountActivationRepository,
+    AccountActivationService,
+    InvitationTokenStore,
+)
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
-from services.entities.account_activation_entities import InvitationToken
+from services.entities.account_activation_entities import (
+    AccountInvitation,
+    AccountSetup,
+    ActivationPersistenceResult,
+    InvitationLookup,
+    InvitationToken,
+)
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeChallengeStatus,
     PasswordLoginCommand,
     RefreshAccountStatus,
 )
+from services.errors.workspace import WorkspaceInvitationQuotaError
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 from services.workspace import gateways
 from tests.helpers.unit.account_domain import AccountDomain
@@ -79,6 +90,71 @@ class FakeTask:
         self.calls.append(kwargs)
 
 
+@dataclass
+class _InvitationQuota:
+    error: WorkspaceInvitationQuotaError | None = None
+    checked_workspaces: list[str] = field(default_factory=list)
+
+    @contextmanager
+    def acquire(self, workspace_id: str) -> Generator[object]:
+        yield workspace_id
+
+    def check_invitation_quota(self, workspace_id: str) -> None:
+        self.checked_workspaces.append(workspace_id)
+        if self.error is not None:
+            raise self.error
+
+
+class _UnexpectedInvitationTokenStore(InvitationTokenStore):
+    def _unexpected(self) -> Never:
+        raise AssertionError("invitation token store should not be used")
+
+    def claim(self, invitation: InvitationLookup, *, require_unused_membership: bool) -> str | None:
+        del invitation, require_unused_membership
+        return self._unexpected()
+
+    def release(self, invitation: InvitationLookup, claim_id: str) -> None:
+        del invitation, claim_id
+        self._unexpected()
+
+    def complete_activation(self, invitation: InvitationLookup, claim_id: str) -> None:
+        del invitation, claim_id
+        self._unexpected()
+
+    def complete_membership(self, invitation: InvitationLookup, claim_id: str) -> None:
+        del invitation, claim_id
+        self._unexpected()
+
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
+        del invitation
+        return self._unexpected()
+
+    def find(self, invitation: InvitationLookup) -> InvitationToken | None:
+        del invitation
+        return self._unexpected()
+
+    def revoke_subject(self, workspace_id: str, account_id: str) -> None:
+        del workspace_id, account_id
+        self._unexpected()
+
+
+class _UnexpectedAccountActivationRepository(AccountActivationRepository):
+    def resolve(self, invitation: InvitationToken) -> AccountInvitation | None:
+        del invitation
+        raise AssertionError("account activation repository should not be used")
+
+    def activate(
+        self,
+        invitation: AccountInvitation,
+        *,
+        role: str,
+        setup: AccountSetup | None,
+        create_membership: bool = True,
+    ) -> ActivationPersistenceResult | None:
+        del invitation, role, setup, create_membership
+        raise AssertionError("account activation repository should not be used")
+
+
 def _persist_account(session: Session) -> Account:
     account = Account(name="User", email="user@example.com")
     account.id = "account-1"
@@ -87,14 +163,45 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
+@pytest.mark.parametrize("seats", [False, True])
+def test_invitation_gateway_translates_membership_quota_for_login(seats: bool) -> None:
+    quotas = _InvitationQuota(error=WorkspaceInvitationQuotaError(seats=seats))
+    tokens = _UnexpectedInvitationTokenStore()
+    accounts = _UnexpectedAccountActivationRepository()
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=tokens,
+        accounts=accounts,
+        activation=AccountActivationService(
+            tokens=tokens,
+            accounts=accounts,
+            workspace_policy=DeploymentWorkspaceInvitePolicy(),
+            eligibility=BillingAccountActivationEligibility(enabled=False),
+            invitation_admission=quotas,
+            membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+            member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+        ),
+        quotas=quotas,
+    )
+
+    with pytest.raises(account_errors.LoginInvitationQuotaError) as raised:
+        gateway.check_membership_quota("workspace-1")
+
+    assert raised.value.seats is seats
+    assert quotas.checked_workspaces == ["workspace-1"]
+
+
 def test_invitation_gateway_restores_editor_membership_without_revoking_token(
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     redis, commands = redis_transport
-    commands.return_value = (
+    payload = (
         b'{"account_id":"account-1","email":"user@example.com","workspace_id":"workspace-1",'
         b'"role":"editor","requires_setup":false}'
+    )
+    commands.side_effect = lambda command, key, *_args, **_kwargs: (
+        None if command == "GET" and str(key).endswith(":state") else payload
     )
     with sqlite_session_factory.begin() as session:
         account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
@@ -103,12 +210,20 @@ def test_invitation_gateway_restores_editor_membership_without_revoking_token(
         tenant.id = "workspace-1"
         session.add_all([account, tenant])
     tokens = RedisInvitationTokenStore(redis=redis)
+    monkeypatch.setattr(
+        tokens,
+        "claim",
+        lambda _invitation, *, require_unused_membership: "claim-1" if require_unused_membership else None,
+    )
+    monkeypatch.setattr(tokens, "complete_membership", lambda _invitation, _claim_id: None)
     accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    quotas = _InvitationQuota()
     activation = AccountActivationService(
         tokens=tokens,
         accounts=accounts,
         workspace_policy=DeploymentWorkspaceInvitePolicy(),
         eligibility=BillingAccountActivationEligibility(enabled=False),
+        invitation_admission=quotas,
         membership_cache=BillingWorkspaceMembershipCache(enabled=False),
         member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
     )
@@ -116,11 +231,9 @@ def test_invitation_gateway_restores_editor_membership_without_revoking_token(
         tokens=tokens,
         accounts=accounts,
         activation=activation,
+        quotas=quotas,
     )
 
-    commands.side_effect = lambda command, *_args, **_kwargs: (
-        3600 if command == "PTTL" else b"OK" if command == "SET" else commands.return_value
-    )
     assert gateway.ensure_membership(account_id="different-account", email="user@example.com", token="token-1") is False
     with sqlite_session_factory() as session:
         assert session.scalar(select(TenantAccountJoin)) is None
@@ -143,6 +256,7 @@ def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     redis, commands = redis_transport
     config_overrides(REDIS_KEY_PREFIX="enterprise-a")
@@ -185,7 +299,14 @@ def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
             requires_setup=False,
         )
     )
+    monkeypatch.setattr(
+        tokens,
+        "claim",
+        lambda _invitation, *, require_unused_membership: "claim-1" if require_unused_membership else None,
+    )
+    monkeypatch.setattr(tokens, "complete_membership", lambda _invitation, _claim_id: None)
     activation_accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    quotas = _InvitationQuota()
     gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
         tokens=tokens,
         accounts=activation_accounts,
@@ -194,9 +315,11 @@ def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
             accounts=activation_accounts,
             workspace_policy=DeploymentWorkspaceInvitePolicy(),
             eligibility=BillingAccountActivationEligibility(enabled=False),
+            invitation_admission=quotas,
             membership_cache=BillingWorkspaceMembershipCache(enabled=False),
             member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
         ),
+        quotas=quotas,
     )
     dependencies = Dependencies()
     dependencies.accounts = SQLAlchemyAccountRepository(sqlite_session_factory)  # type: ignore[assignment]

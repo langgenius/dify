@@ -35,6 +35,7 @@ from controllers.console.error import (
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
     SeatsLimitExceeded,
+    WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
@@ -50,6 +51,7 @@ from services.account_errors import (
     EmailRegistrationSendIPLimitedError,
     EmailRegistrationSendRateLimitError,
     EmailRegistrationVerificationLimitError,
+    EmailRegistrationWorkspaceLimitError,
     InvalidEmailRegistrationAddressError,
     InvalidEmailRegistrationCodeError,
     InvalidEmailRegistrationTokenError,
@@ -255,6 +257,11 @@ def test_register_delegates_and_serializes_tokens(app: Flask, service: AccountEm
         ),
         pytest.param(AccountEmailAlreadyInUseError(), EmailAlreadyInUseError, id="email-in-use"),
         pytest.param(EmailRegistrationSeatsLimitError(), SeatsLimitExceeded, id="seat-limit"),
+        pytest.param(
+            EmailRegistrationWorkspaceLimitError(),
+            WorkspacesLimitExceeded,
+            id="workspace-limit",
+        ),
         pytest.param(AccountEmailFrozenError(), AccountInFreezeError, id="frozen"),
         pytest.param(AccountEmailDomainSuspendedError(), EmailDomainSuspendedError, id="suspended-domain"),
     ],

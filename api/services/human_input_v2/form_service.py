@@ -47,7 +47,6 @@ from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import naive_utc_now
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.contact import Contact as ResolvedContact
 from repositories.human_input_v2.contact import ContactQuery, ContactType
 from repositories.human_input_v2.delivery_repository import (
@@ -69,6 +68,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 
 from .delivery_service import ResolvedMessageTemplate, build_form_request_url
 
@@ -446,7 +446,7 @@ def handle_form_timeouts(
     """
     resume = False
     with session_factory() as session, session.begin():
-        workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+        workflow_run_repository = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_factory)
         # Keep the run-before-form lock order shared with submission.
         run = workflow_run_repository.get_workflow_run_by_id_for_update(
             session, tenant_id=tenant_id, app_id=app_id, run_id=workflow_run_id

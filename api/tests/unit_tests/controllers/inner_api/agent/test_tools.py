@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ from redis.lock import Lock
 from sqlalchemy.orm import Session
 
 from controllers.inner_api import bp as inner_api_bp
+from controllers.inner_api.agent import tools as tools_module
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -19,12 +21,41 @@ from extensions.application_services.tools import resolve_tool_credentials
 from extensions.ext_redis import RedisClientWrapper
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider
+from services.agent_tool_inner_service import AgentToolInnerService
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.credentials.tool_runtime import ToolCredentialRefreshError
 from services.credentials.tool_runtime_adapters import ProviderToolCredentialRuntime
-from services.entities.agent_tool_inner import AgentToolInvokeResponse
+from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
+
+
+@dataclass(slots=True)
+class _AgentToolsStub:
+    response: AgentToolInvokeResponse | None = None
+    error: AgentToolInnerServiceError | None = None
+    calls: list[tuple[Session, AgentToolInvokeRequest]] = field(default_factory=list)
+
+    def invoke(self, *, session: Session, request: AgentToolInvokeRequest) -> AgentToolInvokeResponse:
+        self.calls.append((session, request))
+        if self.error is not None:
+            raise self.error
+        assert self.response is not None
+        return self.response
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesStub:
+    agent_tools: _AgentToolsStub | AgentToolInnerService
+
+
+@pytest.fixture
+def agent_tools(monkeypatch: pytest.MonkeyPatch) -> _AgentToolsStub:
+    service = _AgentToolsStub()
+    services = _ApplicationServicesStub(agent_tools=service)
+    monkeypatch.setattr(tools_module, "application_services", lambda: services)
+    return service
 
 
 def _headers(api_key: str | None = "inner-key") -> dict[str, str]:
@@ -69,16 +100,13 @@ def _agent_inner_auth() -> Generator[None]:
         yield
 
 
-def test_post_returns_service_response() -> None:
+def test_post_returns_service_response(agent_tools: _AgentToolsStub) -> None:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)
 
-    with (
-        _agent_inner_auth(),
-        patch("controllers.inner_api.agent.tools.AgentToolInnerService.invoke") as mock_invoke,
-    ):
-        mock_invoke.return_value = AgentToolInvokeResponse(
+    with _agent_inner_auth():
+        agent_tools.response = AgentToolInvokeResponse(
             messages=[{"type": "text", "message": {"text": "ok"}}],
             observation="ok",
             metadata={"provider_type": "plugin", "tool_name": "search"},
@@ -94,6 +122,8 @@ def test_post_returns_service_response() -> None:
     body = response.get_json()
     assert body["observation"] == "ok"
     assert body["metadata"]["provider_type"] == "plugin"
+    assert len(agent_tools.calls) == 1
+    assert agent_tools.calls[0][1].caller.app_id == "app-1"
 
 
 def test_post_returns_400_for_invalid_body() -> None:
@@ -113,16 +143,15 @@ def test_post_returns_400_for_invalid_body() -> None:
     assert body["code"] == "invalid_request"
 
 
-def test_post_preserves_service_error_status_code_and_description() -> None:
+def test_post_preserves_service_error_status_code_and_description(
+    agent_tools: _AgentToolsStub,
+) -> None:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)
 
-    with (
-        _agent_inner_auth(),
-        patch("controllers.inner_api.agent.tools.AgentToolInnerService.invoke") as mock_invoke,
-    ):
-        mock_invoke.side_effect = AgentToolInnerServiceError(
+    with _agent_inner_auth():
+        agent_tools.error = AgentToolInnerServiceError(
             error_code="app_tenant_mismatch",
             description="App does not belong to the caller tenant.",
             status_code=403,
@@ -137,6 +166,7 @@ def test_post_preserves_service_error_status_code_and_description() -> None:
     body = response.get_json()
     assert body["code"] == "app_tenant_mismatch"
     assert body["message"] == "App does not belong to the caller tenant."
+    assert len(agent_tools.calls) == 1
 
 
 @pytest.mark.parametrize("credential_id", [None, "1a1db43c-e9d8-4ef2-af8f-38b25424a4ad"])
@@ -213,6 +243,10 @@ def test_post_preserves_refresh_error_classification_through_real_credential_res
     monkeypatch.setattr("extensions.application_services.tools.redis_client", redis)
     monkeypatch.setattr("core.helper.provider_cache.redis_client", redis)
     monkeypatch.setattr(ToolManager, "_credential_resolver", resolve_tool_credentials)
+    services = _ApplicationServicesStub(
+        agent_tools=AgentToolInnerService(knowledge_retrieval=make_knowledge_retriever())
+    )
+    monkeypatch.setattr(tools_module, "application_services", lambda: services)
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)

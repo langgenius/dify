@@ -19,6 +19,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user_id,
 )
+from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentAppComposerResponse,
     AgentComposerCandidatesResponse,
@@ -46,7 +47,6 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
-from services.snippet_service import SnippetService
 
 register_schema_models(
     console_ns, ComposerSavePayload, WorkflowAgentComposerQuery, WorkflowComposerCopyFromRosterPayload
@@ -307,7 +307,8 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
 
 
 def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUID) -> str:
-    snippet = SnippetService(session=session).get_snippet_by_id(
+    snippets = application_services().snippets.with_session(session)
+    snippet = snippets.get_snippet_by_id(
         snippet_id=str(snippet_id),  # pyrefly: ignore[unnecessary-type-conversion]
         tenant_id=tenant_id,
     )

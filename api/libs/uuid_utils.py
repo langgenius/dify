@@ -2,6 +2,51 @@ import secrets
 import struct
 import time
 import uuid
+from typing import Annotated
+
+from pydantic import AfterValidator, WithJsonSchema
+
+
+def uuid_value(value: str | uuid.UUID) -> str:
+    if isinstance(value, uuid.UUID):
+        return str(value)
+
+    if value == "":
+        return str(value)
+
+    try:
+        uuid_obj = uuid.UUID(value)
+        return str(uuid_obj)
+    except ValueError as caught_error:
+        error = f"{value} is not a valid uuid."
+        raise ValueError(error) from caught_error
+
+
+def normalize_uuid(value: str | uuid.UUID) -> str:
+    if not value:
+        return ""
+
+    try:
+        return uuid_value(value)
+    except ValueError as exc:
+        raise ValueError("must be a valid UUID") from exc
+
+
+def _strict_uuid(value: str | uuid.UUID) -> str:
+    if not value:
+        raise ValueError("must be a non-empty valid UUID")
+    try:
+        return uuid_value(value)
+    except ValueError as exc:
+        raise ValueError("must be a valid UUID") from exc
+
+
+UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
+UUIDStr = Annotated[
+    str,
+    AfterValidator(_strict_uuid),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
 
 # Reference for UUIDv7 specification:
 # RFC 9562, Section 5.7 - https://www.rfc-editor.org/rfc/rfc9562.html#section-5.7

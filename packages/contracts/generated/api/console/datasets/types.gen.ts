@@ -342,6 +342,11 @@ export type DatasetUpdatePayload = {
   } | null
 }
 
+export type DatasetConcurrentUpdateError = ErrorResponse & {
+  code: 'dataset_concurrent_update'
+  status: 409
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -466,6 +471,11 @@ export type SimpleResultMessageResponse = {
   result: string
 }
 
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status: 403
+}
+
 export type DocumentPipelineExecutionLogResponse = {
   datasource_info?: JsonValue | null
   datasource_node_id?: string | null
@@ -476,11 +486,6 @@ export type DocumentPipelineExecutionLogResponse = {
 export type DocumentIndexingError = ErrorResponse & {
   code: 'document_indexing'
   status: 400
-}
-
-export type ArchivedDocumentImmutableError = ErrorResponse & {
-  code: 'archived_document_immutable'
-  status: 403
 }
 
 export type DocumentRenamePayload = {
@@ -619,18 +624,14 @@ export type ExternalHitTestingResponse = {
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
-  external_retrieval_model?: {
-    score_threshold?: number
-    score_threshold_enabled?: boolean
-    top_k?: number
-  } | null
+  external_retrieval_model?: HitTestingExternalRetrievalModel | null
   query: string
   retrieval_model?: RetrievalModel | null
 }
 
 export type HitTestingResponse = {
   query: HitTestingQuery
-  records: Array<HitTestingRecord>
+  records: Array<HitTestingRecord | ExternalHitTestingRecordResponse>
 }
 
 export type CompletionRequestError = ErrorResponse & {
@@ -1035,6 +1036,12 @@ export type ExternalHitTestingRecordResponse = {
   } | null
   score?: number | null
   title?: string | null
+}
+
+export type HitTestingExternalRetrievalModel = {
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k?: number | null
 }
 
 export type HitTestingQuery = {
@@ -1979,6 +1986,7 @@ export type PatchDatasetsByDatasetIdData = {
 export type PatchDatasetsByDatasetIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  409: DatasetConcurrentUpdateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2442,7 +2450,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors = {
-  403: DatasetAccessDeniedError | ErrorResponse
+  403: ArchivedDocumentImmutableError | DatasetAccessDeniedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2531,33 +2539,6 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeRespons
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse =
   PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses]
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData = {
-  body?: never
-  path: {
-    action: string
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/processing/{action}'
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors = {
-  400: InvalidActionError | ErrorResponse
-  404: ErrorResponse
-  default: ErrorResponse
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionError =
-  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors]
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses = {
-  200: SimpleResultResponse
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse =
-  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameData = {
   body: DocumentRenamePayload
@@ -2755,7 +2736,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: ProviderNotInitializeError | ErrorResponse
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2947,6 +2928,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
+  400: InvalidActionError | ErrorResponse
   403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
@@ -2996,8 +2978,8 @@ export type PostDatasetsByDatasetIdExternalHitTestingData = {
 
 export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
   400: ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
   404: ErrorResponse
-  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3028,6 +3010,7 @@ export type PostDatasetsByDatasetIdHitTestingErrors = {
     | ProviderQuotaExceededError
     | ErrorResponse
   404: ErrorResponse
+  503: ErrorResponse
   default: ErrorResponse
 }
 
@@ -3290,7 +3273,7 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdNotionSyncErrors = {
-  403: DatasetAccessDeniedError | ErrorResponse
+  403: ArchivedDocumentImmutableError | DatasetAccessDeniedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3388,6 +3371,7 @@ export type PostDatasetsByDatasetIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdRetryErrors = {
+  400: InvalidActionError | ErrorResponse
   default: ErrorResponse
 }
 

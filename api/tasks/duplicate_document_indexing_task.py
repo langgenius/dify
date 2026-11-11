@@ -1,9 +1,11 @@
 import logging
 import time
 from collections.abc import Callable, Sequence
+from contextlib import ExitStack
 
 import click
 from celery import shared_task
+from redis.exceptions import RedisError
 from sqlalchemy import delete, select
 
 from configs import dify_config
@@ -12,18 +14,31 @@ from core.entities.document_task import DocumentTask
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
+    document_index_lock_name,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+@shared_task(
+    queue="dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=10,
+)
 def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     """
     Async process document
@@ -45,6 +60,8 @@ def _duplicate_document_indexing_task_with_tenant_queue(
 ):
     try:
         _duplicate_document_indexing_task(dataset_id, document_ids)
+    except (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError):
+        raise
     except Exception:
         logger.exception(
             "Error processing duplicate document indexing %s for tenant %s: %s",
@@ -79,6 +96,27 @@ def _duplicate_document_indexing_task_with_tenant_queue(
 
 
 def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[str]):
+    locks = RedisKnowledgeIndexingLock(redis=redis_client)
+    with ExitStack() as stack:
+        leases = {
+            document_id: stack.enter_context(
+                locks.hold(
+                    document_index_lock_name(document_id),
+                    timeout=600,
+                    blocking_timeout=5,
+                )
+            )
+            for document_id in sorted(set(document_ids))
+        }
+        _run_duplicate_document_indexing_task(dataset_id, document_ids, leases=leases)
+
+
+def _run_duplicate_document_indexing_task(
+    dataset_id: str,
+    document_ids: Sequence[str],
+    *,
+    leases: dict[str, KnowledgeIndexingLease],
+) -> None:
     documents: list[Document] = []
     start_at = time.perf_counter()
 
@@ -130,6 +168,8 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             )
 
             for document in documents:
+                lease = leases[document.id]
+                lease.assert_owned()
                 logger.info(click.style(f"Start process document: {document.id}", fg="green"))
 
                 # clean old data
@@ -150,11 +190,13 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                         delete_child_chunks=True,
                         session=session,
                     )
+                    lease.assert_owned()
 
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                         session.execute(segment_delete_stmt)
+                    lease.assert_owned()
                     session.commit()
 
                 document.indexing_status = IndexingStatus.PARSING
@@ -164,18 +206,31 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             document_refs = [DatasetRef(doc.tenant_id, doc.dataset_id).document(doc.id) for doc in documents]
             # Do not keep segment deletions or parsing status changes open during extraction.
             session.commit()
-            indexing_service.run(document_refs)
+            for document in documents:
+                leases[document.id].assert_owned()
+            indexing_service.run(
+                document_refs,
+                owned_leases={document.id: leases[document.id] for document in documents},
+            )
             end_at = time.perf_counter()
             logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:
             session.rollback()
             logger.info(click.style(str(ex), fg="yellow"))
+        except KnowledgeIndexingLeaseLostError:
+            session.rollback()
+            raise
         except Exception:
             session.rollback()
             logger.exception("duplicate_document_indexing_task failed, dataset_id: %s", dataset_id)
 
 
-@shared_task(queue="dataset")
+@shared_task(
+    queue="dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=10,
+)
 def normal_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Async process duplicate documents
@@ -191,7 +246,12 @@ def normal_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, doc
     )
 
 
-@shared_task(queue="priority_dataset")
+@shared_task(
+    queue="priority_dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=10,
+)
 def priority_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Async process duplicate documents

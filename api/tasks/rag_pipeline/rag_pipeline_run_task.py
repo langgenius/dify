@@ -15,21 +15,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.db.session_factory import get_session_maker
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from core.repositories.factory import DifyCoreRepositoryFactory
-from extensions.application_services.data_sources import build_data_source_credentials
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
-from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from services.file_service import FileService
-from services.workflow_run_agg import WorkflowRunAgg
+from repositories.workflow.factory import WorkflowRepositoryFactory
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +52,10 @@ def rag_pipeline_run_task(
 
     try:
         start_at = time.perf_counter()
-        rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
-            rag_pipeline_invoke_entities_file_id
+        file_service = application_services().files
+        rag_pipeline_invoke_entities_content = file_service.get_file_content(
+            tenant_id=tenant_id,
+            file_id=rag_pipeline_invoke_entities_file_id,
         )
         rag_pipeline_invoke_entities = _INVOKE_ENTITIES_ADAPTER.validate_json(rag_pipeline_invoke_entities_content)
 
@@ -119,8 +116,8 @@ def rag_pipeline_run_task(
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()
-        file_service = FileService(db.engine)
-        file_service.delete_file(rag_pipeline_invoke_entities_file_id)
+        file_service = application_services().files
+        file_service.delete_file(tenant_id=tenant_id, file_id=rag_pipeline_invoke_entities_file_id)
         db.session.close()
 
 
@@ -166,7 +163,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
                 # Create workflow repositories
                 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-                workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+                workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
                     session_factory=session_factory,
                     tenant_id=pipeline.tenant_id,
                     user=account,
@@ -175,12 +172,13 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 )
 
                 workflow_node_execution_repository = (
-                    DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    WorkflowRepositoryFactory.create_workflow_node_execution_repository(
                         session_factory=session_factory,
                         tenant_id=pipeline.tenant_id,
                         user=account,
                         app_id=entity.app_config.app_id,
                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+                        files=application_services().files,
                     )
                 )
 
@@ -193,11 +191,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 # Direct execution without creating another thread
                 # Since we're already in a thread pool, no need for nested threading
 
-                pipeline_generator = PipelineGenerator(
-                    execution_driver=WorkflowRunAgg.run,
-                    documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
-                    datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
-                )
+                pipeline_generator = application_services().knowledge.pipeline_generator
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
                     session=session,

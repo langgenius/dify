@@ -39,8 +39,9 @@ from controllers.openapi.human_input_form import (
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.nodes.human_input import ParagraphInputConfig, UserActionConfig
-from models.account import Account
-from models.enums import CreatorUserRole, EndUserType
+from enums.creator import CreatorUserRole
+from models.account import Account, Tenant
+from models.enums import EndUserType
 from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
 
@@ -63,6 +64,9 @@ def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> Context
         enable_api=True,
     )
     ctx._caller = caller
+    workspace = Tenant(name="Human input workspace")
+    workspace.id = "tenant-1"
+    ctx._workspace = workspace
     return ctx
 
 

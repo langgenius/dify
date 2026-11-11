@@ -14,7 +14,8 @@ from werkzeug.test import TestResponse
 
 import controllers.console.explore.conversation as module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
+from enums.creator import CreatorUserRole
+from models.enums import ConversationFromSource, ConversationStatus
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message
 from models.utils.file_input_compat import restore_input_files

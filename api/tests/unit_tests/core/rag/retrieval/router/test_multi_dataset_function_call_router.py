@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
-from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from services.knowledge.retrieval.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 
 
 class TestFunctionCallMultiDatasetRouter:
@@ -11,7 +11,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[],
-            model_config=Mock(),
             model_instance=Mock(),
         )
 
@@ -26,7 +25,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[tool],
-            model_config=Mock(),
             model_instance=Mock(),
         )
 
@@ -50,7 +48,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, returned_usage = router.invoke(
             query="python",
             dataset_tools=[tool_1, tool_2],
-            model_config=Mock(),
             model_instance=model_instance,
         )
 
@@ -73,7 +70,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[tool_1, tool_2],
-            model_config=Mock(),
             model_instance=model_instance,
         )
 
@@ -92,7 +88,6 @@ class TestFunctionCallMultiDatasetRouter:
         dataset_id, usage = router.invoke(
             query="python",
             dataset_tools=[tool_1, tool_2],
-            model_config=Mock(),
             model_instance=model_instance,
         )
 

@@ -14,7 +14,7 @@ from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import Agent, AgentWorkspace
-from models.dataset import AppDatasetJoin
+from models.dataset import AppDatasetJoin, Dataset
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, Site
 from services.entities.app_entities import AppEvent, UpdateAppParams
 
@@ -199,7 +199,7 @@ class TestAppModelConfigWasUpdatedSignal:
         with pytest.raises(TypeError, match="session"):
             handle(app_model, app_model_config=None)  # pyrefly: ignore[missing-argument]
 
-    @pytest.mark.parametrize("sqlite_session", [(App, Account, AppModelConfig, AppDatasetJoin)], indirect=True)
+    @pytest.mark.parametrize("sqlite_session", [(App, Account, AppModelConfig, AppDatasetJoin, Dataset)], indirect=True)
     def test_reuses_provided_session_without_committing(
         self, sqlite_session_factory: sessionmaker[Session], app_model: App, sqlite_session: Session
     ) -> None:
@@ -215,6 +215,12 @@ class TestAppModelConfigWasUpdatedSignal:
         sqlite_session.add_all(
             [
                 app_model_config,
+                Dataset(
+                    id="dataset-1",
+                    tenant_id=app_model.tenant_id,
+                    name="Dataset",
+                    created_by=app_model.created_by,
+                ),
                 AppDatasetJoin(app_id="other-app", dataset_id="dataset-1"),
             ]
         )

@@ -8,17 +8,14 @@ import logging
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants.resource_access_token import ResourceAccessTokenResourceType
-from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from repositories.app.console_repository import ConsoleAppRepository
-from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppService
-from services.knowledge.resource_scope import DatasetRef
-from tasks.clean_dataset_task import clean_dataset_task
+from services.knowledge.datasets.task_gateway import dispatch_dataset_cleanup
+from services.knowledge.entities.resource_scope import DatasetRef
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -77,31 +74,10 @@ class WorkspaceResourceCleanupService:
 
     def _delete_dataset(self, workspace_id: str, dataset_id: str) -> None:
         # Inner-API authentication authorizes the whole tenant. No member actor
-        # is available here; preserve the normal deletion effects without RBAC.
-        dataset_ref = DatasetRef(workspace_id, dataset_id)
-        dataset = self._datasets.get_cleanup_record(dataset_ref)
-        if dataset is None:
-            return
-        # Unlike the member deletion signal, also schedule incomplete or
-        # empty datasets so their relational data is not skipped.
-        clean_dataset_task.delay(
-            dataset.id,
-            workspace_id,
-            dataset.indexing_technique,
-            dataset.index_struct,
-            dataset.collection_binding_id,
-            dataset.doc_form or "text_model",
-            dataset.pipeline_id,
-        )
-        with self._session_factory.begin() as session:
-            dataset_api_key_bindings.delete_keys_scoped_only_to(session, dataset.id)
-            build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
-                tenant_id=workspace_id,
-                resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
-                resource_id=dataset.id,
-            )
-        # Delete the row last so a failed step is retried from the remaining Dataset.
-        self._datasets.delete(dataset_ref)
+        # is available here; reuse the member deletion path with the tenant predicate.
+        cleanup = self._datasets.delete_with_relations(DatasetRef(workspace_id, dataset_id))
+        if cleanup is not None:
+            dispatch_dataset_cleanup(cleanup)
 
     def _retire_agents(self, workspace_id: str) -> None:
         # Sweep independently of App records: archived, workflow-only and

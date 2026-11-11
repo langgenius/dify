@@ -5,13 +5,13 @@ from functools import wraps
 from uuid import UUID
 
 import pytest
+from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
 from flask import Blueprint, Flask
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from controllers.console import api as console_api
 from controllers.console import console_ns
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
 from controllers.service_api import api as service_api
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource

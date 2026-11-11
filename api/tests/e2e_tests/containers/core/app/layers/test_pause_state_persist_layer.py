@@ -1,7 +1,7 @@
 """Workflow pause orchestration against real Engine, PostgreSQL, Redis, and storage."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import closing
 from dataclasses import dataclass
 from time import perf_counter
@@ -34,7 +34,28 @@ from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.file_adapters import build_file_service
+from services.knowledge.entities.retrieval import (
+    KnowledgeRetrievalRequest,
+    KnowledgeRetrievalResult,
+    RetrievableDataset,
+)
 from services.workflow_run_agg import WorkflowRunAgg
+
+
+class _UnusedKnowledgeRetriever:
+    def list_datasets(self, *, tenant_id: str, dataset_ids: Sequence[str]) -> list[RetrievableDataset]:
+        del tenant_id, dataset_ids
+        raise AssertionError("pause persistence does not retrieve knowledge")
+
+    def retrieve(
+        self,
+        request: KnowledgeRetrievalRequest,
+        *,
+        request_metadata: Mapping[str, object] | None,
+    ) -> KnowledgeRetrievalResult:
+        del request, request_metadata
+        raise AssertionError("pause persistence does not retrieve knowledge")
 
 
 @dataclass
@@ -71,7 +92,11 @@ class WorkflowCase:
             workflow_execution_id=self.run_id,
         )
         queue = WorkflowAppQueueManager(entity.task_id, self.account.id, entity.invoke_from, AppMode.WORKFLOW)
-        runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=self.workflow.app_id)
+        runner = WorkflowBasedAppRunner(
+            queue_manager=queue,
+            app_id=self.workflow.app_id,
+            knowledge_retrieval=_UnusedKnowledgeRetriever(),
+        )
         variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 app_id=self.workflow.app_id, workflow_id=self.workflow.id, workflow_execution_id=self.run_id
@@ -112,6 +137,9 @@ class WorkflowCase:
             user=self.account,
             app_id=self.workflow.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(
+                session_factory=sessionmaker(bind=self.engine, expire_on_commit=False),
+            ),
         )
         commands = InMemoryChannel()
         if pause:

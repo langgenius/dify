@@ -5,8 +5,9 @@ from uuid import uuid4
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from models import Account, CreatorUserRole, WorkflowRun
+from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution
 from tasks.workflow_execution_tasks import save_workflow_execution_task

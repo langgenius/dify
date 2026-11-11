@@ -37,11 +37,15 @@ from models.model import App
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_run_agg import WorkflowRunAgg
 
 
 class AgentToolInnerService:
     """Invoke one API-owned Agent tool declaration, including explicit plugin-via-core calls."""
+
+    def __init__(self, *, knowledge_retrieval: KnowledgeRetriever) -> None:
+        self._knowledge_retrieval = knowledge_retrieval
 
     def invoke(self, request: AgentToolInvokeRequest, *, session: Session) -> AgentToolInvokeResponse:
         app = session.get(App, request.caller.app_id)
@@ -84,6 +88,7 @@ class AgentToolInnerService:
                 variable_pool=None,
                 allow_file_parameters=True,
                 use_default_for_missing_form_parameters=True,
+                knowledge_retrieval=self._knowledge_retrieval,
             )
             tool_runtime.runtime.dify_run_context = dify_run_context
             tool_runtime.runtime.tool_invoke_from = (

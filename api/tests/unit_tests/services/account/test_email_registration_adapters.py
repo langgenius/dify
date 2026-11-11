@@ -20,6 +20,7 @@ from services.account_errors import (
     AccountEmailDomainSuspendedError,
     AccountNormalizedEmailAlreadyInUseError,
     EmailRegistrationSeatsLimitError,
+    EmailRegistrationWorkspaceLimitError,
     SeatsLimitExceededError,
 )
 from services.entities.account_entities import (
@@ -27,11 +28,14 @@ from services.entities.account_entities import (
     AccountEmailRegistrationToken,
     AccountSessionTokens,
 )
+from services.errors.workspace import WorkspacesLimitExceededError
 from tests.helpers.unit.account_domain import AccountDomain
 
 
-def test_token_gateway_rejects_malformed_payload() -> None:
-    gateway = TokenManagerEmailRegistrationTokenGateway()
+def test_token_gateway_rejects_malformed_payload(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=redis_transport[0])
 
     with patch(
         "services.account.email_registration_adapters.TokenManager.get_token_data",
@@ -40,8 +44,10 @@ def test_token_gateway_rejects_malformed_payload() -> None:
         assert gateway.get("token") is None
 
 
-def test_token_gateway_issues_verified_registration_state() -> None:
-    gateway = TokenManagerEmailRegistrationTokenGateway()
+def test_token_gateway_issues_verified_registration_state(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=redis_transport[0])
     token_data = AccountEmailRegistrationToken(
         email="user@example.com",
         code="123456",
@@ -59,6 +65,35 @@ def test_token_gateway_issues_verified_registration_state() -> None:
         token_type="email_register",
         additional_data={"code": "123456", "phase": "register"},
     )
+
+
+def test_token_gateway_claims_and_consumes_with_owner_fence(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = lambda command, *_args, **_kwargs: (
+        b"claim-1" if command == "GET" else 1200 if command == "PTTL" else 1
+    )
+    gateway = TokenManagerEmailRegistrationTokenGateway(redis=redis)
+    payload = {
+        "email": "user@example.com",
+        "code": "123456",
+        "phase": "register",
+    }
+
+    with (
+        patch("services.account.email_registration_adapters.uuid.uuid4", return_value="claim-1"),
+        patch("services.account.email_registration_adapters.TokenManager.get_token_data", return_value=payload),
+    ):
+        claim = gateway.claim("token-1")
+
+    assert claim is not None
+    assert claim.claim_id == "claim-1"
+    assert claim.token_data.email == "user@example.com"
+    gateway.consume("token-1", claim.claim_id)
+    flattened_args = tuple(str(value) for call_args in commands.call_args_list for value in call_args.args)
+    assert "email_register:token:token-1" in flattened_args
+    assert "email_register:token:token-1:registration_claim" in flattened_args
 
 
 @pytest.mark.parametrize(("count", "limited"), [(0, False), (1, False), (2, True)])
@@ -170,6 +205,11 @@ def test_billing_policy_is_disabled_outside_cloud() -> None:
     ("service_error", "application_error"),
     [
         pytest.param(SeatsLimitExceededError(), EmailRegistrationSeatsLimitError, id="seat-limit"),
+        pytest.param(
+            WorkspacesLimitExceededError(),
+            EmailRegistrationWorkspaceLimitError,
+            id="workspace-limit",
+        ),
         pytest.param(AccountEmailDomainSuspendedError(), AccountEmailDomainSuspendedError, id="suspended-domain"),
         pytest.param(
             AccountNormalizedEmailAlreadyInUseError(),
@@ -178,7 +218,7 @@ def test_billing_policy_is_disabled_outside_cloud() -> None:
         ),
     ],
 )
-def test_registration_gateway_preserves_domain_errors_and_translates_seat_limit(
+def test_registration_gateway_preserves_domain_errors_and_translates_capacity_limits(
     service_error: Exception,
     application_error: type[Exception],
 ) -> None:

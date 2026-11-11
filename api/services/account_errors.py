@@ -196,6 +196,10 @@ class EmailRegistrationSeatsLimitError(AccountApplicationError):
     """The deployment has no licensed seat available for another account."""
 
 
+class EmailRegistrationWorkspaceLimitError(AccountApplicationError):
+    """The deployment has no licensed workspace available for registration."""
+
+
 class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
 
@@ -290,6 +294,14 @@ class InvalidLoginInvitationEmailError(AccountApplicationError):
 
 class LoginWorkspaceLimitError(AccountApplicationError):
     """A required workspace cannot be created because the limit was reached."""
+
+
+class LoginInvitationQuotaError(AccountApplicationError):
+    """The invitation cannot be accepted because its account or workspace quota is exhausted."""
+
+    def __init__(self, *, seats: bool) -> None:
+        super().__init__()
+        self.seats = seats
 
 
 class LoginWorkspaceCreationNotAllowedError(AccountApplicationError):

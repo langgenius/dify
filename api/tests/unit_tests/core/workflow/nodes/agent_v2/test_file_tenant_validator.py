@@ -17,9 +17,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod
-from models import CreatorUserRole, ToolFile, UploadFile
+from models import ToolFile, UploadFile
 
 TABLES = (ToolFile, UploadFile)
 TENANT_ID = "11111111-1111-1111-1111-111111111111"

@@ -5,11 +5,15 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 import orjson
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
-from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_keyword_table,
+    lock_dataset_row_for_child_append,
+    lock_dataset_row_for_child_write,
+)
 
 
 class _KeywordStorage(Protocol):
@@ -50,10 +54,30 @@ def load_keyword_table(
 
 
 def load_dataset_keyword_table(
-    dataset: Dataset, *, storage: _KeywordStorage, session: Session
+    dataset: Dataset,
+    *,
+    storage: _KeywordStorage,
+    session: Session,
+    current: bool = False,
 ) -> dict[str, Any] | None:
-    """Resolve a dataset's stored keyword payload using the caller's session."""
-    row = get_dataset_keyword_table(dataset, session=session)
+    """Resolve a dataset's keyword payload from the caller's transaction.
+
+    A current read takes shared database locks and refreshes an existing ORM
+    identity. It therefore observes a writer that committed after an earlier
+    MySQL repeatable-read snapshot while preserving concurrent readers.
+    """
+
+    if current:
+        if (
+            lock_dataset_row_for_child_append(
+                session,
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+            )
+            is None
+        ):
+            return None
+    row = get_dataset_keyword_table(dataset, session=session, current=current, shared=current)
     if row is None:
         return None
     return load_keyword_table(
@@ -63,6 +87,31 @@ def load_dataset_keyword_table(
         storage_type=row.data_source_type,
         data=row.keyword_table,
     )
+
+
+def lock_keyword_table_state(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_id: str,
+) -> tuple[str, str | None] | None:
+    """Lock a tenant-owned keyword table and return its current primitive state.
+
+    The dataset row lock serializes keyword writes with parent deletion. Selecting
+    primitive columns avoids replacing a stale ``DatasetKeywordTable`` identity in
+    the caller; the subsequent write still uses the current committed payload.
+    ``None`` means the owned dataset exists but has no keyword table. A missing or
+    foreign dataset raises ``LookupError``.
+    """
+
+    if lock_dataset_row_for_child_write(session, tenant_id=tenant_id, dataset_id=dataset_id) is None:
+        raise LookupError("Dataset no longer exists")
+    row = session.execute(
+        select(DatasetKeywordTable.data_source_type, DatasetKeywordTable.keyword_table)
+        .where(DatasetKeywordTable.dataset_id == dataset_id)
+        .with_for_update()
+    ).one_or_none()
+    return (row.data_source_type, row.keyword_table) if row is not None else None
 
 
 def save_keyword_table(
@@ -90,23 +139,26 @@ def persist_keyword_table(
     keywords: Mapping[str, Sequence[str]],
 ) -> None:
     """Write a tenant-owned table and segment keywords in the caller's transaction."""
-    result = session.execute(
-        select(Dataset.id, DatasetKeywordTable)
-        .outerjoin(DatasetKeywordTable, DatasetKeywordTable.dataset_id == Dataset.id)
-        .where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id)
-    ).one_or_none()
-    if result is None:
+    if lock_dataset_row_for_child_write(session, tenant_id=tenant_id, dataset_id=dataset_id) is None:
         raise LookupError("Dataset no longer exists")
-    _, row = result
-    if row is None:
-        row = DatasetKeywordTable(
-            dataset_id=dataset_id,
-            data_source_type=storage_type,
-            keyword_table=data if storage_type == "database" else "",
+    row_id = session.scalar(
+        select(DatasetKeywordTable.id).where(DatasetKeywordTable.dataset_id == dataset_id).with_for_update()
+    )
+    if row_id is None:
+        session.add(
+            DatasetKeywordTable(
+                dataset_id=dataset_id,
+                data_source_type=storage_type,
+                keyword_table=data if storage_type == "database" else "",
+            )
         )
-        session.add(row)
     elif storage_type == "database":
-        row.keyword_table = data
+        session.execute(
+            update(DatasetKeywordTable)
+            .where(DatasetKeywordTable.id == row_id)
+            .values(keyword_table=data)
+            .execution_options(synchronize_session=False)
+        )
     if keywords:
         segments = session.scalars(
             select(DocumentSegment).where(

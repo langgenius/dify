@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models.account import Tenant
-from models.enums import CreatorUserRole
 from models.model import UploadFile
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.file.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError, UploadFileDeliveryRecord
 
 WORKSPACE_ID = "11111111-1111-1111-1111-111111111111"

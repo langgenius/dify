@@ -29,9 +29,9 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
-from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+from services.knowledge.entities.citation import RetrievalSourceMetadata
 
 
 class EmojiIconDict(TypedDict):

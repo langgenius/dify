@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
 from pydantic import ValidationError
 
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from services.knowledge.entities.citation import RetrievalSourceMetadata
 
 
 def knowledge_sources_from_tool_part(part: object) -> list[RetrievalSourceMetadata]:

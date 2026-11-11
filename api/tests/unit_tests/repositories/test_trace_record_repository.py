@@ -33,8 +33,8 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TracingStoreUnavailableError
 from services.tracing.records import (
@@ -188,8 +188,8 @@ def outer_runs(sqlite_session: Session) -> None:
 def _assembler(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(
         sessions,
-        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
-        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        workflow_runs=WorkflowRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
         files_url="https://files.example.com",
         enterprise_details=False,
     )

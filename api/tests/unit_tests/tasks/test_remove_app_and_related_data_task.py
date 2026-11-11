@@ -1,28 +1,38 @@
 import logging
+import sys
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, call, patch
+from types import ModuleType
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from pytest_mock import MockerFixture
-from sqlalchemy import select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
-from extensions.ext_application_services import ApplicationServices
-from extensions.storage.storage_type import StorageType
-from graphon.enums import WorkflowExecutionStatus
-from graphon.variables import SegmentType
+from enums.creator import CreatorUserRole
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.archive_storage import ArchiveStorageNotConfiguredError
-from models import AppStar
+from models import AppModelConfig, AppStar, UploadFile
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.model import UploadFile
-from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable, WorkflowDraftVariableFile
+from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import (
+    ExecutionOffLoadType,
+    WorkflowArchiveLog,
+    WorkflowDraftVariable,
+    WorkflowDraftVariableFile,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
     _delete_app_stars,
@@ -34,6 +44,59 @@ from tasks.remove_app_and_related_data_task import (
     delete_draft_variables_batch,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_app, make_upload_file
+
+
+@dataclass
+class _NetworkAccessGroups:
+    failure: Exception | None = None
+    calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def cleanup_app_binding(self, *, workspace_id: str, app_id: str) -> bool:
+        self.calls.append((workspace_id, app_id))
+        if self.failure is not None:
+            raise self.failure
+        return True
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    network_access_groups: _NetworkAccessGroups
+
+
+@dataclass
+class _DeleteStorage:
+    failures: list[Exception | None] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
+
+    def delete(self, key: str) -> None:
+        self.deleted.append(key)
+        if self.failures:
+            failure = self.failures.pop(0)
+            if failure is not None:
+                raise failure
+
+
+@dataclass
+class _ArchiveStorage:
+    keys: list[str] = field(default_factory=list)
+    list_failure: Exception | None = None
+    delete_failures: list[Exception | None] = field(default_factory=list)
+    listed: list[str] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
+
+    def list_objects(self, prefix: str) -> list[str]:
+        self.listed.append(prefix)
+        if self.list_failure is not None:
+            raise self.list_failure
+        return self.keys
+
+    def delete_object(self, key: str) -> None:
+        self.deleted.append(key)
+        if self.delete_failures:
+            failure = self.delete_failures.pop(0)
+            if failure is not None:
+                raise failure
 
 
 def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_session: Session) -> None:
@@ -84,9 +147,14 @@ def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_
     assert sqlite_session.get(WorkflowAgentNodeBinding, other_tenant_id) is not None
 
 
-def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_app_cleanup_removes_agent_bindings_before_workflows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     events: list[str] = []
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+    )
     other_cleanup_names = (
         "cleanup_app_storage",
         "_delete_app_model_configs",
@@ -116,95 +184,197 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
         "_delete_workflow_trigger_logs",
     )
     for name in other_cleanup_names:
-        monkeypatch.setattr(remove_app_task_module, name, MagicMock())
+        monkeypatch.setattr(remove_app_task_module, name, lambda *_args, **_kwargs: None)
 
-    delete_bindings = MagicMock(side_effect=lambda *_args: events.append("bindings"))
-    delete_workflows = MagicMock(side_effect=lambda *_args: events.append("workflows"))
+    def delete_bindings(tenant_id: str, app_id: str) -> None:
+        assert (tenant_id, app_id) == ("tenant-1", "app-1")
+        events.append("bindings")
+
+    def delete_workflows(tenant_id: str, app_id: str) -> None:
+        assert (tenant_id, app_id) == ("tenant-1", "app-1")
+        events.append("workflows")
+
     monkeypatch.setattr(remove_app_task_module, "_delete_workflow_agent_node_bindings", delete_bindings)
     monkeypatch.setattr(remove_app_task_module, "_delete_app_workflows", delete_workflows)
-    monkeypatch.setattr(
-        remove_app_task_module, "_delete_app_workflow_node_executions", lambda *_args: events.append("executions")
-    )
-    monkeypatch.setattr(remove_app_task_module, "_delete_app_workflow_runs", lambda *_args: events.append("runs"))
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
-    assert events == ["bindings", "workflows", "executions", "runs"]
-    delete_bindings.assert_called_once_with("tenant-1", "app-1")
-    delete_workflows.assert_called_once_with("tenant-1", "app-1")
+    assert events == ["bindings", "workflows"]
+
+
+def test_app_cleanup_removes_legacy_workflow_tool_execution_before_its_owner_run(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    tenant_id = "tenant-1"
+    app_id = "root-app"
+    workflow_run_id = "legacy-run"
+    execution_id = "legacy-tool-execution"
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
+            "repositories.sqlalchemy_api_workflow_node_execution_repository."
+            "DifyAPISQLAlchemyWorkflowNodeExecutionRepository"
+        ),
+        API_WORKFLOW_RUN_REPOSITORY=(
+            "repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository"
+        ),
+    )
+    monkeypatch.setattr(
+        type(remove_app_task_module.db),
+        "engine",
+        property(lambda _self: sqlite_session_factory.kw["bind"]),
+    )
+    monkeypatch.setattr(remove_app_task_module, "cleanup_app_storage", lambda *_args: None)
+    for name in tuple(vars(remove_app_task_module)):
+        if name.startswith("_delete_") and name not in {
+            "_delete_app_workflow_node_executions",
+            "_delete_app_workflow_runs",
+        }:
+            monkeypatch.setattr(remove_app_task_module, name, lambda *_args, **_kwargs: None)
+
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id=workflow_run_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id="root-workflow",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                graph="{}",
+                inputs="{}",
+                status=WorkflowExecutionStatus.SUCCEEDED,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="account-1",
+            )
+        )
+        session.add(
+            WorkflowNodeExecutionModel(
+                id=execution_id,
+                tenant_id=tenant_id,
+                app_id="source-app",
+                workflow_id="source-workflow",
+                workflow_run_id=workflow_run_id,
+                node_id="tool-node",
+                node_type="tool",
+                title="Legacy workflow tool",
+                index=1,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="account-1",
+                process_data=None,
+            )
+        )
+        session.add(
+            WorkflowNodeExecutionOffload(
+                tenant_id=tenant_id,
+                app_id="source-app",
+                node_execution_id=execution_id,
+                type_=ExecutionOffLoadType.PROCESS_DATA,
+                file_id="offload-file-1",
+            )
+        )
+
+    remove_app_task_module.remove_app_and_related_data_task.run(tenant_id=tenant_id, app_id=app_id)
+
+    with sqlite_session_factory() as session:
+        assert session.get(WorkflowNodeExecutionModel, execution_id) is None
+        assert session.scalar(select(func.count()).select_from(WorkflowNodeExecutionOffload)) == 0
+        assert session.get(WorkflowRun, workflow_run_id) is None
 
 
 def test_cloud_app_cleanup_schedules_independent_binding_cleanup(
-    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    apply_async = mocker.patch.object(
+    calls: list[tuple[dict[str, str], int]] = []
+
+    def apply_async(*, kwargs: dict[str, str], countdown: int) -> None:
+        calls.append((kwargs, countdown))
+
+    monkeypatch.setattr(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
         "apply_async",
+        apply_async,
     )
 
     remove_app_task_module._schedule_app_network_access_group_binding_cleanup("tenant-1", "app-1")
 
-    apply_async.assert_called_once_with(
-        kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
-        countdown=10,
-    )
+    assert calls == [({"tenant_id": "tenant-1", "app_id": "app-1"}, 10)]
 
 
 def test_community_app_cleanup_does_not_schedule_binding_cleanup(
-    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    apply_async = mocker.patch.object(
+    calls: list[tuple[dict[str, str], int]] = []
+
+    def apply_async(*, kwargs: dict[str, str], countdown: int) -> None:
+        calls.append((kwargs, countdown))
+
+    monkeypatch.setattr(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
         "apply_async",
+        apply_async,
     )
 
     remove_app_task_module._schedule_app_network_access_group_binding_cleanup("tenant-1", "app-1")
 
-    apply_async.assert_not_called()
+    assert calls == []
 
 
 def test_independent_binding_cleanup_task_succeeds(
-    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, account_application_services: ApplicationServices
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cleanup_binding = mocker.patch.object(
-        account_application_services.network_access_groups, "cleanup_app_binding", return_value=True
-    )
+    network_access_groups = _NetworkAccessGroups()
+    application_services = _ApplicationServices(network_access_groups=network_access_groups)
+    application_services_module = ModuleType("extensions.ext_application_services")
+    setattr(application_services_module, "application_services", lambda: application_services)  # noqa: B010
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-    with patch(
-        "extensions.ext_application_services.application_services",
-        return_value=account_application_services,
+    with patch.dict(
+        sys.modules,
+        {"extensions.ext_application_services": application_services_module},
     ):
         remove_app_task_module.cleanup_app_network_access_group_binding_task.run(
             tenant_id="tenant-1",
             app_id="app-1",
         )
 
-    cleanup_binding.assert_called_once_with(workspace_id="tenant-1", app_id="app-1")
+    assert network_access_groups.calls == [("tenant-1", "app-1")]
     assert remove_app_task_module.cleanup_app_network_access_group_binding_task.max_retries == 24
 
 
 def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
     monkeypatch: pytest.MonkeyPatch,
-    mocker: MockerFixture,
-    account_application_services: ApplicationServices,
 ) -> None:
     upstream_error = NetworkAccessGroupUpstreamError(unavailable=False)
     retry_error = RuntimeError("retry scheduled")
-    mocker.patch.object(
-        account_application_services.network_access_groups, "cleanup_app_binding", side_effect=upstream_error
-    )
+    network_access_groups = _NetworkAccessGroups(failure=upstream_error)
+    application_services = _ApplicationServices(network_access_groups=network_access_groups)
+    application_services_module = ModuleType("extensions.ext_application_services")
+    setattr(application_services_module, "application_services", lambda: application_services)  # noqa: B010
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    retry = mocker.patch.object(
-        remove_app_task_module.cleanup_app_network_access_group_binding_task, "retry", side_effect=retry_error
+    retry_calls: list[tuple[Exception, int]] = []
+
+    def retry(*, exc: Exception, countdown: int) -> None:
+        retry_calls.append((exc, countdown))
+        raise retry_error
+
+    monkeypatch.setattr(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "retry",
+        retry,
     )
 
     with (
-        patch(
-            "extensions.ext_application_services.application_services",
-            return_value=account_application_services,
+        patch.dict(
+            sys.modules,
+            {"extensions.ext_application_services": application_services_module},
         ),
         pytest.raises(RuntimeError, match="retry scheduled"),
     ):
@@ -213,59 +383,75 @@ def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
             app_id="app-1",
         )
 
-    retry.assert_called_once_with(exc=upstream_error, countdown=15)
+    assert retry_calls == [(upstream_error, 15)]
     assert remove_app_task_module._network_access_binding_cleanup_retry_delay(5) == 480
     assert remove_app_task_module._network_access_binding_cleanup_retry_delay(6) == 600
     assert remove_app_task_module._network_access_binding_cleanup_retry_delay(24) == 600
 
 
-def test_parent_local_cleanup_failure_happens_after_binding_cleanup_is_scheduled(
+@pytest.mark.parametrize("failed_delete_number", [1, 2])
+def test_app_cleanup_retries_remaining_model_configs_after_a_real_delete_failure(
     monkeypatch: pytest.MonkeyPatch,
-    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    failed_delete_number: int,
 ) -> None:
-    local_error = RuntimeError("local cleanup failed")
-    retry_error = RuntimeError("parent retry scheduled")
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    apply_async = mocker.patch.object(
-        remove_app_task_module.cleanup_app_network_access_group_binding_task,
-        "apply_async",
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
     )
-    mocker.patch.object(remove_app_task_module, "_delete_app_model_configs", side_effect=local_error)
-    retry = mocker.patch.object(
-        remove_app_task_module.remove_app_and_related_data_task, "retry", side_effect=retry_error
-    )
+    # Keep the production task, lease and model-config batch helper real while
+    # isolating unrelated cleanup owners from this database-failure regression.
+    monkeypatch.setattr(remove_app_task_module, "cleanup_app_storage", lambda *_args: None)
+    for name in tuple(vars(remove_app_task_module)):
+        if name.startswith("_delete_") and name not in {"_delete_records", "_delete_app_model_configs"}:
+            monkeypatch.setattr(remove_app_task_module, name, lambda *_args, **_kwargs: None)
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [AppModelConfig(app_id="app-1"), AppModelConfig(app_id="app-1"), AppModelConfig(app_id="other-app")]
+        )
+        session.commit()
+        engine = session.get_bind()
 
-    with pytest.raises(RuntimeError, match="parent retry scheduled"):
-        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+    delete_attempts = 0
 
-    apply_async.assert_called_once_with(
-        kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
-        countdown=10,
-    )
-    retry.assert_called_once_with(exc=local_error, countdown=60)
+    def fail_model_config_delete(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        nonlocal delete_attempts
+        if statement.startswith("DELETE FROM app_model_configs"):
+            delete_attempts += 1
+            if delete_attempts == failed_delete_number:
+                raise RuntimeError("model config database unavailable")
 
+    event.listen(engine, "before_cursor_execute", fail_model_config_delete)
+    try:
+        with pytest.raises(RuntimeError, match="model config database unavailable"):
+            remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_model_config_delete)
 
-def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(
-    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
-) -> None:
-    broker_error = RuntimeError("broker unavailable")
-    retry_error = RuntimeError("parent retry scheduled")
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    mocker.patch.object(
-        remove_app_task_module.cleanup_app_network_access_group_binding_task,
-        "apply_async",
-        side_effect=broker_error,
-    )
-    first_local_cleanup = mocker.patch.object(remove_app_task_module, "_delete_app_model_configs")
-    retry = mocker.patch.object(
-        remove_app_task_module.remove_app_and_related_data_task, "retry", side_effect=retry_error
-    )
+    with sqlite_session_factory() as session:
+        assert (
+            session.scalar(select(func.count()).select_from(AppModelConfig).where(AppModelConfig.app_id == "app-1"))
+            == 3 - failed_delete_number
+        )
 
-    with pytest.raises(RuntimeError, match="parent retry scheduled"):
-        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+    remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
-    retry.assert_called_once_with(exc=broker_error, countdown=60)
-    first_local_cleanup.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert (
+            session.scalar(select(func.count()).select_from(AppModelConfig).where(AppModelConfig.app_id == "app-1"))
+            == 0
+        )
+        assert (
+            session.scalar(select(func.count()).select_from(AppModelConfig).where(AppModelConfig.app_id == "other-app"))
+            == 1
+        )
 
 
 class TestDeleteDraftVariablesBatch:
@@ -292,32 +478,23 @@ class TestDeleteDraftVariablesBatch:
         mock_batch_delete.assert_called_once_with(app_id, batch_size=1000)
 
 
-def _seed_variable_file(session: Session, *, storage_key: str) -> WorkflowDraftVariableFile:
-    """Persist one UploadFile + WorkflowDraftVariableFile pair for offload-cleanup tests."""
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
-        key=storage_key,
-        name="draft-variable.json",
-        size=10,
-        extension="json",
-        mime_type="application/json",
-        used=False,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-1",
-        created_at=datetime.now(UTC),
-    )
+def _seed_variable_file(
+    session: Session, *, storage_key: str, app_id: str = "app-1"
+) -> tuple[UploadFile, WorkflowDraftVariableFile]:
+    """Persist one exclusively owned draft-variable offload pair."""
+    upload_file = make_upload_file(tenant_id="tenant-1", key=storage_key)
     variable_file = WorkflowDraftVariableFile(
         tenant_id="tenant-1",
-        app_id="app-1",
-        user_id="user-1",
+        app_id=app_id,
+        user_id="account-1",
         upload_file_id=upload_file.id,
         size=10,
         length=10,
         value_type=SegmentType.STRING,
     )
     session.add_all([upload_file, variable_file])
-    return variable_file
+    session.flush()
+    return upload_file, variable_file
 
 
 class TestDeleteDraftVariableOffloadData:
@@ -335,32 +512,19 @@ class TestDeleteDraftVariableOffloadData:
         mock_session_factory.create_session.assert_not_called()
         mock_storage.delete.assert_not_called()
 
-    def test_delete_draft_variable_offload_data_database_failure(self, caplog: pytest.LogCaptureFixture) -> None:
-        """Test handling of database operation failures."""
-        mock_session_factory = MagicMock()
-        mock_session_factory.create_session.return_value.__enter__.return_value.execute.side_effect = Exception(
-            "Database error"
-        )
-
-        with patch("tasks.remove_app_and_related_data_task.session_factory", mock_session_factory):
-            with caplog.at_level(logging.ERROR):
-                result = _delete_draft_variable_offload_data(["file-1"])
-
-        assert result == 0
-        assert "Error deleting draft variable offload data:" in caplog.text
-
-    def test_storage_delete_runs_with_no_open_transaction(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    def test_cleanup_uses_real_sqlite_and_keeps_storage_outside_sessions(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        """Object storage cleanup must not run while a database transaction is open."""
-        variable_files = [
-            _seed_variable_file(sqlite_session, storage_key="key-1"),
-            _seed_variable_file(sqlite_session, storage_key="key-2"),
-        ]
+        """SQLAlchemy expressions delete matching metadata only after all storage calls succeed."""
+        upload_1, variable_file_1 = _seed_variable_file(sqlite_session, storage_key="key-1")
+        upload_2, variable_file_2 = _seed_variable_file(sqlite_session, storage_key="key-2")
+        live_upload, live_variable_file = _seed_variable_file(sqlite_session, storage_key="key-live", app_id="app-2")
         sqlite_session.commit()
-        variable_file_ids = [variable_file.id for variable_file in variable_files]
         open_sessions: list[Session] = []
-        open_sessions_at_storage_delete: list[int] = []
+        open_session_counts_at_delete: list[int] = []
 
         @contextmanager
         def tracked_session() -> Generator[Session]:
@@ -371,97 +535,134 @@ class TestDeleteDraftVariableOffloadData:
                 finally:
                     open_sessions.remove(session)
 
-        mock_storage = MagicMock()
-        mock_storage.delete.side_effect = lambda _key: open_sessions_at_storage_delete.append(len(open_sessions))
-
+        cleanup_storage = MagicMock()
+        cleanup_storage.delete.side_effect = lambda _key: open_session_counts_at_delete.append(len(open_sessions))
         monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", tracked_session)
-        monkeypatch.setattr("extensions.ext_storage.storage", mock_storage)
+        monkeypatch.setattr("extensions.ext_storage.storage", cleanup_storage)
 
-        result = _delete_draft_variable_offload_data(variable_file_ids)
+        result = _delete_draft_variable_offload_data([variable_file_1.id, variable_file_1.id, "", variable_file_2.id])
 
         assert result == 2
-        assert mock_storage.delete.call_count == 2
-        assert open_sessions_at_storage_delete == [0, 0]
+        assert sorted(call.args[0] for call in cleanup_storage.delete.call_args_list) == ["key-1", "key-2"]
+        assert open_session_counts_at_delete == [0, 0]
         assert not open_sessions
+        with sqlite_session_factory() as session:
+            assert session.get(WorkflowDraftVariableFile, variable_file_1.id) is None
+            assert session.get(WorkflowDraftVariableFile, variable_file_2.id) is None
+            assert session.get(UploadFile, upload_1.id) is None
+            assert session.get(UploadFile, upload_2.id) is None
+            assert session.get(WorkflowDraftVariableFile, live_variable_file.id) is not None
+            assert session.get(UploadFile, live_upload.id) is not None
 
-    def test_storage_failure_is_logged_and_not_counted(
+    def test_missing_file_ids_are_idempotent_and_preserve_other_rows(
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """A failing object is logged and not counted, and the DB cleanup still runs."""
-        variable_files = [
-            _seed_variable_file(sqlite_session, storage_key="key-1"),
-            _seed_variable_file(sqlite_session, storage_key="key-2"),
-        ]
+        """A retry after metadata cleanup does no work and leaves unrelated evidence intact."""
+        live_upload, live_variable_file = _seed_variable_file(sqlite_session, storage_key="key-live")
         sqlite_session.commit()
-        variable_file_ids = [variable_file.id for variable_file in variable_files]
+        cleanup_storage = MagicMock()
+        monkeypatch.setattr("extensions.ext_storage.storage", cleanup_storage)
 
-        @contextmanager
-        def tracked_session() -> Generator[Session]:
-            with sqlite_session_factory() as session:
-                yield session
+        assert _delete_draft_variable_offload_data(["missing-file-id", "missing-file-id"]) == 0
 
-        mock_storage = MagicMock()
-        mock_storage.delete.side_effect = [Exception("Storage error"), None]
+        cleanup_storage.delete.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.get(WorkflowDraftVariableFile, live_variable_file.id) is not None
+            assert session.get(UploadFile, live_upload.id) is not None
 
-        monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", tracked_session)
-        monkeypatch.setattr("extensions.ext_storage.storage", mock_storage)
+    def test_database_failure_propagates(self) -> None:
+        """A database failure remains visible so the Celery task can retry cleanup."""
+        database_error = RuntimeError("database unavailable")
+        mock_session_factory = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value.execute.side_effect = database_error
 
-        with caplog.at_level(logging.ERROR):
-            result = _delete_draft_variable_offload_data(variable_file_ids)
+        with (
+            patch("tasks.remove_app_and_related_data_task.session_factory", mock_session_factory),
+            pytest.raises(RuntimeError, match="database unavailable"),
+        ):
+            _delete_draft_variable_offload_data(["file-1"])
 
-        assert result == 1
-        # Row order is not deterministic: exactly one seeded object must have failed.
-        failed_keys = [key for key in ("key-1", "key-2") if f"Failed to delete storage object {key}" in caplog.text]
-        assert len(failed_keys) == 1
-        with sqlite_session_factory() as verify_session:
-            assert verify_session.scalars(select(UploadFile.id)).all() == []
-            assert verify_session.scalars(select(WorkflowDraftVariableFile.id)).all() == []
-
-    def test_file_ids_with_no_matching_rows_delete_nothing(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    def test_storage_failure_preserves_owner_rows_and_missing_blob_retry_succeeds(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        """file_ids that no longer resolve to rows must not raise or touch storage."""
-        _seed_variable_file(sqlite_session, storage_key="key-live")
-        sqlite_session.commit()
-        mock_storage = MagicMock()
+        app = make_app(app_id="app-1", tenant_id="tenant-1")
+        upload = make_upload_file(file_id="upload-1", tenant_id="tenant-1", key="draft/offload.json")
+        variable_file = WorkflowDraftVariableFile(
+            tenant_id="tenant-1",
+            app_id=app.id,
+            user_id="account-1",
+            upload_file_id=upload.id,
+            size=128,
+            length=8,
+            value_type=SegmentType.STRING,
+        )
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id=app.id,
+            user_id="account-1",
+            node_id="node-1",
+            name="result",
+            value=StringSegment(value="truncated"),
+            node_execution_id="execution-1",
+            file_id=variable_file.id,
+        )
+        with sqlite_session_factory.begin() as session:
+            session.add_all([app, upload, variable_file, variable])
 
-        monkeypatch.setattr("extensions.ext_storage.storage", mock_storage)
+        monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", sqlite_session_factory)
+        cleanup_storage = _DeleteStorage(failures=[RuntimeError("storage unavailable")])
+        monkeypatch.setattr("extensions.ext_storage.storage", cleanup_storage)
 
-        result = _delete_draft_variable_offload_data(["vf-gone"])
+        with pytest.raises(RuntimeError, match="storage unavailable"):
+            delete_draft_variables_batch(app.id, batch_size=10)
 
-        assert result == 0
-        mock_storage.delete.assert_not_called()
-        with sqlite_session_factory() as verify_session:
-            remaining = verify_session.scalars(select(WorkflowDraftVariableFile.id)).all()
-        assert len(remaining) == 1
+        with sqlite_session_factory() as session:
+            assert session.get(WorkflowDraftVariable, variable.id) is not None
+            assert session.get(WorkflowDraftVariableFile, variable_file.id) is not None
+            persisted_upload = session.get(UploadFile, upload.id)
+            assert persisted_upload is not None
+            assert persisted_upload.key == upload.key
+
+        cleanup_storage.failures.append(FileNotFoundError(upload.key))
+
+        assert delete_draft_variables_batch(app.id, batch_size=10) == 1
+
+        with sqlite_session_factory() as session:
+            assert session.get(WorkflowDraftVariable, variable.id) is None
+            assert session.get(WorkflowDraftVariableFile, variable_file.id) is None
+            assert session.get(UploadFile, upload.id) is None
+        assert cleanup_storage.deleted == [upload.key, upload.key]
 
 
 class TestDeleteDraftVariablesBatchTransactionScope:
     """The batch loop must not hold a transaction while object storage is cleaned up."""
 
     def test_offload_cleanup_is_called_with_no_session_open(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id="app-1",
-            user_id="user-1",
+            user_id="account-1",
             node_id="node-1",
             name="value",
             value=StringSegment(value="truncated"),
-            node_execution_id="exec-1",
-            file_id="vf-1",
+            node_execution_id="execution-1",
+            file_id="variable-file-1",
         )
         other = WorkflowDraftVariable.new_node_variable(
             app_id="app-2",
-            user_id="user-1",
+            user_id="account-1",
             node_id="node-1",
             name="value",
             value=StringSegment(value="untouched"),
-            node_execution_id="exec-2",
+            node_execution_id="execution-2",
         )
         sqlite_session.add_all([variable, other])
         sqlite_session.commit()
@@ -490,23 +691,25 @@ class TestDeleteDraftVariablesBatchTransactionScope:
         total_deleted = delete_draft_variables_batch("app-1", batch_size=10)
 
         assert total_deleted == 1
-        assert cleaned == [["vf-1"]]
+        assert cleaned == [["variable-file-1"]]
         assert not open_sessions
         sqlite_session.expire_all()
         assert sqlite_session.get(WorkflowDraftVariable, variable_id) is None
         assert sqlite_session.get(WorkflowDraftVariable, other_id) is not None
 
     def test_rows_without_offloaded_files_skip_cleanup(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
     ) -> None:
         """A batch whose rows carry no file_id must not invoke the offload cleanup."""
         variable = WorkflowDraftVariable.new_node_variable(
             app_id="app-1",
-            user_id="user-1",
+            user_id="account-1",
             node_id="node-1",
             name="value",
             value=StringSegment(value="plain"),
-            node_execution_id="exec-1",
+            node_execution_id="execution-1",
         )
         sqlite_session.add(variable)
         sqlite_session.commit()
@@ -608,7 +811,10 @@ class TestDeleteArchivedWorkflowRunFiles:
     ) -> None:
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
-        with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
+        with (
+            caplog.at_level(logging.ERROR, logger="tasks.remove_app_and_related_data_task"),
+            pytest.raises(ArchiveStorageNotConfiguredError, match="missing config"),
+        ):
             _delete_archived_workflow_run_files("tenant-1", "app-1")
 
         assert caplog.text.count("Archive storage not configured") == 1
@@ -617,28 +823,44 @@ class TestDeleteArchivedWorkflowRunFiles:
     def test_delete_archived_workflow_run_files_list_failure(
         self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
-        storage = MagicMock()
-        storage.list_objects.side_effect = Exception("list failed")
+        storage = _ArchiveStorage(list_failure=Exception("list failed"))
         mock_get_storage.return_value = storage
 
-        with caplog.at_level(logging.ERROR, logger="tasks.remove_app_and_related_data_task"):
+        with (
+            caplog.at_level(logging.ERROR, logger="tasks.remove_app_and_related_data_task"),
+            pytest.raises(Exception, match="list failed"),
+        ):
             _delete_archived_workflow_run_files("tenant-1", "app-1")
 
-        storage.list_objects.assert_called_once_with("tenant-1/app_id=app-1/")
-        storage.delete_object.assert_not_called()
+        assert storage.listed == ["tenant-1/app_id=app-1/"]
+        assert storage.deleted == []
         assert "Failed to list archive files for app app-1" in caplog.text
+
+    @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
+    def test_delete_archived_workflow_run_files_propagates_partial_delete_failure(
+        self, mock_get_storage: MagicMock
+    ) -> None:
+        storage = _ArchiveStorage(
+            keys=["key-1", "key-2"],
+            delete_failures=[None, RuntimeError("archive delete failed")],
+        )
+        mock_get_storage.return_value = storage
+
+        with pytest.raises(RuntimeError, match="archive delete failed"):
+            _delete_archived_workflow_run_files("tenant-1", "app-1")
+
+        assert storage.deleted == ["key-1", "key-2"]
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
     def test_delete_archived_workflow_run_files_success(
         self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
-        storage = MagicMock()
-        storage.list_objects.return_value = ["key-1", "key-2"]
+        storage = _ArchiveStorage(keys=["key-1", "key-2"])
         mock_get_storage.return_value = storage
 
         with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
             _delete_archived_workflow_run_files("tenant-1", "app-1")
 
-        storage.list_objects.assert_called_once_with("tenant-1/app_id=app-1/")
-        storage.delete_object.assert_has_calls([call("key-1"), call("key-2")], any_order=False)
+        assert storage.listed == ["tenant-1/app_id=app-1/"]
+        assert storage.deleted == ["key-1", "key-2"]
         assert "Deleted 2 archive objects for app app-1" in caplog.text

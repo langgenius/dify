@@ -50,6 +50,14 @@ const zRateLimitError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zDatasetConcurrentUpdateError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('dataset_concurrent_update'),
+      status: z.literal(409),
+    }),
+  ))()
+
 export const post2Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }
@@ -131,7 +139,10 @@ export const post15Errors = {
 
 export const get21Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 
-export const post16Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
+export const post16Errors = {
+  dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError },
+  pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+}
 
 export const post17Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 

@@ -387,7 +387,7 @@ invitation before the token is consumed or tenant membership is changed.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
-| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AlreadyActivateError](#alreadyactivateerror)<br>[InvitationAccountMismatchError](#invitationaccountmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6265,7 +6265,7 @@ Update external knowledge API template
 | ---- | ----------- | ------ |
 | 200 | External API template updated successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 404 | Template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Template changed during validation | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
@@ -6448,6 +6448,7 @@ Update dataset details
 | 200 | Dataset updated successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Dataset changed during the update | **application/json**: [DatasetConcurrentUpdateError](#datasetconcurrentupdateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/api-keys/{status}
@@ -6794,7 +6795,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log
@@ -6848,26 +6849,6 @@ Update document metadata
 | 204 | Document resumed successfully |  |
 | 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/{action}
-Update document processing status (pause/resume)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform (pause/resume) | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Processing status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid action | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/rename
@@ -7026,7 +7007,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -7181,6 +7162,7 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7222,8 +7204,8 @@ Test external knowledge retrieval for dataset
 | ---- | ----------- | ------ |
 | 200 | External hit testing completed successfully | **application/json**: [ExternalHitTestingResponse](#externalhittestingresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
@@ -7248,6 +7230,7 @@ Test dataset knowledge retrieval
 | 200 | Hit testing completed successfully | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Knowledge index is temporarily unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/indexing-status
@@ -7429,7 +7412,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/permission-part-users
@@ -7504,6 +7487,7 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents retry started successfully |  |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/use-check
@@ -12406,6 +12390,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowPublishResponse](#ragpipelineworkflowpublishresponse)<br> |
 | 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DatasetConcurrentUpdateError](#datasetconcurrentupdateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview
@@ -14190,7 +14175,7 @@ Get website crawl status
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
+| 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlProgressResponse](#websitecrawlprogressresponse)<br> |
 | 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [CrawlFailedError](#crawlfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -22969,6 +22954,19 @@ The archived document is not editable.
 | ---- | ---- | ----------- | -------- |
 | ArchivedDocumentImmutableError |  | The archived document is not editable. |  |
 
+#### AttachmentInfoDict
+
+Published attachment metadata; MIME type may be null for legacy uploads.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
 #### AudioBinaryResponse
 
 | Name | Type | Description | Required |
@@ -24141,6 +24139,15 @@ The conversation was not found for this user and app.
 | ---- | ---- | ----------- | -------- |
 | CrawlFailedError |  | {message} |  |
 
+#### CrawledPage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| markdown | string |  | Yes |
+| source_url | string |  | Yes |
+| title | string |  | Yes |
+
 #### CreateAnnotationPayload
 
 | Name | Type | Description | Required |
@@ -24456,6 +24463,14 @@ Dataset access denied.
 | ---- | ---- | ----------- | -------- |
 | dataset_ids | [ string ] |  | No |
 | knowledge_space_ids | [ string ] |  | No |
+
+#### DatasetConcurrentUpdateError
+
+The dataset changed while it was being updated. Please retry the request.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetConcurrentUpdateError |  | The dataset changed while it was being updated. Please retry the request. |  |
 
 #### DatasetCreatePayload
 
@@ -26805,6 +26820,16 @@ Response body for reading the latest IM sync run summary.
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### HitTestingExternalRetrievalModel
+
+Optional per-request overrides for an external knowledge provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| score_threshold | number | Minimum similarity score threshold for filtering results. | No |
+| score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | No |
+| top_k | integer | Maximum number of results to return. | No |
+
 #### HitTestingFile
 
 | Name | Type | Description | Required |
@@ -26820,8 +26845,8 @@ Response body for reading the latest IM sync run summary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] | Upload file UUIDs to include in the retrieval context. Omit or use an empty list when there are no attachments. | No |
-| external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
+| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| external_retrieval_model | [HitTestingExternalRetrievalModel](#hittestingexternalretrievalmodel) | Optional retrieval overrides for an external knowledge base. Omit this field to use the settings stored on the knowledge base. | No |
 | query | string | Search query text. | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 
@@ -26847,7 +26872,7 @@ Response body for reading the latest IM sync run summary.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | query | [HitTestingQuery](#hittestingquery) | The original query object. | Yes |
-| records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
+| records | [ [HitTestingRecord](#hittestingrecord)<br>[ExternalHitTestingRecordResponse](#externalhittestingrecordresponse) ] |  | Yes |
 
 #### HitTestingSegment
 
@@ -33564,11 +33589,11 @@ Serialized pricing info with codegen-safe decimal string patterns.
 
 #### ProcessRuleMode
 
-Dataset Process Rule Mode
+Dataset process-rule mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ProcessRuleMode | string | Dataset Process Rule Mode |  |
+| ProcessRuleMode | string | Dataset process-rule mode. |  |
 
 #### ProcessRuleResponse
 
@@ -34486,7 +34511,7 @@ Immutable authoritative presentation snapshot for one v2 form.
 | document_name | string |  | No |
 | document_revision | integer |  | No |
 | document_version | integer |  | No |
-| files | [ object ] |  | No |
+| files | [ [AttachmentInfoDict](#attachmentinfodict) ] |  | No |
 | hit_count | integer |  | No |
 | index_node_hash | string |  | No |
 | knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
@@ -34728,6 +34753,15 @@ The Roster Agent package exceeds the size limit.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | SchemaDefinitionsResponse | array |  |  |
+
+#### ScrapedPage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| description | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
 
 #### SegmentAttachmentResponse
 
@@ -37304,11 +37338,31 @@ Webhook trigger not found for this node.
 | provider | string, <br>**Available values:** "firecrawl", "jinareader", "watercrawl" | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
 | url | string |  | Yes |
 
-#### WebsiteCrawlResponse
+#### WebsiteCrawlProgressResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| WebsiteCrawlResponse | object |  |  |
+| current | integer |  | Yes |
+| data | [ [CrawledPage](#crawledpage) ] |  | Yes |
+| job_id | string |  | Yes |
+| status | string |  | Yes |
+| time_consuming | string<br>number |  | No |
+| total | integer |  | Yes |
+
+#### WebsiteCrawlResponse
+
+A remote crawl job or the immediately available single-page content.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebsiteCrawlResponse | [WebsiteCrawlStartedResponse](#websitecrawlstartedresponse)<br>[WebsitePageCrawledResponse](#websitepagecrawledresponse) | A remote crawl job or the immediately available single-page content. |  |
+
+#### WebsiteCrawlStartedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job_id | string |  | Yes |
+| status | string |  | Yes |
 
 #### WebsiteCrawlStatusQuery
 
@@ -37324,6 +37378,13 @@ Webhook trigger not found for this node.
 | only_main_content | boolean, <br>**Default:** true |  | No |
 | provider | string |  | Yes |
 | urls | [ string ] |  | Yes |
+
+#### WebsitePageCrawledResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ScrapedPage](#scrapedpage) |  | Yes |
+| status | string |  | Yes |
 
 #### WeightKeywordSetting
 

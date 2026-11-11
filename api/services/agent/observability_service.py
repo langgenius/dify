@@ -15,10 +15,11 @@ from sqlalchemy.orm import aliased
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
-from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
+from models.enums import FeedbackFromSource, FeedbackRating, MessageStatus
 from models.model import App, Conversation, Message, MessageFeedback
 from models.workflow import (
     Workflow,

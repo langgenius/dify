@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import core.tools.tool_file_manager as tool_file_manager_module
 from core.tools.tool_file_manager import ToolFileManager
+from enums.creator import CreatorUserRole
 from graphon.file import FileTransferMethod, FileType
-from models.enums import CreatorUserRole
 from models.model import MessageFile
 from models.tools import ToolFile
 

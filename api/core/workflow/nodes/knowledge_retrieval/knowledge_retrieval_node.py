@@ -1,21 +1,12 @@
-"""Knowledge retrieval workflow node implementation.
-
-This node now lives under ``core.workflow.nodes`` and is discovered directly by
-the workflow node registry.
-"""
+"""Adapt workflow variables and node output to the knowledge query boundary."""
 
 import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, override
 
-from sqlalchemy.orm import Session
-
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.credit_usage import CreditUsageAppType
-from core.db.session_factory import session_factory
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -34,20 +25,15 @@ from graphon.variables import (
 )
 from graphon.variables.segments import ArrayObjectSegment
 from graphon.variables.template_resolution import convert_template
+from services.errors.knowledge_retrieval import KnowledgeRetrievalError, RateLimitExceededError
+from services.knowledge.entities.metadata import Condition, MetadataFilteringCondition
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest, KnowledgeRetrievalResult
+from services.knowledge.entities.retrieval_settings import RerankingModelDict, WeightsDict
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
-from .entities import (
-    Condition,
-    KnowledgeRetrievalNodeData,
-    MetadataFilteringCondition,
-)
-from .exc import (
-    KnowledgeRetrievalNodeError,
-    RateLimitExceededError,
-)
-from .retrieval import KnowledgeRetrievalRequest, Source
+from .entities import KnowledgeRetrievalNodeData
 
 if TYPE_CHECKING:
-    from graphon.file import File
     from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
@@ -68,10 +54,6 @@ def _normalize_metadata_filter_sequence_item(value: object) -> str:
 class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
     node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
 
-    # Instance attributes specific to LLMNode.
-    # Output variable for file
-    _file_outputs: list["File"]
-
     def __init__(
         self,
         node_id: str,
@@ -79,7 +61,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         *,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
-        session_maker=None,
+        retrieval: KnowledgeRetriever,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -87,10 +69,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
             init_params=init_params,
             runtime_state=runtime_state,
         )
-        # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs = []
-        self._rag_retrieval = DatasetRetrieval()
-        self._session_maker = session_maker or session_factory.get_session_maker()
+        self._retrieval = retrieval
 
     @classmethod
     @override
@@ -136,23 +115,21 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 variables["attachments"] = [variable.value]
 
         try:
-            with self._session_maker() as session:
-                results, usage = self._fetch_dataset_retriever(
-                    session=session, node_data=self._node_data, variables=variables
-                )
-                outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
-                return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    inputs=variables,
-                    process_data={"usage": jsonable_encoder(usage)},
-                    outputs=outputs,
-                    metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
-                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
-                    },
-                    llm_usage=usage,
-                )
+            result = self._retrieve(node_data=self._node_data, variables=variables)
+            usage = result.usage
+            outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in result.sources])}
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=variables,
+                process_data={"usage": jsonable_encoder(usage)},
+                outputs=outputs,
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                },
+                llm_usage=usage,
+            )
         except RateLimitExceededError as e:
             logger.warning(e, exc_info=True)
             return NodeRunResult(
@@ -162,7 +139,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 error_type=type(e).__name__,
                 llm_usage=usage,
             )
-        except KnowledgeRetrievalNodeError as e:
+        except KnowledgeRetrievalError as e:
             logger.warning("Error when running knowledge retrieval node", exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -171,7 +148,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 error_type=type(e).__name__,
                 llm_usage=usage,
             )
-        # Temporary handle all exceptions from DatasetRetrieval class here.
+        # Temporary handle all exceptions from the retrieval adapter here.
         except Exception as e:
             logger.warning(e, exc_info=True)
             return NodeRunResult(
@@ -182,20 +159,12 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 llm_usage=usage,
             )
 
-    def _fetch_dataset_retriever(
-        self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
-    ) -> tuple[list[Source], LLMUsage]:
+    def _retrieve(self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]) -> KnowledgeRetrievalResult:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-        self._rag_retrieval.set_request_metadata(
-            {
-                "app_id": dify_ctx.app_id,
-                "app_type": dify_ctx.app_type or CreditUsageAppType.UNKNOWN,
-            }
-        )
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
-        retrieval_resource_list = []
+        retrieval_request: KnowledgeRetrievalRequest | None = None
 
         metadata_filtering_mode: Literal["disabled", "automatic", "manual"] = "disabled"
         if node_data.metadata_filtering_mode is not None:
@@ -212,24 +181,21 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
             if node_data.single_retrieval_config is None:
                 raise ValueError("single_retrieval_config is required for single retrieval mode")
             model = node_data.single_retrieval_config.model
-            retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
-                session=session,
-                request=KnowledgeRetrievalRequest(
-                    tenant_id=dify_ctx.tenant_id,
-                    user_id=dify_ctx.user_id,
-                    app_id=dify_ctx.app_id,
-                    user_from=dify_ctx.user_from.value,
-                    dataset_ids=dataset_ids,
-                    retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value,
-                    completion_params=model.completion_params,
-                    model_provider=model.provider,
-                    model_mode=model.mode,
-                    model_name=model.name,
-                    metadata_model_config=node_data.metadata_model_config,
-                    metadata_filtering_conditions=resolved_metadata_conditions,
-                    metadata_filtering_mode=metadata_filtering_mode,
-                    query=query,
-                ),
+            retrieval_request = KnowledgeRetrievalRequest(
+                tenant_id=dify_ctx.tenant_id,
+                user_id=dify_ctx.user_id,
+                app_id=dify_ctx.app_id,
+                user_from=dify_ctx.user_from.value,
+                dataset_ids=dataset_ids,
+                retrieval_mode="single",
+                completion_params=model.completion_params,
+                model_provider=model.provider,
+                model_mode=model.mode,
+                model_name=model.name,
+                metadata_model_config=node_data.metadata_model_config,
+                metadata_filtering_conditions=resolved_metadata_conditions,
+                metadata_filtering_mode=metadata_filtering_mode,
+                query=query,
             )
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
@@ -266,39 +232,43 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                     reranking_model = None
                     weights = None
 
-            retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
-                session=session,
-                request=KnowledgeRetrievalRequest(
-                    app_id=dify_ctx.app_id,
-                    tenant_id=dify_ctx.tenant_id,
-                    user_id=dify_ctx.user_id,
-                    user_from=dify_ctx.user_from.value,
-                    dataset_ids=dataset_ids,
-                    query=query,
-                    retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value,
-                    top_k=node_data.multiple_retrieval_config.top_k,
-                    score_threshold=node_data.multiple_retrieval_config.score_threshold
-                    if node_data.multiple_retrieval_config.score_threshold is not None
-                    else 0.0,
-                    reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
-                    reranking_model=reranking_model,
-                    weights=weights,
-                    reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
-                    metadata_model_config=node_data.metadata_model_config,
-                    metadata_filtering_conditions=resolved_metadata_conditions,
-                    metadata_filtering_mode=metadata_filtering_mode,
-                    attachment_ids=[
-                        parsed_reference.record_id
-                        for attachment in attachments
-                        if (parsed_reference := parse_file_reference(attachment.reference)) is not None
-                    ]
-                    if attachments
-                    else None,
-                ),
+            retrieval_request = KnowledgeRetrievalRequest(
+                app_id=dify_ctx.app_id,
+                tenant_id=dify_ctx.tenant_id,
+                user_id=dify_ctx.user_id,
+                user_from=dify_ctx.user_from.value,
+                dataset_ids=dataset_ids,
+                query=query,
+                retrieval_mode="multiple",
+                top_k=node_data.multiple_retrieval_config.top_k,
+                score_threshold=node_data.multiple_retrieval_config.score_threshold
+                if node_data.multiple_retrieval_config.score_threshold is not None
+                else 0.0,
+                reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
+                reranking_model=reranking_model,
+                weights=weights,
+                reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
+                metadata_model_config=node_data.metadata_model_config,
+                metadata_filtering_conditions=resolved_metadata_conditions,
+                metadata_filtering_mode=metadata_filtering_mode,
+                attachment_ids=[
+                    parsed_reference.record_id
+                    for attachment in attachments
+                    if (parsed_reference := parse_file_reference(attachment.reference)) is not None
+                ]
+                if attachments
+                else None,
             )
 
-        usage = self._rag_retrieval.llm_usage
-        return retrieval_resource_list, usage
+        if retrieval_request is None:
+            return KnowledgeRetrievalResult(sources=[], usage=LLMUsage.empty_usage())
+        return self._retrieval.retrieve(
+            retrieval_request,
+            request_metadata={
+                "app_id": dify_ctx.app_id,
+                "app_type": dify_ctx.app_type or CreditUsageAppType.UNKNOWN,
+            },
+        )
 
     def _resolve_metadata_filtering_conditions(
         self, conditions: MetadataFilteringCondition

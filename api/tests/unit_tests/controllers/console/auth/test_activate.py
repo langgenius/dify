@@ -14,6 +14,8 @@ from controllers.console.auth.error import InvitationAccountMismatchError as Inv
 from controllers.console.error import (
     AccountInFreezeError,
     AlreadyActivateError,
+    SeatsLimitExceeded,
+    WorkspaceMembersLimitExceeded,
 )
 from controllers.console.error import (
     EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
@@ -32,6 +34,7 @@ from services.entities.account_activation_entities import (
     ActivationCommand,
     InvitationLookup,
 )
+from services.errors.workspace import WorkspaceInvitationQuotaError
 
 
 @pytest.fixture
@@ -214,6 +217,8 @@ class TestActivateApi:
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
+            (WorkspaceInvitationQuotaError(), WorkspaceMembersLimitExceeded),
+            (WorkspaceInvitationQuotaError(seats=True), SeatsLimitExceeded),
         ],
     )
     def test_translates_application_errors(

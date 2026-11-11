@@ -6,38 +6,13 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from core.rag.entities import PreProcessingRuleKey
+from core.rag.entities import Rule
 from services.data_source.entities.notion_import import NotionPageType
+from services.data_source.entities.website import WebsiteJobSelection
 
 
 class EstimateValidationError(ValueError):
     """Raised when an estimate process rule is invalid."""
-
-
-class _PreProcessingRule(BaseModel):
-    id: PreProcessingRuleKey
-    enabled: bool
-
-
-class _Segmentation(BaseModel):
-    separator: str = Field(min_length=1)
-    max_tokens: int = Field(gt=0)
-
-
-class _Rules(BaseModel):
-    pre_processing_rules: list[_PreProcessingRule]
-    segmentation: _Segmentation
-
-    @field_validator("pre_processing_rules")
-    @classmethod
-    def _deduplicate(cls, value: list[_PreProcessingRule]) -> list[_PreProcessingRule]:
-        by_id = {rule.id: rule for rule in value}
-        return list(by_id.values())
-
-
-class _HierarchicalRules(_Rules):
-    parent_mode: Literal["full-doc", "paragraph"] | None = None
-    subchunk_segmentation: _Segmentation | None = None
 
 
 class _SummaryIndexSettingDisabled(BaseModel):
@@ -79,12 +54,12 @@ class _AutomaticProcessRule(_ProcessRuleBase):
 
 class _CustomProcessRule(_ProcessRuleBase):
     mode: Literal["custom"]
-    rules: _Rules
+    rules: Rule
 
 
 class _HierarchicalProcessRule(_ProcessRuleBase):
     mode: Literal["hierarchical"]
-    rules: _HierarchicalRules
+    rules: Rule
 
 
 _ProcessRule = Annotated[
@@ -111,13 +86,33 @@ def normalize_process_rule(process_rule: Mapping[str, object]) -> dict[str, obje
     except ValidationError as error:
         raise EstimateValidationError(_validation_message(error)) from error
 
-    result = validated.process_rule.model_dump(exclude_none=True)
+    if isinstance(validated.process_rule, _CustomProcessRule) and validated.process_rule.rules.segmentation is None:
+        raise EstimateValidationError("Process rule segmentation is required")
+    if isinstance(validated.process_rule, _HierarchicalProcessRule):
+        rules_model = validated.process_rule.rules
+        parent_mode = rules_model.parent_mode or "paragraph"
+        if parent_mode == "paragraph" and rules_model.segmentation is None:
+            raise EstimateValidationError("Process rule segmentation is required")
+        if rules_model.subchunk_segmentation is None:
+            raise EstimateValidationError("Process rule subchunk_segmentation is required")
+
+    result = validated.process_rule.model_dump(exclude_none=True, exclude_unset=True)
     if validated.process_rule.mode == "automatic":
         result["rules"] = {}
-    elif validated.process_rule.mode == "hierarchical":
+    else:
         rules = result.get("rules")
-        if isinstance(rules, dict) and not rules.get("parent_mode"):
-            rules["parent_mode"] = "paragraph"
+        if isinstance(rules, dict):
+            pre_processing_rules = rules.get("pre_processing_rules")
+            if pre_processing_rules is None:
+                rules["pre_processing_rules"] = []
+            elif isinstance(pre_processing_rules, list):
+                by_id = {rule["id"]: rule for rule in pre_processing_rules if isinstance(rule, dict) and "id" in rule}
+                rules["pre_processing_rules"] = list(by_id.values())
+            if validated.process_rule.mode == "custom":
+                rules.pop("parent_mode", None)
+                rules.pop("subchunk_segmentation", None)
+            elif not rules.get("parent_mode"):
+                rules["parent_mode"] = "paragraph"
     return result
 
 
@@ -138,8 +133,7 @@ class NotionEstimateSource:
 
 @dataclass(frozen=True, slots=True)
 class WebsiteEstimateSource:
-    provider: str
-    job_id: str
+    job: WebsiteJobSelection
     url: str
     mode: str = "crawl"
     only_main_content: bool = False

@@ -1,6 +1,7 @@
 """SQLAlchemy persistence adapter for Console tag management."""
 
 import uuid
+from collections.abc import Sequence
 from typing import override
 
 import sqlalchemy as sa
@@ -8,22 +9,124 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.helper import escape_like_pattern
-from models.dataset import Dataset
 from models.enums import TagType
+from models.knowledge_fs import KnowledgeFSSpaceTagBinding
 from models.model import App, Tag, TagBinding
 from models.skill import Skill
 from models.snippet import CustomizedSnippet
+from repositories.knowledge.dataset_read_repository import lock_dataset_row_for_child_write
 from services.tag_application_service import (
     CreateTagInput,
     InvalidTagBindingTypeError,
     TagBindingInput,
     TagBindingTargetNotFoundError,
+    TagKind,
     TagNameConflictError,
     TagNotFoundError,
     TagStore,
     TagSummary,
     UpdateTagInput,
+    normalize_tag_name,
 )
+
+
+def _tag_identity_conditions(*, workspace_id: str, tag_type: TagType, name: str) -> tuple[sa.ColumnElement[bool], ...]:
+    normalized_name = normalize_tag_name(tag_type.value, name)
+    name_condition = func.lower(Tag.name) == normalized_name if tag_type == TagType.SKILL else Tag.name == name
+    return (Tag.tenant_id == workspace_id, Tag.type == tag_type, name_condition)
+
+
+def _find_tag(
+    session: Session,
+    *,
+    conditions: tuple[sa.ColumnElement[bool], ...],
+    current: bool = False,
+) -> Tag | None:
+    statement = select(Tag).where(*conditions).limit(1)
+    if current:
+        statement = statement.with_for_update()
+    return session.scalar(statement)
+
+
+def _get_or_create_tag(
+    session: Session,
+    *,
+    workspace_id: str,
+    actor_id: str,
+    tag_type: TagType,
+    name: str,
+) -> tuple[Tag, bool]:
+    """Return a tenant-owned tag, inserting it when absent."""
+    conditions = _tag_identity_conditions(workspace_id=workspace_id, tag_type=tag_type, name=name)
+    existing = _find_tag(session, conditions=conditions)
+    if existing is not None:
+        return existing, False
+
+    model = Tag(name=name, type=tag_type, created_by=actor_id, tenant_id=workspace_id)
+    model.id = str(uuid.uuid4())
+    session.add(model)
+    session.flush()
+    return model, True
+
+
+def _create_tag_binding_if_absent(
+    session: Session,
+    *,
+    workspace_id: str,
+    actor_id: str,
+    tag_id: str,
+    target_id: str,
+) -> bool:
+    """Insert one fully scoped tag binding when absent."""
+    conditions = (
+        TagBinding.tenant_id == workspace_id,
+        TagBinding.tag_id == tag_id,
+        TagBinding.target_id == target_id,
+    )
+    if session.scalar(select(TagBinding.id).where(*conditions).limit(1)) is not None:
+        return False
+
+    session.add(TagBinding(tag_id=tag_id, target_id=target_id, tenant_id=workspace_id, created_by=actor_id))
+    session.flush()
+    return True
+
+
+def replace_skill_tag_bindings(
+    session: Session,
+    *,
+    workspace_id: str,
+    actor_id: str,
+    skill_id: str,
+    names: Sequence[str],
+) -> None:
+    """Replace one Skill's tags in the caller's transaction with a stable lock order."""
+    names_by_key = {normalize_tag_name("skill", name): name for name in names}
+    tags_by_key: dict[str, Tag] = {}
+    for normalized_name, name in sorted(names_by_key.items()):
+        tag, _ = _get_or_create_tag(
+            session,
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            tag_type=TagType.SKILL,
+            name=name,
+        )
+        tags_by_key[normalized_name] = tag
+
+    session.execute(
+        delete(TagBinding).where(
+            TagBinding.tenant_id == workspace_id,
+            TagBinding.target_id == skill_id,
+            TagBinding.tag_id.in_(select(Tag.id).where(Tag.tenant_id == workspace_id, Tag.type == TagType.SKILL)),
+        )
+    )
+    for tag in sorted(tags_by_key.values(), key=lambda item: item.id):
+        _create_tag_binding_if_absent(
+            session,
+            workspace_id=workspace_id,
+            actor_id=actor_id,
+            tag_id=tag.id,
+            target_id=skill_id,
+        )
 
 
 class TagRepository(TagStore):
@@ -31,15 +134,39 @@ class TagRepository(TagStore):
         self._session_factory = session_factory
 
     @override
-    def list_tags(self, workspace_id: str, tag_type: str, keyword: str | None) -> tuple[TagSummary, ...]:
-        stmt = (
-            select(Tag.id, Tag.name, Tag.type, func.count(TagBinding.id))
-            .outerjoin(
-                TagBinding,
-                sa.and_(TagBinding.tag_id == Tag.id, TagBinding.tenant_id == workspace_id),
+    def list_tags(
+        self,
+        workspace_id: str,
+        tag_type: str,
+        keyword: str | None,
+        *,
+        target_ids: frozenset[str] | None = None,
+    ) -> tuple[TagSummary, ...]:
+        if target_ids is not None and not target_ids:
+            return ()
+
+        binding_join = sa.and_(TagBinding.tag_id == Tag.id, TagBinding.tenant_id == workspace_id)
+        if target_ids is not None:
+            binding_join = sa.and_(binding_join, TagBinding.target_id.in_(target_ids))
+        binding_count: sa.ColumnElement[int] = func.count(TagBinding.id)
+        if tag_type == TagType.KNOWLEDGE.value:
+            knowledge_fs_binding_count = (
+                select(func.count(KnowledgeFSSpaceTagBinding.id))
+                .where(
+                    KnowledgeFSSpaceTagBinding.tag_id == Tag.id,
+                    KnowledgeFSSpaceTagBinding.tenant_id == workspace_id,
+                )
+                .correlate(Tag)
+                .scalar_subquery()
             )
+            binding_count += knowledge_fs_binding_count
+        stmt = (
+            select(Tag.id, Tag.name, Tag.type, binding_count.label("binding_count"))
+            .outerjoin(TagBinding, binding_join)
             .where(Tag.type == tag_type, Tag.tenant_id == workspace_id)
         )
+        if target_ids is not None:
+            stmt = stmt.where(TagBinding.id.is_not(None))
         if keyword:
             escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(Tag.name.ilike(f"%{escaped_keyword}%", escape="\\"))
@@ -57,6 +184,28 @@ class TagRepository(TagStore):
             )
 
     @override
+    def list_tags_by_target(self, workspace_id: str, target_id: str, tag_type: str) -> tuple[TagSummary, ...]:
+        stmt = (
+            select(Tag.id, Tag.name, Tag.type, func.count(TagBinding.id))
+            .join(
+                TagBinding,
+                sa.and_(
+                    TagBinding.tag_id == Tag.id,
+                    TagBinding.tenant_id == workspace_id,
+                    TagBinding.target_id == target_id,
+                ),
+            )
+            .where(Tag.tenant_id == workspace_id, Tag.type == tag_type)
+            .group_by(Tag.id, Tag.name, Tag.type, Tag.created_at)
+            .order_by(Tag.created_at.desc())
+        )
+        with self._session_factory() as session:
+            return tuple(
+                TagSummary(id=tag_id, name=name, type=tag_kind.value, binding_count=binding_count)
+                for tag_id, name, tag_kind, binding_count in session.execute(stmt).all()
+            )
+
+    @override
     def get_tag_type(self, workspace_id: str, tag_id: str) -> str | None:
         with self._session_factory() as session:
             tag_type = session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == workspace_id).limit(1))
@@ -65,44 +214,51 @@ class TagRepository(TagStore):
     @override
     def create_tag(self, workspace_id: str, actor_id: str, tag: CreateTagInput) -> TagSummary:
         with self._session_factory.begin() as session:
-            existing = session.scalar(
-                select(Tag.id).where(Tag.name == tag.name, Tag.tenant_id == workspace_id, Tag.type == tag.type).limit(1)
-            )
-            if existing is not None:
-                raise TagNameConflictError
-
-            model = Tag(
+            model, created = _get_or_create_tag(
+                session,
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                tag_type=TagType(tag.type),
                 name=tag.name,
-                type=TagType(tag.type),
-                created_by=actor_id,
-                tenant_id=workspace_id,
             )
-            model.id = str(uuid.uuid4())
-            session.add(model)
-            session.flush()
+            if not created:
+                raise TagNameConflictError
             return self._summary(model, binding_count=0)
 
     @override
-    def update_tag(self, workspace_id: str, tag_id: str, tag: UpdateTagInput) -> TagSummary:
+    def update_tag(
+        self,
+        workspace_id: str,
+        tag_id: str,
+        tag: UpdateTagInput,
+        *,
+        expected_type: TagKind | None = None,
+    ) -> TagSummary:
         with self._session_factory.begin() as session:
-            model = session.scalar(select(Tag).where(Tag.id == tag_id, Tag.tenant_id == workspace_id).limit(1))
+            conditions = [Tag.id == tag_id, Tag.tenant_id == workspace_id]
+            if expected_type is not None:
+                conditions.append(Tag.type == expected_type)
+            model = session.scalar(select(Tag).where(*conditions).limit(1))
             if model is None:
                 raise TagNotFoundError
 
             if tag.name != model.name:
-                existing = session.scalar(
+                conflict = session.scalar(
                     select(Tag.id)
                     .where(
-                        Tag.name == tag.name,
-                        Tag.tenant_id == workspace_id,
-                        Tag.type == model.type,
-                        Tag.id != tag_id,
+                        *_tag_identity_conditions(
+                            workspace_id=workspace_id,
+                            tag_type=model.type,
+                            name=tag.name,
+                        ),
+                        Tag.id != model.id,
                     )
                     .limit(1)
                 )
-                if existing is not None:
+                if conflict is not None:
                     raise TagNameConflictError
                 model.name = tag.name
+                session.flush()
 
             binding_count = (
                 session.scalar(
@@ -113,12 +269,25 @@ class TagRepository(TagStore):
                 )
                 or 0
             )
+            if model.type == TagType.KNOWLEDGE:
+                binding_count += (
+                    session.scalar(
+                        select(func.count(KnowledgeFSSpaceTagBinding.id)).where(
+                            KnowledgeFSSpaceTagBinding.tag_id == tag_id,
+                            KnowledgeFSSpaceTagBinding.tenant_id == workspace_id,
+                        )
+                    )
+                    or 0
+                )
             return self._summary(model, binding_count=binding_count)
 
     @override
-    def delete_tag(self, workspace_id: str, tag_id: str) -> None:
+    def delete_tag(self, workspace_id: str, tag_id: str, *, expected_type: TagKind | None = None) -> None:
         with self._session_factory.begin() as session:
-            model = session.scalar(select(Tag).where(Tag.id == tag_id, Tag.tenant_id == workspace_id).limit(1))
+            conditions = [Tag.id == tag_id, Tag.tenant_id == workspace_id]
+            if expected_type is not None:
+                conditions.append(Tag.type == expected_type)
+            model = session.scalar(select(Tag).where(*conditions).limit(1))
             if model is None:
                 raise TagNotFoundError
 
@@ -126,6 +295,12 @@ class TagRepository(TagStore):
                 delete(TagBinding).where(
                     TagBinding.tag_id == tag_id,
                     TagBinding.tenant_id == workspace_id,
+                )
+            )
+            session.execute(
+                delete(KnowledgeFSSpaceTagBinding).where(
+                    KnowledgeFSSpaceTagBinding.tag_id == tag_id,
+                    KnowledgeFSSpaceTagBinding.tenant_id == workspace_id,
                 )
             )
             session.delete(model)
@@ -150,25 +325,14 @@ class TagRepository(TagStore):
             if not valid_tag_ids:
                 return
 
-            existing_tag_ids = set(
-                session.scalars(
-                    select(TagBinding.tag_id).where(
-                        TagBinding.tag_id.in_(valid_tag_ids),
-                        TagBinding.target_id == binding.target_id,
-                        TagBinding.tenant_id == workspace_id,
-                    )
-                ).all()
-            )
-            session.add_all(
-                TagBinding(
+            for tag_id in sorted(valid_tag_ids):
+                _create_tag_binding_if_absent(
+                    session,
+                    workspace_id=workspace_id,
+                    actor_id=actor_id,
                     tag_id=tag_id,
                     target_id=binding.target_id,
-                    tenant_id=workspace_id,
-                    created_by=actor_id,
                 )
-                for tag_id in valid_tag_ids
-                if tag_id not in existing_tag_ids
-            )
 
     @override
     def delete_bindings(self, workspace_id: str, binding: TagBindingInput) -> None:
@@ -200,7 +364,16 @@ class TagRepository(TagStore):
     @staticmethod
     def _ensure_target_exists(session: Session, workspace_id: str, binding: TagBindingInput) -> None:
         if binding.type == "knowledge":
-            stmt = select(Dataset.id).where(Dataset.tenant_id == workspace_id, Dataset.id == binding.target_id)
+            if (
+                lock_dataset_row_for_child_write(
+                    session,
+                    tenant_id=workspace_id,
+                    dataset_id=binding.target_id,
+                )
+                is None
+            ):
+                raise TagBindingTargetNotFoundError(binding.type)
+            return
         elif binding.type == "app":
             stmt = select(App.id).where(App.tenant_id == workspace_id, App.id == binding.target_id)
         elif binding.type == "snippet":

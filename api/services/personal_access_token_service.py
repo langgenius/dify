@@ -712,7 +712,7 @@ class PersonalAccessTokenService:
                 (r.id, r.name, r.maintainer, r.enable_api, context.active_workspace_id, workspace_name)
                 for r in result.data
             ], result.has_more
-        dataset_page = self._datasets.list_datasets(
+        dataset_page = self._datasets.list_accessible_datasets(
             context,
             DatasetListFilter(
                 page=page,

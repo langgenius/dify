@@ -30,8 +30,7 @@ from models.trigger import AppTrigger, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import WorkflowRun
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
-from tasks.async_workflow_tasks import execute_workflow_sandbox
-from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
+from tasks.async_workflow_tasks import _SANDBOX_QUEUE, execute_workflow_sandbox
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app, make_workflow
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_subscription_builder
@@ -273,7 +272,7 @@ def test_dispatch_commits_quota_and_publishes_actual_workflow_task(
     celery_app.set_current()
     try:
         with celery_app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue:
+            with SimpleQueue(connection.channel(), _SANDBOX_QUEUE) as queue:
                 queue.clear()
                 try:
                     assert dispatch.run(harness) == 1

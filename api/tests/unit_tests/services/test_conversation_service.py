@@ -24,7 +24,7 @@ from models.agent import (
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, Conversation
-from repositories.conversation_lifecycle import retire_conversation
+from repositories.conversation.lifecycle import retire_conversation
 from services import conversation_service
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, WorkspaceOwnerScope
 from services.conversation_service import ConversationService

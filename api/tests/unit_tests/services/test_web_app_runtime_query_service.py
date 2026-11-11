@@ -8,6 +8,7 @@ from enums import DeploymentEdition
 from models.model import UploadFile
 from services.app_definition_query_service import AppSiteConfiguration
 from services.entities.feature_entities import FeatureModel
+from services.file_adapters import build_file_service
 from services.file_service import FileService
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
@@ -25,8 +26,8 @@ _FILES_URL = "https://files.example.com"
 def file_service(sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture) -> FileService:
     with sqlite_session_factory.begin() as session:
         session.add(make_upload_file(file_id="file-1", tenant_id="tenant-1"))
-    mocker.patch("services.file_service.file_helpers.get_signed_file_url", return_value="https://icon")
-    return FileService(sqlite_session_factory)
+    mocker.patch("services.file_adapters.file_helpers.get_signed_file_url", return_value="https://icon")
+    return build_file_service(session_factory=sqlite_session_factory)
 
 
 @pytest.fixture
@@ -126,8 +127,9 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     runtime.get_runtime_record.side_effect = lambda _app_id: events.append("record") or record
     workspace_features.side_effect = lambda _tenant_id, **_kwargs: events.append("features") or features
     icon = mocker.spy(file_service, "get_icon_url")
-    mocker.patch(
-        "services.file_service.file_helpers.get_signed_file_url",
+    mocker.patch.object(
+        file_service,
+        "_sign_file",
         side_effect=lambda **_kwargs: events.append("icon") or "https://icon",
     )
 

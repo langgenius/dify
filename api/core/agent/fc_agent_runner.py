@@ -12,7 +12,7 @@ from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.app.file_access import grant_upload_file_access
+from core.app.file_access import DatabaseFileAccessController
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_context import use_credit_usage_metadata
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 _FILE_PREVIEW_ID_PATTERN = re.compile(r"/files/([a-fA-F0-9-]{36})/file-preview")
 _KNOWLEDGE_RETRIEVAL_PROMPT_NAME = "knowledge_retrieval"
+_file_access_controller = DatabaseFileAccessController()
 
 
 class FunctionCallAgentRunner(BaseAgentRunner):
@@ -56,18 +57,30 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         if not upload_file_ids:
             return []
 
-        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+        scope = _file_access_controller.current_scope()
+        if scope is None:
+            return []
+        authorized_upload_file_ids = [
+            upload_file_id for upload_file_id in upload_file_ids if upload_file_id in scope.granted_upload_file_ids
+        ]
+        if not authorized_upload_file_ids:
+            return []
+        stmt = _file_access_controller.apply_upload_file_filters(
+            select(UploadFile).where(UploadFile.id.in_(authorized_upload_file_ids)),
+            scope=scope,
+        )
+        upload_files = session.scalars(stmt).all()
         upload_file_map = {str(upload_file.id): upload_file for upload_file in upload_files}
         ordered_upload_files = [
-            upload_file_map[upload_file_id] for upload_file_id in upload_file_ids if upload_file_id in upload_file_map
+            upload_file_map[upload_file_id]
+            for upload_file_id in authorized_upload_file_ids
+            if upload_file_id in upload_file_map
         ]
         image_upload_files = [
             upload_file for upload_file in ordered_upload_files if (upload_file.mime_type or "").startswith("image/")
         ]
         if not image_upload_files:
             return []
-
-        grant_upload_file_access(str(upload_file.id) for upload_file in image_upload_files)
 
         image_detail_config = (
             self.application_generate_entity.file_upload_config.image_config.detail

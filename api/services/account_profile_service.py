@@ -18,7 +18,7 @@ class AccountProfileService:
 
     def update(self, context: RequestContext, changes: AccountProfileChanges) -> AccountSnapshot:
         if changes.has_changes():
-            account = self._accounts.update_profile(context.account_id, changes)
+            account = self._accounts.update_profile(context.account_id, context.active_workspace_id, changes)
         else:
             account = self._accounts.get(context.account_id)
         if account is None:

@@ -13,17 +13,18 @@ from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.enums import WorkflowExecutionStatus
 from graphon.graph import Graph
 from graphon.runtime import InitParams, RuntimeState, VariablePool
-from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity, HumanInputForm
@@ -31,6 +32,7 @@ from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from services.human_input_v2.submission_service import HumanInputSubmissionService
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @dataclass(frozen=True)
@@ -204,7 +206,12 @@ def test_container_approvals_resume_from_checkpoints_with_independent_forms(
     for _ in range(3):
         graph = Graph.init(
             graph_config=graph_config,
-            node_factory=DifyNodeFactory(params, state),
+            node_factory=DifyNodeFactory(
+                params,
+                state,
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=build_knowledge_index_files(),
+            ),
             root_node_id="container" if container_debug else "start",
             skip_validation=container_debug,
         )

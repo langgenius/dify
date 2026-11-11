@@ -2,11 +2,12 @@ from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
-from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from graphon.model_runtime.entities.model_entities import ModelType
+from services.knowledge.retrieval.multi_dataset_react_route import ReactMultiDatasetRouter
+from services.knowledge.retrieval.react_output import ReactAction, ReactFinish
+from services.knowledge.retrieval.routing_model import RoutingModelConfig
 
 
 class TestReactMultiDatasetRouter:
@@ -86,9 +87,7 @@ class TestReactMultiDatasetRouter:
 
     def test_react_invoke_returns_action_tool(self) -> None:
         router = ReactMultiDatasetRouter()
-        model_config = Mock()
-        model_config.mode = "chat"
-        model_config.parameters = {"temperature": 0.1}
+        model_config = RoutingModelConfig(mode="chat", parameters={"temperature": 0.1}, stop=[])
         model_instance = Mock()
         usage = LLMUsage.empty_usage()
         tools = [Mock(name="dataset-1"), Mock(name="dataset-2")]
@@ -100,10 +99,12 @@ class TestReactMultiDatasetRouter:
         with (
             patch.object(router, "create_chat_prompt", return_value=[Mock()]) as mock_chat_prompt,
             patch(
-                "core.rag.retrieval.router.multi_dataset_react_route.AdvancedPromptTransform"
+                "services.knowledge.retrieval.multi_dataset_react_route.AdvancedPromptTransform"
             ) as mock_prompt_transform,
             patch.object(router, "_invoke_llm", return_value=('{"action":"dataset-2","action_input":{}}', usage)),
-            patch("core.rag.retrieval.router.multi_dataset_react_route.StructuredChatOutputParser") as mock_parser_cls,
+            patch(
+                "services.knowledge.retrieval.multi_dataset_react_route.StructuredChatOutputParser"
+            ) as mock_parser_cls,
         ):
             mock_prompt_transform.return_value.get_prompt.return_value = [Mock()]
             mock_parser_cls.return_value.parse.return_value = ReactAction("dataset-2", {}, "log")
@@ -118,15 +119,12 @@ class TestReactMultiDatasetRouter:
             )
 
         mock_chat_prompt.assert_called_once()
-        assert mock_prompt_transform.return_value.get_prompt.call_args.kwargs["model_instance"] is model_instance
         assert dataset_id == "dataset-2"
         assert returned_usage == usage
 
     def test_react_invoke_returns_none_for_finish(self) -> None:
         router = ReactMultiDatasetRouter()
-        model_config = Mock()
-        model_config.mode = "completion"
-        model_config.parameters = {"temperature": 0.1}
+        model_config = RoutingModelConfig(mode="completion", parameters={"temperature": 0.1}, stop=[])
         usage = LLMUsage.empty_usage()
         tool = Mock()
         tool.name = "dataset-1"
@@ -135,12 +133,14 @@ class TestReactMultiDatasetRouter:
         with (
             patch.object(router, "create_completion_prompt", return_value=Mock()) as mock_completion_prompt,
             patch(
-                "core.rag.retrieval.router.multi_dataset_react_route.AdvancedPromptTransform"
+                "services.knowledge.retrieval.multi_dataset_react_route.AdvancedPromptTransform"
             ) as mock_prompt_transform,
             patch.object(
                 router, "_invoke_llm", return_value=('{"action":"Final Answer","action_input":"done"}', usage)
             ),
-            patch("core.rag.retrieval.router.multi_dataset_react_route.StructuredChatOutputParser") as mock_parser_cls,
+            patch(
+                "services.knowledge.retrieval.multi_dataset_react_route.StructuredChatOutputParser"
+            ) as mock_parser_cls,
         ):
             mock_prompt_transform.return_value.get_prompt.return_value = [Mock()]
             mock_parser_cls.return_value.parse.return_value = ReactFinish({"output": "done"}, "log")
@@ -166,7 +166,7 @@ class TestReactMultiDatasetRouter:
         model_instance = Mock()
         model_instance.invoke_llm.return_value = iter([chunk])
 
-        with patch("core.rag.retrieval.router.multi_dataset_react_route.ModelManager.for_tenant") as mock_manager:
+        with patch("services.knowledge.retrieval.multi_dataset_react_route.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_model_instance.return_value = model_instance
             text, returned_usage = router._invoke_llm(
                 completion_param={"temperature": 0.1},
@@ -231,9 +231,7 @@ class TestReactMultiDatasetRouter:
 
     def test_react_invoke_uses_completion_branch_for_non_chat_mode(self) -> None:
         router = ReactMultiDatasetRouter()
-        model_config = Mock()
-        model_config.mode = "unknown-mode"
-        model_config.parameters = dict[str, object]()
+        model_config = RoutingModelConfig(mode="unknown-mode", parameters={}, stop=[])
         tool = Mock()
         tool.name = "dataset-1"
         tool.description = "desc"
@@ -241,14 +239,16 @@ class TestReactMultiDatasetRouter:
         with (
             patch.object(router, "create_completion_prompt", return_value=Mock()) as mock_completion_prompt,
             patch(
-                "core.rag.retrieval.router.multi_dataset_react_route.AdvancedPromptTransform"
+                "services.knowledge.retrieval.multi_dataset_react_route.AdvancedPromptTransform"
             ) as mock_prompt_transform,
             patch.object(
                 router,
                 "_invoke_llm",
                 return_value=('{"action":"Final Answer","action_input":"done"}', LLMUsage.empty_usage()),
             ),
-            patch("core.rag.retrieval.router.multi_dataset_react_route.StructuredChatOutputParser") as mock_parser_cls,
+            patch(
+                "services.knowledge.retrieval.multi_dataset_react_route.StructuredChatOutputParser"
+            ) as mock_parser_cls,
         ):
             mock_prompt_transform.return_value.get_prompt.return_value = [Mock()]
             mock_parser_cls.return_value.parse.return_value = ReactFinish({"output": "done"}, "log")

@@ -39,9 +39,9 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.app.file_access import DatabaseFileAccessController
-from core.db.session_factory import session_factory
 from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from extensions.ext_application_services import application_services
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from fields.workflow_draft_variable_fields import (
@@ -66,7 +66,7 @@ _file_access_controller = DatabaseFileAccessController()
 
 
 def _snippet_service() -> SnippetService:
-    return SnippetService(session_factory.get_session_maker())
+    return application_services().snippets
 
 
 def _ensure_snippet_draft_variable_row_allowed(

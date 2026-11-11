@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from enums.creator import CreatorUserRole as _sqlalchemy_workflow_execution_repository_CreatorUserRole
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     LogstoreAPIWorkflowNodeExecutionRepository,
@@ -25,7 +26,6 @@ from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser, Tenant, WorkflowRun
-from models import CreatorUserRole as _sqlalchemy_workflow_execution_repository_CreatorUserRole
 from models.enums import CreatorUserRole as _workflow_control_persistence_CreatorUserRole
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -36,6 +36,7 @@ from repositories.entities.workflow_execution import (
 )
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow_run_control import apply_workflow_stop_to_node
+from services.file_adapters import build_file_service
 from tasks.workflow_execution_tasks import _update_workflow_run_from_execution
 
 TABLES = (WorkflowRun,)
@@ -680,6 +681,7 @@ class TestWorkflowControlPersistenceCases:
             user=user,
             app_id="app-1",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         ).save_synchronously(node)
         records: list[dict[str, str]] = []
         interrupted = False
@@ -730,6 +732,7 @@ class TestWorkflowControlPersistenceCases:
             user=user,
             app_id="app-1",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         )
         run_writer._enable_dual_write = node_writer._enable_dual_write = False
         if record_type == "workflow":

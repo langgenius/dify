@@ -1,1 +1,1 @@
-"""Knowledge retrieval authorization and application operations."""
+"""Knowledge retrieval application services and infrastructure adapters."""

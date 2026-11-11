@@ -26,12 +26,12 @@ from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from core.tools.entities.common_entities import I18nObject
 from core.workflow.file_reference import parse_file_reference
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import VariablePool
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 

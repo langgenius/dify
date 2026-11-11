@@ -434,7 +434,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
         @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
         def test_count_node_executions(self, cleanup, sqlite_session: Session):
             with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.WorkflowRepositoryFactory"
             ) as factory:
                 repo = factory.create_api_workflow_node_execution_repository.return_value
                 repo.count_by_runs.return_value = (10, 2)
@@ -444,7 +444,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
         @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
         def test_delete_node_executions(self, cleanup, sqlite_session: Session):
             with patch(
-                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.WorkflowRepositoryFactory"
             ) as factory:
                 repo = factory.create_api_workflow_node_execution_repository.return_value
                 repo.delete_by_runs.return_value = (5, 1)

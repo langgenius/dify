@@ -19,6 +19,7 @@ from repositories.knowledge.keyword_table_repository import (
     keyword_file_key,
     load_dataset_keyword_table,
     load_keyword_table,
+    lock_keyword_table_state,
     persist_keyword_table,
     save_keyword_table,
 )
@@ -108,13 +109,28 @@ class Jieba(BaseKeyword):
             write(storage_type, encoded, selected)
 
     def _read_keyword_record(self, session: Session) -> tuple[str, str | None]:
-        row = get_dataset_keyword_table(self.dataset, session=session)
-        return (row.data_source_type, row.keyword_table) if row else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
+        state = lock_keyword_table_state(
+            session,
+            tenant_id=self.dataset.tenant_id,
+            dataset_id=self.dataset.id,
+        )
+        return state if state is not None else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
+
+    def _load_current_keyword_table(self, session: Session) -> dict[str, Any] | None:
+        """Read committed keyword state after all earlier dataset writers finish."""
+
+        with redis_client.lock(f"keyword_indexing_lock_{self.dataset.id}", timeout=600):
+            return load_dataset_keyword_table(
+                self.dataset,
+                session=session,
+                storage=storage,
+                current=True,
+            )
 
     @override
     def text_exists(self, id: str, *, session: Session) -> bool:
         keyword_table = None
-        keyword_table_dict = load_dataset_keyword_table(self.dataset, session=session, storage=storage)
+        keyword_table_dict = self._load_current_keyword_table(session)
         if keyword_table_dict:
             data: Any = keyword_table_dict["__data__"]
             keyword_table = dict(data["table"])
@@ -141,26 +157,42 @@ class Jieba(BaseKeyword):
 
     @override
     def search(self, query: str, *, session: Session, **kwargs: Any) -> list[Document]:
+        """Return ranked keyword matches for a persisted dataset using an open session.
+
+        Apply the optional document filter before selecting the top k node IDs,
+        then load full segment rows only for those IDs within the same scope.
+        The caller retains session and transaction ownership; read failures propagate.
+        """
         keyword_table = None
-        keyword_table_dict = load_dataset_keyword_table(self.dataset, session=session, storage=storage)
+        keyword_table_dict = self._load_current_keyword_table(session)
         if keyword_table_dict:
             data: Any = keyword_table_dict["__data__"]
             keyword_table = dict(data["table"])
 
         k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
-        sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
+        candidate_ids: set[str] | None = None
+        if document_ids_filter is not None:
+            node_ids = session.scalars(
+                select(DocumentSegment.index_node_id).where(
+                    DocumentSegment.tenant_id == self.dataset.tenant_id,
+                    DocumentSegment.dataset_id == self.dataset.id,
+                    DocumentSegment.document_id.in_(document_ids_filter),
+                )
+            ).all()
+            candidate_ids = {node_id for node_id in node_ids if node_id is not None}
+        sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k, candidate_ids=candidate_ids)
 
         documents = []
-
         segment_query_stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
+            DocumentSegment.tenant_id == self.dataset.tenant_id,
+            DocumentSegment.dataset_id == self.dataset.id,
+            DocumentSegment.index_node_id.in_(sorted_chunk_indices),
         )
-        if document_ids_filter:
+        if document_ids_filter is not None:
             segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
-
         segments = session.scalars(segment_query_stmt).all()
-        segment_map = {segment.index_node_id: segment for segment in segments}
+        segment_map = {segment.index_node_id: segment for segment in segments if segment.index_node_id is not None}
         for chunk_index in sorted_chunk_indices:
             segment = segment_map.get(chunk_index)
 
@@ -183,7 +215,11 @@ class Jieba(BaseKeyword):
     def delete(self, *, session: Session):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
-            dataset_keyword_table = get_dataset_keyword_table(self.dataset, session=session)
+            dataset_keyword_table = get_dataset_keyword_table(
+                self.dataset,
+                session=session,
+                current=True,
+            )
             if dataset_keyword_table:
                 session.delete(dataset_keyword_table)
                 session.commit()
@@ -217,7 +253,14 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
+    def _retrieve_ids_by_query(
+        self,
+        keyword_table: dict[str, set[str]],
+        query: str,
+        k: int = 4,
+        *,
+        candidate_ids: set[str] | None = None,
+    ) -> list[str]:
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
@@ -226,7 +269,8 @@ class Jieba(BaseKeyword):
         keywords_list = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
         for keyword in keywords_list:
             for node_id in keyword_table[keyword]:
-                chunk_indices_count[node_id] += 1
+                if candidate_ids is None or node_id in candidate_ids:
+                    chunk_indices_count[node_id] += 1
 
         sorted_chunk_indices = sorted(
             chunk_indices_count.keys(),

@@ -66,6 +66,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
+from services.entities.upload_file import FileUploadActor
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
@@ -402,11 +403,14 @@ def run_draft_node(
         raise BadRequest(str(exc)) from exc
     if Workflow.get_node_type_from_node_config(node) in CONTAINER_NODE_TYPES:
         raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
+    actor = FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role)
+    tenant_id = ctx.workspace.id
     if files:
         end_read_transaction(ctx.session)
-    user_inputs = merge_files(inputs, files, ctx.caller)
+    user_inputs = merge_files(inputs, files, actor=actor, tenant_id=tenant_id)
     try:
         execution = workflow_service.run_draft_workflow_node(
+            knowledge_retrieval=application_services().knowledge.retrieval,
             app_model=ctx.app,
             draft_workflow=draft,
             node_id=node_id,

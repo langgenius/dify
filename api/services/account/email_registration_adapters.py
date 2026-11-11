@@ -1,6 +1,7 @@
 """Infrastructure adapters for account email registration."""
 
 import secrets
+import uuid
 from typing import override
 
 from configs import dify_config
@@ -13,6 +14,7 @@ from services.account.email_registration_service import (
     EmailRegistrationNotificationGateway,
     EmailRegistrationSecurityGateway,
     EmailRegistrationSendLimiter,
+    EmailRegistrationTokenClaim,
     EmailRegistrationTokenGateway,
 )
 from services.account.login_service import ConsoleAuthSecurityGateway
@@ -23,6 +25,7 @@ from services.account_errors import (
     AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,
     EmailRegistrationSeatsLimitError,
+    EmailRegistrationWorkspaceLimitError,
     SeatsLimitExceededError,
 )
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
@@ -32,10 +35,19 @@ from services.entities.account_entities import (
     AccountEmailRegistrationToken,
     AccountSessionTokens,
 )
+from services.errors.workspace import WorkspacesLimitExceededError
 from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
+
+_RELEASE_EMAIL_REGISTRATION_LUA = """
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+return redis.call('DEL', KEYS[1])
+"""
 
 
 class TokenManagerEmailRegistrationTokenGateway(EmailRegistrationTokenGateway):
+    def __init__(self, *, redis: RedisClientWrapper) -> None:
+        self._redis = redis
+
     @override
     def get(self, token: str) -> AccountEmailRegistrationToken | None:
         payload = TokenManager.get_token_data(token, "email_register")
@@ -69,6 +81,58 @@ class TokenManagerEmailRegistrationTokenGateway(EmailRegistrationTokenGateway):
     @override
     def revoke(self, token: str) -> None:
         TokenManager.revoke_token(token, "email_register")
+
+    @override
+    def claim(self, token: str) -> EmailRegistrationTokenClaim | None:
+        ttl = self._redis.pttl(self._token_key(token))
+        if ttl <= 0:
+            return None
+        claim_id = str(uuid.uuid4())
+        claimed = self._redis.set(
+            self._claim_key(token),
+            claim_id,
+            nx=True,
+            px=ttl,
+        )
+        if not claimed:
+            return None
+        try:
+            token_data = self.get(token)
+        except BaseException:
+            self.release(token, claim_id)
+            raise
+        if token_data is None:
+            self.release(token, claim_id)
+            return None
+        return EmailRegistrationTokenClaim(token_data=token_data, claim_id=claim_id)
+
+    @override
+    def consume(self, token: str, claim_id: str) -> None:
+        self._ensure_claim_owner(token, claim_id)
+        self._redis.delete(self._token_key(token))
+        self.release(token, claim_id)
+
+    @override
+    def release(self, token: str, claim_id: str) -> None:
+        self._redis.register_script(_RELEASE_EMAIL_REGISTRATION_LUA)(
+            keys=[self._claim_key(token)],
+            args=[claim_id],
+        )
+
+    def _ensure_claim_owner(self, token: str, claim_id: str) -> None:
+        stored_claim = self._redis.get(self._claim_key(token))
+        if isinstance(stored_claim, bytes):
+            stored_claim = stored_claim.decode("utf-8")
+        if stored_claim != claim_id:
+            raise RuntimeError("Email registration token claim is no longer owned")
+
+    @staticmethod
+    def _token_key(token: str) -> str:
+        return f"email_register:token:{token}"
+
+    @classmethod
+    def _claim_key(cls, token: str) -> str:
+        return f"{cls._token_key(token)}:registration_claim"
 
 
 class SecureEmailRegistrationCodeGenerator(EmailRegistrationCodeGenerator):
@@ -163,6 +227,8 @@ class AccountLifecycleRegistrationGateway(AccountRegistrationGateway):
             )
         except SeatsLimitExceededError as exc:
             raise EmailRegistrationSeatsLimitError from exc
+        except WorkspacesLimitExceededError as exc:
+            raise EmailRegistrationWorkspaceLimitError from exc
         except (AccountEmailDomainSuspendedError, AccountNormalizedEmailAlreadyInUseError):
             raise
         except AccountRegisterError as exc:

@@ -12,9 +12,7 @@ export type WebsiteCrawlPayload = {
   url: string
 }
 
-export type WebsiteCrawlResponse = {
-  [key: string]: unknown
-}
+export type WebsiteCrawlResponse = WebsiteCrawlStartedResponse | WebsitePageCrawledResponse
 
 export type ErrorResponse = {
   code: string
@@ -29,6 +27,40 @@ export type ErrorResponse = {
 export type CrawlFailedError = ErrorResponse & {
   code: 'crawl_failed'
   status: 500
+}
+
+export type WebsiteCrawlProgressResponse = {
+  current: number
+  data: Array<CrawledPage>
+  job_id: string
+  status: string
+  time_consuming?: string | number | null
+  total: number
+}
+
+export type WebsiteCrawlStartedResponse = {
+  job_id: string
+  status: string
+}
+
+export type WebsitePageCrawledResponse = {
+  data: ScrapedPage
+  status: string
+}
+
+export type CrawledPage = {
+  description: string | null
+  markdown: string | null
+  source_url: string | null
+  title: string | null
+}
+
+export type ScrapedPage = {
+  content?: string | null
+  description?: string | null
+  title?: string | null
+  url?: string | null
+  [key: string]: unknown
 }
 
 export type PostWebsiteCrawlData = {
@@ -73,7 +105,7 @@ export type GetWebsiteCrawlStatusByJobIdError =
   GetWebsiteCrawlStatusByJobIdErrors[keyof GetWebsiteCrawlStatusByJobIdErrors]
 
 export type GetWebsiteCrawlStatusByJobIdResponses = {
-  200: WebsiteCrawlResponse
+  200: WebsiteCrawlProgressResponse
 }
 
 export type GetWebsiteCrawlStatusByJobIdResponse =

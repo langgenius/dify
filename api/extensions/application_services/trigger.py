@@ -31,6 +31,7 @@ from repositories.trigger.subscription_repository import (
     TriggerSubscriptionRepository,
 )
 from services.async_workflow_service import AsyncWorkflowService, TriggerWorkflowQuery
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.quota_service import QuotaService
 from services.trigger.debug_service import TriggerDebugService
 from services.trigger.debug_store import TriggerDebugEventStore
@@ -113,6 +114,7 @@ def build_trigger_services(
     credentials: CredentialQueryRepository,
     subscriptions: TriggerSubscriptionRepository,
     workflow_queries: TriggerWorkflowQuery,
+    knowledge_retrieval: KnowledgeRetriever,
     trigger_end_users: TriggerEndUserProvisioner,
     mark_rate_limited: Callable[[str], None],
 ) -> TriggerServices:
@@ -163,7 +165,10 @@ def build_trigger_services(
     )
     execution_logs = SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=database_client)
     execution_runtime = WorkflowTriggerExecutionGateway(
-        models=execution_logs, logs=execution_logs, session_factory=database_client
+        models=execution_logs,
+        logs=execution_logs,
+        session_factory=database_client,
+        knowledge_retrieval=knowledge_retrieval,
     )
     queues = CeleryWorkflowQueuePublisher()
     workflow_dispatch = AsyncWorkflowService(

@@ -3,9 +3,9 @@ from unittest.mock import patch
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models.account import Tenant
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 

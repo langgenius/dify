@@ -23,6 +23,7 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from models import AppMode, Conversation, Message
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def _entity(invoke_from: InvokeFrom) -> CompletionAppGenerateEntity:
@@ -56,7 +57,9 @@ def test_prepared_records_preserve_input_and_actor_ownership(
 ) -> None:
     entity = _entity(invoke_from)
     with sqlite_session_factory(expire_on_commit=False) as session:
-        conversation, message = CompletionAppGenerator()._init_generate_records(entity, session=session)
+        conversation, message = CompletionAppGenerator(
+            knowledge_retrieval=make_knowledge_retriever()
+        )._init_generate_records(entity, session=session)
     with sqlite_session_factory() as verification:
         saved = verification.get(Message, message.id)
         saved_conversation = verification.get(Conversation, conversation.id)
@@ -85,7 +88,9 @@ def test_invalid_prepared_input_rolls_back_without_starting_a_worker(
     entity = _entity(InvokeFrom.WEB_APP)
     entity.inputs = {**entity.inputs, "invalid_json": object()}
     with pytest.raises(StatementError) as error:
-        CompletionAppGenerator().generate_from_entity(entity, session_factory=sqlite_session_factory)
+        CompletionAppGenerator(knowledge_retrieval=make_knowledge_retriever()).generate_from_entity(
+            entity, session_factory=sqlite_session_factory
+        )
     assert isinstance(error.value.orig, TypeError)
     with sqlite_session_factory() as verification:
         assert verification.scalar(select(func.count()).select_from(Message)) == 0

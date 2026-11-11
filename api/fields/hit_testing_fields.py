@@ -1,10 +1,52 @@
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
+from services.knowledge.entities.external import ExternalRetrievalConfig
+from services.knowledge.entities.knowledge_entities import RetrievalModel
+
+
+class HitTestingExternalRetrievalModel(BaseModel):
+    """Optional per-request overrides for an external knowledge provider."""
+
+    top_k: int | None = Field(default=None, description="Maximum number of results to return.")
+    score_threshold: float | None = Field(
+        default=None,
+        description="Minimum similarity score threshold for filtering results.",
+    )
+    score_threshold_enabled: bool | None = Field(
+        default=None,
+        description="Whether score threshold filtering is enabled.",
+    )
+
+    def to_domain(self) -> ExternalRetrievalConfig | None:
+        # An empty object has historically meant "use the dataset settings".
+        return ExternalRetrievalConfig.from_mapping(self.model_dump(exclude_unset=True))
+
+
+class HitTestingPayload(BaseModel):
+    query: str = Field(description="Search query text.", max_length=250)
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
+    )
+    external_retrieval_model: HitTestingExternalRetrievalModel | None = Field(
+        default=None,
+        description=(
+            "Optional retrieval overrides for an external knowledge base. Omit this field to use the settings "
+            "stored on the knowledge base."
+        ),
+    )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description="List of attachment IDs to include in the retrieval context.",
+    )
 
 
 class HitTestingQuery(ResponseModel):
@@ -85,9 +127,41 @@ class HitTestingRecord(ResponseModel):
     summary: str | None
 
 
+class ExternalHitTestingQueryResponse(ResponseModel):
+    content: str
+
+
+class ExternalHitTestingRecordResponse(ResponseModel):
+    # Keep the two response branches disjoint: invalid internal records must not
+    # pass after Pydantic discards their segment-specific fields.
+    model_config = ConfigDict(extra="forbid")
+
+    content: str | None = None
+    title: str | None = None
+    score: float | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class ExternalHitTestingResponse(ResponseModel):
+    query: ExternalHitTestingQueryResponse
+    records: list[ExternalHitTestingRecordResponse]
+
+
+def _record_source(record: Any) -> Literal["internal", "external"]:
+    if isinstance(record, HitTestingRecord) or (isinstance(record, dict) and "segment" in record):
+        return "internal"
+    return "external"
+
+
+HitTestingResultRecord = Annotated[
+    Annotated[HitTestingRecord, Tag("internal")] | Annotated[ExternalHitTestingRecordResponse, Tag("external")],
+    Discriminator(_record_source),
+]
+
+
 class HitTestingResponse(ResponseModel):
     query: HitTestingQuery = Field(description="The original query object.")
-    records: list[HitTestingRecord]
+    records: list[HitTestingResultRecord]
 
 
 def _normalize_enum(value: Any) -> Any:

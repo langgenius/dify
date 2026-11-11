@@ -31,6 +31,7 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.conversation import ConversationNotExistsError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_generate_name": False}
 _WORKFLOW_ARGS: dict[str, object] = {"inputs": {"count": 0}, "files": []}
@@ -40,6 +41,7 @@ _MESSAGE_ID = str(uuid4())
 @dataclass
 class _RuntimeHarness:
     runtime: AppGenerateServiceRuntime
+    app_generation: generation_module.AppGenerateService
     app_id: str
     account_id: str
     closed_sessions: list[Session]
@@ -75,12 +77,17 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> _RuntimeHarness:
     def record_commit(session: Session) -> None:
         committed_sessions.append(session)
 
+    app_generation = generation_module.AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
     return _RuntimeHarness(
-        AppGenerateServiceRuntime(session_factory=cast(sessionmaker[Session], factory)),
-        app.id,
-        account.id,
-        closed_sessions,
-        committed_sessions,
+        runtime=AppGenerateServiceRuntime(
+            session_factory=cast(sessionmaker[Session], factory),
+            app_generation=app_generation,
+        ),
+        app_generation=app_generation,
+        app_id=app.id,
+        account_id=account.id,
+        closed_sessions=closed_sessions,
+        committed_sessions=committed_sessions,
     )
 
 
@@ -128,7 +135,7 @@ def _patch_generation(
         )
 
     expected_streaming = streaming
-    monkeypatch.setattr(generation_module.AppGenerateService, "generate", legacy_generate)
+    monkeypatch.setattr(harness.app_generation, "generate", legacy_generate)
 
 
 def _invoke_generation(
@@ -256,7 +263,7 @@ def test_missing_runtime_entities_keep_precise_errors_and_do_not_enter_generatio
     def unexpected_generation(**_kwargs: object) -> GenerationResponse:
         pytest.fail("Missing app or account must not reach generation")
 
-    monkeypatch.setattr(generation_module.AppGenerateService, "generate", unexpected_generation)
+    monkeypatch.setattr(harness.app_generation, "generate", unexpected_generation)
     app_id = str(uuid4()) if missing == "app" else harness.app_id
     account_id = str(uuid4()) if missing == "account" else harness.account_id
     error_type = AppDefinitionUnavailableError if missing == "app" else AccountNotFoundError

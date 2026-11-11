@@ -47,14 +47,14 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.build_rag_pipeline_service",
                 return_value=service_instance,
             ) as service_cls,
         ):
             req_data = DatasourceContentPreviewPayload.model_validate(payload)
             response, status = method(api, req_data, unbound_session, account, pipeline, node_id)
 
-        service_cls.assert_called_once_with(unbound_session)
+        service_cls.assert_called_once_with(session=unbound_session)
         service_instance.run_datasource_node_preview.assert_called_once_with(
             pipeline=pipeline,
             node_id=node_id,
@@ -114,7 +114,7 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.build_rag_pipeline_service",
                 return_value=service_instance,
             ),
         ):

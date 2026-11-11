@@ -1,10 +1,16 @@
-"""Request-side document synchronization use cases."""
+"""Document synchronization request and execution contracts."""
 
 from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.documents.application import DocumentTaskDispatcher
+from services.knowledge.documents.contracts import (
+    DocumentPersistenceArchivedError,
+    DocumentPersistenceInvalidStateError,
+    DocumentPersistenceNotFoundError,
+)
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 
 
 class SyncDocumentRecord(NamedTuple):
@@ -19,9 +25,7 @@ class DocumentSyncReader(Protocol):
 
     def list_active_notion_refs(self, dataset_ref: DatasetRef) -> tuple[DocumentRef, ...]: ...
 
-
-class DocumentSyncDispatcher(Protocol):
-    def dispatch(self, *, dataset_id: str, document_id: str) -> None: ...
+    def sync_notion(self, ref: DocumentRef) -> None: ...
 
 
 class DocumentSyncError(Exception):
@@ -38,6 +42,10 @@ class SyncDocumentSourceError(DocumentSyncError):
         super().__init__("Document is not notion type")
 
 
+class SyncDocumentArchivedError(DocumentSyncError):
+    pass
+
+
 class DocumentSyncApplicationService:
     """Authorize synchronization requests and dispatch the worker use case."""
 
@@ -46,18 +54,18 @@ class DocumentSyncApplicationService:
         *,
         dataset_access: DatasetAccess,
         documents: DocumentSyncReader,
-        dispatcher: DocumentSyncDispatcher,
+        tasks: DocumentTaskDispatcher,
     ) -> None:
         self._dataset_access = dataset_access
         self._documents = documents
-        self._dispatcher = dispatcher
+        self._tasks = tasks
 
     def sync_dataset(self, context: RequestContext, dataset_id: str) -> int:
         dataset = self._dataset_access.require_accessible(context, dataset_id)
         dataset_ref = DatasetRef(dataset.workspace_id, dataset.id)
         document_refs = self._documents.list_active_notion_refs(dataset_ref)
         for document_ref in document_refs:
-            self._dispatcher.dispatch(dataset_id=dataset_ref.dataset_id, document_id=document_ref.document_id)
+            self._sync_notion(document_ref)
         return len(document_refs)
 
     def sync_document(self, context: RequestContext, dataset_id: str, document_id: str) -> None:
@@ -68,4 +76,15 @@ class DocumentSyncApplicationService:
             raise SyncDocumentNotFoundError()
         if document.data_source_type != "notion_import":
             raise SyncDocumentSourceError()
-        self._dispatcher.dispatch(dataset_id=dataset.id, document_id=document.id)
+        self._sync_notion(document_ref)
+
+    def _sync_notion(self, document_ref: DocumentRef) -> None:
+        try:
+            self._documents.sync_notion(document_ref)
+            self._tasks.sync_notion(document_ref)
+        except DocumentPersistenceNotFoundError as error:
+            raise SyncDocumentNotFoundError() from error
+        except DocumentPersistenceArchivedError as error:
+            raise SyncDocumentArchivedError(str(error)) from error
+        except DocumentPersistenceInvalidStateError as error:
+            raise SyncDocumentSourceError() from error

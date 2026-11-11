@@ -5,12 +5,13 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import Storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.file import FileTransferMethod, FileType
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import MessageFile
-from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.conversation.message_file_preview_repository import MessageFilePreviewQueryRepository
 from services.message_file_preview_service import (
     MessageFilePreviewAccessDeniedError,
     MessageFilePreviewNotFoundError,

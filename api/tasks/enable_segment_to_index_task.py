@@ -14,12 +14,12 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
-from repositories.knowledge.dataset_read_repository import (
+from repositories.knowledge.segment_query_repository import (
+    get_segment_attachment_files,
     get_segment_child_chunks,
     get_segment_dataset,
     get_segment_document,
 )
-from repositories.knowledge.segment_read_adapter import get_segment_attachments
 
 logger = logging.getLogger(__name__)
 
@@ -97,12 +97,12 @@ def enable_segment_to_index_task(segment_id: str):
                     document.children = child_documents
             multimodel_documents = []
             if dataset.is_multimodal:
-                for attachment in get_segment_attachments(segment, session=session):
+                for attachment in get_segment_attachment_files(segment, session=session):
                     multimodel_documents.append(
                         AttachmentDocument(
-                            page_content=attachment["name"],
+                            page_content=attachment.name,
                             metadata={
-                                "doc_id": attachment["id"],
+                                "doc_id": attachment.id,
                                 "doc_hash": "",
                                 "document_id": segment.document_id,
                                 "dataset_id": segment.dataset_id,

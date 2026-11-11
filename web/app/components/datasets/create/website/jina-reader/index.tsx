@@ -22,6 +22,7 @@ import Options from './options'
 
 const ERROR_I18N_PREFIX = 'errorMsg'
 const I18N_PREFIX = 'stepOne.website'
+const JINA_READER_PROGRESS_STATUSES = new Set(['active', 'pending', 'processing', 'running'])
 type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
@@ -107,7 +108,11 @@ const JinaReader: FC<Props> = ({
             },
           }
         }
-        if (res.status === 'failed' || !res.status) {
+        if (
+          res.status === 'failed' ||
+          res.status === 'cancelled' ||
+          !JINA_READER_PROGRESS_STATUSES.has(res.status)
+        ) {
           return {
             isError: true,
             errorMessage: res.message,

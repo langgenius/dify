@@ -55,6 +55,7 @@ from models.account import Account as _workflow_response_converter_resumption_Ac
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowType
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 class TestWorkflowResponseConverterCases:
@@ -1539,6 +1540,7 @@ def _build_runner():
     return _RecordingWorkflowAppRunner(
         application_generate_entity=app_entity,
         queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="sys-user",

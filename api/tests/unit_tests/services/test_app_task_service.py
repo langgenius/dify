@@ -49,6 +49,7 @@ from models.workflow import WorkflowType as ModelWorkflowType
 from models.workflow import WorkflowType as _legacy_workflow_task_recovery_WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskControlService, AppTaskService, WorkflowStopOutcome
+from services.file_adapters import build_file_service
 
 """Injected workflow cancellation preserves both transport mechanisms."""
 
@@ -1153,6 +1154,7 @@ class TestPausedWorkflowStopCases:
                 user=EndUser(id="user-1"),
                 app_id=node_app,
                 triggered_from=origin,
+                files=build_file_service(session_factory=sqlite_session_factory),
             ).save(
                 WorkflowNodeExecution(
                     id=f"node-{node_app}",

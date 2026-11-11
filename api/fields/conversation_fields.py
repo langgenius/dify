@@ -6,7 +6,6 @@ from typing import Annotated, Any
 
 from pydantic import Field, WithJsonSchema, field_validator, model_validator
 
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from fields.base import ResponseModel, SessionResponseSource
 from graphon.file import File
 from libs.helper import to_timestamp
@@ -24,6 +23,7 @@ from models.model import (
 from models.model import (
     Message as MessageModel,
 )
+from services.knowledge.entities.citation import RetrievalSourceMetadata
 
 type AnyJSONValue = Any
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]

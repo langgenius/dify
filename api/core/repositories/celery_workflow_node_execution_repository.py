@@ -12,17 +12,16 @@ from typing import Any, override
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import (
-    OrderConfig,
-    WorkflowNodeExecutionRepository,
-)
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowNodeExecution
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from models import Account, CreatorUserRole, EndUser
+from models import Account, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from services.file_service import UploadFileCreator
+from services.workflow.persistence import WorkflowNodeExecutionRepository
 from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
     save_workflow_node_executions_task,
@@ -64,6 +63,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+        files: UploadFileCreator,
     ):
         """
         Initialize the repository with Celery task configuration and context information.
@@ -74,6 +74,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
+            files: Upload capability reused by the SQL fallback repository
         """
         # Store session factory for fallback operations
         match session_factory:
@@ -100,6 +101,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
+        self._files = files
 
         # In-memory cache for workflow node executions
         self._execution_cache = {}
@@ -113,6 +115,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user=user,
             app_id=app_id,
             triggered_from=triggered_from,
+            files=files,
         )
 
         logger.info(
@@ -130,6 +133,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user=self._user,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files=self._files,
         )
 
     @override
@@ -226,7 +230,6 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
-        order_config: OrderConfig | None = None,
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
@@ -235,23 +238,16 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         Args:
             workflow_execution_id: The workflow execution identifier
-            order_config: Optional configuration for ordering results
-
         Returns:
             A sequence of WorkflowNodeExecution instances
         """
         if include_paused:
             # Resume hydration must not widen the ordinary runtime cache.
-            return self._sql_repository.get_by_workflow_execution(
-                workflow_execution_id, order_config, include_paused=True
-            )
+            return self._sql_repository.get_by_workflow_execution(workflow_execution_id, include_paused=True)
         try:
             if workflow_execution_id not in self._database_loaded_workflow_executions:
                 try:
-                    persisted_executions = self._sql_repository.get_by_workflow_execution(
-                        workflow_execution_id,
-                        order_config,
-                    )
+                    persisted_executions = self._sql_repository.get_by_workflow_execution(workflow_execution_id)
                 except Exception:
                     logger.exception(
                         "Failed to load persisted workflow node executions for execution %s",
@@ -273,15 +269,6 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             for execution_id in execution_ids:
                 if execution_id in self._execution_cache:
                     result.append(self._execution_cache[execution_id])
-
-            # Apply ordering if specified
-            if order_config and result:
-                # Sort based on the order configuration
-                reverse = order_config.order_direction == "desc"
-
-                # Sort by multiple fields if specified
-                for field_name in reversed(order_config.order_by):
-                    result.sort(key=lambda x: getattr(x, field_name, 0), reverse=reverse)
 
             logger.debug(
                 "Retrieved %d workflow node executions for execution %s from cache",

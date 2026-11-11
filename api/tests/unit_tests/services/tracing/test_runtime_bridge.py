@@ -32,6 +32,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from domain.tracing.trace_run_agg import TraceRunState, TraceSourceKind
 from extensions.tracing import application_tracing_hooks, bind_tracing
@@ -61,8 +62,8 @@ from models.workflow import (
 )
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings, AppTracingSnapshot, TraceRun, workflow_has_agent_v2
@@ -141,8 +142,8 @@ class _FreezeFails(ApplicationTraceRepository):
 def record_source(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(
         sessions,
-        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
-        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        workflow_runs=WorkflowRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
         files_url="https://files.test",
         enterprise_details=False,
     )
@@ -1389,6 +1390,7 @@ class TestWorkflowToolTracingBoundaryCases:
             user=actor,
             app_id=ids["root"],
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_knowledge_index_files(),
         )
         info = WorkflowTraceInfo(
             node_executions=nodes.get_by_workflow_execution(ids["run"]),

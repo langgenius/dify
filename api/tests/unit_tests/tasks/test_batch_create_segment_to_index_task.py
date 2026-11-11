@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -9,19 +10,22 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 
+@pytest.mark.parametrize("failure", [None, "download", "parse", "empty", "qa_columns"])
 @pytest.mark.parametrize("foreign_owner", [None, "dataset", "document_tenant", "document_dataset", "upload"])
 def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committed_batch(
     sqlite_session: Session,
     sqlite_engine: Engine,
     foreign_owner: str | None,
+    failure: str | None,
 ) -> None:
     tenant_id = str(uuid4())
     user_id = str(uuid4())
@@ -46,7 +50,7 @@ def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committe
         indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=False,
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        doc_form=IndexStructureType.QA_INDEX if failure == "qa_columns" else IndexStructureType.PARAGRAPH_INDEX,
         word_count=0,
     )
     upload_file = UploadFile(
@@ -87,7 +91,16 @@ def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committe
     sqlite_session.commit()
 
     def mock_download(_key: str, file_path: str) -> None:
-        Path(file_path).write_text("content\nfirst\nsecond\nthird\n", encoding="utf-8")
+        if failure == "download":
+            raise RuntimeError("download failed")
+        data = (
+            'content\n"unterminated'
+            if failure == "parse"
+            else "content\n"
+            if failure == "empty"
+            else "content\nfirst\nsecond\nthird\n"
+        )
+        Path(file_path).write_text(data, encoding="utf-8")
 
     max_position_queries: list[str] = []
 
@@ -103,20 +116,28 @@ def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committe
         if "max(" in normalized_statement and "document_segments.position" in normalized_statement:
             max_position_queries.append(statement)
 
+    job_id = str(uuid4())
     event.listen(sqlite_engine, "before_cursor_execute", count_max_position_query)
     try:
         with (
             patch("tasks.batch_create_segment_to_index_task.storage.download", side_effect=mock_download) as download,
             patch("extensions.ext_application_services.application_services") as services,
+            patch("tasks.batch_create_segment_to_index_task.redis_client.setex") as set_status,
         ):
-            batch_create_segment_to_index_task(
-                job_id=str(uuid4()),
-                upload_file_id=upload_file.id,
-                dataset_id=dataset.id,
-                document_id=document.id,
-                tenant_id=tenant_id,
-                user_id=user_id,
+            expectation = (
+                pytest.raises((RuntimeError, ValueError, IndexError))
+                if foreign_owner is None and failure
+                else nullcontext()
             )
+            with expectation:
+                batch_create_segment_to_index_task(
+                    job_id=job_id,
+                    upload_file_id=upload_file.id,
+                    dataset_id=dataset.id,
+                    document_id=document.id,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                )
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", count_max_position_query)
 
@@ -127,14 +148,22 @@ def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committe
         assert sqlite_session.scalars(select(DocumentSegment.id)).all() == [existing_segment.id]
         return
 
+    if failure:
+        set_status.assert_any_call(f"segment_batch_import_{job_id}", 600, "error")
+        services.assert_not_called()
+        return
+
     positions = sqlite_session.scalars(
         select(DocumentSegment.position)
         .where(DocumentSegment.document_id == document.id)
         .order_by(DocumentSegment.position)
     ).all()
-    assert positions == [7, 8, 9, 10]
-    assert len(max_position_queries) == 1
-    indexing = services.return_value.knowledge.segments.mutations.index_segments
-    indexing.assert_called_once()
-    assert indexing.call_args.args == (DocumentRef(DatasetRef(tenant_id, dataset.id), document.id),)
-    assert len(indexing.call_args.kwargs["segment_ids"]) == 3
+    # The worker delegates all persistence and indexing to the shared command.
+    assert positions == [7]
+    assert not max_position_queries
+    imported = services.return_value.knowledge.segments.import_segments
+    imported.assert_called_once_with(
+        DocumentRef(DatasetRef(tenant_id, dataset.id), document.id),
+        actor_id=user_id,
+        values=[{"content": "first"}, {"content": "second"}, {"content": "third"}],
+    )

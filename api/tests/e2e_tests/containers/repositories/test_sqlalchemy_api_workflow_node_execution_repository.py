@@ -9,11 +9,12 @@ import pytest
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole, ExecutionOffLoadType
+from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (

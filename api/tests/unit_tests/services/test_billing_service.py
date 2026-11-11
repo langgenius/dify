@@ -9,6 +9,7 @@ import pytest
 from services.billing_client import billing, saas, transport
 from services.billing_service import BillingService
 from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
 from tests.helpers import billing_builders as builders
@@ -256,6 +257,88 @@ class TestBillingServiceQuotaOperations:
                 tenant_id="t1", feature_key="credit_pool", request_id="req-1", amount=5, meta={}, bucket="trial"
             )
         )
+
+    @pytest.mark.parametrize(
+        ("status_code", "error_type"),
+        [
+            (409, BillingUpstreamInvalidResponseError),
+            (429, BillingUpstreamUnavailableError),
+            (503, BillingUpstreamUnavailableError),
+        ],
+    )
+    def test_quota_commit_classifies_permanent_and_retryable_http_errors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        status_code: int,
+        error_type: type[Exception],
+    ) -> None:
+        config_overrides(BILLING_QUOTA_API_URL="https://quota.example.com/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(status_code))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with pytest.raises(error_type):
+                BillingService.quota_commit(
+                    tenant_id="t1",
+                    feature_key="trigger_event",
+                    reservation_id="rid-1",
+                    actual_amount=1,
+                )
+
+    @pytest.mark.parametrize(
+        ("status_code", "error_type"),
+        [
+            (409, BillingUpstreamInvalidResponseError),
+            (429, BillingUpstreamUnavailableError),
+            (503, BillingUpstreamUnavailableError),
+        ],
+    )
+    def test_quota_release_classifies_permanent_and_retryable_http_errors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        status_code: int,
+        error_type: type[Exception],
+    ) -> None:
+        config_overrides(BILLING_QUOTA_API_URL="https://quota.example.com/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(status_code))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with pytest.raises(error_type):
+                BillingService.quota_release(
+                    tenant_id="t1",
+                    feature_key="trigger_event",
+                    reservation_id="rid-1",
+                )
+
+    @pytest.mark.parametrize("operation", ["commit", "release"])
+    def test_quota_settlement_treats_unknown_success_response_as_retryable(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        operation: str,
+    ) -> None:
+        config_overrides(BILLING_QUOTA_API_URL="https://quota.example.com/v1")
+        response = {"unexpected": "response"}
+
+        def settle() -> billing.QuotaCommitReply | billing.QuotaReleaseReply:
+            if operation == "commit":
+                return BillingService.quota_commit(
+                    tenant_id="t1",
+                    feature_key="trigger_event",
+                    reservation_id="rid-1",
+                    actual_amount=1,
+                )
+            return BillingService.quota_release(
+                tenant_id="t1",
+                feature_key="trigger_event",
+                reservation_id="rid-1",
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+                settle()
+
+        assert isinstance(exc_info.value.__cause__, BillingUpstreamInvalidResponseError)
 
 
 class TestBillingServiceCacheManagement:

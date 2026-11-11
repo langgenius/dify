@@ -23,14 +23,16 @@ from controllers.inner_api.app.file_grants import (
     InvalidGrantRequestError,
     InvalidSubjectError,
 )
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import _build_file_grant_service
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import EndUserType
 from models.model import App, AppMode, EndUser, UploadFile
 from models.tools import ToolFile
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from services.app_scoped_end_user_service import AppScopedEndUserService
+from services.file_adapters import build_file_service
 from services.file_grant_gateways import FILE_GRANT_AUDIENCE
 from services.file_grant_service import (
     MAX_RUN_GRANT_TTL_SECONDS,
@@ -135,7 +137,11 @@ def _persist_tool_file(session: Session, *, owner_id: str, tenant_id: str = TENA
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine, granted_config: None) -> Iterator[None]:
     del granted_config
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=factory,
+        files=build_file_service(session_factory=factory),
+    )
     services = SimpleNamespace(file_grants=service)
     with patch(f"{CONTROLLER_MODULE}.application_services", return_value=services):
         yield
@@ -494,6 +500,6 @@ def test_app_deploy_end_users_have_exactly_one_writer() -> None:
                 referencing_modules.add(path.relative_to(api_root).as_posix())
 
     assert referencing_modules == {
-        "repositories/file_grant_repository.py",
+        "repositories/file/file_grant_repository.py",
         "services/app_scoped_end_user_service.py",
     }

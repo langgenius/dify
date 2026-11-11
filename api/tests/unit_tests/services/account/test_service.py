@@ -148,11 +148,37 @@ def test_registration_without_personal_workspace_still_joins_default(
     account_domain.policy.try_join_default_workspace.assert_called_once_with(account.id)
 
 
+def test_registration_keeps_account_when_locked_capacity_recheck_loses_race(
+    account_domain: AccountDomain, sqlite_session: Session
+) -> None:
+    account_domain.policy.has_workspace_capacity.side_effect = [True, False]
+
+    account = account_domain.accounts.register("new@example.com", "New")
+
+    assert sqlite_session.get(Account, account.id) is not None
+    assert sqlite_session.scalar(select(Tenant.id)) is None
+    account_domain.policy.try_join_default_workspace.assert_called_once_with(account.id)
+
+
 def test_personal_workspace_failure_still_attempts_enterprise_join(account_domain: AccountDomain) -> None:
     account_domain.policy.is_workspace_creation_allowed.return_value = False
     with pytest.raises(WorkSpaceNotAllowedCreateError):
         account_domain.accounts.create_account_and_tenant("new@example.com", "New", "en-US")
-    account_domain.policy.try_join_default_workspace.assert_called_once()
+    account_domain.policy.try_join_default_workspace.assert_not_called()
+
+
+def test_combined_registration_rejects_full_seat_quota_before_writing_aggregate(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+) -> None:
+    account_domain.policy.has_account_capacity.return_value = False
+    account_domain.policy.has_workspace_capacity.return_value = True
+
+    with pytest.raises(SeatsLimitExceededError):
+        account_domain.accounts.create_account_and_tenant("new@example.com", "New", "en-US")
+
+    assert sqlite_session.scalar(select(Account.id)) is None
+    assert sqlite_session.scalar(select(Tenant.id)) is None
 
 
 def test_existing_archived_membership_prevents_implicit_workspace_creation(
