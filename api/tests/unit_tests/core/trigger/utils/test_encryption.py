@@ -6,7 +6,6 @@ from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.utils.encryption import (
     TriggerProviderCredentialsCache,
-    TriggerProviderOAuthClientParamsCache,
     TriggerProviderPropertiesCache,
     masked_credentials,
 )
@@ -49,11 +48,6 @@ class TestCacheKeyGeneration:
         assert "t1" in cache.cache_key
         assert "p1" in cache.cache_key
         assert "c1" in cache.cache_key
-
-    def test_oauth_client_cache_key_contains_ids(self) -> None:
-        cache = TriggerProviderOAuthClientParamsCache(tenant_id="t1", provider_id="p1")
-        assert "t1" in cache.cache_key
-        assert "p1" in cache.cache_key
 
     def test_properties_cache_key_contains_ids(self) -> None:
         cache = TriggerProviderPropertiesCache(tenant_id="t1", provider_id="p1", subscription_id="s1")

@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { ReactFlowProvider } from 'reactflow'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowContext } from '@/app/components/workflow/context'
@@ -15,8 +15,7 @@ import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDefaultParagraphFormInput } from '../../types'
 import FormContent from '../form-content'
 
-it('preserves the shortcut draft and inserts at the editor selection after focus moves into the input form', async () => {
-  // Native focus and selection must survive the portal and parent rerender; a callback stub cannot prove insertion.
+function createFormContentFixture() {
   const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper()
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {
@@ -51,6 +50,12 @@ it('preserves the shortcut draft and inserts at the editor selection after focus
       </EditorResourceScope>
     </QueryProvider>
   )
+  return { queryClient, props, wrap }
+}
+
+it('preserves the shortcut draft and inserts at the editor selection after focus moves into the input form', async () => {
+  // Native focus and selection must survive the portal and parent rerender; a callback stub cannot prove insertion.
+  const { queryClient, props, wrap } = createFormContentFixture()
   const screen = await render(wrap(<FormContent {...props} />))
   const editor = screen.getByRole('textbox')
   await editor.click()
@@ -82,4 +87,52 @@ it('preserves the shortcut draft and inserts at the editor selection after focus
     .element(screen.getByRole('textbox').getByText('approval', { exact: true }))
     .toBeVisible()
   queryClient.clear()
+})
+
+it('restores field editing and removal after the mounted editor leaves readonly mode', async () => {
+  // Native hover and clicks inside Lexical must reach the recreated action buttons without remounting the editor.
+  const { queryClient, props, wrap } = createFormContentFixture()
+  const field = createDefaultParagraphFormInput('notes')
+  const fieldProps = {
+    ...props,
+    value: '{{#$output.notes#}}',
+    formInputs: [{ ...field, default: { ...field.default, value: 'Review notes' } }],
+  }
+  const subject = (readonly: boolean) =>
+    wrap(
+      <section aria-label="Form content" style={{ width: 480, padding: 24 }}>
+        <FormContent {...fieldProps} readonly={readonly} />
+      </section>,
+    )
+  const screen = await render(subject(false))
+  const content = screen.getByRole('region', { name: 'Form content' })
+  const edit = content.getByRole('button', { name: 'common.operation.edit' })
+  const remove = content.getByRole('button', { name: 'common.operation.remove' })
+  try {
+    await content.getByText('Review notes', { exact: true }).hover()
+    await edit.click()
+    const dialog = page.getByRole('dialog')
+    await expect.element(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
+    await expect.element(dialog).not.toBeInTheDocument()
+
+    await screen.rerender(subject(true))
+    await expect.element(edit).not.toBeInTheDocument()
+    await expect.element(remove).not.toBeInTheDocument()
+    await screen.rerender(subject(false))
+    await content.getByText('Review notes', { exact: true }).hover()
+    await edit.click()
+    await expect.element(dialog).toBeVisible()
+    await expect
+      .element(dialog.getByRole('textbox', { name: /saveResponseAs/ }))
+      .toHaveValue('notes')
+    await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
+    await expect.element(dialog).not.toBeInTheDocument()
+
+    await content.getByText('Review notes', { exact: true }).hover()
+    await remove.click()
+    expect(props.onFormInputItemRemove).toHaveBeenCalledExactlyOnceWith('notes')
+  } finally {
+    queryClient.clear()
+  }
 })

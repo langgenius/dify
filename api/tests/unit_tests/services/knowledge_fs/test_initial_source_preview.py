@@ -164,6 +164,61 @@ def test_preview_lists_online_documents_with_stable_import_identity(
     assert runtime.runtime.credentials == {"token": "secret"}
 
 
+def test_preview_preserves_github_tree_branch_and_cursor(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _service(sqlite_session_factory)
+    runtime = FakeDatasourceRuntime(
+        provider_type="online_document",
+        messages=[
+            OnlineDocumentPagesMessage(
+                next_cursor="2",
+                result=[
+                    OnlineDocumentInfo(
+                        next_cursor="2",
+                        pages=[
+                            OnlineDocumentPage(
+                                has_children=True,
+                                last_edited_time="2026-11-10T00:00:00Z",
+                                page_id="dir:FFXN/dify:src",
+                                page_name="src",
+                                parent_id="contents:FFXN/dify",
+                                type="github_directory",
+                            )
+                        ],
+                        total=1,
+                        workspace_id="github-user-1",
+                        workspace_name="FFXN's GitHub",
+                    )
+                ],
+            )
+        ],
+    )
+    payload = _payload("online_document")
+    payload.parameters = {"view": "tree", "parent_id": "contents:FFXN/dify", "limit": 100}
+    with (
+        patch(
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
+            return_value={"token": "secret"},
+        ),
+        patch(
+            "services.knowledge_fs.initial_source_preview.DatasourceManager.get_datasource_runtime",
+            return_value=runtime,
+        ),
+    ):
+        response = service.preview(
+            tenant_id="tenant-1",
+            account=_account(),
+            payload=payload,
+        )
+
+    assert runtime.online_document_calls[0]["datasource_parameters"] == payload.parameters
+    assert response.next_cursor == "2"
+    assert response.documents[0].has_children is True
+    assert response.documents[0].parent_id == "contents:FFXN/dify"
+    assert response.documents[0].provider_item_id == '["github-user-1","dir:FFXN/dify:src"]'
+
+
 def test_preview_browses_online_drive_and_preserves_pagination(sqlite_session_factory: sessionmaker[Session]) -> None:
     service = _service(sqlite_session_factory)
     runtime = FakeDatasourceRuntime(

@@ -88,9 +88,14 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   browser-test:
-    name: Web Browser Tests
+    name: Web Browser Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2]
+        shardTotal: [2]
     defaults:
       run:
         shell: bash
@@ -110,7 +115,7 @@ jobs:
         run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run browser tests
-        run: vp test run --project browser --silent=passed-only --coverage
+        run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Report browser coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
@@ -119,7 +124,7 @@ jobs:
           disable_search: true
           fail_ci_if_error: true
           flags: web
-          name: web-browser
+          name: web-browser-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -127,7 +132,7 @@ jobs:
         if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-test-failures
+          name: browser-test-failures-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
           path: web/.vitest-browser/
           if-no-files-found: ignore
           include-hidden-files: true

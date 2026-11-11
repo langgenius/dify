@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "Chọn người có thể phản hồi ở bước Đầu vào của con người này.",
   "nodes.humanInputV2.recipients.initiator": "Người dùng bắt đầu lần chạy này qua Web App hoặc CLI có thể phê duyệt",
   "nodes.humanInputV2.recipients.initiatorDescription": "Người bắt đầu lần chạy quy trình này có thể phản hồi.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Lần chạy do trình kích hoạt khởi động không có người khởi tạo để nhận yêu cầu phê duyệt. Hãy chọn một liên hệ hoặc dùng biến để cung cấp địa chỉ email.",
   "nodes.humanInputV2.recipients.inputHelp": "Nhập hoặc dán nhiều email, phân tách bằng dấu phẩy. Nhấn / để chèn biến.",
   "nodes.humanInputV2.recipients.insertVariable": "Chèn biến",
   "nodes.humanInputV2.recipients.loadError": "Không thể tải các liên hệ. ID liên hệ đã lưu vẫn được giữ lại.",
