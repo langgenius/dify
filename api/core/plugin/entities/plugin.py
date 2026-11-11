@@ -1,4 +1,5 @@
 import datetime
+import re
 from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any
@@ -14,6 +15,21 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 from core.trigger.entities.entities import TriggerProviderEntity
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
+
+# Same pattern the plugin daemon uses for manifest versions
+# (pkg/entities/manifest_entities/version.go), e.g. "0.3.7-fix1".
+_DAEMON_VERSION_PATTERN = re.compile(r"^\d{1,4}(\.\d{1,4}){2}(-\w{1,16})?$")
+
+
+def _is_valid_plugin_version(version: str) -> bool:
+    """Accept PEP 440 versions and every version the plugin daemon accepts."""
+    if _DAEMON_VERSION_PATTERN.match(version):
+        return True
+    try:
+        Version(version)
+    except InvalidVersion:
+        return False
+    return True
 
 
 class PluginInstallationSource(StrEnum):
@@ -115,11 +131,9 @@ class PluginDeclaration(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        try:
-            Version(v)
-            return v
-        except InvalidVersion as e:
-            raise ValueError(f"Invalid version format: {v}") from e
+        if not _is_valid_plugin_version(v):
+            raise ValueError(f"Invalid version format: {v}")
+        return v
 
     @model_validator(mode="before")
     @classmethod
