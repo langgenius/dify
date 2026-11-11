@@ -12,10 +12,11 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models import Account, Tenant
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
@@ -166,7 +167,13 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                external_retrieval_model,
+                session=sqlite_session,
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
             )
 
             # Assert
@@ -217,7 +224,13 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                external_retrieval_model,
+                session=sqlite_session,
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
             )
 
             # Assert
@@ -265,17 +278,21 @@ class TestHitTestingServiceRetrieve:
             patch(
                 "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
             ) as mock_format,
-            patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
             patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
-            mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
             mock_retrieve.return_value = documents
             mock_format.return_value = mock_records
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                external_retrieval_model,
+                session=sqlite_session,
+                retrieval=lambda: mock_dataset_retrieval,
             )
 
             # Assert
@@ -310,17 +327,21 @@ class TestHitTestingServiceRetrieve:
         mock_dataset_retrieval.get_metadata_filter_condition.return_value = ({}, True)
 
         with (
-            patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
             patch(
                 "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
             ) as mock_format,
         ):
-            mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
             mock_format.return_value = []
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                external_retrieval_model,
+                session=sqlite_session,
+                retrieval=lambda: mock_dataset_retrieval,
             )
 
             # Assert
@@ -363,7 +384,13 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                external_retrieval_model,
+                session=sqlite_session,
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
             )
 
             # Assert
@@ -450,7 +477,12 @@ class TestHitTestingServiceExternalRetrieve:
 
         # Act
         result = HitTestingService.external_retrieve(
-            dataset, query, account, external_retrieval_model, metadata_filtering_conditions, session=sqlite_session
+            dataset,
+            query,
+            account,
+            external_retrieval_model,
+            metadata_filtering_conditions,
+            session=sqlite_session,
         )
 
         # Assert

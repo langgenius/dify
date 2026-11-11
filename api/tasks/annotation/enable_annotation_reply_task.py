@@ -19,7 +19,7 @@ from repositories.annotation_reply_job_repository import (
     RedisAnnotationReplyJobRepository,
     annotation_reply_job_owner_key,
 )
-from services.knowledge.dataset_service import DatasetCollectionBindingService
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def enable_annotation_reply_task(
 
         try:
             documents = []
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+            dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
                 embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
             )
             annotation_setting = session.scalar(
@@ -66,7 +66,7 @@ def enable_annotation_reply_task(
             if annotation_setting:
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                     old_dataset_collection_binding = (
-                        DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                        DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
                             annotation_setting.collection_binding_id, session, CollectionBindingType.ANNOTATION
                         )
                     )

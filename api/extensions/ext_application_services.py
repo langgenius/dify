@@ -42,7 +42,7 @@ from extensions.application_services.resource_access_token import build_resource
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.trigger import TriggerServices, build_trigger_services
-from extensions.application_services.workflow import build_workflow_suggestions
+from extensions.application_services.workflow import build_workflow_execution_dependencies, build_workflow_suggestions
 from extensions.application_services.workflow_variables import (
     build_console_workflow_variables,
     build_workflow_variable_service,
@@ -127,6 +127,7 @@ from services.api_based_extension_adapters import APIBasedExtensionPingProbe, Wo
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app.mcp_server_service import AppMCPServerService
 from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
 from services.app.workflow_comment_service import WorkflowCommentService
@@ -309,6 +310,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    workflow_runtime: AppGenerationRuntime
     workflow_variables: WorkflowVariableService
     console_workflow_variables: ConsoleWorkflowVariableService
     workflow_suggestions: WorkflowInstructionSuggestions
@@ -645,6 +647,7 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        workflow_runtime=build_workflow_execution_dependencies(database_client),
         workflow_variables=workflow_variables,
         console_workflow_variables=build_console_workflow_variables(
             database_client=database_client, variables=workflow_variables

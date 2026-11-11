@@ -1,7 +1,7 @@
 """Service wrapper for the inner knowledge retrieval API.
 
 This service keeps the internal HTTP contract small while reusing the workflow
-retrieval stack in ``core.rag.retrieval.dataset_retrieval.DatasetRetrieval``.
+retrieval stack in ``services.knowledge.retrieval.dataset_retrieval.DatasetRetrieval``.
 The only authorization enforced here is tenant ownership of the caller app and
 requested datasets.
 
@@ -12,36 +12,28 @@ prechecks, dataset availability and "no usable document" cases are delegated to
 of a separate validation error.
 """
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import ModelConfig
-from models.dataset import Dataset
-from models.model import App
 from services.entities.knowledge_retrieval_inner import (
     InnerKnowledgeRetrieveRequest,
     InnerKnowledgeRetrieveResponse,
     InnerKnowledgeRetrieveUsage,
 )
-from services.errors.knowledge_retrieval import (
-    InnerKnowledgeRetrieveAppNotFoundError,
-    InnerKnowledgeRetrieveAppTenantMismatchError,
-    InnerKnowledgeRetrieveDatasetNotFoundError,
-    InnerKnowledgeRetrieveDatasetTenantMismatchError,
-)
+from services.knowledge.retrieval.ports import DatasetRetrievalFactory, RetrievalScopeQueries
 
 
 class InnerKnowledgeRetrievalService:
     """Validate inner caller scope and delegate to workflow dataset retrieval."""
 
+    def __init__(self, *, scopes: RetrievalScopeQueries, retrieval: DatasetRetrievalFactory):
+        self._scopes = scopes
+        self._retrieval = retrieval
+
     def retrieve(
         self,
         request: InnerKnowledgeRetrieveRequest,
-        session: Session,
     ) -> InnerKnowledgeRetrieveResponse:
         """Run tenant-scoped retrieval for a trusted internal caller.
 
@@ -60,38 +52,16 @@ class InnerKnowledgeRetrievalService:
             InnerKnowledgeRetrieveDatasetTenantMismatchError:
                 At least one requested dataset is outside the caller tenant.
         """
-        self._validate_caller_app(tenant_id=request.caller.tenant_id, app_id=request.caller.app_id, session=session)
-        self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids, session=session)
+        self._scopes.validate_scope(
+            tenant_id=request.caller.tenant_id, app_id=request.caller.app_id, dataset_ids=request.dataset_ids
+        )
 
-        rag = DatasetRetrieval()
-        results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))
+        rag = self._retrieval()
+        results = rag.knowledge_retrieval(request=self._to_rag_request(request))
         return InnerKnowledgeRetrieveResponse(
             results=results,
             usage=InnerKnowledgeRetrieveUsage.model_validate(jsonable_encoder(rag.llm_usage)),
         )
-
-    def _validate_caller_app(self, *, tenant_id: str, app_id: str, session: Session) -> None:
-        app = session.scalar(select(App).where(App.id == app_id).limit(1))
-        if app is None:
-            raise InnerKnowledgeRetrieveAppNotFoundError(f"App '{app_id}' not found")
-        if app.tenant_id != tenant_id:
-            raise InnerKnowledgeRetrieveAppTenantMismatchError(
-                f"App '{app_id}' does not belong to tenant '{tenant_id}'"
-            )
-
-    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str], session: Session) -> None:
-        datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-
-        found_ids = {dataset.id for dataset in datasets}
-        missing_ids = sorted(set(dataset_ids) - found_ids)
-        if missing_ids:
-            raise InnerKnowledgeRetrieveDatasetNotFoundError(f"Datasets not found: {', '.join(missing_ids)}")
-
-        mismatched_ids = sorted(dataset.id for dataset in datasets if dataset.tenant_id != tenant_id)
-        if mismatched_ids:
-            raise InnerKnowledgeRetrieveDatasetTenantMismatchError(
-                f"Datasets do not belong to tenant '{tenant_id}': {', '.join(mismatched_ids)}"
-            )
 
     def _to_rag_request(self, request: InnerKnowledgeRetrieveRequest) -> KnowledgeRetrievalRequest:
         metadata_model_config = request.metadata_filtering.metadata_model_config
