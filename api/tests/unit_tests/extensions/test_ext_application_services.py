@@ -1119,15 +1119,36 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
-    assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
-    assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
-    gateway = services.workspaces.trigger_oauth._builders
-    assert isinstance(gateway, TriggerOAuthBuilderGateway)
-    assert gateway._builders is services.workspaces.trigger_builders
+    assert services.triggers.subscriptions._credentials is services.credential_queries
+    assert services.triggers.events._subscriptions is services.triggers.subscriptions
+    assert services.triggers.binding_queries is services.triggers.subscription_management._subscriptions
+    assert services.triggers.events._requests is services.triggers.endpoints._requests
+    assert services.workspaces.plugin_parameters._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._builders is services.triggers.builders
     assert (
-        services.workspaces.trigger_builders._create_subscription
-        == services.workspaces.trigger_subscription_management.create
+        services.workspaces.plugin_parameters._subscriptions is services.triggers.subscription_management._subscriptions
     )
+    assert services.triggers.subscriptions._schemas is services.triggers.providers
+    assert services.triggers.subscriptions._subscriptions is services.triggers.subscription_management._subscriptions
+    gateway = services.triggers.oauth._builders
+    assert isinstance(gateway, TriggerOAuthBuilderGateway)
+    assert gateway._builders is services.triggers.builders
+    assert services.triggers.builders._create_subscription == services.triggers.subscription_management.create
+    assert services.triggers.endpoints._subscriptions is services.triggers.subscription_management._subscriptions
+    assert (
+        services.triggers.subscription_renewal._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._providers is services.triggers.subscription_management._providers
+    assert services.triggers.subscription_refresh._renewal is services.triggers.subscription_renewal
+    assert (
+        services.triggers.subscription_refresh._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._locks is services.triggers.subscription_management._locks
+    assert services.triggers.subscription_renewal._codec is services.triggers.subscription_management._codec
+    assert services.triggers.subscription_renewal._clients is services.triggers.oauth_clients
+    assert services.triggers.subscription_renewal._oauth is services.triggers.oauth._providers
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

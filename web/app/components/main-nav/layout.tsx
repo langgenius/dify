@@ -7,8 +7,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { useHydrateAtoms } from 'jotai/utils'
 import { useTranslation } from 'react-i18next'
-import { AppDetailPrefetch } from '@/app/components/app/app-detail-prefetch'
-import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
 import { detailSidebarModeAtom } from '@/app/components/detail-sidebar/state'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -35,7 +33,6 @@ const MainNavLayout = ({
   const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const appId = getAppIdFromPathname(pathname)
   const hideMainNavigation = shouldHideMainNavigation(pathname)
   const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),
@@ -51,11 +48,10 @@ const MainNavLayout = ({
       )}
     >
       <SkipLink>{t(($) => $['navigation.skipToMain'])}</SkipLink>
-      {appId && <AppDetailPrefetch appId={appId} />}
       {useDetailSidebar && !hideMainNavigation && detailSidebar}
       {showMainNav && (
         <>
-          <MainNavMobileBar initialPlatform={initialPlatform} />
+          <MainNavMobileBar />
           <MainNav className="max-md:hidden" initialPlatform={initialPlatform} />
         </>
       )}

@@ -77,10 +77,13 @@ it.fails('keeps the available waveform and playback control pointer-reachable', 
 })
 
 it('decodes the first alternative source into a painted waveform', async () => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
+  // boundary: advance only the waveform delay; native decoding and animation frames stay real.
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
   const first = fixture({ frequency: 220 })
   const second = fixture({ frequency: 880 })
-  const fetchAudio = vi.spyOn(window, 'fetch')
+  const nativeFetch = window.fetch.bind(window)
+  // boundary: waveform resource request identity is observable at native fetch; canvas and decoder stay real.
+  const waveformFetch = vi.spyOn(window, 'fetch').mockImplementation(nativeFetch)
   const screen = await render(<AudioPlayer srcs={[first.url, second.url]} />)
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement
   const sources = Array.from(audio.querySelectorAll('source'), (source) => source.src)
@@ -88,7 +91,7 @@ it('decodes the first alternative source into a painted waveform', async () => {
   await expect.poll(() => audio.currentSrc).toBe(first.url)
   await expect.poll(() => audio.duration).toBeGreaterThan(1.9)
   await vi.advanceTimersByTimeAsync(1_000)
-  await expect.poll(() => fetchAudio.mock.calls[0]?.[0]).toBe(first.url)
+  await expect.poll(() => waveformFetch.mock.calls[0]?.[0]).toBe(first.url)
   const canvas = screen.getByTestId('waveform-canvas').element() as HTMLCanvasElement
   await expect.poll(() => paintedPixelCount(canvas)).toBeGreaterThan(100)
 })
@@ -99,9 +102,11 @@ it('keeps a rejected playback attempt visible and retryable', async () => {
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement
   await expect.poll(() => audio.duration).toBeGreaterThan(0)
   const nativePlay = audio.play.bind(audio)
+  // boundary: emulate one browser autoplay denial, then delegate retries to native playback.
   vi.spyOn(audio, 'play')
     .mockRejectedValueOnce(new DOMException('Playback denied', 'NotAllowedError'))
     .mockImplementation(nativePlay)
+  // boundary: suppress the expected production log from the intentional playback denial.
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
   const play = screen.getByRole('button', { name: 'common.operation.play' })
@@ -132,7 +137,8 @@ it('recovers from an unavailable source when the caller supplies a valid replace
 })
 
 it('ignores a failed waveform response from the previous public source', async () => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
+  // boundary: advance only the waveform delay while preserving the native response race.
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
   const oldAudio = fixture({ frequency: 220 })
   const newAudio = fixture({ frequency: 660 })
   const nativeFetch = window.fetch.bind(window)
@@ -140,6 +146,7 @@ it('ignores a failed waveform response from the previous public source', async (
   const oldResponse = new Promise<Response>((resolve) => {
     rejectOld = () => resolve(new Response(null, { status: 403 }))
   })
+  // boundary: hold one blob fetch to reproduce an out-of-order browser response.
   vi.spyOn(window, 'fetch').mockImplementation((input, init) => {
     if (String(input) === oldAudio.url) return oldResponse
     return nativeFetch(input, init)

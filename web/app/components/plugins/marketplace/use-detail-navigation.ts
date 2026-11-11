@@ -2,11 +2,11 @@
 
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
 import { useAtomValue } from 'jotai'
-import { useTheme } from 'next-themes'
 import { useSyncExternalStore } from 'react'
 import { useLocale } from '#i18n'
 import { marketplaceLinks } from '@/features/marketplace/links'
 import { deploymentEditionAtom } from '@/features/system-features/state'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 const subscribe = () => () => {}
 const getOrigin = () => window.location.origin
@@ -23,11 +23,11 @@ type TemplateDetail = Pick<
 export function useMarketplaceDetailNavigation() {
   const edition = useAtomValue(deploymentEditionAtom)
   const language = useLocale()
-  const { resolvedTheme } = useTheme()
+  const theme = useResolvedTheme()
   const source = useSyncExternalStore(subscribe, getOrigin, getServerOrigin)
   const opensExternally = edition === 'COMMUNITY' || edition === 'ENTERPRISE'
 
-  const detailParams = { language, theme: resolvedTheme }
+  const detailParams = { language, theme }
   const pluginHref = (plugin: PluginDetail) =>
     opensExternally && plugin.type !== 'bundle'
       ? marketplaceLinks.officialPluginDetail(plugin, detailParams, source)

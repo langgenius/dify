@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
@@ -151,29 +152,17 @@ class TestRagPipelineTaskProxyCases:
     # --- _upload_invoke_entities ---
 
     @staticmethod
-    def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
-        upload_file = UploadFile(
-            tenant_id="tenant-1",
-            storage_type=StorageType.LOCAL,
-            key="rag-pipeline.json",
-            name="rag-pipeline.json",
-            size=1,
-            extension="json",
-            mime_type="application/json",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="user-1",
-            created_at=datetime(2025, 1, 1),
-            used=True,
-        )
-        upload_file.id = "uploaded-file-1"
-        file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        file_service_cls.return_value.upload_text.return_value = upload_file
-        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
-
+    def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy, sqlite_session: Session) -> None:
+        storage = mocker.patch("services.file_service.storage")
         result = proxy._upload_invoke_entities()
 
-        assert result == "uploaded-file-1"
-        file_service_cls.return_value.upload_text.assert_called_once()
+        upload_file = sqlite_session.get(UploadFile, result)
+        assert upload_file is not None
+        assert upload_file.tenant_id == "tenant-1"
+        assert upload_file.created_by == "user-1"
+        assert upload_file.name == "rag_pipeline_invoke_entities.json"
+        assert upload_file.used is True
+        storage.save.assert_called_once_with(upload_file.key, b'[{"doc": "data"}]')
 
 
 class RagPipelineTaskProxyTestDataFactory:
@@ -317,7 +306,7 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_upload_invoke_entities(self, mock_db: MagicMock, mock_file_service_class: MagicMock):
             """Test _upload_invoke_entities method."""
             # Arrange
@@ -332,7 +321,7 @@ class TestRagPipelineTaskProxyCasesServices:
 
             # Assert
             assert result == "file-123"
-            mock_file_service_class.assert_called_once_with(mock_db.engine)
+            mock_file_service_class.assert_called_once_with(mock_db.return_value)
 
             # Verify upload_text was called with correct parameters
             mock_file_service.upload_text.assert_called_once()
@@ -349,7 +338,7 @@ class TestRagPipelineTaskProxyCasesServices:
             assert parsed_json[0]["pipeline_id"] == "pipeline-123"
 
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_upload_invoke_entities_with_multiple_entities(
             self, mock_db: MagicMock, mock_file_service_class: MagicMock
         ):
@@ -492,7 +481,7 @@ class TestRagPipelineTaskProxyCasesServices:
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_dispatch_with_cloud_sandbox_plan(
             self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
         ):
@@ -517,7 +506,7 @@ class TestRagPipelineTaskProxyCasesServices:
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_dispatch_with_cloud_paid_plan(self, mock_db, mock_file_service_class, mock_feature_service):
             """Test _dispatch method in Cloud with a paid plan."""
             # Arrange
@@ -540,7 +529,7 @@ class TestRagPipelineTaskProxyCasesServices:
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_dispatch_outside_cloud(
             self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
         ):
@@ -563,7 +552,7 @@ class TestRagPipelineTaskProxyCasesServices:
             proxy._send_to_priority_direct_queue.assert_called_once_with("file-123")
 
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_dispatch_with_empty_upload_file_id(self, mock_db: MagicMock, mock_file_service_class: MagicMock):
             """Test _dispatch method when upload_file_id is empty."""
             # Arrange
@@ -581,7 +570,7 @@ class TestRagPipelineTaskProxyCasesServices:
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_dispatch_edge_case_empty_plan(
             self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
         ):
@@ -606,7 +595,7 @@ class TestRagPipelineTaskProxyCasesServices:
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_dispatch_edge_case_none_plan(
             self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
         ):
@@ -631,7 +620,7 @@ class TestRagPipelineTaskProxyCasesServices:
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.db")
+        @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_delay_method(
             self, mock_db: MagicMock, mock_file_service_class: MagicMock, mock_feature_service: MagicMock
         ):

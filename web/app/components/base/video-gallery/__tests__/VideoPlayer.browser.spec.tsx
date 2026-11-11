@@ -109,40 +109,30 @@ it('uses the real container width to reveal desktop controls after a viewport ch
 })
 
 it('visually hides idle controls and reveals them on native hover', async () => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
+  // boundary: advance only the idle delay; native hover and CSS opacity transitions stay real.
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
   await page.viewport(640, 640)
   const { screen } = await renderPlayer()
   const player = screen.getByTestId('video-player-container')
   const controls = screen.getByTestId('video-controls')
   await player.hover()
   await vi.advanceTimersByTimeAsync(3_001)
-  await expect.poll(() => controls.element().dataset.isVisible).toBe('false')
-  await Promise.all(
-    controls
-      .element()
-      .getAnimations()
-      .map((animation) => animation.finished),
-  )
-  expect(Number.parseFloat(getComputedStyle(controls.element()).opacity)).toBe(0)
+  await expect.poll(() => Number.parseFloat(getComputedStyle(controls.element()).opacity)).toBe(0)
 
   await userEvent.unhover(player)
   await player.hover()
-  await Promise.all(
-    controls
-      .element()
-      .getAnimations()
-      .map((animation) => animation.finished),
-  )
-  expect(Number.parseFloat(getComputedStyle(controls.element()).opacity)).toBe(1)
+  await expect.poll(() => Number.parseFloat(getComputedStyle(controls.element()).opacity)).toBe(1)
 })
 
 it('keeps a rejected playback attempt retryable', async () => {
   await page.viewport(640, 640)
   const { screen, video } = await renderPlayer()
   const nativePlay = video.play.bind(video)
+  // boundary: emulate one browser autoplay denial, then delegate retries to native playback.
   vi.spyOn(video, 'play')
     .mockRejectedValueOnce(new DOMException('Playback denied', 'NotAllowedError'))
     .mockImplementation(nativePlay)
+  // boundary: suppress the expected production log from the intentional playback denial.
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
   await screen.getByRole('button', { name: 'common.operation.play' }).click()

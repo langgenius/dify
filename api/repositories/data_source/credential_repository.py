@@ -287,7 +287,7 @@ def _read_provider_credentials(
         )
         .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
     )
-    if credential_id is not None:
+    if credential_id:
         statement = statement.where(DatasourceProvider.id == credential_id)
     if first_only:
         statement = statement.limit(1)

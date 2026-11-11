@@ -3,7 +3,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
 from typing import Any, override
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 from sqlalchemy.orm import Session
@@ -176,7 +176,11 @@ class ApiTool(Tool):
         self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
     ) -> httpx.Response:
         """
-        do http request depending on api bundle
+        Send an HTTP request using the API bundle and supplied parameters.
+
+        For application/x-www-form-urlencoded, list/tuple values become repeated
+        fields; other values keep their existing string representation. Invalid
+        required parameters raise before dispatch.
         """
         method = method.lower()
 
@@ -259,16 +263,23 @@ class ApiTool(Tool):
                             pass
                     break
 
-        # replace path parameters
+        # replace path parameters (percent-encoded so reserved characters
+        # like ?, #, % or newlines cannot alter the URL structure)
         for name, value in path_params.items():
-            url = url.replace(f"{{{name}}}", f"{value}")
+            url = url.replace(f"{{{name}}}", quote(str(value), safe=""))
 
         # parse http body data if needed
         if "Content-Type" in headers:
             if headers["Content-Type"] == "application/json":
                 body = json.dumps(body)
             elif headers["Content-Type"] == "application/x-www-form-urlencoded":
-                body = urlencode(body)
+                body = urlencode(
+                    [
+                        (name, item)
+                        for name, value in body.items()
+                        for item in (value if isinstance(value, (list, tuple)) else [value])
+                    ]
+                )
             else:
                 body = body
 

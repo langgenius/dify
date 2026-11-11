@@ -79,10 +79,10 @@ it.each(['ltr', 'rtl'] as const)(
       )
       await screen.getByRole('button', { name: 'accountSettings.account.account' }).click()
       const appearance = screen.getByRole('menuitem', {
-        name: 'accountSettings.account.appearanceLabel',
+        name: 'common.theme.label',
       })
       await userEvent.hover(appearance)
-      const submenu = screen.getByRole('menu', { name: 'accountSettings.account.appearanceLabel' })
+      const submenu = screen.getByRole('menu', { name: 'common.theme.label' })
       await expect.element(submenu).toBeVisible()
       // Leave room on both sides so collision fallback cannot hide a fixed-side override.
       await expect
@@ -94,9 +94,7 @@ it.each(['ltr', 'rtl'] as const)(
             : submenuBounds.left >= triggerBounds.right
         })
         .toBe(true)
-      await userEvent.hover(
-        screen.getByRole('menuitemradio', { name: 'accountSettings.account.appearanceLight' }),
-      )
+      await userEvent.hover(screen.getByRole('menuitemradio', { name: 'common.theme.light' }))
       await expect.element(submenu).toBeVisible()
       await userEvent.keyboard('{Escape}')
       await expect.element(appearance).toHaveFocus()
