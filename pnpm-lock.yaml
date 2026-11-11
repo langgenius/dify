@@ -627,8 +627,8 @@ catalogs:
       specifier: 3.0.1
       version: 3.0.1
     motion:
-      specifier: 13.5.1
-      version: 13.5.1
+      specifier: 14.12.0
+      version: 14.12.0
     negotiator:
       specifier: 1.1.0
       version: 1.1.0
@@ -1722,7 +1722,7 @@ importers:
         version: 3.0.1
       motion:
         specifier: 'catalog:'
-        version: 13.5.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 14.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       negotiator:
         specifier: 'catalog:'
         version: 1.1.0
@@ -6741,15 +6741,18 @@ packages:
       react-dom:
         optional: true
 
-  framer-motion@13.5.1:
-    resolution: {integrity: sha512-HeWOaeHD3kyTSIEMT6+nw7fBn4saIfxxabZyAITbycAl4xr1kzGJKIvGt/OWghSlvIA9qTnZ1zTGelHAe6S8DA==}
+  framer-motion@14.12.0:
+    resolution: {integrity: sha512-4m+10xYan0ic8nFI8zyB5hJkW5F8F4Rer617UecOs8esw0he9unDgXaEZ0rUX7oztz1w4iuvyPWhk4jltMX5iw==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
+      remix: ^3.1.0
     peerDependenciesMeta:
       react:
         optional: true
       react-dom:
+        optional: true
+      remix:
         optional: true
 
   fs-constants@1.0.0:
@@ -7556,21 +7559,24 @@ packages:
   moo-color@1.0.3:
     resolution: {integrity: sha512-i/+ZKXMDf6aqYtBhuOcej71YSlbjT3wCO/4H1j8rPvxDJEifdwgg5MaFyu6iYAT8GBZJg2z0dkgK4YMzvURALQ==}
 
-  motion-dom@13.5.1:
-    resolution: {integrity: sha512-/7CVCD20Mz1KobktorpdgvowV0V41J7UxqE+qWS3GkSJqrRr5ft+2RloOYtEKv+wvBp3JaSFBclhxt4ja8ovHg==}
+  motion-dom@14.12.0:
+    resolution: {integrity: sha512-YnAY17g8mXRVoXGZbH+v/O2SkNBJqz2TMuqL9yek9Omfhsdjw7gJwNgI5nsGZFpbbm3vINyOo+VtGPryIslatw==}
 
-  motion-utils@13.5.0:
-    resolution: {integrity: sha512-Hqe/sqjIKliPZg8sVjWAkdySDPJNIeKH+euVkDOG8ri3DUUU7ZjndmHsGqEPz2iHpiyVaV5I22iguCMHU2he+Q==}
+  motion-utils@14.7.0:
+    resolution: {integrity: sha512-woO0/Nb7ys75f94fjvQi/6leiHGvZUYkeHUPEZ3vxsV+9OpEVhkxp01x8MlRwX0zt31EqgXsKDAoBoJLC148Tw==}
 
-  motion@13.5.1:
-    resolution: {integrity: sha512-eV9SUem6KnzEa9+eT+dVBeDlhy5TTdn09YWR1WhUsKoZCJPw/n4TcYhjbxq2Gy5PTwDr//4H3r5vxkcZnNnO1w==}
+  motion@14.12.0:
+    resolution: {integrity: sha512-cxD0c0yGXo/mzPgveXMsXGl138UNsRit9XgInK8kThtDsrvIkhlAR9b6WYoAm7EmKWToMFx6v/G8i0Zjv+2uoA==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
+      remix: ^3.1.0
     peerDependenciesMeta:
       react:
         optional: true
       react-dom:
+        optional: true
+      remix:
         optional: true
 
   mrmime@2.0.1:
@@ -13612,10 +13618,10 @@ snapshots:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
-  framer-motion@13.5.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  framer-motion@14.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      motion-dom: 13.5.1
-      motion-utils: 13.5.0
+      motion-dom: 14.12.0
+      motion-utils: 14.7.0
       tslib: 2.8.1
     optionalDependencies:
       react: 19.3.1
@@ -14648,15 +14654,15 @@ snapshots:
     dependencies:
       color-name: 1.1.4
 
-  motion-dom@13.5.1:
+  motion-dom@14.12.0:
     dependencies:
-      motion-utils: 13.5.0
+      motion-utils: 14.7.0
 
-  motion-utils@13.5.0: {}
+  motion-utils@14.7.0: {}
 
-  motion@13.5.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  motion@14.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      framer-motion: 13.5.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      framer-motion: 14.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tslib: 2.8.1
     optionalDependencies:
       react: 19.3.1
@@ -16762,7 +16768,7 @@ time:
   mediabunny@1.65.2: '2026-11-04T19:26:16.477Z'
   mime@4.1.2: '2026-10-27T14:15:05.422Z'
   mitt@3.0.1: '2023-07-04T17:31:47.638Z'
-  motion@13.5.1: '2026-10-02T12:10:51.735Z'
+  motion@14.12.0: '2026-11-10T08:53:48.268Z'
   negotiator@1.1.0: '2026-08-20T16:45:05.235Z'
   next-themes@0.4.6: '2025-03-11T21:02:05.882Z'
   next@16.4.6: '2026-11-09T20:33:38.821Z'
