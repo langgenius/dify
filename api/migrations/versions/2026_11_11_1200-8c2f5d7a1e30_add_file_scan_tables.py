@@ -1,7 +1,7 @@
 """Add the file malware-scanning tables.
 
 Revision ID: 8c2f5d7a1e30
-Revises: 6b7e2a9c4d10
+Revises: b2e4c6d8a013
 Create Date: 2026-11-11 12:00:00
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 from models.types import LongText, StringUUID
 
 revision = "8c2f5d7a1e30"
-down_revision = "6b7e2a9c4d10"
+down_revision = "b2e4c6d8a013"
 branch_labels = None
 depends_on = None
 
