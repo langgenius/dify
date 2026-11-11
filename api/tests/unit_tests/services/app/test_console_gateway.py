@@ -36,6 +36,7 @@ from models.model import App, AppMode, AppModelConfig, IconType
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
+from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -803,9 +804,9 @@ def test_import_forwards_preserve_agent_bindings_per_entry(
 def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     sqlite_session_factory: sessionmaker[Session],
     copy_source: tuple[RequestContext, str],
-    monkeypatch: pytest.MonkeyPatch,
     tool_providers: ToolProviders,
     workflow_queries: WorkflowToolQueries,
+    monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
 ) -> None:
     context, app_id = copy_source
@@ -815,9 +816,9 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
         app.mode = mode
     syncs: list[dict[str, object]] = []
     monkeypatch.setattr(
-        console_gateway.WorkflowDefinitionStore,
+        WorkflowDefinitionStore,
         "sync_draft_workflow",
-        record_calls(console_gateway.WorkflowDefinitionStore.sync_draft_workflow, syncs),
+        record_calls(WorkflowDefinitionStore.sync_draft_workflow, syncs),
     )
     AppLifecycleGateway(
         session_factory=sqlite_session_factory,

@@ -3,9 +3,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.errors import InternalServerError, InvalidRequestError, NotFoundError
+from controllers.common.errors import InvalidRequestError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session

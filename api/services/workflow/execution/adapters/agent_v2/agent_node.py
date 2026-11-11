@@ -489,7 +489,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
-        return result
+        return result  # noqa: B901  # StopIteration.value is the generator completion result.
 
     def _read_event_stream(
         self,

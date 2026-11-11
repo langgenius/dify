@@ -1529,6 +1529,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable recovery of persisted workflow draft upload cleanup requests",
         default=True,
     )
+    WORKFLOW_DRAFT_FILE_CLEANUP_INTERVAL: PositiveInt = Field(
+        description="Workflow draft upload cleanup recovery interval in minutes",
+        default=5,
+    )
     ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
         description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
         default=True,

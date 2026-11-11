@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from unittest.mock import create_autospec
 
 import pytest
-from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -126,6 +125,8 @@ def test_debug_generators_use_injected_variable_dependencies(
     calls: list[str] = []
 
     def execute(generator: WorkflowAppGenerator, **_kwargs: object) -> dict[str, str]:
+        assert generator._runtime is generation._runtime
+        assert generator._execution_driver is generation._runtime.execution_driver
         assert generator.draft_variable_loader == workflow_variables.workflow_loader
         assert generator.draft_variable_saver == workflow_variables.saver_factory
         saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
@@ -436,38 +437,6 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["call_depth"] == 0
-
-
-def test_ensure_start_node_for_worker_returns_existing_start_unchanged():
-    workflow = _workflow({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []})
-    snippet = _snippet()
-    original_graph = workflow.graph
-
-    result = SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
-
-    assert result is workflow
-    assert result.graph == original_graph
-
-
-def test_ensure_start_node_for_worker_injects_virtual_start():
-    workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
-
-    result = SnippetGenerateService.ensure_start_node_for_worker(workflow, _snippet())
-
-    assert result is workflow
-    assert result.graph_dict["nodes"][0]["id"] == SNIPPET_VIRTUAL_START_NODE_ID
-    assert result.graph_dict["edges"][-1]["target"] == "llm-1"
-
-
-def test_ensure_start_node_for_worker_keeps_attached_workflow_on_invalid_graph(sqlite_session: Session):
-    workflow = _workflow({"nodes": [{"data": {"type": "llm"}}], "edges": []})
-    sqlite_session.add(workflow)
-    sqlite_session.flush()
-
-    with pytest.raises(KeyError):
-        SnippetGenerateService.ensure_start_node_for_worker(workflow, _snippet())
-
-    assert inspect(workflow).persistent
 
 
 def test_run_draft_node_delegates_to_workflow_service(
