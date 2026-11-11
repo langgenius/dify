@@ -46,6 +46,20 @@ function Uploader() {
           <button onClick={() => handleReUploadFile(file.id)}>Retry {file.name}</button>
         </div>
       ))}
+      <output aria-label="Stored files">
+        {JSON.stringify(
+          files.map(({ id, name, uploadedId, progress, extension, mimeType, size, base64Url }) => ({
+            id,
+            name,
+            uploadedId,
+            progress,
+            extension,
+            mimeType,
+            size,
+            base64Url,
+          })),
+        )}
+      </output>
     </div>
   )
 }
@@ -69,21 +83,20 @@ function setup(files: FileEntity[] = []) {
       attachment_image_file_size_limit: 15,
     }),
   )
-  const onChange = vi.fn()
   renderWithConsoleQuery(
-    <FileContextProvider value={files} onChange={onChange}>
+    <FileContextProvider value={files}>
       <Uploader />
     </FileContextProvider>,
     { queryClient },
   )
-  return { onChange }
 }
 const image = () => new File(['image'], 'New.png', { type: 'image/png' })
+const storedFiles = () => JSON.parse(screen.getByLabelText('Stored files').textContent!)
 beforeEach(() => upload.mockReset())
 
 it('persists progress and server metadata for the selected image', async () => {
   const user = userEvent.setup()
-  const { onChange } = setup()
+  setup()
   const file = image()
   await user.upload(screen.getByLabelText('Images'), file)
   await waitFor(() => expect(upload).toHaveBeenCalledTimes(1))
@@ -99,10 +112,9 @@ it('persists progress and server metadata for the selected image', async () => {
       size: 123,
     }),
   )
-  expect(onChange).toHaveBeenLastCalledWith([
+  expect(storedFiles()).toEqual([
     expect.objectContaining({
       name: 'New.png',
-      originalFile: file,
       uploadedId: 'uploaded-id',
       progress: 100,
       extension: 'webp',
@@ -115,7 +127,7 @@ it('persists progress and server metadata for the selected image', async () => {
 
 it('keeps a failed image available for retry and updates the same attachment', async () => {
   const user = userEvent.setup()
-  const { onChange } = setup([savedFile('existing')])
+  setup([savedFile('existing')])
   const file = image()
   await user.upload(screen.getByLabelText('Images'), file)
   await waitFor(() => expect(upload).toHaveBeenCalledTimes(1))
@@ -126,12 +138,14 @@ it('keeps a failed image available for retry and updates the same attachment', a
   expect(screen.getByLabelText('New.png')).toHaveTextContent('0')
   expect(upload.mock.lastCall![0].file).toBe(file)
   act(() => upload.mock.lastCall![0].onSuccessCallback({ id: 'retry-id' }))
-  expect(onChange).toHaveBeenLastCalledWith([
-    savedFile('existing'),
-    expect.objectContaining({ uploadedId: 'retry-id', progress: 100, originalFile: file }),
+  expect(storedFiles()).toEqual([
+    expect.objectContaining({ id: 'existing', uploadedId: 'existing', progress: 100 }),
+    expect.objectContaining({ uploadedId: 'retry-id', progress: 100 }),
   ])
   await user.click(screen.getByRole('button', { name: 'Remove New.png' }))
-  expect(onChange).toHaveBeenLastCalledWith([savedFile('existing')])
+  expect(storedFiles()).toEqual([
+    expect.objectContaining({ id: 'existing', uploadedId: 'existing', progress: 100 }),
+  ])
 })
 
 it.each(['extension', 'size'])(
@@ -164,7 +178,7 @@ it('limits a selection to the configured batch size', async () => {
 
 it('rejects a batch that would exceed the total attachment limit', async () => {
   const user = userEvent.setup()
-  const { onChange } = setup([savedFile('one'), savedFile('two')])
+  setup([savedFile('one'), savedFile('two')])
   await user.upload(screen.getByLabelText('Images'), [
     image(),
     new File(['image'], 'Other.png', { type: 'image/png' }),
@@ -173,15 +187,10 @@ it('rejects a batch that would exceed the total attachment limit', async () => {
     expect.stringContaining('datasetHitTesting.imageUploader.singleChunkAttachmentLimitTooltip'),
   )
   expect(upload).not.toHaveBeenCalled()
-  expect(onChange).not.toHaveBeenCalled()
-})
-
-it('opens the file chooser from the browse action', async () => {
-  const user = userEvent.setup()
-  setup()
-  const click = vi.spyOn(screen.getByLabelText('Images'), 'click')
-  await user.click(screen.getByRole('button', { name: 'Browse' }))
-  expect(click).toHaveBeenCalledTimes(1)
+  expect(storedFiles()).toEqual([
+    expect.objectContaining({ id: 'one' }),
+    expect.objectContaining({ id: 'two' }),
+  ])
 })
 
 it('reports a FileReader failure without adding an attachment', async () => {
@@ -192,11 +201,11 @@ it('reports a FileReader failure without adding an attachment', async () => {
     this.dispatchEvent(new Event('error'))
   })
   try {
-    const { onChange } = setup()
+    setup()
     await user.upload(screen.getByLabelText('Images'), image())
     expect(error).toHaveBeenCalledWith('common.fileUploader.uploadFromComputerReadError')
     expect(upload).not.toHaveBeenCalled()
-    expect(onChange).not.toHaveBeenCalled()
+    expect(storedFiles()).toEqual([])
   } finally {
     read.mockRestore()
   }

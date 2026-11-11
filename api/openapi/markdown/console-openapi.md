@@ -226,6 +226,124 @@ Get account avatar url
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[CurrentPasswordIncorrectError](#currentpasswordincorrecterror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /account/personal-access-token-resources
+**List account-visible candidates for the validated search, type, and cursor**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | integer |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| resource_type | query | Resource type to filter by before pagination | No | string, <br>**Available values:** "app", "dataset" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available resources | **application/json**: [PersonalAccessTokenResourceCandidateResponse](#personalaccesstokenresourcecandidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-token-workspaces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | integer |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available workspaces | **application/json**: [PersonalAccessTokenWorkspaceCandidateResponse](#personalaccesstokenworkspacecandidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Personal access tokens | **application/json**: [PersonalAccessTokenListResponse](#personalaccesstokenlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/personal-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key for creation retries | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PersonalAccessTokenCreatePayload](#personalaccesstokencreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Personal access token created | **application/json**: [PersonalAccessTokenCreatedResponse](#personalaccesstokencreatedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /account/personal-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Personal access token revoked |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved scopes | **application/json**: [PersonalAccessTokenDetailResponse](#personalaccesstokendetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /account/personal-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PersonalAccessTokenUpdatePayload](#personalaccesstokenupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated scopes | **application/json**: [PersonalAccessTokenDetailResponse](#personalaccesstokendetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /account/profile
 #### Responses
 
@@ -406,6 +524,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-access
+**Return API access for an Agent visible to the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -421,6 +541,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-enable
+**Change API access for an Agent and return the committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -10643,6 +10765,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -28540,9 +28664,11 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | name | string |  | Yes |
 | page_id | string |  | Yes |
+| parent_id | string |  | No |
 | provider_item_id | string |  | Yes |
 | type | string |  | Yes |
 | workspace_id | string |  | Yes |
@@ -28604,6 +28730,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | documents | [ [KnowledgeFSInitialSourcePreviewDocumentResponse](#knowledgefsinitialsourcepreviewdocumentresponse) ] |  | No |
 | files | [ [KnowledgeFSInitialSourcePreviewFileResponse](#knowledgefsinitialsourcepreviewfileresponse) ] |  | No |
 | kind | string, <br>**Available values:** "online_document", "online_drive", "website_crawl" | *Enum:* `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| next_cursor | string |  | No |
 | next_page_parameters | object |  | No |
 | pages | [ [KnowledgeFSInitialSourcePreviewPageResponse](#knowledgefsinitialsourcepreviewpageresponse) ] |  | No |
 
@@ -29817,6 +29944,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -29829,6 +29957,8 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 
@@ -32611,6 +32741,155 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
+
+#### PersonalAccessTokenCandidateQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | integer |  | No |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+
+#### PersonalAccessTokenCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration | string, <br>**Available values:** "180_days", "30_days", "365_days", "90_days", "never", <br>**Default:** 90_days | *Enum:* `"180_days"`, `"30_days"`, `"365_days"`, `"90_days"`, `"never"` | No |
+| name | string |  | Yes |
+| resource_scope | [PersonalAccessTokenResourceScopePayload](#personalaccesstokenresourcescopepayload) |  | No |
+| workspace_scope | [PersonalAccessTokenWorkspaceScopePayload](#personalaccesstokenworkspacescopepayload) |  | No |
+
+#### PersonalAccessTokenCreatedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| last_used_at | string |  | Yes |
+| name | string |  | Yes |
+| resource_count | integer |  | Yes |
+| resource_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+| secret | string |  | Yes |
+| secret_last_four | string |  | Yes |
+| status | string, <br>**Available values:** "access_issue", "active", "expired" | *Enum:* `"access_issue"`, `"active"`, `"expired"` | Yes |
+| unavailable_count | integer |  | Yes |
+| version | integer |  | Yes |
+| workspace_count | integer |  | Yes |
+| workspace_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+
+#### PersonalAccessTokenDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resources | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | Yes |
+| token | [PersonalAccessTokenResponse](#personalaccesstokenresponse) |  | Yes |
+| workspaces | [ [PersonalAccessTokenWorkspaceResponse](#personalaccesstokenworkspaceresponse) ] |  | Yes |
+
+#### PersonalAccessTokenListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### PersonalAccessTokenListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PersonalAccessTokenResponse](#personalaccesstokenresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### PersonalAccessTokenResourceCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | integer |  | Yes |
+
+#### PersonalAccessTokenResourcePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resource_id | string (uuid) |  | Yes |
+| resource_type | string, <br>**Available values:** "app", "app_deployment", "dataset" | *Enum:* `"app"`, `"app_deployment"`, `"dataset"` | Yes |
+
+#### PersonalAccessTokenResourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_deployments | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | No |
+| available | boolean |  | Yes |
+| display_name | string |  | Yes |
+| parent_app_id | string |  | No |
+| reason | string |  | Yes |
+| resource_id | string |  | Yes |
+| resource_type | string, <br>**Available values:** "app", "app_deployment", "dataset" | *Enum:* `"app"`, `"app_deployment"`, `"dataset"` | Yes |
+| workspace_id | string |  | Yes |
+| workspace_name | string |  | Yes |
+
+#### PersonalAccessTokenResourceScopePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "all", "none", "selected", <br>**Default:** all | *Enum:* `"all"`, `"none"`, `"selected"` | No |
+| resources | [ [PersonalAccessTokenResourcePayload](#personalaccesstokenresourcepayload) ] |  | No |
+
+#### PersonalAccessTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| last_used_at | string |  | Yes |
+| name | string |  | Yes |
+| resource_count | integer |  | Yes |
+| resource_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+| secret_last_four | string |  | Yes |
+| status | string, <br>**Available values:** "access_issue", "active", "expired" | *Enum:* `"access_issue"`, `"active"`, `"expired"` | Yes |
+| unavailable_count | integer |  | Yes |
+| version | integer |  | Yes |
+| workspace_count | integer |  | Yes |
+| workspace_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+
+#### PersonalAccessTokenUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resource_scope | [PersonalAccessTokenResourceScopePayload](#personalaccesstokenresourcescopepayload) |  | No |
+| version | integer |  | Yes |
+| workspace_scope | [PersonalAccessTokenWorkspaceScopePayload](#personalaccesstokenworkspacescopepayload) |  | No |
+
+#### PersonalAccessTokenWorkspaceCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PersonalAccessTokenWorkspaceResponse](#personalaccesstokenworkspaceresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | integer |  | Yes |
+
+#### PersonalAccessTokenWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| display_name | string |  | Yes |
+| reason | string |  | Yes |
+| role | string |  | Yes |
+| workspace_id | string |  | Yes |
+
+#### PersonalAccessTokenWorkspaceScopePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "all", "none", "selected", <br>**Default:** all | *Enum:* `"all"`, `"none"`, `"selected"` | No |
+| workspace_ids | [ string (uuid) ] |  | No |
 
 #### PipelineDataset
 

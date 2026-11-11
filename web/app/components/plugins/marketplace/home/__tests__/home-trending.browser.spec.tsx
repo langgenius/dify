@@ -1,29 +1,33 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
+import type { i18n as I18n } from 'i18next'
 import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { trackEvent } from '@/app/components/base/amplitude'
+import app from '@/i18n/locales/en-US/app.json'
+import common from '@/i18n/locales/en-US/common.json'
+import navigation from '@/i18n/locales/en-US/navigation.json'
+import plugin from '@/i18n/locales/en-US/plugin.json'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import HomeTrending from '../home-trending'
 
+// boundary: banner analytics stop at the telemetry adapter.
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('#i18n', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...createReactI18nextMock(),
-    useLocale: () => 'en-US',
-  }
-})
+vi.unmock('react-i18next')
 
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
+// boundary: plugin detail hydration stops at the external Marketplace HTTP client.
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   fetchPluginInfoFromMarketPlace: vi
@@ -40,6 +44,7 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
     })),
 }))
 
+// boundary: installed-plugin reads stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -51,7 +56,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// Preserve real dialog and message handling without loading remote Marketplace documents.
+// boundary: remote Marketplace documents stay local while preserving their real query parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
   const toBlank = (url: string) =>
@@ -161,6 +166,10 @@ const mixedRecommendations: PluginBanner = {
   },
 }
 
+let i18n: I18n
+
+const withI18n = (node: React.ReactNode) => <I18nextProvider i18n={i18n}>{node}</I18nextProvider>
+
 async function renderTrending(
   props: {
     banners?: PluginBanner[]
@@ -180,19 +189,21 @@ async function renderTrending(
   })
   seedModelProviderQueries(queryClient)
   return render(
-    <ConsoleProvider>
-      <button type="button">Before carousel</button>
-      <DirectionProvider direction={direction}>
-        <div dir={direction}>
-          <HomeTrending
-            banners={items}
-            isMarketplacePlatform={isMarketplacePlatform}
-            page="plugins"
-          />
-        </div>
-      </DirectionProvider>
-      <button type="button">After carousel</button>
-    </ConsoleProvider>,
+    withI18n(
+      <ConsoleProvider>
+        <button type="button">Before carousel</button>
+        <DirectionProvider direction={direction}>
+          <div dir={direction}>
+            <HomeTrending
+              banners={items}
+              isMarketplacePlatform={isMarketplacePlatform}
+              page="plugins"
+            />
+          </div>
+        </DirectionProvider>
+        <button type="button">After carousel</button>
+      </ConsoleProvider>,
+    ),
   )
 }
 
@@ -211,7 +222,7 @@ function expectSlideInsideCarousel(
 
 function getCarousel(screen: Awaited<ReturnType<typeof renderTrending>>) {
   const carousel = screen
-    .getByRole('region', { name: 'plugin.marketplace.home.trendingTitle' })
+    .getByRole('region', { name: 'The plugins everyone is installing' })
     .all()
     .find((locator) => locator.element().hasAttribute('data-home-trending-carousel-root'))
   if (!carousel) throw new Error('Trending carousel was not rendered')
@@ -221,6 +232,12 @@ function getCarousel(screen: Awaited<ReturnType<typeof renderTrending>>) {
 describe('Marketplace home trending carousel', () => {
   beforeEach(async () => {
     await page.viewport(1200, 800)
+    i18n = createInstance()
+    await i18n.init({
+      lng: 'en-US',
+      keySeparator: false,
+      resources: { 'en-US': { app, common, navigation, plugin } },
+    })
     onTestFinished(guardUnexpectedFetch())
     document.documentElement.dataset.isMarketplace = ''
     window.__marketplaceTracking__ = {
@@ -274,7 +291,7 @@ describe('Marketplace home trending carousel', () => {
 
     await carousel.hover()
     await expect.poll(() => track.getAttribute('aria-live')).toBe('polite')
-    await screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }).hover()
+    await screen.getByRole('button', { name: 'Pause' }).hover()
     await expect.poll(() => track.getAttribute('aria-live')).toBe('polite')
     await userEvent.unhover(carousel)
     await expect.poll(() => track.getAttribute('aria-live')).toBe('off')
@@ -289,14 +306,12 @@ describe('Marketplace home trending carousel', () => {
       .element(screen.getByRole('button', { name: 'Trending' }))
       .toHaveAttribute('aria-current', 'true')
 
-    const pause = screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' })
+    const pause = screen.getByRole('button', { name: 'Pause' })
     await pause.click()
-    const play = screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' })
+    const play = screen.getByRole('button', { name: 'Play' })
     await expect.element(play).toHaveFocus()
     await userEvent.keyboard('{Enter}')
-    await expect
-      .element(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
-      .toHaveFocus()
+    await expect.element(screen.getByRole('button', { name: 'Pause' })).toHaveFocus()
     await expect.poll(() => track.getAttribute('aria-live')).toBe('off')
   })
 
@@ -317,14 +332,12 @@ describe('Marketplace home trending carousel', () => {
     const carousel = getCarousel(screen)
     const track = carousel.element().querySelector('[aria-live]')!
 
-    const play = screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' })
+    const play = screen.getByRole('button', { name: 'Play' })
     await expect.element(play).toBeVisible()
     await play.click()
     await userEvent.unhover(carousel)
 
-    await expect
-      .element(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
-      .toBeVisible()
+    await expect.element(screen.getByRole('button', { name: 'Pause' })).toBeVisible()
     await expect.poll(() => track.getAttribute('aria-live')).toBe('off')
   })
 
@@ -357,13 +370,13 @@ describe('Marketplace home trending carousel', () => {
     await screen.getByRole('button', { name: 'Dropbox' }).click()
     const pluginDialog = screen.getByRole('dialog', { name: /Dropbox/ })
     await expect.element(pluginDialog).toBeVisible()
-    await pluginDialog.getByRole('button', { name: 'common.operation.close' }).click()
+    await pluginDialog.getByRole('button', { name: 'Close' }).click()
     await expect.element(pluginDialog).not.toBeInTheDocument()
 
     await screen.getByRole('button', { name: 'Support Bot' }).click()
     const templateDialog = screen.getByRole('dialog', { name: /Support Bot/ })
     await expect.element(templateDialog).toBeVisible()
-    await templateDialog.getByRole('button', { name: 'common.operation.close' }).click()
+    await templateDialog.getByRole('button', { name: 'Close' }).click()
     await expect.element(templateDialog).not.toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Support Bot' })).toHaveFocus()
   })
@@ -404,9 +417,11 @@ describe('Marketplace home trending carousel', () => {
     await expectSlideInsideCarousel(screen, 'Duck Duck Go')
 
     await screen.rerender(
-      <DirectionProvider direction="ltr">
-        <HomeTrending banners={[banners[0]!]} isMarketplacePlatform page="plugins" />
-      </DirectionProvider>,
+      withI18n(
+        <DirectionProvider direction="ltr">
+          <HomeTrending banners={[banners[0]!]} isMarketplacePlatform page="plugins" />
+        </DirectionProvider>,
+      ),
     )
 
     await expect.element(screen.getByRole('group', { name: 'Trending' })).toBeVisible()
@@ -437,12 +452,14 @@ describe('Marketplace home trending carousel', () => {
       .not.toBeInTheDocument()
 
     await screen.rerender(
-      <DirectionProvider direction="ltr">
-        <HomeTrending banners={[]} isMarketplacePlatform page="plugins" />
-      </DirectionProvider>,
+      withI18n(
+        <DirectionProvider direction="ltr">
+          <HomeTrending banners={[]} isMarketplacePlatform page="plugins" />
+        </DirectionProvider>,
+      ),
     )
     await expect
-      .element(screen.getByRole('region', { name: 'plugin.marketplace.home.trendingTitle' }))
+      .element(screen.getByRole('region', { name: 'The plugins everyone is installing' }))
       .not.toBeInTheDocument()
   })
 
