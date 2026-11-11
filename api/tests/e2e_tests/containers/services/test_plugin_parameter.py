@@ -15,10 +15,10 @@ from constants import HIDDEN_VALUE
 from core.helper.encrypter import encrypt_token
 from core.helper.provider_cache import SingletonProviderCredentialsCache
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.utils.encryption import TriggerProviderCredentialsCache
 from extensions.ext_redis import redis_client
 from models.tools import BuiltinToolProvider
 from models.trigger import TriggerSubscription
+from services.trigger.credential_encryption import TriggerProviderCredentialsCache
 from tests.e2e_tests.containers.services import test_trigger_builder_callers
 from tests.e2e_tests.containers.services.test_trigger_subscription_query import _provider_with_secrets
 from tests.unit_tests.controllers.console.workspace.test_plugin_parameter import (
