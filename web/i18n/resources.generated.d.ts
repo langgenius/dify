@@ -2053,7 +2053,6 @@ export default interface Resources {
     'userProfile.about': 'About'
     'userProfile.compliance': 'Compliance'
     'userProfile.contactSupport': 'Contact support'
-    'userProfile.contactUs': 'Contact Us'
     'userProfile.discord': 'Discord'
     'userProfile.emailSupport': 'Email Support'
     'userProfile.github': 'GitHub'

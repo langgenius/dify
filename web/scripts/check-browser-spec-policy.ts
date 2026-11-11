@@ -427,12 +427,6 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/main-nav/components/__tests__/support-menu.browser.spec.tsx',
-    specifier: '@/app/components/header/utils/util',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/main-nav/components/__tests__/web-apps-section.browser.spec.tsx',
     specifier: '@/context/permission-state',
     occurrence: 1,
