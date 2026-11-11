@@ -103,10 +103,8 @@ from services.agent.observability_service import (
 )
 from services.agent.roster_service import AgentRosterService
 from services.agent.version_store import (
-    AgentVersionNotFoundError as VersionUnavailableError,
-)
-from services.agent.version_store import (
     AgentVersionPlanRequiredError,
+    AgentVersionUnavailableError,
     VersionAgentNotFoundError,
 )
 from services.app.agent_app_contracts import AgentAppDetail, AgentAppNameConflictError, AgentAppNotFoundError
@@ -1259,7 +1257,7 @@ class AgentRosterVersionDetailApi(Resource):
             version = application_services().agent_versions.get_version(context, str(agent_id), str(version_id))
         except VersionAgentNotFoundError as exc:
             raise AgentNotFoundError from exc
-        except VersionUnavailableError as exc:
+        except AgentVersionUnavailableError as exc:
             raise AgentVersionNotFoundError from exc
         return dump_response(AgentConfigSnapshotDetailResponse, version)
 
@@ -1279,7 +1277,7 @@ class AgentRosterVersionRestoreApi(Resource):
             restored = application_services().agent_versions.restore_version(context, str(agent_id), str(version_id))
         except VersionAgentNotFoundError as exc:
             raise AgentNotFoundError from exc
-        except VersionUnavailableError as exc:
+        except AgentVersionUnavailableError as exc:
             raise AgentVersionNotFoundError from exc
         except AgentVersionPlanRequiredError:
             abort(HTTPStatus.FORBIDDEN, description="This feature requires a paid plan.")

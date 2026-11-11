@@ -1,5 +1,6 @@
 """Exercise Agent version history and restore through real Console HTTP and SQLite."""
 
+from dataclasses import replace
 from http import HTTPStatus
 from uuid import uuid4
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.agent import _can_restore_version
+from extensions.ext_application_services import application_services
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
@@ -17,6 +19,7 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
@@ -185,6 +188,52 @@ def test_plan_rejection_precedes_database_mutation_but_does_not_block_reads(harn
         service.restore_version(context, agent_id, first)
     with harness.sessions() as session:
         assert session.scalar(select(AgentConfigDraft.id).where(AgentConfigDraft.agent_id == agent_id)) is None
+
+
+def test_restore_plan_rejection_returns_forbidden_without_changing_the_draft(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent()
+    first, _, _ = _seed_history(harness, agent_id)
+    app = harness.client.application
+    with app.app_context():
+        services = application_services()
+        app.extensions["application_services"] = replace(
+            services,
+            agent_versions=AgentVersionService(
+                store=SQLAlchemyAgentVersionRepository(session_factory=harness.sessions),
+                restore_allowed=lambda _tenant: False,
+            ),
+        )
+    response = harness.client.post(f"/console/api/agent/{agent_id}/versions/{first}/restore", headers=harness.headers)
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.get_json()["message"] == "This feature requires a paid plan."
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft.id).where(AgentConfigDraft.agent_id == agent_id)) is None
+
+
+def test_archived_roster_agent_retains_version_history_and_restore(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent()
+    first, _, last = _seed_history(harness, agent_id)
+    with harness.sessions.begin() as session:
+        agent = session.get(Agent, agent_id)
+        assert agent is not None
+        agent.status = AgentStatus.ARCHIVED
+
+    listing = harness.client.get(f"/console/api/agent/{agent_id}/versions", headers=harness.headers)
+    assert listing.status_code == HTTPStatus.OK
+    assert [item["id"] for item in listing.get_json()["data"]] == [last, first]
+    detail = harness.client.get(f"/console/api/agent/{agent_id}/versions/{first}", headers=harness.headers)
+    assert detail.status_code == HTTPStatus.OK
+    assert detail.get_json()["id"] == first
+    restored = harness.client.post(f"/console/api/agent/{agent_id}/versions/{first}/restore", headers=harness.headers)
+    assert restored.status_code == HTTPStatus.OK
+    with harness.sessions() as session:
+        agent = session.get(Agent, agent_id)
+        draft = session.get(AgentConfigDraft, restored.get_json()["draft_config_id"])
+        assert agent is not None
+        assert draft is not None
+        assert agent.status == AgentStatus.ARCHIVED
+        assert agent.active_config_snapshot_id == last
+        assert draft.base_snapshot_id == first
 
 
 @pytest.mark.parametrize(

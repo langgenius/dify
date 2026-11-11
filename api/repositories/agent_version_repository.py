@@ -18,10 +18,10 @@ from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_version_queries import visible_version_ids
 from services.agent.version_store import (
     AgentVersionDetail,
-    AgentVersionNotFoundError,
     AgentVersionRestored,
     AgentVersionRevision,
     AgentVersionSummary,
+    AgentVersionUnavailableError,
     VersionAgentNotFoundError,
 )
 
@@ -87,7 +87,7 @@ class SQLAlchemyAgentVersionRepository:
             snapshots = _visible_versions(session, tenant_id, _agent(session, tenant_id, agent_id))
             matches = [(number, item) for number, item in enumerate(snapshots, start=1) if item.id == version_id]
             if not matches:
-                raise AgentVersionNotFoundError
+                raise AgentVersionUnavailableError
             number, snapshot = matches[0]
             revisions = session.scalars(
                 select(AgentConfigRevision)
@@ -133,7 +133,7 @@ class SQLAlchemyAgentVersionRepository:
                 )
             )
             if snapshot is None:
-                raise AgentVersionNotFoundError
+                raise AgentVersionUnavailableError
             draft = session.scalar(
                 select(AgentConfigDraft)
                 .where(

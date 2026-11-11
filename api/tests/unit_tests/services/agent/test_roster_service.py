@@ -61,7 +61,7 @@ from services.agent.errors import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_service import AgentRosterService
-from services.agent.version_store import AgentVersionNotFoundError as StoredVersionNotFoundError
+from services.agent.version_store import AgentVersionUnavailableError
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
@@ -4806,7 +4806,7 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
     session.commit()
 
     versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
-    with pytest.raises(StoredVersionNotFoundError):
+    with pytest.raises(AgentVersionUnavailableError):
         versions_repo.restore_version(
             tenant_id="tenant-1",
             agent_id="agent-1",

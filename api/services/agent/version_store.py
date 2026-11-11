@@ -10,7 +10,7 @@ class VersionAgentNotFoundError(Exception):
     """The Agent is absent from the admitted workspace's roster."""
 
 
-class AgentVersionNotFoundError(Exception):
+class AgentVersionUnavailableError(Exception):
     """The requested version is not visible for the Agent."""
 
 
