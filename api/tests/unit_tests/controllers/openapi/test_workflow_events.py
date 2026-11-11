@@ -4,8 +4,9 @@ The controller constructs a repository session factory, so every case binds
 that real SQLAlchemy factory to an isolated SQLite engine. Repository behavior
 remains mocked because these tests focus on run ownership and SSE responses.
 
-Auth is not exercised here: `@endpoint` resolves the `Context` before the handler
-runs, and the allow/deny answers live in `test_auth_matrix.py`.
+Handler-level tests start after `@endpoint` resolves the `Context`; the
+allow/deny answers live in `test_auth_matrix.py`. The unsupported-mode regression
+uses the admitted bearer fixture to check the final HTTP error response.
 """
 
 from __future__ import annotations
@@ -16,8 +17,9 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
+from sqlalchemy.orm import Session
 
+from controllers.common.errors import NotFoundError
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
@@ -25,8 +27,32 @@ from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
+from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 _RUN_ID = "11111111-1111-1111-1111-111111111111"
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT])
+def test_unsupported_mode_preserves_invalid_param_wire_error(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, mode: AppMode
+) -> None:
+    """An admitted request for a non-workflow App returns the established 422 invalid_param body."""
+    app_model = sqlite_session.get(App, admitted_bearer.app_id)
+    assert app_model is not None
+    app_model.mode = mode
+    sqlite_session.commit()
+
+    response = admitted_bearer.client.get(
+        f"/openapi/v1/apps/{admitted_bearer.app_id}/runs/{_RUN_ID}/events",
+        headers=admitted_bearer.headers,
+    )
+
+    assert response.status_code == 422
+    assert response.get_json() == {
+        "code": "invalid_param",
+        "message": "mode_not_supported_for_event_reconnect",
+        "status": 422,
+    }
 
 
 class _SealableContext:
@@ -123,14 +149,14 @@ class TestOpenApiWorkflowEventsApi:
         module = sys.modules["controllers.openapi.workflow_events"]
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
 
     def test_not_found_when_run_missing(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         factory_mock = self._bind_repo(monkeypatch, None)
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
@@ -149,7 +175,7 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
@@ -163,7 +189,7 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
@@ -244,7 +270,7 @@ class TestOpenApiWorkflowEventsApi:
 
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
         monkeypatch.setattr(module, "build_workflow_event_stream", lambda **_kwargs: iter(["a", "b"]))
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
@@ -266,7 +292,7 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):

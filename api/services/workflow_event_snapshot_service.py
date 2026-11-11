@@ -13,8 +13,6 @@ from typing import Any
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
@@ -55,6 +53,8 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_task_service import AppTaskService
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from services.workflow_pause_service import WorkflowPauseSnapshot, load_workflow_pause_snapshot
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ def build_workflow_event_stream(
     close_on_pause: bool = True,
     include_node_details: bool = False,
 ) -> Generator[Mapping[str, Any] | str]:
-    topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
+    topic = WorkflowEventStream.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
