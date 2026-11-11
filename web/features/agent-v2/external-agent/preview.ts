@@ -10,6 +10,14 @@ export type ExternalAgentSkillPreview = {
   examples: string[]
 }
 
+export type ExternalAgentTestTracePreview = {
+  id: string
+  name: string
+  elapsedSeconds: number
+  input: string
+  output: string
+}
+
 export type ExternalAgentOverviewPreview = {
   agent: ExternalAgentListItem
   defaultInputFormats: string[]
@@ -26,6 +34,7 @@ export type ExternalAgentOverviewPreview = {
   version: string
   documentationUrl: string
   sampleResponse: string
+  sampleTraceSteps: ExternalAgentTestTracePreview[]
 }
 
 export function createExternalAgentOverviewPreview(
@@ -256,6 +265,19 @@ export function createExternalAgentOverviewPreview(
     documentationUrl: 'https://agents.acme.example/docs',
     sampleResponse: vendor
       ? 'No matches were found in the sample sanctions list. Confirm the vendor’s ownership and registration details before proceeding.'
-      : 'The clause allows payment beyond your company’s 30-day policy. Consider revising the payment term to 30 days from receipt of a valid invoice.',
+      : 'The 90-day payment period conflicts with your 30-day payment policy.\n\nSuggested wording: “Payment is due within 30 days of invoice. Late fees apply only after a 10-day grace period agreed in writing.”',
+    sampleTraceSteps: [
+      {
+        id: vendor ? 'search-vendor-policy' : 'search-contract-policy',
+        name: vendor ? 'search_vendor_policy' : 'search_contract_policy',
+        elapsedSeconds: 0.8,
+        input: vendor
+          ? 'Vendor sanctions and risk screening policy'
+          : 'Payment terms and late-fee policy',
+        output: vendor
+          ? 'No sanctions matches found. Ownership and registration details require confirmation.'
+          : 'Payment is due within 30 days of invoice. Late fees require a 10-day grace period agreed in writing.',
+      },
+    ],
   }
 }

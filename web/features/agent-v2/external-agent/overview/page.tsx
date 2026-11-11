@@ -81,8 +81,7 @@ export function ExternalAgentOverviewPage({ agentId }: { agentId: string }) {
           </div>
         </div>
         <ExternalAgentOverviewActions
-          agent={agent}
-          sampleResponse={preview.sampleResponse}
+          preview={preview}
           onUpdate={(agent) => updatePreview({ agent })}
         />
       </div>
