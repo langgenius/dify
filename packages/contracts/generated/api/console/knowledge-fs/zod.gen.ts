@@ -158,6 +158,16 @@ export const zKnowledgeFsExternalAccessPayload = z.object({
 })
 
 /**
+ * FileScanPolicyResponse
+ */
+export const zFileScanPolicyResponse = z.object({
+  enabled: z.boolean(),
+  on_unavailable: z.string(),
+  on_unscannable: z.string(),
+  provider_id: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSGoldenQuestionPayload
  */
 export const zKnowledgeFsGoldenQuestionPayload = z.object({
@@ -1733,6 +1743,21 @@ export const zKnowledgeFsDocumentOutlineResponse = z.object({
   parse_artifact_id: z.string(),
   updated_at: z.iso.datetime().nullish(),
   version: z.int().gte(1),
+})
+
+/**
+ * FileScanFallbackAction
+ */
+export const zFileScanFallbackAction = z.enum(['allow', 'block'])
+
+/**
+ * FileScanPolicyPayload
+ */
+export const zFileScanPolicyPayload = z.object({
+  enabled: z.boolean(),
+  on_unavailable: zFileScanFallbackAction.optional().default('block'),
+  on_unscannable: zFileScanFallbackAction.optional().default('block'),
+  provider_id: z.string().nullish(),
 })
 
 /**
@@ -3944,6 +3969,26 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessPath = z.object(
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   zKnowledgeFsExternalAccessResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse = zFileScanPolicyResponse
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyBody = zFileScanPolicyPayload
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Policy saved
+ */
+export const zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse = zFileScanPolicyResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath = z.object({
   control_space_id: z.string(),

@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -43,6 +43,7 @@ from core.repositories.factory import (
     WorkflowExecutionRepository,
     WorkflowNodeExecutionRepository,
 )
+from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
@@ -62,6 +63,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class PipelineFileAdmission(Protocol):
+    """Decides whether an uploaded file may enter a pipeline run (for example, a malware scan).
+
+    Returns ``None`` to admit the file, otherwise the reason to record on the document.
+    """
+
+    def __call__(self, *, tenant_id: str, dataset_id: str, upload_file_id: str) -> str | None: ...
+
+
+class PipelineFileRejectedError(ValueError):
+    """The uploaded file of this pipeline run was not admitted; the message is the stored document error."""
+
+
 class PipelineGenerator(BaseAppGenerator):
     def __init__(
         self,
@@ -69,10 +83,12 @@ class PipelineGenerator(BaseAppGenerator):
         execution_driver: "WorkflowRunDriver",
         documents: PipelineDocumentStore,
         datasource_providers: DatasourceProviderService,
+        file_admission: PipelineFileAdmission,
     ) -> None:
         self._execution_driver = execution_driver
         self._documents = documents
         self._datasource_providers = datasource_providers
+        self._file_admission = file_admission
 
     @overload
     def generate(
@@ -333,6 +349,7 @@ class PipelineGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
+            self._scan_local_file(pipeline=pipeline, application_generate_entity=application_generate_entity)
             # init queue manager
             workflow = session.get(Workflow, workflow_id)
             if not workflow:
@@ -714,6 +731,33 @@ class PipelineGenerator(BaseAppGenerator):
                     application_generate_entity.task_id,
                 )
                 raise e
+
+    def _scan_local_file(self, *, pipeline: Pipeline, application_generate_entity: RagPipelineGenerateEntity) -> None:
+        """Reject an uploaded file the dataset's malware scan does not allow, before any node reads it.
+
+        Each pipeline run handles one datasource item, so a rejected file fails only its own document.
+        """
+        if application_generate_entity.datasource_type != DatasourceProviderType.LOCAL_FILE:
+            return
+        datasource_info = application_generate_entity.datasource_info
+        upload_file_id = resolve_file_record_id(datasource_info.get("reference") or datasource_info.get("related_id"))
+        if not upload_file_id:
+            return
+        rejection = self._file_admission(
+            tenant_id=pipeline.tenant_id,
+            dataset_id=application_generate_entity.dataset_id,
+            upload_file_id=upload_file_id,
+        )
+        if rejection is None:
+            return
+        if application_generate_entity.document_id:
+            self._documents.mark_failed(
+                workspace_id=pipeline.tenant_id,
+                dataset_id=application_generate_entity.dataset_id,
+                document_id=application_generate_entity.document_id,
+                error=rejection,
+            )
+        raise PipelineFileRejectedError(rejection)
 
     def _build_document(
         self,

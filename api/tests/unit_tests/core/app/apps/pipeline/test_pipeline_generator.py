@@ -32,6 +32,8 @@ USER_ID = "00000000-0000-0000-0000-000000000005"
 
 
 class FakeRagPipelineGenerateEntity(SimpleNamespace):
+    datasource_type = "website_crawl"
+
     class SingleIterationRunEntity(SimpleNamespace):
         pass
 
@@ -42,6 +44,18 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
         return dict(self.__dict__)
 
 
+class _FileAdmission:
+    """Admits every file unless a test sets ``rejection``; records what it was asked."""
+
+    def __init__(self) -> None:
+        self.rejection: str | None = None
+        self.calls: list[dict[str, str]] = []
+
+    def __call__(self, *, tenant_id: str, dataset_id: str, upload_file_id: str) -> str | None:
+        self.calls.append({"tenant_id": tenant_id, "dataset_id": dataset_id, "upload_file_id": upload_file_id})
+        return self.rejection
+
+
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
     gen = module.PipelineGenerator(
@@ -50,6 +64,7 @@ def generator(mocker: MockerFixture, sqlite_engine: Engine):
         datasource_providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
+        file_admission=_FileAdmission(),
     )
 
     _patch_sqlite_engine(mocker, sqlite_engine)
@@ -972,3 +987,72 @@ def test_get_files_in_folder_handles_self_referencing_folder(generator):
     assert all_files == []
     # Should only be called once -- the visited-set guard prevents re-entry
     assert call_count == 1
+
+
+UPLOAD_FILE_ID = "00000000-0000-0000-0000-000000000009"
+DOCUMENT_ID = "00000000-0000-0000-0000-00000000000a"
+OTHER_DOCUMENT_ID = "00000000-0000-0000-0000-00000000000b"
+
+
+def _scan_entity(**overrides):
+    values = {
+        "datasource_type": DatasourceProviderType.LOCAL_FILE.value,
+        "datasource_info": {"related_id": UPLOAD_FILE_ID, "name": "report.docx"},
+        "dataset_id": DATASET_ID,
+        "document_id": DOCUMENT_ID,
+    }
+    return SimpleNamespace(**(values | overrides))
+
+
+def test_scan_local_file_fails_only_its_own_document_when_the_file_is_rejected(generator, sqlite_session: Session):
+    _persist_pipeline_scope(sqlite_session)
+    for document_id in (DOCUMENT_ID, OTHER_DOCUMENT_ID):
+        document = generator._build_document(
+            tenant_id=TENANT_ID,
+            dataset_id=DATASET_ID,
+            built_in_field_enabled=False,
+            datasource_type=DatasourceProviderType.LOCAL_FILE,
+            datasource_info={"related_id": UPLOAD_FILE_ID, "name": "report.docx"},
+            created_from="rag-pipeline",
+            position=1,
+            account=_build_user(),
+            batch="batch",
+            document_form="text_model",
+        )
+        document.id = document_id
+        sqlite_session.add(document)
+    sqlite_session.commit()
+    rejection = '"report.docx" was blocked by the malware scan: Evil.A detected. The original file was deleted.'
+    generator._file_admission.rejection = rejection
+
+    with pytest.raises(module.PipelineFileRejectedError, match="Evil.A"):
+        generator._scan_local_file(
+            pipeline=SimpleNamespace(tenant_id=TENANT_ID), application_generate_entity=_scan_entity()
+        )
+
+    assert generator._file_admission.calls == [
+        {"tenant_id": TENANT_ID, "dataset_id": DATASET_ID, "upload_file_id": UPLOAD_FILE_ID}
+    ]
+    sqlite_session.expire_all()
+    rejected = sqlite_session.get(Document, DOCUMENT_ID)
+    untouched = sqlite_session.get(Document, OTHER_DOCUMENT_ID)
+    assert rejected.indexing_status == "error"
+    assert rejected.error == rejection
+    assert untouched.indexing_status != "error"
+    assert untouched.error is None
+
+
+def test_scan_local_file_lets_allowed_files_and_other_datasources_through(generator):
+    pipeline = SimpleNamespace(tenant_id=TENANT_ID)
+
+    generator._scan_local_file(pipeline=pipeline, application_generate_entity=_scan_entity())
+    assert len(generator._file_admission.calls) == 1
+
+    generator._scan_local_file(
+        pipeline=pipeline,
+        application_generate_entity=_scan_entity(datasource_type=DatasourceProviderType.WEBSITE_CRAWL.value),
+    )
+    generator._scan_local_file(
+        pipeline=pipeline, application_generate_entity=_scan_entity(datasource_info={"name": "no reference"})
+    )
+    assert len(generator._file_admission.calls) == 1
