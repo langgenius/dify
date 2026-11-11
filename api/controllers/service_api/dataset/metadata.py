@@ -10,6 +10,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.common.session import with_session
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
+from controllers.service_api.dataset.error import InvalidActionError
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from extensions.ext_application_services import application_services
 from fields.dataset_fields import (
@@ -281,6 +282,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Action completed successfully",
+            400: "Invalid action",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
         }
@@ -292,6 +294,9 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     @with_session
     def post(self, session: Session, tenant_id, dataset_id: UUID, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
+        if action not in {"enable", "disable"}:
+            raise InvalidActionError()
+
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, str(tenant_id), session=session)
         if dataset is None:

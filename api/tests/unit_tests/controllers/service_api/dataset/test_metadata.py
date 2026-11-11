@@ -31,6 +31,7 @@ from werkzeug.exceptions import NotFound
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.service_api import api as service_api
 from controllers.service_api.dataset import metadata as metadata_module
+from controllers.service_api.dataset.error import InvalidActionError
 from controllers.service_api.dataset.metadata import (
     DatasetMetadataBuiltInFieldActionServiceApi,
     DatasetMetadataBuiltInFieldServiceApi,
@@ -596,6 +597,37 @@ class TestDatasetMetadataBuiltInFieldAction(_UsesSQLiteSession):
 
         assert status == 200
         mock_meta_svc.disable_built_in_field.assert_called_once_with(DatasetRef(mock_tenant.id, mock_dataset.id))
+
+    @patch("controllers.service_api.dataset.metadata.application_services")
+    @patch("controllers.service_api.dataset.metadata.DatasetService")
+    def test_invalid_action_is_rejected_without_mutating_metadata(
+        self,
+        mock_dataset_svc: MagicMock,
+        mock_meta_svc: MagicMock,
+        app: Flask,
+        mock_tenant: Tenant,
+        mock_dataset: Dataset,
+    ) -> None:
+        mock_meta_svc = mock_meta_svc.return_value.knowledge.metadata
+        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/metadata/built-in/Enable",
+            method="POST",
+        ):
+            api = DatasetMetadataBuiltInFieldActionServiceApi()
+            with pytest.raises(InvalidActionError):
+                self._call_post(
+                    api,
+                    self.session,
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    action="Enable",
+                )
+
+        mock_meta_svc.enable_built_in_field.assert_not_called()
+        mock_meta_svc.disable_built_in_field.assert_not_called()
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     def test_action_dataset_not_found(
