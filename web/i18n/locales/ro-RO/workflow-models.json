@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Vă rugăm să terminați editarea câmpului curent înainte de a salva schema.",
   "nodes.llm.model": "model",
   "nodes.llm.notSetContextInPromptTip": "Pentru a activa funcția de context, completați variabila de context în PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Motivul pentru care modelul a oprit generarea",
   "nodes.llm.outputVars.output": "Conținut generat",
   "nodes.llm.outputVars.reasoning_content": "Conținut de raționament",
   "nodes.llm.outputVars.usage": "Informații de utilizare a modelului",

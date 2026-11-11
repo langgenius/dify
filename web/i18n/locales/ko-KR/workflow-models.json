@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "현재 필드의 편집을 완료한 후 스키마를 저장하세요.",
   "nodes.llm.model": "모델",
   "nodes.llm.notSetContextInPromptTip": "컨텍스트 기능을 활성화하려면 PROMPT 에 컨텍스트 변수를 입력하세요.",
+  "nodes.llm.outputVars.finish_reason": "모델이 생성을 중단한 이유",
   "nodes.llm.outputVars.output": "생성된 내용",
   "nodes.llm.outputVars.reasoning_content": "추론 내용",
   "nodes.llm.outputVars.usage": "모델 사용 정보",

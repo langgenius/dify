@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Harap selesaikan pengeditan bidang saat ini sebelum menyimpan skema",
   "nodes.llm.model": "pola",
   "nodes.llm.notSetContextInPromptTip": "Untuk mengaktifkan fitur konteks, silakan isi variabel konteks di PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Alasan model berhenti menghasilkan keluaran",
   "nodes.llm.outputVars.output": "Hasilkan konten",
   "nodes.llm.outputVars.reasoning_content": "Konten penalaran",
   "nodes.llm.outputVars.usage": "Informasi Penggunaan Model",
