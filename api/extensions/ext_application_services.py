@@ -30,6 +30,7 @@ from extensions.application_services.data_sources import (
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.human_input import build_human_input_debug_service
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -39,11 +40,17 @@ from extensions.application_services.knowledge import (
 from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.application_services.snippets import build_snippet_generation_service
 from extensions.application_services.tools import ToolServices, build_tool_services
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.trigger import TriggerServices, build_trigger_services
-from extensions.application_services.workflow import build_workflow_execution_dependencies, build_workflow_suggestions
+from extensions.application_services.workflow import (
+    build_console_workflow_service,
+    build_workflow_drafts,
+    build_workflow_execution_dependencies,
+    build_workflow_suggestions,
+)
 from extensions.application_services.workflow_variables import (
     build_console_workflow_variables,
     build_workflow_variable_service,
@@ -59,10 +66,12 @@ from extensions.tracing import bind_tracing
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
+from models.tool_runtime_contracts import WorkflowToolStore
 from models.utils.file_input_compat import restore_input_files
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from repositories.annotation_import_job_repository import RedisAnnotationImportJobRepository
 from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
 from repositories.annotation_repository import AnnotationRepository
@@ -102,7 +111,7 @@ from repositories.trigger.subscription_repository import TriggerSubscriptionRepo
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
-from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from repositories.workflow.app_log_repository import WorkflowAppLogRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import (
@@ -119,6 +128,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent.workflow_contracts import WorkflowAgentBindingStore
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
@@ -165,6 +175,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
+from services.human_input.debug_service import HumanInputDebugService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -226,6 +237,7 @@ from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock
 from services.setup_service import SetupService
+from services.snippet_generate_service import SnippetGenerateService
 from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
@@ -249,10 +261,12 @@ from services.web_passport_gateways import (
 from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
+from services.workflow.app_log_query_service import WorkflowAppLogQueryService
+from services.workflow.console_service import ConsoleWorkflowService
 from services.workflow.console_variable_service import ConsoleWorkflowVariableService
+from services.workflow.draft_service import WorkflowDraftService
 from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
 from services.workflow.variable_service import WorkflowVariableService
-from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -311,10 +325,15 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    human_input_debug: HumanInputDebugService
+    console_workflows: ConsoleWorkflowService[WorkflowAgentBindingStore]
+    workflow_drafts: WorkflowDraftService[WorkflowAgentBindingStore]
+    snippet_generation: SnippetGenerateService
     tools: ToolServices
     workflow_runtime: AppGenerationRuntime
     workflow_variables: WorkflowVariableService
     console_workflow_variables: ConsoleWorkflowVariableService
+    workflow_agent_bindings: WorkflowAgentBindingResolver
     workflow_suggestions: WorkflowInstructionSuggestions
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
@@ -536,6 +555,8 @@ def build_application_services(
         providers=datasource_credentials.providers,
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
+    tools = build_tool_services(database_client)
+    workflow_variables = build_workflow_variable_service(database_client=database_client)
     console_apps = ConsoleAppRepository(session_factory=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
@@ -543,21 +564,34 @@ def build_application_services(
         apps=console_apps,
         datasets=dataset_dependencies.datasets,
     )
+    console_workflows = build_console_workflow_service(
+        trigger_debug=lambda: triggers.debug,
+        database_client=database_client,
+        redis=redis,
+        variables=workflow_variables,
+        rbac_members=rbac.members,
+    )
     tracing = build_tracing_services(database_client=database_client)
     tracing_configs = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
         provider=tracing.provider_configs,
     )
+    workflow_tools = tools.workflow_queries
+    assert isinstance(workflow_tools, WorkflowToolStore)
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
         recommended_packages=recommended_app_packages,
+        tool_providers=tools.tool_providers,
+        workflow_tools=workflow_tools,
+        workflow_publisher=console_workflows,
         repository=console_apps,
         rbac_members=rbac.members,
         tracing_configs=tracing_configs,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
     knowledge = build_knowledge_services(
+        variables=workflow_variables,
         database_client=database_client,
         dataset_access=dataset_dependencies.access,
         datasets=dataset_dependencies.datasets,
@@ -627,7 +661,6 @@ def build_application_services(
         trigger_subscriptions=trigger_subscriptions,
         trigger_builders=triggers.builders,
     )
-    workflow_variables = build_workflow_variable_service(database_client=database_client)
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
         conversations=conversations,
@@ -649,13 +682,20 @@ def build_application_services(
     )
 
     return ApplicationServices(
-        tools=build_tool_services(database_client),
-        workflow_runtime=build_workflow_execution_dependencies(database_client),
+        tools=tools,
+        human_input_debug=build_human_input_debug_service(database_client=database_client),
+        console_workflows=console_workflows,
+        workflow_drafts=build_workflow_drafts(database_client),
         workflow_variables=workflow_variables,
         console_workflow_variables=build_console_workflow_variables(
             database_client=database_client, variables=workflow_variables
         ),
+        workflow_runtime=build_workflow_execution_dependencies(database_client),
         workflow_suggestions=build_workflow_suggestions(database_client),
+        workflow_agent_bindings=WorkflowAgentBindingResolver(database_client),
+        snippet_generation=build_snippet_generation_service(
+            database_client=database_client, variables=workflow_variables
+        ),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
             add_index=add_annotation_to_index_task.delay,
@@ -689,13 +729,15 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
-        agent_apps=build_agent_app_services(database_client=database_client),
+        agent_apps=build_agent_app_services(database_client=database_client, variables=workflow_variables),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(
             servers=AppMCPServerRepository(session_factory=database_client),
         ),
-        app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
+        app_preview_details=AppPreviewDetailsRuntime(
+            details=app_preview_repository, tool_providers=tools.tool_providers, workflow_queries=tools.workflow_queries
+        ),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,
             is_previewable=recommended_app_queries.is_previewable,
@@ -766,6 +808,7 @@ def build_application_services(
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
         installed_apps=build_installed_app_services(
+            variables=workflow_variables,
             conversation_queries=conversation_queries,
             conversation_names=conversation_names,
             conversation_commands=conversation_commands,
@@ -876,7 +919,9 @@ def build_application_services(
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
         app_audio=AppAudioRuntime(session_factory=database_client),
-        trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
+        trial_apps=build_trial_app_services(
+            database_client=database_client, trial_apps=trial_apps, variables=workflow_variables
+        ),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
@@ -887,12 +932,13 @@ def build_application_services(
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
+            tool_providers=tools.tool_providers,
             session_factory=database_client,
         ),
         workspaces=workspace_services,
         triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+            logs=WorkflowAppLogRepository(session_factory=database_client),
         ),
         workflow_comments=WorkflowCommentService(
             comments=WorkflowCommentRepository(session_factory=database_client),

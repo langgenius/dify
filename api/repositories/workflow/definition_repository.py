@@ -27,9 +27,7 @@ from models.snippet import CustomizedSnippet
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.agent.workflow_binding_repository import WorkflowAgentBindingRepository, workflow_binding_scope
-from repositories.app.console_repository import console_app_actor, require_console_app
 from repositories.trigger.workflow_repository import WorkflowTriggerRepository
-from repositories.workflow.draft_variable_repository import delete_workflow_variables
 from repositories.workflow.version_repository import allocate_version_number
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -118,6 +116,8 @@ class WorkflowDefinitionStore:
 
     @staticmethod
     def lock_app(session: Session, context: RequestContext, app_id: str) -> App:
+        from repositories.app.console_repository import require_console_app
+
         app = require_console_app(session, context, app_id)
         return session.scalars(
             select(App)
@@ -130,6 +130,8 @@ class WorkflowDefinitionStore:
     def owner(
         session: Session, context: RequestContext, owner: WorkflowOwner, *, lock: bool = False
     ) -> App | Pipeline | CustomizedSnippet:
+        from repositories.app.console_repository import require_console_app
+
         if owner.kind == "app":
             return (
                 WorkflowDefinitionStore.lock_app(session, context, owner.id)
@@ -535,6 +537,8 @@ class WorkflowDefinitionStore:
                 app_model.updated_at = naive_utc_now()
         if clear_debug_variables:
             # DSL replacement and debug-variable invalidation share one atomic write.
+            from repositories.workflow.draft_variable_repository import delete_workflow_variables
+
             delete_workflow_variables(session, app_id=app_model.id, user_id=None, node_id=None)
         session.flush()
         if isinstance(app_model, Pipeline) and current is None:
@@ -714,6 +718,7 @@ def workflow_from_snapshot(snapshot: WorkflowSnapshot) -> Workflow:
 @dataclass
 class _PublicationTransaction:
     session: Session
+    session_maker: sessionmaker[Session]
     app: App
     actor: Account
     draft: WorkflowSnapshot
@@ -746,6 +751,15 @@ class _PublicationTransaction:
     def sync_datasets(self, dataset_ids: set[str]) -> None:
         WorkflowDefinitionStore.sync_dataset_relationships(self.session, self.app, dataset_ids)
 
+    def sync_knowledge_spaces(self, workflow: WorkflowSnapshot) -> None:
+        from services.agent.knowledge_spaces import sync_workflow_app_knowledge_bindings
+
+        sync_workflow_app_knowledge_bindings(
+            session=self.session,
+            session_maker=self.session_maker,
+            workflow=workflow_from_snapshot(workflow),
+        )
+
     def activate(self, workflow: WorkflowSnapshot) -> None:
         WorkflowDefinitionStore.activate(self.session, self.app, workflow.id, self.actor.id)
 
@@ -769,6 +783,8 @@ class WorkflowDefinitionRepository:
         snapshot: WorkflowSnapshot | None,
     ) -> tuple[App, Account, WorkflowSnapshot]:
         """Load execution inputs in a short read, keeping persisted secrets encrypted."""
+        from repositories.app.console_repository import console_app_actor, require_console_app
+
         if snapshot is not None and (snapshot.tenant_id, snapshot.app_id) != (context.active_workspace_id, app_id):
             raise WorkflowNotFoundError("Workflow not found")
         with self._sessions() as session:
@@ -794,6 +810,8 @@ class WorkflowDefinitionRepository:
     def validation_state(
         self, context: RequestContext, app_id: str, workflow_id: str | None = None
     ) -> tuple[App, WorkflowSnapshot | None]:
+        from repositories.app.console_repository import require_console_app
+
         with nullcontext(self._import_session) if self._import_session is not None else self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflow = WorkflowDefinitionStore.get_draft_workflow(app, workflow_id, session=session)
@@ -805,6 +823,8 @@ class WorkflowDefinitionRepository:
             yield WorkflowAgentBindingRepository(session)
 
     def app(self, context: RequestContext, app_id: str) -> App:
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions() as session:
             return require_console_app(session, context, app_id)
 
@@ -812,6 +832,8 @@ class WorkflowDefinitionRepository:
     def draft(
         self, context: RequestContext, app_id: str
     ) -> Generator[DraftWorkflowRead[WorkflowAgentBindingRepository] | None]:
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflow = WorkflowDefinitionStore.get_draft_workflow(app, session=session)
@@ -829,6 +851,8 @@ class WorkflowDefinitionRepository:
     def publication(
         self, context: RequestContext, app_id: str, draft: WorkflowSnapshot
     ) -> Generator[WorkflowPublicationTransaction[WorkflowAgentBindingRepository]]:
+        from repositories.app.console_repository import console_app_actor
+
         with self._sessions.begin() as session:
             app = WorkflowDefinitionStore.lock_app(session, context, app_id)
             current = WorkflowDefinitionStore.get_draft_workflow(app, session=session, for_update=True)
@@ -836,6 +860,7 @@ class WorkflowDefinitionRepository:
                 raise WorkflowHashNotEqualError()
             yield _PublicationTransaction(
                 session,
+                self._sessions,
                 app,
                 console_app_actor(session, context),
                 workflow_snapshot(current),
@@ -843,6 +868,8 @@ class WorkflowDefinitionRepository:
             )
 
     def debug_node(self, context: RequestContext, app_id: str, node_id: str) -> WorkflowDebugNode:
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflow = WorkflowDefinitionStore.get_draft_workflow(app, session=session)
@@ -858,24 +885,52 @@ class WorkflowDefinitionRepository:
             )
 
     def published(self, context: RequestContext, app_id: str) -> WorkflowRecord | None:
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflow = WorkflowDefinitionStore.get_published_workflow(app, session=session)
             return workflow_record(workflow, session) if workflow is not None else None
 
     def versions(
-        self, context: RequestContext, app_id: str, *, page: int, limit: int, user_id: str | None, named_only: bool
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        page: int,
+        limit: int,
+        user_id: str | None,
+        named_only: bool,
+        include_draft: bool = True,
     ) -> tuple[list[WorkflowRecord], bool]:
+        """Read one page after applying all visibility filters in SQL.
+
+        Preconditions:
+            ``page`` and ``limit`` are positive pagination values.
+        Postconditions:
+            Draft, author, and name visibility affect the SQL result before its limit,
+            offset, and ``has_more`` calculation; returned records are detached.
+        """
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
-                session=session, app_model=app, page=page, limit=limit, user_id=user_id, named_only=named_only
+                session=session,
+                app_model=app,
+                page=page,
+                limit=limit,
+                user_id=user_id,
+                named_only=named_only,
+                include_draft=include_draft,
             )
             return [workflow_record(workflow, session) for workflow in workflows], has_more
 
     def update(
         self, context: RequestContext, app_id: str, workflow_id: str, changes: dict[str, str]
     ) -> WorkflowRecord | None:
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions.begin() as session:
             app = require_console_app(session, context, app_id)
             workflow = WorkflowDefinitionStore.update_workflow(
@@ -905,6 +960,8 @@ class WorkflowDefinitionRepository:
                 raise WorkflowNotFoundError(str(error)) from error
 
     def update_features(self, context: RequestContext, app_id: str, features: dict[str, Any]) -> None:
+        from repositories.app.console_repository import require_console_app
+
         with self._sessions.begin() as session:
             app = require_console_app(session, context, app_id)
             WorkflowDefinitionStore.update_features(

@@ -237,11 +237,11 @@ def test_factory_runs_v2_and_reuses_persisted_approval(
 ) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
     from core.db.session_factory import session_factory
-    from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
     from core.workflow.system_variables import SystemVariableKey, system_variable_selector
     from graphon.engine_events import NodeRunPauseRequestedEvent
     from graphon.runtime import InitParams, RuntimeState
+    from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     pool = VariablePool()
@@ -1638,6 +1638,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         workflow_runs=repository,
         node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(context.sessions),
         session_factory=context.sessions,
+        tool_providers=tool_providers,
     )
     from configs import dify_config
     from extensions.ext_application_services import build_application_services
@@ -1747,7 +1748,7 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(
 @pytest.mark.parametrize("initiator", [False, True])
 @pytest.mark.usefixtures("providers")
 def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
-    context: Context, monkeypatch: pytest.MonkeyPatch, initiator: bool
+    context: Context, monkeypatch: pytest.MonkeyPatch, initiator: bool, *, tool_providers: ToolProviderIcons
 ) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -1823,6 +1824,7 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
         workflow_runs=repository,
         node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(context.sessions),
         session_factory=context.sessions,
+        tool_providers=tool_providers,
     )
     request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
 
@@ -1848,7 +1850,7 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
 
 @pytest.mark.parametrize("checkpoint", ["invalid", "missing_form"])
 def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(
-    context: Context, monkeypatch: pytest.MonkeyPatch, checkpoint: str
+    context: Context, monkeypatch: pytest.MonkeyPatch, checkpoint: str, *, tool_providers: ToolProviderIcons
 ) -> None:
     from machinery.context import RequestContext
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -1863,6 +1865,7 @@ def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(
         workflow_runs=repository,
         node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(context.sessions),
         session_factory=context.sessions,
+        tool_providers=tool_providers,
     )
     request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
 
@@ -3049,7 +3052,6 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
 ) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
     from core.db.session_factory import session_factory
-    from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.system_variables import SystemVariableKey, system_variable_selector
     from graphon.engine import Engine
     from graphon.engine.command import InMemoryChannel
@@ -3068,6 +3070,7 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     from graphon.runtime import InitParams, RuntimeState
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
+    from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     provider_accept = providers[1].on_send

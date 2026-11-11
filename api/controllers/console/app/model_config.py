@@ -20,13 +20,14 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.agent.entities import AgentToolEntity
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
+from extensions.ext_application_services import application_services
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models.model import App, AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
+from services.tools.tool_manager import ToolManager
 
 register_schema_models(console_ns, AppModelConfigPayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
@@ -89,6 +90,8 @@ class ModelConfigResource(Resource):
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
+                        tool_providers=application_services().tools.tool_providers,
+                        workflow_queries=application_services().tools.workflow_queries,
                         tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
@@ -129,6 +132,8 @@ class ModelConfigResource(Resource):
                 else:
                     try:
                         tool_runtime = ToolManager.get_agent_tool_runtime(
+                            tool_providers=application_services().tools.tool_providers,
+                            workflow_queries=application_services().tools.workflow_queries,
                             tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,

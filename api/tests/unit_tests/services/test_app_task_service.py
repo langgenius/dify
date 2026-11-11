@@ -764,7 +764,7 @@ class TestLegacyWorkflowTaskRecoveryCases:
         )
         topic = Topic(Redis(), "recovery-test")
         monkeypatch.setattr(topic, "publish", lambda _payload: None)
-        monkeypatch.setattr(task_module.MessageBasedAppGenerator, "get_response_topic", lambda *_: topic)
+        monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_: topic)
         return AppTaskControlService(redis_client=recovery_redis)
 
     @staticmethod
@@ -1206,7 +1206,7 @@ class TestPausedWorkflowStopCases:
         topic_client = Redis()
         monkeypatch.setattr(topic_client, "publish", publish)
         topic = Topic(topic_client, "workflow-events")
-        monkeypatch.setattr(task_module.MessageBasedAppGenerator, "get_response_topic", lambda *_: topic)
+        monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_: topic)
 
         assert run.task_id is not None
         AppTaskService.stop_workflow_task(

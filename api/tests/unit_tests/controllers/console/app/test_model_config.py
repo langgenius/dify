@@ -4,7 +4,7 @@ import importlib
 import json
 import os
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import unwrap
 from pathlib import Path
 from types import SimpleNamespace
@@ -858,6 +858,21 @@ def test_post_encrypts_agent_tool_parameters(
                 "prompt": None,
             },
         },
+    )
+
+    @dataclass
+    class _ToolServices:
+        tool_providers: object = field(default_factory=object)
+        workflow_queries: object = field(default_factory=object)
+
+    @dataclass
+    class _AppServices:
+        tools: _ToolServices = field(default_factory=_ToolServices)
+
+    monkeypatch.setattr(
+        model_config_module,
+        "application_services",
+        _AppServices,
     )
     monkeypatch.setattr(model_config_module.ToolManager, "get_agent_tool_runtime", lambda **_kwargs: object())
 

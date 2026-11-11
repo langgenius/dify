@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import cast, override
+from unittest.mock import create_autospec
 
 import pytest
 import sqlalchemy as sa
@@ -38,6 +39,7 @@ from commands.data_migration import (
     migration_data_wizard,
     parse_index_selection,
 )
+from extensions import ext_application_services
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Dataset, DatasetPermission, DatasetPermissionEnum, TenantAccountJoin, TenantAccountRole
 from models.account import Tenant
@@ -56,6 +58,7 @@ from services.data_migration.entities import (
 )
 from services.data_migration.import_service import ImportRequest
 from services.enterprise.rbac_service import ReplaceMemberBindings, ReplaceUserAccessPolicies
+from services.workflow.console_service import ConsoleWorkflowService
 from tests.helpers.legacy_model_type_migration import (
     ALL_TABLE_NAMES,
     LEGACY_TO_CANONICAL,
@@ -139,7 +142,10 @@ class TestDataMigrationCommandsCases:
 
     @staticmethod
     def test_export_command_uses_cli_owned_session(
-        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sqlite_engine: Engine
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        sqlite_engine: Engine,
+        workflow_application: ext_application_services.ApplicationServices,
     ) -> None:
         captured: dict[str, object] = {}
         input_file = tmp_path / "export-config.json"
@@ -148,6 +154,10 @@ class TestDataMigrationCommandsCases:
         package = MigrationPackage.from_mapping({"metadata": {"version": "1", "source_scope": "single"}})
 
         class FakeMigrationExportService:
+            def __init__(self, *, workflow_tools: object, tool_providers: object) -> None:
+                assert tool_providers is workflow_application.tools.tool_providers
+                assert workflow_tools is workflow_application.tools.workflows
+
             def export(self, selection: object, *, session: Session) -> ExportResult:
                 captured["session"] = session
                 captured["selection"] = selection
@@ -178,7 +188,10 @@ class TestDataMigrationCommandsCases:
 
     @staticmethod
     def test_import_command_uses_cli_owned_session(
-        monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sqlite_engine: Engine
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        sqlite_engine: Engine,
+        workflow_application: ext_application_services.ApplicationServices,
     ) -> None:
         captured: dict[str, object] = {}
         input_file = tmp_path / "migration-package.json"
@@ -194,7 +207,20 @@ class TestDataMigrationCommandsCases:
             }
         )
 
+        publisher = create_autospec(ConsoleWorkflowService, instance=True)
+        services = create_autospec(ext_application_services.ApplicationServices, instance=True)
+        services.console_workflows = publisher
+        services.tools = workflow_application.tools
+        monkeypatch.setattr(data_migration, "application_services", lambda: services)
+
         class FakeMigrationImportService:
+            def __init__(self, *, workflows: object, app_dsl: object, workflow_tools: object) -> None:
+                assert workflow_tools is services.tools.workflows
+                from extensions.application_services.workflow import build_app_dsl_service
+
+                assert workflows is publisher
+                assert app_dsl is build_app_dsl_service
+
             def import_package(self, request: ImportRequest, *, session: Session) -> ImportResult:
                 captured["session"] = session
                 captured["request"] = request

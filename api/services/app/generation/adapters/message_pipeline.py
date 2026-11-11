@@ -313,8 +313,17 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     # Closing an Agent consumer records intent; the worker owns its runtime terminal.
                     agent_stop_requested = stopped and self._app_config.app_mode == AppMode.AGENT
                     # Preserve authoritative usage that may arrive after the SSE stream stops.
-                    self._save_message(preserve_existing_usage=stopped, agent_stop_requested=agent_stop_requested)
-                    if not agent_stop_requested:
+                    saved_message = self._save_message(
+                        preserve_existing_usage=stopped, agent_stop_requested=agent_stop_requested
+                    )
+                    if agent_stop_requested:
+                        # Provider/billing subscribers may perform external I/O.
+                        # The repository has released the stop-save row lock before this notification.
+                        message_was_created.send(
+                            saved_message,
+                            application_generate_entity=self._application_generate_entity,
+                        )
+                    else:
                         self._emit_message_trace()
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
@@ -408,13 +417,15 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     continue
         return delta_text
 
-    def _save_message(self, *, preserve_existing_usage: bool, agent_stop_requested: bool) -> None:
+    def _save_message(self, *, preserve_existing_usage: bool, agent_stop_requested: bool) -> Message:
         """Commit the final answer before notifying ``message_was_created`` subscribers.
 
         The owned message must exist. ``agent_stop_requested`` is true only for
         a stopped Agent App consumer and implies ``preserve_existing_usage``.
         Successful saves record stop intent for trace recovery, not a runtime
         outcome. Repository failures propagate without notification or tracing.
+        Return the committed detached message; for Agent stops the caller owns
+        post-commit notification, without emitting a consumer terminal trace.
         """
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
@@ -445,7 +456,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if "usage" in saved_metadata:
             self._task_state.llm_result.usage = LLMUsage.from_metadata(saved_metadata["usage"])
         # Consumers observe a committed, detached message.
-        message_was_created.send(saved, application_generate_entity=self._application_generate_entity)
+        if not agent_stop_requested:
+            message_was_created.send(saved, application_generate_entity=self._application_generate_entity)
+        return saved
 
     def _emit_message_trace(self) -> None:
         """Emit one completion through the request scope after its outcome is committed.

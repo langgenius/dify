@@ -47,7 +47,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
-    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+    def handle_error(
+        self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""
+    ) -> Exception:
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -61,17 +63,15 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
                 description = getattr(e, "description", None)
                 err = Exception(description if description is not None else str(e))
 
-        if not message_id or not session:
+        if not message_id or session is None:
             return err
 
-        stmt = select(Message).where(Message.id == message_id)
-        message = session.scalar(stmt)
-        if not message:
+        message = session.scalar(select(Message).where(Message.id == message_id))
+        if message is None:
             return err
 
-        err_desc = self._error_to_desc(err)
         message.status = MessageStatus.ERROR
-        message.error = err_desc
+        message.error = self._error_to_desc(err)
         return err
 
     def _error_to_desc(self, e: Exception) -> str:

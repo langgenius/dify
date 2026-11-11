@@ -21,6 +21,7 @@ from sqlalchemy.pool import QueuePool
 from core.app.workflow.file_runtime import create_dify_workflow_file_runtime
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 from graphon.engine.command.builtin.in_memory import InMemoryChannel
@@ -566,7 +567,12 @@ def test_real_generator_runs_with_detached_models(
         )
     execution = replace(execution, data=execution.data.model_copy(update={"root_node_id": "start", "inputs": {}}))
     assert logs.start(execution.log.id) is not None
-    gateway = WorkflowTriggerExecutionGateway(models=logs, logs=logs, session_factory=sqlite_session_factory)
+    gateway = WorkflowTriggerExecutionGateway(
+        models=logs,
+        logs=logs,
+        session_factory=sqlite_session_factory,
+        runtime=build_workflow_execution_dependencies(sqlite_session_factory),
+    )
 
     def run() -> None:
         with harness.app.app_context(), use_workflow_file_runtime(create_dify_workflow_file_runtime()):

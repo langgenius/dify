@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
+from enums.agent import WorkflowAgentBindingType
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from models.agent import (
@@ -13,7 +14,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
 )
 from models.agent_config_entities import (
     AgentCliToolConfig,

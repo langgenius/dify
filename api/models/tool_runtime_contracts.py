@@ -1,7 +1,7 @@
 """Persistence port shared by Workflow Tool metadata and execution adapters."""
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from models import Account, EndUser, Workflow
@@ -24,6 +24,7 @@ class WorkflowToolDefinition:
     parameter_configurations: list[WorkflowToolParameterConfiguration]
 
 
+@runtime_checkable
 class WorkflowToolQueries(Protocol):
     def provider(self, *, tenant_id: str, provider_id: str) -> WorkflowToolProvider | None: ...
     def provider_for_app(self, *, tenant_id: str, app_id: str) -> WorkflowToolProvider | None: ...
@@ -37,6 +38,7 @@ class WorkflowToolQueries(Protocol):
         ...
 
 
+@runtime_checkable
 class WorkflowToolStore(WorkflowToolQueries, Protocol):
     def save(self, provider: WorkflowToolDefinition, *, labels: list[str] | None, create: bool) -> None: ...
     def delete(self, *, tenant_id: str, provider_id: str) -> None: ...

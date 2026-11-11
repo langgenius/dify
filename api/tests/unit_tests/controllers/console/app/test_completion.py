@@ -16,6 +16,7 @@ from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, S
 from core.entities.provider_configuration import ProviderConfigurations
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
@@ -77,6 +78,7 @@ def test_chat_message_rejects_empty_agent_tool_as_invalid_param(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
+    workflow_application: ApplicationServices,
 ) -> None:
     """The debugger HTTP path rejects malformed tools before generation starts."""
     config_overrides(
@@ -110,6 +112,7 @@ def test_chat_message_rejects_empty_agent_tool_as_invalid_param(
 
     http_app = Flask(__name__)
     http_app.config.update(TESTING=True)
+    http_app.extensions["application_services"] = workflow_application
     ExternalApi(http_app).add_resource(ChatMessageHttpResource, "/chat-messages")
 
     response = http_app.test_client().post(

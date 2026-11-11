@@ -21,8 +21,9 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 from services.errors.base import NoPermissionError
-from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.knowledge.resource_scope import DatasetRef
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -453,7 +454,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         assert len(result["document_ids"]) == 2
 
 
-class TestDatasetCollectionBindingServiceIntegration:
+class TestDatasetCollectionBindingRepositoryIntegration:
     def test_get_dataset_collection_binding_returns_existing_binding(self, db_session_with_containers: Session) -> None:
         binding = DatasetPermissionIntegrationFactory.create_collection_binding(
             db_session_with_containers,
@@ -461,7 +462,7 @@ class TestDatasetCollectionBindingServiceIntegration:
             model_name="model",
         )
 
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             "provider", "model", session=db_session_with_containers
         )
 
@@ -470,7 +471,7 @@ class TestDatasetCollectionBindingServiceIntegration:
     def test_get_dataset_collection_binding_creates_binding_when_missing(
         self, db_session_with_containers: Session
     ) -> None:
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             "provider", "missing-model", session=db_session_with_containers
         )
 
@@ -486,7 +487,7 @@ class TestDatasetCollectionBindingServiceIntegration:
     ) -> None:
         with flask_app_with_containers.app_context():
             with pytest.raises(ValueError, match="Dataset collection binding not found"):
-                DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
                     str(uuid4()), session=db_session_with_containers
                 )
 
@@ -499,7 +500,7 @@ class TestDatasetCollectionBindingServiceIntegration:
             model_name="model",
         )
 
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
             binding.id, session=db_session_with_containers
         )
 

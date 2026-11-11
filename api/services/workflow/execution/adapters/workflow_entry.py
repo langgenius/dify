@@ -53,7 +53,6 @@ from libs.workflow_template_values import template_value_selectors
 from models import Account
 from models.agent_config_entities import AgentSoulConfig
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
-from models.workflow import Workflow
 from services.human_input.ports import HumanInputFormReader
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
@@ -233,7 +232,7 @@ class WorkflowEntry:
     def single_step_run(
         cls,
         *,
-        workflow: WorkflowSnapshot | Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user_id: str,
         user_inputs: Mapping[str, Any],

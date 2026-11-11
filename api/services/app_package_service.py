@@ -19,8 +19,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import session_factory
 from core.tools.entities.tool_entities import ToolProviderType, emoji_icon_adapter
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-from models.agent import WorkflowAgentBindingType
+from enums.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App, AppMode
 from models.tools import ToolLabelBinding, WorkflowToolProvider
@@ -41,6 +40,7 @@ from services.agent.roster_package_entities import (
     validate_icon_references,
 )
 from services.agent.roster_package_reader import RosterAgentPackageReader
+from services.agent.workflow_validator import WorkflowAgentNodeValidator
 from services.app_dsl_service import AppDslService
 from services.dsl_content import DSL_MAX_SIZE
 from services.dsl_version import check_version_compatibility

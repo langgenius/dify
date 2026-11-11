@@ -1,18 +1,21 @@
 """Materialize pinned Workflow Tool definitions before execution begins."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+from models import Account
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
+from services.tools.workflow.tool import WorkflowTool
+from services.workflow.execution.ports import WorkflowRuntime
 
 
 class WorkflowToolDefinition(BaseModel):
@@ -55,8 +58,16 @@ class MaterializedWorkflowTools:
 
 
 class WorkflowToolSourceService:
-    def __init__(self, repository: SQLAlchemyWorkflowToolSourceRepository) -> None:
+    def __init__(
+        self,
+        repository: SQLAlchemyWorkflowToolSourceRepository,
+        *,
+        workflow_runtime: WorkflowRuntime | None,
+        draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None,
+    ) -> None:
         self._repository = repository
+        self._workflow_runtime = workflow_runtime
+        self._draft_variable_saver = draft_variable_saver
 
     def load(
         self,
@@ -95,6 +106,7 @@ class WorkflowToolSourceService:
                     raise ValueError("Workflow Tool source was not found")
                 sources[source.workflow_id] = source
                 pending.append(source.graph_config)
+                runtime = self._require_runtime()
                 tools[provider_id] = WorkflowTool(
                     workflow_app_id=source.app_id,
                     workflow_id=source.workflow_id,
@@ -104,6 +116,9 @@ class WorkflowToolSourceService:
                     entity=definition.entity.model_copy(deep=True),
                     runtime=ToolRuntime(tenant_id=tenant_id),
                     label=definition.label,
+                    queries=runtime.tools,
+                    draft_variable_saver=self._draft_variable_saver,
+                    workflow_runtime=runtime,
                 )
 
         visited: set[str] = set()
@@ -126,6 +141,8 @@ class WorkflowToolSourceService:
             pending = []
             for source in self._repository.get_by_provider_ids(tenant_id=tenant_id, provider_ids=tuple(provider_ids)):
                 if source.tool is not None:
+                    if not isinstance(source.tool, WorkflowTool):
+                        raise TypeError("Workflow Tool source returned an unsupported tool implementation")
                     tools[source.tool.workflow_as_tool_id] = source.tool
                 if source.workflow_id not in sources:
                     pending.append(source.graph_config)
@@ -137,3 +154,8 @@ class WorkflowToolSourceService:
             ):
                 raise ToolRuntimeResolutionError("Human Input V2 nodes are not supported in nested Workflow Tools.")
         return MaterializedWorkflowTools(sources=sources, tools=tools)
+
+    def _require_runtime(self) -> WorkflowRuntime:
+        if self._workflow_runtime is None:
+            raise ValueError("Workflow execution dependencies are required to materialize Workflow Tools")
+        return self._workflow_runtime

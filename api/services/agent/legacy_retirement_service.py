@@ -21,7 +21,7 @@ from models.agent import (
 )
 from models.model import App, AppMode
 from models.workflow import Workflow
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from repositories.agent.home_snapshot_repository import AgentHomeSnapshotRepository
 from services.agent.workspace_service import AgentWorkspaceService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -105,8 +105,7 @@ class WorkflowAgentRetirementService:
                             )
                         retired_bindings.append(binding.id)
                     retired_snapshots.extend(
-                        AgentHomeSnapshotService.retire_all_for_agent(
-                            session=session,
+                        AgentHomeSnapshotRepository(session).retire_all_for_agent(
                             tenant_id=tenant_id,
                             agent_id=agent_id,
                         )

@@ -11,6 +11,7 @@ from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, Schedu
 from graphon.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from services.errors.app import QuotaExceededError
+from services.trigger.schedule_policy import visual_to_cron
 from services.trigger.schedule_store import SchedulePublicationWriter, TriggerScheduleStore
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class ScheduleService:
             if not frequency:
                 raise ScheduleConfigError("Frequency is required for visual mode")
             visual_config = VisualConfig.model_validate(node_data.visual_config or {})
-            cron_expression = ScheduleService.visual_to_cron(frequency=frequency, visual_config=visual_config)
+            cron_expression = visual_to_cron(frequency=frequency, visual_config=visual_config)
             if not cron_expression:
                 raise ScheduleConfigError("Cron expression is required for visual mode")
         else:

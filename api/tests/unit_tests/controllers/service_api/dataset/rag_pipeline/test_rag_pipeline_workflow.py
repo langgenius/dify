@@ -10,11 +10,12 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import (
+    AccessDeniedError,
     FilenameNotExistsError,
     NoFileUploadedError,
+    NotFoundError,
     TooManyFilesError,
 )
 from controllers.common.errors import (
@@ -33,16 +34,14 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     PipelineRunApi,
     PipelineUploadFileResponse,
 )
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import ApplicationServices
 from extensions.storage.storage_type import StorageType
 from libs.helper import dump_response
 from models.account import Account
 from models.dataset import Dataset, Pipeline
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from repositories.credentials.query_repository import CredentialQueryRepository
-from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -50,7 +49,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from tests.helpers.unit.credential_refresh import build_datasource_provider_service
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from tests.helpers.unit.model_factories import make_upload_file
 
 """
@@ -97,18 +96,14 @@ def _persist_pipeline(session: Session, *, tenant_id: str) -> Pipeline:
 class TestRagPipelineWorkflowCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def _bind_database(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch):
+    def _bind_database(
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        workflow_application: ApplicationServices,
+    ):
         session_proxy = scoped_session(sqlite_session_factory)
         monkeypatch.setattr(workflow_module.db, "session", session_proxy)
-        query = CredentialQueryRepository(session_factory=sqlite_session_factory)
-        providers = build_datasource_provider_service(
-            credentials=SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
-        )
-        monkeypatch.setattr(
-            workflow_module,
-            "application_services",
-            lambda: SimpleNamespace(credential_queries=query, data_sources=SimpleNamespace(providers=providers)),
-        )
+        monkeypatch.setattr(workflow_module, "application_services", lambda: workflow_application)
         yield
         session_proxy.remove()
 
@@ -209,10 +204,6 @@ class TestRagPipelineWorkflowCases:
         def test_get_pipeline_method_exists(self):
             """Test RagPipelineService.get_pipeline exists."""
             assert hasattr(RagPipelineService, "get_pipeline")
-
-        def test_run_datasource_workflow_node_method_exists(self):
-            """Test RagPipelineService.run_datasource_workflow_node exists."""
-            assert hasattr(RagPipelineService, "run_datasource_workflow_node")
 
         def test_get_pipeline_templates_method_exists(self):
             """Test RagPipelineService.get_pipeline_templates exists."""
@@ -493,14 +484,14 @@ class TestRagPipelineWorkflowCases:
             )
 
         def test_get_plugins_not_found(self, app: Flask, sqlite_session: Session):
-            """Test NotFound when dataset check fails."""
+            """Test NotFoundError when dataset check fails."""
             tenant_id = str(uuid.uuid4())
             dataset_id = str(uuid.uuid4())
             _persist_dataset(sqlite_session, tenant_id="other-tenant", dataset_id=dataset_id)
 
             with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
                 api = DatasourcePluginsApi()
-                with pytest.raises(NotFound):
+                with pytest.raises(NotFoundError):
                     api.get(tenant_id=tenant_id, dataset_id=dataset_id)
 
         @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
@@ -524,7 +515,7 @@ class TestRagPipelineWorkflowCases:
         """Tests for DatasourceNodeRunApi.post().
 
         The source asserts ``isinstance(current_user, Account)`` and delegates to
-        ``RagPipelineService`` and ``PipelineGenerator``, so we patch those plus
+        ``RagPipelineService`` and the event-stream adapter, so we patch those plus
         ``current_user``.  ``post`` is wrapped in ``@model_validate``, which parses
         the JSON request body live, so payloads are supplied via
         ``test_request_context(json=...)`` and validation runs before the dataset
@@ -532,7 +523,7 @@ class TestRagPipelineWorkflowCases:
         """
 
         @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
-        @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerator")
+        @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.convert_to_event_stream")
         @patch(
             "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
             new_callable=lambda: Account(name="Test Account", email="test@example.com"),
@@ -557,41 +548,46 @@ class TestRagPipelineWorkflowCases:
             pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id)
             mock_svc_instance = Mock()
             mock_svc_instance.get_pipeline.return_value = pipeline
-            mock_svc_instance.run_datasource_workflow_node.return_value = iter(["event1"])
             mock_svc_cls.return_value = mock_svc_instance
 
-            mock_gen.convert_to_event_stream.return_value = iter(["stream_event"])
+            mock_gen.return_value = iter(["stream_event"])
             mock_helper.compact_generate_response.return_value = {"result": "ok"}
 
-            with app.test_request_context(
-                "/datasets/test/pipeline/datasource/nodes/node_abc/run",
-                method="POST",
-                json={
-                    "inputs": {"url": "https://example.com"},
-                    "datasource_type": "online_document",
-                    "is_published": True,
-                },
+            with (
+                app.test_request_context(
+                    "/datasets/test/pipeline/datasource/nodes/node_abc/run",
+                    method="POST",
+                    json={
+                        "inputs": {"url": "https://example.com"},
+                        "datasource_type": "online_document",
+                        "is_published": True,
+                    },
+                ),
+                patch.object(
+                    workflow_module.application_services().knowledge.pipeline_execution,
+                    "run_datasource_workflow_node",
+                    return_value=iter(["event1"]),
+                ) as run,
             ):
                 api = DatasourceNodeRunApi()
                 response = api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id=node_id)
 
             assert response == {"result": "ok"}
             mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
-            mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
-            mock_svc_instance.run_datasource_workflow_node.assert_called_once()
+            run.assert_called_once()
 
         def test_post_not_found(self, app: Flask, sqlite_session: Session):
-            """Test NotFound when dataset check fails."""
+            """Test NotFoundError when dataset check fails."""
 
             # `@model_validate` parses the body before the ownership guard, so a
-            # valid payload is required to reach the NotFound branch.
+            # valid payload is required to reach the NotFoundError branch.
             with app.test_request_context(
                 "/datasets/test/pipeline/datasource/nodes/n1/run",
                 method="POST",
                 json={"inputs": {}, "datasource_type": "online_document", "is_published": True},
             ):
                 api = DatasourceNodeRunApi()
-                with pytest.raises(NotFound):
+                with pytest.raises(NotFoundError):
                     api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
 
         @patch(
@@ -666,13 +662,15 @@ class TestRagPipelineWorkflowCases:
             mock_svc_cls.assert_called_once_with(sqlite_session)
             mock_gen_svc.generate.assert_called_once()
             assert mock_gen_svc.generate.call_args.kwargs["generator"] is pipeline_application
-            assert mock_gen_svc.generate.call_args.kwargs["session"] is sqlite_session
+            assert mock_gen_svc.generate.call_args.kwargs["pipeline"] is pipeline
+            assert mock_gen_svc.generate.call_args.kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
+            assert mock_gen_svc.generate.call_args.kwargs["streaming"] is True
 
         def test_post_not_found(self, app: Flask, sqlite_session: Session):
-            """Test NotFound when dataset check fails."""
+            """Test NotFoundError when dataset check fails."""
             with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
                 api = PipelineRunApi()
-                with pytest.raises(NotFound):
+                with pytest.raises(NotFoundError):
                     api.post.__wrapped__(
                         api,
                         sqlite_session,
@@ -683,7 +681,7 @@ class TestRagPipelineWorkflowCases:
         @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
         @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
         def test_post_forbidden_non_account_user(self, mock_ns, app: Flask, sqlite_session: Session):
-            """Test Forbidden when current_user is not an Account."""
+            """Test AccessDeniedError when current_user is not an Account."""
             tenant_id = str(uuid.uuid4())
             dataset_id = str(uuid.uuid4())
             _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
@@ -698,7 +696,7 @@ class TestRagPipelineWorkflowCases:
 
             with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
                 api = PipelineRunApi()
-                with pytest.raises(Forbidden):
+                with pytest.raises(AccessDeniedError):
                     api.post.__wrapped__(
                         api,
                         sqlite_session,

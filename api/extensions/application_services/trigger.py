@@ -14,6 +14,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
 from enums import QuotaType
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_redis import RedisClientWrapper
 from extensions.ext_storage import storage
 from repositories.credentials.query_repository import CredentialQueryRepository
@@ -163,7 +164,10 @@ def build_trigger_services(
     )
     execution_logs = SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=database_client)
     execution_runtime = WorkflowTriggerExecutionGateway(
-        models=execution_logs, logs=execution_logs, session_factory=database_client
+        models=execution_logs,
+        logs=execution_logs,
+        session_factory=database_client,
+        runtime=build_workflow_execution_dependencies(database_client),
     )
     queues = CeleryWorkflowQueuePublisher()
     workflow_dispatch = AsyncWorkflowService(
