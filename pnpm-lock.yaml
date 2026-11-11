@@ -267,8 +267,8 @@ catalogs:
       specifier: 1.16.2
       version: 1.16.2
     '@pierre/highlights':
-      specifier: 0.3.0
-      version: 0.3.0
+      specifier: 0.5.1
+      version: 0.5.1
     '@playwright/test':
       specifier: 1.65.0
       version: 1.65.0
@@ -1564,7 +1564,7 @@ importers:
         version: 1.16.2(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)
       '@pierre/highlights':
         specifier: 'catalog:'
-        version: 0.3.0
+        version: 0.5.1
       '@remixicon/react':
         specifier: 'catalog:'
         version: 4.9.0(react@19.3.1)
@@ -4233,8 +4233,8 @@ packages:
     resolution: {integrity: sha512-Fh+SOBxMu7/pbSk84WG4BN6npcxxlF4jWNQJ+S4IUNyvSVeQwOVTFQMD/Dx2EqBQ1lVeCADcJ+0rzT1BKQ9cUA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@pierre/highlights@0.3.0':
-    resolution: {integrity: sha512-s6xZ/giPPrSeCO2w254GiysUXD4ditKMTOrl1vHynvPqP7VdlujYi01O9joxJ0T16XkoXGQMN6zkRi9+O8NCzg==}
+  '@pierre/highlights@0.5.1':
+    resolution: {integrity: sha512-c2WF6sgwgKdxXU6FpWDLWUYHRca/cJy+3QJkWAqYqEAFxqlPf8eSH0ehHcFFjKBmT+9KBl9H7q6z7HMRU7+m6g==}
 
   '@pkgr/core@0.3.6':
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
@@ -11194,7 +11194,7 @@ snapshots:
 
   '@oxlint/plugins@1.91.0': {}
 
-  '@pierre/highlights@0.3.0': {}
+  '@pierre/highlights@0.5.1': {}
 
   '@pkgr/core@0.3.6': {}
 
@@ -16855,7 +16855,7 @@ time:
   '@orpc/openapi-client@1.16.2': '2026-11-06T07:35:32.248Z'
   '@orpc/standard-server@1.16.2': '2026-11-06T07:35:28.030Z'
   '@orpc/tanstack-query@1.16.2': '2026-11-06T07:38:07.995Z'
-  '@pierre/highlights@0.3.0': '2026-10-26T23:43:45.797Z'
+  '@pierre/highlights@0.5.1': '2026-11-11T05:04:30.437Z'
   '@playwright/test@1.65.0': '2026-11-05T18:30:18.050Z'
   '@remixicon/react@4.9.0': '2026-01-29T10:53:18.993Z'
   '@sentry/react@10.78.0': '2026-10-28T16:57:37.210Z'

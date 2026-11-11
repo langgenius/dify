@@ -105,7 +105,7 @@ catalog:
   '@orpc/openapi-client': 1.16.2
   '@orpc/standard-server': 1.16.2
   '@orpc/tanstack-query': 1.16.2
-  '@pierre/highlights': 0.3.0
+  '@pierre/highlights': 0.5.1
   '@playwright/test': 1.65.0
   '@remixicon/react': 4.9.0
   '@sentry/react': 10.78.0
