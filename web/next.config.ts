@@ -44,12 +44,6 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: true,
       },
-      {
-        // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
-        source: '/education-apply',
-        destination: '/education/apply',
-        permanent: true,
-      },
     ]
   },
   output: 'standalone',
