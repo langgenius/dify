@@ -19,7 +19,6 @@ it('keeps both education checkout actions inside the dialog on a narrow phone', 
         billing={{
           currentPlan: 'sandbox',
           currentBillingInterval: 'month',
-          isEducationDiscountActivated: false,
           isEducationDiscountEligible: true,
         }}
       />

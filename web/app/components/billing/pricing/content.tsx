@@ -66,7 +66,6 @@ export function PricingContent() {
         currentPlan: currentCloudPlan,
         currentBillingInterval: features.billing.subscription.interval,
         isEducationDiscountEligible,
-        isEducationDiscountActivated: features.education.activated,
       }
     : undefined
 

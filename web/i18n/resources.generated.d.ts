@@ -1745,6 +1745,11 @@ export default interface Resources {
     'pricing.credits.basic': 'Use AI credits with supported basic models. Credit usage varies by model. Advanced models require your own model API keys on Sandbox. Calls made with your own keys do not consume AI credits; provider charges apply.'
     'pricing.credits.monthly': '{{count,number}} AI credits / month'
     'pricing.credits.total': '{{count,number}} AI credits total'
+    'pricing.cycle.annual': 'annual'
+    'pricing.cycle.monthly': 'monthly'
+    'pricing.cycleNotice.back': 'Back to plans'
+    'pricing.cycleNotice.description': "You're viewing the {{target_billing_cycle}} plan. To change your billing cycle, go to subscription management to review your options and any applicable charges."
+    'pricing.cycleNotice.title': 'You already have a {{plan_name}} {{current_billing_cycle}} subscription'
     'pricing.logs.limited': 'Up to {{count,number}} days of app logs'
     'pricing.logs.paidNote': 'App execution and conversation logs are retained without a time limit. You can download or delete workflow log archives as needed.'
     'pricing.logs.sandboxNote': 'App execution and conversation logs are retained for up to 30 days and automatically deleted afterward.'
@@ -3414,7 +3419,7 @@ export default interface Resources {
     currentSigned: 'CURRENTLY SIGNED IN AS'
     'educationPricingConfirm.cancel': 'Continue without discount'
     'educationPricingConfirm.continue': 'Switch to Professional Annual'
-    'educationPricingConfirm.description': "The education discount applies to the Professional annual plan only. Keeping your current plan won't include the discount."
+    'educationPricingConfirm.description': 'You’ve selected {{selected_plan_name}} ({{selected_billing_cycle}}). Choose Professional annual to use your education discount, or continue with your selected plan without the discount.'
     'educationPricingConfirm.title': "Your selected plan doesn't support the education discount"
     emailLabel: 'Your current email'
     'form.schoolName.noResults': 'No matching schools found. You can still enter the official school name.'
@@ -3449,7 +3454,7 @@ export default interface Resources {
     'notice.stillInEducation.expired': "Re-verify now to get a new coupon for the upcoming academic year. We'll add it to your account and you can use it for the next upgrade."
     'notice.stillInEducation.isAboutToExpire': "Re-verify now to get a new coupon for the upcoming academic year. It'll be saved to your account and ready to use at your next renewal."
     'notice.stillInEducation.title': 'Still in education?'
-    planNotSupportEducationDiscount: 'Not eligible for education pricing'
+    planNotSupportEducationDiscount: 'No education discount on this plan'
     rejectContent: 'Unfortunately, you are not eligible for Education Verified status and therefore cannot receive the exclusive 100% coupon for the Dify Professional Plan if you use this email address.'
     rejectTitle: 'Your Dify Educational Verification Has Been Rejected'
     submit: 'Submit'

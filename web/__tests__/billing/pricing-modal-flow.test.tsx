@@ -168,9 +168,7 @@ describe('Pricing Modal Flow', () => {
 
       expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
 
-      await user.click(
-        screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
-      )
+      await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
       await waitFor(() => {
         expect(mockGetSubscription).toHaveBeenCalledWith(
@@ -198,14 +196,15 @@ describe('Pricing Modal Flow', () => {
       expect(window.open).not.toHaveBeenCalled()
     })
 
-    it('shows the current Sandbox plan as a label without a purchase action', async () => {
+    it('shows only the Professional popularity badge for Sandbox workspaces', async () => {
       setupContexts({ type: 'sandbox' })
       await render(<Pricing />)
 
       expect(
         screen.queryByRole('button', { name: 'billing.plansCommon.startForFree' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByText('billing.plansCommon.currentPlan')).toBeVisible()
+      expect(screen.queryByText('billing.plansCommon.currentPlan')).not.toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.mostPopular')).toBeVisible()
     })
   })
 
