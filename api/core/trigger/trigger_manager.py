@@ -13,9 +13,7 @@ from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProv
 from core.plugin.impl.exc import PluginDaemonError, PluginNotFoundError
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import (
-    EventEntity,
     Subscription,
-    UnsubscribeResult,
 )
 from core.trigger.provider import PluginTriggerProviderController
 from models.provider_ids import TriggerProviderID
@@ -131,18 +129,6 @@ class TriggerManager:
         return cls.list_plugin_trigger_providers(tenant_id)
 
     @classmethod
-    def list_triggers_by_provider(cls, tenant_id: str, provider_id: TriggerProviderID) -> list[EventEntity]:
-        """
-        List all triggers for a specific provider
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider ID
-        :return: List of trigger entities
-        """
-        provider = cls.get_trigger_provider(tenant_id, provider_id)
-        return provider.get_events()
-
-    @classmethod
     def subscribe_trigger(
         cls,
         tenant_id: str,
@@ -174,60 +160,4 @@ class TriggerManager:
             parameters=parameters,
             credentials=credentials,
             credential_type=credential_type,
-        )
-
-    @classmethod
-    def unsubscribe_trigger(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        provider_id: TriggerProviderID,
-        subscription: Subscription,
-        credentials: Mapping[str, object],
-        credential_type: CredentialType,
-    ) -> UnsubscribeResult:
-        """
-        Unsubscribe from a trigger
-
-        :param tenant_id: Tenant ID
-        :param user_id: User ID
-        :param provider_id: Provider ID
-        :param subscription: Subscription metadata from subscribe operation
-        :param credentials: Provider credentials
-        :param credential_type: Credential type
-        :return: Unsubscription result
-        """
-        provider: PluginTriggerProviderController = cls.get_trigger_provider(
-            tenant_id=tenant_id, provider_id=provider_id
-        )
-        return provider.unsubscribe_trigger(
-            user_id=user_id,
-            subscription=subscription,
-            credentials=credentials,
-            credential_type=credential_type,
-        )
-
-    @classmethod
-    def refresh_trigger(
-        cls,
-        tenant_id: str,
-        provider_id: TriggerProviderID,
-        subscription: Subscription,
-        credentials: Mapping[str, object],
-        credential_type: CredentialType,
-    ) -> Subscription:
-        """
-        Refresh a trigger subscription
-
-        :param tenant_id: Tenant ID
-        :param provider_id: Provider ID
-        :param subscription: Subscription metadata from subscribe operation
-        :param credentials: Provider credentials
-        :param credential_type: Credential type
-        :return: Refreshed subscription result
-        """
-
-        # TODO you should update the subscription using the return value of the refresh_trigger
-        return cls.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id).refresh_trigger(
-            subscription=subscription, credentials=credentials, credential_type=credential_type
         )

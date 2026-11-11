@@ -36,7 +36,7 @@ def _refresh(harness: _Harness, tenant_id: str, subscription_id: str, locks: _Lo
                 subscriptions=TriggerSubscriptionRepository(session_factory=harness.session_factory),
                 providers=PluginTriggerSubscriptionGateway(),
                 oauth=PluginTriggerOAuthGateway(oauth=OAuthHandler()),
-                clients=application_services().workspaces.trigger_oauth_clients,
+                clients=application_services().triggers.oauth_clients,
                 locks=locks or _Locks(),
                 codec=ProviderTriggerSubscriptionCodec(),
                 credential_threshold=10,
