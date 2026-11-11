@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import ClassVar
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -14,10 +15,10 @@ from graphon.enums import WorkflowExecutionStatus
 
 
 class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
-    blocking_full_calls: list[WorkflowAppBlockingResponse] = []
-    blocking_simple_calls: list[WorkflowAppBlockingResponse] = []
-    stream_full_calls: list[Generator[AppStreamResponse]] = []
-    stream_simple_calls: list[Generator[AppStreamResponse]] = []
+    blocking_full_calls: ClassVar[list[WorkflowAppBlockingResponse]] = []
+    blocking_simple_calls: ClassVar[list[WorkflowAppBlockingResponse]] = []
+    stream_full_calls: ClassVar[list[Generator[AppStreamResponse]]] = []
+    stream_simple_calls: ClassVar[list[Generator[AppStreamResponse]]] = []
 
     @classmethod
     def reset(cls) -> None:
