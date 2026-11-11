@@ -204,8 +204,8 @@ catalogs:
       specifier: 0.27.20
       version: 0.27.20
     '@formatjs/intl-localematcher':
-      specifier: 0.9.0
-      version: 0.9.0
+      specifier: 0.10.1
+      version: 0.10.1
     '@heroicons/react':
       specifier: 2.2.0
       version: 2.2.0
@@ -1519,7 +1519,7 @@ importers:
         version: 0.27.20(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@formatjs/intl-localematcher':
         specifier: 'catalog:'
-        version: 0.9.0
+        version: 0.10.1
       '@heroicons/react':
         specifier: 'catalog:'
         version: 2.2.0(react@19.3.1)
@@ -2656,8 +2656,8 @@ packages:
   '@formatjs/fast-memoize@3.1.7':
     resolution: {integrity: sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA==}
 
-  '@formatjs/intl-localematcher@0.9.0':
-    resolution: {integrity: sha512-Z7TD3ssNry1Av1dVDoq/mzpxGyxqWwU0ClWEo+BB3k0JQTeQvUGmeK9WZGYvlqStS0UqkaKXk3dfjsb6NaHAxw==}
+  '@formatjs/intl-localematcher@0.10.1':
+    resolution: {integrity: sha512-gBqglQK9rXuHsLmM8wzTMBy4Xo4d0jamirIVKuEL8F1rwbskWdpMA1kZarSkny+uvr5q/K6GSzE0Rcq1wZLl3g==}
 
   '@heroicons/react@2.2.0':
     resolution: {integrity: sha512-LMcepvRaS9LYHJGsF0zzmgKCUim/X3N/DQKc4jepAXJ7l8QxJ1PmxJzqplF2Z3FE4PqBAIGyJAQ/w4B5dsqbtQ==}
@@ -10045,7 +10045,7 @@ snapshots:
 
   '@formatjs/fast-memoize@3.1.7': {}
 
-  '@formatjs/intl-localematcher@0.9.0':
+  '@formatjs/intl-localematcher@0.10.1':
     dependencies:
       '@formatjs/fast-memoize': 3.1.7
 
@@ -16834,7 +16834,7 @@ time:
   '@eslint-react/eslint-plugin@5.28.8': '2026-10-23T16:03:08.593Z'
   '@eslint/markdown@8.0.3': '2026-07-01T13:28:44.339Z'
   '@floating-ui/react@0.27.20': '2026-07-11T08:41:33.223Z'
-  '@formatjs/intl-localematcher@0.9.0': '2026-09-12T16:07:12.757Z'
+  '@formatjs/intl-localematcher@0.10.1': '2026-10-31T21:52:24.769Z'
   '@heroicons/react@2.2.0': '2024-11-18T15:33:27.317Z'
   '@hey-api/openapi-ts@0.99.0': '2026-06-22T06:38:34.730Z'
   '@hono/node-server@2.1.6': '2026-11-02T10:22:05.655Z'

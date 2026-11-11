@@ -83,7 +83,7 @@ catalog:
   '@eslint-react/eslint-plugin': 5.28.8
   '@eslint/markdown': 8.0.3
   '@floating-ui/react': 0.27.20
-  '@formatjs/intl-localematcher': 0.9.0
+  '@formatjs/intl-localematcher': 0.10.1
   '@heroicons/react': 2.2.0
   '@hey-api/openapi-ts': 0.99.0
   '@hono/node-server': 2.1.6
