@@ -19,6 +19,8 @@ variable pool and emitted as the segment's chunk. Streamed variables and
 genuinely empty values are unaffected.
 """
 
+from typing import override
+
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.nodes.base.template import VariableSegment
@@ -38,6 +40,7 @@ class DifyResponseStreamFilter(ResponseStreamFilter):
     exactly when upstream would complete it.
     """
 
+    @override
     def _process_variable_segment(self, segment: VariableSegment) -> tuple[list[NodeRunStreamChunkEvent], bool]:
         """Complete a variable segment, falling back to the pool value when nothing streamed.
 
