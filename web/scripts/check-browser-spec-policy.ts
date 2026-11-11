@@ -42,38 +42,8 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/(auth)/init/__tests__/InitPasswordPopup.browser.spec.tsx',
-    specifier: '@/hooks/use-document-title',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/(auth)/signup/set-password/__tests__/page.browser.spec.tsx',
     specifier: '@/app/components/base/amplitude/registration-tracking',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/(shareLayout)/webapp-signin/__tests__/normal-form.browser.spec.tsx',
-    specifier: '@/features/system-features/client',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/(shareLayout)/webapp-signin/__tests__/normal-form.browser.spec.tsx',
-    specifier: '../components/mail-and-code-auth',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/(shareLayout)/webapp-signin/__tests__/normal-form.browser.spec.tsx',
-    specifier: '../components/mail-and-password-auth',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/(shareLayout)/webapp-signin/__tests__/normal-form.browser.spec.tsx',
-    specifier: '../components/sso-auth',
     occurrence: 1,
     reason: legacyMockDebt,
   },
