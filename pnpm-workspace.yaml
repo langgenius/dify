@@ -47,7 +47,6 @@ packages:
   - cli
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
-  '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -90,13 +89,13 @@ catalog:
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/logos': 1.2.19
   '@iconify-json/ri': 1.2.10
-  '@lexical/code': 0.47.0
-  '@lexical/link': 0.47.0
-  '@lexical/list': 0.47.0
-  '@lexical/react': 0.47.0
-  '@lexical/selection': 0.47.0
-  '@lexical/text': 0.47.0
-  '@lexical/utils': 0.47.0
+  '@lexical/code-core': 0.53.0
+  '@lexical/link': 0.53.0
+  '@lexical/list': 0.53.0
+  '@lexical/react': 0.53.0
+  '@lexical/selection': 0.53.0
+  '@lexical/text': 0.53.0
+  '@lexical/utils': 0.53.0
   '@mediabunny/mp3-encoder': 1.65.2
   '@monaco-editor/react': 4.7.0
   '@napi-rs/keyring': 1.3.0
@@ -220,7 +219,7 @@ catalog:
   katex: 0.18.10
   knip: 6.45.0
   ky: 2.2.0
-  lexical: 0.47.0
+  lexical: 0.53.0
   lockfile: 1.0.4
   loro-crdt: 1.17.1
   mediabunny: 1.65.2

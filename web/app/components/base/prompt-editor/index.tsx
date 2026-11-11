@@ -1,6 +1,5 @@
 'use client'
 
-import type { InitialConfigType } from '@lexical/react/LexicalComposer'
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
@@ -24,10 +23,10 @@ import type {
   WorkflowVariableBlockType,
 } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { CodeNode } from '@lexical/code'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { CodeNode } from '@lexical/code-core'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { $getRoot, TextNode } from 'lexical'
+import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
+import { $getRoot, defineExtension, TextNode } from 'lexical'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -181,37 +180,41 @@ const PromptEditor: FC<PromptEditorProps> = ({
   shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const initialConfig: InitialConfigType = {
-    theme: {
-      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:line-clamp-none!',
-    },
-    namespace: 'prompt-editor',
-    nodes: [
-      CodeNode,
-      CustomTextNode,
-      {
-        replace: TextNode,
-        with: (node: TextNode) => new CustomTextNode(node.__text),
-        withKlass: CustomTextNode,
+  const [extension] = useState(() =>
+    defineExtension({
+      name: 'prompt-editor',
+      editable,
+      theme: {
+        paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:line-clamp-none!',
       },
-      ContextBlockNode,
-      HistoryBlockNode,
-      QueryBlockNode,
-      RequestURLBlockNode,
-      WorkflowVariableBlockNode,
-      VariableValueBlockNode,
-      RosterReferenceBlockNode,
-      HITLInputNode,
-      CurrentBlockNode,
-      ErrorMessageBlockNode,
-      LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
-      AgentOutputBlockNode,
-    ],
-    editorState: textToEditorState(value || ''),
-    onError: (error: Error) => {
-      throw error
-    },
-  }
+      namespace: 'prompt-editor',
+      nodes: [
+        CodeNode,
+        CustomTextNode,
+        {
+          replace: TextNode,
+          with: (node: TextNode) => new CustomTextNode(node.__text),
+          withKlass: CustomTextNode,
+        },
+        ContextBlockNode,
+        HistoryBlockNode,
+        QueryBlockNode,
+        RequestURLBlockNode,
+        WorkflowVariableBlockNode,
+        VariableValueBlockNode,
+        RosterReferenceBlockNode,
+        HITLInputNode,
+        CurrentBlockNode,
+        ErrorMessageBlockNode,
+        LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
+        AgentOutputBlockNode,
+      ],
+      $initialEditorState: textToEditorState(value || ''),
+      onError: (error: Error) => {
+        throw error
+      },
+    }),
+  )
 
   const handleEditorChange = (editorState: EditorState) => {
     const text = editorState.read(() => {
@@ -247,7 +250,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }, [])
 
   return (
-    <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
+    <LexicalExtensionComposer extension={extension} contentEditable={null}>
       <div className={cn('relative', wrapperClassName)} ref={onRef}>
         <PromptEditorContent
           id={id}
@@ -291,7 +294,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <EditableSyncPlugin editable={editable} />
         {children}
       </div>
-    </LexicalComposer>
+    </LexicalExtensionComposer>
   )
 }
 
