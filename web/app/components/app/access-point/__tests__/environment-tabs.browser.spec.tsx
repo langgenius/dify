@@ -8,39 +8,21 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
+import { seedAccessPointQueries } from './access-point-query-fixtures'
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'workflow.nodes.common.memories.builtIn': 'Built-in',
-  })
-})
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }))
-})
-
-// The page owns the tabs and scrollport; card contents are outside this regression.
-vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
-  BuiltInAccessPoints: () => null,
-}))
-vi.mock('@/app/components/app/access-point/deployed-environment-access-points', () => ({
-  DeployedEnvironmentAccessPoints: () => null,
-}))
+const builtInName = 'workflow.nodes.common.memories.builtIn'
 
 async function renderAccessPoint(names = ['test-1']) {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient)
   seedCurrentWorkspaceQuery(queryClient)
   seedSystemFeatures(queryClient)
+  seedWorkspacePermissionsQuery(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({
@@ -63,6 +45,11 @@ async function renderAccessPoint(names = ['test-1']) {
     }),
     { data: environments },
   )
+  seedAccessPointQueries(
+    queryClient,
+    'app-1',
+    environments.map(({ id }) => id),
+  )
   const onUrlUpdate = vi.fn()
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -78,7 +65,7 @@ async function renderAccessPoint(names = ['test-1']) {
 
 it('moves focus and activates the focused environment only with Enter', async () => {
   const { screen, onUrlUpdate } = await renderAccessPoint()
-  const builtIn = screen.getByRole('tab', { name: 'Built-in' })
+  const builtIn = screen.getByRole('tab', { name: builtInName })
   const deployed = screen.getByRole('tab', { name: 'test-1' })
   await userEvent.tab()
   await expect.element(builtIn).toHaveFocus()
@@ -97,6 +84,16 @@ it('moves focus and activates the focused environment only with Enter', async ()
 
   await userEvent.keyboard('{Enter}')
   await expect.element(deployed).toHaveAttribute('aria-selected', 'true')
+  await expect
+    .element(
+      screen.getByRole('heading', { name: 'agentV2.agentDetail.access.webApp.title', level: 2 }),
+    )
+    .toBeVisible()
+  await expect
+    .element(
+      screen.getByText('deployments.studio.accessPoint.unsupportedInDeployedEnvironment').nth(0),
+    )
+    .toBeVisible()
   expect(onUrlUpdate).toHaveBeenCalledWith(
     expect.objectContaining({ queryString: '?environment=environment-0' }),
   )
@@ -117,7 +114,7 @@ it('focuses the first and last tabs with Home and End without activating them', 
   expect(onUrlUpdate).not.toHaveBeenCalled()
 
   await userEvent.keyboard('{Home}')
-  const firstTab = screen.getByRole('tab', { name: 'Built-in' })
+  const firstTab = screen.getByRole('tab', { name: builtInName })
   await expect.element(firstTab).toHaveFocus()
   expect(onUrlUpdate).not.toHaveBeenCalled()
 })

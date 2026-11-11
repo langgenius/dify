@@ -24,9 +24,6 @@ from controllers.console.agent.composer import (
     WorkflowAgentComposerValidateApi,
 )
 from controllers.console.agent.roster import (
-    AgentApiAccessApi,
-    AgentApiStatusApi,
-    AgentApiStatusPayload,
     AgentAppApi,
     AgentAppCopyApi,
     AgentAppCopyPayload,
@@ -57,8 +54,8 @@ from controllers.console.app.error import CompletionRequestError
 from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
-from models.enums import ApiTokenType, CustomizeTokenStrategy, TagType
-from models.model import ApiToken, App, AppMode, IconType, Site, Tag, TagBinding
+from models.enums import CustomizeTokenStrategy, TagType
+from models.model import App, AppMode, IconType, Site, Tag, TagBinding
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
 from services.enterprise.rbac_service import RBACService
 from services.entities.agent_entities import (
@@ -875,89 +872,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     assert discarded == {"result": "success"}
     captured["discard"].pop("session", None)
     assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
-
-
-def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(
-        id="app-1",
-        tenant_id="tenant-1",
-        enable_api=True,
-        api_rpm=60,
-        api_rph=600,
-    )
-    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
-    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 2)
-    monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
-    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.example.test/v1")
-    response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
-    assert response == {
-        "access_ready": True,
-        "enabled": True,
-        "service_api_base_url": "https://api.example.test/v1",
-        "streaming_only": True,
-        "chat_endpoint": "https://api.example.test/v1/chat-messages",
-        "stop_endpoint": "https://api.example.test/v1/chat-messages/{task_id}/stop",
-        "conversations_endpoint": "https://api.example.test/v1/conversations",
-        "messages_endpoint": "https://api.example.test/v1/messages",
-        "files_upload_endpoint": "https://api.example.test/v1/files/upload",
-        "parameters_endpoint": "https://api.example.test/v1/parameters",
-        "info_endpoint": "https://api.example.test/v1/info",
-        "meta_endpoint": "https://api.example.test/v1/meta",
-        "api_rpm": 60,
-        "api_rph": 600,
-        "api_key_count": 2,
-    }
-
-
-def test_agent_api_key_count_scopes_tenant_and_keeps_legacy_tokens(sqlite_session: Session) -> None:
-    app_model = _app_detail_obj()
-    sqlite_session.add_all(
-        [
-            ApiToken(type=ApiTokenType.APP, token="owned", app_id=app_model.id, tenant_id=app_model.tenant_id),
-            ApiToken(type=ApiTokenType.APP, token="legacy", app_id=app_model.id, tenant_id=None),
-            ApiToken(type=ApiTokenType.APP, token="foreign", app_id=app_model.id, tenant_id="tenant-2"),
-        ]
-    )
-    sqlite_session.commit()
-
-    assert roster_controller._agent_api_key_count(sqlite_session, app_model) == 2
-
-
-def test_agent_api_status_resolves_backing_app(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(
-        id="app-1",
-        tenant_id="tenant-1",
-        enable_api=False,
-        api_rpm=0,
-        api_rph=0,
-    )
-    captured: dict[str, object] = {}
-    resolve_app = Mock(return_value=app_model)
-    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", resolve_app)
-    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 1)
-    monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
-
-    class FakeAppService:
-        def update_app_api_status(self, app_obj: object, enable_api: bool, *, session: object) -> object:
-            captured["enable"] = {"app": app_obj, "enable_api": enable_api}
-            app_model.enable_api = enable_api
-            return app_model
-
-    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
-
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/api-enable", json={"enable_api": True}
-    ):
-        enabled = unwrap(AgentApiStatusApi.post)(
-            AgentApiStatusApi(), AgentApiStatusPayload(enable_api=True), unbound_session, "tenant-1", agent_id
-        )
-    assert enabled["enabled"] is True
-    assert captured["enable"] == {"app": app_model, "enable_api": True}
-    resolve_app.assert_called_once_with(unbound_session, tenant_id="tenant-1", agent_id=agent_id)
 
 
 def test_agent_app_update_allows_empty_role(

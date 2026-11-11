@@ -38,13 +38,14 @@ export const createSocket = (id: string, connected = true) => {
             .filter(([name, payload]) => name === 'collaboration_event' && payload?.type === event)
             .at(-1)
     const callback = call?.[2]
-    if (typeof callback !== 'function') throw new Error(`No acknowledgement callback for ${event}`)
+    if (typeof callback !== 'function')
+      throw new TypeError(`No acknowledgement callback for ${event}`)
     callback(body, status)
   }
   const snapshot = () => {
     update('graph_resync_request', {})
     const data = emit.mock.calls.filter(([event]) => event === 'graph_event').at(-1)?.[1]
-    if (!(data instanceof Uint8Array)) throw new Error('No graph snapshot was broadcast')
+    if (!(data instanceof Uint8Array)) throw new TypeError('No graph snapshot was broadcast')
     return data
   }
   return { socket, emit, receive, update, messages, acknowledge, snapshot }
