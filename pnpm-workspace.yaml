@@ -34,10 +34,9 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
-  # tsrs 0.18 is published by the oxc-project GitHub Actions trusted publisher
-  # with provenance. pnpm still reports a downgrade against earlier releases of
-  # the same package name.
-  - tsrs@0.18.0-ts7.1.0-dev.20260929
+  # tsrs is published by oxc-project GitHub Actions with npm provenance; pnpm
+  # reports a downgrade against the historical publisher of this package name.
+  - tsrs@0.24.0-ts7.1.0-beta
 verifyDepsBeforeRun: install
 packages:
   - web
@@ -277,7 +276,7 @@ catalog:
   svgo: 4.1.0
   tailwindcss: 4.3.5
   tldts: 7.4.21
-  tsrs: 0.18.0-ts7.1.0-dev.20260929
+  tsrs: 0.24.0-ts7.1.0-beta
   # JavaScript Compiler API for codegen/lint/i18n tools; type checks still use tsrs.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Compiler API tools require TS 6; the mapper uses TS 7.1.
   typescript: npm:@typescript/typescript6@6.0.2
