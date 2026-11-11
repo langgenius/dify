@@ -153,7 +153,7 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(body),
       },
-      { dispatcher },
+      { insecure: opts.insecure, dispatcher },
     )
     try {
       return { url, res: await fetch(url, init) }

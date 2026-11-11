@@ -1,12 +1,18 @@
 import type { Server } from 'node:http'
 import type { Http2SecureServer, ServerHttp2Stream } from 'node:http2'
 import type { Socket } from 'node:net'
-import { readFileSync } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { createSecureServer } from 'node:http2'
 import { createServer as createHttpsServer } from 'node:https'
 import { connect } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { LOGIN_FILE_NAME } from '@/plugins/session'
 
 const PROXY_KEYS = [
   'HTTP_PROXY',
@@ -19,10 +25,30 @@ const PROXY_KEYS = [
 const sockets = new Set<Socket>()
 const servers: (Server | Http2SecureServer)[] = []
 const dispatchers: { destroy: () => Promise<void> }[] = []
+const directories: string[] = []
 // Public, self-signed fixtures for the local TLS server; never used for credentials.
 const certificate = {
   key: readFileSync(new URL('../../test/fixtures/tls/key.pem', import.meta.url)),
   cert: readFileSync(new URL('../../test/fixtures/tls/cert.pem', import.meta.url)),
+}
+
+function bunCli(args: string[], dir: string) {
+  const env = { ...process.env }
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('DIFY_') || key === 'NODE_TLS_REJECT_UNAUTHORIZED') delete env[key]
+  }
+  env.DIFY_CONFIG_DIR = dir
+  return promisify(execFile)(
+    'bun',
+    [fileURLToPath(new URL('../../bin/dev.js', import.meta.url)), ...args],
+    { env, timeout: 10_000 },
+  )
+}
+
+function configDir() {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-bun-transport-'))
+  directories.push(dir)
+  return dir
 }
 
 async function listen(server: Server | Http2SecureServer, secure = false) {
@@ -91,6 +117,48 @@ afterEach(async () => {
     ),
   )
   vi.unstubAllEnvs()
+  for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true })
+})
+
+describe('Bun CLI transport', () => {
+  it('requires --insecure to log in to a self-signed HTTPS server', async () => {
+    const target = await deviceServer(true)
+    const dir = configDir()
+    const args = ['login', '--server', target, '--no-browser', '--no-wait']
+
+    await expect(bunCli(args, dir)).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining('network_connection'),
+    })
+    const { stdout } = await bunCli([...args, '--insecure'], dir)
+    expect(JSON.parse(stdout)).toMatchObject({ status: 'pending', user_code: 'TEST' })
+  })
+
+  it.each([false, true])('honors saved insecure=%s for HTTP service requests', async (insecure) => {
+    const version = { version: '1.0.0', edition: 'COMMUNITY' }
+    const target = await listen(
+      createHttpsServer(certificate, (_request, response) => {
+        response.setHeader('content-type', 'application/json')
+        response.end(JSON.stringify(version))
+      }),
+      true,
+    )
+    const dir = configDir()
+    writeFileSync(
+      join(dir, LOGIN_FILE_NAME),
+      JSON.stringify({
+        server: target,
+        email: 'test@example.com',
+        token_storage: 'file',
+        insecure,
+      }),
+    )
+
+    const { stdout, stderr } = await bunCli(['version'], dir)
+
+    expect(JSON.parse(stdout).server).toEqual(insecure ? version : null)
+    if (!insecure) expect(stderr).toContain('server version unavailable')
+  })
 })
 
 describe('device flow transport', () => {

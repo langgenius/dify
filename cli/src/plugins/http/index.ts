@@ -181,7 +181,10 @@ export const http = definePlugin({
         req.signal === undefined ? [deadline.signal] : [deadline.signal, req.signal],
       )
 
-      const init = buildFetchInit({ method: req.method, headers, body, signal }, { dispatcher })
+      const init = buildFetchInit(
+        { method: req.method, headers, body, signal },
+        { insecure: login.insecure, dispatcher },
+      )
 
       let res: Response
       try {
