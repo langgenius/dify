@@ -1,6 +1,6 @@
 import type { consoleClient } from '@/service/console'
 import type { MicrophoneFixture } from '@/test/browser-media'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createMicrophoneFixture, paintedPixelCount } from '@/test/browser-media'
@@ -32,13 +32,19 @@ let beforeTranscribeCalls = 0
 
 function VoiceInputCaller() {
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusAfterCloseRef = useRef(false)
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('original draft')
   const [error, setError] = useState('')
   const close = () => {
+    restoreFocusAfterCloseRef.current = true
     setOpen(false)
-    requestAnimationFrame(() => triggerRef.current?.focus())
   }
+  useEffect(() => {
+    if (open || !restoreFocusAfterCloseRef.current) return
+    restoreFocusAfterCloseRef.current = false
+    triggerRef.current?.focus()
+  }, [open])
   return (
     <div style={{ minHeight: 80, position: 'relative', width: 420 }}>
       {!open && (
