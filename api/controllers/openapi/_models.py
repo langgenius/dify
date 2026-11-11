@@ -27,7 +27,7 @@ from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_va
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
-from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
+from services.entities.dsl_entities import DraftDependencyCheck, Import, ImportMode
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -583,7 +583,7 @@ class PluginDeleteResponse(BaseModel):
     deleted: bool
 
 
-class CheckDependenciesResponse(CheckDependenciesResult, Hinted):
+class CheckDependenciesResponse(DraftDependencyCheck, Hinted):
     pass
 
 

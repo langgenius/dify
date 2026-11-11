@@ -4,7 +4,7 @@ from typing import Protocol
 
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountSnapshot
-from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import
+from services.entities.dsl_entities import AppImportParams, DraftDependencyCheck, Import
 
 
 class ImportAccounts(Protocol):
@@ -18,7 +18,7 @@ class AppDefinitionImports(Protocol):
 
     def confirm_definition(self, context: RequestContext, import_id: str) -> Import: ...
 
-    def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult: ...
+    def check_draft_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck: ...
 
 
 class AppImportService:
@@ -49,5 +49,5 @@ class AppImportService:
     def confirm_import(self, context: RequestContext, import_id: str) -> Import:
         return self._definitions.confirm_definition(context, import_id)
 
-    def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
-        return self._definitions.check_dependencies(context, app_id)
+    def check_draft_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck:
+        return self._definitions.check_draft_dependencies(context, app_id)
