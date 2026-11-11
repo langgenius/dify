@@ -51,6 +51,10 @@ jobs:
           restore-keys: |
             e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
 
+      - name: Validate all active Cucumber scenarios
+        working-directory: ./e2e
+        run: vp run check:scenarios
+
       - name: Run E2E support unit tests
         working-directory: ./e2e
         run: vp run test:unit

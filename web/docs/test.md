@@ -31,28 +31,26 @@ Use the smallest boundary that includes the behavior owner and proves the produc
 
 - Test pure transformations and business rules as unit tests.
 - Test hooks directly only when the hook itself exposes a reusable public contract. Otherwise, exercise the hook through its owning component or feature.
-- Use React Testing Library for component and feature behavior visible through the DOM or external side effects.
+- Exercise component and feature behavior through rendered DOM or external side effects.
 - Use integration tests for behavior that crosses meaningful module boundaries.
-- Use the `browser` project when it adds meaningful browser evidence under [Browser Mode Admission].
+- Default rendered component and feature tests to the `browser` project under [Browser Mode Admission]. Keep non-DOM logic in `unit`.
 - Follow the [Dify UI testing contract] for the Storybook and Vitest boundary of Dify UI primitives.
 
 Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract. Do not repeat generic behavior already owned by Base UI, React Aria, or the browser; test Dify's integration, overrides, and known regressions.
 
 ### Browser Mode Admission
 
-Web defaults to the `unit` project in `happy-dom`. This is a project tradeoff, not a Vitest restriction: [Vitest component testing] recommends Browser Mode, and [Vitest visual regression testing] supports visual contracts.
+Rendered React component and feature tests default to the `browser` project in Playwright Chromium. This includes dialogs, forms, pages, editors, canvas, and hooks exercised through a rendered owner. Use `*.browser.spec.{ts,tsx}` under `{app,features}/**`; one scenario belongs to one project. Do not duplicate unit cases in Browser Mode.
 
-A new browser test must establish all three:
+Keep `unit` in `happy-dom` when a browser adds no useful evidence: pure functions, types and schemas, request builders, stores or hooks without DOM, and Node or build tooling. Files outside the browser project's include paths also remain in `unit`. If a required capability is unavailable in Browser Mode, explain the concrete blocker in the PR and propose the missing infrastructure instead of emulating browser behavior or weakening the test.
 
-- **Value:** name the user-visible failure or stable visual requirement worth protecting. Layout, focus, portals, observers, and “happy-dom cannot do this” alone are not justification; neither are primitive or native defaults such as focus returning to the trigger that opened an overlay or Space activating a button.
-- **Additional evidence:** identify what existing owner tests miss and what real rendering or browser interaction adds. Do not repeat a state matrix just because a browser fixture exists; a viewport, theme, key, or variant row needs its own failure mode, otherwise keep the hardest row.
-- **Faithful boundary:** exercise the production owner and assert the claimed result. A copied layout cannot prove page integration; cursor or hover styling cannot prove that clicking performs an action.
+The runtime does not make a weak test valuable. Every retained scenario must still protect a user-visible contract at its faithful production owner. Use the smallest journey that proves that contract with real rendering and interaction. Do not repeat a state matrix merely because a browser fixture exists; each viewport, theme, key, or variant row needs a distinct failure mode. Primitive and native defaults need no separate Dify tests unless Dify's integration or overrides are the contract.
 
-Use the smallest scenario that supplies that evidence. Native selection, focus restoration to CSS-hidden controls, hit testing, scrolling, and animation completion can justify browser coverage. Ordinary event handling and DOM state usually belong in `unit`. Synthetic events can test handler responses but do not prove native gesture generation, capture, or event ordering; use the [Vitest Interactivity API] when those are the contract.
+When migrating an existing spec, rewrite happy-dom workarounds into browser behavior: use public close/reopen or prop-change journeys, real layout, native input and semantic locators. Drop zero-size canvas expectations, fake geometry, CSS-class visibility proofs and aria-hiding assertions that stand in for actual removal. Do not merely rename a file or move low-value cases to another runner to preserve coverage. Use the [Vitest Interactivity API] when native gestures, capture or event ordering are the contract.
 
 Do not add permanent tests solely to freeze decorative spacing, radii, or artwork dimensions from a one-off visual adjustment. Geometry and computed styles are appropriate when they prove the chosen contract, such as readable content, unobstructed controls, or visible keyboard focus. Visual baselines need an explicit stable requirement and controlled rendering environment.
 
-Each `*.browser.spec.{ts,tsx}` must make its regression and additional evidence clear from its scenario and assertions; add a short explanation only when needed. Do not use forced interaction, fixed sleeps, private DOM assertions, or real network requests.
+Each `*.browser.spec.{ts,tsx}` must make its behavioral contract and browser evidence clear from its scenario and assertions; add a short explanation only when needed. Do not use forced interaction, fixed sleeps, private DOM assertions, or real network requests. When native browser behavior is the contract—including drag data, hit testing, focus and visibility, media sources, fullscreen, or file input—assert that outcome directly; markup state, matcher or helper shortcuts, and mocked browser API calls do not prove it.
 
 Browser input is real and nothing waits between keys. Split a `userEvent.keyboard` sequence wherever a later key depends on state an earlier key produces, such as an opened menu or moved focus, and await that state with `expect.element` before continuing.
 
@@ -101,6 +99,8 @@ Keep the production code that owns or transforms the asserted behavior real. Moc
 
 Mocks must preserve the public contract needed by the test. A mock must not reimplement the owner's transformation, state, or subscription. A child double that only records props or manually invokes captured callbacks does not prove the real control exists or submits valid values; render the real child and drive it, or keep the double at an external SDK or service boundary. Do not mock interactive Dify UI primitives or feature-owned wrappers around them. Keep their semantic roles, state attributes, portals, focus behavior, and `render(props, state)` contract real; mock only service or external-data boundaries needed to reach the scenario.
 
+Put `// boundary: <reason>` immediately above each retained owned-path or otherwise non-obvious mock to name the external or unavailable capability it isolates.
+
 - Never make real network requests.
 - Reset shared mock state before each test that mutates it.
 - Create a fresh TanStack Query client for tests that exercise query behavior.
@@ -118,9 +118,10 @@ Mocks must preserve the public contract needed by the test. A mock must not reim
 
 ## Dify Test Setup
 
-- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
-- Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; a regular-expression check against rendered text can use `expect(element.textContent).toMatch(pattern)` when the Vitest 5 browser matcher types conflict with jest-dom's `toHaveTextContent` overload.
+- Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- Browser string locators use Vitest 5's exact, case-sensitive matching; use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; in Browser Mode, `toHaveTextContent` checks the entire normalized text, while `toMatchTextContent` handles substring or regular-expression checks, including negated partial checks.
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
+- Keep one behavior domain per Browser spec and split suites near 500 lines. Scope fixtures and mocks to the file that uses them; extract only genuinely shared, side-effect-free presets.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - Shared test helpers must have no import-time side effects: no `beforeEach`/`afterEach` registration, global or fetch stubbing, or assertions. Render helpers accept initial store state and injected props and return the real stores and query client. When two or more specs need the same query-cache seed, extract a side-effect-free preset under `web/test/`, distinct from `__mocks__`, that seeds only the client passed in.
@@ -182,9 +183,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Vitest Browser Mode locators]: https://vitest.dev/api/browser/locators
 [Vitest Browser Mode traces]: https://vitest.dev/guide/browser/trace-view
 [Vitest Interactivity API]: https://vitest.dev/api/browser/interactivity
-[Vitest component testing]: https://vitest.dev/guide/browser/component-testing
 [Vitest documentation]: https://vitest.dev/guide
 [Vitest test projects]: https://vitest.dev/guide/projects
-[Vitest visual regression testing]: https://vitest.dev/guide/browser/visual-regression-testing
 [Why Browser Mode]: https://vitest.dev/guide/browser/why
 [static checks]: lint.md

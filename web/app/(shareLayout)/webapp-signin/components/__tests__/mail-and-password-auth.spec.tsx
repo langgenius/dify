@@ -86,6 +86,12 @@ describe('MailAndPasswordAuth', () => {
     }
   })
 
+  it('shows forgot password as plain text when email is not set up', () => {
+    render(<MailAndPasswordAuth isEmailSetup={false} />)
+    expect(screen.queryByRole('link', { name: 'login.forget' })).not.toBeInTheDocument()
+    expect(screen.getByText('login.forget')).toBeVisible()
+  })
+
   it('submits native autofill values without input events', async () => {
     const user = userEvent.setup()
     render(<MailAndPasswordAuth isEmailSetup />)

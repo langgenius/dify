@@ -44,10 +44,16 @@ from tests.helpers.unit.config_override import apply_config_overrides, config_ov
     ],
 )
 def test_recovery_dispatches_detached_owner_reference(
-    sqlite_session, tenant_id, dataset_id, document_ids, status, entry
-):
+    sqlite_session: Session,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: list[str],
+    status: IndexingStatus,
+    entry: str | None,
+) -> None:
     _persist_indexing_rows(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids[:1])
     row = sqlite_session.get(Document, document_ids[0])
+    assert row is not None
     row.indexing_status = status
     sqlite_session.commit()
     with patch("tasks.recover_document_indexing_task.build_document_indexing_service") as factory:
@@ -90,6 +96,7 @@ def document_ids() -> list[str]:
 @pytest.fixture
 def mock_redis() -> MagicMock:
     """Reset the external Redis boundary used by tenant-isolated queues."""
+    assert isinstance(redis_client, MagicMock)
     redis_client.reset_mock()
     redis_client.get.return_value = None
     redis_client.setex.return_value = True
@@ -257,7 +264,8 @@ class TestDocumentIndexing:
 
         def assert_committed_parsing(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as observer:
-                documents = [observer.get(Document, ref.document_id) for ref in refs]
+                fetched = [observer.get(Document, ref.document_id) for ref in refs]
+                documents = [document for document in fetched if document is not None]
                 assert all(document.indexing_status == IndexingStatus.PARSING for document in documents)
                 assert all(document.processing_started_at is not None for document in documents)
 
@@ -437,7 +445,9 @@ class TestSummaryDispatch:
                 for ref, status in zip(
                     refs, [IndexingStatus.COMPLETED, IndexingStatus.COMPLETED, IndexingStatus.INDEXING], strict=True
                 ):
-                    writer.get(Document, ref.document_id).indexing_status = status
+                    document = writer.get(Document, ref.document_id)
+                    assert document is not None
+                    document.indexing_status = status
 
         indexing_runner.run.side_effect = finish_documents
         summary_delay = MagicMock()
@@ -468,7 +478,9 @@ class TestSummaryDispatch:
 
         def complete_documents(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as writer, writer.begin():
-                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
+                document = writer.get(Document, refs[0].document_id)
+                assert document is not None
+                document.indexing_status = IndexingStatus.COMPLETED
 
         indexing_runner.run.side_effect = complete_documents
         summary_delay = MagicMock(side_effect=RuntimeError("queue unavailable"))
@@ -502,7 +514,9 @@ class TestSummaryDispatch:
 
         def complete_documents(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as writer, writer.begin():
-                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
+                document = writer.get(Document, refs[0].document_id)
+                assert document is not None
+                document.indexing_status = IndexingStatus.COMPLETED
 
         indexing_runner.run.side_effect = complete_documents
         summary_delay = MagicMock()
@@ -579,7 +593,7 @@ class TestTenantQueue:
         self, tenant_id: str, dataset_id: str, document_ids: list[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         queue = MagicMock()
-        queue.pull_tasks.return_value = []
+        queue.pull_tasks.return_value = list[str]()
         monkeypatch.setattr("tasks.document_indexing_task.TenantIsolatedTaskQueue", MagicMock(return_value=queue))
         indexing = MagicMock(side_effect=RuntimeError("indexing failed"))
         monkeypatch.setattr("tasks.document_indexing_task._document_indexing", indexing)

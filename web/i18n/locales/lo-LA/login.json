@@ -25,6 +25,7 @@
   "enterYourName": "ກະລຸນາປ້ອນຊື່ຜູ້ໃຊ້ຂອງທ່ານ",
   "error.emailEmpty": "ກະລຸນາປ້ອນທີ່ຢູ່ອີເມວ",
   "error.emailInValid": "ກະລຸນາປ້ອນທີ່ຢູ່ອີເມວທີ່ຖືກຕ້ອງ",
+  "error.initPasswordIncorrect": "ລະຫັດຜ່ານການເລີ່ມຕົ້ນບໍ່ຖືກຕ້ອງ.",
   "error.invalidEmailOrPassword": "ອີເມວ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ",
   "error.invalidSSOProtocol": "ໂປຣໂຕຄໍ SSO ບໍ່ຖືກຕ້ອງ",
   "error.nameEmpty": "ກະລຸນາປ້ອນຊື່",

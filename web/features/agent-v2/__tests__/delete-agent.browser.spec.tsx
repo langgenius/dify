@@ -8,6 +8,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
+import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -19,16 +20,8 @@ const api = vi.hoisted(() => ({
   agents: vi.fn<typeof consoleClient.agent.get>(),
   delete: vi.fn<typeof consoleClient.agent.byAgentId.delete>(),
 }))
-vi.mock('react-i18next', async (importOriginal) => importOriginal())
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanCreateAgents: () => false,
-  useCanImportAgents: () => false,
-}))
-vi.mock('@/context/i18n', () => ({ useDocLink: () => (path: string) => path }))
-vi.mock('@/hooks/use-timestamp', () => ({ default: () => ({ formatTime: () => '' }) }))
-vi.mock('@/app/components/app/use-export-app-dsl', () => ({
-  useExportAppDsl: () => ({ exportAppDsl: vi.fn(), isExporting: false }),
-}))
+vi.unmock('react-i18next')
+// boundary: generated Console transport is the server edge below the real roster owners.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -80,7 +73,7 @@ async function setup(initialAgents: AgentAppPartial[]) {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
-    resources: { 'en-US': { agentRoster, common } },
+    resources: { 'en-US': { agentRoster, app, common } },
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
@@ -97,6 +90,9 @@ async function setup(initialAgents: AgentAppPartial[]) {
     </QueryClientTestProvider>,
   )
   await expect.element(screen.getByRole('list', { name: 'Agent list', exact: true })).toBeVisible()
+  await expect
+    .element(screen.getByRole('link', { name: 'Learn more about Agent' }))
+    .toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/build/new-agent/overview')
   const actions = (name: string) => screen.getByRole('button', { name: `More actions for ${name}` })
   const openDelete = async (name: string) => {
     await screen.getByRole('link', { name, exact: true }).hover()
@@ -180,7 +176,9 @@ it('focuses the next card without moving the roster scroll position', async () =
   const targetName = 'Agent 15'
   const { screen, queryClient, openDelete } = await setup(agents)
   try {
-    const viewport = screen.getByRole('region', { name: 'Agents', exact: true }).element()
+    const viewport = screen
+      .getByRole('region', { name: 'Agents', exact: true })
+      .element().parentElement!
     await expect.poll(() => viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
     viewport.scrollTo({ top: 600 })
     await expect.poll(() => viewport.scrollTop).toBeGreaterThan(0)

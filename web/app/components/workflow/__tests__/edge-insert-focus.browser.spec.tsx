@@ -1,34 +1,12 @@
-import type { RefObject } from 'react'
-import { useState } from 'react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
-import { WorkflowContext } from '../context'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import CustomEdge from '../custom-edge'
-import { EditorResourceScope } from '../editor-resource/provider'
-import { createWorkflowStore } from '../store/workflow'
 import { BlockEnum } from '../types'
+import { CanvasNodesCatalogProbe } from './canvas-nodes-catalog-probe'
+import { renderWorkflowBrowserComponent as render } from './workflow-browser-test-env'
 import 'reactflow/dist/style.css'
 import '../style.css'
-
-vi.mock('../hooks/use-available-blocks', () => ({
-  useAvailableBlocks: () => ({
-    availablePrevBlocks: [BlockEnum.Code],
-    availableNextBlocks: [BlockEnum.Code],
-  }),
-}))
-vi.mock('../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({ handleNodeAdd: vi.fn() }),
-}))
-vi.mock('../hooks-store', () => ({
-  useHooksStore: (selector: (state: object) => unknown) => selector({}),
-}))
-// Picker results are unrelated to focus entering and returning from its real Popover.
-vi.mock('../block-selector/tabs', () => ({
-  BlockSelectorPanels: ({ searchInputRef }: { searchInputRef: RefObject<HTMLInputElement> }) => (
-    <input ref={searchInputRef} aria-label="Find a node" />
-  ),
-}))
 const edgeTypes = { custom: CustomEdge }
 const nodes = [
   {
@@ -52,30 +30,27 @@ const edges = [
   },
 ]
 function Fixture() {
-  const [store] = useState(() => createWorkflowStore({}))
   return (
-    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-      <WorkflowContext value={store}>
-        <ReactFlowProvider>
-          <button type="button">Before canvas</button>
-          <div style={{ width: 800, height: 500 }}>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              edgeTypes={edgeTypes}
-              nodesFocusable={false}
-              edgesFocusable={false}
-            />
-          </div>
-        </ReactFlowProvider>
-      </WorkflowContext>
-    </EditorResourceScope>
+    <>
+      <CanvasNodesCatalogProbe />
+      <button type="button">Before canvas</button>
+      <div style={{ width: 800, height: 500 }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          edgeTypes={edgeTypes}
+          nodesFocusable={false}
+          edgesFocusable={false}
+        />
+      </div>
+    </>
   )
 }
 
 it('reveals the edge insertion control on Tab and keeps it visible after Escape returns focus', async () => {
   // Browser owns focus restoration, ancestor opacity, and actual painted focus ring.
   await page.viewport(1000, 700)
+  onTestFinished(guardUnexpectedFetch())
   const screen = await render(<Fixture />)
   await screen.getByRole('button', { name: 'Before canvas' }).click()
   await userEvent.tab()
@@ -84,9 +59,10 @@ it('reveals the edge insertion control on Tab and keeps it visible after Escape 
   await expect.poll(() => getComputedStyle(trigger.element().parentElement!).opacity).toBe('1')
   expect(getComputedStyle(trigger.element()).boxShadow).not.toBe('none')
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('textbox', { name: 'Find a node' })).toHaveFocus()
+  const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
+  await expect.element(search).toHaveFocus()
   await userEvent.keyboard('{Escape}')
   await expect.element(trigger).toHaveFocus()
   await expect.poll(() => getComputedStyle(trigger.element().parentElement!).opacity).toBe('1')
-  await expect.element(screen.getByRole('textbox', { name: 'Find a node' })).not.toBeInTheDocument()
+  await expect.element(search).not.toBeInTheDocument()
 })
