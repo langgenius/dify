@@ -11,14 +11,16 @@ from pydantic import JsonValue, TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import DatabaseFileAccessController
+from core.app.file_access.scope import get_current_file_access_scope, grant_upload_file_access
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.resolved_form import FileInput, FileListInput, MarkdownFragment, ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId, WorkspaceScope
+from core.workflow.file_reference import resolve_file_record_id
 from enums.human_input import HumanInputFormStatus
 from factories.file_factory import build_from_mapping
 from factories.human_input_v2_form_presentation import refresh_form_file_urls
 from graphon.enums import WorkflowExecutionStatus
-from graphon.file import FileUploadConfig
+from graphon.file import FileTransferMethod, FileUploadConfig
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, StringSegment
 from libs.datetime_utils import naive_utc_now
@@ -143,6 +145,41 @@ class _IMCallbackRejection:
 class HumanInputSubmissionService:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def grant_submitted_file_access(self, *, app_id: str, workflow_run_id: str) -> None:
+        """Restore accepted HITL file grants inside the initiating EndUser's scope.
+
+        The caller supplies its authorized app and run before worker contexts
+        are captured. Grant only persisted submissions in the current tenant,
+        including earlier HITL steps across repeated pauses. Keep persistent
+        file ownership and all unrelated grants unchanged. Account and absent
+        scopes require no grants and perform no reads; read failures propagate
+        without changing the scope.
+        """
+        scope = get_current_file_access_scope()
+        if scope is None or not scope.requires_user_ownership:
+            return
+
+        with self._session_factory() as session:
+            forms = SQLAlchemyFormRepository(session, TenantId(scope.tenant_id), app_id).get_submitted_forms(
+                workflow_run_id=workflow_run_id
+            )
+        file_ids: set[str] = set()
+        for form in forms:
+            assert form.submission is not None, "Submitted form must contain its accepted submission"
+            for segment in form.submission.normalized_submission_data.values():
+                if isinstance(segment, FileSegment):
+                    files = [segment.value]
+                elif isinstance(segment, ArrayFileSegment):
+                    files = segment.value
+                else:
+                    files = []
+                for file in files:
+                    if file.transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL}:
+                        file_id = resolve_file_record_id(file.reference)
+                        if file_id is not None:
+                            file_ids.add(file_id)
+        grant_upload_file_access(file_ids)
 
     def get_service_api_form(
         self, *, actor: ServiceAPIFormActor, form_token: str, ip_address: str | None = None

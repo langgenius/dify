@@ -144,11 +144,16 @@ export default defineConfig(({ command, mode, isPreview }) => {
           }),
           optimizeDeps: {
             include: [
+              '@base-ui/react/collapsible',
               '@base-ui/react/fieldset',
               '@base-ui/react/number-field',
+              '@base-ui/react/popover',
               '@base-ui/react/slider',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
+              'dayjs/plugin/timezone',
+              'dayjs/plugin/utc',
+              'es-toolkit/function',
               'next/script',
               'react-textarea-autosize',
             ],
