@@ -25,10 +25,11 @@ it('renders inline and display formulas with readable mathematical structure', a
     .getByText('b', { exact: true })
     .elements()
     .find((element) => element instanceof HTMLElement)
+  if (!numerator || !denominator) throw new Error('Expected visible fraction glyphs')
   await expect.element(numerator).toBeVisible()
   await expect.element(denominator).toBeVisible()
-  expect(numerator!.getBoundingClientRect().bottom).toBeLessThan(
-    denominator!.getBoundingClientRect().top,
+  expect(numerator.getBoundingClientRect().bottom).toBeLessThan(
+    denominator.getBoundingClientRect().top,
   )
 })
 
@@ -45,6 +46,7 @@ it('keeps invalid formulas readable and rejects executable formula links', async
     .getByText('\\unknowncommand', { exact: true })
     .elements()
     .find((element) => element instanceof HTMLElement)
+  if (!errorText) throw new Error('Expected the unsupported command to remain readable')
   await expect.element(errorText).toBeVisible()
   const content = screen.getByRole('region', { name: 'Formula content' }).element()
   expect(content.querySelector('a[href^="javascript:"]')).toBeNull()
