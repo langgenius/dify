@@ -41,6 +41,7 @@ import { HITLInputNode } from './plugins/hitl-input-block'
 import { LastRunBlockNode } from './plugins/last-run-block'
 import { QueryBlockNode } from './plugins/query-block'
 import { RequestURLBlockNode } from './plugins/request-url-block'
+import { RosterReferenceBlockContext } from './plugins/roster-reference-block/context'
 import { RosterReferenceBlockNode } from './plugins/roster-reference-block/node'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { WorkflowVariableBlockNode } from './plugins/workflow-variable-block'
@@ -250,51 +251,53 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }, [])
 
   return (
-    <LexicalExtensionComposer extension={extension} contentEditable={null}>
-      <div className={cn('relative', wrapperClassName)} ref={onRef}>
-        <PromptEditorContent
-          id={id}
-          aria-controls={ariaControls}
-          aria-haspopup={ariaHasPopup}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
-          aria-multiline={ariaMultiline}
-          aria-disabled={ariaDisabled}
-          compact={compact}
-          className={className}
-          placeholder={placeholder}
-          placeholderClassName={placeholderClassName}
-          style={style}
-          shortcutPopups={shortcutPopups}
-          contextBlock={contextBlock}
-          queryBlock={queryBlock}
-          requestURLBlock={requestURLBlock}
-          historyBlock={historyBlock}
-          variableBlock={variableBlock}
-          rosterReferenceBlock={rosterReferenceBlock}
-          externalToolBlock={externalToolBlock}
-          workflowVariableBlock={workflowVariableBlock}
-          agentOutputBlock={agentOutputBlock}
-          hitlInputBlock={hitlInputBlock}
-          currentBlock={currentBlock}
-          errorMessageBlock={errorMessageBlock}
-          lastRunBlock={lastRunBlock}
-          isSupportFileVar={isSupportFileVar}
-          disableSlashPicker={disableSlashPicker}
-          disableBracePicker={disableBracePicker}
-          onBlur={onBlur}
-          onFocus={onFocus}
-          instanceId={instanceId}
-          floatingAnchorElem={floatingAnchorElem}
-          onEditorChange={handleEditorChange}
-        />
-        <ValueSyncPlugin value={value} />
-        <EditableSyncPlugin editable={editable} />
-        {children}
-      </div>
-    </LexicalExtensionComposer>
+    <RosterReferenceBlockContext value={rosterReferenceBlock}>
+      <LexicalExtensionComposer extension={extension} contentEditable={null}>
+        <div className={cn('relative', wrapperClassName)} ref={onRef}>
+          <PromptEditorContent
+            id={id}
+            aria-controls={ariaControls}
+            aria-haspopup={ariaHasPopup}
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
+            aria-multiline={ariaMultiline}
+            aria-disabled={ariaDisabled}
+            compact={compact}
+            className={className}
+            placeholder={placeholder}
+            placeholderClassName={placeholderClassName}
+            style={style}
+            shortcutPopups={shortcutPopups}
+            contextBlock={contextBlock}
+            queryBlock={queryBlock}
+            requestURLBlock={requestURLBlock}
+            historyBlock={historyBlock}
+            variableBlock={variableBlock}
+            rosterReferenceBlock={rosterReferenceBlock}
+            externalToolBlock={externalToolBlock}
+            workflowVariableBlock={workflowVariableBlock}
+            agentOutputBlock={agentOutputBlock}
+            hitlInputBlock={hitlInputBlock}
+            currentBlock={currentBlock}
+            errorMessageBlock={errorMessageBlock}
+            lastRunBlock={lastRunBlock}
+            isSupportFileVar={isSupportFileVar}
+            disableSlashPicker={disableSlashPicker}
+            disableBracePicker={disableBracePicker}
+            onBlur={onBlur}
+            onFocus={onFocus}
+            instanceId={instanceId}
+            floatingAnchorElem={floatingAnchorElem}
+            onEditorChange={handleEditorChange}
+          />
+          <ValueSyncPlugin value={value} />
+          <EditableSyncPlugin editable={editable} />
+          {children}
+        </div>
+      </LexicalExtensionComposer>
+    </RosterReferenceBlockContext>
   )
 }
 
