@@ -6,7 +6,7 @@ import threading
 from collections import UserDict
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
-from typing import get_args, get_origin, get_type_hints
+from typing import ClassVar, get_args, get_origin, get_type_hints
 from urllib.parse import urlencode
 
 import pytest
@@ -1280,6 +1280,7 @@ def test_socket_remote_disconnect_is_observable_without_adapter_lifecycle_transi
     caplog: pytest.LogCaptureFixture,
     disconnect_kind: str,
 ) -> None:
+    """Given a remote disconnect, notify listeners without changing the adapter lifecycle state."""
     sensitive_marker = f"sanitized-sensitive-remote-{disconnect_kind}"
     request = SocketModeRequest(
         type="events_api",
@@ -1289,7 +1290,7 @@ def test_socket_remote_disconnect_is_observable_without_adapter_lifecycle_transi
     consumer = _RecordingConsumer()
 
     class _ListenerSocketModeClient:
-        instance: _ListenerSocketModeClient | None = None
+        instance: ClassVar[_ListenerSocketModeClient | None] = None
 
         def __init__(
             self,
@@ -1342,10 +1343,11 @@ def test_socket_close_listener_after_local_stop_is_normal_and_redacted(
     mocker: MockerFixture,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given a close notification after local stop, treat it as normal and redact diagnostics."""
     sensitive_marker = "sanitized-sensitive-local-close"
 
     class _LocallyClosedSocketModeClient:
-        instance: _LocallyClosedSocketModeClient | None = None
+        instance: ClassVar[_LocallyClosedSocketModeClient | None] = None
 
         def __init__(
             self,
@@ -1386,10 +1388,11 @@ def test_socket_connect_failure_is_normalized_and_cleans_up_partial_resources(
     mocker: MockerFixture,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given a connection failure, report the normalized error and close partial resources."""
     sensitive_marker = "sanitized-sensitive-connect-failure"
 
     class _FailingSocketModeClient:
-        instance: _FailingSocketModeClient | None = None
+        instance: ClassVar[_FailingSocketModeClient | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -1425,6 +1428,7 @@ def test_socket_connect_failure_is_normalized_and_cleans_up_partial_resources(
 
 
 def test_socket_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mocker: MockerFixture) -> None:
+    """Given an active consumer, delegate stop to the SDK without waiting for that consumer."""
     consumer_started = threading.Event()
     release_consumer = threading.Event()
     stop_finished = threading.Event()
@@ -1449,7 +1453,7 @@ def test_socket_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
     consumer = _BlockingConsumer()
 
     class _FakeSocketModeClient:
-        instance: _FakeSocketModeClient | None = None
+        instance: ClassVar[_FakeSocketModeClient | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
