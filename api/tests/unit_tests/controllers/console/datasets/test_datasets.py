@@ -39,6 +39,7 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetIndexingInProgressError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
     KnowledgeFSUpgradeModelsUnavailableHTTPError,
@@ -159,6 +160,14 @@ def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
 def test_delete_success_returns_empty_204(datasets):
     assert unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID) == ("", 204)
     datasets.delete_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
+
+
+def test_delete_refuses_while_documents_are_indexing(datasets):
+    datasets.delete_dataset.side_effect = services.errors.dataset.DatasetIndexingInProgressError()
+    with pytest.raises(DatasetIndexingInProgressError) as captured:
+        unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID)
+    assert captured.value.error_code == "dataset_indexing_in_progress"
+    assert captured.value.code == 409
 
 
 def test_request_base_url_and_explicit_status_are_forwarded(app, datasets):

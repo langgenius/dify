@@ -49,6 +49,15 @@ class DatasetInUseError(BaseHTTPException):
     code = 409
 
 
+class DatasetIndexingInProgressError(BaseHTTPException):
+    error_code = "dataset_indexing_in_progress"
+    description = (
+        "The dataset has documents that are still indexing. "
+        "Wait until indexing completes or fails before deleting the dataset."
+    )
+    code = 409
+
+
 class PipelineRunError(BaseHTTPException):
     error_code = "pipeline_run_error"
     description = "An error occurred while running the pipeline."
