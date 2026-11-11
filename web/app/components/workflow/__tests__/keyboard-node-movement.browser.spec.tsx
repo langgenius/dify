@@ -23,6 +23,12 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
     setNodes: vi.fn(),
     setEdges: vi.fn(),
     canApplyLocalGraphMutation: () => true,
+    // Mirrors the real manager: the callback runs immediately with the
+    // current readiness and returns an unsubscribe function.
+    onGraphReadyChange: (callback: (isReady: boolean) => void) => {
+      callback(true)
+      return () => {}
+    },
   },
 }))
 

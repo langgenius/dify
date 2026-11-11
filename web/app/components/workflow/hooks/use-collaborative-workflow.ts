@@ -1,8 +1,8 @@
 import type { Edge, Node } from '../types'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 const sanitizeNodeForBroadcast = (node: Node): Node => {
   if (!node.data) return node
@@ -42,6 +42,12 @@ const sanitizeEdgeForBroadcast = (edge: Edge): Edge => {
 // node or edge the user deleted while the session was not ready.
 let pendingLocalNodes: Map<string, Node | null> | null = null
 let pendingLocalEdges: Map<string, Edge | null> | null = null
+
+// How many hook instances are mounted. The pending edits above belong to
+// the graph those instances render: once the last one unmounts (navigating
+// to another app, or a fresh test render), held edits must not survive
+// into the next graph and replay onto unrelated nodes.
+let collaborativeWorkflowInstances = 0
 
 type PendingGraphChange<T> = Map<string, T | null>
 
@@ -123,6 +129,21 @@ export const useCollaborativeWorkflow = () => {
     }
     return true
   }, [store, collabSetNodes, collabSetEdges])
+
+  // Drop held edits once no hook instance is left: the graph they were
+  // made against is gone, so replaying them later would apply stale edits
+  // to a different graph. Instances that stay mounted keep sharing the
+  // pending edits, so a reconnect replay still works.
+  useEffect(() => {
+    collaborativeWorkflowInstances += 1
+    return () => {
+      collaborativeWorkflowInstances -= 1
+      if (collaborativeWorkflowInstances === 0) {
+        pendingLocalNodes = null
+        pendingLocalEdges = null
+      }
+    }
+  }, [])
 
   // The session becoming ready is the moment held edits can land: the
   // snapshot import that precedes it just replaced the canvas with the
