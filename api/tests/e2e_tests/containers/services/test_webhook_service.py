@@ -1,166 +1,87 @@
-"""Database integration tests for webhook trigger and workflow lookup."""
+"""Native debug HTTP uses the real Redis waiting pool and never queues workflow execution."""
 
-import json
-from typing import TypedDict
+from contextvars import Context
+from http import HTTPStatus
+from uuid import uuid4
 
 import pytest
-from faker import Faker
-from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
-from models.account import Account, Tenant
-from models.enums import AppTriggerStatus, AppTriggerType
-from models.model import App
-from models.trigger import AppTrigger, WorkflowWebhookTrigger
-from models.workflow import Workflow
-from models.workflow import WorkflowType as ModelWorkflowType
-from services.trigger.webhook_service import WebhookService
-from tests.e2e_tests.containers.helpers import accounts as account_fixtures
-from tests.e2e_tests.containers.helpers import generate_valid_password
+from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
+from extensions.ext_redis import RedisClientWrapper
+from models.enums import AppTriggerStatus
+from models.model import EndUser
+from models.trigger import AppTrigger, WorkflowTriggerLog
+from repositories.trigger.debug_repository import RedisTriggerDebugRepository
+from services.trigger.debug_events import WebhookDebugEvent, build_webhook_pool_key
+from tests.e2e_tests.containers.services import test_trigger_subscription_builder
+from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
+from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
+from tests.unit_tests.controllers.trigger import test_webhook
+from tests.unit_tests.controllers.trigger.test_webhook import _configure, _Webhook
 
-
-class WebhookIntegrationData(TypedDict):
-    tenant: Tenant
-    account: Account
-    app: App
-    workflow: Workflow
-    webhook_trigger: WorkflowWebhookTrigger
-    webhook_id: str
-    app_trigger: AppTrigger
+application_redis = test_trigger_subscription_builder.application_redis
+sqlite_engine = test_trigger_subscription_builder.sqlite_engine
+sqlite_session_factory = test_trigger_subscription_builder.sqlite_session_factory
+harness = test_trigger_oauth_client.harness
+webhook = test_webhook.webhook
 
 
-@pytest.fixture
-def test_data(
-    db_session_with_containers: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> WebhookIntegrationData:
-    """Persist the webhook graph with account and workspace creation enabled."""
-
-    fake = Faker()
-    monkeypatch.setattr(
-        "services.account.login_adapters.SystemFeatureService.is_registration_allowed",
-        lambda: True,
-    )
-    monkeypatch.setattr(
-        "services.account.login_adapters.SystemFeatureService.is_workspace_creation_allowed",
-        lambda: True,
-    )
-    account = account_fixtures.create_account(
-        email=fake.email(),
-        name=fake.name(),
-        interface_language="en-US",
-        password=generate_valid_password(fake),
-        session=db_session_with_containers,
-    )
-    account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
-    tenant = account.current_tenant
-    assert tenant is not None
-    app = App(
-        tenant_id=tenant.id,
-        name=fake.company(),
-        description=fake.text(),
-        mode="workflow",
-        icon="",
-        icon_background="",
-        enable_site=True,
-        enable_api=True,
-    )
-    db_session_with_containers.add(app)
-    db_session_with_containers.flush()
-    workflow_data = {
-        "nodes": [
-            {
-                "id": "webhook_node",
-                "type": "webhook",
-                "data": {
-                    "type": "trigger-webhook",
-                    "title": "Test Webhook",
-                    "method": "post",
-                    "content_type": "application/json",
-                    "headers": [
-                        {"name": "Authorization", "required": True},
-                        {"name": "Content-Type", "required": False},
-                    ],
-                    "params": [
-                        {"name": "version", "required": True},
-                        {"name": "format", "required": False},
-                    ],
-                    "body": [
-                        {"name": "message", "type": "string", "required": True},
-                        {"name": "count", "type": "number", "required": False},
-                        {"name": "upload", "type": "file", "required": False},
-                    ],
-                    "status_code": 200,
-                    "response_body": '{"status": "success"}',
-                    "timeout": 30,
-                },
-            }
-        ],
-        "edges": [],
-    }
-    workflow = Workflow(
-        tenant_id=tenant.id,
-        app_id=app.id,
-        type=ModelWorkflowType("workflow"),
-        graph=json.dumps(workflow_data),
-        _features=json.dumps({}),
-        created_by=account.id,
-        _environment_variables=[],
-        _conversation_variables=[],
-        version="1.0",
-    )
-    db_session_with_containers.add(workflow)
-    db_session_with_containers.flush()
-    app.workflow_id = workflow.id
-    webhook_id = fake.uuid4()[:16]
-    webhook_trigger = WorkflowWebhookTrigger(
-        app_id=app.id,
-        node_id="webhook_node",
-        tenant_id=tenant.id,
-        webhook_id=webhook_id,
-        created_by=account.id,
-    )
-    db_session_with_containers.add(webhook_trigger)
-    db_session_with_containers.flush()
-    app_trigger = AppTrigger(
-        tenant_id=tenant.id,
-        app_id=app.id,
-        node_id="webhook_node",
-        trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
-        provider_name="webhook",
-        title="Test Webhook",
-        status=AppTriggerStatus.ENABLED,
-    )
-    db_session_with_containers.add(app_trigger)
-    db_session_with_containers.commit()
-    return {
-        "tenant": tenant,
-        "account": account,
-        "app": app,
-        "workflow": workflow,
-        "webhook_trigger": webhook_trigger,
-        "webhook_id": webhook_id,
-        "app_trigger": app_trigger,
-    }
-
-
-class TestWebhookServiceDatabaseLookup:
-    def test_get_webhook_trigger_and_workflow_success(
-        self,
-        test_data: WebhookIntegrationData,
-        flask_app_with_containers: Flask,
-    ) -> None:
-        with flask_app_with_containers.app_context():
-            webhook_trigger, workflow, node_config = WebhookService.get_webhook_trigger_and_workflow(
-                test_data["webhook_id"]
+@pytest.mark.parametrize("listener", ["absent", "other-app", "matching"])
+def test_debug_http_requires_matching_listener_and_preserves_draft_response(
+    harness: _Harness, webhook: _Webhook, listener: str, application_redis: RedisClientWrapper
+) -> None:
+    events = RedisTriggerDebugRepository(redis=application_redis)
+    _configure(harness, webhook, status_code=202, response_body='["accepted"]')
+    with harness.session_factory.begin() as session:
+        trigger = session.get(AppTrigger, webhook.trigger_id)
+        assert trigger is not None
+        trigger.status = AppTriggerStatus.DISABLED
+    listener_app = str(uuid4()) if listener == "other-app" else webhook.app_id
+    pool_key = build_webhook_pool_key(tenant_id=harness.tenant_id, app_id=listener_app, node_id=webhook.node_id)
+    if listener != "absent":
+        assert (
+            events.poll(
+                event_type=WebhookDebugEvent,
+                pool_key=pool_key,
+                tenant_id=harness.tenant_id,
+                user_id=harness.account_id,
+                app_id=listener_app,
+                node_id=webhook.node_id,
             )
+            is None
+        )
 
-        assert webhook_trigger.webhook_id == test_data["webhook_id"]
-        assert workflow.app_id == test_data["app"].id
-        assert node_config["id"] == "webhook_node"
-        assert node_config["data"].title == "Test Webhook"
+    response = Context().run(harness.client.post, webhook.debug_url, json={"ref": "main"})
 
-    def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers: Flask) -> None:
-        with flask_app_with_containers.app_context():
-            with pytest.raises(ValueError, match="Webhook not found"):
-                WebhookService.get_webhook_trigger_and_workflow("nonexistent_webhook")
+    if listener == "matching":
+        assert response.status_code == HTTPStatus.ACCEPTED
+        assert response.get_json() == ["accepted"]
+        event = events.poll(
+            event_type=WebhookDebugEvent,
+            pool_key=pool_key,
+            tenant_id=harness.tenant_id,
+            user_id=harness.account_id,
+            app_id=webhook.app_id,
+            node_id=webhook.node_id,
+        )
+        assert event is not None
+        assert event.node_id == webhook.node_id
+        assert event.request_id.startswith(f"webhook_debug_{webhook.webhook_id}_")
+        assert event.timestamp > 0
+        assert event.payload["method"] == "POST"
+        assert event.payload["webhook_data"]["body"] == {"ref": "main"}
+        assert event.payload["inputs"]["webhook_body"] == {"ref": "main"}
+    else:
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.get_json() == {
+            "error": "No active debug listener",
+            "message": (
+                "The webhook debug URL only works while the Variable Inspector is listening. "
+                "Use the published webhook URL to execute the workflow in Celery."
+            ),
+            "execution_url": generate_webhook_trigger_endpoint(webhook.webhook_id),
+        }
+    with harness.session_factory() as session:
+        assert session.scalar(select(EndUser)) is None
+        assert session.scalar(select(WorkflowTriggerLog)) is None

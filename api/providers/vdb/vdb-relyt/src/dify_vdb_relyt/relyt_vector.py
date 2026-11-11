@@ -255,9 +255,9 @@ class RelytVector(BaseVector):
         filter_condition = ""
         if filter is not None:
             conditions = [
-                f"metadata->>'{key!r}' in ({', '.join(map(repr, value))})"
+                f"metadata->>'{key}' in ({', '.join(map(repr, value))})"
                 if len(value) > 1
-                else f"metadata->>'{key!r}' = {value[0]!r}"
+                else f"metadata->>'{key}' = {value[0]!r}"
                 for key, value in filter.items()
             ]
             filter_condition = f"WHERE {' AND '.join(conditions)}"

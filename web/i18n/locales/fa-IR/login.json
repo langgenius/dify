@@ -25,6 +25,7 @@
   "enterYourName": "لطفا نام کاربری خود را وارد کنید",
   "error.emailEmpty": "آدرس ایمیل لازم است",
   "error.emailInValid": "لطفاً یک آدرس ایمیل معتبر وارد کنید",
+  "error.initPasswordIncorrect": "رمز عبور راه‌اندازی اولیه نادرست است.",
   "error.invalidEmailOrPassword": "ایمیل یا رمز عبور نامعتبر است.",
   "error.invalidSSOProtocol": "پروتکل SSO نامعتبر است",
   "error.nameEmpty": "نام لازم است",

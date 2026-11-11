@@ -6,16 +6,13 @@ import Operation from '../operation'
 function PinOwner({ restricted = false }: { restricted?: boolean }) {
   const [pinned, setPinned] = useState(false)
   return (
-    <>
-      <Operation
-        isPinned={pinned}
-        togglePin={() => setPinned((value) => !value)}
-        isShowRenameConversation={!restricted}
-        isShowDelete={!restricted}
-        onDelete={() => {}}
-      />
-      <output aria-label="Pin state">{pinned ? 'Pinned' : 'Unpinned'}</output>
-    </>
+    <Operation
+      isPinned={pinned}
+      togglePin={() => setPinned((value) => !value)}
+      isShowRenameConversation={!restricted}
+      isShowDelete={!restricted}
+      onDelete={() => {}}
+    />
   )
 }
 
@@ -35,7 +32,6 @@ it('updates the pin action after each native keyboard selection', async () => {
     .toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(menu).not.toBeInTheDocument()
-  await expect.element(page.getByRole('status', { name: 'Pin state' })).toHaveTextContent('Pinned')
   await expect.element(more).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect
@@ -49,9 +45,11 @@ it('updates the pin action after each native keyboard selection', async () => {
     .toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(menu).not.toBeInTheDocument()
+  await expect.element(more).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
   await expect
-    .element(page.getByRole('status', { name: 'Pin state' }))
-    .toHaveTextContent('Unpinned')
+    .element(page.getByRole('menuitem', { name: 'explore.sidebar.action.pin' }))
+    .toBeVisible()
 })
 
 it('excludes unavailable rename and delete actions from keyboard navigation', async () => {
@@ -71,5 +69,9 @@ it('excludes unavailable rename and delete actions from keyboard navigation', as
     .toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('status', { name: 'Pin state' })).toHaveTextContent('Pinned')
+  await expect.element(page.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(page.getByRole('menuitem', { name: 'explore.sidebar.action.unpin' }))
+    .toBeVisible()
 })

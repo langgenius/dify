@@ -25,6 +25,7 @@
   "enterYourName": "Podaj swoją nazwę użytkownika",
   "error.emailEmpty": "Adres e-mail jest wymagany",
   "error.emailInValid": "Proszę wpisać prawidłowy adres e-mail",
+  "error.initPasswordIncorrect": "Nieprawidłowe hasło inicjalizacji.",
   "error.invalidEmailOrPassword": "Nieprawidłowy adres e-mail lub hasło.",
   "error.invalidSSOProtocol": "Nieprawidłowy protokół SSO",
   "error.nameEmpty": "Nazwa jest wymagana",

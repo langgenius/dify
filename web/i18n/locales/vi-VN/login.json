@@ -25,6 +25,7 @@
   "enterYourName": "Vui lòng nhập tên người dùng của bạn",
   "error.emailEmpty": "Vui lòng nhập địa chỉ email",
   "error.emailInValid": "Vui lòng nhập một địa chỉ email hợp lệ",
+  "error.initPasswordIncorrect": "Mật khẩu khởi tạo không chính xác.",
   "error.invalidEmailOrPassword": "Email hoặc mật khẩu không hợp lệ.",
   "error.invalidSSOProtocol": "Giao thức SSO không hợp lệ",
   "error.nameEmpty": "Vui lòng nhập tên",

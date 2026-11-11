@@ -127,7 +127,9 @@ describe('ChatRecord', () => {
       limit: 20,
     })
     const view = (appId: string) => (
-      <EditorResourceScope resource={{ kind: 'app', appId, mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId, mode: 'workflow' }}
+      >
         <ChatRecord />
       </EditorResourceScope>
     )

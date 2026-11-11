@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMIdentityBindingStatus, IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun, SyncResultFact
+from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncResultId, IMSyncRunId
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
@@ -61,7 +62,7 @@ def _run(run_id: IMSyncRunId, created_at: datetime) -> IMSyncRun:
         sync_run_id=run_id,
         channel_revision=IMChannelRevision(str(_CHANNEL_ID), 1),
         provider=IMProvider.FEISHU,
-        started_by_account_id=None,
+        started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
         now=created_at,
     )
 

@@ -13,20 +13,22 @@ import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-compos
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQueries } from '@tanstack/react-query'
-import { intersectionBy } from 'es-toolkit/compat'
+import { intersectionBy, xorBy } from 'es-toolkit/compat'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
+import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import {
   comparisonOperatorNotRequireValue,
   getOperators,
+  VARIABLE_REGEX,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
 import {
   ComparisonOperator,
@@ -42,9 +44,11 @@ import {
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { consoleQuery } from '@/service/console'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { AgentMetadataFilter } from './metadata-filter'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type Props = {
+  workflowNodeId?: string
   item: AgentKnowledgeRetrievalItem
   onChange: (patch: Partial<AgentKnowledgeRetrievalItem>) => void
   errors?: KnowledgeValidationResult['byId'][string]
@@ -91,6 +95,12 @@ const isMetadataConditionCompatible = (
   if (!getOperators(type).some((operator) => operator === condition.comparison_operator))
     return false
   if (comparisonOperatorNotRequireValue(condition.comparison_operator)) return true
+  if (
+    type === MetadataFilteringVariableType.number &&
+    typeof condition.value === 'string' &&
+    condition.value.match(VARIABLE_REGEX)?.[0] === condition.value
+  )
+    return true
   if (type === MetadataFilteringVariableType.number || type === MetadataFilteringVariableType.time)
     return typeof condition.value === 'number' && Number.isFinite(condition.value)
   if (
@@ -143,6 +153,7 @@ const createMetadataCondition = ({
 })
 
 function ClassicSettingsFields({
+  workflowNodeId,
   item,
   onChange,
   errors,
@@ -178,6 +189,24 @@ function ClassicSettingsFields({
     retrievalMode === RETRIEVE_TYPE.multiWay && selectedDatasets.length > 0
       ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
       : multipleRetrievalConfig
+  const handleSelectedDatasetsChange = (selected: DatasetDetailWithPartialMembersResponse[]) => {
+    const nextDatasets = selected.map(
+      (dataset) => selectedDatasets.find((current) => current.id === dataset.id) ?? dataset,
+    )
+    if (!xorBy(nextDatasets, selectedDatasets, 'id').length) return
+    onChange({
+      selectedDatasets: nextDatasets,
+      metadataFilteringConditions: reconcileMetadataConditions(
+        item.metadataFilteringConditions,
+        nextDatasets,
+        selectedDatasets,
+      ),
+      multipleRetrievalConfig:
+        retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
+          ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
+          : multipleRetrievalConfig,
+    })
+  }
   const singleModel = withModelDefaults(singleRetrievalConfig?.model)
   const metadataModel = withModelDefaults(metadataModelConfig)
   const updateMetadataConditions = (patch: Partial<typeof metadataFilteringConditions>) =>
@@ -314,15 +343,31 @@ function ClassicSettingsFields({
                 onRerankModelOpenChange={setRerankModelOpen}
                 selectedDatasets={selectedDatasets}
               />
+              <div className="h-3 w-px bg-divider-regular" />
+              <AddKnowledge
+                key={selectedDatasets.map((dataset) => dataset.id).join(',')}
+                selectedIds={selectedDatasets.map((dataset) => dataset.id)}
+                modal
+                onChange={handleSelectedDatasetsChange}
+              />
             </div>
           }
         >
           <>
-            {/* Datasets are chosen in the picker above; a card only configures its own binding. */}
             <ul className="space-y-1 system-xs-regular text-text-secondary">
               {selectedDatasets.map((dataset) => (
-                <li key={dataset.id} className="min-w-0 wrap-break-word">
-                  {dataset.name}
+                <li key={dataset.id} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 wrap-break-word">{dataset.name}</span>
+                  <IconButton
+                    aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${dataset.name}`}
+                    onClick={() =>
+                      handleSelectedDatasetsChange(
+                        selectedDatasets.filter((current) => current.id !== dataset.id),
+                      )
+                    }
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
                 </li>
               ))}
             </ul>
@@ -338,7 +383,8 @@ function ClassicSettingsFields({
       {/* The shared workflow filter brings its own px-4 gutter; cancel it to line up with the fields above. */}
       <div className="-mx-4 py-2">
         {/* Keep saved conditions until an explicit edit; catalog loading must not prune them. */}
-        <MetadataFilter
+        <AgentMetadataFilter
+          workflowNodeId={workflowNodeId}
           metadataList={metadataList}
           metadataFilterMode={metadataFilterMode}
           metadataFilteringConditions={metadataFilteringConditions}
@@ -401,7 +447,7 @@ function ClassicSettingsFields({
 }
 
 /** Only mounted inside the shared binding dialog's advanced settings. */
-export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
+export function ClassicKnowledgeSettings({ item, onChange, errors, workflowNodeId }: Props) {
   const { t } = useTranslation(['common'])
   const ids = item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
   const queries = useQueries({
@@ -479,6 +525,7 @@ export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
     )
   return (
     <ClassicSettingsFields
+      workflowNodeId={workflowNodeId}
       item={item}
       onChange={onChange}
       errors={errors}

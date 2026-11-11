@@ -39,8 +39,9 @@ export function createChatHistoryTestEnvironment({
   appParams?: ChatConfig
   sidebarCollapsed?: boolean
   // These are caller-owned display inputs; all conversation commands come from the real owner.
-  ownerProps?: Pick<Partial<ChatWithHistoryContextValue>, 'isMobile' | 'isResponding'>
+  ownerProps?: Pick<Partial<ChatWithHistoryContextValue>, 'isBelowSm' | 'isResponding'>
 } = {}) {
+  window.history.replaceState({}, '', '/')
   const selection = JSON.stringify({
     [appInfo.app_id]: { [appInfo.end_user_id || 'DEFAULT']: currentConversationId },
   })
@@ -71,7 +72,7 @@ export function createChatHistoryTestEnvironment({
   }) {
     const value = useChatWithHistory()
     return (
-      <ChatWithHistoryContext.Provider value={{ ...value, isMobile: false, ...displayProps }}>
+      <ChatWithHistoryContext.Provider value={{ ...value, isBelowSm: false, ...displayProps }}>
         {children}
       </ChatWithHistoryContext.Provider>
     )
@@ -88,7 +89,6 @@ export function renderChatHistory(
   ui: ReactElement,
   options: Parameters<typeof createChatHistoryTestEnvironment>[0] = {},
 ) {
-  window.history.replaceState({}, '', '/')
   const { Owner, queryClient, ...environment } = createChatHistoryTestEnvironment(options)
   return {
     ...renderWithConsoleQuery(<Owner>{ui}</Owner>, { queryClient }),

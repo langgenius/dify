@@ -1638,7 +1638,7 @@ export const zRetrievalModel = z.object({
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -1996,6 +1996,11 @@ export const zDataSource = z.object({
 
 /**
  * KnowledgeConfig
+ *
+ * Document ingestion configuration with a validated indexing technique.
+ *
+ * The indexing technique remains an IndexTechniqueType enum after validation.
+ * JSON serialization preserves its public economy or high_quality value.
  */
 export const zKnowledgeConfig = z.object({
   data_source: zDataSource.nullish(),
@@ -2007,7 +2012,7 @@ export const zKnowledgeConfig = z.object({
   duplicate: z.boolean().optional().default(true),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']),
+  indexing_technique: zIndexTechniqueType,
   is_multimodal: z.boolean().optional().default(false),
   name: z.string().nullish(),
   original_document_id: z.string().nullish(),

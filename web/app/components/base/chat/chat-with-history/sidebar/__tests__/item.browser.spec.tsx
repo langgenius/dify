@@ -31,13 +31,18 @@ beforeEach(async () => {
   await page.viewport(400, 400)
 })
 
-it('selects the current row by mouse and keyboard after its conversation changes', async () => {
-  const view = await render(<SelectionOwner />)
+it('selects a conversation with the pointer', async () => {
+  await render(<SelectionOwner />)
   const selection = page.getByRole('status', { name: 'Selected conversation' })
   const firstRow = page.getByRole('button', { name: first.name })
-  await expect.element(firstRow).toHaveAttribute('title', first.name)
   await firstRow.click()
   await expect.element(selection).toHaveTextContent(first.id)
+})
+
+it('selects a conversation with native keyboard activation', async () => {
+  const view = await render(<SelectionOwner />)
+  const firstRow = page.getByRole('button', { name: first.name })
+  await expect.element(firstRow).toBeVisible()
 
   await view.rerender(<SelectionOwner item={second} />)
   await expect.element(firstRow).not.toBeInTheDocument()
@@ -46,7 +51,9 @@ it('selects the current row by mouse and keyboard after its conversation changes
   // Establish the row as the keyboard starting point, then use native activation.
   nextRow.element().focus()
   await userEvent.keyboard('{Enter}')
-  await expect.element(selection).toHaveTextContent(second.id)
+  await expect
+    .element(page.getByRole('status', { name: 'Selected conversation' }))
+    .toHaveTextContent(second.id)
 })
 
 it('selects an unsaved conversation without offering server operations', async () => {
@@ -87,8 +94,12 @@ it('reveals operations to keyboard focus and returns focus after dismissing the 
 
 it('keeps an opened menu usable when the pointer leaves the conversation row', async () => {
   await render(<SelectionOwner />)
-  await page.getByRole('button', { name: first.name }).hover()
+  await page.getByRole('status', { name: 'Selected conversation' }).hover()
   const more = page.getByRole('button', { name: 'common.operation.more' })
+  await expect.element(more).toBeInTheDocument()
+  await expect.poll(() => getComputedStyle(more.element()).opacity).toBe('0')
+  await page.getByRole('button', { name: first.name }).hover()
+  await expect.poll(() => Number(getComputedStyle(more.element()).opacity)).toBeGreaterThan(0)
   await more.click()
   const menu = page.getByRole('menu')
   await expect.element(menu).toBeVisible()

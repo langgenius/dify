@@ -48,7 +48,7 @@ def test_create_empty_rag_pipeline_dataset_serializes_persisted_models(
         ),
     ):
         response, status = unwrap(CreateEmptyRagPipelineDatasetApi().post)(
-            CreateEmptyRagPipelineDatasetApi(), tenant_id, MagicMock(is_dataset_editor=True)
+            CreateEmptyRagPipelineDatasetApi(), db_session_with_containers, tenant_id, MagicMock(is_dataset_editor=True)
         )
 
     assert status == 201
