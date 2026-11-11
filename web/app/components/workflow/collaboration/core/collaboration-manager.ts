@@ -24,6 +24,7 @@ import type {
   LoroDraftIdentity,
   LoroDraftProvider,
 } from './loro-draft-provider'
+import type { LoroDraftRetirement } from './loro-draft-storage'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../../nodes/agent-v2/types'
@@ -654,7 +655,7 @@ export class CollaborationManager {
     return this.crdtRuntime
   }
 
-  private initializeCrdt(socket: Socket): void {
+  private initializeCrdt(socket: Socket, retirements?: readonly LoroDraftRetirement[]): void {
     const { CRDTProvider, LoroDoc, LoroDraftProvider, UndoManager } = this.getCrdtRuntime()
     this.provider?.destroy()
     this.undoManager = null
@@ -727,6 +728,7 @@ export class CollaborationManager {
       this.loroProvider = new LoroDraftProvider({
         appId,
         identity: this.loroDraft,
+        retirements,
         doc: this.doc,
         socket,
         isEmpty: () => this.nodesMap?.size === 0 && this.edgesMap?.size === 0,
@@ -1206,11 +1208,12 @@ export class CollaborationManager {
     const socket = this.getActiveSocket()
     if (!this.usesLoroDraft(appId) || !socket) return false
 
+    const retirements = this.loroProvider?.retirementCandidates
     this.crdtTrusted = false
     this.loroProvider?.destroy()
     this.loroDraft = identity
     this.targetLoroDraft = identity
-    this.initializeCrdt(socket)
+    this.initializeCrdt(socket, retirements)
     this.emitGraphReadyState()
     this.eventEmitter.emit('undoRedoStateChange', { canUndo: false, canRedo: false })
 

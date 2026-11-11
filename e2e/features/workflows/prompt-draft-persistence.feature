@@ -50,3 +50,21 @@ Feature: Persist LLM node prompts in workflow drafts
     Then the edited LLM prompt should be saved through the ordinary HTTP draft request
     When I reload the Chatflow prompt editor
     Then the edited LLM prompt should still be visible
+
+  @workflow-collaboration
+  Scenario Outline: Prevent an old tab from recreating a replaced local draft
+    Given a Chatflow with a published LLM prompt open in two tabs
+    When I open the app from the app list
+    And the other editor opens the same Chatflow
+    And I save a newer LLM prompt
+    And the other editor queues changes while disconnected
+    And I <replace the draft>
+    Then the saved draft contains the replacement prompt
+    And the old local draft is cleared across both tabs
+    When the disconnected tab edits the old draft again
+    Then both tabs keep the replacement after reconnect and reload
+
+    Examples:
+      | replace the draft                         |
+      | restore the published LLM prompt          |
+      | overwrite the draft with its original DSL |

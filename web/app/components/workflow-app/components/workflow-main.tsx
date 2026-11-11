@@ -156,12 +156,16 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!isCollaborationEnabled) return
     const unsubscribeConfirmation = collaborationManager.onLoroDraftConfirmed(
-      ({ hash, updatedAt, isEmpty }) => {
+      ({ hash, updatedAt, isEmpty, cleanup }) => {
         workflowStore.setState({
           syncWorkflowDraftHash: hash,
           syncWorkflowDraftIsEmpty: isEmpty,
           draftUpdatedAt: updatedAt,
         })
+        if (cleanup === 'cleared')
+          toast.warning(t(($) => $['collaboration.replacedWithPendingEdits'], { ns: 'workflow' }))
+        else if (cleanup === 'failed')
+          toast.warning(t(($) => $['collaboration.cleanupFailed'], { ns: 'workflow' }))
       },
     )
     const unsubscribePending = collaborationManager.onLoroDraftPendingChange(
@@ -173,7 +177,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       unsubscribeConfirmation()
       unsubscribePending()
     }
-  }, [isCollaborationEnabled, workflowStore])
+  }, [isCollaborationEnabled, t, workflowStore])
 
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
@@ -384,8 +388,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
           const identity = { ...activeDraft, epoch: nextEpoch }
           if (!collaborationManager.replaceLoroDraft(appId, identity)) return
           workflowStore.setState({ loroDraft: identity, hasPendingLoroDraftChanges: false })
-          if (state.hasPendingLoroDraftChanges)
-            toast.info(t(($) => $['collaboration.replacedWithPendingEdits'], { ns: 'workflow' }))
         }
         appliedSequence = sequence
         if (response.hash) state.setSyncWorkflowDraftHash(response.hash, response.graph)
@@ -408,7 +410,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowDataUpdate,
     handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
-    t,
     workflowStore,
   ])
 

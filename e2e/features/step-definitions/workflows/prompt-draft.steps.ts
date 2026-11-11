@@ -307,12 +307,12 @@ async function openCollaboratorSession(world: DifyWorld) {
 
   const page = await context.newPage()
   const network = await observeWorkflowDraftNetwork(page)
-  return { page, network }
+  return { page, network, accountId: profile.id }
 }
 
 Given(
-  'a Chatflow with a published LLM prompt and a second editor',
-  async function (this: DifyWorld) {
+  /^a Chatflow with a published LLM prompt (and a second editor|open in two tabs)$/,
+  async function (this: DifyWorld, session: string) {
     const app = await preparePromptDraft(this, true)
     const client = this.getConsoleClient()
     const params = { app_id: app.id }
@@ -325,7 +325,14 @@ Given(
     })
     const exported = await client.apps.byAppId.export.get({ params, query: { format: 'yaml' } })
     if (!('data' in exported)) throw new Error('The original workflow should export as a YAML DSL.')
-    const collaborator = await openCollaboratorSession(this)
+    const collaborator = await (async () => {
+      if (session === 'and a second editor') return openCollaboratorSession(this)
+      const page = await this.getPage().context().newPage()
+      this.registerCleanup(() => page.close())
+      const network = await observeWorkflowDraftNetwork(page)
+      const profile = await client.account.profile.get()
+      return { page, network, accountId: profile.id }
+    })()
     state(this).replacement = { oldEpoch: epoch, dsl: exported.data, collaborator }
   },
 )
@@ -412,15 +419,80 @@ Then(
   async function (this: DifyWorld) {
     const { page, network } = replacement(this).collaborator
     await expect.poll(network.rejectedStaleUploads, { timeout: 25_000 }).toBeGreaterThan(0)
-    await expect(page.getByText(/Your unsynced edits are saved on this device/)).toBeVisible()
+    await expect(
+      page.getByText(/unconfirmed local edits from the old draft have been cleared/),
+    ).toBeVisible()
     await expect(await openPromptEditor(page)).toHaveText(originalPrompt)
     await expect(canvasNodeByTitle(page, answerTitle)).toBeVisible()
     await expect(this.getPage().locator('[data-lexical-editor="true"]')).toHaveText(originalPrompt)
     expect(await getSavedPrompt(this)).toMatchObject({ prompt: originalPrompt, answerTitle })
     expect(network.httpSaves).toHaveLength(0)
     expect(state(this).network.httpSaves).toHaveLength(0)
+    await expect
+      .poll(() => readOldLocalDraft(this))
+      .toEqual({ edits: 0, checkpoint: false, retired: true })
   },
 )
+
+async function readOldLocalDraft(world: DifyWorld) {
+  const { oldEpoch, collaborator } = replacement(world)
+  const scope = JSON.stringify([collaborator.accountId, state(world).appId, oldEpoch])
+  return collaborator.page.evaluate(async (scope) => {
+    const request = indexedDB.open('dify-workflow-loro', 1)
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      const request = db.transaction('drafts').objectStore('drafts').index('scope').getAll(scope)
+      const records = await new Promise<{ kind: string }[]>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      return {
+        edits: records.filter((record) => record.kind === 'edit').length,
+        checkpoint: records.some((record) => record.kind === 'checkpoint'),
+        retired: records.some((record) => record.kind === 'retired'),
+      }
+    } finally {
+      db.close()
+    }
+  }, scope)
+}
+
+Then('the old local draft is cleared across both tabs', async function (this: DifyWorld) {
+  await expect(
+    this.getPage().getByText(/unconfirmed local edits from the old draft have been cleared/),
+  ).toBeVisible()
+  await expect
+    .poll(() => readOldLocalDraft(this))
+    .toEqual({ edits: 0, checkpoint: false, retired: true })
+})
+
+When('the disconnected tab edits the old draft again', async function (this: DifyWorld) {
+  const { page } = replacement(this).collaborator
+  const name = page.getByRole('textbox', { name: 'Node name' })
+  await name.fill('Late edit from the old tab')
+  await name.press('Enter')
+  await expect(await openPromptEditor(page)).toHaveText(originalPrompt)
+  expect(await readOldLocalDraft(this)).toEqual({ edits: 0, checkpoint: false, retired: true })
+})
+
+Then('both tabs keep the replacement after reconnect and reload', async function (this: DifyWorld) {
+  const { page, network } = replacement(this).collaborator
+  const confirmed = network.confirmedSyncs()
+  network.resume()
+  await expect.poll(network.confirmedSyncs, { timeout: 25_000 }).toBeGreaterThan(confirmed)
+  for (const tab of [this.getPage(), page]) {
+    await tab.reload({ waitUntil: 'commit' })
+    await expect(await openPromptEditor(tab)).toHaveText(originalPrompt)
+    await expect(canvasNodeByTitle(tab, answerTitle)).toBeVisible()
+  }
+  expect(await getSavedPrompt(this)).toMatchObject({ prompt: originalPrompt, answerTitle })
+  expect(await readOldLocalDraft(this)).toEqual({ edits: 0, checkpoint: false, retired: true })
+  expect(network.httpSaves).toHaveLength(0)
+  expect(state(this).network.httpSaves).toHaveLength(0)
+})
 
 Then('the other editor can save and reload a new prompt', async function (this: DifyWorld) {
   const { page, network } = replacement(this).collaborator

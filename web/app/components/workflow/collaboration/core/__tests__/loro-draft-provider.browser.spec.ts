@@ -1,4 +1,5 @@
 import type { LoroDraftIdentity } from '../loro-draft-provider'
+import type { LoroDraftRetirement } from '../loro-draft-storage'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc, LoroMap, VersionVector } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -79,7 +80,11 @@ function createDraftServer(seed: (title: string) => LoroDoc = sourceDocument) {
     })
     return transport
   }
-  const open = async (value: LoroDraftIdentity = identity, connected = true) => {
+  const open = async (
+    value: LoroDraftIdentity = identity,
+    connected = true,
+    retirements?: readonly LoroDraftRetirement[],
+  ) => {
     const connection = transport(connected)
     const local = new LoroDoc()
     const callbacks = {
@@ -93,6 +98,7 @@ function createDraftServer(seed: (title: string) => LoroDoc = sourceDocument) {
     const provider = new LoroDraftProvider({
       appId: 'app-1',
       identity: value,
+      retirements,
       doc: local,
       socket: connection.socket,
       isEmpty: () => local.getMap('nodes').size === 0 && local.getMap('edges').size === 0,
@@ -221,7 +227,8 @@ it('gates old mutations during epoch replacement and keeps the existing room sub
   expect(editor.manager.undo()).toBe(false)
   expect(webSocketClient.connect).toHaveBeenCalledOnce()
   expect(webSocketClient.disconnect).not.toHaveBeenCalled()
-  expect((await server.read()).edits.length).toBeGreaterThan(0)
+  await vi.waitFor(async () => expect((await server.read()).edits).toEqual([]))
+  expect((await server.read()).checkpoint).toBeUndefined()
   const sourceNode = server.document().getMap('nodes').get('node-1')
   expect(sourceNode).toBeInstanceOf(LoroMap)
   if (!(sourceNode instanceof LoroMap)) throw new Error('Expected a native node map')
@@ -302,7 +309,7 @@ it('requires explicit confirmation before an empty local graph clears the saved 
   expect((await server.read()).edits).toEqual([])
 })
 
-it('keeps old edits in their epoch when a replacement reuses the same node ID', async () => {
+it('clears old edits after loading a replacement that reuses the same node ID', async () => {
   const server = createDraftServer()
   const editor = await server.open()
   editor.doc.getMap('nodes').set('node-1', { id: 'node-1', title: 'Retired edit' })
@@ -311,14 +318,19 @@ it('keeps old edits in their epoch when a replacement reuses the same node ID', 
   await expect(editor.provider.flush()).rejects.toThrow('sync was rejected')
   expect(editor.onEpochChanged).toHaveBeenCalledOnce()
   expect(editor.onUnavailable).not.toHaveBeenCalled()
+  const retirements = editor.provider.retirementCandidates
   editor.provider.destroy()
 
-  const replacement = await server.open(nextIdentity)
+  const replacement = await server.open(nextIdentity, true, retirements)
   expect(replacement.doc.getMap('nodes').get('node-1')).toEqual({
     id: 'node-1',
     title: 'Replacement',
   })
-  expect((await server.read()).edits).toHaveLength(1)
+  await vi.waitFor(async () => expect((await server.read()).edits).toEqual([]))
+  expect((await server.read()).checkpoint).toBeUndefined()
+  expect(replacement.onConfirmed).toHaveBeenCalledWith(
+    expect.objectContaining({ cleanup: 'cleared' }),
+  )
   expect((await server.read(nextIdentity)).edits).toEqual([])
   replacement.doc.getMap('nodes').set('node-1', { id: 'node-1', title: 'New edit' })
   replacement.doc.commit()

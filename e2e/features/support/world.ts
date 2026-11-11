@@ -57,7 +57,7 @@ export type WorkflowDraftFixture = {
   replacement?: {
     oldEpoch: string
     dsl: string
-    collaborator: { page: Page; network: WorkflowDraftNetwork }
+    collaborator: { page: Page; network: WorkflowDraftNetwork; accountId: string }
   }
 }
 
