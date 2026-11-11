@@ -54,111 +54,14 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/app/deploy/__tests__/accessibility.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/apps/__tests__/app-creation-url.browser.spec.tsx',
     specifier: 'react-i18next',
     occurrence: 1,
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/base/agent-log-modal/__tests__/detail.browser.spec.tsx',
-    specifier: '@/app/notifications',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/agent-log-modal/__tests__/detail.browser.spec.tsx',
-    specifier: '@/hooks/use-timestamp',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/agent-log-modal/__tests__/index.browser.spec.tsx',
-    specifier: '@/app/notifications',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/base/agent-log-modal/__tests__/tool-call.browser.spec.tsx',
     specifier: '#i18n',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat-with-history/__tests__/sidebar-focus.browser.spec.tsx',
-    specifier: '@/context/web-app-context',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat-with-history/__tests__/sidebar-focus.browser.spec.tsx',
-    specifier: '@/features/system-features/client',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat-with-history/__tests__/sidebar-focus.browser.spec.tsx',
-    specifier: '../hooks',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat-with-history/__tests__/sidebar-focus.browser.spec.tsx',
-    specifier: '../chat-wrapper',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat/answer/__tests__/feedback-focus.browser.spec.tsx',
-    specifier: '@/app/components/app/annotation/edit-annotation-modal',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat/answer/__tests__/feedback-focus.browser.spec.tsx',
-    specifier:
-      '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat/answer/__tests__/feedback-focus.browser.spec.tsx',
-    specifier: '@/app/components/base/new-audio-button',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat/answer/__tests__/feedback-focus.browser.spec.tsx',
-    specifier: '@/app/components/base/chat/chat/log',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/chat/chat/answer/human-input-content/__tests__/executed-action.browser.spec.tsx',
-    specifier: '@/i18n/load-resource',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/image-uploader/__tests__/image-list.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/sort/__tests__/index.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/base/tag-input/__tests__/index.browser.spec.tsx',
-    specifier: '@/app/notifications',
     occurrence: 1,
     reason: legacyMockDebt,
   },
@@ -279,12 +182,7 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
 ]
 
 // Existing oversized suites only. Each W2 split must delete its exact entry.
-const LINE_ALLOWLIST: LineAllowance[] = [
-  {
-    path: 'app/components/app/deploy/__tests__/accessibility.browser.spec.tsx',
-    reason: '694-line legacy suite; blocked by open PR #45540',
-  },
-]
+const LINE_ALLOWLIST: LineAllowance[] = []
 
 export type PolicyViolation = {
   kind: 'missing-boundary-comment' | 'oversized-spec'

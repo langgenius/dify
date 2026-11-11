@@ -520,7 +520,7 @@ describe('SkillDetailPage clipboard', () => {
     fireEvent.cut(getFileTreeButton('scripts/example.ts'))
     const contextRegion = document.querySelector('[data-skill-file-tree-context-region]')
     if (!(contextRegion instanceof HTMLElement))
-      throw new Error('file tree context region not found')
+      throw new TypeError('file tree context region not found')
     fireEvent.contextMenu(contextRegion, {
       button: 2,
       clientX: 160,
@@ -529,7 +529,7 @@ describe('SkillDetailPage clipboard', () => {
     const rootMenuItem = (
       await screen.findByText('skill.skillManagement.detail.createFileMenu')
     ).closest('[role="menuitem"]')
-    if (!(rootMenuItem instanceof HTMLElement)) throw new Error('root menu item not found')
+    if (!(rootMenuItem instanceof HTMLElement)) throw new TypeError('root menu item not found')
     fireEvent.keyDown(rootMenuItem, {
       code: 'KeyV',
       key: 'v',
