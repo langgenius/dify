@@ -122,6 +122,14 @@ class FormRepository(Protocol):
         """
         ...
 
+    def get_submitted_forms(self, *, workflow_run_id: str) -> tuple[Form, ...]:
+        """Read accepted runtime submissions for one run in the bound tenant and app.
+
+        Exclude waiting, timed-out, expired, and delivery-test forms. Return
+        detached snapshots without modifying forms or their submissions.
+        """
+        ...
+
     def create_form(self, params: FormCreateParams) -> Form:
         """Create an unsubmitted form with generated ID and timestamps.
 
