@@ -66,7 +66,7 @@ async function renderSupportMenu({
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter onUrlUpdate={boundary.pricingUpdates}>
-        <AppToaster timeout={0} />
+        <AppToaster timeout={100} />
         <Menu>
           <MenuTrigger>Support</MenuTrigger>
           <MenuContent>
@@ -111,9 +111,14 @@ it('surfaces a failed Zendesk launch and permits a fresh retry', async () => {
   const { screen, trigger } = await renderSupportMenu()
   await userEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
   await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
+  await expect.element(screen.getByText('common.api.actionFailed')).not.toBeInTheDocument()
 
   await userEvent.click(trigger)
-  await userEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+  const reopenedMenu = screen.getByRole('menu')
+  await expect.element(reopenedMenu).toBeVisible()
+  await userEvent.click(
+    reopenedMenu.getByRole('menuitem', { name: 'common.userProfile.contactUs' }),
+  )
   expect(boundary.openZendesk).toHaveBeenCalledTimes(2)
 })
 
