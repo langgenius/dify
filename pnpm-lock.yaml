@@ -339,8 +339,8 @@ catalogs:
       specifier: 1.33.5
       version: 1.33.5
     '@tanstack/react-hotkeys':
-      specifier: 0.17.0
-      version: 0.17.0
+      specifier: 0.23.1
+      version: 0.23.1
     '@tanstack/react-query':
       specifier: 5.107.1
       version: 5.107.1
@@ -1123,7 +1123,7 @@ importers:
         version: 4.3.5(@voidzero-dev/vite-plus-core@1.6.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
       '@tanstack/react-hotkeys':
         specifier: 'catalog:'
-        version: 0.17.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.23.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.14.26(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1597,7 +1597,7 @@ importers:
         version: 1.33.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-hotkeys':
         specifier: 'catalog:'
-        version: 0.17.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.23.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
@@ -4752,8 +4752,8 @@ packages:
   '@tanstack/form-core@1.33.5':
     resolution: {integrity: sha512-3dfx9MBP0aq5sXKteikG629X9oviptrQj0IFRk9YGcb+lB7Kv5x8S17oOSk1wUWgjQZ4xVJEMbKwOAODymocgA==}
 
-  '@tanstack/hotkeys@0.18.0':
-    resolution: {integrity: sha512-QQjRgnpz0xrTbhKiuia+ACGzO4PsxEsTVH2ls01fM2LJ8uISrWVq/9ILB3bd4eFdWzj9I6K7qZM6swoDDiKcRQ==}
+  '@tanstack/hotkeys@0.27.1':
+    resolution: {integrity: sha512-ZgZWw1jcAYwukEwF9Fk7JQSLh4dunfI5ElP48/YoRFBnXqtMwP9MmTKazMKcyW6tOLYZ1gx9bWe9KfQdPuRZMA==}
     engines: {node: '>=20'}
 
   '@tanstack/pacer-lite@0.1.1':
@@ -4772,12 +4772,12 @@ packages:
       '@tanstack/react-start':
         optional: true
 
-  '@tanstack/react-hotkeys@0.17.0':
-    resolution: {integrity: sha512-uuWyA+2cNe4hGPFVbsP36pwguuW7eR1PfAaw+ClygOHxo9I2A3vRGGRB1PfxwH/FEtgsJC+hV3AHvgvEeiz0pg==}
+  '@tanstack/react-hotkeys@0.23.1':
+    resolution: {integrity: sha512-g8t5B/8+lIRvL+Ph/zhoFWttTnjpwndQij5Z8y4XUHtyNSRSaEAEW12P4QfGh6AZ51tMav6Jatbgt++UY3XEIA==}
     engines: {node: '>=20'}
     peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
 
   '@tanstack/react-query@5.107.1':
     resolution: {integrity: sha512-udCOOLp3ZAheUrIHLCe+ZZge6nr2ZUrGMSWcCuXsjY1Bf2JeeE09oxst97PILiCY6N8xo/7bIo3Hvz13zh06FA==}
@@ -11582,9 +11582,7 @@ snapshots:
       '@tanstack/pacer-lite': 0.1.1
       '@tanstack/store': 0.11.2
 
-  '@tanstack/hotkeys@0.18.0':
-    dependencies:
-      '@tanstack/store': 0.11.2
+  '@tanstack/hotkeys@0.27.1': {}
 
   '@tanstack/pacer-lite@0.1.1': {}
 
@@ -11598,10 +11596,9 @@ snapshots:
     transitivePeerDependencies:
       - react-dom
 
-  '@tanstack/react-hotkeys@0.17.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@tanstack/react-hotkeys@0.23.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@tanstack/hotkeys': 0.18.0
-      '@tanstack/react-store': 0.11.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@tanstack/hotkeys': 0.27.1
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
@@ -16670,7 +16667,7 @@ time:
   '@tanstack/form-core@1.33.5': '2026-08-11T12:45:38.255Z'
   '@tanstack/query-core@5.107.1': '2026-11-06T23:03:53.809Z'
   '@tanstack/react-form@1.33.5': '2026-08-11T12:45:38.642Z'
-  '@tanstack/react-hotkeys@0.17.0': '2026-10-24T18:33:33.749Z'
+  '@tanstack/react-hotkeys@0.23.1': '2026-11-10T12:01:03.943Z'
   '@tanstack/react-query@5.107.1': '2026-11-06T23:04:47.891Z'
   '@tanstack/react-virtual@3.14.26': '2026-11-03T15:39:43.463Z'
   '@testing-library/dom@10.4.2': '2026-09-13T18:08:36.116Z'
