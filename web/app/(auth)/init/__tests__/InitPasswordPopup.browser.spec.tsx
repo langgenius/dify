@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import InitPasswordPopup from '../InitPasswordPopup'
 
 const { validatePassword, getInitStatus, replace } = vi.hoisted(() => ({
@@ -10,30 +10,28 @@ const { validatePassword, getInitStatus, replace } = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    init: {
-      get: {
-        queryKey: () => ['console', 'init', 'get'],
-        queryOptions: (options: object) => ({
-          ...options,
-          queryKey: ['console', 'init', 'get'],
-          queryFn: getInitStatus,
-        }),
-      },
-      post: { mutationOptions: () => ({ mutationFn: validatePassword }) },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'init.get': getInitStatus,
+      'init.post': validatePassword,
+    }),
+  }
+})
+// boundary: Next.js navigation context is not mounted in a focused Browser Mode component render.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace }) }))
-vi.mock('@/hooks/use-document-title', () => ({ default: () => {} }))
 
-const renderPopup = () =>
-  render(
-    <QueryClientProvider client={new QueryClient()}>
+const renderPopup = () => {
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  return render(
+    <ConsoleProvider>
       <InitPasswordPopup />
-    </QueryClientProvider>,
+    </ConsoleProvider>,
   )
+}
 
 beforeEach(() => {
   validatePassword.mockReset()
@@ -45,6 +43,7 @@ it('puts the cursor in the password field on arrival', async () => {
   const screen = await renderPopup()
 
   await expect.element(screen.getByLabelText('login.adminInitPassword')).toHaveFocus()
+  await expect.poll(() => document.title).toBe('login.adminInitPassword - Dify')
 })
 
 it('asks for the password before submitting', async () => {
