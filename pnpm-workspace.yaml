@@ -47,6 +47,8 @@ packages:
   - cli
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
+  # Keep docgen's provenance-verified release while updating its glob implementation.
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>glob': 14.0.4
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
