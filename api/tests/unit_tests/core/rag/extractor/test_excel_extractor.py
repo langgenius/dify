@@ -483,10 +483,13 @@ class TestExcelExtractor:
         class _Merged:
             ranges = [_Range()]
 
+        class _Cell:
+            value = "Section"
+
         class _Sheet:
             merged_cells = _Merged()
 
             def cell(self, row, column):
-                return SimpleNamespace(value="Section")
+                return _Cell()
 
         assert extractor._merged_spans_by_row(_Sheet()) == {}
