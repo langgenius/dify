@@ -24,7 +24,7 @@ import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { ExternalAgentManageMenu } from './manage-menu'
-import { getExternalAgentOverviewPath } from './routes'
+import { getExternalAgentMonitoringPath, getExternalAgentOverviewPath } from './routes'
 import { useExternalAgentPreview } from './state'
 
 function ExternalAgentTop({ expand, onToggle }: { expand: boolean; onToggle: () => void }) {
@@ -150,9 +150,10 @@ function ExternalAgentSection({ agentId, expand }: { agentId: string; expand: bo
         />
         <NavLink
           name={t(($) => $['external.overview.monitoring'])}
+          href={getExternalAgentMonitoringPath(agentId)}
+          pathname={pathname}
           mode={expand ? 'expand' : 'collapse'}
           iconMap={{ selected: 'i-ri-equalizer-2-line', normal: 'i-ri-equalizer-2-line' }}
-          disabled
         />
       </nav>
     </div>
