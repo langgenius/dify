@@ -396,6 +396,7 @@ def test_incomplete_historical_model_reaches_generic_error_without_exposing_conf
 ) -> None:
     # The persisted model is an object, but it lacks the provider field required
     # by the real completion configuration converter.
+    """Given incomplete saved settings, return a generic error and retain the internal exception."""
     with harness.factory.begin() as session:
         session.execute(
             update(AppModelConfig)
@@ -409,7 +410,7 @@ def test_incomplete_historical_model_reaches_generic_error_without_exposing_conf
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "controllers.web.message" and record.exc_info is not None
+        if record.name == "controllers.web.message" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], KeyError)

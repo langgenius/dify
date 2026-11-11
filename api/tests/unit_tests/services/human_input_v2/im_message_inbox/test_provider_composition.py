@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import ClassVar
 
 import pytest
 import sqlalchemy as sa
@@ -201,6 +202,7 @@ def test_slack_stream_connection_acks_only_the_event_committed_by_the_inbox(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Given a Slack stream event, acknowledge it only after the inbox commits the event."""
     sink, session_maker = _build_sink(sqlite_engine)
     failed_request = SocketModeRequest(
         type="events_api",
@@ -214,7 +216,7 @@ def test_slack_stream_connection_acks_only_the_event_committed_by_the_inbox(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -270,6 +272,7 @@ def test_slack_webhook_and_stream_share_identified_callback_deduplication(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Given the same callback through webhook and stream, persist only one identified event."""
     sink, session_maker = _build_sink(sqlite_engine)
     consumer = _DelegatingConsumer(sink)
     adapter = SlackIMProviderAdapter(_credentials())
@@ -282,7 +285,7 @@ def test_slack_webhook_and_stream_share_identified_callback_deduplication(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs

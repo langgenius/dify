@@ -139,6 +139,9 @@ entire answer, including any previously delivered prefix, and the stored answer
 matches the replacement. Rendering it does not invoke a model or estimate token
 usage again. A failed chatflow retains its failed workflow status while rendering
 the matching invocation-local rejection with its preset or default reply.
+The reply and `message_end` precede the failed `workflow_finished` event because
+the Redis/SSE subscriber stops reading at that terminal event; sending the reply
+afterwards would persist it without ever delivering it to the WebApp client.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
 Explicit non-platform model policy failures are also preserved. Completion,

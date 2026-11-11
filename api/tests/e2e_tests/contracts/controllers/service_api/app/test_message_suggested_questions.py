@@ -244,6 +244,7 @@ def harness(
 def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_config(
     harness: _Harness, mode: AppMode, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given an admitted caller and invalid saved provider settings, return no questions and log the cause."""
     with harness.factory.begin() as session:
         target = session.get(App, harness.target.id)
         assert target is not None
@@ -268,7 +269,7 @@ def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)
