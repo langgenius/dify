@@ -26,12 +26,6 @@ class ScheduleConfig(BaseModel):
     timezone: str = "UTC"
 
 
-class SchedulePlanUpdate(BaseModel):
-    node_id: str | None = None
-    cron_expression: str | None = None
-    timezone: str | None = None
-
-
 class VisualConfig(BaseModel):
     """Visual configuration for schedule trigger"""
 
