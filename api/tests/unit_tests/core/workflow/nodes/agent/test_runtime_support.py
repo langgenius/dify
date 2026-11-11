@@ -4,7 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyIdentity, AgentStrategyParameter
+from core.agent.plugin_entities import (
+    AgentStrategyEntity,
+    AgentStrategyIdentity,
+    AgentStrategyParameter,
+)
 from core.agent.strategy.plugin import PluginAgentStrategy
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.provider_entities import CustomProviderConfiguration
@@ -12,7 +16,6 @@ from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from core.tools.entities.common_entities import I18nObject as ToolI18nObject
 from core.workflow.nodes.agent.entities import AgentNodeData
-from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -24,6 +27,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from graphon.runtime import VariablePool
+from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -37,16 +41,24 @@ def test_fetch_model_reuses_single_model_assembly():
 
     with (
         patch(
-            "core.workflow.nodes.agent.runtime_support.create_plugin_model_assembly",
+            "services.workflow.execution.adapters.agent_runtime.create_plugin_model_assembly",
             return_value=assembly,
         ) as mock_assembly,
         patch.object(
-            assembly.provider_manager, "get_provider_model_bundle", return_value=provider_model_bundle
+            assembly.provider_manager,
+            "get_provider_model_bundle",
+            return_value=provider_model_bundle,
         ) as get_bundle,
         patch.object(
-            assembly.model_manager, "get_model_instance", wraps=assembly.model_manager.get_model_instance
+            assembly.model_manager,
+            "get_model_instance",
+            wraps=assembly.model_manager.get_model_instance,
         ) as get_instance,
-        patch.object(provider_model_bundle.model_type_instance, "get_model_schema", return_value=config.model_schema),
+        patch.object(
+            provider_model_bundle.model_type_instance,
+            "get_model_schema",
+            return_value=config.model_schema,
+        ),
     ):
         resolved_instance, resolved_schema = AgentRuntimeSupport().fetch_model(
             tenant_id="tenant-1",
@@ -269,10 +281,17 @@ def test_build_parameters_resolves_set_variable_value():
         pytest.param('{"looks": "like json\t"}', id="json-lookalike"),
     ],
 )
-def test_build_parameters_keeps_tool_settings_holding_json_special_characters(raw_value: str):
+def test_build_parameters_keeps_tool_settings_holding_json_special_characters(
+    raw_value: str,
+):
     """Tool settings referencing a variable must survive values that are illegal inside JSON text."""
     result = _build_parameters(
-        configured={"tools": {"type": "constant", "value": [_tool_with_setting("{{#start.target#}}")]}},
+        configured={
+            "tools": {
+                "type": "constant",
+                "value": [_tool_with_setting("{{#start.target#}}")],
+            }
+        },
         declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
         variables={"target": raw_value},
         for_log=True,
@@ -288,7 +307,12 @@ def test_build_parameters_keeps_tool_settings_holding_json_special_characters(ra
 def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting():
     # for_log keeps the tools branch away from ToolManager while still resolving settings.
     result = _build_parameters(
-        configured={"tools": {"type": "constant", "value": [_tool_with_setting("room {{#start.target#}}!")]}},
+        configured={
+            "tools": {
+                "type": "constant",
+                "value": [_tool_with_setting("room {{#start.target#}}!")],
+            }
+        },
         declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
         variables={"target": 'a\t"tabbed"\tname'},
         for_log=True,
@@ -305,7 +329,12 @@ def test_build_parameters_preserves_nested_constant_structure():
         configured={
             "options": {
                 "type": "constant",
-                "value": [{"label": "{{#start.target#}}", "nested": {"items": ["{{#start.target#}}"]}}],
+                "value": [
+                    {
+                        "label": "{{#start.target#}}",
+                        "nested": {"items": ["{{#start.target#}}"]},
+                    }
+                ],
             }
         },
         declared=[_declared_parameter("options", _ParameterType.ANY)],
@@ -400,7 +429,12 @@ def test_build_parameters_keeps_selector_lookalike_tool_arguments_literal(litera
 
 def test_build_parameters_resolves_markers_without_touching_bare_selectors_beside_them():
     result = _build_parameters(
-        configured={"tools": {"type": "constant", "value": [_tool_with_setting("env.SECRET{{#start.target#}}")]}},
+        configured={
+            "tools": {
+                "type": "constant",
+                "value": [_tool_with_setting("env.SECRET{{#start.target#}}")],
+            }
+        },
         declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
         variables={},
         scoped_variables=_SELECTOR_LOOKALIKES,
@@ -417,7 +451,12 @@ def test_build_parameters_keeps_selector_lookalikes_literal_in_nested_constants(
         configured={
             "options": {
                 "type": "constant",
-                "value": [{"label": "env.SECRET", "nested": {"items": ["sys.query", "{{#start.target#}}"]}}],
+                "value": [
+                    {
+                        "label": "env.SECRET",
+                        "nested": {"items": ["sys.query", "{{#start.target#}}"]},
+                    }
+                ],
             }
         },
         declared=[_declared_parameter("options", _ParameterType.ANY)],

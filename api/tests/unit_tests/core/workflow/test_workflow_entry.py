@@ -14,18 +14,11 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
 from core.helper.code_executor.code_executor import CodeLanguage
-from core.repositories.human_input_repository import (
-    HumanInputFormRepository,
-    HumanInputFormRepositoryImpl,
-)
-from core.workflow import workflow_entry
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.system_variables import build_system_variables, default_system_variables
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from enums.human_input import HumanInputFormStatus
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel, RedisChannel
@@ -61,8 +54,17 @@ from graphon.utils.condition.entities import Condition
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_contracts import HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.workflow import Workflow, WorkflowType
+from repositories.human_input.form_repository import (
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
+from services.workflow.execution.adapters import workflow_entry
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.helpers.workflow.mock_config import MockConfig, MockConfigBuilder
@@ -76,6 +78,7 @@ from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import 
 from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
     _workflow_tool_container_workflow_tool_source as _workflow_tool_source,
 )
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
@@ -134,7 +137,7 @@ class TestResponseStreamFilterIssue170Cases:
             runtime_state=graph_runtime_state,
             command_channel=InMemoryChannel(),
         )
-        events = list(iter_dify_graph_engine_events(engine))
+        events = list(iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS))
 
         stream_chunk_events = [event for event in events if isinstance(event, NodeRunStreamChunkEvent)]
         success_events = [event for event in events if isinstance(event, GraphRunSucceededEvent)]
@@ -265,14 +268,12 @@ class TestResponseStreamFilterPauseResumeCases:
     @staticmethod
     def test_if_else_human_input_pause_resume_answer_chunks_survive_resume(
         sqlite_session_factory: sessionmaker[Session],
-        mocker: MockerFixture,
     ) -> None:
-        mocker.patch(
-            "core.repositories.human_input_repository.session_factory.create_session",
-            side_effect=sqlite_session_factory,
-        )
         repository = HumanInputFormRepositoryImpl(
-            tenant_id="tenant", app_id="app", workflow_execution_id=WORKFLOW_EXECUTION_ID
+            tenant_id="tenant",
+            app_id="app",
+            workflow_execution_id=WORKFLOW_EXECUTION_ID,
+            sessions=sqlite_session_factory,
         )
         # ---- Phase 1: run to GraphRunPausedEvent ----
         runtime_state_1 = _build_runtime_state()
@@ -318,7 +319,13 @@ class TestResponseStreamFilterPauseResumeCases:
         filter_2 = ResponseStreamFilter()
         filter_2.loads(response_filter_snapshot)
 
-        phase2_events = list(iter_dify_graph_engine_events(engine_2, filter_2))
+        phase2_events = list(
+            iter_dify_graph_engine_events(
+                engine_2,
+                filter_2,
+                human_form_reader=HumanInputFormSubmissionRepository(sessions=sqlite_session_factory),
+            )
+        )
 
         assert any(isinstance(e, GraphRunSucceededEvent) for e in phase2_events)
 
@@ -482,7 +489,9 @@ class TestWorkflowEntryCases:
                 ),
             ],
         )
-        def test_single_step_loads_explicit_inputs_for_nodes_without_graphon_extractors(self, data, inputs, expected):
+        def test_single_step_loads_explicit_inputs_for_nodes_without_graphon_extractors(
+            self, data, inputs, expected, workflow_runtime: WorkflowRuntime
+        ):
             workflow = Workflow.new(
                 tenant_id="tenant",
                 app_id="app",
@@ -504,7 +513,7 @@ class TestWorkflowEntryCases:
                 user_id="user",
                 user_inputs=inputs,
                 variable_pool=variable_pool,
-                execution_driver=None,
+                workflow_runtime=workflow_runtime,
             )
 
             variable = variable_pool.get(["source", "value"])
@@ -560,7 +569,7 @@ class TestWorkflowEntryCases:
             assert output_var is not None
             assert output_var.value == "system_user"
 
-        def test_single_step_run_injects_code_limits(self):
+        def test_single_step_run_injects_code_limits(self, workflow_runtime: WorkflowRuntime):
             """Ensure single-step CodeNode execution configures limits."""
             # Arrange
             node_id = "code_node"
@@ -607,7 +616,7 @@ class TestWorkflowEntryCases:
                 user_id="user",
                 user_inputs={},
                 variable_pool=variable_pool,
-                execution_driver=None,
+                workflow_runtime=workflow_runtime,
             )
 
             # Assert
@@ -1034,6 +1043,7 @@ def _build_minimal_workflow_entry(
         call_depth=0,
         graph_runtime_state=graph_runtime_state,
         response_stream_filter=response_stream_filter,
+        human_form_reader=NO_HUMAN_INPUT_FORMS,
     )
 
 
@@ -1048,6 +1058,7 @@ class TestWorkflowEntryHelpersCases:
                     graph=sentinel.graph,
                     call_depth=call_depth,
                     graph_runtime_state=sentinel.graph_runtime_state,
+                    human_form_reader=NO_HUMAN_INPUT_FORMS,
                 )
 
         def test_hidden_workflow_tool_nodes_count_toward_execution_limit(self):
@@ -1059,6 +1070,7 @@ class TestWorkflowEntryHelpersCases:
                     graph=_outer_graph(tool),
                     call_depth=0,
                     graph_runtime_state=tool.runtime_state,
+                    human_form_reader=NO_HUMAN_INPUT_FORMS,
                 )
                 entry.workflow_tool_sources[source.workflow_id] = source
                 events = list(entry.run())
@@ -1081,6 +1093,7 @@ class TestWorkflowEntryHelpersCases:
     class TestWorkflowEntryRun:
         def test_run_swallows_generate_task_stopped_errors(self):
             entry = object.__new__(workflow_entry.WorkflowEntry)
+            entry._human_form_reader = NO_HUMAN_INPUT_FORMS
             entry.graph_engine = MagicMock()
             entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
             entry._response_stream_filter = ResponseStreamFilter()
@@ -1113,7 +1126,9 @@ class TestWorkflowEntryHelpersCases:
                     return_value=iter([sentinel.filtered_event]),
                 ) as filter_engine_events,
             ):
-                events = list(workflow_entry.iter_dify_graph_engine_events(graph_engine))
+                events = list(
+                    workflow_entry.iter_dify_graph_engine_events(graph_engine, human_form_reader=NO_HUMAN_INPUT_FORMS)
+                )
 
             assert events == [sentinel.filtered_event]
             from_engine.assert_called_once_with(graph_engine)
@@ -1126,6 +1141,7 @@ class TestWorkflowEntryHelpersCases:
 
         def test_run_delegates_to_dify_event_iterator(self):
             entry = object.__new__(workflow_entry.WorkflowEntry)
+            entry._human_form_reader = NO_HUMAN_INPUT_FORMS
             entry.graph_engine = sentinel.graph_engine
             entry._response_stream_filter = sentinel.response_stream_filter
 
@@ -1138,11 +1154,12 @@ class TestWorkflowEntryHelpersCases:
 
             assert events == [sentinel.filtered_event]
             iter_dify_graph_engine_events.assert_called_once_with(
-                sentinel.graph_engine, sentinel.response_stream_filter
+                sentinel.graph_engine, sentinel.response_stream_filter, human_form_reader=NO_HUMAN_INPUT_FORMS
             )
 
         def test_run_emits_failed_event_for_unexpected_errors(self):
             entry = object.__new__(workflow_entry.WorkflowEntry)
+            entry._human_form_reader = NO_HUMAN_INPUT_FORMS
             entry.graph_engine = MagicMock()
             entry.graph_engine.run.side_effect = RuntimeError("boom")
             entry._response_stream_filter = ResponseStreamFilter()
@@ -1155,7 +1172,7 @@ class TestWorkflowEntryHelpersCases:
 
     class TestWorkflowEntrySingleStepRun:
         @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION])
-        def test_rejects_container_nodes(self, node_type):
+        def test_rejects_container_nodes(self, node_type, workflow_runtime: WorkflowRuntime):
             workflow = _workflow()
 
             with (
@@ -1168,10 +1185,10 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={},
                     variable_pool=sentinel.variable_pool,
-                    execution_driver=None,
+                    workflow_runtime=workflow_runtime,
                 )
 
-        def test_preloads_constructor_variables_before_creating_memory_node(self):
+        def test_preloads_constructor_variables_before_creating_memory_node(self, workflow_runtime: WorkflowRuntime):
             class FakeLLMNode:
                 id = "node-id"
                 title = "Node Title"
@@ -1233,14 +1250,16 @@ class TestWorkflowEntryHelpersCases:
                     user_inputs={},
                     variable_pool=variable_pool,
                     variable_loader=variable_loader,
-                    execution_driver=None,
+                    workflow_runtime=workflow_runtime,
                 )
 
             assert node.id == "node-id"
             assert list(generator) == ["event"]
             variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
 
-        def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(self):
+        def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(
+            self, workflow_runtime: WorkflowRuntime
+        ):
             class FakeNode:
                 id = "node-id"
                 title = "Node Title"
@@ -1286,7 +1305,7 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={"question": "hello"},
                     variable_pool=sentinel.variable_pool,
-                    execution_driver=None,
+                    workflow_runtime=workflow_runtime,
                 )
 
             assert node.id == "node-id"
@@ -1309,7 +1328,7 @@ class TestWorkflowEntryHelpersCases:
                 tenant_id="tenant-id",
             )
 
-        def test_skips_user_input_mapping_for_datasource_nodes(self):
+        def test_skips_user_input_mapping_for_datasource_nodes(self, workflow_runtime: WorkflowRuntime):
             class FakeDatasourceNode:
                 id = "node-id"
                 node_type = "datasource"
@@ -1354,7 +1373,7 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={"question": "hello"},
                     variable_pool=sentinel.variable_pool,
-                    execution_driver=None,
+                    workflow_runtime=workflow_runtime,
                 )
 
             assert node.id == "node-id"
@@ -1367,7 +1386,7 @@ class TestWorkflowEntryHelpersCases:
             )
             mapping_user_inputs_to_variable_pool.assert_not_called()
 
-        def test_wraps_layered_node_run_failures(self):
+        def test_wraps_layered_node_run_failures(self, workflow_runtime: WorkflowRuntime):
             class FakeNode:
                 id = "node-id"
                 title = "Node Title"
@@ -1411,7 +1430,7 @@ class TestWorkflowEntryHelpersCases:
                         user_id="user-id",
                         user_inputs={},
                         variable_pool=sentinel.variable_pool,
-                        execution_driver=None,
+                        workflow_runtime=workflow_runtime,
                     )
 
     class TestWorkflowEntryHelpers:
@@ -1802,7 +1821,9 @@ class TestWorkflowEntryRedisChannelCases:
             redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
             # Patch Engine to verify it receives the Redis channel
-            with patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type:
+            with patch(
+                "services.workflow.execution.adapters.workflow_entry.Engine", autospec=True
+            ) as mock_graph_engine_type:
                 # Create WorkflowEntry with Redis channel
                 workflow_entry = WorkflowEntry(
                     graph_config=mock_graph_config,
@@ -1810,6 +1831,7 @@ class TestWorkflowEntryRedisChannelCases:
                     call_depth=0,
                     graph_runtime_state=graph_runtime_state,
                     command_channel=redis_channel,  # Provide Redis channel
+                    human_form_reader=NO_HUMAN_INPUT_FORMS,
                 )
 
                 # Verify Engine was initialized with the Redis channel
@@ -1828,8 +1850,12 @@ class TestWorkflowEntryRedisChannelCases:
 
             # Patch Engine and InMemoryChannel
             with (
-                patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type,
-                patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as mock_in_memory_channel,
+                patch(
+                    "services.workflow.execution.adapters.workflow_entry.Engine", autospec=True
+                ) as mock_graph_engine_type,
+                patch(
+                    "services.workflow.execution.adapters.workflow_entry.InMemoryChannel", autospec=True
+                ) as mock_in_memory_channel,
             ):
                 mock_inmemory_channel = mock_in_memory_channel.return_value
                 # Create WorkflowEntry without providing a channel
@@ -1839,6 +1865,7 @@ class TestWorkflowEntryRedisChannelCases:
                     call_depth=0,
                     graph_runtime_state=graph_runtime_state,
                     command_channel=None,  # No channel provided
+                    human_form_reader=NO_HUMAN_INPUT_FORMS,
                 )
 
                 # Verify InMemoryChannel was created
@@ -1867,7 +1894,9 @@ class TestWorkflowEntryRedisChannelCases:
             mock_event2 = MagicMock()
 
             # Patch Engine
-            with patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type:
+            with patch(
+                "services.workflow.execution.adapters.workflow_entry.Engine", autospec=True
+            ) as mock_graph_engine_type:
                 mock_graph_engine = MagicMock()
                 mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
                 mock_graph_engine_type.return_value = mock_graph_engine
@@ -1879,6 +1908,7 @@ class TestWorkflowEntryRedisChannelCases:
                     call_depth=0,
                     graph_runtime_state=graph_runtime_state,
                     command_channel=redis_channel,
+                    human_form_reader=NO_HUMAN_INPUT_FORMS,
                 )
 
                 # Run the workflow
