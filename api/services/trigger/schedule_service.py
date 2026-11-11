@@ -5,7 +5,7 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleExecutionError
 from graphon.entities.graph_config import NodeConfigDict
