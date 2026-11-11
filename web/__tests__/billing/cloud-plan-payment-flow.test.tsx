@@ -57,7 +57,6 @@ const renderPlan = ({
           currentPlan,
           currentBillingInterval: 'month',
           isEducationDiscountEligible: false,
-          isEducationDiscountActivated: false,
         }}
       />
     </>,

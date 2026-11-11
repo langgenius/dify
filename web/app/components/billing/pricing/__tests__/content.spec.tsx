@@ -1,6 +1,6 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { Dialog } from '@langgenius/dify-ui/dialog'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import {
@@ -173,9 +173,7 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   show()
   expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
   expect(screen.getByText('$590')).toBeVisible()
-  expect(
-    screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
-  ).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'education.useEducationDiscount' })).toBeEnabled()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
@@ -298,6 +296,7 @@ it('lets paid subscribers manage or upgrade without requesting education eligibi
   show()
   expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
   expect(screen.getByText('billing.plansCommon.currentPlan')).toBeVisible()
+  expect(screen.queryByText('billing.plansCommon.mostPopular')).not.toBeInTheDocument()
   expect(
     screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }),
   ).toBeEnabled()
@@ -323,16 +322,15 @@ it.each([
   ['team', 'month', 'year'],
   ['team', 'year', 'month'],
 ] as const)(
-  'requests the selected %s subscription change from %s to %s',
+  'confirms the %s cycle change from %s to %s before opening the portal',
   async (plan, currentInterval, selectedInterval) => {
     const user = userEvent.setup()
     const { queryClient, show } = setup()
     seedFeatures(queryClient, {
       billing: { subscription: { plan, interval: currentInterval } },
     })
-    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
-    const fetchCheckout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ url: 'https://checkout.example.com' }), {
+    const fetchPortal = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://billing.example.com/portal' }), {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -349,13 +347,21 @@ it.each([
         name: 'billing.plansCommon.manageSubscription',
       }),
     )
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://checkout.example.com'))
-    const request = fetchCheckout.mock.calls[0]?.[0]
-    const requestUrl = request instanceof Request ? request.url : String(request)
-    expect(requestUrl).toContain('/billing/subscription')
-    expect(requestUrl).toContain(`plan=${plan}`)
-    expect(requestUrl).toContain(`interval=${selectedInterval}`)
-    expect(window.open).not.toHaveBeenCalled()
+    expect(fetchPortal).not.toHaveBeenCalled()
+    const back = screen.getByRole('button', { name: 'billing.pricing.cycleNotice.back' })
+    await user.click(back)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
+    const dialog = screen.getByRole('dialog')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'billing.plansCommon.manageSubscription' }),
+    )
+    await waitFor(() =>
+      expect(billingPopup.location.href).toBe('https://billing.example.com/portal'),
+    )
+    expect(fetchPortal).toHaveBeenCalledTimes(1)
+    const request = fetchPortal.mock.calls[0]?.[0] as Request
+    expect(new URL(request.url).pathname).toBe('/console/api/billing/invoices')
   },
 )
 
