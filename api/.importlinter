@@ -1495,6 +1495,25 @@ forbidden_modules =
     extensions.ext_application_services
 allow_indirect_imports = True
 
+[importlinter:contract:trigger-plugin-runtime-boundary]
+name = Trigger provider loading and dispatch do not access persistence or the application container
+type = forbidden
+source_modules =
+    services.trigger.provider_loader
+    services.trigger.plugin_provider
+    services.trigger.provider_gateway
+    services.trigger.event_gateway
+    services.trigger.endpoint_gateway
+    services.trigger.oauth_gateway
+    services.trigger.subscription_gateway
+forbidden_modules =
+    controllers
+    repositories
+    sqlalchemy
+    extensions.ext_database
+    extensions.ext_application_services
+allow_indirect_imports = True
+
 [importlinter:contract:trigger-subscription-builder-persistence-boundary]
 name = Trigger builder, endpoint and event orchestration use injected persistence
 type = forbidden
@@ -1575,4 +1594,13 @@ forbidden_modules =
     services.trigger.execution_service
     services.trigger.execution_gateway
     services.trigger.execution_layer
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-builder-repository-boundary]
+name = Trigger builder persistence depends on contracts rather than its service
+type = forbidden
+source_modules =
+    repositories.trigger.subscription_builder_repository
+forbidden_modules =
+    services.trigger.trigger_subscription_builder_service
 allow_indirect_imports = True

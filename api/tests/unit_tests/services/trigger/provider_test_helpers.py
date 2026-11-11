@@ -1,4 +1,4 @@
-"""Shared factory helpers for core.trigger test suite."""
+"""Real provider declarations for trigger runtime tests."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from core.trigger.entities.entities import (
     TriggerProviderEntity,
     TriggerProviderIdentity,
 )
-from core.trigger.provider import PluginTriggerProviderController
 from models.provider_ids import TriggerProviderID
+from services.trigger.plugin_provider import PluginTriggerProvider
 
 # Valid format for TriggerProviderID: org/plugin/provider
 VALID_PROVIDER_ID = "testorg/testplugin/testprovider"
@@ -60,8 +60,8 @@ def make_controller(
     entity: TriggerProviderEntity | None = None,
     tenant_id: str = "tenant-1",
     provider_id: str = VALID_PROVIDER_ID,
-) -> PluginTriggerProviderController:
-    return PluginTriggerProviderController(
+) -> PluginTriggerProvider:
+    return PluginTriggerProvider(
         entity=entity or make_provider_entity(),
         plugin_id="plugin-1",
         plugin_unique_identifier="uid-1",
