@@ -963,8 +963,8 @@ def _rewrite_docx_zip(
     return out.getvalue()
 
 
-def _new_extractor(monkeypatch: pytest.MonkeyPatch) -> WordExtractor:
-    extractor = object.__new__(WordExtractor)
+def _new_extractor(monkeypatch: pytest.MonkeyPatch, path: Path) -> WordExtractor:
+    extractor = WordExtractor(str(path), "tenant_id", "user_id")
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: {})
     return extractor
 
@@ -980,7 +980,7 @@ def test_parse_docx_falls_back_to_direct_xml_for_strict_namespaces(
     path = tmp_path / "strict.docx"
     path.write_bytes(strict_bytes)
 
-    extractor = _new_extractor(monkeypatch)
+    extractor = _new_extractor(monkeypatch, path)
     assert extractor.parse_docx(str(path)) == _EXPECTED_BASE_CONTENT
 
 
@@ -995,7 +995,7 @@ def test_parse_docx_falls_back_to_direct_xml_when_rels_stripped(
     path = tmp_path / "stripped.docx"
     path.write_bytes(stripped_bytes)
 
-    extractor = _new_extractor(monkeypatch)
+    extractor = _new_extractor(monkeypatch, path)
     assert extractor.parse_docx(str(path)) == _EXPECTED_BASE_CONTENT
 
 
@@ -1016,7 +1016,7 @@ def test_parse_docx_converts_legacy_doc_renamed_to_docx(monkeypatch: pytest.Monk
     renamed = tmp_path / "report.docx"
     renamed.write_bytes(legacy_doc.read_bytes())
 
-    extractor = _new_extractor(monkeypatch)
+    extractor = _new_extractor(monkeypatch, renamed)
     assert extractor.parse_docx(str(renamed)) == _EXPECTED_LEGACY_CONTENT
 
 
@@ -1027,7 +1027,7 @@ def test_parse_docx_legacy_doc_without_libreoffice_names_the_cause(
     path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
     monkeypatch.setattr(we.shutil, "which", lambda _name: None)
 
-    extractor = _new_extractor(monkeypatch)
+    extractor = _new_extractor(monkeypatch, path)
     with pytest.raises(ValueError, match=r"legacy.*\.doc.*LibreOffice"):
         extractor.parse_docx(str(path))
 
@@ -1036,7 +1036,7 @@ def test_parse_docx_non_archive_raises_clear_error(monkeypatch: pytest.MonkeyPat
     path = tmp_path / "not-a-docx.docx"
     path.write_bytes(b"this is not a zip archive at all")
 
-    extractor = _new_extractor(monkeypatch)
+    extractor = _new_extractor(monkeypatch, path)
     with pytest.raises(ValueError, match="not a valid .docx package"):
         extractor.parse_docx(str(path))
 
@@ -1053,6 +1053,6 @@ def test_parse_docx_zip_without_document_xml_raises_clear_error(
     path = tmp_path / "no-document.docx"
     path.write_bytes(buf.getvalue())
 
-    extractor = _new_extractor(monkeypatch)
+    extractor = _new_extractor(monkeypatch, path)
     with pytest.raises(ValueError, match="word/document.xml"):
         extractor.parse_docx(str(path))
