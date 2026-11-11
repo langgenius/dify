@@ -11,7 +11,11 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import SkillsPage from '../page'
@@ -1047,6 +1051,40 @@ describe('SkillsPage', () => {
       expect(await downloads[0]?.blob.text()).toBe('skill archive')
     },
   )
+
+  it('allows a creator without edit or global delete to open the deletion dialog', async () => {
+    mocks.skills = [
+      createSkill({ created_by: 'user-1' }),
+      createSkill({ id: 'skill-2', display_name: 'Other', created_by: 'other' }),
+    ]
+    mocks.skillPages = [mocks.skills]
+    const client = createTestQueryClient()
+    seedSystemFeatures(client, { rbac_enabled: true })
+    const user = userEvent.setup()
+    renderSkillsPage(client, ['skill.view'])
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.delete' })).toBeVisible()
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.duplicate' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    expect(await screen.findByRole('alertdialog')).toBeVisible()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Other"}',
+      }),
+    )
+    expect(await screen.findByRole('menuitem', { name: 'common.operation.export' })).toBeVisible()
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
+    ).not.toBeInTheDocument()
+  })
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
     const user = userEvent.setup()

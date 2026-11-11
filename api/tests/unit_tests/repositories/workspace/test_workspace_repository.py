@@ -498,3 +498,48 @@ class TestWorkspaceRepositoryCases:
         finally:
             event.remove(sqlite_engine, "checkout", checkout)
             event.remove(sqlite_engine, "checkin", checkin)
+
+    @staticmethod
+    def test_skill_creator_query_is_scoped_and_releases_connection(
+        sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine
+    ) -> None:
+        """Only the resource's workspace can resolve its creator, with no open read across subsequent I/O."""
+        from models.skill import Skill
+
+        owned = "11111111-1111-4111-8111-111111111111"
+        unknown_creator = "22222222-2222-4222-8222-222222222222"
+        missing = "33333333-3333-4333-8333-333333333333"
+        creator = "44444444-4444-4444-8444-444444444444"
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    Skill(id=owned, tenant_id="workspace", name="owned", display_name="Owned", created_by=creator),
+                    Skill(
+                        id=unknown_creator, tenant_id="workspace", name="legacy", display_name="Legacy", created_by=None
+                    ),
+                ]
+            )
+
+        checked_out: set[int] = set()
+
+        def checkout(connection: object, _record: object, _proxy: object) -> None:
+            checked_out.add(id(connection))
+
+        def checkin(connection: object, _record: object) -> None:
+            checked_out.discard(id(connection))
+
+        repository = WorkspaceRepository(sqlite_session_factory)
+        event.listen(sqlite_engine, "checkout", checkout)
+        event.listen(sqlite_engine, "checkin", checkin)
+        try:
+            assert repository.get_skill_creator_id("workspace", owned) == creator
+            assert not checked_out
+            assert repository.get_skill_creator_id("other-workspace", owned) is None
+            assert not checked_out
+            assert repository.get_skill_creator_id("workspace", unknown_creator) is None
+            assert not checked_out
+            assert repository.get_skill_creator_id("workspace", missing) is None
+            assert not checked_out
+        finally:
+            event.remove(sqlite_engine, "checkout", checkout)
+            event.remove(sqlite_engine, "checkin", checkin)

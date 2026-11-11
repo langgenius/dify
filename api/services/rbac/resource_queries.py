@@ -22,10 +22,22 @@ class DatasetResourceQueries(ResourceMaintainers, Protocol):
     def get_dataset_id_by_pipeline(self, workspace_id: str, pipeline_id: str) -> str | None: ...
 
 
+class WorkspaceSkillCreators(Protocol):
+    def get_skill_creator_id(self, workspace_id: str, skill_id: str) -> str | None:
+        """Read a valid Skill UUID within its workspace; absent/unset creators return None.
+
+        Implementations close their read session before returning and never mutate the resource.
+        """
+        ...
+
+
 class ResourceQueryService:
-    def __init__(self, *, apps: AppResourceQueries, datasets: DatasetResourceQueries) -> None:
+    def __init__(
+        self, *, apps: AppResourceQueries, datasets: DatasetResourceQueries, skills: WorkspaceSkillCreators
+    ) -> None:
         self._apps = apps
         self._datasets = datasets
+        self._skills = skills
 
     def get_app_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
         return self._apps.get_agent_binding(workspace_id, app_id)
@@ -44,3 +56,7 @@ class ResourceQueryService:
 
     def get_dataset_id_by_pipeline(self, workspace_id: str, pipeline_id: str) -> str | None:
         return self._datasets.get_dataset_id_by_pipeline(workspace_id, pipeline_id)
+
+    def get_skill_creator(self, workspace_id: str, skill_id: str) -> str | None:
+        """Resolve the immutable creator for a valid Skill UUID in its workspace, without side effects."""
+        return self._skills.get_skill_creator_id(workspace_id, skill_id)
