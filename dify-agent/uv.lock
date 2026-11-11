@@ -10,9 +10,6 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
-[manifest]
-overrides = [{ name = "filelock", specifier = "==4.2.1" }]
-
 [[package]]
 name = "aiofiles"
 version = "25.1.0"
@@ -587,7 +584,7 @@ docs = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.55.1,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=454cd1c1d9707fbd04634841c746c6487f97c791" },
+    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=7e8007a1b12f33a04d3c48f460fce9f51c42abbc" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
@@ -843,7 +840,7 @@ wheels = [
 [[package]]
 name = "graphon"
 version = "0.9.0"
-source = { git = "https://github.com/langgenius/graphon?rev=454cd1c1d9707fbd04634841c746c6487f97c791#454cd1c1d9707fbd04634841c746c6487f97c791" }
+source = { git = "https://github.com/langgenius/graphon?rev=7e8007a1b12f33a04d3c48f460fce9f51c42abbc#7e8007a1b12f33a04d3c48f460fce9f51c42abbc" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },
@@ -3669,10 +3666,11 @@ wheels = [
 
 [[package]]
 name = "unstructured"
-version = "0.24.1"
+version = "0.27.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
+    { name = "certifi" },
     { name = "charset-normalizer" },
     { name = "emoji" },
     { name = "filelock" },
@@ -3697,9 +3695,9 @@ dependencies = [
     { name = "unstructured-client" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/bf/b912a60c8523980e10639c36af3fc3053949df090e7f35924864659949c0/unstructured-0.24.1.tar.gz", hash = "sha256:e895794f2adea4bc7bb1fb394c575cecea3a5441ed39b4777eb7fb12c0720745", size = 1542546, upload-time = "2026-07-11T23:53:35.604Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/87/89ba3c5024f6c393cccf0a3062a97030a535ead35ee48c44048ee1e456fa/unstructured-0.27.37.tar.gz", hash = "sha256:27c31aa319a245fdd800dd5569654f358c7823f37cbba8271933d2b534a7cde2", size = 1621743, upload-time = "2026-11-06T21:29:36.89Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/5b/891e3dd018dd9d1032707d3bcc406bdbfaad7ef153f8055d988279c3a390/unstructured-0.24.1-py3-none-any.whl", hash = "sha256:1744bf99dec2e07df80f9ba1fa5160be41778c76b021174be44a0235e7284adf", size = 1601417, upload-time = "2026-07-11T23:53:33.634Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/d8/2c4bedb796a2101aa4d5354d58cc71f62cd7ab6a4da48603579fcf3f3c09/unstructured-0.27.37-py3-none-any.whl", hash = "sha256:97945cebd168957f96d4d42976cdd62f1d204d3bd2d13afcb16e5fd6c8921393", size = 1683551, upload-time = "2026-11-06T21:29:34.483Z" },
 ]
 
 [package.optional-dependencies]
