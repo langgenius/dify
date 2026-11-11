@@ -126,12 +126,12 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           aria-label={creatorFilterLabel}
           className={cn(
             baseChipClassName,
-            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-7 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
+            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-7 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-secondary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
           )}
         >
           <ComboboxValue<string, true>>
             <span aria-hidden className="flex min-w-0 items-center">
-              <span className="px-1 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">
+              <span className="px-1 text-text-secondary group-data-popup-open/creators-trigger:text-text-secondary">
                 {creatorFilterLabel}
               </span>
               {selectedCount > 0 ? (
