@@ -39,6 +39,13 @@ Machine-readable catalog of every op on this surface
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /account
+**Return account details with workspace visibility bounded by PAT scope**
+
+The account snapshot supplies current memberships and the default workspace.
+A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+present only when its workspace remains visible. Non-PAT requests have no
+workspace filter. This handler is read-only and does not change membership.
+
 #### Responses
 
 | Code | Description | Schema |
