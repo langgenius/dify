@@ -21269,10 +21269,10 @@ Legacy Chat App model config used only for follow-up question generation.
 | status | string |  | Yes |
 | time_cost | number<br>integer |  | Yes |
 | tool_icon | string<br>object | Icon URL or emoji icon | No |
-| tool_input | object |  | Yes |
+| tool_input |  |  | Yes |
 | tool_label | string<br>object | Tool name or its i18n labels keyed by locale | Yes |
 | tool_name | string |  | Yes |
-| tool_output | object |  | Yes |
+| tool_output |  |  | Yes |
 | tool_parameters | object |  | Yes |
 
 #### AgentUserSatisfactionRateStatisticResponse

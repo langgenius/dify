@@ -801,9 +801,6 @@
     }
   },
   "web/app/components/base/agent-log-modal/tool-call.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },

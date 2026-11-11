@@ -106,3 +106,20 @@ it.each([true, false])(
       .not.toBeInTheDocument()
   },
 )
+
+it.each([0, false, ''])('reveals falsey JSON tool payload %j', async (payload) => {
+  const { screen } = await renderAgentLog(
+    <ToolCallItem
+      toolCall={{ ...toolCall, tool_input: payload, tool_output: payload }}
+      isLLM={false}
+    />,
+  )
+
+  await screen.getByText('Test Tool Label').click()
+
+  const editors = screen.getByTestId('monaco-editor').all()
+  expect(editors).toHaveLength(2)
+  for (const editor of editors)
+    await expect.element(editor).toHaveValue(JSON.stringify(payload))
+})
+
