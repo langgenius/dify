@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy.orm import ORMExecuteState, Session
 
 from models.enums import ConversationFromSource, EndUserType
@@ -75,7 +76,8 @@ def test_both_run_ownership_queries_use_app_and_run_lookup(
     statements: list[str] = []
 
     def record_statement(state: ORMExecuteState) -> None:
-        """Given an ORM execution, record its real SQL without changing execution or results."""
+        """Require a SELECT execution and record its real SQL without changing execution or results."""
+        assert isinstance(state.statement, sa.sql.Select)
         statements.append(
             str(
                 state.statement.compile(
@@ -84,7 +86,7 @@ def test_both_run_ownership_queries_use_app_and_run_lookup(
             )
         )
 
-    sa.event.listen(sqlite_session, "do_orm_execute", record_statement)
+    event.listen(sqlite_session, "do_orm_execute", record_statement)
     try:
         assert may_read_conversation_run(
             sqlite_session,
@@ -94,7 +96,7 @@ def test_both_run_ownership_queries_use_app_and_run_lookup(
             original_end_user_id=original.id,
         )
     finally:
-        sa.event.remove(sqlite_session, "do_orm_execute", record_statement)
+        event.remove(sqlite_session, "do_orm_execute", record_statement)
     assert len(statements) == 2
     for statement in statements:
         details = sqlite_session.execute(sa.text(f"EXPLAIN QUERY PLAN {statement}")).columns("detail").scalars().all()
