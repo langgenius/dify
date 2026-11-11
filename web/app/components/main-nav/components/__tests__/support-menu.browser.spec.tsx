@@ -66,7 +66,7 @@ async function renderSupportMenu({
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter onUrlUpdate={boundary.pricingUpdates}>
-        <AppToaster timeout={100} />
+        <AppToaster timeout={0} />
         <Menu>
           <MenuTrigger>Support</MenuTrigger>
           <MenuContent>
@@ -110,8 +110,11 @@ it('surfaces a failed Zendesk launch and permits a fresh retry', async () => {
   boundary.openZendesk.mockRejectedValueOnce(new Error('load failed'))
   const { screen, trigger } = await renderSupportMenu()
   await userEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
-  await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
-  await expect.element(screen.getByText('common.api.actionFailed')).not.toBeInTheDocument()
+  const notification = screen.getByRole('dialog', { name: 'common.api.actionFailed' })
+  await expect.element(notification).toBeVisible()
+  await notification.hover()
+  await userEvent.click(screen.getByRole('button', { name: 'Close notification' }))
+  await expect.element(notification).not.toBeInTheDocument()
 
   await userEvent.click(trigger)
   const reopenedMenu = screen.getByRole('menu')
