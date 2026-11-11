@@ -489,8 +489,8 @@ catalogs:
       specifier: 8.6.0
       version: 8.6.0
     es-module-lexer:
-      specifier: 2.3.2
-      version: 2.3.2
+      specifier: 3.0.4
+      version: 3.0.4
     es-toolkit:
       specifier: 1.53.0
       version: 1.53.0
@@ -1347,7 +1347,7 @@ importers:
         version: 1.16.1(@orpc/client@1.16.1)(@tanstack/query-core@5.105.0)
       es-module-lexer:
         specifier: 'catalog:'
-        version: 2.3.2
+        version: 3.0.4
       import-meta-resolve:
         specifier: 'catalog:'
         version: 4.2.0
@@ -6392,8 +6392,8 @@ packages:
   es-module-lexer@2.3.2:
     resolution: {integrity: sha512-poHGpORABojJJucnV9KbOavETW8lBVnphkW77ER5/BQ5Fz7oXSoCNek7IH3vR5nRjdsEz926ibFYX8KtLQmdyw==}
 
-  es-module-lexer@3.0.3:
-    resolution: {integrity: sha512-yWGe1O/j+almnV4hOYrmZo8u58JdnmXEMneRQAYkWtqSiT86yoMIEKF4rpqEDj52tbYl3xceBD3DQIBwcsC9Pw==}
+  es-module-lexer@3.0.4:
+    resolution: {integrity: sha512-BldNY5mwkVu+cQ5Ymn3e6hB9Sx8XHx4ZevWbiUyZbfKxJxYO27Hf0wfzkxIaD5CAJMaGl3YspKELj0ff/7nCMA==}
 
   es-toolkit@1.53.0:
     resolution: {integrity: sha512-3+AYXp9fmJ/UhHBMYj2/U+RaUouMD90SzoItyDOB2Za7W6dB7fQApFGnZPl2MF6K8/Tv1koh1JyirSx/kju6Pw==}
@@ -12318,7 +12318,7 @@ snapshots:
   '@vitejs/plugin-rsc@0.5.38(@voidzero-dev/vite-plus-core@1.5.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      es-module-lexer: 3.0.3
+      es-module-lexer: 3.0.4
       estree-walker: 3.0.3
       magic-string: 1.4.3
       obug: 3.0.0
@@ -13334,7 +13334,7 @@ snapshots:
 
   es-module-lexer@2.3.2: {}
 
-  es-module-lexer@3.0.3: {}
+  es-module-lexer@3.0.4: {}
 
   es-toolkit@1.53.0: {}
 
@@ -17056,7 +17056,7 @@ time:
   embla-carousel-autoplay@8.6.0: '2025-04-04T17:37:46.303Z'
   embla-carousel-fade@8.6.0: '2025-04-04T17:37:50.278Z'
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
-  es-module-lexer@2.3.2: '2026-08-17T01:57:36.160Z'
+  es-module-lexer@3.0.4: '2026-10-15T04:35:33.820Z'
   es-toolkit@1.53.0: '2026-10-24T11:53:06.614Z'
   eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
   eslint-markdown@0.20.0: '2026-10-24T02:15:47.330Z'
