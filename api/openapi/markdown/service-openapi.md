@@ -1504,6 +1504,8 @@ Delete a logical document and its historical revisions. Use the logical document
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -6810,6 +6812,7 @@ Dify owns datasource secrets; clients supply an opaque binding in configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -6822,6 +6825,8 @@ Dify owns datasource secrets; clients supply an opaque binding in configuration.
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 

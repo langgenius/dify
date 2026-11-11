@@ -24,7 +24,7 @@ from .model import Account
 from .types import EnumText, LongText, StringUUID
 
 TriggerJsonObject = dict[str, object]
-TriggerCredentials = dict[str, str]
+TriggerCredentials = dict[str, object]
 
 
 class WorkflowTriggerLogDict(TypedDict):

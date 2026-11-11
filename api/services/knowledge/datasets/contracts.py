@@ -135,6 +135,7 @@ class DatasetListFilter:
     ids: Sequence[str] = ()
     tag_ids: Sequence[str] = ()
     creator_ids: Sequence[str] = ()
+    for_selection: bool = False
 
 
 @dataclass(frozen=True)

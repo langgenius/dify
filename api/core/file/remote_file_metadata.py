@@ -54,9 +54,11 @@ def guess_file_info_from_response(response: httpx.Response) -> FileInfo:
     if not filename:
         content_disposition = response.headers.get("Content-Disposition")
         if content_disposition:
-            filename_match = re.search(r'filename="?(.+)"?', content_disposition)
+            # A quoted filename may legitimately contain semicolons/spaces; an
+            # unquoted one stops at the first parameter separator or whitespace.
+            filename_match = re.search(r'filename="([^"]*)"|filename=([^;\s]+)', content_disposition)
             if filename_match:
-                filename = filename_match.group(1)
+                filename = filename_match.group(1) or filename_match.group(2) or ""
 
     # If still no filename, generate a unique one
     if not filename:

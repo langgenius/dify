@@ -17,6 +17,7 @@ class RequestContext(NamedTuple):
 
     Anonymous admission uses empty ``account_id`` and ``active_workspace_id`` values.
     Resource scopes are absent for account callers; an empty set admits no resources.
+    ``personal_app_ids`` limits account visibility to PAT selections; None adds no restriction.
     """
 
     request_id: str
@@ -26,6 +27,7 @@ class RequestContext(NamedTuple):
     remote_ip: str | None = None
     resource_app_ids: frozenset[str] | None = None
     resource_dataset_ids: frozenset[str] | None = None
+    personal_app_ids: frozenset[str] | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

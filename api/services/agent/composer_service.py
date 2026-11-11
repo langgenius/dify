@@ -1073,6 +1073,10 @@ class AgentComposerService:
             session=session,
             build_draft=build_draft,
         )
+        # A null backend snapshot_ref means the runtime cannot checkpoint:
+        # config is still applied, but the new Home is image-fresh, so the
+        # draft must not keep pointing at a previous snapshot.
+        home_snapshot_id = home_snapshot.id if home_snapshot is not None else None
         normal_draft = cls._save_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -1089,13 +1093,13 @@ class AgentComposerService:
             agent=agent,
             normal_draft=normal_draft,
         )
-        normal_draft.home_snapshot_id = home_snapshot.id
+        normal_draft.home_snapshot_id = home_snapshot_id
         agent.active_config_is_published = cls._agent_soul_matches_active_config(
             session=session,
             tenant_id=tenant_id,
             agent=agent,
             agent_soul=applied_agent_soul,
-            home_snapshot_id=home_snapshot.id,
+            home_snapshot_id=home_snapshot_id,
         )
         agent.updated_by = account_id
         retired_binding_id = AgentWorkspaceService.retire_binding(

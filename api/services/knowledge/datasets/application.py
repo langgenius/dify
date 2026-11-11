@@ -237,6 +237,8 @@ class DatasetApplicationService:
             )
             include_own = False
         result = self._operations.list_datasets(context, query, accessible_ids, include_own)
+        if query.for_selection:
+            return result
         models = self._operations.embedding_models(context.active_workspace_id)
         for item in result["data"]:
             self._embedding_available(item, models, listing=True)

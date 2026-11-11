@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.human_input import stringify_form_default_values
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
@@ -29,7 +29,6 @@ from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
-    CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
@@ -40,7 +39,6 @@ from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEv
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from enums.creator import CreatorUserRole
-from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models.model import App
 from services.entities.upload_file import FileUploadActor
@@ -94,6 +92,7 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
         op="describe.run.form",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Read a human-input form",
         examples=(
@@ -107,14 +106,13 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
             CheckFormSurface(),
         ),
         returns=(200, HumanInputFormDefinitionResponse, "Form definition"),
     )
     def get(self, ctx: Context, app_id: str, form_token: str):
-        service = HumanInputService(db.engine)
+        service = HumanInputService(session_factory.get_session_maker())
         form = service.get_form_by_token(form_token)
         if form is None:
             raise HumanInputFormNotFound()
@@ -128,6 +126,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
         op="submit.run.form",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
         examples=(
@@ -156,7 +155,6 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
             CheckFormSurface(),
         ),
@@ -164,7 +162,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         returns=(200, FormSubmitResponse, "Form submitted"),
     )
     def post(self, ctx: Context, app_id: str, form_token: str, *, body: OpenApiFormSubmitPayload):
-        service = HumanInputService(db.engine)
+        service = HumanInputService(session_factory.get_session_maker())
         form = service.get_form_by_token(form_token)
         if form is None:
             raise HumanInputFormNotFound()

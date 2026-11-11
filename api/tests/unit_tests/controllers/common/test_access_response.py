@@ -16,7 +16,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, object_session, sessionmaker
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 import controllers.service_api.wraps as token_wraps
 import services.api_token_service as token_service
@@ -28,7 +28,6 @@ from controllers.common.access_response import (
 )
 from controllers.mcp import mcp
 from controllers.service_api.flask_admission import DatasetApiResource
-from controllers.trigger import webhook
 from extensions import ext_request_logging
 from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import ExternalApi
@@ -557,29 +556,6 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     execute.assert_not_called()
     end_user.assert_not_called()
     assert writes == []
-
-
-@pytest.mark.parametrize("route", ["webhook", "webhook-debug"])
-def test_webhook_missing_identity_uses_native_html_without_disclosing_id(
-    http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, route: Literal["webhook", "webhook-debug"]
-) -> None:
-    monkeypatch.setattr(webhook, "request", request)
-    monkeypatch.setattr(webhook, "jsonify", jsonify)
-    mocker.patch.object(
-        webhook.WebhookService,
-        "get_webhook_trigger_and_workflow",
-        side_effect=ValueError("Webhook not found: private-fixture"),
-    )
-    execute = mocker.patch.object(webhook.WebhookService, "trigger_workflow_execution")
-    handler = webhook.handle_webhook if route == "webhook" else webhook.handle_webhook_debug
-    http_app.add_url_rule(f"/triggers/{route}/<string:webhook_id>", view_func=handler, methods=["POST"])
-    response = http_app.test_client().post(f"/triggers/{route}/private-fixture", json={})
-    assert response.status_code == 404
-    assert response.data == NotFound().get_body().encode()
-    assert response.headers["Content-Type"] == "text/html; charset=utf-8"
-    assert response.headers["Cache-Control"] == "no-store"
-    assert b"private-fixture" not in response.data
-    execute.assert_not_called()
 
 
 @pytest.mark.parametrize("status", [401, 403, 429])

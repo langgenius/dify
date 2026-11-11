@@ -1,10 +1,14 @@
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from decimal import Decimal
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Table, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql.dml import Delete
 
 from models.agent import (
     Agent,
@@ -217,6 +221,66 @@ def test_purge_archived_agent_deletes_complete_aggregate_and_preserves_workflow_
         assert preserved_binding.agent_id == agent.id
         for row in preserved_rows:
             assert observer_session.get(type(row), row.id) is not None
+
+
+def test_purge_bulk_deletes_aggregate_dependencies_before_agent(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+) -> None:
+    agent = _archived_agent()
+    draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        config_snapshot=AgentSoulConfig(),
+    )
+    home_snapshot = AgentHomeSnapshot(
+        id="home-1",
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        snapshot_ref="home-ref",
+        status=AgentWorkingResourceStatus.RETIRED,
+    )
+    sibling = _archived_agent(agent_id="agent-2")
+    sqlite_session.add_all([agent, draft, home_snapshot, sibling])
+    sqlite_session.commit()
+
+    deleted_tables: list[str] = []
+
+    def record_bulk_delete(_connection: object, statement: object, *_args: object) -> None:
+        if isinstance(statement, Delete):
+            deleted_tables.append(cast(Table, statement.table).name)
+
+    monkeypatch.setattr(
+        "services.agent.deletion_service.session_factory.create_session",
+        sqlite_session_factory,
+    )
+    event.listen(sqlite_engine, "before_execute", record_bulk_delete)
+    try:
+        AgentDeletionService.purge_archived_agents(tenant_id=agent.tenant_id, agent_ids=[agent.id])
+    finally:
+        event.remove(sqlite_engine, "before_execute", record_bulk_delete)
+
+    assert deleted_tables == [
+        cast(Table, model.__table__).name
+        for model in (
+            AgentDebugConversation,
+            AgentConfigRevision,
+            AgentConfigDraft,
+            AgentConfigSnapshot,
+            AgentHomeSnapshot,
+            AgentWorkspaceBinding,
+            Agent,
+        )
+    ]
+    with sqlite_session_factory() as observer_session:
+        for row in (agent, draft, home_snapshot):
+            assert observer_session.get(type(row), row.id) is None
+        assert observer_session.get(Agent, sibling.id) is not None
 
 
 @pytest.mark.parametrize(

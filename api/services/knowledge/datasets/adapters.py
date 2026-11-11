@@ -191,7 +191,7 @@ class SQLAlchemyDatasetOperations:
             )
             if actor_role is None:
                 raise DatasetAccessDeniedError()
-            if query.ids:
+            if query.ids and not query.for_selection:
                 datasets, total = list_visible_datasets_by_ids(
                     session,
                     tenant_id=context.active_workspace_id,
@@ -219,6 +219,8 @@ class SQLAlchemyDatasetOperations:
                     page=page,
                     per_page=limit,
                     creator_ids=query.creator_ids,
+                    for_selection=query.for_selection,
+                    dataset_ids=query.ids or None,
                 )
             data = load_dataset_details(datasets, session=session)
             partial_ids = [item["id"] for item in data if item["permission"] == "partial_members"]
@@ -243,7 +245,7 @@ class SQLAlchemyDatasetOperations:
                 ).model_dump(mode="json")
             return {
                 "data": data,
-                "has_more": not query.ids and page * limit < total,
+                "has_more": (query.for_selection or not query.ids) and page * limit < total,
                 "total": total,
                 "page": page,
                 "limit": limit,

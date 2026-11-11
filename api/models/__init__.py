@@ -173,6 +173,7 @@ from .model import (
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
 from .onboarding import AccountStepByStepTourState
+from .personal_access_token import PersonalAccessToken
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -383,6 +384,7 @@ __all__ = [
     "OAuthAccessToken",
     "OperationLog",
     "PermissionEnum",
+    "PersonalAccessToken",
     "PinnedConversation",
     "Provider",
     "ProviderModel",

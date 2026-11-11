@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
@@ -18,7 +19,9 @@ from models.enums import DataSourceType, DocumentCreatedFrom
 
 
 class _ImmediateThread:
-    def __init__(self, target, args=(), kwargs=None):
+    def __init__(
+        self, target: Callable[..., object], args: tuple[()] = (), kwargs: dict[str, object] | None = None
+    ) -> None:
         self._target = target
         self._args = args
         self._kwargs = kwargs or {}
@@ -74,7 +77,7 @@ class TestQAIndexProcessor:
         )
 
     @pytest.fixture
-    def process_rule(self) -> dict:
+    def process_rule(self) -> dict[str, object]:
         return {
             "mode": "custom",
             "rules": {"segmentation": {"max_tokens": 256, "chunk_overlap": 10, "separator": "\n"}},
@@ -107,7 +110,7 @@ class TestQAIndexProcessor:
             )
 
     def test_transform_preview_calls_formatter_once(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
         session = sqlite_session
         document = Document(page_content="raw text", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
@@ -115,8 +118,12 @@ class TestQAIndexProcessor:
         splitter = _StaticSplitter([split_node])
 
         def _append_document(
-            flask_app: Flask, tenant_id, document_node, all_qa_documents: list[Document], document_language
-        ):
+            flask_app: Flask,
+            tenant_id: str,
+            document_node: Document,
+            all_qa_documents: list[Document],
+            document_language: str,
+        ) -> None:
             all_qa_documents.append(Document(page_content="Q1", metadata={"answer": "A1"}))
 
         with (
@@ -153,7 +160,7 @@ class TestQAIndexProcessor:
         mock_format.assert_called_once()
 
     def test_transform_non_preview_uses_thread_batches(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
         session = sqlite_session
         documents = [
@@ -163,7 +170,13 @@ class TestQAIndexProcessor:
         split_node = Document(page_content="question", metadata={})
         splitter = _StaticSplitter([split_node])
 
-        def _append_document(flask_app: Flask, tenant_id, document_node, all_qa_documents, document_language):
+        def _append_document(
+            flask_app: Flask,
+            tenant_id: str,
+            document_node: Document,
+            all_qa_documents: list[Document],
+            document_language: str,
+        ) -> None:
             all_qa_documents.append(Document(page_content=f"Q-{document_node.page_content}", metadata={"answer": "A"}))
 
         with (
@@ -394,7 +407,7 @@ class TestQAIndexProcessor:
             is preview_items
         )
 
-    def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app) -> None:
+    def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app: Flask) -> None:
         all_qa_documents: list[Document] = []
         blank_document = Document(page_content="   ", metadata={})
 
@@ -403,7 +416,7 @@ class TestQAIndexProcessor:
         assert all_qa_documents == []
 
     def test_format_qa_document_builds_question_answer_documents(
-        self, processor: QAIndexProcessor, fake_flask_app
+        self, processor: QAIndexProcessor, fake_flask_app: Flask
     ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
@@ -425,7 +438,7 @@ class TestQAIndexProcessor:
         assert all_qa_documents[1].metadata["answer"] == "Coverage."
 
     def test_format_qa_document_logs_errors(
-        self, processor: QAIndexProcessor, fake_flask_app, caplog: pytest.LogCaptureFixture
+        self, processor: QAIndexProcessor, fake_flask_app: Flask, caplog: pytest.LogCaptureFixture
     ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})

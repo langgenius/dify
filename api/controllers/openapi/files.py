@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask_restx import Resource
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._files import end_read_transaction, upload
@@ -37,6 +38,7 @@ class AppFileUploadApi(Resource):
     )
     @endpoint(
         op="upload.console_app.file",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Upload a file and get a file id for later runs",
         examples=(

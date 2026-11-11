@@ -2,7 +2,7 @@ import re
 import tempfile
 from pathlib import Path
 from typing import Literal, overload
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 from configs import dify_config
 from core.file import remote_fetcher
@@ -49,7 +49,10 @@ class ExtractProcessor:
         response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            suffix = Path(url).suffix
+            # Derive the suffix from the URL path only: query strings and fragments
+            # (e.g. "?token=..." / "#page=2") are not part of the file name and
+            # would otherwise leak into the suffix and misroute the extractor.
+            suffix = Path(urlsplit(url).path).suffix
             if not suffix and suffix != ".":
                 # get content-type
                 content_type = response.headers.get("Content-Type")

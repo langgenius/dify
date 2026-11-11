@@ -4,7 +4,7 @@ import json
 import logging
 import queue
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
@@ -13,7 +13,9 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
+from flask import Flask
 from pydantic import BaseModel
+from redis import Redis
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -33,7 +35,10 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.app.layers.trigger_post_layer import TriggerPostLayer
+from enums import DeploymentEdition
 from enums.creator import CreatorUserRole
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
@@ -65,6 +70,29 @@ from tasks.app_generate.workflow_execute_task import (
     _resume_app_execution,
     _resume_workflow,
 )
+
+
+@pytest.fixture
+def trigger_execution_services(app: Flask, sqlite_session_factory: sessionmaker[Session]) -> Iterator[None]:
+    redis = RedisClientWrapper()
+    client = Redis()
+    redis.initialize(client)
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+    previous = app.extensions.get("application_services")
+    app.extensions["application_services"] = services
+    try:
+        yield
+    finally:
+        client.close()
+        if previous is None:
+            app.extensions.pop("application_services")
+        else:
+            app.extensions["application_services"] = previous
 
 
 class _StreamEventModel(BaseModel):
@@ -1391,6 +1419,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
         "user_id",
     ],
 )
+@pytest.mark.usefixtures("trigger_execution_services")
 def test_resume_recovers_legacy_task_before_claiming_pause(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,

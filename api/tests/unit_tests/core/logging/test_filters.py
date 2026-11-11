@@ -2,6 +2,8 @@
 
 import io
 import logging
+from collections.abc import Iterator
+from logging import LogRecord
 from unittest import mock
 
 import pytest
@@ -9,9 +11,18 @@ from opentelemetry.context import Context, attach, detach
 from opentelemetry.trace import NonRecordingSpan, SpanContext, use_span
 
 
+class _LogRecord(LogRecord):
+    trace_id: str
+    span_id: str
+    req_id: str
+    tenant_id: str
+    user_id: str
+    user_type: str
+
+
 @pytest.fixture
-def log_record():
-    return logging.LogRecord(
+def log_record() -> _LogRecord:
+    return _LogRecord(
         name="test",
         level=logging.INFO,
         pathname="",
@@ -23,7 +34,7 @@ def log_record():
 
 
 @pytest.fixture(autouse=True)
-def _reset_logging_context():
+def _reset_logging_context() -> Iterator[None]:
     from core.logging.context import clear_request_context
 
     clear_request_context()
@@ -32,7 +43,7 @@ def _reset_logging_context():
 
 
 class TestTraceContextFilter:
-    def test_sets_empty_trace_id_without_context(self, log_record):
+    def test_sets_empty_trace_id_without_context(self, log_record: _LogRecord) -> None:
         from core.logging.context import clear_request_context
         from core.logging.filters import TraceContextFilter
 
@@ -54,7 +65,7 @@ class TestTraceContextFilter:
         assert log_record.trace_id == ""
         assert log_record.req_id == ""
 
-    def test_sets_trace_id_from_context(self, log_record):
+    def test_sets_trace_id_from_context(self, log_record: _LogRecord) -> None:
         """Test that trace_id and req_id are set from ContextVar when initialized."""
         from core.logging.context import init_request_context
         from core.logging.filters import TraceContextFilter
@@ -71,14 +82,14 @@ class TestTraceContextFilter:
         assert log_record.req_id != ""
         assert len(log_record.req_id) == 10
 
-    def test_filter_always_returns_true(self, log_record):
+    def test_filter_always_returns_true(self, log_record: _LogRecord) -> None:
         from core.logging.filters import TraceContextFilter
 
         filter = TraceContextFilter()
         result = filter.filter(log_record)
         assert result is True
 
-    def test_sets_trace_id_from_otel_when_available(self, log_record):
+    def test_sets_trace_id_from_otel_when_available(self, log_record: _LogRecord) -> None:
         from core.logging.filters import TraceContextFilter
 
         span = NonRecordingSpan(
@@ -96,7 +107,7 @@ class TestTraceContextFilter:
             assert log_record.span_id == "051581bf3bb55c45"
 
     @pytest.mark.parametrize(("trace_id", "span_id"), [(0, 1), (1, 0)])
-    def test_otel_context_invalid_ids(self, log_record, trace_id, span_id):
+    def test_otel_context_invalid_ids(self, log_record: _LogRecord, trace_id: int, span_id: int) -> None:
         from core.logging.filters import TraceContextFilter
 
         context = SpanContext(trace_id=trace_id, span_id=span_id, is_remote=False)
@@ -107,7 +118,7 @@ class TestTraceContextFilter:
         assert log_record.trace_id == ""
         assert log_record.span_id == ""
 
-    def test_otel_context_span_none(self, log_record):
+    def test_otel_context_span_none(self, log_record: _LogRecord) -> None:
         from core.logging.filters import TraceContextFilter
 
         with (
@@ -118,7 +129,7 @@ class TestTraceContextFilter:
             filter.filter(log_record)
             assert log_record.trace_id == ""
 
-    def test_otel_context_exception(self, log_record):
+    def test_otel_context_exception(self, log_record: _LogRecord) -> None:
         from core.logging.filters import TraceContextFilter
 
         # Trigger exception in OTEL block
@@ -132,7 +143,7 @@ class TestTraceContextFilter:
 
 
 class TestIdentityContextFilter:
-    def test_sets_empty_identity_without_request_context(self, log_record):
+    def test_sets_empty_identity_without_request_context(self, log_record: _LogRecord) -> None:
         from core.logging.context import clear_request_context
         from core.logging.filters import IdentityContextFilter
 
@@ -145,14 +156,14 @@ class TestIdentityContextFilter:
         assert log_record.user_id == ""
         assert log_record.user_type == ""
 
-    def test_filter_always_returns_true(self, log_record):
+    def test_filter_always_returns_true(self, log_record: _LogRecord) -> None:
         from core.logging.filters import IdentityContextFilter
 
         filter = IdentityContextFilter()
         result = filter.filter(log_record)
         assert result is True
 
-    def test_uses_explicit_identity_context_without_flask_context(self, log_record):
+    def test_uses_explicit_identity_context_without_flask_context(self, log_record: _LogRecord) -> None:
         from core.logging.context import set_identity_context
         from core.logging.filters import IdentityContextFilter
 
@@ -165,7 +176,7 @@ class TestIdentityContextFilter:
         assert log_record.user_id == "end_user_id"
         assert log_record.user_type == "end_user"
 
-    def test_does_not_trigger_flask_login_request_loader(self, log_record):
+    def test_does_not_trigger_flask_login_request_loader(self, log_record: _LogRecord) -> None:
         from flask import Flask
         from flask_login import LoginManager
 
@@ -176,7 +187,7 @@ class TestIdentityContextFilter:
         app.secret_key = "test"
         login_manager = LoginManager(app)
 
-        def request_loader(_request):
+        def request_loader(_request: object) -> None:
             pytest.fail("Logging must not invoke authentication")
 
         login_manager.request_loader(request_loader)
@@ -193,7 +204,7 @@ class TestIdentityContextFilter:
         assert log_record.user_id == ""
         assert log_record.user_type == ""
 
-    def test_ended_otel_span_warning_does_not_trigger_request_loader(self):
+    def test_ended_otel_span_warning_does_not_trigger_request_loader(self) -> None:
         from flask import Flask, g
         from flask_login import LoginManager
         from opentelemetry import trace
@@ -206,7 +217,7 @@ class TestIdentityContextFilter:
         app.secret_key = "test"
         login_manager = LoginManager(app)
 
-        def request_loader(_request):
+        def request_loader(_request: object) -> None:
             pytest.fail("Logging must not invoke authentication")
 
         login_manager.request_loader(request_loader)

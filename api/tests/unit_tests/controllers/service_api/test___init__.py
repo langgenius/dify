@@ -1170,3 +1170,22 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(exported_
         "source",
         "version",
     }
+
+
+@pytest.mark.parametrize("surface", ["console", "service"])
+def test_retrieval_attachment_schema_uses_uuid_and_preserves_image_only_query(
+    openapi_json: OpenAPIJSONLoader, surface: str
+) -> None:
+    from controllers.console import bp as console_bp
+    from controllers.service_api import bp as service_bp
+
+    bp, route = (console_bp, "/console/api/openapi.json") if surface == "console" else (service_bp, "/v1/openapi.json")
+    document = json.loads(openapi_json(bp, route, True))
+    schema = document["components"]["schemas"]["HitTestingPayload"]
+    assert "attachment_ids" not in schema.get("required", [])
+    assert "query" in schema["required"]
+    assert schema["properties"]["query"].get("minLength", 0) == 0
+    alternatives = schema["properties"]["attachment_ids"]["anyOf"]
+    assert {variant["type"] for variant in alternatives} == {"array", "null"}
+    items = next(variant["items"] for variant in alternatives if variant["type"] == "array")
+    assert items == {"type": "string", "format": "uuid"}

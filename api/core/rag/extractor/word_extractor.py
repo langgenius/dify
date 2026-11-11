@@ -3,12 +3,12 @@
 Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
-import inspect
 import logging
 import mimetypes
 import os
 import re
 import tempfile
+from contextlib import closing
 from typing import override
 from urllib.parse import urlparse
 
@@ -22,6 +22,7 @@ from docx.text.run import Run
 from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
+from libs.http_headers import content_type_media_type
 from services.extraction.contracts import ExtractedImage, ImageWriter
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,10 @@ class WordExtractor(BaseExtractor):
         *,
         image_writer: ImageWriter | None = None,
     ):
-        """Initialize with file path."""
+        """Initialize with a local file or URL; close downloads before reopening them.
+
+        Failed setup closes the response and removes any owned temporary file.
+        """
         self._closed = False
         self.file_path = file_path
         self._image_writer = image_writer
@@ -61,33 +65,35 @@ class WordExtractor(BaseExtractor):
                 raise ValueError(f"Check the url of your file; returned status code {response.status_code}")
 
             self.web_path = self.file_path
-            # TODO: use a better way to handle the file
-            self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
             try:
-                self.temp_file.write(response.content)
-                self.temp_file.flush()
-            finally:
-                response.close()
-            self.file_path = self.temp_file.name
+                with closing(response), tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    self.temp_file_path = temp_file.name
+                    temp_file.write(response.content)
+            except Exception:
+                self.close()
+                raise
+            self.file_path = self.temp_file_path
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
     def close(self) -> None:
-        """Best-effort cleanup for downloaded temporary files."""
+        """Remove an owned temporary path once, tolerating missing files.
+
+        Local input files are never removed. Other cleanup errors are logged
+        and suppressed so cleanup preserves any original extraction failure.
+        """
         if getattr(self, "_closed", False):
             return
 
         self._closed = True
-        temp_file = getattr(self, "temp_file", None)
-        if temp_file is None:
+        temp_file_path = getattr(self, "temp_file_path", None)
+        if temp_file_path is None:
             return
 
         try:
-            close_result = temp_file.close()
-            if inspect.isawaitable(close_result):
-                close_awaitable = getattr(close_result, "close", None)
-                if callable(close_awaitable):
-                    close_awaitable()
+            os.unlink(temp_file_path)
+        except FileNotFoundError:
+            pass
         except Exception:
             logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
 
@@ -129,7 +135,7 @@ class WordExtractor(BaseExtractor):
                         continue
                     try:
                         if response.status_code == 200:
-                            mime_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
+                            mime_type = content_type_media_type(response.headers.get("Content-Type", ""))
                             image_ext = mimetypes.guess_extension(mime_type)
                             if image_ext is None:
                                 continue

@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy import func, select, tuple_
@@ -113,14 +115,26 @@ def lock_dataset_row_for_child_append(session: Session, *, tenant_id: str, datas
 
 
 def get_query_upload_files(query: DatasetQuery, file_ids: set[str], *, session: Session) -> dict[str, UploadFile]:
-    if not file_ids:
+    """Resolve historical file references within the dataset's tenant.
+
+    Accept raw historical IDs, ignoring invalid UUIDs before querying. Return
+    found files keyed by the original IDs, including noncanonical UUID aliases.
+    Use the caller's session without committing, rolling back, or closing it;
+    database failures propagate rather than being treated as missing files.
+    """
+    normalized_ids: dict[str, str] = {}
+    for file_id in file_ids:
+        with suppress(ValueError):
+            normalized_ids[file_id] = str(UUID(file_id))
+    if not normalized_ids:
         return {}
     rows = session.scalars(
         select(UploadFile)
         .join(Dataset, Dataset.tenant_id == UploadFile.tenant_id)
-        .where(Dataset.id == query.dataset_id, UploadFile.id.in_(file_ids))
+        .where(Dataset.id == query.dataset_id, UploadFile.id.in_(set(normalized_ids.values())))
     ).all()
-    return {file.id: file for file in rows}
+    files = {file.id: file for file in rows}
+    return {original: files[normalized] for original, normalized in normalized_ids.items() if normalized in files}
 
 
 def get_dataset_keyword_table(
@@ -566,6 +580,8 @@ def list_visible_datasets(
     page: int,
     per_page: int,
     creator_ids: Sequence[str] = (),
+    for_selection: bool = False,
+    dataset_ids: Sequence[str] | None = None,
 ) -> tuple[list[Dataset], int]:
     """List datasets using access decisions already resolved by the application adapter."""
 
@@ -586,8 +602,23 @@ def list_visible_datasets(
         include_all=include_all,
     )
 
+    if dataset_ids is not None:
+        statement = statement.where(Dataset.id.in_(dataset_ids))
+    if for_selection:
+        statement = statement.order_by(None).order_by(
+            Dataset.name.collate(
+                {"sqlite": "BINARY", "postgresql": "C", "mysql": "utf8mb4_bin"}[session.get_bind().dialect.name]
+            ),
+            Dataset.id,
+        )
     if keyword:
-        statement = statement.where(Dataset.name.ilike(f"%{escape_like_pattern(keyword)}%", escape="\\"))
+        pattern = f"%{escape_like_pattern(keyword)}%"
+        name_filter = Dataset.name.ilike(pattern, escape="\\")
+        statement = statement.where(
+            sa.or_(name_filter, sa.cast(Dataset.id, sa.String).ilike(pattern, escape="\\"))
+            if for_selection
+            else name_filter
+        )
     if creator_ids:
         statement = statement.where(Dataset.created_by.in_(tuple(dict.fromkeys(creator_ids))))
     if tag_target_ids is not None:

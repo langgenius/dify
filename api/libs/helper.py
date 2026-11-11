@@ -233,7 +233,10 @@ def current_timestamp() -> int:
 
 def email(email):
     # Define a regex pattern for email addresses
-    pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
+    # A local part is a dot-atom: dots may separate atoms but may not lead,
+    # trail, or repeat. Folding `.` into the atom character class allowed all
+    # three malformed forms through.
+    pattern = r"^[\w!#$%&'*+\-/=?^_`{|}~]+(?:\.[\w!#$%&'*+\-/=?^_`{|}~]+)*@([\w-]+\.)+[\w-]{2,}$"
     # Reject trailing newlines as well as other unconsumed input.
     if re.fullmatch(pattern, email) is not None:
         return email
