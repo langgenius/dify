@@ -25,7 +25,8 @@ import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { useFileScanProviderTypeLabel } from './provider-types'
+import { ProviderTypeIcon } from './provider-type-icon'
+import { isFileScanProviderType, useFileScanProviderTypeLabel } from './provider-types'
 import { FileScanProviderDialog } from './scanner-dialog'
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; provider: FileScanProviderResponse } | null
@@ -64,6 +65,11 @@ function ScannerItem({
   return (
     <li className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-4 py-3 shadow-xs">
       <div className="flex items-center gap-3">
+        {isFileScanProviderType(provider.provider_type) && (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default-dodge">
+            <ProviderTypeIcon type={provider.provider_type} />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span id={nameId} className="truncate system-sm-semibold text-text-primary">
