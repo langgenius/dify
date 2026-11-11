@@ -48,6 +48,8 @@ overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   # Upgrade public matcher APIs; glob 13 still needs RegExp internals until its v14 upgrade.
   '@eslint/config-array>minimatch': 11.0.7
+  # Keep docgen's provenance-verified release while updating its glob implementation.
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>glob': 14.0.4
   # Keep Streamdown's math renderer aligned with the application's KaTeX stylesheet.
   '@streamdown/math@1.0.3>katex': 0.19.1
   '@tsslint/cli>minimatch': 11.0.7
