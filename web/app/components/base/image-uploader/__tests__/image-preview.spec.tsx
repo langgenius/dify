@@ -219,7 +219,7 @@ it.each([
     ]),
   )
   const blob = createObjectURL.mock.calls[0]?.[0]
-  if (!(blob instanceof Blob)) throw new Error('Expected downloaded image bytes')
+  if (!(blob instanceof Blob)) throw new TypeError('Expected downloaded image bytes')
   expect(blob.type).toBe('image/png')
   expect(await blob.text()).toBe('image')
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:download-image')
