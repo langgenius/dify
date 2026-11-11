@@ -48,6 +48,8 @@ packages:
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  # Keep Streamdown's math renderer aligned with the application's KaTeX stylesheet.
+  '@streamdown/math@1.0.3>katex': 0.19.1
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -57,6 +59,7 @@ overrides:
   js-yaml@<=4.3.1: ^4.3.2
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
+  'rehype-katex@7.0.1>katex': 0.19.1
   rollup@>=4.0.0 <4.59.0: 4.63.5
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
@@ -217,7 +220,7 @@ catalog:
   js-yaml: 5.5.0
   jsonc-eslint-parser: 3.3.0
   jsonschema: 1.5.0
-  katex: 0.18.10
+  katex: 0.19.1
   knip: 6.45.0
   ky: 2.2.0
   lexical: 0.47.0
