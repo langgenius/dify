@@ -1,8 +1,7 @@
 'use client'
 
-import type { Resource } from 'i18next'
-import { use, useEffect, useState } from 'react'
-import { I18nContext } from 'react-i18next'
+import type { i18n, Resource } from 'i18next'
+import { useEffect, useState } from 'react'
 import {
   createResourceCollector,
   serializeResourceUpdate,
@@ -13,13 +12,14 @@ import { useServerInsertedHTML } from '@/next/navigation'
 export function I18nResourceStream({
   id,
   initial,
+  i18n,
   nonce,
 }: {
   id: string
   initial: Resource
+  i18n: i18n
   nonce?: string
 }) {
-  const { i18n } = use(I18nContext)
   const [collect] = useState(() => createResourceCollector(i18n, initial))
   useServerInsertedHTML(() => {
     const resources = collect()

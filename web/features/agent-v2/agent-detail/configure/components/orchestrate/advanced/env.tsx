@@ -34,13 +34,13 @@ import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { getEnvImportPlatform, parseEnvImport } from './env-utils'
 
-const scopeLabelKeys: Record<
-  EnvScope,
-  I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>
-> = {
+const scopeLabelKeys = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
   secret: 'agentDetail.configure.advancedSettings.envEditor.scopeSecret',
-}
+} as const satisfies Record<
+  EnvScope,
+  I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>
+>
 
 const envScopeOptions: EnvScope[] = ['secret', 'plain']
 
@@ -143,7 +143,7 @@ function EnvEditorCell({
   return (
     <Cell
       scope={header ? 'col' : undefined}
-      className="h-7 min-w-0 border-r border-divider-subtle p-0 text-left align-middle font-normal last:border-r-0"
+      className="h-7 min-w-0 border-e border-divider-subtle p-0 text-start align-middle font-normal last:border-e-0"
     >
       <div className={cn('flex h-full min-h-7 min-w-0 items-center', className)}>{children}</div>
     </Cell>
@@ -268,7 +268,7 @@ function EnvEditorRow({
                 <IconButton
                   aria-label={revealLabel}
                   size="sm"
-                  className="mr-2 ml-auto shrink-0"
+                  className="ms-auto me-2 shrink-0"
                   onClick={() => setIsValueRevealed((revealed) => !revealed)}
                 >
                   <span
@@ -350,7 +350,7 @@ function EnvEditorDraftRow({
         type="button"
         aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
         onClick={() => onAdd({ focusField: 'value' })}
-        className="flex h-full w-full min-w-0 items-center px-3 text-left system-xs-regular text-components-input-text-placeholder hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="flex h-full w-full min-w-0 items-center px-3 text-start system-xs-regular text-components-input-text-placeholder hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
         {valuePlaceholder}
       </button>

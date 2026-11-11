@@ -5885,11 +5885,6 @@
       "count": 1
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/advanced/env.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
