@@ -31,7 +31,7 @@ def sqlite_session_factory(_unit_test_engine) -> Generator[sessionmaker[Session]
     try:
         yield factory
     finally:
-        Base.metadata.drop_all(_unit_test_engine, tables=reversed(tables))
+        Base.metadata.drop_all(_unit_test_engine, tables=list(reversed(tables)))
 
 
 @pytest.fixture
