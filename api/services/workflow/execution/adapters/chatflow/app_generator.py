@@ -38,7 +38,7 @@ from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.app.file_input_defaults import grant_file_default_access
-from services.app.generation.input_adapter import AppInputAdapter
+from services.app.generation.input_adapter import AppInputAdapter, noop_restore_file_access
 from services.app.generation.ports import (
     ConversationSnapshot,
     MessageSnapshot,
@@ -284,9 +284,13 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         graph_runtime_state: RuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ):
         """
         Resume a paused advanced chat execution.
+
+        Restore committed HITL file grants in the new execution scope before
+        copying worker contexts; the default callback leaves grants unchanged.
 
         ``trace_scope`` is excluded from generate-entity serialization. Recreate
         it from the admitted app and saved correlation before resuming persistence.
@@ -317,6 +321,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             pause_state_config=pause_state_config,
             graph_runtime_state=graph_runtime_state,
             response_stream_filter=response_stream_filter,
+            restore_file_access=restore_file_access,
         )
 
     def single_iteration_generate(
@@ -500,9 +505,13 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         graph_runtime_state: RuntimeState | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
+
+        HITL submissions must be committed before restoring their EndUser file
+        grants, which occurs before worker and response contexts are captured.
 
         :param workflow: Workflow
         :param user: account or end user
@@ -519,6 +528,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             invoke_from=invoke_from,
         ):
             grant_file_default_access(application_generate_entity.app_config.variables)
+            restore_file_access()
             is_first_conversation = conversation is None
 
             if conversation is None or message is None:
