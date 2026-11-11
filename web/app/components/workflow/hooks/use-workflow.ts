@@ -1,7 +1,7 @@
 import type { Connection } from 'reactflow'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
-import type { BlockEnum, Edge, Node, ValueSelector } from '../types'
+import type { Edge, Node, ValueSelector } from '../types'
 import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { getIncomers, getOutgoers } from 'reactflow'
@@ -16,12 +16,18 @@ import {
 } from '../nodes/_base/components/variable/utils'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { useStore, useWorkflowStore } from '../store'
-import { WorkflowRunningStatus } from '../types'
+import { BlockEnum, WorkflowRunningStatus } from '../types'
 import { getNodeCatalogType } from '../utils'
 import { getWorkflowEntryNode, isWorkflowEntryNode } from '../utils/workflow-entry'
 import { useAvailableBlocks } from './use-available-blocks'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesMetaData } from './use-nodes-meta-data'
+
+const includesConnectionBlock = (blocks: readonly BlockEnum[], type: BlockEnum) =>
+  blocks.includes(type) ||
+  // The add-node catalog hides legacy Human Input when V2 is enabled.
+  // Existing legacy nodes still use the same connection rules as V2.
+  (type === BlockEnum.HumanInput && blocks.includes(BlockEnum.HumanInputV2))
 
 export const useWorkflow = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
@@ -380,9 +386,11 @@ export const useWorkflow = () => {
           !!targetNode.parentId,
         ).availablePrevBlocks
 
-        if (!sourceNodeAvailableNextNodes.includes(targetNodeCatalogType)) return false
+        if (!includesConnectionBlock(sourceNodeAvailableNextNodes, targetNodeCatalogType))
+          return false
 
-        if (!targetNodeAvailablePrevNodes.includes(sourceNodeCatalogType)) return false
+        if (!includesConnectionBlock(targetNodeAvailablePrevNodes, sourceNodeCatalogType))
+          return false
       }
 
       const hasCycle = (node: Node, visited = new Set()) => {

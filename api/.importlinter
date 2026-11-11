@@ -1317,6 +1317,35 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:agent-app-access-service-boundary]
+name = Agent App access services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app.agent_app_service
+    services.app.agent_app_contracts
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:console-agent-api-access-boundary]
+name = Agent API access controller reaches persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.agent.api_access
+forbidden_modules =
+    extensions.ext_database
+    models.model
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:console-app-trigger-controller-boundary]
 name = Console app trigger controller reaches persistence only through the composition root
 type = forbidden
