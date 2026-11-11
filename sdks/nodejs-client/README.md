@@ -95,6 +95,7 @@ await workspaceClient.getModelsByType('text-embedding')
 
 Notes:
 
+- For attachment-only retrieval testing, use `kbClient.hitTesting(datasetId, { query: '', attachment_ids: [fileId] })`.
 - App endpoints use an app API token; knowledge base and workspace endpoints use a dataset API token.
 - Chat/completion require a stable `user` identifier in the request payload.
 - Pagination cursors for `getConversations`, `getConversationMessages`, and `getConversationVariables` may be omitted, `null`, or `''` to request the first page.
