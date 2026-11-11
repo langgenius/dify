@@ -13,10 +13,11 @@ import dataclasses
 import threading
 import time
 from collections.abc import Callable, Generator
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from redis import Redis, RedisCluster
+from redis import Redis
 
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.pubsub_channel import (
@@ -35,21 +36,23 @@ class TestBroadcastChannel:
     """Test cases for the main BroadcastChannel class."""
 
     @pytest.fixture
-    def mock_redis_client(self) -> FakeRedisClient:
-        """Create a fake Redis client for testing."""
-        return FakeRedisClient()
+    def mock_redis_client(self) -> MagicMock:
+        """Create a mock Redis client for testing."""
+        client = MagicMock()
+        client.pubsub.return_value = MagicMock()
+        return client
 
     @pytest.fixture
-    def broadcast_channel(self, mock_redis_client: FakeRedisClient) -> RedisBroadcastChannel:
+    def broadcast_channel(self, mock_redis_client: MagicMock) -> RedisBroadcastChannel:
         """Create a BroadcastChannel instance with mock Redis client (regular)."""
         return RedisBroadcastChannel(mock_redis_client)
 
     @pytest.fixture
-    def sharded_broadcast_channel(self, mock_redis_client: FakeRedisClient) -> ShardedRedisBroadcastChannel:
+    def sharded_broadcast_channel(self, mock_redis_client: MagicMock) -> ShardedRedisBroadcastChannel:
         """Create a ShardedRedisBroadcastChannel instance with mock Redis client."""
         return ShardedRedisBroadcastChannel(mock_redis_client)
 
-    def test_topic_creation(self, broadcast_channel: RedisBroadcastChannel, mock_redis_client: FakeRedisClient) -> None:
+    def test_topic_creation(self, broadcast_channel: RedisBroadcastChannel, mock_redis_client: MagicMock) -> None:
         """Test that topic() method returns a Topic instance with correct parameters."""
         topic_name = "test-topic"
         topic = broadcast_channel.topic(topic_name)
@@ -68,7 +71,7 @@ class TestBroadcastChannel:
         assert topic2._topic == "topic2"
 
     def test_sharded_topic_creation(
-        self, sharded_broadcast_channel: ShardedRedisBroadcastChannel, mock_redis_client: FakeRedisClient
+        self, sharded_broadcast_channel: ShardedRedisBroadcastChannel, mock_redis_client: MagicMock
     ) -> None:
         """Test that topic() on ShardedRedisBroadcastChannel returns a ShardedTopic instance with correct parameters."""
         topic_name = "test-sharded-topic"
@@ -104,12 +107,14 @@ class TestTopic:
     """Test cases for the Topic class."""
 
     @pytest.fixture
-    def mock_redis_client(self) -> FakeRedisClient:
-        """Create a fake Redis client for testing."""
-        return FakeRedisClient()
+    def mock_redis_client(self) -> MagicMock:
+        """Create a mock Redis client for testing."""
+        client = MagicMock()
+        client.pubsub.return_value = MagicMock()
+        return client
 
     @pytest.fixture
-    def topic(self, mock_redis_client: FakeRedisClient) -> Topic:
+    def topic(self, mock_redis_client: MagicMock) -> Topic:
         """Create a Topic instance for testing."""
         return Topic(mock_redis_client, "test-topic")
 
@@ -127,7 +132,7 @@ class TestTopic:
         # Subscriber is a Protocol, check duck typing instead
         assert hasattr(subscriber, "subscribe")
 
-    def test_publish_calls_redis_publish(self, topic: Topic, mock_redis_client: FakeRedisClient) -> None:
+    def test_publish_calls_redis_publish(self, topic: Topic, mock_redis_client: MagicMock) -> None:
         """Test that publish() calls Redis PUBLISH with correct parameters."""
         payload = b"test message"
         topic.publish(payload)
@@ -135,7 +140,7 @@ class TestTopic:
         mock_redis_client.publish.assert_called_once_with("test-topic", payload)
 
     def test_publish_prefixes_regular_topic(
-        self, mock_redis_client: FakeRedisClient, config_overrides: Callable[..., None]
+        self, mock_redis_client: MagicMock, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         topic = Topic(mock_redis_client, "test-topic")
@@ -144,7 +149,7 @@ class TestTopic:
         mock_redis_client.publish.assert_called_once_with("enterprise-a:test-topic", b"test message")
 
     def test_subscribe_prefixes_regular_topic(
-        self, mock_redis_client: FakeRedisClient, config_overrides: Callable[..., None]
+        self, mock_redis_client: MagicMock, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         topic = Topic(mock_redis_client, "test-topic")
@@ -161,12 +166,14 @@ class TestShardedTopic:
     """Test cases for the ShardedTopic class."""
 
     @pytest.fixture
-    def mock_redis_client(self) -> FakeRedisClient:
-        """Create a fake Redis client for testing."""
-        return FakeRedisClient()
+    def mock_redis_client(self) -> MagicMock:
+        """Create a mock Redis client for testing."""
+        client = MagicMock()
+        client.pubsub.return_value = MagicMock()
+        return client
 
     @pytest.fixture
-    def sharded_topic(self, mock_redis_client: FakeRedisClient) -> ShardedTopic:
+    def sharded_topic(self, mock_redis_client: MagicMock) -> ShardedTopic:
         """Create a ShardedTopic instance for testing."""
         return ShardedTopic(mock_redis_client, "test-sharded-topic")
 
@@ -184,9 +191,7 @@ class TestShardedTopic:
         # Subscriber is a Protocol, check duck typing instead
         assert hasattr(subscriber, "subscribe")
 
-    def test_publish_calls_redis_spublish(
-        self, sharded_topic: ShardedTopic, mock_redis_client: FakeRedisClient
-    ) -> None:
+    def test_publish_calls_redis_spublish(self, sharded_topic: ShardedTopic, mock_redis_client: MagicMock) -> None:
         """Test that publish() calls Redis SPUBLISH with correct parameters."""
         payload = b"test sharded message"
         sharded_topic.publish(payload)
@@ -194,7 +199,7 @@ class TestShardedTopic:
         mock_redis_client.spublish.assert_called_once_with("test-sharded-topic", payload)
 
     def test_publish_prefixes_sharded_topic(
-        self, mock_redis_client: FakeRedisClient, config_overrides: Callable[..., None]
+        self, mock_redis_client: MagicMock, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
@@ -203,7 +208,7 @@ class TestShardedTopic:
         mock_redis_client.spublish.assert_called_once_with("enterprise-a:test-sharded-topic", b"test sharded message")
 
     def test_subscribe_returns_sharded_subscription(
-        self, sharded_topic: ShardedTopic, mock_redis_client: FakeRedisClient
+        self, sharded_topic: ShardedTopic, mock_redis_client: MagicMock
     ) -> None:
         """Test that subscribe() returns a _RedisShardedSubscription instance."""
         subscription = sharded_topic.subscribe()
@@ -214,7 +219,7 @@ class TestShardedTopic:
         assert subscription._topic == "test-sharded-topic"
 
     def test_subscribe_prefixes_sharded_topic(
-        self, mock_redis_client: FakeRedisClient, config_overrides: Callable[..., None]
+        self, mock_redis_client: MagicMock, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
@@ -239,12 +244,8 @@ class SubscriptionTestCase:
     description: str = ""
 
 
-class FakeRedisClient(Redis):
-    """Minimal fake Redis client for unit tests.
-
-    Subclasses ``Redis`` so it can stand in for a client at call sites without a cast;
-    every command is a ``MagicMock`` and no connection is ever opened.
-    """
+class FakeRedisClient:
+    """Minimal fake Redis client for unit tests."""
 
     def __init__(self) -> None:
         self.publish = MagicMock()
@@ -256,8 +257,9 @@ class TestRedisSubscription:
     """Test cases for the _RedisSubscription class."""
 
     @pytest.fixture
-    def mock_redis_client(self) -> FakeRedisClient:
-        return FakeRedisClient()
+    def mock_redis_client(self) -> MagicMock:
+        client = MagicMock()
+        return client
 
     @pytest.fixture
     def mock_pubsub(self) -> MagicMock:
@@ -270,10 +272,10 @@ class TestRedisSubscription:
         return pubsub
 
     @pytest.fixture
-    def subscription(self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient) -> Generator[_RedisSubscription]:
+    def subscription(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock) -> Generator[_RedisSubscription]:
         """Create a _RedisSubscription instance for testing."""
         subscription = _RedisSubscription(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic="test-topic",
         )
@@ -288,10 +290,10 @@ class TestRedisSubscription:
 
     # ==================== Lifecycle Tests ====================
 
-    def test_subscription_initialization(self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient) -> None:
+    def test_subscription_initialization(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock) -> None:
         """Test that subscription is properly initialized."""
         subscription = _RedisSubscription(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic="test-topic",
         )
@@ -554,11 +556,11 @@ class TestRedisSubscription:
         ],
     )
     def test_subscription_scenarios(
-        self, test_case: SubscriptionTestCase, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient
+        self, test_case: SubscriptionTestCase, mock_pubsub: MagicMock, mock_redis_client: MagicMock
     ) -> None:
         """Test various subscription scenarios using table-driven approach."""
         subscription = _RedisSubscription(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic="test-topic",
         )
@@ -649,7 +651,7 @@ class TestRedisSubscription:
         # Close should still work
         subscription.close()  # Should not raise
 
-    def test_channel_name_variations(self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient) -> None:
+    def test_channel_name_variations(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock) -> None:
         """Test various channel name formats."""
         channel_names = [
             "simple",
@@ -663,7 +665,7 @@ class TestRedisSubscription:
 
         for channel_name in channel_names:
             subscription = _RedisSubscription(
-                client=mock_redis_client,
+                client=cast("Redis[str]", mock_redis_client),
                 pubsub=mock_pubsub,
                 topic=channel_name,
             )
@@ -706,7 +708,7 @@ class TestRedisShardedSubscription:
     ) -> Generator[_RedisShardedSubscription]:
         """Create a _RedisShardedSubscription instance for testing."""
         subscription = _RedisShardedSubscription(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
         )
@@ -728,7 +730,7 @@ class TestRedisShardedSubscription:
     ) -> None:
         """Test that sharded subscription is properly initialized."""
         subscription = _RedisShardedSubscription(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
         )
@@ -909,7 +911,7 @@ class TestRedisShardedSubscription:
     ) -> None:
         """Test that cluster clients use target_node for sharded messages."""
 
-        class DummyRedisCluster(RedisCluster):
+        class DummyRedisCluster:
             def __init__(self) -> None:
                 self.get_node_from_key = MagicMock(return_value="node-1")
 
@@ -917,7 +919,7 @@ class TestRedisShardedSubscription:
 
         client = DummyRedisCluster()
         subscription = _RedisShardedSubscription(
-            client=client,
+            client=cast("Redis[str]", client),
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
         )
@@ -1047,7 +1049,7 @@ class TestRedisShardedSubscription:
     ) -> None:
         """Test various sharded subscription scenarios using table-driven approach."""
         subscription = _RedisShardedSubscription(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic="test-sharded-topic",
         )
@@ -1144,7 +1146,7 @@ class TestRedisShardedSubscription:
 
         for channel_name in channel_names:
             subscription = _RedisShardedSubscription(
-                client=mock_redis_client,
+                client=cast("Redis[str]", mock_redis_client),
                 pubsub=mock_pubsub,
                 topic=channel_name,
             )
@@ -1227,7 +1229,7 @@ class TestRedisSubscriptionCommon:
         subscription_type, subscription_class = subscription_params
         topic_name = f"test-{subscription_type}-topic"
         subscription = subscription_class(
-            client=mock_redis_client,
+            client=cast("Redis[str]", mock_redis_client),
             pubsub=mock_pubsub,
             topic=topic_name,
         )
