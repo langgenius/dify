@@ -49,6 +49,7 @@ class TokenType(StrEnum):
     subject: SubjectType
 
     RESOURCE_ACCESS = ("resource_access", "sk-", SubjectType.RESOURCE_ACCESS)
+    PERSONAL_ACCESS = ("personal_access", "dpat_", SubjectType.ACCOUNT)
     OAUTH_ACCOUNT = ("oauth_account", "dfoa_", SubjectType.ACCOUNT)
     OAUTH_EXTERNAL_SSO = ("oauth_external_sso", "dfoe_", SubjectType.EXTERNAL_SSO)
 
