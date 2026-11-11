@@ -39,6 +39,13 @@ Machine-readable catalog of every op on this surface
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /account
+**Return account details with workspace visibility bounded by PAT scope**
+
+The account snapshot supplies current memberships and the default workspace.
+A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+present only when its workspace remains visible. Non-PAT requests have no
+workspace filter. This handler is read-only and does not change membership.
+
 #### Responses
 
 | Code | Description | Schema |
@@ -2187,6 +2194,20 @@ so an edit made in the same second as the export is not detected.
 | ---- | ----------- | ------ |
 | 200 | Tools | **application/json**: [ToolListResponse](#toollistresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ---

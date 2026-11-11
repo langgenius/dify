@@ -572,15 +572,17 @@ def test_to_schedule_config_should_raise_for_cron_mode_without_expression() -> N
 
 def test_to_schedule_config_should_build_from_visual_mode() -> None:
     # Arrange
-    node_config = {
-        "id": "node-1",
-        "data": {
-            "mode": "visual",
-            "frequency": "daily",
-            "visual_config": {"time": "9:30 AM"},
-            "timezone": "UTC",
-        },
-    }
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate(
+            {
+                "mode": "visual",
+                "frequency": "daily",
+                "visual_config": {"time": "9:30 AM"},
+                "timezone": "UTC",
+            }
+        ),
+    )
 
     # Act
     result = ScheduleService.to_schedule_config(node_config=node_config)

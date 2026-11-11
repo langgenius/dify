@@ -21,7 +21,7 @@ from extensions.application_services.app import AppServices, build_app_services
 from extensions.application_services.rbac import RBACServices
 from extensions.application_services.workflow import build_console_workflow_service
 from extensions.application_services.workflow_variables import build_workflow_variable_service
-from extensions.ext_application_services import _build_oauth_server_service
+from extensions.ext_application_services import _build_oauth_server_service, application_services
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -204,7 +204,7 @@ def harness(
         tool_providers=ToolProviderRepository(sqlite_session_factory),
         workflow_tools=workflow_tools,
         workflow_publisher=build_console_workflow_service(
-            invoke_plugin_event=lambda **_: None,
+            trigger_debug=lambda: application_services().triggers.debug,
             database_client=sqlite_session_factory,
             redis=redis,
             variables=workflow_variables,
