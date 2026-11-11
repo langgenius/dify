@@ -138,9 +138,8 @@ class TestCronCompatibility(unittest.TestCase):
         ]
 
         for expr in invalid_expressions:
-            with self.subTest(expr=expr):
-                with pytest.raises((CroniterBadCronError, ValueError)):
-                    calculate_next_run_at(expr, "UTC", self.base_time)
+            with self.subTest(expr=expr), pytest.raises((CroniterBadCronError, ValueError)):
+                calculate_next_run_at(expr, "UTC", self.base_time)
 
     def test_edge_cases_with_enhanced_syntax(self) -> None:
         """Test edge cases with enhanced syntax."""
@@ -346,9 +345,8 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         ]
 
         for expr in invalid_expressions:
-            with self.subTest(expr=repr(expr)):
-                with pytest.raises((CroniterBadCronError, ValueError, Exception)):
-                    calculate_next_run_at(expr, "UTC", self.base_time)
+            with self.subTest(expr=repr(expr)), pytest.raises((CroniterBadCronError, ValueError, Exception)):
+                calculate_next_run_at(expr, "UTC", self.base_time)
 
         # Note: Empty/whitespace expressions are not tested here as they are
         # not expected in normal usage due to database constraints (nullable=False)
@@ -701,9 +699,8 @@ class TestErrorHandlingEnhanced(unittest.TestCase):
         ]
 
         for expr in invalid_expressions:
-            with self.subTest(expr=expr):
-                with pytest.raises((CroniterBadCronError, ValueError)):
-                    calculate_next_run_at(expr, "UTC", self.base_time)
+            with self.subTest(expr=expr), pytest.raises((CroniterBadCronError, ValueError)):
+                calculate_next_run_at(expr, "UTC", self.base_time)
 
     def test_boundary_values_with_enhanced_syntax(self) -> None:
         """Test boundary values work with enhanced syntax."""

@@ -144,9 +144,9 @@ class TestAgentProviderApi:
                 "services.agent_service.PluginAgentClient.fetch_agent_strategy_provider",
                 side_effect=PluginNotFoundError("Agent provider is not installed"),
             ),
+            pytest.raises(ValueError, match="Agent provider is not installed"),
         ):
-            with pytest.raises(ValueError, match="Agent provider is not installed"):
-                method(api, tenant_id, user, provider_name)
+            method(api, tenant_id, user, provider_name)
 
 
 class TestAgentProviderResponseContract:

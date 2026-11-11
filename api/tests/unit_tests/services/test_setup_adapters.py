@@ -43,9 +43,8 @@ def test_acquire_propagates_distributed_lock_failure(
     assert isinstance(lock_context, Lock)
 
     with patch.object(lock_context, "acquire", side_effect=error), patch.object(lock_context, "release") as release:
-        with pytest.raises(type(error), match=str(error)) as raised:
-            with lock_context:
-                pytest.fail("lock body must not run")
+        with pytest.raises(type(error), match=str(error)) as raised, lock_context:
+            pytest.fail("lock body must not run")
         release.assert_not_called()
 
     assert raised.value is error

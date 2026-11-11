@@ -137,9 +137,8 @@ def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Ce
                 assert message.headers["task"] == task.name
                 assert message.headers["retries"] == 1
                 message.ack()
-            with connection.SimpleQueue("ops_trace") as restored:
-                with pytest.raises(Empty):
-                    restored.get(block=False)
+            with connection.SimpleQueue("ops_trace") as restored, pytest.raises(Empty):
+                restored.get(block=False)
     finally:
         task.pop_request()
 

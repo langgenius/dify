@@ -31,29 +31,31 @@ def test_publisher_preserves_legacy_worker_arguments_and_sends_reservation_in_he
         token="reservation-owner",
     )
     try:
-        with app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), "trigger_refresh_executor") as queue:
+        with (
+            app.connection_for_write() as connection,
+            SimpleQueue(connection.channel(), "trigger_refresh_executor") as queue,
+        ):
+            queue.clear()
+            try:
+                enqueue_subscription_refresh(job)
+                message = queue.get(block=False)
+                assert message.headers["task"] == trigger_subscription_refresh.name
+                assert message.payload[1] == {
+                    "tenant_id": "tenant",
+                    "subscription_id": "subscription",
+                }
+                assert message.headers["reservation_token"] == "reservation-owner"
+                result = legacy_refresh.apply(
+                    args=tuple(message.payload[0]),
+                    kwargs=message.payload[1],
+                    headers=message.headers,
+                    throw=True,
+                )
+                assert result.get() == ("tenant", "subscription")
+                message.ack()
+                assert queue.qsize() == 0
+            finally:
                 queue.clear()
-                try:
-                    enqueue_subscription_refresh(job)
-                    message = queue.get(block=False)
-                    assert message.headers["task"] == trigger_subscription_refresh.name
-                    assert message.payload[1] == {
-                        "tenant_id": "tenant",
-                        "subscription_id": "subscription",
-                    }
-                    assert message.headers["reservation_token"] == "reservation-owner"
-                    result = legacy_refresh.apply(
-                        args=tuple(message.payload[0]),
-                        kwargs=message.payload[1],
-                        headers=message.headers,
-                        throw=True,
-                    )
-                    assert result.get() == ("tenant", "subscription")
-                    message.ack()
-                    assert queue.qsize() == 0
-                finally:
-                    queue.clear()
     finally:
         previous_app.set_current()
         app.close()

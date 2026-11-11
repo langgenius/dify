@@ -192,9 +192,8 @@ class TestEnumText:
             ),
         ]
         for idx, c in enumerate(cases, 1):
-            with pytest.raises(sa_exc.StatementError) as exc:
-                with Session(engine_with_containers) as session:
-                    c.action(session)
+            with pytest.raises(sa_exc.StatementError) as exc, Session(engine_with_containers) as session:
+                c.action(session)
 
             assert isinstance(exc.value.orig, c.exc_type), f"test case {idx} failed, name={c.name}"
 
@@ -207,9 +206,11 @@ class TestEnumText:
             session.execute(sa.text(insertion_sql))
             session.commit()
 
-        with pytest.raises(ValueError, match="'invalid' is not a valid _UserType") as exc:
-            with Session(engine_with_containers) as session:
-                _user = session.scalar(select(_User).where(_User.id == 1).limit(1))
+        with (
+            pytest.raises(ValueError, match="'invalid' is not a valid _UserType") as exc,
+            Session(engine_with_containers) as session,
+        ):
+            _user = session.scalar(select(_User).where(_User.id == 1).limit(1))
 
         assert str(exc.value) == "'invalid' is not a valid _UserType"
 
@@ -225,8 +226,10 @@ class TestEnumText:
             session.commit()
 
         for record_id, legacy_value in enumerate(("text-generation", "embeddings", "reranking"), 1):
-            with pytest.raises(ValueError, match=re.escape(f"'{legacy_value}' is not a valid ModelType")) as exc:
-                with Session(engine_with_containers) as session:
-                    session.scalar(select(_LegacyModelTypeRecord).where(_LegacyModelTypeRecord.id == record_id))
+            with (
+                pytest.raises(ValueError, match=re.escape(f"'{legacy_value}' is not a valid ModelType")) as exc,
+                Session(engine_with_containers) as session,
+            ):
+                session.scalar(select(_LegacyModelTypeRecord).where(_LegacyModelTypeRecord.id == record_id))
 
             assert str(exc.value) == f"'{legacy_value}' is not a valid ModelType"

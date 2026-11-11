@@ -53,25 +53,31 @@ def _upload_file() -> UploadFile:
 
 class TestFileApi:
     def test_no_file_uploaded(self, app: Flask) -> None:
-        with app.test_request_context("/files/upload", method="POST", content_type="multipart/form-data"):
-            with pytest.raises(NoFileUploadedError):
-                FileApi().post(_app_model(), _end_user())
+        with (
+            app.test_request_context("/files/upload", method="POST", content_type="multipart/form-data"),
+            pytest.raises(NoFileUploadedError),
+        ):
+            FileApi().post(_app_model(), _end_user())
 
     def test_too_many_files(self, app: Flask) -> None:
         data = {
             "file": (BytesIO(b"a"), "a.txt"),
             "file2": (BytesIO(b"b"), "b.txt"),
         }
-        with app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"):
+        with (
+            app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"),
+            pytest.raises(TooManyFilesError),
+        ):
             # Now has "file" key but len(request.files) > 1
-            with pytest.raises(TooManyFilesError):
-                FileApi().post(_app_model(), _end_user())
+            FileApi().post(_app_model(), _end_user())
 
     def test_filename_missing(self, app: Flask) -> None:
         data = {"file": (BytesIO(b"content"), "")}
-        with app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"):
-            with pytest.raises(FilenameNotExistsError):
-                FileApi().post(_app_model(), _end_user())
+        with (
+            app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"),
+            pytest.raises(FilenameNotExistsError),
+        ):
+            FileApi().post(_app_model(), _end_user())
 
     @pytest.mark.parametrize(
         ("path", "form_source", "expected_source"),
@@ -148,9 +154,11 @@ class TestFileApi:
         mock_application_services.return_value.files.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"big"), "big.txt")}
-        with app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"):
-            with pytest.raises(expected_error) as raised:
-                FileApi().post(_app_model(), _end_user())
+        with (
+            app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"),
+            pytest.raises(expected_error) as raised,
+        ):
+            FileApi().post(_app_model(), _end_user())
 
         assert raised.value.code == expected_status
         assert raised.value.error_code == expected_code

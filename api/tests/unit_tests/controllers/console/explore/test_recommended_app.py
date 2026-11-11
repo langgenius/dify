@@ -206,9 +206,9 @@ class TestRecommendedAppApi:
                 "application_services",
                 return_value=SimpleNamespace(recommended_app_queries=queries),
             ),
+            pytest.raises(module.RecommendedAppNotFoundError) as exc_info,
         ):
-            with pytest.raises(module.RecommendedAppNotFoundError) as exc_info:
-                method(api, _request_context(), "11111111-1111-1111-1111-111111111111")
+            method(api, _request_context(), "11111111-1111-1111-1111-111111111111")
 
         assert exc_info.value.data == {
             "code": "recommended_app_not_found",

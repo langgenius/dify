@@ -263,14 +263,16 @@ def test_debug_event_cannot_dispatch_subscription_credentials_to_another_provide
     )
 
     def invoke() -> None:
-        with harness.app.app_context():
-            with pytest.raises(ValueError, match="Subscription provider does not match trigger event"):
-                application_services().triggers.events.invoke_debug(
-                    tenant_id=harness.tenant_id,
-                    user_id="webhook-user",
-                    node_config={"id": "trigger", "data": node},
-                    event=event,
-                )
+        with (
+            harness.app.app_context(),
+            pytest.raises(ValueError, match="Subscription provider does not match trigger event"),
+        ):
+            application_services().triggers.events.invoke_debug(
+                tenant_id=harness.tenant_id,
+                user_id="webhook-user",
+                node_config={"id": "trigger", "data": node},
+                event=event,
+            )
 
     Context().run(invoke)
 

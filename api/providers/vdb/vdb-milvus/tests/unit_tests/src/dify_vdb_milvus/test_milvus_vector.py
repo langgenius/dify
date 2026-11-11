@@ -201,9 +201,11 @@ def test_init_loads_fields_when_collection_exists(milvus_module):
         "fields": [{"name": "id"}, {"name": "content"}, {"name": "metadata"}, {"name": "sparse_vector"}]
     }
 
-    with patch.object(milvus_module.MilvusVector, "_init_client", return_value=client):
-        with patch.object(milvus_module.MilvusVector, "_check_hybrid_search_support", return_value=False):
-            vector = milvus_module.MilvusVector("collection_1", _config(milvus_module))
+    with (
+        patch.object(milvus_module.MilvusVector, "_init_client", return_value=client),
+        patch.object(milvus_module.MilvusVector, "_check_hybrid_search_support", return_value=False),
+    ):
+        vector = milvus_module.MilvusVector("collection_1", _config(milvus_module))
 
     assert "id" not in vector._fields
     assert "content" in vector._fields

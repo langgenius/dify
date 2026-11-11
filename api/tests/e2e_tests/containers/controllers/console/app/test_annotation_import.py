@@ -174,9 +174,12 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
 
 
 def _assert_no_task(harness: _Harness) -> None:
-    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-        with pytest.raises(Empty):
-            messages.get(block=False)
+    with (
+        harness.celery.connection_for_read() as connection,
+        SimpleQueue(connection, harness.queue) as messages,
+        pytest.raises(Empty),
+    ):
+        messages.get(block=False)
 
 
 @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR])

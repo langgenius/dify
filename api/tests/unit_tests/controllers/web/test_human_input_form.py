@@ -393,9 +393,8 @@ def test_get_form_rejects_internal_tokens(
         lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
     )
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(NotFoundError):
-            HumanInputFormApi().get("token-1")
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"), pytest.raises(NotFoundError):
+        HumanInputFormApi().get("token-1")
     service_mock.ensure_form_active.assert_not_called()
     service_mock.resolve_form_inputs.assert_not_called()
 
@@ -439,9 +438,8 @@ def test_get_form_raises_forbidden_when_site_missing(
     service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(Forbidden):
-            HumanInputFormApi().get("token-1")
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"), pytest.raises(Forbidden):
+        HumanInputFormApi().get("token-1")
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
@@ -487,9 +485,8 @@ def test_get_form_raises_forbidden_when_tenant_archived(
     service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(Forbidden):
-            HumanInputFormApi().get("token-1")
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"), pytest.raises(Forbidden):
+        HumanInputFormApi().get("token-1")
 
 
 @pytest.mark.parametrize(
@@ -542,13 +539,15 @@ def test_submit_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock.get_form_by_token.return_value = None
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
-    with app.test_request_context(
-        "/api/form/human_input/token-1",
-        method="POST",
-        json={"inputs": {"content": "ok"}, "action": "approve"},
+    with (
+        app.test_request_context(
+            "/api/form/human_input/token-1",
+            method="POST",
+            json={"inputs": {"content": "ok"}, "action": "approve"},
+        ),
+        pytest.raises(WebFormRateLimitExceededError),
     ):
-        with pytest.raises(WebFormRateLimitExceededError):
-            HumanInputFormApi().post("token-1")
+        HumanInputFormApi().post("token-1")
 
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_not_called()
@@ -567,9 +566,11 @@ def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock.get_form_by_token.return_value = None
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(WebFormRateLimitExceededError):
-            HumanInputFormApi().get("token-1")
+    with (
+        app.test_request_context("/api/form/human_input/token-1", method="GET"),
+        pytest.raises(WebFormRateLimitExceededError),
+    ):
+        HumanInputFormApi().get("token-1")
 
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_not_called()
@@ -592,9 +593,8 @@ def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sq
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
     monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=sqlite_engine))
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(FormExpiredError):
-            HumanInputFormApi().get("token-1")
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"), pytest.raises(FormExpiredError):
+        HumanInputFormApi().get("token-1")
 
     service_mock.ensure_form_active.assert_called_once_with(form)
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")

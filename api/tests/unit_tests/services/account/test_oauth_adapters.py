@@ -185,9 +185,11 @@ def test_account_claim_lock_releases_partial_acquisition_on_failure() -> None:
     client = StubRedisClient(first_lock, failed_lock)
     account_claims = RedisOAuthAccountClaimLock(client=client)  # type: ignore[arg-type]
 
-    with pytest.raises(OAuthIdentityLockUnavailableError):
-        with account_claims.acquire(provider="github", open_id="provider-user", email="user@example.com"):
-            raise AssertionError("lock body must not run")
+    with (
+        pytest.raises(OAuthIdentityLockUnavailableError),
+        account_claims.acquire(provider="github", open_id="provider-user", email="user@example.com"),
+    ):
+        raise AssertionError("lock body must not run")
 
     assert first_lock.release_calls == 1
     assert failed_lock.release_calls == 0

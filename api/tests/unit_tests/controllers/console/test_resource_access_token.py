@@ -107,8 +107,7 @@ def test_service_failures_keep_the_http_error_contract(error: str, status: int) 
         "missing": ResourceAccessTokenNotFoundError,
         "invalid": ResourceAccessTokenInvalidError,
     }
-    with pytest.raises(HTTPException) as raised:
-        with resource_access_token_errors():
-            raise errors[error]("original message")
+    with pytest.raises(HTTPException) as raised, resource_access_token_errors():
+        raise errors[error]("original message")
     assert raised.value.code == status
     assert raised.value.description == "original message"

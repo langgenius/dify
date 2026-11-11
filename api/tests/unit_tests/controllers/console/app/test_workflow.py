@@ -248,14 +248,16 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
         current_user = _workflow_Account(name="Test", email="test@example.com")
         current_user.id = "account-1"
-        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
-            with pytest.raises(RuntimeError, match="publish failed"):
-                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
-                    workflow_module.PublishedWorkflowApi(),
-                    workflow_module.PublishWorkflowPayload.model_validate({}),
-                    current_user,
-                    app_model,
-                )
+        with (
+            app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}),
+            pytest.raises(RuntimeError, match="publish failed"),
+        ):
+            inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                workflow_module.PublishedWorkflowApi(),
+                workflow_module.PublishWorkflowPayload.model_validate({}),
+                current_user,
+                app_model,
+            )
 
         sqlite_session.expire_all()
         persisted_app = sqlite_session.get(_workflow_App, app_model.id)
@@ -359,9 +361,11 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"):
-            with pytest.raises(HTTPException) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+        with (
+            app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"),
+            pytest.raises(HTTPException) as exc,
+        ):
+            handler(api, _account(), app_model=_workflow_app())
 
         assert exc.value.code == 415
 
@@ -424,14 +428,16 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "h", **confirmation}),
-            content_type=content_type,
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/draft",
+                method="POST",
+                data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "h", **confirmation}),
+                content_type=content_type,
+            ),
+            pytest.raises(InvalidArgumentError) as exc,
         ):
-            with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+            handler(api, _account(), app_model=_workflow_app())
 
         assert exc.value.code == 400
         assert exc.value.description == "Saving an empty workflow requires force=true."
@@ -495,14 +501,18 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "stale-hash", "force": True}),
-            content_type=content_type,
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/draft",
+                method="POST",
+                data=json.dumps(
+                    {"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "stale-hash", "force": True}
+                ),
+                content_type=content_type,
+            ),
+            pytest.raises(DraftWorkflowNotSync) as exc,
         ):
-            with pytest.raises(DraftWorkflowNotSync) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+            handler(api, _account(), app_model=_workflow_app())
 
         assert exc.value.code == 409
         sync_draft_workflow.assert_called_once()
@@ -626,13 +636,15 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            json={"graph": {}, "features": {}, "hash": "h"},
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/draft",
+                method="POST",
+                json={"graph": {}, "features": {}, "hash": "h"},
+            ),
+            pytest.raises(DraftWorkflowNotSync),
         ):
-            with pytest.raises(DraftWorkflowNotSync):
-                handler(api, _account(), app_model=_workflow_app())
+            handler(api, _account(), app_model=_workflow_app())
 
     @staticmethod
     def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -647,13 +659,15 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/draft",
-            method="POST",
-            json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/draft",
+                method="POST",
+                json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+            ),
+            pytest.raises(InvalidArgumentError) as exc,
         ):
-            with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+            handler(api, _account(), app_model=_workflow_app())
 
         assert exc.value.description == "description too long"
 
@@ -699,17 +713,19 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowRestoreApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/published-workflow/restore",
-            method="POST",
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/published-workflow/restore",
+                method="POST",
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(
-                    api,
-                    _account(),
-                    app_model=_workflow_app(tenant_id="tenant-1"),
-                    workflow_id="published-workflow",
-                )
+            handler(
+                api,
+                _account(),
+                app_model=_workflow_app(tenant_id="tenant-1"),
+                workflow_id="published-workflow",
+            )
 
     @staticmethod
     def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
@@ -731,17 +747,19 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowRestoreApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/draft-workflow/restore",
-            method="POST",
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/draft-workflow/restore",
+                method="POST",
+            ),
+            pytest.raises(HTTPException) as exc,
         ):
-            with pytest.raises(HTTPException) as exc:
-                handler(
-                    api,
-                    _account(),
-                    app_model=_workflow_app(tenant_id="tenant-1"),
-                    workflow_id="draft-workflow",
-                )
+            handler(
+                api,
+                _account(),
+                app_model=_workflow_app(tenant_id="tenant-1"),
+                workflow_id="draft-workflow",
+            )
 
         assert exc.value.code == 400
         assert exc.value.description == workflow_module.RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE
@@ -763,17 +781,19 @@ class TestWorkflowCases:
         api = workflow_module.DraftWorkflowRestoreApi()
         handler = inspect.unwrap(api.post)
 
-        with app.test_request_context(
-            "/apps/app/workflows/published-workflow/restore",
-            method="POST",
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/published-workflow/restore",
+                method="POST",
+            ),
+            pytest.raises(HTTPException) as exc,
         ):
-            with pytest.raises(HTTPException) as exc:
-                handler(
-                    api,
-                    _account(),
-                    app_model=_workflow_app(tenant_id="tenant-1"),
-                    workflow_id="published-workflow",
-                )
+            handler(
+                api,
+                _account(),
+                app_model=_workflow_app(tenant_id="tenant-1"),
+                workflow_id="published-workflow",
+            )
 
         assert exc.value.code == 400
         assert exc.value.description == "invalid workflow graph"
@@ -1152,15 +1172,17 @@ class TestWorkflowCases:
         app_model = _workflow_app(app_id="app-1")
         handler = inspect.unwrap(resource.post)
 
-        with app.test_request_context("/", method="POST", json=payload):
-            with pytest.raises(ValueError, match="Workflow not found"):
-                handler(
-                    resource(),
-                    payload_model.model_validate(payload),
-                    session,
-                    _account(),
-                    app_model,
-                )
+        with (
+            app.test_request_context("/", method="POST", json=payload),
+            pytest.raises(ValueError, match="Workflow not found"),
+        ):
+            handler(
+                resource(),
+                payload_model.model_validate(payload),
+                session,
+                _account(),
+                app_model,
+            )
 
         get_draft_workflow.assert_called_once_with(app_model, session=session)
 
@@ -1647,13 +1669,15 @@ class TestWorkflowHumanInputDebugApiCases:
         service_instance.test_human_input_delivery.side_effect = ValueError("bad delivery method")
         monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
 
-        with app.test_request_context(
-            "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
-            method="POST",
-            json={"delivery_method_id": "bad"},
+        with (
+            app.test_request_context(
+                "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
+                method="POST",
+                json={"delivery_method_id": "bad"},
+            ),
+            pytest.raises(ValueError, match="bad delivery method"),
         ):
-            with pytest.raises(ValueError, match="bad delivery method"):
-                workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+            workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
 
     @staticmethod
     def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1661,10 +1685,12 @@ class TestWorkflowHumanInputDebugApiCases:
         app_model = _make_app(AppMode.ADVANCED_CHAT)
         _patch_console_guards(monkeypatch, account, app_model)
 
-        with app.test_request_context(
-            "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
-            method="POST",
-            json={"inputs": ["not-a-dict"]},
+        with (
+            app.test_request_context(
+                "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
+                method="POST",
+                json={"inputs": ["not-a-dict"]},
+            ),
+            pytest.raises(UnprocessableEntity),
         ):
-            with pytest.raises(UnprocessableEntity):
-                workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+            workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")

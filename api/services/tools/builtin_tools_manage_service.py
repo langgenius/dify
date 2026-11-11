@@ -245,70 +245,69 @@ class BuiltinToolManageService:
             lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
             # The transaction commits before the lock is released, so concurrent requests
             # see this credential when they check the count limit and the name.
-            with redis_client.lock(lock, timeout=20):
-                with sessionmaker(bind=db.engine).begin() as session:
-                    provider_count = (
-                        session.scalar(
-                            select(func.count(BuiltinToolProvider.id)).where(
+            with redis_client.lock(lock, timeout=20), sessionmaker(bind=db.engine).begin() as session:
+                provider_count = (
+                    session.scalar(
+                        select(func.count(BuiltinToolProvider.id)).where(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.provider == provider,
+                        )
+                    )
+                    or 0
+                )
+
+                # check if the provider count is reached the limit
+                if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
+                    raise ValueError(f"you have reached the maximum number of providers for {provider}")
+
+                # generate name if not provided
+                if name is None or name == "":
+                    name = BuiltinToolManageService.generate_builtin_tool_provider_name(
+                        session=session, tenant_id=tenant_id, provider=provider, credential_type=api_type
+                    )
+                else:
+                    # check if the name is already used
+                    if session.scalar(
+                        select(
+                            exists().where(
                                 BuiltinToolProvider.tenant_id == tenant_id,
                                 BuiltinToolProvider.provider == provider,
+                                BuiltinToolProvider.name == name,
                             )
                         )
-                        or 0
-                    )
+                    ):
+                        raise ValueError(f"the credential name '{name}' is already used")
 
-                    # check if the provider count is reached the limit
-                    if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
-                        raise ValueError(f"you have reached the maximum number of providers for {provider}")
+                # create encrypter
+                encrypter, _ = create_provider_encrypter(
+                    tenant_id=tenant_id,
+                    config=[
+                        x.to_basic_provider_config()
+                        for x in provider_controller.get_credentials_schema_by_type(api_type)
+                    ],
+                    cache=NoOpProviderCredentialCache(),
+                )
 
-                    # generate name if not provided
-                    if name is None or name == "":
-                        name = BuiltinToolManageService.generate_builtin_tool_provider_name(
-                            session=session, tenant_id=tenant_id, provider=provider, credential_type=api_type
-                        )
-                    else:
-                        # check if the name is already used
-                        if session.scalar(
-                            select(
-                                exists().where(
-                                    BuiltinToolProvider.tenant_id == tenant_id,
-                                    BuiltinToolProvider.provider == provider,
-                                    BuiltinToolProvider.name == name,
-                                )
-                            )
-                        ):
-                            raise ValueError(f"the credential name '{name}' is already used")
+                visibility_enum = PermissionEnum(visibility) if visibility else PermissionEnum.ALL_TEAM
+                # Plugin credentials only expose only_me / all_team_members at creation;
+                # partial-member access is handled by workspace RBAC, not per-credential.
+                if visibility_enum == PermissionEnum.PARTIAL_TEAM:
+                    raise ValueError("partial_members visibility is no longer supported for plugin credentials")
 
-                    # create encrypter
-                    encrypter, _ = create_provider_encrypter(
-                        tenant_id=tenant_id,
-                        config=[
-                            x.to_basic_provider_config()
-                            for x in provider_controller.get_credentials_schema_by_type(api_type)
-                        ],
-                        cache=NoOpProviderCredentialCache(),
-                    )
+                db_provider = BuiltinToolProvider(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    provider=provider,
+                    encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
+                    credential_type=api_type,
+                    name=name,
+                    expires_at=expires_at if expires_at is not None else -1,
+                    visibility=visibility_enum,
+                )
 
-                    visibility_enum = PermissionEnum(visibility) if visibility else PermissionEnum.ALL_TEAM
-                    # Plugin credentials only expose only_me / all_team_members at creation;
-                    # partial-member access is handled by workspace RBAC, not per-credential.
-                    if visibility_enum == PermissionEnum.PARTIAL_TEAM:
-                        raise ValueError("partial_members visibility is no longer supported for plugin credentials")
-
-                    db_provider = BuiltinToolProvider(
-                        tenant_id=tenant_id,
-                        user_id=user_id,
-                        provider=provider,
-                        encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
-                        credential_type=api_type,
-                        name=name,
-                        expires_at=expires_at if expires_at is not None else -1,
-                        visibility=visibility_enum,
-                    )
-
-                    session.add(db_provider)
-                    session.flush()
-                    credential_id = db_provider.id
+                session.add(db_provider)
+                session.flush()
+                credential_id = db_provider.id
         except Exception as e:
             raise ValueError(str(e)) from e
 

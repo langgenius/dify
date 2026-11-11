@@ -294,9 +294,11 @@ def test_file_restoration_keeps_tenant_and_end_user_filters(stored_files: _Store
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    with bind_file_access_scope(denied_scope):
-        with pytest.raises(ValueError, match="Invalid upload file|ToolFile .* not found"):
-            resolver.resolve(tenant_id=stored_files.tenant_id, inputs={}, answer="", files=[source])
+    with (
+        bind_file_access_scope(denied_scope),
+        pytest.raises(ValueError, match="Invalid upload file|ToolFile .* not found"),
+    ):
+        resolver.resolve(tenant_id=stored_files.tenant_id, inputs={}, answer="", files=[source])
     with bind_file_access_scope(replace(denied_scope, user_id=stored_files.user_id)):
         result = resolver.resolve(tenant_id=stored_files.tenant_id, inputs={}, answer="", files=[source])
         assert len(result.files) == 1

@@ -234,9 +234,12 @@ def test_cached_owned_job_returns_decoded_identifier_without_duplicate_publish(
     assert response.status_code == 200
     assert response.get_json() == {"job_id": job_id, "job_status": "processing"}
     assert harness.publications == [True]
-    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-        with pytest.raises(Empty):
-            messages.get(block=False)
+    with (
+        harness.celery.connection_for_read() as connection,
+        SimpleQueue(connection, harness.queue) as messages,
+        pytest.raises(Empty),
+    ):
+        messages.get(block=False)
 
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
@@ -351,9 +354,12 @@ def test_concurrent_caller_can_poll_publication_failure_and_retry(
         assert 0 < harness.redis.ttl(key) <= 600
     assert harness.redis.get(f"{action}_app_annotation_{harness.target.id}") is None
     assert harness.publications == [True]
-    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-        with pytest.raises(Empty):
-            messages.get(block=False)
+    with (
+        harness.celery.connection_for_read() as connection,
+        SimpleQueue(connection, harness.queue) as messages,
+        pytest.raises(Empty),
+    ):
+        messages.get(block=False)
 
     response = harness.request(action)
     assert response.status_code == 200

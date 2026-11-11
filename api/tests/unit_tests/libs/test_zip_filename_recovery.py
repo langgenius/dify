@@ -56,9 +56,8 @@ def test_zip64_extensible_data_is_not_part_of_central_directory(monkeypatch: pyt
 def test_zip64_recovery_preserves_crc_checks(monkeypatch: pytest.MonkeyPatch) -> None:
     content = _zip64(monkeypatch, 0)
     damaged = content.replace(b"\xc3\xa9.py", b"\xffa.py").replace(b"print('ok')", b"print('NO')")
-    with open_zip_with_replacement_names(damaged) as archive:
-        with pytest.raises(zipfile.BadZipFile, match="CRC"):
-            archive.read("scripts/\ufffda.py")
+    with open_zip_with_replacement_names(damaged) as archive, pytest.raises(zipfile.BadZipFile, match="CRC"):
+        archive.read("scripts/\ufffda.py")
 
 
 def test_zip64_recovery_rejects_mismatched_local_name(monkeypatch: pytest.MonkeyPatch) -> None:

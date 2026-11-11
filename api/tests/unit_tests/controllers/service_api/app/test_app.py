@@ -188,9 +188,11 @@ def test_get_parameters_maps_query_errors(
         Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
     )
 
-    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(http_error):
-            AppParameterApi().get(app_model=App())
+    with (
+        flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}),
+        pytest.raises(http_error),
+    ):
+        AppParameterApi().get(app_model=App())
 
 
 def test_get_meta_queries_authenticated_app(
@@ -223,9 +225,11 @@ def test_get_meta_maps_unavailable_definition_to_app_unavailable(
         Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
     )
 
-    with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(AppUnavailableError) as raised:
-            AppMetaApi().get(app_model=App())
+    with (
+        flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}),
+        pytest.raises(AppUnavailableError) as raised,
+    ):
+        AppMetaApi().get(app_model=App())
 
     assert raised.value.data == {
         "code": "app_unavailable",
@@ -279,9 +283,11 @@ def test_get_info_maps_unavailable_app(
         Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
     )
 
-    with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(AppUnavailableError):
-            AppInfoApi().get(app_model=App())
+    with (
+        flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}),
+        pytest.raises(AppUnavailableError),
+    ):
+        AppInfoApi().get(app_model=App())
 
 
 def test_get_site_configuration_queries_authenticated_app(
@@ -335,9 +341,8 @@ def test_get_site_configuration_maps_missing_site_to_forbidden(
         Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
     )
 
-    with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(Forbidden):
-            AppSiteApi().get(app_model=App())
+    with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}), pytest.raises(Forbidden):
+        AppSiteApi().get(app_model=App())
 
 
 @pytest.mark.parametrize("state", ["missing", "disabled", "archived", "ownerless"])
@@ -359,6 +364,8 @@ def test_authentication_rejects_empty_or_invisible_database_state(
         sqlite_session.commit()
         expected_error = Unauthorized
 
-    with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(expected_error):
-            AppInfoApi().get(app_model=App())
+    with (
+        flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}),
+        pytest.raises(expected_error),
+    ):
+        AppInfoApi().get(app_model=App())

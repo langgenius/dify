@@ -162,9 +162,12 @@ def test_changing_the_matching_threshold_keeps_embeddings_without_publishing(har
         assert stored.collection_binding_id == harness.binding_id
         assert session.get(MessageAnnotation, harness.annotation.id) is not None
     assert harness.publications == []
-    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-        with pytest.raises(Empty):
-            messages.get(block=False)
+    with (
+        harness.celery.connection_for_read() as connection,
+        SimpleQueue(connection, harness.queue) as messages,
+        pytest.raises(Empty),
+    ):
+        messages.get(block=False)
 
 
 @pytest.mark.parametrize("operation", ["create", "upsert", "update", "delete", "delete_many", "clear"])
@@ -207,9 +210,12 @@ def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close
 def test_disabled_annotation_reply_does_not_publish(harness: _Harness, operation: Operation) -> None:
     harness.apply(operation)
     assert harness.publications == []
-    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-        with pytest.raises(Empty):
-            messages.get(block=False)
+    with (
+        harness.celery.connection_for_read() as connection,
+        SimpleQueue(connection, harness.queue) as messages,
+        pytest.raises(Empty),
+    ):
+        messages.get(block=False)
 
 
 def test_rejected_write_does_not_publish(harness: _Harness) -> None:
@@ -308,9 +314,12 @@ def test_bulk_deletion_without_matches_does_not_publish(harness: _Harness, opera
             session.delete(annotation)
         harness.service.clear(tenant_id=harness.app.tenant_id, app_id=harness.app.id)
     assert harness.publications == []
-    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-        with pytest.raises(Empty):
-            messages.get(block=False)
+    with (
+        harness.celery.connection_for_read() as connection,
+        SimpleQueue(connection, harness.queue) as messages,
+        pytest.raises(Empty),
+    ):
+        messages.get(block=False)
 
 
 @pytest.mark.parametrize("operation", ["delete_many", "clear"])
@@ -330,9 +339,12 @@ def test_failed_bulk_transaction_does_not_publish_index_deletions(harness: _Harn
         assert [
             row.id for row in harness.repository.get_all(tenant_id=harness.app.tenant_id, app_id=harness.app.id)
         ] == [harness.annotation.id]
-        with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
-            with pytest.raises(Empty):
-                messages.get(block=False)
+        with (
+            harness.celery.connection_for_read() as connection,
+            SimpleQueue(connection, harness.queue) as messages,
+            pytest.raises(Empty),
+        ):
+            messages.get(block=False)
     finally:
         with harness.factory.begin() as session:
             session.execute(text("DROP TRIGGER reject_annotation_delete"))

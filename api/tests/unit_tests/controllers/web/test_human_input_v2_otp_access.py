@@ -28,9 +28,11 @@ def test_access_rate_limit_preserves_error_code_and_retry_after(app: Flask, monk
         raise EmailOtpError(OtpFailure.RATE_LIMIT, 45)
 
     monkeypatch.setattr(EmailOtpService, "request_access", rate_limited)
-    with app.test_request_context("/api/form/human-input/v2/public/form-token/access-request", method="POST"):
-        with pytest.raises(BaseHTTPException) as error:
-            controller.FormAccessRequestApi().post("form-token")
+    with (
+        app.test_request_context("/api/form/human-input/v2/public/form-token/access-request", method="POST"),
+        pytest.raises(BaseHTTPException) as error,
+    ):
+        controller.FormAccessRequestApi().post("form-token")
     assert error.value.code == 429
     assert error.value.data is not None
     assert error.value.data["code"] == "human_input_access_rate_limit_exceeded"

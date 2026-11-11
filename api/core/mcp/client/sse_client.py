@@ -283,15 +283,17 @@ def sse_client(
 
     executor = ThreadPoolExecutor()
     try:
-        with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
-            with ssrf_proxy_sse_connect(
+        with (
+            create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client,
+            ssrf_proxy_sse_connect(
                 url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
-            ) as event_source:
-                event_source.response.raise_for_status()
+            ) as event_source,
+        ):
+            event_source.response.raise_for_status()
 
-                read_queue, write_queue = transport.connect(executor, client, event_source)
+            read_queue, write_queue = transport.connect(executor, client, event_source)
 
-                yield read_queue, write_queue
+            yield read_queue, write_queue
 
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 401:

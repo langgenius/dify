@@ -98,9 +98,8 @@ def test_overlapping_gevent_requests_keep_failure_stages_and_ids_isolated(
 
 
 def test_diagnostics_context_is_reset_even_after_failure(payload: TextPayload) -> None:
-    with text_backend_diagnostics("request", payload, "qdrant") as diagnostics:
-        with text_backend_stage("successful-step"):
-            pass
+    with text_backend_diagnostics("request", payload, "qdrant") as diagnostics, text_backend_stage("successful-step"):
+        pass
     with pytest.raises(RuntimeError), text_backend_stage("outside-request"):
         raise RuntimeError("private-message")
     assert diagnostics.failure_stage is None

@@ -255,9 +255,11 @@ class TestAudioApi:
         app_model = _app()
         end_user = _end_user()
 
-        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
-            with pytest.raises(expected):
-                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}),
+            pytest.raises(expected),
+        ):
+            handler(api, sqlite_session, app_model=app_model, end_user=end_user)
 
     def test_unhandled_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         monkeypatch.setattr(
@@ -268,9 +270,11 @@ class TestAudioApi:
         app_model = _app()
         end_user = _end_user()
 
-        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
-            with pytest.raises(InternalServerError):
-                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}),
+            pytest.raises(InternalServerError),
+        ):
+            handler(api, sqlite_session, app_model=app_model, end_user=end_user)
 
 
 class TestTextApi:

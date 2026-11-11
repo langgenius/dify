@@ -179,9 +179,11 @@ def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
     monkeypatch.setattr(MOUNT, never_reached)
     subject = account_subject()
 
-    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
-        with pytest.raises(Unauthorized, match="account not found"):
-            _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject), sqlite_session)
+    with (
+        app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)),
+        pytest.raises(Unauthorized, match="account not found"),
+    ):
+        _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject), sqlite_session)
 
     assert try_get_auth_ctx() is None
 
@@ -254,11 +256,13 @@ def test_a_refused_sso_request_never_creates_an_end_user(
     subject = sso_subject()
     ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
-    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run", headers=_current_catalog(app)):
-        with patch(FEATURES, return_value=system_features(webapp_auth=webapp_auth)):
-            with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE_ALL.value)):
-                with pytest.raises(HTTPException, match=message):
-                    _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
+    with (
+        app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run", headers=_current_catalog(app)),
+        patch(FEATURES, return_value=system_features(webapp_auth=webapp_auth)),
+        patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE_ALL.value)),
+        pytest.raises(HTTPException, match=message),
+    ):
+        _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
     assert ctx._caller is None
 
@@ -364,9 +368,8 @@ def test_a_request_built_from_another_catalog_is_refused(
     subject = account_subject()
     headers: dict[str, str] = {} if sent is None else {CATALOG_HEADER: sent}
 
-    with app.test_request_context("/openapi/v1/account", headers=headers):
-        with pytest.raises(CatalogStale):
-            _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+    with app.test_request_context("/openapi/v1/account", headers=headers), pytest.raises(CatalogStale):
+        _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
 def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_session: Session) -> None:
@@ -393,10 +396,13 @@ def test_personal_access_check_skips_oauth_without_loading_resources(
 def test_account_pipeline_denies_pat_without_policy_before_loading_resources(
     app: Flask, sqlite_session: Session
 ) -> None:
+    """Given a PAT without an access policy, reject the request before loading resources."""
     subject = AccountSubject(make_auth(TokenType.PERSONAL_ACCESS))
     ctx = make_ctx(sqlite_session, subject)
-    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
-        with pytest.raises(Forbidden, match="personal_access_token_not_supported"):
-            _run(AccountPipeline(), subject, ctx, sqlite_session, call=never_reached)
+    with (
+        app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)),
+        pytest.raises(Forbidden, match="personal_access_token_not_supported"),
+    ):
+        _run(AccountPipeline(), subject, ctx, sqlite_session, call=never_reached)
 
     assert try_get_auth_ctx() is None

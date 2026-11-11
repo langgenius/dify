@@ -75,9 +75,11 @@ def test_disabled_job_makes_no_http_request(monkeypatch: pytest.MonkeyPatch) -> 
 def test_incomplete_configuration_only_fails_collection_job(missing: str, monkeypatch: pytest.MonkeyPatch) -> None:
     post = MagicMock()
     monkeypatch.setattr("schedule.collect_agent_sandbox_usage.ssrf_proxy.post", post)
-    with config_overrides_context(**{missing: ""}):
-        with pytest.raises(ValueError, match="requires backend URL, token, and project"):
-            collect_agent_sandbox_usage()
+    with (
+        config_overrides_context(**{missing: ""}),
+        pytest.raises(ValueError, match="requires backend URL, token, and project"),
+    ):
+        collect_agent_sandbox_usage()
     post.assert_not_called()
 
 

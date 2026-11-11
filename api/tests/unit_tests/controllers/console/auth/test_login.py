@@ -172,13 +172,15 @@ def test_invitation_login_with_empty_password_returns_authentication_failure(
     service: FakeAuthenticationService,
 ) -> None:
     service.error = account_errors.InvalidLoginCredentialsError()
-    with app.test_request_context(
-        "/login",
-        method="POST",
-        json={"email": "user@example.com", "password": _encode(""), "invite_token": "invite-token"},
+    with (
+        app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "user@example.com", "password": _encode(""), "invite_token": "invite-token"},
+        ),
+        pytest.raises(AuthenticationFailedError),
     ):
-        with pytest.raises(AuthenticationFailedError):
-            login.LoginApi().post()
+        login.LoginApi().post()
 
     assert service.password_commands == [
         PasswordLoginCommand(
@@ -195,13 +197,15 @@ def test_invitation_login_with_weak_password_returns_policy_failure(
     service: FakeAuthenticationService,
 ) -> None:
     service.error = account_errors.InvalidAccountPasswordError("Password must contain letters and numbers")
-    with app.test_request_context(
-        "/login",
-        method="POST",
-        json={"email": "user@example.com", "password": _encode("letters-only"), "invite_token": "invite-token"},
+    with (
+        app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "user@example.com", "password": _encode("letters-only"), "invite_token": "invite-token"},
+        ),
+        pytest.raises(InvalidAccountPasswordRequestError, match="letters and numbers"),
     ):
-        with pytest.raises(InvalidAccountPasswordRequestError, match="letters and numbers"):
-            login.LoginApi().post()
+        login.LoginApi().post()
 
 
 def test_reset_password_delegates_transport_values(app: Flask, service: FakeAuthenticationService) -> None:

@@ -125,9 +125,8 @@ class TestFilesCases:
             api = FileApi()
             post_method = unwrap(api.post)
 
-            with app.test_request_context(method="POST", data={}):
-                with pytest.raises(NoFileUploadedError):
-                    post_method(api, mock_account_context)
+            with app.test_request_context(method="POST", data={}), pytest.raises(NoFileUploadedError):
+                post_method(api, mock_account_context)
 
         def test_too_many_files(self, app: Flask, mock_account_context):
             api = FileApi()
@@ -154,9 +153,8 @@ class TestFilesCases:
                 "file": (io.BytesIO(b"abc"), ""),
             }
 
-            with app.test_request_context(method="POST", data=data):
-                with pytest.raises(FilenameNotExistsError):
-                    post_method(api, mock_account_context)
+            with app.test_request_context(method="POST", data=data), pytest.raises(FilenameNotExistsError):
+                post_method(api, mock_account_context)
 
         def test_dataset_upload_without_permission(self, app: Flask, mock_current_user):
             mock_current_user.role = TenantAccountRole.NORMAL
@@ -169,9 +167,8 @@ class TestFilesCases:
                 "source": "datasets",
             }
 
-            with app.test_request_context(method="POST", data=data):
-                with pytest.raises(Forbidden):
-                    post_method(api, mock_current_user)
+            with app.test_request_context(method="POST", data=data), pytest.raises(Forbidden):
+                post_method(api, mock_current_user)
 
         def test_successful_upload(self, app: Flask, mock_account_context, mock_file_service):
             api = FileApi()
@@ -277,9 +274,8 @@ class TestFilesCases:
                 "file": (io.BytesIO(b"x" * 1000000), "big.txt"),
             }
 
-            with app.test_request_context(method="POST", data=data):
-                with pytest.raises(FileTooLargeError) as error_info:
-                    post_method(api, mock_account_context)
+            with app.test_request_context(method="POST", data=data), pytest.raises(FileTooLargeError) as error_info:
+                post_method(api, mock_account_context)
 
             assert error_info.value.__cause__ is error
 
@@ -296,9 +292,11 @@ class TestFilesCases:
                 "file": (io.BytesIO(b"x"), "bad.exe"),
             }
 
-            with app.test_request_context(method="POST", data=data):
-                with pytest.raises(UnsupportedFileTypeError) as error_info:
-                    post_method(api, mock_account_context)
+            with (
+                app.test_request_context(method="POST", data=data),
+                pytest.raises(UnsupportedFileTypeError) as error_info,
+            ):
+                post_method(api, mock_account_context)
 
             assert error_info.value.__cause__ is error
 
@@ -315,9 +313,11 @@ class TestFilesCases:
                 "file": (io.BytesIO(b"x"), "blocked.txt"),
             }
 
-            with app.test_request_context(method="POST", data=data):
-                with pytest.raises(BlockedFileExtensionError) as error_info:
-                    post_method(api, mock_account_context)
+            with (
+                app.test_request_context(method="POST", data=data),
+                pytest.raises(BlockedFileExtensionError) as error_info,
+            ):
+                post_method(api, mock_account_context)
 
             assert error_info.value.description == error.description
             assert error_info.value.__cause__ is error

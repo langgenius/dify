@@ -62,14 +62,14 @@ def test_lost_heartbeat_fails_closed(
         patch.object(Lock, "acquire", return_value=True),
         patch.object(Lock, "reacquire", side_effect=fail_renewal),
         patch.object(Lock, "release", side_effect=LockNotOwnedError("expired")),
-    ):
-        with RedisCredentialRefreshLock(client=redis).acquire(
+        RedisCredentialRefreshLock(client=redis).acquire(
             credential_type="datasource", workspace_id="workspace", credential_id="credential"
-        ) as lease:
-            assert attempted.wait(timeout=1)
-            threads[0].join(timeout=1)
-            with pytest.raises(CredentialRefreshUnavailableError):
-                lease.ensure_owned()
+        ) as lease,
+    ):
+        assert attempted.wait(timeout=1)
+        threads[0].join(timeout=1)
+        with pytest.raises(CredentialRefreshUnavailableError):
+            lease.ensure_owned()
 
 
 @pytest.mark.parametrize("error", [None, RedisError("unavailable")])
@@ -81,9 +81,11 @@ def test_busy_or_unavailable_lock_never_enters_refresh(
         patch.object(Lock, "acquire", return_value=False, side_effect=error),
         patch.object(Lock, "release") as release,
     ):
-        with pytest.raises(CredentialRefreshUnavailableError):
-            with RedisCredentialRefreshLock(client=redis).acquire(
+        with (
+            pytest.raises(CredentialRefreshUnavailableError),
+            RedisCredentialRefreshLock(client=redis).acquire(
                 credential_type="tool", workspace_id="workspace", credential_id="credential"
-            ):
-                pytest.fail("Refresh must not run without its lease")
+            ),
+        ):
+            pytest.fail("Refresh must not run without its lease")
         release.assert_not_called()

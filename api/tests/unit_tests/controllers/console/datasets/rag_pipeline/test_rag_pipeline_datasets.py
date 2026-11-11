@@ -146,9 +146,9 @@ class TestCreateRagPipelineDatasetApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
 
     def test_post_dataset_name_duplicate(self, app: Flask, unbound_session: Session) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -167,9 +167,9 @@ class TestCreateRagPipelineDatasetApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
                 return_value=mock_service,
             ),
+            pytest.raises(DatasetNameDuplicateError),
         ):
-            with pytest.raises(DatasetNameDuplicateError):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
 
     def test_post_invalid_payload(self, app: Flask, unbound_session: Session) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -181,11 +181,9 @@ class TestCreateRagPipelineDatasetApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError, match="1 validation error for RagPipelineDatasetImportPayload\\\nyaml_content"),
         ):
-            with pytest.raises(
-                ValueError, match="1 validation error for RagPipelineDatasetImportPayload\\\nyaml_content"
-            ):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), unbound_session, "tenant-1", user)
 
 
 class TestCreateEmptyRagPipelineDatasetApi:
@@ -195,6 +193,5 @@ class TestCreateEmptyRagPipelineDatasetApi:
 
         user = _account(editor=False)
 
-        with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, unbound_session, "tenant-1", user)
+        with app.test_request_context("/"), pytest.raises(Forbidden):
+            method(api, unbound_session, "tenant-1", user)

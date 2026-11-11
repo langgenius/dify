@@ -149,14 +149,16 @@ def test_send_email_translates_application_errors(
 ) -> None:
     service.send_code.side_effect = service_error
 
-    with _request(
-        app,
-        service,
-        path="/email-register/send-email",
-        payload={"email": "invitee@example.com"},
+    with (
+        _request(
+            app,
+            service,
+            path="/email-register/send-email",
+            payload={"email": "invitee@example.com"},
+        ),
+        pytest.raises(http_error),
     ):
-        with pytest.raises(http_error):
-            EmailRegisterSendEmailApi().post()
+        EmailRegisterSendEmailApi().post()
 
 
 def test_verify_email_code_serializes_application_result(app: Flask, service: AccountEmailRegistrationService) -> None:
@@ -198,14 +200,16 @@ def test_verify_email_code_translates_application_errors(
 ) -> None:
     service.verify_code.side_effect = service_error
 
-    with _request(
-        app,
-        service,
-        path="/email-register/validity",
-        payload={"email": "user@example.com", "code": "wrong", "token": "pending-token"},
+    with (
+        _request(
+            app,
+            service,
+            path="/email-register/validity",
+            payload={"email": "user@example.com", "code": "wrong", "token": "pending-token"},
+        ),
+        pytest.raises(http_error),
     ):
-        with pytest.raises(http_error):
-            EmailRegisterCheckApi().post()
+        EmailRegisterCheckApi().post()
 
 
 def test_register_delegates_and_serializes_tokens(app: Flask, service: AccountEmailRegistrationService) -> None:
@@ -267,18 +271,20 @@ def test_register_translates_application_errors(
 ) -> None:
     service.register.side_effect = service_error
 
-    with _request(
-        app,
-        service,
-        path="/email-register",
-        payload={
-            "token": "verified-token",
-            "new_password": "ValidPass123!",
-            "password_confirm": "ValidPass123!",
-        },
+    with (
+        _request(
+            app,
+            service,
+            path="/email-register",
+            payload={
+                "token": "verified-token",
+                "new_password": "ValidPass123!",
+                "password_confirm": "ValidPass123!",
+            },
+        ),
+        pytest.raises(http_error),
     ):
-        with pytest.raises(http_error):
-            EmailRegisterResetApi().post()
+        EmailRegisterResetApi().post()
 
 
 def test_reset_payload_rejects_invalid_timezone() -> None:

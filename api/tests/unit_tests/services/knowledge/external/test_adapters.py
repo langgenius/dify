@@ -185,12 +185,14 @@ def test_retrieval_releases_read_session_before_http_and_commits_query(
 def test_retrieval_failure_does_not_record_query(
     operations: SQLAlchemyExternalKnowledgeOperations, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    with patch(
-        "services.knowledge.external.service.ExternalDatasetService.process_external_api",
-        return_value=httpx.Response(502, text="unavailable"),
+    with (
+        patch(
+            "services.knowledge.external.service.ExternalDatasetService.process_external_api",
+            return_value=httpx.Response(502, text="unavailable"),
+        ),
+        pytest.raises(ExternalKnowledgeRetrievalError),
     ):
-        with pytest.raises(ExternalKnowledgeRetrievalError):
-            operations.retrieve(CONTEXT, REF, query="query", retrieval_model=None, metadata_filters=None)
+        operations.retrieve(CONTEXT, REF, query="query", retrieval_model=None, metadata_filters=None)
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(DatasetQuery)) == 0
 
