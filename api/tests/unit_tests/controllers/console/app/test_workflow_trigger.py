@@ -18,7 +18,6 @@ from werkzeug.test import TestResponse
 from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.app import workflow_trigger
 from controllers.console.wraps import _is_setup_completed
-from core.trigger.utils.endpoint import base_url
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
@@ -34,6 +33,7 @@ from models.engine import db
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
+from models.utils.trigger_endpoint import base_url
 from tests.helpers.unit.config_override import config_overrides_context
 
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5)

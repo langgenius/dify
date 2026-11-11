@@ -11,11 +11,11 @@ from pydantic import TypeAdapter
 from werkzeug.test import TestResponse
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from extensions.ext_application_services import application_services
 from models.account import TenantAccountRole
 from models.provider_ids import TriggerProviderID
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
 from services.trigger.oauth_service import (
     TriggerOAuthCallbackRequest,
     TriggerOAuthContext,

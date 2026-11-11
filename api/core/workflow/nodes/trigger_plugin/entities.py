@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.entities.entities import EventParameter
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
