@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Suspense, useState } from 'react'
-import { hydrateRoot } from 'react-dom/client'
+import { createRoot, hydrateRoot } from 'react-dom/client'
 import { renderToReadableStream } from 'react-dom/server.browser'
 import { useTranslation } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
@@ -85,7 +85,7 @@ it('hydrates the menu from automatically collected SSR resources before the firs
   mocks.server = false
   mocks.load.mockClear()
   mocks.load.mockImplementation(() => new Promise(() => {}))
-  const root = hydrateRoot(container, view)
+  let root = hydrateRoot(container, view)
   try {
     await page.getByRole('button', { name: 'Create', exact: true }).click()
     await expect.element(page.getByRole('menuitem', { name: 'Create from Blank' })).toBeVisible()
@@ -98,6 +98,12 @@ it('hydrates the menu from automatically collected SSR resources before the firs
     )
     await page.getByRole('button', { name: 'Show deferred feature' }).click()
     await expect.element(page.getByText('Sign in', { exact: true })).toBeVisible()
+    expect(mocks.load).not.toHaveBeenCalled()
+    // A client rebuild must also find the translations sent with this document.
+    root.unmount()
+    root = createRoot(container)
+    root.render(view)
+    await expect.element(page.getByRole('button', { name: 'Create', exact: true })).toBeVisible()
     expect(mocks.load).not.toHaveBeenCalled()
   } finally {
     root.unmount()
