@@ -283,6 +283,49 @@ export const stylingContractRules = {
       allow: ['*'],
       contracts: [
         {
+          pattern: '^SegmentedControl$',
+          allow: [
+            'layout',
+            'spacing',
+            'rounded',
+            'border-w',
+            'border-divider-subtle',
+            'bg-background-section-burn',
+          ],
+          message:
+            '"{{className}}" changes the shared segmented control. Adjust its placement or width here. Use RadioGroup with RadioItem for a custom single-choice surface.',
+        },
+        {
+          pattern: '^SegmentedControlDivider$',
+          allow: [],
+          message:
+            '"{{className}}" changes the segmented divider. Use Separator for a divider outside the control.',
+        },
+        {
+          pattern: '^SegmentedControlItem$',
+          allow: [
+            'layout',
+            'spacing',
+            'typography',
+            'system-*',
+            'text-color',
+            'rounded',
+            'border-0',
+            'bg-components-segmented-control-item-active-*',
+            'border-components-segmented-control-item-active-*',
+            'data-checked:bg-components-panel-bg',
+            'not-data-checked:hover:bg-transparent',
+            'focus-visible:ring-inset',
+            'shadow-xs',
+            'shadow-sm',
+            'shadow-black/5',
+            'shadow-black/10',
+          ],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" changes the segmented item appearance. The primitive owns its surface, focus and selection motion. Use RadioItem for a custom single-choice design.',
+        },
+        {
           pattern: '^(ScrollArea|ScrollAreaViewport)$',
           allow: ['*'],
           deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],

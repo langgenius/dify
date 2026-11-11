@@ -133,7 +133,8 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         // Analytics should not turn a successful app creation into a failed flow.
       }
 
-      onClose()
+      // Keep the dialog open until the new app replaces this page; closing first
+      // shows the list underneath while the new app loads.
       getRedirection(app, push, {
         currentUserId,
         resourceMaintainer: app.maintainer,
@@ -141,14 +142,14 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         isRbacEnabled,
       })
     } catch (error) {
+      // Only a failure re-enables the form; after success it stays busy so it cannot submit twice.
+      creatingRef.current = false
+      setIsCreating(false)
       toast.error(
         error instanceof Error
           ? error.message
           : t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
       )
-    } finally {
-      creatingRef.current = false
-      setIsCreating(false)
     }
   }, [
     isAppQuotaUnavailable,
@@ -160,7 +161,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     appMode,
     appIcon,
     description,
-    onClose,
     push,
     workspacePermissionKeys,
     isRbacEnabled,

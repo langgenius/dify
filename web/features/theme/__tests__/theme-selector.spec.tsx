@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
-import ThemeSelector from '../theme-selector'
+import { ThemeSelector } from '../theme-selector'
 
 const setTheme = vi.fn()
 

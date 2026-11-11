@@ -116,6 +116,12 @@ vp run -r type-check
 
 The TS Common CI job runs this command separately from formatting and linting.
 
+tsrs 0.24 targets TypeScript 7.1 beta and uses the upstream checker defaults. Keep
+the default mode rather than `--fast`, whose optimizations can change diagnostics.
+The OpenAPI content mapper package and the example VS Code configuration continue
+to use the official TypeScript 7.1 beta compiler and language server, including
+content mapper execution. Updating tsrs does not change that editor contract.
+
 The shared `packages/tsconfig/base.json` enforces erasable TypeScript syntax through
 `erasableSyntaxOnly`. Root tooling and TypeScript packages inherit this contract; enum
 declarations, runtime namespaces, parameter properties, and import assignments are checked

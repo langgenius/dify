@@ -124,6 +124,81 @@ def test_timezone_conversion_tool(sqlite_session: Session):
         TimezoneConversionTool.timezone_convert("bad", "UTC", "Asia/Tokyo")
 
 
+@pytest.mark.parametrize(
+    ("timezone", "localtime", "expected_timestamp", "expected_utc", "expected_local"),
+    [
+        # Ambiguous (fall back): the later occurrence, 01:30 EST
+        (
+            "America/New_York",
+            "2024-11-03 01:30:00",
+            1730615400,
+            "2024-11-03 06:30:00",
+            "2024-11-03 01:30:00",
+        ),
+        # Nonexistent (spring forward): shifted past the gap, 03:30 EDT
+        (
+            "America/New_York",
+            "2024-03-10 02:30:00",
+            1710055800,
+            "2024-03-10 07:30:00",
+            "2024-03-10 03:30:00",
+        ),
+        # Ambiguous (fall back): the later Dublin occurrence, 01:30 GMT
+        (
+            "Europe/Dublin",
+            "2024-10-27 01:30:00",
+            1729992600,
+            "2024-10-27 01:30:00",
+            "2024-10-27 01:30:00",
+        ),
+        # Nonexistent (spring forward): shifted past the gap, 02:30 IST
+        (
+            "Europe/Dublin",
+            "2024-03-31 01:30:00",
+            1711848600,
+            "2024-03-31 01:30:00",
+            "2024-03-31 02:30:00",
+        ),
+    ],
+)
+@pytest.mark.parametrize("use_timezone_object", [False, True], ids=["timezone-name", "zoneinfo-object"])
+def test_time_tools_resolve_dst_transitions(
+    timezone: str,
+    localtime: str,
+    expected_timestamp: int,
+    expected_utc: str,
+    expected_local: str,
+    use_timezone_object: bool,
+):
+    local_timezone = ZoneInfo(timezone) if use_timezone_object else timezone
+
+    assert (
+        LocaltimeToTimestampTool.localtime_to_timestamp(localtime, "%Y-%m-%d %H:%M:%S", local_timezone)
+        == expected_timestamp
+    )
+    assert TimezoneConversionTool.timezone_convert(localtime, timezone, "UTC") == expected_utc
+    assert TimezoneConversionTool.timezone_convert(localtime, timezone, timezone) == expected_local
+
+
+# "America" is a directory in the tz database, so the lookup error can expose a filesystem path
+@pytest.mark.parametrize("timezone", ["Invalid/TZ", "America", "Bad\nTZ"])
+def test_time_tools_reject_unknown_timezone(timezone: str):
+    expected = f"Invalid timezone: {timezone!r}"
+
+    with pytest.raises(ToolInvokeError) as exc_info:
+        LocaltimeToTimestampTool.localtime_to_timestamp("2024-01-01 10:00:00", "%Y-%m-%d %H:%M:%S", timezone)
+    assert str(exc_info.value) == expected
+    with pytest.raises(ToolInvokeError) as exc_info:
+        TimestampToLocaltimeTool.timestamp_to_localtime(1704067200, timezone)
+    assert str(exc_info.value) == expected
+    with pytest.raises(ToolInvokeError) as exc_info:
+        TimezoneConversionTool.timezone_convert("2024-01-01 10:00:00", timezone, "UTC")
+    assert str(exc_info.value) == expected
+    with pytest.raises(ToolInvokeError) as exc_info:
+        TimezoneConversionTool.timezone_convert("2024-01-01 10:00:00", "UTC", timezone)
+    assert str(exc_info.value) == expected
+
+
 def test_weekday_tool(sqlite_session: Session):
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(

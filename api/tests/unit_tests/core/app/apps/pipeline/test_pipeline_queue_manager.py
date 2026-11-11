@@ -14,7 +14,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowSucceededEvent,
 )
-from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
 
 def test_publish_sets_stop_listen_and_raises_on_stopped(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -34,6 +35,7 @@ def test_publish_sets_stop_listen_and_raises_on_stopped(mocker: MockerFixture, m
 
 
 def test_publish_stop_events_trigger_stop_listen(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Given each terminal queue event with a complete payload, stop the listener."""
     manager = PipelineQueueManager(task_id="t", user_id="u", invoke_from=InvokeFrom.WEB_APP, app_mode="rag")
     manager._q = mocker.MagicMock()
     stop_listen = mocker.MagicMock()
@@ -42,7 +44,11 @@ def test_publish_stop_events_trigger_stop_listen(mocker: MockerFixture, monkeypa
 
     for event in [
         QueueErrorEvent(error=ValueError("bad")),
-        QueueMessageEndEvent(llm_result=LLMResult.model_construct()),
+        QueueMessageEndEvent(
+            llm_result=LLMResult(
+                model="test-model", message=AssistantPromptMessage(content=""), usage=LLMUsage.empty_usage()
+            )
+        ),
         QueueWorkflowSucceededEvent(),
         QueueWorkflowFailedEvent(error="failed", exceptions_count=1),
         QueueWorkflowPartialSuccessEvent(exceptions_count=1),

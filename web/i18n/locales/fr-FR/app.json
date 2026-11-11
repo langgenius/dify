@@ -70,7 +70,7 @@
   "gotoAnything.actions.searchApplications": "Rechercher des applications",
   "gotoAnything.actions.slashDesc": "Exécutez des commandes telles que /theme, /lang",
   "gotoAnything.actions.slashTitle": "Commandes",
-  "gotoAnything.actions.themeCategoryDesc": "Changer de thème",
+  "gotoAnything.actions.themeCategoryDesc": "Changer l'apparence",
   "gotoAnything.actions.themeDarkDesc": "Utiliser l'apparence sombre",
   "gotoAnything.actions.themeLightDesc": "Utiliser l'apparence claire",
   "gotoAnything.actions.themeSystemDesc": "Suivez l'apparence de votre système d'exploitation",

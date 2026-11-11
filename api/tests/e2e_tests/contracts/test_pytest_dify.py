@@ -19,8 +19,8 @@ from tests.pytest_dify import (
 
 def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
     tmp_path: Path,
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repo_root = tmp_path
     integration_tests_dir = repo_root / "api" / "tests" / "e2e_tests" / "middleware"
     integration_tests_dir.mkdir(parents=True)
@@ -47,7 +47,7 @@ def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
     assert storage_root.is_dir()
 
 
-def test_ensure_compose_env_files_copies_missing_env_files(tmp_path: Path):
+def test_ensure_compose_env_files_copies_missing_env_files(tmp_path: Path) -> None:
     docker_dir = tmp_path / "docker"
     envs_dir = docker_dir / "envs"
     envs_dir.mkdir(parents=True)
@@ -60,14 +60,14 @@ def test_ensure_compose_env_files_copies_missing_env_files(tmp_path: Path):
     assert (docker_dir / "middleware.env").read_text() == "DB_PASSWORD=difyai123456\n"
 
 
-def test_parse_services_discards_empty_items():
+def test_parse_services_discards_empty_items() -> None:
     assert parse_services(" db_postgres, redis,, sandbox ") == ["db_postgres", "redis", "sandbox"]
 
 
-def test_stack_up_uses_waiting_compose_command(monkeypatch, tmp_path: Path):
+def test_stack_up_uses_waiting_compose_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     calls: list[list[str]] = []
 
-    def fake_run(args, **kwargs):
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         calls.append(args)
         return subprocess.CompletedProcess(args=args, returncode=0)
 
@@ -106,7 +106,7 @@ def test_stack_up_uses_waiting_compose_command(monkeypatch, tmp_path: Path):
     ]
 
 
-def test_builders_use_expected_compose_files(tmp_path: Path):
+def test_builders_use_expected_compose_files(tmp_path: Path) -> None:
     middleware = build_middleware_stack(tmp_path, ["db_postgres"])
     vdb = build_vdb_stack(tmp_path, ["weaviate", "qdrant"])
 

@@ -7,12 +7,11 @@ from pydantic import TypeAdapter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
-from core.trigger.entities.entities import SubscriptionBuilderUpdater
-from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.plugin.oauth_service import OAuthProxyService
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
+from services.trigger.builder_entities import SubscriptionBuilderUpdater
 from services.trigger.oauth_client_service import TriggerOAuthProviderMetadata
 from services.trigger.oauth_service import (
     TriggerOAuthCallbackRequest,
@@ -21,17 +20,19 @@ from services.trigger.oauth_service import (
     TriggerOAuthCredentials,
     TriggerOAuthProviderError,
 )
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
 _context_adapter = TypeAdapter(TriggerOAuthContext)
 
 
 class PluginTriggerOAuthGateway:
-    def __init__(self, *, oauth: OAuthHandler) -> None:
+    def __init__(self, *, oauth: OAuthHandler, providers: PluginTriggerProviderLoader) -> None:
         self._oauth = oauth
+        self._providers = providers
 
     def get_metadata(self, *, tenant_id: str, provider_id: TriggerProviderID) -> TriggerOAuthProviderMetadata:
-        provider = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider = self._providers.get_trigger_provider(tenant_id, provider_id)
         return TriggerOAuthProviderMetadata(
             schema=provider.get_oauth_client_schema(),
             plugin_unique_identifier=provider.plugin_unique_identifier,
@@ -93,6 +94,37 @@ class PluginTriggerOAuthGateway:
             )
         except ValueError as error:
             raise TriggerOAuthProviderError("Failed to get OAuth credentials from the trigger provider.") from error
+        return TriggerOAuthCredentials(credentials=result.credentials, expires_at=result.expires_at)
+
+    def refresh_credentials(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        redirect_uri: str,
+        client_config: PluginOAuthClientConfig | None,
+        credentials: Mapping[str, object],
+    ) -> TriggerOAuthCredentials:
+        """None retains renewal with the provider's default OAuth client."""
+        plugin_unique_identifier = (
+            client_config.plugin_unique_identifier
+            if client_config is not None
+            else self.get_metadata(tenant_id=tenant_id, provider_id=provider_id).plugin_unique_identifier
+        )
+        try:
+            result = self._oauth.refresh_credentials(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=provider_id.plugin_id,
+                provider=provider_id.provider_name,
+                redirect_uri=redirect_uri,
+                system_credentials=dict(client_config.credentials) if client_config is not None else {},
+                plugin_unique_identifier=plugin_unique_identifier,
+                credentials=dict(credentials),
+            )
+        except ValueError as error:
+            raise TriggerOAuthProviderError("Failed to refresh OAuth credentials for the trigger provider.") from error
         return TriggerOAuthCredentials(credentials=result.credentials, expires_at=result.expires_at)
 
 

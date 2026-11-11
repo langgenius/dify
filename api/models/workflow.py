@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -854,14 +854,14 @@ class WorkflowRun(TypeBase):
     inputs: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"), default=0)
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"), default=0)
-    total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    total_steps: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    exceptions_count: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         lambda: WorkflowPause,
@@ -1085,7 +1085,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     process_data: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default=None)
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"), default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, default=0)
     execution_metadata: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
@@ -1159,9 +1159,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     @property
     def extras(self) -> dict[str, Any]:
+        from core.plugin.impl.trigger import PluginTriggerClient
         from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
-        from core.trigger.trigger_manager import TriggerManager
+        from models.provider_ids import TriggerProviderID
+        from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 
         extras: dict[str, Any] = {}
         execution_metadata = self.execution_metadata_dict
@@ -1186,9 +1188,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
                 trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
                 provider_id = trigger_info.get("provider_id")
                 if provider_id:
-                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                        tenant_id=self.tenant_id,
-                        provider_id=provider_id,
+                    provider = PluginTriggerClient().fetch_trigger_provider(
+                        self.tenant_id, TriggerProviderID(provider_id)
+                    )
+                    extras["icon"] = generate_trigger_plugin_icon_url(
+                        self.tenant_id, provider.declaration.identity.icon
                     )
         return extras
 

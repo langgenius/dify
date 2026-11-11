@@ -76,10 +76,10 @@ from core.human_input_v2.im_integration import (
     ContactIMBindingView,
     IMBindingCommandError,
     IMBindingCommandErrorCode,
-    IMSyncRun,
     SyncContactSnapshot,
     SyncResultFact,
 )
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -123,6 +123,7 @@ from services.human_input_v2.im_contact_sync.service import (
     IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
+    IMSyncRunSummary,
 )
 from services.human_input_v2.node_data_migration import MigrationNode, NodeDataMigrationFailure
 
@@ -237,10 +238,13 @@ def _im_application_error_response(error: _IMApplicationError) -> tuple[dict[str
     )
 
 
-def _sync_run_payload(run: IMSyncRun) -> dict[str, object]:
+def _sync_run_payload(summary: IMSyncRunSummary) -> dict[str, object]:
+    """Serialize a persisted run with the currently resolved Account name."""
+    run = summary.run
     return {
         "id": run.id,
         "status": run.status,
+        "initiator_display_name": summary.initiator_display_name,
         "started_at": run.started_at,
         "finished_at": run.finished_at,
         "error_message": run.error_message,
@@ -272,11 +276,13 @@ def _avatar_url(avatar_file_id: str | None) -> str:
 
 
 def _sync_contact_payload(contact: SyncContactSnapshot, fallback_created_at) -> dict[str, object]:
+    """Serialize the frozen Contact profile without consulting current state."""
     # Historical result snapshots predate the Contact creation-time field.
     created_at = contact.created_at if contact.created_at is not None else fallback_created_at
     return {
         "id": contact.contact_id,
         "name": contact.name,
+        "email": contact.email,
         "avatar_url": _avatar_url(contact.avatar_file_id),
         "created_at": created_at,
     }
@@ -369,10 +375,12 @@ def _contact_option_payload(view: ContactWithIMBindings) -> dict[str, object]:
 
 
 def _contact_summary_payload(view: ContactWithIMBindings) -> dict[str, object]:
+    """Project one resolved Contact, including its available primary email."""
     contact = view.contact
     return {
         "id": contact.id,
         "name": contact.name,
+        "email": contact.email,
         "avatar_url": _contact_avatar_url(contact),
         "created_at": contact.created_at,
     }
@@ -655,10 +663,11 @@ class WorkspaceIMSyncRunsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account):
+        """Start or reuse a workspace run using the authenticated Account ID."""
         try:
             run = build_im_contact_sync_application().sync_service.create_or_get_active_run(
                 _workspace_scope(tenant_id),
-                AccountId(current_user.id),
+                AccountIMSyncInitiator(AccountId(current_user.id)),
             )
         except (
             IMChannelNotConfiguredError,
@@ -675,7 +684,7 @@ class WorkspaceLatestIMSyncRunApi(Resource):
     @console_ns.doc(
         description=(
             "Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; "
-            "the response does not include started_by."
+            "initiator_display_name is resolved from the initiating Account."
         )
     )
     @console_ns.response(200, "Success", console_ns.models[GetLatestIMSyncRunResponse.__name__])

@@ -24,12 +24,11 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
       <div className={cn('py-1.75', className)}>
-        {theme === 'dark' && (
-          <span aria-hidden className="i-custom-public-llm-anthropic-light h-2.5 w-22.5" />
-        )}
-        {theme === 'light' && (
-          <span aria-hidden className="i-custom-public-llm-anthropic-dark h-2.5 w-22.5" />
-        )}
+        <span
+          aria-hidden
+          className="i-custom-public-llm-anthropic-light h-2.5 w-22.5 not-dark:hidden"
+        />
+        <span aria-hidden className="i-custom-public-llm-anthropic-dark h-2.5 w-22.5 dark:hidden" />
       </div>
     )
   }
