@@ -19,8 +19,6 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const today = dayjs()
-
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 type TimePeriodOption = {
   value: number
@@ -49,6 +47,9 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
   const handleSelectRange = useCallback(
     (item: TimePeriodOption) => {
       const { name, value } = item
+      // Read the date when the range is selected, so a page left open past midnight
+      // does not build the period from the day the module was loaded.
+      const today = dayjs()
       let period: TimeRange | null = null
       if (value === 0) {
         const startOfToday = today.startOf('day')
@@ -91,10 +92,10 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
                 <SelectItem
                   key={item.value}
                   value={item.value}
-                  className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
+                  className="relative h-8 py-0 ps-7 pe-2 system-md-regular"
                 >
                   <SelectItemText>{item.name}</SelectItemText>
-                  <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
+                  <SelectItemIndicator className="absolute inset-s-2 top-2 ms-0" />
                 </SelectItem>
               ))}
             </SelectList>
