@@ -474,9 +474,7 @@ export function ContactsDirectoryPage() {
                     </span>
                   )}
                 </SegmentedControlItem>
-                {index < filters.length - 1 && (
-                  <SegmentedControlDivider className="has-[+_[data-checked]]:invisible [input:checked+&]:invisible" />
-                )}
+                {index < filters.length - 1 && <SegmentedControlDivider />}
               </Fragment>
             ))}
           </SegmentedControl>

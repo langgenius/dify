@@ -88,7 +88,7 @@ def _plugin_inner_auth() -> Generator[None]:
 
 
 class TestInnerKnowledgeRetrieveApi:
-    def test_post_returns_404_when_api_key_missing(self, inner_api_app: Flask):
+    def test_post_returns_404_when_api_key_missing(self, inner_api_app: Flask) -> None:
         with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
@@ -98,7 +98,7 @@ class TestInnerKnowledgeRetrieveApi:
 
         assert response.status_code == 404
 
-    def test_post_returns_404_when_api_key_invalid(self, inner_api_app: Flask):
+    def test_post_returns_404_when_api_key_invalid(self, inner_api_app: Flask) -> None:
         with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
@@ -108,7 +108,7 @@ class TestInnerKnowledgeRetrieveApi:
 
         assert response.status_code == 404
 
-    def test_post_returns_400_for_invalid_body(self, inner_api_app: Flask):
+    def test_post_returns_400_for_invalid_body(self, inner_api_app: Flask) -> None:
         with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
@@ -173,7 +173,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 429
         assert response.get_json()["code"] == "knowledge_rate_limited"
 
-    def test_post_returns_400_for_manual_metadata_without_conditions(self, inner_api_app: Flask):
+    def test_post_returns_400_for_manual_metadata_without_conditions(self, inner_api_app: Flask) -> None:
         payload = _payload()
         payload["metadata_filtering"] = {"mode": "manual"}
 
@@ -187,7 +187,7 @@ class TestInnerKnowledgeRetrieveApi:
         assert response.status_code == 400
         assert response.get_json()["code"] == "invalid_request"
 
-    def test_post_returns_400_for_automatic_metadata_without_model_config(self, inner_api_app: Flask):
+    def test_post_returns_400_for_automatic_metadata_without_model_config(self, inner_api_app: Flask) -> None:
         payload = _payload()
         payload["metadata_filtering"] = {"mode": "automatic"}
 
