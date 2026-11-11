@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import override
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult

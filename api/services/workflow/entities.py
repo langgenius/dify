@@ -3,12 +3,13 @@ Pydantic models for async workflow trigger system.
 """
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.enums import AppTriggerType, WorkflowRunTriggeredFrom
+from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
 
 
 class AsyncTriggerStatus(StrEnum):
@@ -169,3 +170,23 @@ class WorkflowScheduleCFSPlanEntity(BaseModel):
 
     schedule_strategy: Strategy
     granularity: int = Field(default=-1)  # -1 means infinite
+
+
+@dataclass(frozen=True, slots=True)
+class TriggerActor:
+    """Identity resolved by a trigger's tenant-scoped admission/provisioning path."""
+
+    id: str
+    role: CreatorUserRole
+
+
+@dataclass(frozen=True, slots=True)
+class TriggerWorkflowSnapshot:
+    """Published workflow values needed after the read transaction has closed."""
+
+    id: str
+    tenant_id: str
+    app_id: str
+    type: str
+    version: str
+    graph: str
