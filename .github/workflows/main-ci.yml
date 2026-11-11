@@ -2,7 +2,9 @@ name: Main CI Pipeline
 
 on:
   pull_request:
-    branches: ['main']
+    # Backport PRs target lts/* branches; run the same tests and type checks
+    # there so regressions from cherry-picks are caught before UAT deploys.
+    branches: ['main', 'lts/**']
   merge_group:
     branches: ['main']
     types: [checks_requested]
