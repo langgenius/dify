@@ -24,6 +24,24 @@ const legacyMockDebt = 'legacy owned-path mock; W1 must remove it or document th
 // Each W1 follow-up must delete the entries it fixes instead of broadening this list.
 const MOCK_ALLOWLIST: MockAllowance[] = [
   {
+    path: 'app/account/(commonLayout)/account-page/personal-access-tokens/__tests__/loading.browser.spec.tsx',
+    specifier: 'react-i18next',
+    occurrence: 1,
+    reason: legacyMockDebt,
+  },
+  {
+    path: 'app/account/(commonLayout)/account-page/personal-access-tokens/__tests__/scope-details.browser.spec.tsx',
+    specifier: 'react-i18next',
+    occurrence: 1,
+    reason: legacyMockDebt,
+  },
+  {
+    path: 'app/account/(commonLayout)/account-page/personal-access-tokens/__tests__/selection.browser.spec.tsx',
+    specifier: 'react-i18next',
+    occurrence: 1,
+    reason: legacyMockDebt,
+  },
+  {
     path: 'app/(auth)/signup/set-password/__tests__/page.browser.spec.tsx',
     specifier: '@/app/components/base/amplitude/registration-tracking',
     occurrence: 1,

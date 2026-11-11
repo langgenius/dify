@@ -3,19 +3,20 @@ import type {
   PersonalAccessTokenResourceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { page } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestQueryClient } from '@/test/query-client'
 import ScopeDetails from '../scope-details'
-import { render } from './browser-test-env'
 
 const transport = vi.hoisted(() => ({ call: vi.fn() }))
 vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: transport }))
-vi.unmock('react-i18next')
-
-beforeEach(async () => {
-  await page.viewport(1100, 800)
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const account = await import('@/i18n/locales/en-US/account-settings.json')
+  const common = await import('@/i18n/locales/en-US/common.json')
+  const dataset = await import('@/i18n/locales/en-US/dataset.json')
+  return createReactI18nextMock({ ...account.default, ...common.default, ...dataset.default })
 })
 
 const production: PersonalAccessTokenResourceResponse = {
