@@ -6,7 +6,7 @@ import pytest
 from flask import Blueprint, Flask
 from flask_restx import Api, Namespace, Resource
 from flask_restx.swagger import Swagger
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from pytest_mock import MockerFixture
 from werkzeug.datastructures import WWWAuthenticate
 from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable, Unauthorized
@@ -41,14 +41,6 @@ def _as_items(value: object) -> list[object]:
         msg = f"expected a list, got {type(value).__name__}"
         raise TypeError(msg)
     return list(value)
-
-
-def _as_text(value: object) -> str:
-    """Narrow an untyped Swagger document node to a string."""
-    if not isinstance(value, str):
-        msg = f"expected a string, got {type(value).__name__}"
-        raise TypeError(msg)
-    return value
 
 
 def _create_api_app() -> Flask:
@@ -320,11 +312,39 @@ def _unused_resolver(exception: type[Exception]) -> tuple[int, str]:
 _ERROR_BODY_REF = {"$ref": "#/components/schemas/ErrorResponse"}
 
 
-def _at(container: object, *keys: str) -> object:
-    """Walk nested Swagger JSON mappings so assertions stay type-clean."""
-    for key in keys:
-        container = _as_mapping(container)[key]
-    return container
+class _Schema(BaseModel):
+    """The slice of a JSON-Schema node the documented responses are read through."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ref: str | None = Field(default=None, alias="$ref")
+    anyOf: list["_Schema"] = Field(default_factory=list)
+
+
+class _MediaType(BaseModel):
+    schema_: _Schema | None = Field(default=None, alias="schema")
+
+
+class _Response(BaseModel):
+    description: str | None = None
+    content: dict[str, _MediaType] = Field(default_factory=dict)
+
+
+class _Operation(BaseModel):
+    responses: dict[str, _Response] = Field(default_factory=dict)
+
+
+class _PathItem(BaseModel):
+    get: _Operation | None = None
+
+
+class _Components(BaseModel):
+    schemas: dict[str, object] = Field(default_factory=dict)
+
+
+class _Document(BaseModel):
+    paths: dict[str, _PathItem] = Field(default_factory=dict)
+    components: _Components = Field(default_factory=_Components)
 
 
 def test_attach_error_response_schema_documents_the_error_body_on_every_error_status() -> None:
@@ -412,7 +432,7 @@ def _guarded[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return document_errors(decorated, _WrapperDeniedError)
 
 
-def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> dict[str, object]:
+def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> _Document:
     app = Flask(__name__)
     ns = Namespace("documented", path="/")
 
@@ -435,20 +455,27 @@ def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> dic
     assert isinstance(blueprint, Blueprint)
     app.register_blueprint(blueprint)
     with app.test_request_context("/"):
-        return _as_mapping(Swagger(api).as_dict())
+        return _Document.model_validate(Swagger(api).as_dict())
 
 
-def _responses(document: dict[str, object]) -> dict[str, object]:
-    return _as_mapping(_at(document, "paths", "/documented", "get", "responses"))
+def _responses(document: _Document) -> dict[str, _Response]:
+    operation = document.paths["/documented"].get
+    assert operation is not None
+    return operation.responses
 
 
-def _error_options(document: dict[str, object], status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
+def _error_options(document: _Document, status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
     """The component names a status documents, in order, before the open error body that ends them."""
-    schema = _as_mapping(_at(_responses(document), status, "content", "application/json", "schema"))
-    options = _as_items(schema.get("anyOf", [schema]))
+    schema = _responses(document)[status].content["application/json"].schema_
+    assert schema is not None
+    options = schema.anyOf or [schema]
     # A generic error can answer any documented status, so the open body is always the last option.
-    assert options[-1] == body_ref
-    return [_as_text(_as_mapping(option)["$ref"]).rsplit("/", 1)[-1] for option in options[:-1]]
+    assert options[-1].model_dump(by_alias=True, exclude_defaults=True) == body_ref
+    names: list[str] = []
+    for option in options[:-1]:
+        assert option.ref is not None
+        names.append(option.ref.rsplit("/", 1)[-1])
+    return names
 
 
 def _documented_names_for(*exceptions: type[Exception]) -> dict[str, bool]:
@@ -496,13 +523,15 @@ def test_error_responses_document_handler_wrapper_and_class_errors_by_code() -> 
 
     assert _error_options(document, "400") == ["DocumentedError"]
     assert _error_options(document, "404") == ["ItemMissingError"]
-    assert _at(_responses(document), "404", "description") == "Item missing"
+    assert _responses(document)["404"].description == "Item missing"
     assert _error_options(document, "401") == ["WrapperDeniedError"]
-    assert _at(_responses(document), "401", "description") == "Unauthorized"
+    assert _responses(document)["401"].description == "Unauthorized"
     assert _error_options(document, "403") == ["GuardDeniedError"]
     # Generic codes (validation, framework errors) are not listed; the open default covers them.
-    assert _at(_responses(document), "default", "content") == {"application/json": {"schema": _ERROR_BODY_REF}}
-    assert _at(document, "components", "schemas", "ItemMissingError") == {
+    default_schema = _responses(document)["default"].content["application/json"].schema_
+    assert default_schema is not None
+    assert default_schema.model_dump(by_alias=True, exclude_defaults=True) == _ERROR_BODY_REF
+    assert document.components.schemas["ItemMissingError"] == {
         "allOf": [
             _ERROR_BODY_REF,
             {
@@ -530,7 +559,7 @@ def test_openapi_surface_resolves_codes_like_its_formatter() -> None:
 
     body_ref = {"$ref": "#/components/schemas/ErrorBody"}
     assert _error_options(document, "400", body_ref) == ["DocumentedError"]
-    component = _as_mapping(_at(document, "components", "schemas", "DocumentedError"))
+    component = _as_mapping(document.components.schemas["DocumentedError"])
     all_of = _as_items(component["allOf"])
     assert all_of[0] == body_ref
     properties = _as_mapping(_as_mapping(all_of[1])["properties"])
@@ -846,7 +875,7 @@ def test_generic_errors_are_implicit_codes_and_never_listed() -> None:
     assert "bootstrap_missing" not in api.implicit_error_codes(400)
     # The operation keeps its real business errors and documents nothing for the generic one.
     assert _error_options(document, "400") == ["DocumentedError"]
-    assert "BootstrapMissingError" not in _as_mapping(_at(document, "components", "schemas"))
+    assert "BootstrapMissingError" not in document.components.schemas
     assert _error_options(document, "401") == ["WrapperDeniedError"]
 
 
