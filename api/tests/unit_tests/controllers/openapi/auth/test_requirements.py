@@ -581,6 +581,7 @@ ROUTES: tuple[Route, ...] = (
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("workspaces.switch", "POST", "/workspaces/{workspace_id}:switch", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.members.list", "GET", "/workspaces/{workspace_id}/members", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "workspaces.members.invite",
@@ -1376,11 +1377,13 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_workflow.env.list": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.set": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.delete": dict(_ACCOUNT_EDITOR_APP),
-    "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
-    "app_run.chat": dict(_DUAL_SUBJECT_RUN),
-    "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
-    "app_run.completion": dict(_DUAL_SUBJECT_RUN),
-    "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
+    "app_run.workflow": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.advanced_chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.completion": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.stop": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.stop.task": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "human_input_form.get": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
@@ -1480,7 +1483,6 @@ _REQ_RUN = (
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
-    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
 _REQ_RUN_FORM = (*_REQ_RUN, CheckFormSurface())
@@ -1617,7 +1619,13 @@ def _settings_req(
     return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
 
 
-_RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
+_RESOURCE_RUN = (
+    CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckAppAccess(),
+)
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -2286,6 +2294,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}:switch"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports"): frozenset({"200", "202", "400", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports:check"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports/{import_id}:confirm"): frozenset({"200", "400", "default"}),
@@ -2504,6 +2513,34 @@ class TestAuthMatrixCases:
         assert response.status_code == expected.status, f"{route.id}/{case.value}: body={body}"
         if expected.message is not None:
             assert body.get("message") == expected.message
+
+    @staticmethod
+    def test_pat_workspace_management_is_limited_to_phase_one_routes(matrix_app: Flask) -> None:
+        from constants.personal_access_token import PersonalAccessTokenPolicy
+
+        supported = {
+            route.id
+            for route in ROUTES
+            if (spec := _spec_for(matrix_app, route)) is not None
+            and spec.pat_policy is PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS
+        }
+        assert supported == {
+            "plugins.marketplace",
+            "plugins.list",
+            "plugins.install",
+            "plugins.task",
+            "plugins.delete",
+            "model_providers.describe",
+            "model_providers.credential.create",
+            "model_providers.credential.set",
+            "models.list",
+            "models.credential.create",
+            "models.credential.set",
+            "tools.list",
+            "tool_providers.describe",
+            "tool_providers.credential.create",
+            "tool_providers.credential.set",
+        }
 
     @staticmethod
     def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
