@@ -11,11 +11,11 @@ from sqlalchemy import Connection, Engine, event
 
 from core.helper.encrypter import encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from repositories.trigger.subscription_repository import build_trigger_refresh_lock_key
 from services.plugin.dispatch_identity import PLUGIN_IDENTIFIER_HEADER
 from services.trigger.subscription_service import TriggerSubscriptionChangedError, TriggerSubscriptionLeaseLostError

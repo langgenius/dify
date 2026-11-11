@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -1159,9 +1159,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     @property
     def extras(self) -> dict[str, Any]:
+        from core.plugin.impl.trigger import PluginTriggerClient
         from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
-        from core.trigger.trigger_manager import TriggerManager
+        from models.provider_ids import TriggerProviderID
+        from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 
         extras: dict[str, Any] = {}
         execution_metadata = self.execution_metadata_dict
@@ -1186,9 +1188,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
                 trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
                 provider_id = trigger_info.get("provider_id")
                 if provider_id:
-                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                        tenant_id=self.tenant_id,
-                        provider_id=provider_id,
+                    provider = PluginTriggerClient().fetch_trigger_provider(
+                        self.tenant_id, TriggerProviderID(provider_id)
+                    )
+                    extras["icon"] = generate_trigger_plugin_icon_url(
+                        self.tenant_id, provider.declaration.identity.icon
                     )
         return extras
 
