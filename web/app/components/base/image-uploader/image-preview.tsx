@@ -190,15 +190,18 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
     }
   }, [handleMouseUp])
 
-  useHotkey('ArrowUp', zoomIn, { target: previewRef })
-  useHotkey('ArrowDown', zoomOut, { target: previewRef })
+  // DialogPopup stops arrow propagation before document-level delegated listeners.
+  useHotkey('ArrowUp', zoomIn, { target: previewRef, afterDelegatedHandlers: false })
+  useHotkey('ArrowDown', zoomOut, { target: previewRef, afterDelegatedHandlers: false })
   useHotkey('ArrowLeft', () => onPrev?.(), {
     target: previewRef,
+    afterDelegatedHandlers: false,
     enabled: !!onPrev,
     requireReset: true,
   })
   useHotkey('ArrowRight', () => onNext?.(), {
     target: previewRef,
+    afterDelegatedHandlers: false,
     enabled: !!onNext,
     requireReset: true,
   })

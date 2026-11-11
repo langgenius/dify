@@ -77,7 +77,10 @@ Use normal library consumption unless the owner must decide whether to claim an 
 
 - Element-target hotkeys run after React child handlers by default, so a child can stop the
   event before the application command. Workflow's document bubble listener also checks owner
-  containment. `capture: true` intentionally precedes descendants; do not use it as a general fix.
+  containment. Preview-owned arrows use `afterDelegatedHandlers: false` on their Popup target:
+  DialogPopup stops arrows at its React boundary, before a document listener could receive them.
+  This preserves native bubbling and input filtering. `capture: true` intentionally precedes
+  descendants; do not use it as a general fix.
 - The manager does not skip `defaultPrevented`. Conditional owners set `preventDefault: false`
   and `stopPropagation: false`, check scope and `defaultPrevented`, then consume accepted events.
   Consume repeats before returning on `event.repeat`; leave `requireReset` unset in this mode

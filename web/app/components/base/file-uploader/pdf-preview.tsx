@@ -25,6 +25,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
     setScale((prevScale) => Math.max(prevScale / 1.2, 0.5))
   }
 
+  // DialogPopup stops arrow propagation before document-level delegated listeners.
   useHotkey(
     'ArrowUp',
     (event) => {
@@ -35,6 +36,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
     },
     {
       target: popupRef,
+      afterDelegatedHandlers: false,
       enabled: true,
       ignoreInputs: true,
       requireReset: false,
@@ -52,6 +54,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
     },
     {
       target: popupRef,
+      afterDelegatedHandlers: false,
       enabled: true,
       ignoreInputs: true,
       requireReset: false,

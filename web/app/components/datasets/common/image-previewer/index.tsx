@@ -143,13 +143,16 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
     [fetchImage],
   )
 
+  // DialogPopup stops arrow propagation before document-level delegated listeners.
   useHotkey('ArrowLeft', prevImage, {
     target: previewRef,
+    afterDelegatedHandlers: false,
     enabled: currentIndex > 0,
     requireReset: true,
   })
   useHotkey('ArrowRight', nextImage, {
     target: previewRef,
+    afterDelegatedHandlers: false,
     enabled: currentIndex < images.length - 1,
     requireReset: true,
   })
