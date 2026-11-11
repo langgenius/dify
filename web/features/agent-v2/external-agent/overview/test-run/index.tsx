@@ -3,6 +3,7 @@
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { ExternalAgentOverviewPreview } from '../../preview'
 import type { TestAgentAttachment } from './attachments'
+import type { TestAgentRunOutcome } from './use-test-run'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -23,8 +24,9 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { TestAgentAttachments } from './attachments'
 import { TestAgentResults } from './results'
 import { useTestAgentRun } from './use-test-run'
@@ -32,7 +34,9 @@ import { useTestAgentRun } from './use-test-run'
 type TestAgentProps = Pick<
   ExternalAgentOverviewPreview,
   'skills' | 'sampleResponse' | 'sampleTraceSteps' | 'tracing'
->
+> & {
+  sampleOutcome?: TestAgentRunOutcome
+}
 
 const VISIBLE_EXAMPLE_COUNT = 5
 const RUN_TEST_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
@@ -43,6 +47,7 @@ function TestAgentSession({
   tab,
   setTab,
   startRun,
+  stopRun,
   resetRun,
 }: Pick<TestAgentProps, 'skills'> & ReturnType<typeof useTestAgentRun>) {
   const { t } = useTranslation(['agentRoster', 'common'])
@@ -63,7 +68,9 @@ function TestAgentSession({
   const visibleExamples = showAllExamples ? examples : examples.slice(0, VISIBLE_EXAMPLE_COUNT)
   const remaining = examples.length - VISIBLE_EXAMPLE_COUNT
   const isRunning = run?.status === 'running'
-  const canRun = !isRunning && task.trim().length > 0
+  const isStopping = run?.status === 'stopping'
+  const isInProgress = isRunning || isStopping
+  const canRun = !isInProgress && task.trim().length > 0
 
   function updateTask(value: string) {
     setTask(value)
@@ -85,7 +92,7 @@ function TestAgentSession({
           {t(($) => $['external.overview.test'])}
         </DrawerTitle>
         <DrawerDescription className="mt-0.5 system-xs-regular text-text-tertiary">
-          {isRunning
+          {isInProgress
             ? t(($) => $['external.overview.testRun.runningDescription'])
             : t(($) => $['external.overview.testDescription'])}
         </DrawerDescription>
@@ -152,11 +159,11 @@ function TestAgentSession({
             <Textarea
               ref={taskRef}
               className={cn(
-                isRunning
+                isInProgress
                   ? 'field-sizing-content h-auto min-h-0 resize-none bg-components-input-bg-disabled text-text-secondary'
                   : 'h-30 min-h-30 resize-y',
               )}
-              readOnly={isRunning}
+              readOnly={isInProgress}
               value={task}
               onValueChange={updateTask}
               placeholder={t(($) => $['external.overview.testRequestPlaceholder'])}
@@ -206,7 +213,7 @@ function TestAgentSession({
             </div>
           )}
         </Form>
-        {!isRunning && (
+        {!isInProgress && (
           <TestAgentAttachments
             attachments={attachments}
             onChange={(value) => {
@@ -217,32 +224,36 @@ function TestAgentSession({
         )}
         <Button
           form={formId}
-          type={isRunning ? 'button' : 'submit'}
-          variant={isRunning ? 'secondary' : 'primary'}
-          size={isRunning ? 'medium' : 'large'}
-          className="w-full shrink-0 rounded-lg"
-          disabled={!isRunning && !canRun}
+          type={isInProgress ? 'button' : 'submit'}
+          variant={isInProgress ? 'secondary' : 'primary'}
+          size={isInProgress ? 'medium' : 'large'}
+          className={cn('w-full shrink-0 rounded-lg', isStopping && 'h-9 flex-row-reverse')}
+          loading={isStopping}
+          disabled={!isInProgress && !canRun}
           aria-labelledby={actionLabelId}
           onClick={
             isRunning
               ? (event) => {
                   event.preventDefault()
-                  resetRun()
-                  taskRef.current?.focus()
+                  stopRun()
                 }
               : undefined
           }
         >
-          <span
-            aria-hidden
-            className={cn('size-4', isRunning ? 'i-ri-stop-circle-line' : 'i-ri-play-line')}
-          />
+          {!isStopping && (
+            <span
+              aria-hidden
+              className={cn('size-4', isRunning ? 'i-ri-stop-circle-line' : 'i-ri-play-line')}
+            />
+          )}
           <span id={actionLabelId}>
-            {isRunning
-              ? t(($) => $['external.overview.testRun.stop'])
-              : t(($) => $['external.overview.sendRequest'])}
+            {isStopping
+              ? t(($) => $['external.overview.testRun.stoppingLabel'])
+              : isRunning
+                ? t(($) => $['external.overview.testRun.stop'])
+                : t(($) => $['external.overview.sendRequest'])}
           </span>
-          {!isRunning && (
+          {!isInProgress && (
             <KbdGroup aria-hidden>
               {formatForDisplay(RUN_TEST_HOTKEY, { parts: true }).map((key) => (
                 <Kbd key={key}>{key}</Kbd>
@@ -262,13 +273,72 @@ function TestAgentSession({
 
 export function ExternalAgentTestPanel(props: TestAgentProps) {
   const { t } = useTranslation(['agentRoster'])
-  const testRun = useTestAgentRun(props)
+  const [open, setOpen] = useState(false)
+  const notificationRef = useRef<string | null>(null)
+  const triggerLabelId = useId()
+
+  function dismissNotification() {
+    if (notificationRef.current !== null) {
+      toast.dismiss(notificationRef.current)
+      notificationRef.current = null
+    }
+  }
+
+  function changeOpen(nextOpen: boolean) {
+    if (nextOpen) dismissNotification()
+    setOpen(nextOpen)
+  }
+
+  const testRun = useTestAgentRun({
+    ...props,
+    onCompleted(outcome) {
+      // The open panel already presents the result at the action's owner.
+      if (open) return
+      dismissNotification()
+      notificationRef.current = toast(
+        outcome === 'succeeded'
+          ? t(($) => $['external.overview.testRun.finishedToast'])
+          : t(($) => $['external.overview.testRun.failedToast']),
+        {
+          type: outcome === 'succeeded' ? 'success' : 'error',
+          actionProps: {
+            children: t(($) => $['external.overview.testRun.viewResult']),
+            variant: 'primary',
+            onClick() {
+              testRun.setTab('result')
+              changeOpen(true)
+            },
+          },
+        },
+      )
+    },
+  })
+  const isInProgress = testRun.run?.status === 'running' || testRun.run?.status === 'stopping'
+
+  useEffect(
+    () => () => {
+      if (notificationRef.current !== null) toast.dismiss(notificationRef.current)
+    },
+    [],
+  )
 
   return (
-    <Drawer modal swipeDirection="right">
-      <DrawerTrigger render={<Button variant="secondary" />}>
-        <span aria-hidden className="i-ri-play-circle-line size-4" />
-        {t(($) => $['external.overview.test'])}
+    <Drawer modal swipeDirection="right" open={open} onOpenChange={changeOpen}>
+      <DrawerTrigger render={<Button variant="secondary" aria-labelledby={triggerLabelId} />}>
+        <span
+          aria-hidden
+          className={cn(
+            'size-4',
+            isInProgress
+              ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+              : 'i-ri-play-circle-line',
+          )}
+        />
+        <span id={triggerLabelId}>
+          {isInProgress
+            ? t(($) => $['external.overview.testing'])
+            : t(($) => $['external.overview.test'])}
+        </span>
       </DrawerTrigger>
       <DrawerPortal>
         <DrawerBackdrop />

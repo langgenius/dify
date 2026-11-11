@@ -1,4 +1,5 @@
 import type { TestAgentResultTab, TestAgentRun } from './use-test-run'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -18,33 +19,56 @@ export function TestAgentResults({ run, tab, onTabChange }: TestAgentResultsProp
     maximumFractionDigits: 1,
   })
   const succeeded = run.status === 'succeeded'
-  const traceSteps = succeeded && run.tracing ? run.traceSteps : []
+  const failed = run.status === 'failed'
+  const stopping = run.status === 'stopping'
+  const stopped = run.status === 'stopped'
+  const completed = succeeded || failed || stopped
+  const traceSteps = run.tracing ? run.traceSteps : []
+  const statusLabel = {
+    running: t(($) => $['external.overview.testRun.running']),
+    stopping: t(($) => $['external.overview.testRun.stopping']),
+    stopped: t(($) => $['external.overview.testRun.stopped']),
+    succeeded: t(($) => $['external.overview.testRun.success']),
+    failed: t(($) => $['external.overview.testRun.failed']),
+  }[run.status]
 
   return (
     <div className="flex shrink-0 flex-col gap-4">
-      <StatusContainer status={run.status}>
+      <StatusContainer status={stopping ? 'running' : run.status}>
         <dl className="relative grid grid-cols-3 gap-2">
           <div>
             <dt className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
               {t(($) => $['external.overview.testRun.status'])}
             </dt>
-            <dd className="flex items-center gap-1 system-xs-semibold-uppercase">
-              <StatusDot status={succeeded ? 'success' : 'normal'} />
-              {succeeded
-                ? t(($) => $['external.overview.testRun.success'])
-                : t(($) => $['external.overview.testRun.running'])}
+            <dd
+              className={cn(
+                'flex items-center gap-1 system-xs-semibold-uppercase',
+                stopped && 'text-text-warning',
+              )}
+            >
+              <StatusDot
+                status={succeeded ? 'success' : failed ? 'error' : stopped ? 'warning' : 'normal'}
+              />
+              {statusLabel}
             </dd>
           </div>
-          {succeeded && (
+          {(completed || stopping) && (
             <>
               <div>
                 <dt className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['external.overview.testRun.elapsedTime'])}
                 </dt>
                 <dd className="system-sm-medium text-text-secondary">
-                  {t(($) => $['external.overview.testRun.elapsedValue'], {
-                    value: secondsFormat.format(run.elapsedSeconds),
-                  })}
+                  {stopping ? (
+                    <span
+                      aria-hidden
+                      className="my-1 block h-2 w-12 rounded-sm bg-text-quaternary/20"
+                    />
+                  ) : (
+                    t(($) => $['external.overview.testRun.elapsedValue'], {
+                      value: secondsFormat.format(run.elapsedSeconds),
+                    })
+                  )}
                 </dd>
               </div>
               <div>
@@ -52,14 +76,28 @@ export function TestAgentResults({ run, tab, onTabChange }: TestAgentResultsProp
                   {t(($) => $['external.overview.testRun.totalTokens'])}
                 </dt>
                 <dd className="system-sm-medium text-text-secondary">
-                  {t(($) => $['external.overview.testRun.tokens'], {
-                    value: new Intl.NumberFormat(i18n.language).format(run.totalTokens),
-                  })}
+                  {stopping ? (
+                    <span
+                      aria-hidden
+                      className="my-1 block h-2 w-16 rounded-sm bg-text-quaternary/20"
+                    />
+                  ) : run.totalTokens === null ? (
+                    t(($) => $['external.overview.testRun.notProvided'])
+                  ) : (
+                    t(($) => $['external.overview.testRun.tokens'], {
+                      value: new Intl.NumberFormat(i18n.language).format(run.totalTokens),
+                    })
+                  )}
                 </dd>
               </div>
             </>
           )}
         </dl>
+        {stopped && (
+          <p className="relative mt-2 border-t-[0.5px] border-divider-deep pt-2 system-xs-regular text-text-warning">
+            {t(($) => $['external.overview.testRun.stoppedDescription'])}
+          </p>
+        )}
       </StatusContainer>
       <Tabs
         value={tab}
@@ -84,11 +122,15 @@ export function TestAgentResults({ run, tab, onTabChange }: TestAgentResultsProp
                 </p>
               ))}
             </div>
-          ) : (
+          ) : failed ? (
+            <p className="system-sm-regular text-text-destructive">
+              {t(($) => $['external.overview.testRun.failedToast'])}
+            </p>
+          ) : !stopped ? (
             <p className="system-xs-regular text-text-tertiary">
               {t(($) => $['external.overview.testRun.waitingResult'])}
             </p>
-          )}
+          ) : null}
         </TabsPanel>
         <TabsPanel value="tracing" className="space-y-1 pt-2">
           {traceSteps.length > 0 ? (
