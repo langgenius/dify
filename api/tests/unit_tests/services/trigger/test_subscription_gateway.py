@@ -9,8 +9,10 @@ import pytest
 
 from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
 from services.trigger.subscription_service import (
@@ -39,7 +41,7 @@ def _prepare(
         "credentials_schema": [{"name": "token", "type": "secret-input", "required": True}],
     }
     declaration["subscription_schema"] = [{"name": "remote_id", "type": "text-input"}]
-    gateway = PluginTriggerSubscriptionGateway()
+    gateway = PluginTriggerSubscriptionGateway(providers=PluginTriggerProviderLoader(client=PluginTriggerClient()))
     context = Context()
     schemas = context.run(
         gateway.get_schemas,
