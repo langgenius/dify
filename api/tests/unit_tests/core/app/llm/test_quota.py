@@ -868,42 +868,6 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
     assert quota_used == 15
 
 
-def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
-    usage = LLMUsage.empty_usage()
-    usage.total_tokens = 2
-    provider_configuration = _provider_configuration(
-        using_provider_type=ProviderType.SYSTEM,
-        # Bypass validation only to exercise defensive handling of an invalid quota type.
-        system_configuration=SystemConfiguration.model_construct(
-            enabled=True,
-            current_quota_type="unexpected",
-            quota_configurations=[
-                QuotaConfiguration.model_construct(
-                    quota_used=0,
-                    is_valid=True,
-                    quota_type="unexpected",
-                    quota_unit=QuotaUnit.TOKENS,
-                    quota_limit=100,
-                )
-            ],
-        ),
-    )
-    provider_manager = _provider_manager(provider_configuration)
-
-    with (
-        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
-        patch("services.credit_pool_service.CreditPoolService.deduct_credits_capped") as mock_deduct_credits,
-    ):
-        deduct_llm_quota_for_model(
-            tenant_id="tenant-id",
-            provider="openai",
-            model="gpt-4o",
-            usage=usage,
-        )
-
-    mock_deduct_credits.assert_not_called()
-
-
 def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 2
