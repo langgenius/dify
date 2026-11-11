@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -224,6 +225,7 @@ from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import StoredPolicyTraceScopes
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -586,11 +588,13 @@ def build_application_services(
     )
     credential_queries = CredentialQueryRepository(session_factory=database_client)
     trigger_subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
+    trigger_providers = PluginTriggerProviderLoader(client=PluginTriggerClient())
     triggers = build_trigger_services(
         database_client=database_client,
         redis=redis,
         credentials=credential_queries,
         subscriptions=trigger_subscriptions,
+        provider_loader=trigger_providers,
         workflow_queries=app_definition_repository,
         mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
         trigger_end_users=AppScopedTriggerEndUsers(
@@ -610,6 +614,7 @@ def build_application_services(
         credentials=credential_queries,
         trigger_subscriptions=trigger_subscriptions,
         trigger_builders=triggers.builders,
+        trigger_providers=trigger_providers,
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
