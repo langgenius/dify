@@ -19,7 +19,7 @@ from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
+from core.tools.tool_manager import ToolManager as LegacyToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -223,6 +223,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tools.tool_manager import ToolManager
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
 from services.upload_file_delivery_service import UploadFileDeliveryService
@@ -911,7 +912,8 @@ def init_app(app: Flask) -> None:
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     # The Agent Knowledge Base tool cannot run without KnowledgeFS, so keep it out of tool lists when disabled.
     if get_knowledge_fs_features().enabled:
-        ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+        LegacyToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    LegacyToolManager.configure_credential_resolver(resolve_tool_credentials)
     ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),

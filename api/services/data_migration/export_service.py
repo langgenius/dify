@@ -26,8 +26,8 @@ from services.data_migration.entities import (
     ResourceType,
 )
 from services.data_migration.package_service import MigrationPackageService
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
+from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
 
 SUPPORTED_APP_MODES = {"workflow", "advanced-chat"}
 

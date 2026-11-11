@@ -261,6 +261,7 @@ def test_init_app_registers_services_for_the_current_app(
 
     from extensions.application_services.tools import resolve_tool_credentials
 
+    assert ext_application_services.LegacyToolManager._credential_resolver is resolve_tool_credentials
     assert ext_application_services.ToolManager._credential_resolver is resolve_tool_credentials
 
     with app.app_context():
@@ -298,12 +299,12 @@ def test_init_app_registers_knowledge_fs_tool_only_when_knowledge_fs_is_enabled(
         "get_knowledge_fs_features",
         lambda: KnowledgeFSFeatures(enabled=enabled, upload_enabled=False, agent_enabled=False),
     )
-    monkeypatch.setattr(ext_application_services.ToolManager, "_external_hardcoded_provider_classes", [])
+    monkeypatch.setattr(ext_application_services.LegacyToolManager, "_external_hardcoded_provider_classes", [])
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
 
     ext_application_services.init_app(app)
 
-    registered = ext_application_services.ToolManager._external_hardcoded_provider_classes
+    registered = ext_application_services.LegacyToolManager._external_hardcoded_provider_classes
     assert (KnowledgeFSProvider in registered) is enabled
 
 

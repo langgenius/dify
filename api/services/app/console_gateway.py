@@ -76,7 +76,7 @@ from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.tools.legacy_workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow_service import WorkflowService
 from services.workflow_tool_references import WorkflowToolTarget
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task

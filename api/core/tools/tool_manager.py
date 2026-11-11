@@ -56,8 +56,8 @@ from graphon.runtime import VariablePool
 from graphon.variables.template_resolution import convert_template
 from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
