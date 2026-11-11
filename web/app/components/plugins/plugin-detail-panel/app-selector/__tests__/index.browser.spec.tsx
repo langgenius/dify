@@ -29,6 +29,7 @@ const apps = [
   },
 ] satisfies AppPartial[]
 const { fetchApps, fetchApp } = vi.hoisted(() => ({ fetchApps: vi.fn(), fetchApp: vi.fn() }))
+// boundary: app search/detail reads stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -41,7 +42,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/app/components/base/app-icon', () => ({ default: () => null }))
 
 function Harness({
   onSelect,
@@ -120,7 +120,9 @@ it('dismisses only the inner picker with Escape and starts a fresh search after 
   await page.getByRole('button', { name: 'app.appSelector.placeholder' }).click()
   await page.getByRole('button', { name: 'app.appSelector.placeholder' }).nth(1).click()
   await expect.element(input).toHaveValue('')
-  await expect.element(page.getByRole('option', { name: /Support Bot/ })).toBeVisible()
+  const supportBot = page.getByRole('option', { name: /Support Bot/ })
+  await expect.element(supportBot).toBeVisible()
+  await expect.element(supportBot.getByText('B')).toBeVisible()
 })
 
 it('removes a highlighted stale result during remote search and selects the new result with the keyboard', async () => {

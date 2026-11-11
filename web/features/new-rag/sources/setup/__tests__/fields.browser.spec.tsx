@@ -1,15 +1,9 @@
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { SourceProviderIcon } from '../fields'
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
 
 const validIcon =
   'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%234B7BEC%22/%3E%3C/svg%3E'
@@ -37,7 +31,15 @@ describe('SourceProviderIcon', () => {
   })
 
   it('recovers from a native decode failure for each new image session', async () => {
-    const screen = await render(<IconSession />)
+    const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
+      currentWorkspace: { id: 'workspace-123' },
+    })
+    onTestFinished(() => queryClient.clear())
+    const screen = await render(
+      <Wrapper>
+        <IconSession />
+      </Wrapper>,
+    )
     const image = () => screen.getByAltText('')
 
     await expect.element(image()).not.toBeInTheDocument()
