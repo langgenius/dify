@@ -109,6 +109,109 @@ describe('extractFunctionParams', () => {
     },
   )
 
+  it.each([
+    ['parentheses', '/[(]/'],
+    ['character-class delimiters', '/[,(]/g'],
+    ['escaped slashes and groups', String.raw`/https?:\/\/(docs|api)\.example\.com/`],
+  ])(
+    'splits JavaScript parameters outside regex literals with %s',
+    (_description, defaultValue) => {
+      const code = `function main({ pattern: pattern = ${defaultValue}, text }) { return { text } }`
+      expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['pattern', 'text'])
+    },
+  )
+
+  it('still splits JavaScript parameters after division defaults', () => {
+    const code = 'function main({ ratio: ratio = total / count, text }) { return { ratio, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['ratio', 'text'])
+  })
+
+  it('recognizes a regex literal on the right side of division', () => {
+    const code =
+      'function main({ value: value = input / /[,(]/.source, text }) { return { value, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['value', 'text'])
+  })
+
+  it('recognizes a regex literal after the greater-than operator', () => {
+    const code =
+      'function main({ matched: matched = value > /,/.test(input), text }) { return { matched, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matched', 'text'])
+  })
+
+  it('recognizes a regex literal after an arrow function default', () => {
+    const code =
+      'function main({ matcher: matcher = () => /[,(]/, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex expression statement after else in a JavaScript default block', () => {
+    const code =
+      'function main({ matcher: matcher = () => { if (enabled) {} else /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex expression statement after a control block in a JavaScript default', () => {
+    const code =
+      'function main({ matcher: matcher = () => { if (enabled) {} /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex after an else block in a JavaScript default', () => {
+    const code =
+      'function main({ matcher: matcher = () => { if (enabled) {} else {} /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex after a finally block in a JavaScript default', () => {
+    const code =
+      'function main({ matcher: matcher = () => { try {} finally {} /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex after a catch block in a JavaScript default', () => {
+    const code =
+      'function main({ matcher: matcher = () => { try {} catch (error) {} /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex after a switch block in a JavaScript default', () => {
+    const code =
+      'function main({ matcher: matcher = () => { switch (kind) { case "x": break; default: break } /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('recognizes a regex after a standalone block in a JavaScript default', () => {
+    const code =
+      'function main({ matcher: matcher = () => { {} /[),]/.test(value); return true }, text }) { return { matcher, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+  })
+
+  it('keeps division after an arrow block before a regex literal', () => {
+    const code =
+      'function main({ value: value = (() => {}) / /[),]/.test(input), text }) { return { value, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['value', 'text'])
+  })
+
+  it.each(['if (enabled)', 'while (enabled)', 'for (;;)'])(
+    'recognizes a regex statement after a control condition in an arrow default (%s)',
+    (controlCondition) => {
+      const code = `function main({ matcher: matcher = () => { ${controlCondition} /[),]/.test(value); return true }, text }) { return { matcher, text } }`
+      expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['matcher', 'text'])
+    },
+  )
+
+  it('still treats division after a call containing control-keyword text as division', () => {
+    const code =
+      'function main({ ratio: ratio = lookup("if (enabled)") / denominator / 2, text }) { return { ratio, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['ratio', 'text'])
+  })
+
+  it('does not treat division after a postfix increment as a regex literal', () => {
+    const code =
+      'function main({ ratio: ratio = count++ / denominator / 2, text }) { return { ratio, text } }'
+    expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['ratio', 'text'])
+  })
+
   it('splits JavaScript parameters outside template strings', () => {
     const code = 'function main({ label: label = `one,two`, count }) { return { label } }'
     expect(extractFunctionParams(code, CodeLanguage.javascript)).toEqual(['label', 'count'])
