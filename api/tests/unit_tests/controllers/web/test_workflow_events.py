@@ -10,6 +10,7 @@ from flask import Flask
 
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
+from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
@@ -165,6 +166,65 @@ class TestWorkflowEventsApi:
                 "tenant_id": "tenant-1",
                 "app_id": "app-1",
                 "session_maker": ANY,
+                "human_input_surface": HumanInputSurface.OPENAPI,
                 "close_on_pause": False,
             }
         ]
+
+    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.db")
+    def test_snapshot_stream_restricts_pending_forms_to_web_app_surface(
+        self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A reconnecting Web App run must not fall back to BACKSTAGE resume tokens."""
+        mock_db.engine = "engine"
+        run = _workflow_run()
+        mock_repo = MagicMock()
+        mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
+        mock_factory.create_api_workflow_run_repository.return_value = mock_repo
+
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
+        monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
+
+        with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true"):
+            response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
+        assert len(snapshot_calls) == 1
+        assert snapshot_calls[0]["human_input_surface"] == HumanInputSurface.OPENAPI
+        assert snapshot_calls[0]["close_on_pause"] is True
+
+    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
+    @patch("controllers.web.workflow_events.db")
+    def test_non_snapshot_stream_skips_snapshot_builder(
+        self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Without include_state_snapshot the legacy event path is used unchanged."""
+        mock_db.engine = "engine"
+        run = _workflow_run()
+        mock_repo = MagicMock()
+        mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
+        mock_factory.create_api_workflow_run_repository.return_value = mock_repo
+
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
+        monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
+        monkeypatch.setattr(
+            "controllers.web.workflow_events.MessageGenerator.retrieve_events",
+            lambda *_args, **_kwargs: iter([{"event": "message"}]),
+        )
+
+        with app.test_request_context("/workflow/run-1/events"):
+            response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+
+        assert response.mimetype == "text/event-stream"
+        assert snapshot_calls == []

@@ -18,6 +18,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from models.enums import CreatorUserRole
@@ -99,6 +100,11 @@ class WorkflowEventsApi(WebApiResource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            # Web App runs submit through the public /form endpoints,
+                            # which only accept STANDALONE_WEB_APP / EMAIL_* tokens.
+                            # Restrict the snapshot to that allowlist so a pending
+                            # form is not overwritten by a BACKSTAGE token.
+                            human_input_surface=HumanInputSurface.OPENAPI,
                             close_on_pause=not continue_on_pause,
                         )
                     )
