@@ -1,7 +1,13 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import app from '@/i18n/locales/en-US/app.json'
+import common from '@/i18n/locales/en-US/common.json'
+import navigation from '@/i18n/locales/en-US/navigation.json'
+import pluginMessages from '@/i18n/locales/en-US/plugin.json'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -14,44 +20,14 @@ const boundary = vi.hoisted(() => ({
   searchTemplates: vi.fn(),
 }))
 
-vi.mock('#i18n', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...createReactI18nextMock({
-      clearSearch: 'Clear search',
-      loading: 'Loading',
-      'marketplace.home.plugins': 'Plugins',
-      'marketplace.home.searchPlaceholder': 'Search plugins or templates',
-      'marketplace.home.templates': 'Templates',
-      'marketplace.loadError': 'Failed to load. Please try again.',
-      'marketplace.noPluginFound': 'No integration found',
-      'newApp.noTemplateFound': 'No templates found',
-    }),
-    useLocale: () => 'en-US',
-  }
-})
+vi.unmock('react-i18next')
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const original = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...original,
-    ...createReactI18nextMock({
-      clearSearch: 'Clear search',
-      loading: 'Loading',
-      'marketplace.home.plugins': 'Plugins',
-      'marketplace.home.templates': 'Templates',
-      'marketplace.loadError': 'Failed to load. Please try again.',
-      'marketplace.noPluginFound': 'No integration found',
-      'newApp.noTemplateFound': 'No templates found',
-    }),
-  }
-})
-
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: boundary.push }),
 }))
 
+// boundary: autocomplete suggestions stop at the external Marketplace HTTP client.
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/marketplace')>()
   return {
@@ -80,6 +56,7 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
   }
 })
 
+// boundary: installed-plugin reads stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -91,7 +68,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// Keep the real dialog lifecycle while preventing its iframe from loading the external Marketplace.
+// boundary: remote Marketplace documents stay local while preserving their real query parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
   const toBlank = (url: string) =>
@@ -132,6 +109,12 @@ const template = {
 } as MarketplaceTemplate
 
 async function renderSearch(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLOUD') {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { app, common, navigation, plugin: pluginMessages } },
+  })
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({ hasMemory: true })
   const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
@@ -139,9 +122,11 @@ async function renderSearch(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLO
   seedModelProviderQueries(queryClient)
   const screen = await render(
     <ConsoleProvider>
-      <UrlState>
-        <EmbeddedMarketplaceSearch />
-      </UrlState>
+      <I18nextProvider i18n={i18n}>
+        <UrlState>
+          <EmbeddedMarketplaceSearch />
+        </UrlState>
+      </I18nextProvider>
     </ConsoleProvider>,
   )
   return { onUrlUpdate, screen }
@@ -167,14 +152,14 @@ describe('Embedded Marketplace search', () => {
     await expect
       .element(screen.getByTitle(/^Google Search/))
       .toHaveAttribute('src', expect.stringContaining('installed=false'))
-    await pluginDialog.getByRole('button', { name: 'common.operation.close' }).click()
+    await pluginDialog.getByRole('button', { name: 'Close' }).click()
     await expect.element(pluginDialog).not.toBeInTheDocument()
 
     await search.fill('legal')
     await screen.getByRole('option', { name: /Legal Research Agent/ }).click()
     const templateDialog = screen.getByRole('dialog', { name: /Legal Research Agent/ })
     await expect.element(templateDialog).toBeVisible()
-    await templateDialog.getByRole('button', { name: 'common.operation.close' }).click()
+    await templateDialog.getByRole('button', { name: 'Close' }).click()
     await expect.element(templateDialog).not.toBeInTheDocument()
     await expect.element(search).toHaveFocus()
     expect(onUrlUpdate).not.toHaveBeenCalled()
