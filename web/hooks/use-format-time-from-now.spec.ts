@@ -27,16 +27,14 @@ describe('useFormatTimeFromNow', () => {
     ['fr-FR', 'il y a une heure'],
     ['ja-JP', '1時間前'],
     ['pt-BR', 'há uma hora'],
-    ['ar-TN', 'an hour ago'],
-  ] as const)(
-    'maps %s to the relative-time locale, falling back to English',
-    (locale, expected) => {
-      vi.mocked(useLocale).mockReturnValue(locale)
-      const { result } = renderHook(() => useFormatTimeFromNow())
+    ['ar-TN', 'منذ ساعة واحدة'],
+    ['lo-LA', '1 ຊົ່ວໂມງຜ່ານມາ'],
+  ] as const)('maps %s to the relative-time locale', (locale, expected) => {
+    vi.mocked(useLocale).mockReturnValue(locale)
+    const { result } = renderHook(() => useFormatTimeFromNow())
 
-      expect(result.current.formatTimeFromNow(Date.now() - hour)).toBe(expected)
-    },
-  )
+    expect(result.current.formatTimeFromNow(Date.now() - hour)).toBe(expected)
+  })
 
   it('formats future timestamps without treating them as elapsed time', () => {
     const { result } = renderHook(() => useFormatTimeFromNow())
