@@ -179,7 +179,7 @@ catalog:
   embla-carousel-autoplay: 8.6.0
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
-  es-module-lexer: 2.3.2
+  es-module-lexer: 3.0.4
   es-toolkit: 1.53.0
   eslint: 10.13.0
   eslint-config-flat-gitignore: 2.4.0
@@ -256,7 +256,6 @@ catalog:
   sharp: 0.35.5
   socket.io-client: 4.8.4
   sortablejs: 1.15.7
-  std-semver: 1.0.8
   storybook: 10.6.5
   streamdown: 2.7.1
   string-ts: 2.3.1
@@ -272,6 +271,7 @@ catalog:
   unist-util-visit: 5.2.0
   use-context-selector: 2.0.0
   uuid: 14.0.3
+  verkit: 0.5.0
   vinext: 1.4.0
   # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
