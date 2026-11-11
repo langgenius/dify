@@ -24,6 +24,7 @@ import {
 } from '@/app/components/workflow/types'
 import {
   findUsedVarNodes,
+  getNodeOutputVars,
   getNodeUsedVarPassToServerKey,
   getNodeUsedVars,
   toNodeAvailableVars,
@@ -65,6 +66,22 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 
 describe('variable utils', () => {
   describe('toNodeAvailableVars', () => {
+    it('offers the LLM finish reason as a downstream string variable', () => {
+      const node = createNode<LLMNodeType>(createLLMNodeData([]))
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatflow: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars.find((item) => item.nodeId === node.id)?.vars).toContainEqual({
+        variable: 'finish_reason',
+        type: VarType.string,
+      })
+      expect(getNodeOutputVars(node, false)).toContainEqual([node.id, 'finish_reason'])
+    })
+
     it('exposes shared form and action outputs for Human Input v2', () => {
       const node = createNode<HumanInputV2NodeType>({
         type: BlockEnum.HumanInput,
