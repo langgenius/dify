@@ -11,7 +11,7 @@ from models.workflow import Workflow
 def handle(sender: App, synced_draft_workflow: Workflow, **kwargs: object) -> None:
     if sender.mode != AppMode.WORKFLOW.value:
         return
-    application_services().workspaces.webhook_draft_bindings.sync(
+    application_services().triggers.webhook_draft_bindings.sync(
         tenant_id=sender.tenant_id,
         app_id=sender.id,
         created_by=sender.created_by,
@@ -23,7 +23,7 @@ def handle(sender: App, synced_draft_workflow: Workflow, **kwargs: object) -> No
 def handle_published(sender: App, published_workflow: Workflow, *, session: Session, **kwargs: object) -> None:
     if sender.mode != AppMode.WORKFLOW.value:
         return
-    application_services().workspaces.create_webhook_publication_service(session).sync(
+    application_services().triggers.create_webhook_publication_service(session).sync(
         tenant_id=sender.tenant_id,
         app_id=sender.id,
         created_by=sender.created_by,
