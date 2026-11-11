@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 from machinery.context import RequestContext
 from services.app.agent_app_contracts import AgentApiAccess, AgentApiAccessChange, AgentReferencingWorkflow
+from services.entities.app_entities import AppDeletion
 
 
 class AgentAppReferences(Protocol):
@@ -54,6 +55,30 @@ class AgentApiAccessService:
         if result.changed:
             self._notify_updated(context.active_workspace_id, result.access.app_id)
         return result.access
+
+
+class AgentAppDeletion(Protocol):
+    """Delete a tenant-owned Agent App and publish its post-commit cleanup."""
+
+    def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
+        """Commit the Agent App deletion or raise AgentAppNotFoundError."""
+        ...
+
+    def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
+        """Publish cleanup for an already committed deletion."""
+        ...
+
+
+class AgentAppDeletionService:
+    """Coordinate Agent App deletion and post-commit cleanup."""
+
+    def __init__(self, *, lifecycle: AgentAppDeletion) -> None:
+        self._lifecycle = lifecycle
+
+    def delete(self, context: RequestContext, agent_id: str) -> None:
+        """Delete the admitted workspace's Agent App, then publish its cleanup."""
+        deleted = self._lifecycle.delete_agent(context, agent_id)
+        self._lifecycle.deleted(context, deleted)
 
 
 class AgentAppAccessService:

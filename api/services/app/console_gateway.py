@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
@@ -26,8 +27,10 @@ from models.account import Account
 from models.agent import AgentIconType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
+from repositories.app.agent_app_queries import get_roster_agent_app
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
+from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from services.agent.errors import AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_package_entities import RosterAgentPackageExport
@@ -36,6 +39,7 @@ from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app.access import AppAccessFilter, resolve_app_access_filter
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import (
     AppLifecycle,
     AppPermissions,
@@ -593,22 +597,40 @@ class AppLifecycleGateway(AppLifecycle):
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            deleted = ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
-            for binding_id in deleted.binding_ids:
-                AgentWorkspaceService.retire_binding(
-                    session=session, tenant_id=context.active_workspace_id, binding_id=binding_id
-                )
-            snapshots = (
-                AgentHomeSnapshotService.retire_all_for_agent(
-                    session=session, tenant_id=context.active_workspace_id, agent_id=deleted.backing_agent_id
-                )
-                if deleted.backing_agent_id is not None
-                else []
+            return self._delete_in_session(context, app, session=session)
+
+    def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
+        """Resolve and delete an active roster Agent App in one transaction."""
+        with self._session_factory.begin() as session:
+            app = get_roster_agent_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+            if app is None:
+                raise AgentAppNotFoundError
+            ResourceAccessTokenCleanupRepository(session=session).delete_resource_relations(
+                tenant_id=context.active_workspace_id,
+                resource_type=ResourceAccessTokenResourceType.APP,
+                resource_id=app.id,
             )
-            workspaces = AgentWorkspaceService.retire_all_for_app(
-                session=session, tenant_id=context.active_workspace_id, app_id=app_id
+            return self._delete_in_session(context, app, session=session)
+
+    @staticmethod
+    def _delete_in_session(context: RequestContext, app: App, *, session: Session) -> AppDeletion:
+        """Stage App deletion and resource retirement in the caller's transaction."""
+        deleted = ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
+        for binding_id in deleted.binding_ids:
+            AgentWorkspaceService.retire_binding(
+                session=session, tenant_id=context.active_workspace_id, binding_id=binding_id
             )
-            return replace(deleted, home_snapshot_ids=snapshots, workspace_ids=workspaces)
+        snapshots = (
+            AgentHomeSnapshotService.retire_all_for_agent(
+                session=session, tenant_id=context.active_workspace_id, agent_id=deleted.backing_agent_id
+            )
+            if deleted.backing_agent_id is not None
+            else []
+        )
+        workspaces = AgentWorkspaceService.retire_all_for_app(
+            session=session, tenant_id=context.active_workspace_id, app_id=app.id
+        )
+        return replace(deleted, home_snapshot_ids=snapshots, workspace_ids=workspaces)
 
     @override
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:

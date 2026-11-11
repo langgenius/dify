@@ -9,9 +9,14 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
-from services.app.agent_app_service import AgentApiAccessService, AgentAppAccessService, AgentAppFeatureConfigService
+from services.app.agent_app_service import (
+    AgentApiAccessService,
+    AgentAppAccessService,
+    AgentAppDeletionService,
+    AgentAppFeatureConfigService,
+)
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
-from services.app.console_gateway import notify_agent_app_updated
+from services.app.console_gateway import AppLifecycleGateway, notify_agent_app_updated
 from services.file_request_service import FileRequestService
 
 
@@ -19,6 +24,7 @@ from services.file_request_service import FileRequestService
 class AgentAppServices:
     access: AgentAppAccessService
     api_access: AgentApiAccessService
+    lifecycle: AgentAppDeletionService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
 
@@ -28,6 +34,7 @@ def build_agent_app_services(*, database_client: sessionmaker[Session]) -> Agent
     return AgentAppServices(
         access=AgentAppAccessService(references=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
+        lifecycle=AgentAppDeletionService(lifecycle=AppLifecycleGateway(session_factory=database_client)),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
         sandbox=AgentAppSandboxService(
             bindings=AgentSandboxRepository(session_factory=database_client, apps=apps),

@@ -469,6 +469,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}
+**Delete an Agent App and schedule its resource cleanup**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

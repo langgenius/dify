@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
@@ -78,6 +79,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, IconType
@@ -101,6 +103,7 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
@@ -732,19 +735,19 @@ class AgentAppApi(Resource):
         return _serialize_agent_app_detail(session, updated, current_user=current_user)
 
     @error_responses(AgentNotFoundError)
-    @console_ns.response(204, "Agent app deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_DELETE, AgentId()))
-    @with_current_tenant_id
-    @with_session
-    def delete(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model, session=session)
-        return "", 204
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent app deleted successfully")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_DELETE, AgentId())],
+    )
+    def delete(self, request_context: RequestContext, agent_id: UUID) -> tuple[str, int]:
+        """Delete an Agent App and schedule its resource cleanup."""
+        try:
+            application_services().agent_apps.lifecycle.delete(request_context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")

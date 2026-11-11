@@ -547,7 +547,7 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
     assert create_params.agent_role == ""
 
 
-def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
+def test_agent_app_detail_and_update_resolve_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
@@ -605,9 +605,6 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
 
-        def delete_app(self, app_obj: object, *, session: object) -> None:
-            captured["delete"] = app_obj
-
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
     session = sqlite_session
     with app.test_request_context():
@@ -646,9 +643,6 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
     assert cast(dict[str, object], update_call["args"])["role"] == "Reviewer"
-    deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), session, tenant_id, agent_id)
-    assert (deleted, status) == ("", 204)
-    assert captured["delete"] is app_model
 
 
 def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(

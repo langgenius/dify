@@ -1745,6 +1745,9 @@ export const versions = {
   byVersionId,
 }
 
+/**
+ * Delete an Agent App and schedule its resource cleanup
+ */
 export const delete6 = oc
   .route({
     inputStructure: 'detailed',
@@ -1752,6 +1755,7 @@ export const delete6 = oc
     operationId: 'deleteAgentByAgentId',
     path: '/agent/{agent_id}',
     successStatus: 204,
+    summary: 'Delete an Agent App and schedule its resource cleanup',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
