@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import json
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -10,11 +13,19 @@ from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
-from services.workflow_loro_document import LoroDraftEpochChangedError, LoroDraftUpdateError, project_loro_graph
+from services.workflow_loro_document import (
+    LoroDraftEpochChangedError,
+    LoroDraftSyncResult,
+    LoroDraftUpdateError,
+    project_loro_graph,
+)
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app
 
-GRAPH = {
+if TYPE_CHECKING:
+    from loro import LoroValue
+
+GRAPH: dict[str, LoroValue] = {
     "nodes": [{"id": "llm", "data": {"type": "llm", "prompt_template": [{"role": "system", "text": "before"}]}}],
     "edges": [],
 }
@@ -70,7 +81,7 @@ def test_duplicate_loro_update_confirms_original_revision(
     client.get_map("graph").insert("viewport", {"x": 32, "y": 0, "zoom": 1})
     delta = client.export(ExportMode.Updates(VersionVector.decode(baseline)))
 
-    def exchange():
+    def exchange() -> LoroDraftSyncResult:
         return service.sync_loro_draft(
             app_model=app,
             account_id=row.created_by,
@@ -156,7 +167,7 @@ def test_ordinary_http_write_retires_old_loro_epoch(
     """Once HTTP owns the draft again, reconnects with an old history cannot overwrite its graph."""
     app, row = draft
     _, old_version = _seed(service, app, row, sqlite_session)
-    updated = {"nodes": [], "edges": []}
+    updated: dict[str, LoroValue] = {"nodes": [], "edges": []}
     service.sync_draft_workflow(
         app_model=app,
         graph=updated,
@@ -198,7 +209,7 @@ def test_server_replacement_excludes_previous_epoch(
     client, baseline = _seed(service, app, row, sqlite_session)
     old_epoch = row.id
 
-    def exchange(epoch: str, version: bytes | None, update: bytes | None):
+    def exchange(epoch: str, version: bytes | None, update: bytes | None) -> LoroDraftSyncResult:
         return service.sync_loro_draft(
             app_model=app,
             account_id=account.id,

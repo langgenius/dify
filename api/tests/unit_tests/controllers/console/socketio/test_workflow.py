@@ -11,7 +11,7 @@ from flask import Flask
 from loro import ExportMode, LoroDoc, VersionVector
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import Gauge, Histogram, InMemoryMetricReader, Metric, Sum
-from socketio.packet import ACK, CONNECT_ERROR, Packet
+from socketio.packet import ACK, CONNECT_ERROR, EVENT, Packet
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import EnvironBuilder
@@ -421,3 +421,44 @@ def test_loro_requires_explicit_empty_graph_confirmation(
         durable = session.get(Workflow, draft.id)
         assert durable is not None
         assert durable.graph_dict == {"nodes": [], "edges": []}
+
+
+def test_loro_keeps_the_save_confirmation_when_peer_notification_fails(
+    loro_client: LoroClient,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A notification outage after commit must not turn a durable save into an ambiguous failure."""
+    server, _, draft, sid = loro_client
+    doc, baseline = _seed_loro_client(loro_client)
+    doc.get_map("graph").insert("viewport", {"x": 99})
+
+    def unavailable(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("Peer notification unavailable")
+
+    monkeypatch.setattr(server, "emit", unavailable)
+    body, status = server.handlers["/"]["loro_draft_sync"](
+        sid,
+        {
+            "epoch": draft.id,
+            "version": baseline,
+            "update": doc.export(ExportMode.Updates(VersionVector.decode(baseline))),
+        },
+    )
+    assert status == 200
+    with sqlite_session_factory() as session:
+        durable = session.get(Workflow, draft.id)
+        assert durable is not None
+        assert durable.graph_dict["viewport"] == {"x": 99}
+        assert body["hash"] == durable.unique_hash
+
+
+def test_draft_replacement_notifies_the_initiator_in_the_existing_room(loro_client: LoroClient) -> None:
+    """The replacing editor receives the same epoch change as every other room subscriber."""
+    server, app, _, sid = loro_client
+    server.enter_room(sid, app.id)
+    epoch = str(uuid4())
+    workflow.notify_draft_replacement(app.id, epoch=epoch)
+    response = Packet(encoded_packet=server.eio.sockets["loro-editor"].queue.get_nowait().data)
+    assert response.packet_type == EVENT
+    assert response.data == ["loro_draft_changed", {"epoch": epoch}]
