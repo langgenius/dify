@@ -12,12 +12,16 @@ from pydantic import JsonValue
 from sqlalchemy import Connection, Engine, event, func, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
+from extensions.application_services.annotation import build_annotation_replies
+from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from models import Account, App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, MessageFileBelongsTo
 from models.provider import Provider
+from repositories.app.generation_repository import AppGenerationRepository
 from repositories.message_repository import MessageRepository
+from services.app.generation.adapters.completion import CompletionAppGenerator
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser
 from services.errors.app import MoreLikeThisDisabledError
@@ -157,10 +161,19 @@ def harness(
 
     event.listen(db.session.session_factory, "after_begin", record_scoped)
     repository = MessageRepository(session_factory=factory)
+    completion_generator = CompletionAppGenerator(
+        retrieval=build_dataset_retrieval(factory),
+        records=AppGenerationRepository(factory),
+        annotations=build_annotation_replies(factory),
+    )
     with flask_app.test_request_context("/more-like-this"):
         yield _Harness(
             service=MessageMoreLikeThisService(
-                repository=repository, generator=MessageMoreLikeThisGenerator(session_factory=factory)
+                repository=repository,
+                generator=MessageMoreLikeThisGenerator(
+                    session_factory=factory,
+                    completion_generator=completion_generator,
+                ),
             ),
             repository=repository,
             app_id=app.id,

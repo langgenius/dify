@@ -12,6 +12,8 @@ uses the admitted bearer fixture to check the final HTTP error response.
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -28,6 +30,22 @@ from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
+
+
+@dataclass
+class _ToolProvidersStub:
+    pass
+
+
+@dataclass
+class _ToolsServiceStub:
+    tool_providers: object
+
+
+@dataclass
+class _AppServicesStub:
+    tools: _ToolsServiceStub
+
 
 _RUN_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -271,7 +289,19 @@ class TestOpenApiWorkflowEventsApi:
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
         monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
-        monkeypatch.setattr(module, "build_workflow_event_stream", lambda **_kwargs: iter(["a", "b"]))
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> Iterator[str]:
+            snapshot_calls.append(kwargs)
+            return iter(["a", "b"])
+
+        monkeypatch.setattr(module, "build_workflow_event_stream", snapshot_builder)
+        tool_providers = _ToolProvidersStub()
+        monkeypatch.setattr(
+            module,
+            "application_services",
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
+        )
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
@@ -283,6 +313,10 @@ class TestOpenApiWorkflowEventsApi:
 
         assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"
+        if include_state_snapshot:
+            assert snapshot_calls[0]["tool_providers"] is tool_providers
+        else:
+            assert snapshot_calls == []
 
     @pytest.mark.parametrize("continue_on_pause", [False, True], ids=["close", "keep_open"])
     def test_continue_on_pause_comes_off_the_declared_query_model(

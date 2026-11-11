@@ -62,13 +62,13 @@ jobs:
               - 'api/controllers/console/workspace/rbac/**'
               - 'api/controllers/inner_api/__init__.py'
               - 'api/controllers/service_api/__init__.py'
-              - 'api/core/agent/base_agent_runner.py'
-              - 'api/core/app/apps/agent_app/runtime_request_builder.py'
+              - 'api/services/agent/chat/base_runner.py'
+              - 'api/services/app/generation/adapters/agent_request_builder.py'
               - 'api/core/rbac/entities.py'
               - 'api/core/tools/__base/tool_runtime.py'
               - 'api/core/tools/builtin_tool/_position.yaml'
-              - 'api/core/workflow/node_runtime.py'
-              - 'api/core/workflow/nodes/agent_v2/runtime_request_builder.py'
+              - 'api/services/workflow/execution/adapters/node_runtime.py'
+              - 'api/services/workflow/execution/adapters/agent_v2/runtime_request_builder.py'
               - 'api/extensions/ext_celery.py'
               - 'api/extensions/ext_commands.py'
               - 'api/models/__init__.py'
@@ -76,7 +76,8 @@ jobs:
               - 'api/models/model.py'
               - 'api/repositories/workspace/workspace_repository.py'
               - 'api/services/workspace/member_service.py'
-              - 'api/services/agent_tool_inner_service.py'
+              - 'api/services/agent/tool_invocation_service.py'
+              - 'api/services/tools/agent_invocation_gateway.py'
               - 'api/services/enterprise/rbac_service.py'
               - 'api/services/entities/agent_tool_inner.py'
               - 'api/services/vector_space_admission_service.py'
@@ -211,12 +212,12 @@ jobs:
             api/controllers/console/workspace/rbac/schemas.py
             api/controllers/inner_api/__init__.py
             api/controllers/service_api/__init__.py
-            api/core/agent/base_agent_runner.py
-            api/core/app/apps/agent_app/runtime_request_builder.py
+            api/services/agent/chat/base_runner.py
+            api/services/app/generation/adapters/agent_request_builder.py
             api/core/rbac/entities.py
             api/core/tools/__base/tool_runtime.py
-            api/core/workflow/node_runtime.py
-            api/core/workflow/nodes/agent_v2/runtime_request_builder.py
+            api/services/workflow/execution/adapters/node_runtime.py
+            api/services/workflow/execution/adapters/agent_v2/runtime_request_builder.py
             api/extensions/ext_celery.py
             api/extensions/ext_commands.py
             api/models/__init__.py
@@ -224,7 +225,8 @@ jobs:
             api/models/model.py
             api/repositories/workspace/workspace_repository.py
             api/services/workspace/member_service.py
-            api/services/agent_tool_inner_service.py
+            api/services/agent/tool_invocation_service.py
+            api/services/tools/agent_invocation_gateway.py
             api/services/enterprise/rbac_service.py
             api/services/entities/agent_tool_inner.py
             api/services/vector_space_admission_service.py

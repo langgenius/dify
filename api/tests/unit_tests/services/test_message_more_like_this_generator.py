@@ -23,6 +23,8 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.workflow.file_reference import resolve_file_record_id
 from extensions import ext_hosting_provider
+from extensions.application_services.annotation import build_annotation_replies
+from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
@@ -31,7 +33,9 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile, UploadFile
 from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, MessageFileBelongsTo
 from models.provider import Provider, ProviderModel, ProviderType
+from repositories.app.generation_repository import AppGenerationRepository
 from repositories.message_repository import MessageRepository
+from services.app.generation.adapters.completion import CompletionAppGenerator
 from services.entities.message_entities import MessageEndUser
 from services.message_more_like_this_generator import (
     MessageMoreLikeThisGenerator,
@@ -113,9 +117,17 @@ def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         session.flush()
 
     factory = sessionmaker(bind=sqlite_engine)
+    completion_generator = CompletionAppGenerator(
+        retrieval=build_dataset_retrieval(factory),
+        records=AppGenerationRepository(factory),
+        annotations=build_annotation_replies(factory),
+    )
     service = MessageMoreLikeThisService(
         repository=MessageRepository(session_factory=factory),
-        generator=MessageMoreLikeThisGenerator(session_factory=factory),
+        generator=MessageMoreLikeThisGenerator(
+            session_factory=factory,
+            completion_generator=completion_generator,
+        ),
     )
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
