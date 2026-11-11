@@ -18,12 +18,13 @@ from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 # Same pattern the plugin daemon uses for manifest versions
 # (pkg/entities/manifest_entities/version.go), e.g. "0.3.7-fix1".
-_DAEMON_VERSION_PATTERN = re.compile(r"^\d{1,4}(\.\d{1,4}){2}(-\w{1,16})?$")
+_DAEMON_VERSION_PATTERN = re.compile(r"\d{1,4}(\.\d{1,4}){2}(-\w{1,16})?", re.ASCII)
 
 
 def _is_valid_plugin_version(version: str) -> bool:
     """Accept PEP 440 versions and every version the plugin daemon accepts."""
-    if _DAEMON_VERSION_PATTERN.match(version):
+    # fullmatch + ASCII: Go regexp classes are ASCII-only and its "$" rejects a trailing newline.
+    if _DAEMON_VERSION_PATTERN.fullmatch(version):
         return True
     try:
         Version(version)

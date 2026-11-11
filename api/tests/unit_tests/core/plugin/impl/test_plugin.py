@@ -605,6 +605,24 @@ class TestPluginManagerCases:
 
             assert declaration.version == version
 
+        @pytest.mark.parametrize("version", ["\uff10.3.7", "0.3.7-\u4fee", "0.3.7-fix1\n"])
+        def test_plugin_manifest_rejects_versions_the_daemon_rejects(self, version: str):
+            """Non-ASCII digits/word chars and trailing newlines are rejected by the Go daemon pattern."""
+            with pytest.raises(ValueError, match="Invalid version format"):
+                PluginDeclaration(
+                    version=version,
+                    author="test-author",
+                    name="test-plugin",
+                    description=I18nObject(en_US="Test", zh_Hans="测试"),
+                    icon="icon.png",
+                    label=I18nObject(en_US="Test", zh_Hans="测试"),
+                    category=PluginCategory.Tool,
+                    created_at=datetime.datetime.now(),
+                    resource=PluginResourceRequirements(memory=512, permission=None),
+                    plugins=PluginDeclaration.Plugins(),
+                    meta=PluginDeclaration.Meta(version="1.0.0"),
+                )
+
         def test_invalid_minimum_dify_version(self):
             """Test that invalid minimum Dify version format raises error."""
             # Arrange & Act & Assert: Invalid minimum version should raise ValueError
