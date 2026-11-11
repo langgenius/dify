@@ -34,19 +34,23 @@ class _SuperCallingEmbeddings(Embeddings):
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return super().embed_documents(texts)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return Embeddings.embed_documents(self, texts)
 
     @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
-        return super().embed_multimodal_documents(multimodel_documents)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return Embeddings.embed_multimodal_documents(self, multimodel_documents)
 
     @override
     def embed_query(self, text: str) -> list[float]:
-        return super().embed_query(text)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return Embeddings.embed_query(self, text)
 
     @override
     def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
-        return super().embed_multimodal_query(multimodel_document)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return Embeddings.embed_multimodal_query(self, multimodel_document)
 
 
 class TestEmbeddingsBase:
