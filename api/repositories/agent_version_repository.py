@@ -1,26 +1,21 @@
 """Tenant-scoped persistence for Agent version history and shared-draft restoration."""
 
 from dataclasses import asdict
-from typing import cast
 
-from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.sql.selectable import Subquery
 
 from libs.helper import to_timestamp
 from models.agent import (
-    AGENT_APP_VERSION_OPERATIONS,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigRevision,
-    AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentScope,
-    AgentSource,
 )
 from models.agent_config_entities import AgentSoulConfig
+from repositories.agent_version_queries import visible_version_ids
 from services.agent.version_store import (
     AgentVersionDetail,
     AgentVersionNotFoundError,
@@ -29,38 +24,6 @@ from services.agent.version_store import (
     AgentVersionSummary,
     VersionAgentNotFoundError,
 )
-
-
-def visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
-    """Return the revision operations visible for the Agent's source and scope."""
-    if agent.source == AgentSource.AGENT_APP or (
-        agent.source == AgentSource.IMPORTED and agent.scope == AgentScope.ROSTER and agent.app_id
-    ):
-        operations = set(AGENT_APP_VERSION_OPERATIONS)
-    else:
-        operations = {
-            AgentConfigRevisionOperation.CREATE_VERSION,
-            AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-            AgentConfigRevisionOperation.SAVE_NEW_AGENT,
-            AgentConfigRevisionOperation.SAVE_TO_ROSTER,
-            AgentConfigRevisionOperation.RESTORE_VERSION,
-        }
-    if agent.source == AgentSource.IMPORTED:
-        operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
-    return operations
-
-
-def visible_version_ids(*, tenant_id: str, agent_id: str, agent: Agent) -> Subquery:
-    """Build the existing roster-visible snapshot filter for the given owner."""
-    return (
-        select(AgentConfigRevision.current_snapshot_id)
-        .where(
-            AgentConfigRevision.tenant_id == tenant_id,
-            AgentConfigRevision.agent_id == agent_id,
-            AgentConfigRevision.operation.in_(visible_version_operations(agent)),
-        )
-        .subquery()
-    )
 
 
 def _agent(session: Session, tenant_id: str, agent_id: str) -> Agent:
@@ -137,7 +100,7 @@ class SQLAlchemyAgentVersionRepository:
             ).all()
             return AgentVersionDetail(
                 **asdict(_summary(snapshot, number)),
-                config_snapshot=cast(dict[str, JsonValue], snapshot.config_snapshot_dict),
+                config_snapshot=snapshot.config_snapshot_dict,
                 revisions=[
                     AgentVersionRevision(
                         id=item.id,

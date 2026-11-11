@@ -44,7 +44,8 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository, visible_version_operations
+from repositories.agent_version_queries import visible_version_operations
+from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
