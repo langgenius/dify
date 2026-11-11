@@ -716,9 +716,6 @@ catalogs:
     sortablejs:
       specifier: 1.15.7
       version: 1.15.7
-    std-semver:
-      specifier: 1.0.8
-      version: 1.0.8
     storybook:
       specifier: 10.6.5
       version: 10.6.5
@@ -758,6 +755,9 @@ catalogs:
     uuid:
       specifier: 14.0.3
       version: 14.0.3
+    verkit:
+      specifier: 0.5.0
+      version: 0.5.0
     vinext:
       specifier: 1.4.0
       version: 1.4.0
@@ -1778,9 +1778,6 @@ importers:
       sortablejs:
         specifier: 'catalog:'
         version: 1.15.7
-      std-semver:
-        specifier: 'catalog:'
-        version: 1.0.8
       streamdown:
         specifier: 'catalog:'
         version: 2.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@11.0.0)
@@ -1799,6 +1796,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 14.0.3
+      verkit:
+        specifier: 'catalog:'
+        version: 0.5.0
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -8485,11 +8485,6 @@ packages:
   std-env@4.3.0:
     resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
 
-  std-semver@1.0.8:
-    resolution: {integrity: sha512-9SN0XIjBBXCT6ZXXVnScJN4KP2RyFg6B8sEoFlugVHMANysfaEni4LTWlvUQQ/R0wgZl1Ovt9KBQbzn21kHoZA==}
-    engines: {node: '>=20.19.0'}
-    deprecated: No longer maintained. Try `verkit` instead
-
   storybook@10.6.5:
     resolution: {integrity: sha512-qurC38Nx4PDF9YIq6GO95dpUx8a3B9AZwlcHBo4cOI9At09ifjQRsqcwcdOf2YX0cpVhFKmHkI20SWCrxqYQrg==}
     hasBin: true
@@ -8951,6 +8946,10 @@ packages:
 
   verkit@0.3.2:
     resolution: {integrity: sha512-zj/ob3UsvJGN0whEAKFp53REA5X66hvffVqoCtVQAakJKnKlH+/PcOfMoFwIG/o4rElqLv/ycAFlx8ZlXUorCg==}
+    engines: {node: '>=18.12.0'}
+
+  verkit@0.5.0:
+    resolution: {integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==}
     engines: {node: '>=18.12.0'}
 
   vfile-location@5.0.3:
@@ -16025,8 +16024,6 @@ snapshots:
 
   std-env@4.3.0: {}
 
-  std-semver@1.0.8: {}
-
   storybook@10.6.5(@types/react@19.3.0)(react@19.3.1)(vite-plus@1.5.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.1.0)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@21.0.4)(jiti@2.7.0)(playwright@1.64.1)(yaml@2.9.1)):
     dependencies:
       '@storybook/global': 5.0.0
@@ -16498,6 +16495,8 @@ snapshots:
       spdx-expression-parse: 3.0.1
 
   verkit@0.3.2: {}
+
+  verkit@0.5.0: {}
 
   vfile-location@5.0.3:
     dependencies:
@@ -17134,7 +17133,6 @@ time:
   sharp@0.35.5: '2026-09-27T13:46:24.509Z'
   socket.io-client@4.8.4: '2026-09-25T08:35:02.910Z'
   sortablejs@1.15.7: '2026-02-11T22:42:31.720Z'
-  std-semver@1.0.8: '2026-03-09T17:23:55.795Z'
   storybook@10.6.5: '2026-10-27T15:59:26.537Z'
   streamdown@2.7.1: '2026-10-19T09:14:40.334Z'
   string-ts@2.3.1: '2025-11-28T17:33:10.099Z'
@@ -17148,6 +17146,7 @@ time:
   unist-util-visit@5.2.0: '2026-10-24T18:44:36.789Z'
   use-context-selector@2.0.0: '2024-05-06T11:23:59.259Z'
   uuid@14.0.3: '2026-10-10T00:30:19.423Z'
+  verkit@0.5.0: '2026-09-18T17:52:29.936Z'
   vinext@1.4.0: '2026-10-28T17:52:24.196Z'
   vite-plugin-inspect@12.1.0: '2026-10-09T06:40:52.283Z'
   vite-plus@1.5.0: '2026-11-04T04:36:04.239Z'
