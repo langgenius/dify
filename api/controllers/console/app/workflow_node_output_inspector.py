@@ -29,10 +29,12 @@ from uuid import UUID
 
 from flask import Response
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -41,7 +43,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.external_api import error_responses
 from libs.login import login_required
@@ -85,46 +87,54 @@ def _service() -> NodeOutputInspectorService:
     return NodeOutputInspectorService()
 
 
-def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
+def _serve_snapshot(session: Session, app_model: App, run_id: UUID) -> dict:
     """Resource-body shared by draft + published snapshot endpoints.
 
     Pulled out so the 6 REST routes don't duplicate the same 6-line try/except
     + ``model_dump`` ritual — the routes shrink to one-liners and the actual
     behaviour lives here, where unit tests can hit it without spinning up
     Flask request context.
+
+    Precondition: ``session`` is the handler's open read-only session.
+    Postcondition: the snapshot is read through ``session`` and nothing is written.
+    An inspector error becomes its 404.
     """
     try:
-        snapshot = _service().snapshot_workflow_run(
-            app_model=app_model, workflow_run_id=str(run_id), session=db.session()
-        )
+        snapshot = _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id), session=session)
     except NodeOutputInspectorError as error:
         raise _inspector_not_found(error) from error
     return snapshot.model_dump(mode="json")
 
 
-def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
-    """Resource-body shared by draft + published node-detail endpoints."""
+def _serve_node_detail(session: Session, app_model: App, run_id: UUID, node_id: str) -> dict:
+    """Resource-body shared by draft + published node-detail endpoints.
+
+    Same session contract as :func:`_serve_snapshot`.
+    """
     try:
         view = _service().node_detail(
             app_model=app_model,
             workflow_run_id=str(run_id),
             node_id=node_id,
-            session=db.session(),
+            session=session,
         )
     except NodeOutputInspectorError as error:
         raise _inspector_not_found(error) from error
     return view.model_dump(mode="json")
 
 
-def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_name: str) -> dict:
-    """Resource-body shared by draft + published output-preview endpoints."""
+def _serve_output_preview(session: Session, app_model: App, run_id: UUID, node_id: str, output_name: str) -> dict:
+    """Resource-body shared by draft + published output-preview endpoints.
+
+    Same session contract as :func:`_serve_snapshot`.
+    """
     try:
         preview = _service().output_preview(
             app_model=app_model,
             workflow_run_id=str(run_id),
             node_id=node_id,
             output_name=output_name,
-            session=db.session(),
+            session=session,
         )
     except NodeOutputInspectorError as error:
         raise _inspector_not_found(error) from error
@@ -185,9 +195,10 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID):
-        return _serve_snapshot(app_model, run_id)
+    def get(self, session: Session, app_model: App, run_id: UUID):
+        return _serve_snapshot(session, app_model, run_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs/<string:node_id>")
@@ -210,9 +221,10 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID, node_id: str):
-        return _serve_node_detail(app_model, run_id, node_id)
+    def get(self, session: Session, app_model: App, run_id: UUID, node_id: str):
+        return _serve_node_detail(session, app_model, run_id, node_id)
 
 
 @console_ns.route(
@@ -238,9 +250,10 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
-        return _serve_output_preview(app_model, run_id, node_id, output_name)
+    def get(self, session: Session, app_model: App, run_id: UUID, node_id: str, output_name: str):
+        return _serve_output_preview(session, app_model, run_id, node_id, output_name)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -258,17 +271,44 @@ def _sse_envelope(event: str, data: dict | str, event_id: int) -> str:
     return f"event: {event}\nid: {event_id}\ndata: {payload}\n\n"
 
 
-def _initial_snapshot(app_model: App, run_id: UUID) -> WorkflowRunSnapshotView:
+def _initial_snapshot(session: Session, app_model: App, run_id: UUID) -> WorkflowRunSnapshotView:
     """The snapshot an event stream opens with, or the run's 404.
 
     Called before the streaming ``Response`` is built: once a generator is handed to
     ``Response`` the 200 status has already gone out, so an error raised inside it cannot
     become an HTTP error. Resolving the run here keeps a missing run a plain 404.
+
+    Precondition: ``session`` is the handler's open read-only session, which also loaded
+    ``app_model``. Postcondition: the returned view holds plain values only, so it stays
+    valid after the handler's session closes and the stream starts. ``app_model`` is then
+    detached, but the stream reads only its already loaded ``id`` and ``tenant_id``.
     """
     try:
-        return _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id), session=db.session())
+        return _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id), session=session)
     except NodeOutputInspectorError as error:
         raise _inspector_not_found(error) from error
+
+
+def _read_node_detail(
+    service: NodeOutputInspectorService, app_model: App, workflow_run_id: str, node_id: str
+) -> NodeOutputsView:
+    """Read one node's outputs for the event stream in a short session of its own.
+
+    The stream body runs after the handler has returned. By then the handler's injected
+    session is closed and Flask has popped the app context, so ``db.session`` is not
+    usable either. A session from the global factory needs neither.
+
+    Precondition: the global session factory is configured. Postcondition: the session is
+    closed when this returns or raises, and nothing is written. Errors from
+    ``node_detail`` propagate unchanged.
+    """
+    with session_factory.create_session() as session:
+        return service.node_detail(
+            app_model=app_model,
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+            session=session,
+        )
 
 
 def _stream_inspector_events(app_model: App, run_id: UUID, snapshot: WorkflowRunSnapshotView) -> Iterator[str]:
@@ -344,12 +384,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID, snapshot: WorkflowRun
         if not message.node_id:
             continue
         try:
-            node_view = service.node_detail(
-                app_model=app_model,
-                workflow_run_id=run_id_str,
-                node_id=message.node_id,
-                session=db.session(),
-            )
+            node_view = _read_node_detail(service, app_model, run_id_str, message.node_id)
         except NodeOutputInspectorError:
             # Node may not appear in the graph yet (race with persistence); skip.
             continue
@@ -390,9 +425,10 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID):
-        snapshot = _initial_snapshot(app_model, run_id)
+    def get(self, session: Session, app_model: App, run_id: UUID):
+        snapshot = _initial_snapshot(session, app_model, run_id)
         return Response(
             _stream_inspector_events(app_model, run_id, snapshot),
             mimetype="text/event-stream",
@@ -423,9 +459,10 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID):
-        return _serve_snapshot(app_model, run_id)
+    def get(self, session: Session, app_model: App, run_id: UUID):
+        return _serve_snapshot(session, app_model, run_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs/<string:node_id>")
@@ -448,9 +485,10 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID, node_id: str):
-        return _serve_node_detail(app_model, run_id, node_id)
+    def get(self, session: Session, app_model: App, run_id: UUID, node_id: str):
+        return _serve_node_detail(session, app_model, run_id, node_id)
 
 
 @console_ns.route(
@@ -477,9 +515,10 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
-        return _serve_output_preview(app_model, run_id, node_id, output_name)
+    def get(self, session: Session, app_model: App, run_id: UUID, node_id: str, output_name: str):
+        return _serve_output_preview(session, app_model, run_id, node_id, output_name)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs/events")
@@ -500,9 +539,10 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id: UUID):
-        snapshot = _initial_snapshot(app_model, run_id)
+    def get(self, session: Session, app_model: App, run_id: UUID):
+        snapshot = _initial_snapshot(session, app_model, run_id)
         return Response(
             _stream_inspector_events(app_model, run_id, snapshot),
             mimetype="text/event-stream",
