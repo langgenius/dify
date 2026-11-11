@@ -1,26 +1,23 @@
 import type {
   GetAccountPersonalAccessTokenResourcesData,
-  PersonalAccessTokenCreatedResponse,
   PersonalAccessTokenResourceResponse,
-  PersonalAccessTokenResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { page } from 'vite-plus/test/browser'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestQueryClient } from '@/test/query-client'
 import PersonalAccessTokens from '../index'
+import { render, token } from './browser-test-env'
 
 const transport = vi.hoisted(() => ({ call: vi.fn() }))
 vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: transport }))
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const account = await import('@/i18n/locales/en-US/account-settings.json')
-  const common = await import('@/i18n/locales/en-US/common.json')
-  const dataset = await import('@/i18n/locales/en-US/dataset.json')
-  return createReactI18nextMock({ ...account.default, ...common.default, ...dataset.default })
+vi.unmock('react-i18next')
+
+beforeEach(async () => {
+  await page.viewport(1100, 800)
 })
+
 it('lets users submit a long selected scope on a short narrow viewport', async () => {
   // Real hit testing and nested scrolling prove that the footer remains reachable;
   // the unit selection tests cannot detect horizontal overflow or obstructed controls.
@@ -75,102 +72,9 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
   expect(dialog.element().scrollWidth).toBeLessThanOrEqual(dialog.element().clientWidth)
 })
 
-const activeToken: PersonalAccessTokenResponse = {
-  id: '019a0000-0000-7000-8000-000000000001',
-  name: 'release-pipeline',
-  secret_last_four: '7f21',
-  created_at: '2026-10-15T00:00:00Z',
-  expires_at: null,
-  last_used_at: null,
-  resource_scope_mode: 'all',
-  workspace_scope_mode: 'none',
-  resource_count: 0,
-  workspace_count: 0,
-  unavailable_count: 0,
-  status: 'active',
-  version: 1,
-}
-
-it.each(['create', 'duplicate'] as const)(
-  'keeps the %s dialog open during submission and displays the one-time secret',
-  async (entry) => {
-    let resolveCreation!: (value: PersonalAccessTokenCreatedResponse) => void
-    const creation = new Promise<PersonalAccessTokenCreatedResponse>((resolve) => {
-      resolveCreation = resolve
-    })
-    const previousRows =
-      entry === 'duplicate'
-        ? [
-            ...Array.from({ length: 19 }, (_, index) => ({
-              ...activeToken,
-              id: `019a0000-0000-7000-8000-${String(index + 10).padStart(12, '0')}`,
-              name: `Other token ${index + 1}`,
-            })),
-            activeToken,
-          ]
-        : []
-    const createdToken = {
-      ...activeToken,
-      id: '019a0000-0000-7000-8000-000000000999',
-      name: 'Pending creation',
-    }
-    let created = false
-    transport.call.mockImplementation(async (path: string[]) => {
-      if (path.at(-1) === 'post') {
-        const result = await creation
-        created = true
-        return result
-      }
-      if (path.includes('byTokenId')) return { token: activeToken, resources: [], workspaces: [] }
-      return {
-        data: created ? [createdToken, ...previousRows].slice(0, 20) : previousRows,
-        page: 1,
-        limit: 20,
-        total: previousRows.length + Number(created),
-        has_more: previousRows.length + Number(created) > 20,
-      }
-    })
-    const queryClient = createTestQueryClient()
-    seedSystemFeatures(queryClient)
-    const screen = await render(
-      <QueryClientTestProvider queryClient={queryClient}>
-        <NuqsTestingAdapter>
-          <PersonalAccessTokens />
-        </NuqsTestingAdapter>
-      </QueryClientTestProvider>,
-    )
-    if (entry === 'create') await screen.getByRole('button', { name: 'Create token' }).click()
-    else
-      await screen
-        .getByRole('row', { name: /release-pipeline/ })
-        .getByRole('button', { name: 'Duplicate', exact: true })
-        .click()
-    const dialog = screen.getByRole('dialog')
-    await dialog.getByRole('textbox', { name: 'Name' }).fill('Pending creation')
-    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
-    await expect.element(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled()
-    await expect.element(dialog.getByRole('button', { name: 'Close' })).toBeDisabled()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(dialog).toBeVisible()
-    await userEvent.click(document.body, { position: { x: 4, y: 4 } })
-    await expect.element(dialog).toBeVisible()
-    resolveCreation({ ...createdToken, secret: 'dpat_fixture_secret' })
-    await expect
-      .element(dialog.getByRole('textbox', { name: 'Token', exact: true }))
-      .toHaveValue('dpat_fixture_secret')
-    await dialog.getByRole('button', { name: 'Done' }).click()
-    await expect.element(dialog).not.toBeInTheDocument()
-    if (entry === 'duplicate')
-      await expect
-        .element(screen.getByRole('row', { name: /release-pipeline/ }))
-        .not.toBeInTheDocument()
-    await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
-  },
-)
-
 it('pages resource types independently and counts selections across tabs and search', async () => {
   const base = {
-    workspace_id: activeToken.id,
+    workspace_id: token.id,
     workspace_name: 'Production',
     available: true,
     reason: null,
@@ -267,56 +171,4 @@ it('pages resource types independently and counts selections across tabs and sea
   await expect.element(staging).toBeChecked()
   await staging.click()
   await expect.element(dialog.getByRole('tab', { name: 'Apps 1 selected' })).toBeVisible()
-})
-
-it('returns keyboard focus to Create token after deletion removes the trigger row', async () => {
-  // The feature's list refresh removes the initiating button before the dialog
-  // closes. Verify focus restoration through real portal/close transitions.
-  let deleted = false
-  transport.call.mockImplementation(async (path: string[]) => {
-    if (path.at(-1) === 'delete') {
-      deleted = true
-      return undefined
-    }
-    return {
-      data: deleted
-        ? []
-        : [
-            {
-              id: '019a0000-0000-7000-8000-000000000001',
-              name: 'release-pipeline',
-              secret_last_four: '7f21',
-              created_at: '2026-10-15T00:00:00Z',
-              expires_at: null,
-              last_used_at: null,
-              resource_scope_mode: 'all',
-              workspace_scope_mode: 'all',
-              resource_count: 0,
-              workspace_count: 0,
-              unavailable_count: 0,
-              status: 'active',
-              version: 1,
-            },
-          ],
-      page: 1,
-      limit: 20,
-      total: deleted ? 0 : 1,
-      has_more: false,
-    }
-  })
-  const queryClient = createTestQueryClient()
-  seedSystemFeatures(queryClient)
-  const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter>
-        <PersonalAccessTokens />
-      </NuqsTestingAdapter>
-    </QueryClientTestProvider>,
-  )
-  await screen.getByRole('button', { name: 'Delete', exact: true }).click()
-  const dialog = screen.getByRole('alertdialog')
-  await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
-  await expect.element(screen.getByText('No personal access tokens')).toBeVisible()
-  await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
 })
