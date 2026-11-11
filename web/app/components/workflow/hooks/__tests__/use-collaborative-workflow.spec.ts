@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => {
   const canApplyLocalGraphMutation = vi.fn()
   return {
     canApplyLocalGraphMutation,
+    // The workflow/session the manager is currently connected to. Tests
+    // drive it to simulate navigating to another workflow while the hook
+    // stays mounted.
+    getCurrentAppId: vi.fn(() => 'workflow-a'),
     setNodes: vi.fn(),
     setEdges: vi.fn(),
     // Mirrors the real manager: the callback runs immediately with the
@@ -32,6 +36,8 @@ const emitGraphReady = (isReady: boolean) => {
 beforeEach(() => {
   mocks.readyCallbacks.length = 0
   mocks.canApplyLocalGraphMutation.mockReset()
+  mocks.getCurrentAppId.mockReset()
+  mocks.getCurrentAppId.mockReturnValue('workflow-a')
   mocks.setNodes.mockClear()
   mocks.setEdges.mockClear()
   mocks.onGraphReadyChange.mockClear()
@@ -169,4 +175,77 @@ it('replays local edits made while the session was not ready once it becomes rea
   expect(previousEdges).toMatchObject([{ id: 'old-edge' }])
   expect(nextEdges).toMatchObject([{ id: 'new-edge' }])
   expect(syncMock).toHaveBeenCalledTimes(1)
+})
+
+it('drops held edits when the workflow changes before the session becomes ready', async () => {
+  mocks.canApplyLocalGraphMutation.mockReturnValue(false)
+  const syncMock = vi.fn().mockResolvedValue(undefined)
+  const { result } = setup({ doSyncWorkflowDraft: syncMock })
+  await waitFor(() =>
+    expect(result.current.getState().nodes.map((node) => node.id)).toEqual(['old-node', 'target']),
+  )
+
+  // Edit in workflow A while the session is not ready: the edit is held.
+  const targetNode = result.current.getState().nodes.find((node) => node.id === 'target')!
+  const editedNode = createNode({ id: 'old-node', data: { title: 'Edited in A' } })
+  act(() => {
+    result.current.setNodes([editedNode, targetNode])
+    result.current.setEdges([newEdge])
+  })
+  expect(result.current.getState().nodes[0]?.data).toMatchObject({ title: 'Old' })
+  expect(result.current.getState().edges).toMatchObject([oldEdge])
+
+  // The user navigates to workflow B (the hook stays mounted) and B's
+  // session becomes ready. A's held edits must not land on B's graph.
+  mocks.getCurrentAppId.mockReturnValue('workflow-b')
+  mocks.canApplyLocalGraphMutation.mockReturnValue(true)
+  act(() => emitGraphReady(true))
+
+  expect(result.current.getState().nodes).toMatchObject([
+    { id: 'old-node', data: { title: 'Old' } },
+    { id: 'target' },
+  ])
+  expect(result.current.getState().edges).toMatchObject([oldEdge])
+  expect(mocks.setNodes).not.toHaveBeenCalled()
+  expect(mocks.setEdges).not.toHaveBeenCalled()
+  expect(syncMock).not.toHaveBeenCalled()
+})
+
+it('does not replay held edits from another workflow when the next edit lands', async () => {
+  mocks.canApplyLocalGraphMutation.mockReturnValue(false)
+  const { result } = setup()
+  await waitFor(() =>
+    expect(result.current.getState().nodes.map((node) => node.id)).toEqual(['old-node', 'target']),
+  )
+
+  // Edit in workflow A while the session is not ready: the edit is held.
+  const targetNode = result.current.getState().nodes.find((node) => node.id === 'target')!
+  const editedNodeA = createNode({ id: 'old-node', data: { title: 'Edited in A' } })
+  act(() => {
+    result.current.setNodes([editedNodeA, targetNode])
+    result.current.setEdges([newEdge])
+  })
+
+  // The user navigates to workflow B, whose session is ready, and edits there.
+  mocks.getCurrentAppId.mockReturnValue('workflow-b')
+  mocks.canApplyLocalGraphMutation.mockReturnValue(true)
+  const editedNodeB = createNode({ id: 'old-node', data: { title: 'Edited in B' } })
+  act(() => {
+    result.current.setNodes([editedNodeB, targetNode])
+  })
+
+  // Only B's edit reaches the graph and the broadcast; A's held edit is dropped.
+  expect(result.current.getState().nodes).toMatchObject([
+    { id: 'old-node', data: { title: 'Edited in B' } },
+    { id: 'target' },
+  ])
+  expect(result.current.getState().edges).toMatchObject([oldEdge])
+  expect(mocks.setNodes).toHaveBeenCalledTimes(1)
+  const [before, after] = mocks.setNodes.mock.calls[0]!
+  expect(before).toMatchObject([{ id: 'old-node', data: { title: 'Old' } }, { id: 'target' }])
+  expect(after).toMatchObject([
+    { id: 'old-node', data: { title: 'Edited in B' } },
+    { id: 'target' },
+  ])
+  expect(mocks.setEdges).not.toHaveBeenCalled()
 })

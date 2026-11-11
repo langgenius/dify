@@ -43,6 +43,26 @@ const sanitizeEdgeForBroadcast = (edge: Edge): Edge => {
 let pendingLocalNodes: Map<string, Node | null> | null = null
 let pendingLocalEdges: Map<string, Edge | null> | null = null
 
+// The workflow/session the held edits above belong to. The pending edits
+// are only ever replayed into the graph they were made against: if the
+// user navigates to another workflow while the session is not ready, the
+// held edits are dropped instead of landing on the new graph. A
+// same-workflow reconnect keeps the same id, so its held edits still replay.
+let pendingGraphAppId: string | null = null
+
+// Drops held edits that belong to a different workflow/session than the
+// one the manager is currently connected to. A `null` tag means the edits
+// predate this scoping (or no session was active when they were buffered),
+// so they are kept: only a definite mismatch discards them.
+const discardPendingIfGraphChanged = (): void => {
+  if (!pendingLocalNodes && !pendingLocalEdges) return
+  if (pendingGraphAppId === null) return
+  if (pendingGraphAppId === collaborationManager.getCurrentAppId()) return
+  pendingLocalNodes = null
+  pendingLocalEdges = null
+  pendingGraphAppId = null
+}
+
 // How many hook instances are mounted. The pending edits above belong to
 // the graph those instances render: once the last one unmounts (navigating
 // to another app, or a fresh test render), held edits must not survive
@@ -101,6 +121,8 @@ export const useCollaborativeWorkflow = () => {
   // still not ready (the pending edits are kept for the next attempt).
   const replayPendingLocalGraph = useCallback((): boolean => {
     if (!pendingLocalNodes && !pendingLocalEdges) return false
+    discardPendingIfGraphChanged()
+    if (!pendingLocalNodes && !pendingLocalEdges) return false
     if (!collaborationManager.canApplyLocalGraphMutation()) return false
 
     const state = store.getState()
@@ -141,6 +163,7 @@ export const useCollaborativeWorkflow = () => {
       if (collaborativeWorkflowInstances === 0) {
         pendingLocalNodes = null
         pendingLocalEdges = null
+        pendingGraphAppId = null
       }
     }
   }, [])
@@ -171,7 +194,11 @@ export const useCollaborativeWorkflow = () => {
           // this the next canvas refresh would revert it to the stale
           // stored prompt.
           const changed = collectChangedItems(getNodes(), newNodes)
-          if (changed.size > 0) pendingLocalNodes = mergePendingChanges(pendingLocalNodes, changed)
+          if (changed.size > 0) {
+            discardPendingIfGraphChanged()
+            pendingGraphAppId = collaborationManager.getCurrentAppId()
+            pendingLocalNodes = mergePendingChanges(pendingLocalNodes, changed)
+          }
           return
         }
 
@@ -196,7 +223,11 @@ export const useCollaborativeWorkflow = () => {
       if (shouldBroadcast) {
         if (!collaborationManager.canApplyLocalGraphMutation()) {
           const changed = collectChangedItems(store.getState().edges, newEdges)
-          if (changed.size > 0) pendingLocalEdges = mergePendingChanges(pendingLocalEdges, changed)
+          if (changed.size > 0) {
+            discardPendingIfGraphChanged()
+            pendingGraphAppId = collaborationManager.getCurrentAppId()
+            pendingLocalEdges = mergePendingChanges(pendingLocalEdges, changed)
+          }
           return
         }
 

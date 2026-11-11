@@ -838,6 +838,10 @@ export class CollaborationManager {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
   }
 
+  getCurrentAppId(): string | null {
+    return this.currentAppId
+  }
+
   canUseLocalDraftFallback(): boolean {
     // A graph from a previously connected session must recover through collaboration before saving.
     return (
