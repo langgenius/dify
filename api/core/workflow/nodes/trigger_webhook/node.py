@@ -104,7 +104,12 @@ class TriggerWebhookNode(Node[WebhookData]):
         return None
 
     def _extract_configured_outputs(self, webhook_inputs: dict[str, Any]) -> dict[str, Any]:
-        """Extract outputs based on node configuration from webhook inputs."""
+        """Extract configured outputs from the injected webhook inputs.
+
+        Missing or unconvertible form file parameters resolve to None. Valid
+        file parameters retain their FileVariable, and raw webhook data remains
+        available under _webhook_raw for debugging.
+        """
         outputs = {}
 
         # Get the raw webhook data (should be injected by Celery task)
@@ -169,11 +174,11 @@ class TriggerWebhookNode(Node[WebhookData]):
                             if file_var:
                                 outputs[param_name] = file_var
                             else:
-                                outputs[param_name] = files
+                                outputs[param_name] = None
                         else:
-                            outputs[param_name] = files
+                            outputs[param_name] = None
                     else:
-                        outputs[param_name] = files
+                        outputs[param_name] = None
                 case _:
                     # Get regular body parameter
                     outputs[param_name] = webhook_data.get("body", {}).get(param_name)
