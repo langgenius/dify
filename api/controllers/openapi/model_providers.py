@@ -10,6 +10,7 @@ from typing import Any, Final
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -199,6 +200,7 @@ def model_rows(models: Iterable[ModelWithProviderEntity], *, words: str, languag
 class ModelProviderApi(Resource):
     @endpoint(
         op="describe.model_provider",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="One model provider with its credential form and saved credentials (names only)",
         examples=(Example(title="OpenAI", input={"provider": _PROVIDER_EXAMPLE}),),
@@ -263,6 +265,7 @@ class ModelProviderApi(Resource):
 class ModelProviderCredentialsApi(Resource):
     @endpoint(
         op="create.model_provider.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Save a credential for a model provider; the provider checks it first",
         examples=(
@@ -288,6 +291,7 @@ class ModelProviderCredentialsApi(Resource):
 class ModelProviderCredentialApi(Resource):
     @endpoint(
         op="set.model_provider.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Replace a saved model provider credential",
         examples=(
@@ -328,6 +332,7 @@ class ModelProviderCredentialApi(Resource):
 class ModelsApi(Resource):
     @endpoint(
         op="get.model",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="Models in the workspace across providers, with whether each can be used now",
         examples=(
@@ -360,6 +365,7 @@ class ModelsApi(Resource):
 class ModelCredentialsApi(Resource):
     @endpoint(
         op="create.model.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Save a credential for one model you name, for providers such as OpenAI-compatible or Ollama; "
         "the first credential of a model not yet set up becomes its active credential",
@@ -396,6 +402,7 @@ class ModelCredentialsApi(Resource):
 class ModelCredentialApi(Resource):
     @endpoint(
         op="set.model.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Replace a saved credential of one model",
         examples=(

@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
 from extensions import ext_redis
+from extensions.ext_application_services import application_services
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -436,7 +437,7 @@ def app_services(
         tool_providers=tool_providers,
         workflow_tools=workflow_queries,
         workflow_publisher=build_console_workflow_service(
-            invoke_plugin_event=lambda **_: None,
+            trigger_debug=lambda: application_services().triggers.debug,
             database_client=sqlite_session_factory,
             redis=redis_client,
             variables=workflow_variables,

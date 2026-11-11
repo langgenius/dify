@@ -10,7 +10,7 @@ from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowRun
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
-from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerExecutionRepository
 from services.workflow.entities import ScheduleTriggerData, TriggerActor
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
 from tests.unit_tests.tasks import test_trigger_processing_tasks as worker_tests
@@ -27,7 +27,7 @@ def test_status_write_does_not_update_log_outside_owner_scope(
     dispatch: _Dispatch,
     scope: str,
 ) -> None:
-    store = SQLAlchemyWorkflowTriggerDispatchRepository(session_factory=harness.session_factory)
+    store = SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=harness.session_factory)
     data = ScheduleTriggerData(tenant_id=harness.tenant_id, app_id=dispatch.app_id, root_node_id="node", inputs={})
     workflow = AppDefinitionQueryRepository(session_factory=harness.session_factory).get_trigger_workflow(
         tenant_id=harness.tenant_id, app_id=dispatch.app_id, workflow_id=None
@@ -56,7 +56,7 @@ def test_three_failure_records_rollback_together_when_app_log_write_fails(
     harness: _Harness,
     dispatch: _Dispatch,
 ) -> None:
-    store = SQLAlchemyWorkflowTriggerDispatchRepository(session_factory=harness.session_factory)
+    store = SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=harness.session_factory)
     workflow = AppDefinitionQueryRepository(session_factory=harness.session_factory).get_trigger_workflow(
         tenant_id=harness.tenant_id, app_id=dispatch.app_id, workflow_id=None
     )

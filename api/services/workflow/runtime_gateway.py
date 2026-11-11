@@ -1,6 +1,6 @@
 """Adapt the existing workflow engine to framework-neutral Console ports."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -10,12 +10,9 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.trigger.debug.event_selectors import (
-    PluginTriggerEventInvoker,
-    create_event_poller,
-    select_trigger_debug_events,
-)
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from factories import file_factory
+from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.file import File
 from machinery.context import RequestContext
 from models import Account, App
@@ -30,6 +27,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowNotFoundError
+from services.trigger.debug_service import TriggerDebugService
 from services.workflow.contracts import (
     WorkflowGeneration,
     WorkflowSnapshot,
@@ -68,7 +66,7 @@ class WorkflowRuntimeGateway:
         file_access: DatabaseFileAccessController,
         variables: WorkflowExecutionVariables,
         runtime: AppGenerationRuntime,
-        invoke_plugin_event: PluginTriggerEventInvoker,
+        trigger_debug: Callable[[], TriggerDebugService],
     ) -> None:
         self._sessions = session_factory
         self._workflows = workflows
@@ -80,7 +78,7 @@ class WorkflowRuntimeGateway:
         self._file_access = file_access
         self._variables = variables
         self._runtime = runtime
-        self._invoke_plugin_event = invoke_plugin_event
+        self._trigger_debug = trigger_debug
 
     def generate(
         self,
@@ -242,23 +240,27 @@ class WorkflowRuntimeGateway:
             if workflow.get_node_type_from_node_config(config) == TRIGGER_SCHEDULE_NODE_TYPE:
                 return WorkflowTriggerEvent(node_id=node_id, workflow_args={}, workflow=snapshot)
         try:
-            if select_all:
-                event = select_trigger_debug_events(
-                    draft_workflow=workflow,
-                    app_model=app,
-                    user_id=context.account_id,
-                    node_ids=node_ids,
-                    invoke_plugin_event=self._invoke_plugin_event,
+            configs = [
+                NodeConfigDictAdapter.validate_python(
+                    adapt_node_config_for_graph(workflow.get_node_config_by_id(node_id=node_id))
                 )
-            else:
-                event = create_event_poller(
-                    draft_workflow=workflow,
+                for node_id in (node_ids if select_all else node_ids[:1])
+            ]
+            debug = self._trigger_debug()
+            if select_all:
+                event = debug.select_events(
+                    node_configs=configs,
                     tenant_id=context.active_workspace_id,
                     user_id=context.account_id,
                     app_id=app_id,
-                    node_id=node_ids[0],
-                    invoke_plugin_event=self._invoke_plugin_event,
-                ).poll()
+                )
+            else:
+                event = debug.poll(
+                    node_config=configs[0],
+                    tenant_id=context.active_workspace_id,
+                    user_id=context.account_id,
+                    app_id=app_id,
+                )
         except Exception as error:
             self._cancel_trigger_debug(snapshot, context.account_id)
             if isinstance(error, PluginInvokeError):

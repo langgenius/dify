@@ -68,7 +68,13 @@ from models.dataset import Dataset, Pipeline
 from models.engine import db
 from models.enums import CreatorUserRole, PermissionEnum
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from repositories.tools.provider_repository import ToolProviderRepository
 from repositories.workflow.definition_repository import workflow_record, workflow_snapshot
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
@@ -877,13 +883,32 @@ def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> Workflow
         "finished_at": datetime(2026, 1, 1, 0, 0, 1),
     }
     payload.update(overrides)
-    created_at = payload.pop("created_at")
     execution = WorkflowNodeExecutionModel(
+        id=payload["id"],
+        tenant_id=payload["tenant_id"],
+        app_id=payload["app_id"],
+        workflow_id=payload["workflow_id"],
+        workflow_run_id=payload["workflow_run_id"],
+        index=payload["index"],
+        predecessor_node_id=payload["predecessor_node_id"],
+        node_execution_id=payload["node_execution_id"],
+        node_id=payload["node_id"],
+        node_type=payload["node_type"],
+        title=payload["title"],
+        inputs=payload["inputs"],
+        process_data=payload["process_data"],
+        outputs=payload["outputs"],
+        status=payload["status"],
+        error=payload["error"],
+        elapsed_time=payload["elapsed_time"],
+        execution_metadata=payload["execution_metadata"],
+        created_by_role=payload["created_by_role"],
+        created_by=payload["created_by"],
+        finished_at=payload["finished_at"],
         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
-        **payload,
     )
-    execution.created_at = created_at
-    execution.offload_data = []
+    execution.created_at = payload["created_at"]
+    execution.offload_data = list[WorkflowNodeExecutionOffload]()
     return execution
 
 
@@ -928,7 +953,9 @@ def make_workflow(**overrides: Unpack[WorkflowFactoryOverrides]) -> Workflow:
         _rag_pipeline_variables=payload["rag_pipeline_variables"],
     )
     workflow.created_at = payload["created_at"]
-    workflow.updated_at = payload["updated_at"]
+    updated_at = payload["updated_at"]
+    assert updated_at is not None
+    workflow.updated_at = updated_at
     return workflow
 
 
