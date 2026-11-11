@@ -80,7 +80,9 @@ def test_subscription_http_masks_real_secrets_and_preserves_visibility_and_workf
     with harness.app.app_context():
         ciphertext = encrypt_token(harness.tenant_id, "credential-secret")
         property_ciphertext = encrypt_token(harness.tenant_id, "property-secret")
-    credentials = {} if credential_type == CredentialType.UNAUTHORIZED else {"token": ciphertext, "username": "octocat"}
+    credentials: dict[str, object] = (
+        {} if credential_type == CredentialType.UNAUTHORIZED else {"token": ciphertext, "username": "octocat"}
+    )
     visible = [
         _add_subscription(
             harness,

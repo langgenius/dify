@@ -140,13 +140,12 @@ it('replaces the visible panel configuration on migration and undo without closi
     .element(panel.getByRole('textbox', { name: 'workflow.nodes.humanInput.timeout.title' }))
     .toHaveValue('36')
   await panel.getByRole('button', { name: 'workflow.common.configure' }).click()
-  await expect
-    .element(page.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.template.subject' }))
-    .toHaveValue('Converted approval')
+  const subject = page.getByRole('textbox', {
+    name: 'workflow.nodes.humanInputV2.template.subject',
+  })
+  await expect.poll(() => subject.element().textContent).toBe('Converted approval')
   await page.getByRole('button', { name: 'common.operation.cancel' }).click()
-  await expect
-    .element(page.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.template.subject' }))
-    .not.toBeInTheDocument()
+  await expect.element(subject).not.toBeInTheDocument()
   await lastRun.click()
   await expect.element(lastRun).toHaveAttribute('aria-selected', 'true')
 

@@ -68,7 +68,7 @@ def runtime(harness: _Harness) -> Iterator[_Runtime]:
     contexts.plugin_trigger_providers.set({})
     contexts.plugin_trigger_providers_lock.set(Lock())
     with harness.app.app_context():
-        runtime = _Runtime(application_services().workspaces.trigger_builders)
+        runtime = _Runtime(application_services().triggers.builders)
         try:
             yield runtime
         finally:
@@ -83,7 +83,7 @@ def runtime(harness: _Harness) -> Iterator[_Runtime]:
 
 
 def _persist_subscription(
-    harness: _Harness, *, subscription_id: str, tenant_id: str, provider_id: str, credentials: dict[str, str]
+    harness: _Harness, *, subscription_id: str, tenant_id: str, provider_id: str, credentials: dict[str, object]
 ) -> None:
     with harness.session_factory.begin() as session:
         subscription = TriggerSubscription(

@@ -16,6 +16,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
+// boundary: Browser setup does not load the product namespaces needed for translated model labels.
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   const { createReactI18nextMock } = await import('@/test/i18n-mock')

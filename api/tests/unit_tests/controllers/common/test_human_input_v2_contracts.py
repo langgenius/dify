@@ -39,6 +39,7 @@ def test_sync_run_exposes_captured_revision() -> None:
             "provider": "feishu",
             "channel_id": "channel-id",
             "channel_config_version": 4,
+            "initiator_display_name": "Sync Admin",
         }
     )
 
