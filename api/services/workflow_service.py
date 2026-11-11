@@ -90,7 +90,7 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
-from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (

@@ -24,7 +24,7 @@ from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
 
 
 @dataclass(frozen=True)
@@ -169,11 +169,11 @@ def _publication_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, Magi
     cleanup_app = MagicMock()
     enqueue_collection = MagicMock()
     monkeypatch.setattr(
-        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
+        "services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay",
         cleanup_app,
     )
     monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
+        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
     return cleanup_app, enqueue_collection
@@ -185,7 +185,7 @@ def _celery_boundary_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, 
     cleanup_app = MagicMock()
     collect = MagicMock()
     monkeypatch.setattr(
-        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
+        "services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay",
         cleanup_app,
     )
     monkeypatch.setattr(
@@ -278,7 +278,7 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     sqlite_session.add_all([agent, app, workflow, binding])
     sqlite_session.commit()
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
     celery_delay = MagicMock()
@@ -350,7 +350,7 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     sqlite_session.add_all([agent, hidden_app, home, workspace, binding])
     sqlite_session.commit()
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
@@ -668,7 +668,7 @@ def test_blank_candidates_cause_no_side_effects(
         pytest.fail("empty candidates must not open a database session")
 
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         unexpected_session,
     )
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)

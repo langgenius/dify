@@ -7,11 +7,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
 from models.workflow import Workflow
-from services.app.generation.ports import (
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
+from repositories.workflow.definition_repository import workflow_snapshot as stored_workflow_snapshot
+from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
 
 
@@ -79,7 +76,7 @@ def test_generation_snapshots_remain_usable_after_session_close_and_source_mutat
         assert conversation is not None
         assert message is not None
 
-        workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
+        workflow_snapshot = WorkflowSnapshot.from_workflow(stored_workflow_snapshot(workflow))
         conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
         message_snapshot = MessageSnapshot.from_message(message)
 
