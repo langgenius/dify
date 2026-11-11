@@ -2,7 +2,31 @@ import math
 
 import pytest
 
-from libs.pagination import PaginatedResult, clamp_pagination
+from libs.pagination import CursorPaginationGuard, PaginatedResult, clamp_pagination
+
+
+class TestCursorPaginationGuard:
+    @pytest.mark.parametrize("cursors", [("private-A", "private-A"), ("private-A", "private-B", "private-A"), ("", "")])
+    def test_repeated_cursors_fail_without_disclosing_the_cursor(self, cursors: tuple[str, ...]) -> None:
+        guard = CursorPaginationGuard()
+        guard.check(None)
+        for cursor in cursors[:-1]:
+            guard.check(cursor)
+
+        with pytest.raises(ValueError, match=r"^Repeated pagination cursor detected\.$"):
+            guard.check(cursors[-1])
+
+    def test_unique_cursors_have_no_fixed_page_limit(self) -> None:
+        guard = CursorPaginationGuard()
+        guard.check(None)
+        for index in range(1001):
+            guard.check(f"cursor-{index}")
+
+    def test_separate_listings_can_reuse_the_same_cursor(self) -> None:
+        first_listing = CursorPaginationGuard()
+        second_listing = CursorPaginationGuard()
+        first_listing.check("shared-cursor")
+        second_listing.check("shared-cursor")
 
 
 class TestPaginatedResultPages:
