@@ -114,8 +114,11 @@ class WorkspaceService:
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
         return self._features.get_effective_credit_pool(workspace_id)
 
+    def switch_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot:
+        return self._workspaces.switch(account_id=account_id, workspace_id=workspace_id)
+
     def switch(self, context: RequestContext, workspace_id: str) -> dict[str, object]:
-        workspace = self._workspaces.switch(account_id=context.account_id, workspace_id=workspace_id)
+        workspace = self.switch_membership(context.account_id, workspace_id)
         return self._tenant_info(workspace)
 
     def custom_config(self, context: RequestContext) -> WorkspaceCustomConfig:

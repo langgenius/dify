@@ -2,11 +2,12 @@ import type { EmailConfig } from '../../../types'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import EmailConfigureModal from '../email-configure-modal'
 
-const mockToastError = vi.hoisted(() => vi.fn())
-
+// boundary: workspace member reads stop at the generated Console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -17,10 +18,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/notifications', () => ({
-  toast: { error: mockToastError },
-}))
 
 const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig => ({
   recipients: {
@@ -38,15 +35,18 @@ const prefix = 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigur
 it('saves edited email content with an inserted request URL token', async () => {
   const handleConfirm = vi.fn()
   await render(
-    <EmailConfigureModal
-      open
-      config={createEmailConfig({
-        body: 'Draft email body',
-        recipients: { whole_workspace: false, items: [] },
-      })}
-      onOpenChange={vi.fn()}
-      onConfirm={handleConfirm}
-    />,
+    <>
+      <AppToaster timeout={0} />
+      <EmailConfigureModal
+        open
+        config={createEmailConfig({
+          body: 'Draft email body',
+          recipients: { whole_workspace: false, items: [] },
+        })}
+        onOpenChange={vi.fn()}
+        onConfirm={handleConfirm}
+      />
+    </>,
   )
 
   const subject = page.getByRole('textbox', { name: `${prefix}.subject` })
@@ -86,29 +86,33 @@ it.each<{
 ])('rejects $scenario without saving', async ({ config, error }) => {
   const handleConfirm = vi.fn()
   await render(
-    <EmailConfigureModal
-      open
-      config={createEmailConfig(config)}
-      onOpenChange={vi.fn()}
-      onConfirm={handleConfirm}
-    />,
+    <>
+      <AppToaster timeout={0} />
+      <EmailConfigureModal
+        open
+        config={createEmailConfig(config)}
+        onOpenChange={vi.fn()}
+        onConfirm={handleConfirm}
+      />
+    </>,
   )
   await page.getByRole('button', { name: 'common.operation.save' }).click()
-  expect(mockToastError).toHaveBeenCalledExactlyOnceWith(
-    expect.stringContaining(`${prefix}.${error}`),
-  )
+  await expect.element(page.getByText(`${prefix}.${error}`, { exact: false })).toBeVisible()
   expect(handleConfirm).not.toHaveBeenCalled()
 })
 
 function DismissibleEmailConfig() {
   const [open, setOpen] = useState(true)
   return (
-    <EmailConfigureModal
-      open={open}
-      config={createEmailConfig()}
-      onOpenChange={setOpen}
-      onConfirm={vi.fn()}
-    />
+    <>
+      <AppToaster timeout={0} />
+      <EmailConfigureModal
+        open={open}
+        config={createEmailConfig()}
+        onOpenChange={setOpen}
+        onConfirm={vi.fn()}
+      />
+    </>
   )
 }
 
@@ -122,6 +126,7 @@ it.each(['common.operation.close', 'common.operation.cancel'])(
 )
 
 beforeEach(async () => {
+  toast.dismiss()
   await page.viewport(1280, 900)
   onTestFinished(guardUnexpectedFetch())
 })

@@ -23,18 +23,23 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   default: ({ trigger }: { trigger: React.ReactElement }) => trigger,
 }))
 
-function Harness({ observe }: { observe: (value: HumanInputV2Recipient[]) => void }) {
+function Harness({
+  initial = [{ type: 'contact', contact_id: contact.id }],
+  observe,
+}: {
+  initial?: HumanInputV2Recipient[]
+  observe: (value: HumanInputV2Recipient[]) => void
+}) {
   // React Flow installs this document-level listener for canvas panning, including when the
   // recipient panel is outside the canvas. Happy DOM's simulated Space click misses its cancellation.
   useKeyPress('Space')
-  const [value, setValue] = useState<HumanInputV2Recipient[]>([
-    { type: 'contact', contact_id: contact.id },
-  ])
+  const [value, setValue] = useState(initial)
   return (
     <Recipients
       nodeId="hitl"
       value={value}
       readonly={false}
+      isTriggerMode={false}
       onChange={(next) => {
         setValue(next)
         observe(next)
@@ -43,7 +48,7 @@ function Harness({ observe }: { observe: (value: HumanInputV2Recipient[]) => voi
   )
 }
 
-async function renderRecipients() {
+async function renderRecipients(initial?: HumanInputV2Recipient[]) {
   const client = createTestQueryClient()
   client.setQueryData(testConsoleQuery.workspaces.current.summary.get.queryKey(), {
     id: 'workspace-1',
@@ -59,7 +64,7 @@ async function renderRecipients() {
   await render(
     <Provider store={store}>
       <QueryClientProvider client={client}>
-        <Harness observe={observe} />
+        <Harness initial={initial} observe={observe} />
       </QueryClientProvider>
     </Provider>,
   )
@@ -67,6 +72,31 @@ async function renderRecipients() {
 }
 
 beforeEach(resetContactApi)
+
+it('shows information for one-time email and all-workspace recipients saved by migration', async () => {
+  const { client, observe } = await renderRecipients([
+    { type: 'onetime_email', email: 'approver@example.com' },
+    { type: 'all_workspace_contacts' },
+    { type: 'initiator' },
+  ])
+  await page.getByRole('button', { name: /recipients.contactInfo.*approver@example\.com/ }).click()
+  const email = page.getByRole('dialog', {
+    name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
+  })
+  await expect.element(email.getByText('approver@example.com')).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(email).not.toBeInTheDocument()
+
+  await page.getByRole('button', { name: /recipients.contactInfo.*QA workspace/ }).click()
+  const workspace = page.getByRole('dialog', { name: 'QA workspace' })
+  await expect
+    .element(
+      workspace.getByText('workflow.nodes.humanInputV2.recipients.allWorkspaceContactsDescription'),
+    )
+    .toBeVisible()
+  expect(observe).not.toHaveBeenCalled()
+  client.clear()
+})
 
 it('preserves native contact-information activation against the canvas Space listener', async () => {
   const { client, observe } = await renderRecipients()

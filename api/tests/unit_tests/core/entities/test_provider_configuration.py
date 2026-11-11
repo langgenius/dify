@@ -86,7 +86,7 @@ def _build_provider_configuration(*, provider_name: str = "openai") -> ProviderC
             )
         ],
     )
-    with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
+    with patch("core.entities.provider_configuration.original_provider_configurate_methods", dict[str, object]()):
         return ProviderConfiguration(
             tenant_id="tenant-1",
             provider=provider_entity,
@@ -248,7 +248,7 @@ def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Generator[
     Postconditions: matching statements raise; the listener is removed on every exit.
     """
 
-    def fail_target(_conn, _cursor, statement, _parameters, _context, _executemany):
+    def fail_target(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         if statement.lstrip().upper().startswith(operation) and table_name in statement:
             raise RuntimeError(f"forced {operation} failure for {table_name}")
 
@@ -575,7 +575,7 @@ class TestEntitiesProviderConfigurationCases:
         )
         assembly = PluginModelAssembly(tenant_id="tenant-1")
 
-        with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
+        with patch("core.entities.provider_configuration.original_provider_configurate_methods", dict[str, object]()):
             configuration = ProviderConfiguration(
                 tenant_id="tenant-1",
                 provider=provider,
@@ -743,7 +743,7 @@ class TestEntitiesProviderConfigurationCases:
                 )
             ],
         )
-        with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
+        with patch("core.entities.provider_configuration.original_provider_configurate_methods", dict[str, object]()):
             configuration = ProviderConfiguration(
                 tenant_id="tenant-1",
                 provider=provider,
@@ -771,6 +771,7 @@ class TestEntitiesProviderConfigurationCases:
             RestrictModel(model="gpt-4o", base_model_name="base-model", model_type=ModelType.LLM)
         ]
         credentials = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+        assert credentials is not None
         assert credentials["base_model_name"] == "base-model"
 
     @staticmethod
@@ -848,7 +849,9 @@ class TestEntitiesProviderConfigurationCases:
             models=[],
         )
 
-        def _schema(*, model_type: ModelType, model: str, credentials: dict | None):
+        def _schema(
+            *, model_type: ModelType, model: str, credentials: dict[str, object] | None
+        ) -> AIModelEntity | None:
             if model == "error-custom":
                 raise RuntimeError("boom")
             if model == "none-custom":
@@ -943,14 +946,16 @@ class TestEntitiesProviderConfigurationCases:
         )
         sqlite_provider_session.add(setting)
         sqlite_provider_session.commit()
-        assert configuration._get_provider_record(sqlite_provider_session).id == provider.id
+        provider_record = configuration._get_provider_record(sqlite_provider_session)
+        assert provider_record is not None
+        assert provider_record.id == provider.id
         assert configuration._check_provider_credential_name_exists("Main", sqlite_provider_session)
         assert not configuration._check_provider_credential_name_exists(
             "Main", sqlite_provider_session, exclude_id=credential.id
         )
-        assert (
-            configuration._get_provider_model_setting(ModelType.LLM, "gpt-4o", sqlite_provider_session).id == setting.id
-        )
+        model_setting = configuration._get_provider_model_setting(ModelType.LLM, "gpt-4o", sqlite_provider_session)
+        assert model_setting is not None
+        assert model_setting.id == setting.id
 
     @staticmethod
     def test_create_provider_credential_persists_provider_and_rejects_duplicate(
@@ -1003,6 +1008,7 @@ class TestEntitiesProviderConfigurationCases:
         assert persisted_credential.credential_name == "New"
         assert persisted_lb is not None
         assert persisted_lb.name == "New"
+        assert persisted_lb.encrypted_config is not None
         assert json.loads(persisted_lb.encrypted_config) == {"api_key": "enc-new"}
         assert {cache_call.kwargs["identity_id"] for cache_call in credentials_cache.call_args_list} == {
             provider.id,
@@ -1205,6 +1211,7 @@ class TestEntitiesProviderConfigurationCases:
         assert json.loads(persisted_credential.encrypted_config) == {"api_key": "enc-2"}
         assert persisted_lb is not None
         assert persisted_lb.name == "Renamed"
+        assert persisted_lb.encrypted_config is not None
         assert json.loads(persisted_lb.encrypted_config) == {"api_key": "enc-2"}
         assert {cache_call.kwargs["identity_id"] for cache_call in credentials_cache.call_args_list} == {
             model_id,

@@ -656,22 +656,19 @@ def test_unknown_billing_plan_is_not_logged(caplog: pytest.LogCaptureFixture) ->
 @pytest.mark.parametrize(
     "quota",
     [
-        {"size": 0, "limit": 50, "usage_unknown": True},
-        {"size": 0, "limit": -1, "usage_unknown": True},
-        {"size": -0.1, "limit": 50},
-        {"size": float("nan"), "limit": 50},
-        {"size": float("inf"), "limit": 50},
-        {"size": float("-inf"), "limit": 50},
-        {"size": "invalid", "limit": 50},
-        {"size": 0, "limit": -2},
-        {"size": 0, "limit": "invalid"},
-        {"limit": 50},
-        {"size": 0},
+        billing.VectorSpaceQuota(size=0, limit=50, usage_unknown=True),
+        billing.VectorSpaceQuota(size=0, limit=-1, usage_unknown=True),
+        billing.VectorSpaceQuota(size=-0.1, limit=50),
+        billing.VectorSpaceQuota(size=float("nan"), limit=50),
+        billing.VectorSpaceQuota(size=float("inf"), limit=50),
+        billing.VectorSpaceQuota(size=float("-inf"), limit=50),
+        billing.VectorSpaceQuota(size=0, limit=-2),
     ],
 )
 def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
-    sqlite_session: Session, quota: dict[str, object]
+    sqlite_session: Session, quota: billing.VectorSpaceQuota
 ) -> None:
+    """Given a typed unusable quota, reject the write before embedding or reservation."""
     service = VectorSpaceAdmissionService()
     with (
         patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
@@ -681,10 +678,7 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
         ),
         patch(
             "services.vector_space_admission_service.BillingService.get_vector_space",
-            # Observe-mode validation keeps invalid values raw and reads missing fields as None.
-            return_value=billing.VectorSpaceQuota.model_construct(
-                size=quota.get("size"), limit=quota.get("limit"), usage_unknown=quota.get("usage_unknown")
-            ),
+            return_value=quota,
         ),
         patch.object(service, "_get_embedding_dimension") as dimension,
         patch.object(service, "_reserve_projected_usage") as reserve,

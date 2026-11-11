@@ -1113,15 +1113,20 @@ export const enable = {
 }
 
 /**
+ * Given authorized workspace IDs and a validated query, return plugin endpoint DTOs
+ *
  * List endpoints for a specific plugin
+ * Service failures propagate. This read does not change endpoint state.
  */
 export const get10 = oc
   .route({
-    description: 'List endpoints for a specific plugin',
+    description:
+      'List endpoints for a specific plugin\nService failures propagate. This read does not change endpoint state.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentEndpointsListPlugin',
     path: '/workspaces/current/endpoints/list/plugin',
+    summary: 'Given authorized workspace IDs and a validated query, return plugin endpoint DTOs',
     tags: ['console'],
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListPluginQuery }))
@@ -1132,15 +1137,20 @@ export const plugin = {
 }
 
 /**
+ * Given authorized workspace IDs and a validated query, return JSON endpoint DTOs
+ *
  * List plugin endpoints with pagination
+ * Service failures propagate. This read does not change endpoint state.
  */
 export const get11 = oc
   .route({
-    description: 'List plugin endpoints with pagination',
+    description:
+      'List plugin endpoints with pagination\nService failures propagate. This read does not change endpoint state.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentEndpointsList',
     path: '/workspaces/current/endpoints/list',
+    summary: 'Given authorized workspace IDs and a validated query, return JSON endpoint DTOs',
     tags: ['console'],
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListQuery }))
@@ -1787,12 +1797,12 @@ export const results = {
 }
 
 /**
- * Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+ * Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.
  */
 export const get23 = oc
   .route({
     description:
-      'Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.',
+      'Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ImSyncRunsLatest',
@@ -1806,12 +1816,16 @@ export const latest = {
   results,
 }
 
+/**
+ * Start or reuse a workspace run using the authenticated Account ID
+ */
 export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentHumanInputV2ImSyncRuns',
     path: '/workspaces/current/human-input/v2/im-sync-runs',
+    summary: 'Start or reuse a workspace run using the authenticated Account ID',
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentHumanInputV2ImSyncRunsResponse)

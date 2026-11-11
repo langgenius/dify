@@ -5,10 +5,8 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore } from '@/app/components/workflow/store'
-import { useResolvedTheme } from '@/features/theme/hooks'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
-  const theme = useResolvedTheme()
   const { t } = useTranslation(['workflow'])
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const showEnvPanel = useStore((s) => s.showEnvPanel)
@@ -35,7 +33,7 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
             size="lg"
             className={cn(
               'border border-transparent',
-              theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
+              showEnvPanel && 'dark:border-black/5 dark:bg-white/10 dark:backdrop-blur-xs',
             )}
             variant="ghost"
             disabled={disabled}

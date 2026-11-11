@@ -278,16 +278,19 @@ services:
       - sh
       - -c
       - |
-        FLAG_FILE="/app/api/storage/.init_permissions"
-        if [ -f "$${FLAG_FILE}" ]; then
-          echo "Permissions already initialized. Exiting."
-          exit 0
-        fi
-        echo "Initializing permissions for /app/api/storage"
-        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        for DIR in /app/api/storage /app/plugin_daemon/storage; do
+          FLAG_FILE="$${DIR}/.init_permissions"
+          if [ -f "$${FLAG_FILE}" ]; then
+            echo "Permissions already initialized for $${DIR}."
+            continue
+          fi
+          echo "Initializing permissions for $${DIR}"
+          chown -R 1001:1001 "$${DIR}" && touch "$${FLAG_FILE}" || exit 1
+        done
         echo "Permissions initialized. Exiting."
     volumes:
       - ./volumes/app/storage:/app/api/storage
+      - ./volumes/plugin_daemon:/app/plugin_daemon/storage
     restart: "no"
 
   # API service
@@ -645,6 +648,8 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
