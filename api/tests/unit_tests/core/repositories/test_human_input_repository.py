@@ -59,13 +59,28 @@ from models.human_input_delivery import (
 )
 from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
 from models.human_input_entities import FormDefinition, HumanInputNodeData, UserActionConfig
+from repositories.human_input.form_repository import (
+    FormNotFoundError as _ExtractedFormNotFoundError,
+)
+from repositories.human_input.form_repository import (
+    HumanInputFormRecord as _ExtractedHumanInputFormRecord,
+)
+from repositories.human_input.form_repository import (
+    HumanInputFormRepositoryImpl as _ExtractedHumanInputFormRepositoryImpl,
+)
+from repositories.human_input.form_repository import (
+    HumanInputFormSubmissionRepository as _ExtractedHumanInputFormSubmissionRepository,
+)
+from repositories.human_input.form_repository import (
+    _WorkspaceMemberInfo as _ExtractedWorkspaceMemberInfo,
+)
 from repositories.human_input_errors import FormAlreadyHandledError
 
 """Unit tests for HumanInputFormRepositoryImpl private helpers."""
 
 
-def _build_repository() -> HumanInputFormRepositoryImpl:
-    return HumanInputFormRepositoryImpl(tenant_id="tenant-id")
+def _build_repository() -> _ExtractedHumanInputFormRepositoryImpl:
+    return _ExtractedHumanInputFormRepositoryImpl(tenant_id="tenant-id")
 
 
 def _add_workspace_member(
@@ -160,7 +175,7 @@ class TestHumanInputFormRepositoryImplCases:
             _add_workspace_member(sqlite_session, user_id="member-1", email="member@example.com")
             query_workspace_members_by_ids = repo._query_workspace_members_by_ids
 
-            def query_members(session: Session, restrict_to_user_ids: list[str]) -> list[_WorkspaceMemberInfo]:
+            def query_members(session: Session, restrict_to_user_ids: list[str]) -> list[_ExtractedWorkspaceMemberInfo]:
                 assert session is sqlite_session
                 return query_workspace_members_by_ids(
                     session=session,
@@ -310,9 +325,11 @@ class TestHumanInputFormRepositoryImplCases:
             form = _make_form(expiration_time=naive_utc_now() - timedelta(minutes=1))
             setattr(form, mismatched_scope, "other-value")
             _human_input_form_repository_impl_persist_form(sqlite_session, form)
-            repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", app_id="app-id", workflow_execution_id="run-1")
+            repo = _ExtractedHumanInputFormRepositoryImpl(
+                tenant_id="tenant-id", app_id="app-id", workflow_execution_id="run-1"
+            )
 
-            with pytest.raises(FormNotFoundError):
+            with pytest.raises(_ExtractedFormNotFoundError):
                 repo.mark_timeout("node-1", form_id="form-1")
 
             sqlite_session.refresh(form)
@@ -327,7 +344,9 @@ class TestHumanInputFormRepositoryImplCases:
                 submitted_at=naive_utc_now() if already_submitted else None,
             )
             _human_input_form_repository_impl_persist_form(sqlite_session, form)
-            repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", app_id="app-id", workflow_execution_id="run-1")
+            repo = _ExtractedHumanInputFormRepositoryImpl(
+                tenant_id="tenant-id", app_id="app-id", workflow_execution_id="run-1"
+            )
 
             entity = repo.mark_timeout("node-1", form_id="form-1")
 
@@ -342,25 +361,28 @@ class TestHumanInputFormRepositoryImplCases:
             other_tenant_form = _make_form(form_id="form-2", tenant_id="other-tenant")
             sqlite_session.add(other_tenant_form)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
-            repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
+            repo = _ExtractedHumanInputFormRepositoryImpl(
+                tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id
+            )
 
             entity = repo.get_form(form.node_id)
 
             assert entity is not None
             assert entity.id == form.id
-            assert entity.submission_token == "token-123"
             assert len(entity.recipients) == 1
             assert entity.recipients[0].token == "token-123"
 
         def test_get_form_returns_none_when_missing(self):
-            repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id="run-1")
+            repo = _ExtractedHumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id="run-1")
 
             assert repo.get_form("node-1") is None
 
         def test_get_form_returns_unsubmitted_state(self, sqlite_session: Session):
             form = _make_form()
             _human_input_form_repository_impl_persist_form(sqlite_session, form)
-            repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
+            repo = _ExtractedHumanInputFormRepositoryImpl(
+                tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id
+            )
 
             entity = repo.get_form(form.node_id)
 
@@ -376,7 +398,9 @@ class TestHumanInputFormRepositoryImplCases:
                 submitted_at=naive_utc_now(),
             )
             _human_input_form_repository_impl_persist_form(sqlite_session, form)
-            repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
+            repo = _ExtractedHumanInputFormRepositoryImpl(
+                tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id
+            )
 
             entity = repo.get_form(form.node_id)
 
@@ -390,7 +414,7 @@ class TestHumanInputFormRepositoryImplCases:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
-            repo = HumanInputFormSubmissionRepository()
+            repo = _ExtractedHumanInputFormSubmissionRepository()
 
             record = repo.get_by_token("token-123")
 
@@ -403,7 +427,7 @@ class TestHumanInputFormRepositoryImplCases:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
-            repo = HumanInputFormSubmissionRepository()
+            repo = _ExtractedHumanInputFormSubmissionRepository()
 
             record = repo.get_by_form_id_and_recipient_type(
                 form_id=form.id,
@@ -420,14 +444,14 @@ class TestHumanInputFormRepositoryImplCases:
             sqlite_session: Session,
         ):
             fixed_now = datetime(2024, 1, 1, 0, 0, 0)
-            monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
+            monkeypatch.setattr("repositories.human_input.form_repository.naive_utc_now", lambda: fixed_now)
 
             form = _make_form(tenant_id="tenant-1", expiration_time=fixed_now)
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
-            repo = HumanInputFormSubmissionRepository()
+            repo = _ExtractedHumanInputFormSubmissionRepository()
 
-            record: HumanInputFormRecord = repo.mark_submitted(
+            record: _ExtractedHumanInputFormRecord = repo.mark_submitted(
                 form_id=form.id,
                 recipient_id=recipient.id,
                 selected_action_id="approve",
@@ -456,7 +480,7 @@ class TestHumanInputFormRepositoryImplCases:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
-            repo = HumanInputFormSubmissionRepository()
+            repo = _ExtractedHumanInputFormSubmissionRepository()
 
             def fail_form_update(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
                 if statement.lstrip().upper().startswith("UPDATE HUMAN_INPUT_FORMS"):

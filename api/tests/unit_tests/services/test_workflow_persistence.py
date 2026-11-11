@@ -73,14 +73,14 @@ from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
-from services import workflow_persistence as persistence_mod
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow.execution.adapters import persistence as persistence_mod
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Verify the workflow persistence layer fans Inspector deltas to redis pub/sub.
 
-The hook lives in ``services/workflow_persistence.py``:
+The hook lives in ``services/workflow/execution/adapters/persistence.py``:
 every ``_handle_node_*`` and the terminal ``_handle_graph_run_*`` handlers
 call into ``services.workflow.inspector_events.publish_node_changed`` /
 ``publish_workflow_completed`` after the DB write succeeds. Those calls are

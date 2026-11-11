@@ -69,7 +69,7 @@ from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from errors.workflow import NodeNotFoundError, WorkflowDataError
 from factories import variable_factory
-from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
+from graphon.variables import SecretVariable, Segment, SegmentType, Variable, VariableBase
 from libs import helper
 
 from .account import Account
@@ -1573,7 +1573,7 @@ class ConversationVariable(TypeBase):
             data=variable.model_dump_json(),
         )
 
-    def to_variable(self) -> VariableBase:
+    def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
         return variable_factory.build_conversation_variable_from_mapping(mapping)
 

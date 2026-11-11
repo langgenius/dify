@@ -1,20 +1,16 @@
 """Coordinate persistence and publication around a prepared workflow execution."""
 
 import logging
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import closing
-from dataclasses import replace
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity,
     RagPipelineGenerateEntity,
     WorkflowAppGenerateEntity,
 )
-from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.layers.pause_state_persist_layer import (
     PauseStateLayerConfig,
     WorkflowResumptionContext,
@@ -23,12 +19,10 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.db.session_factory import session_factory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
+from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
-from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
@@ -36,7 +30,6 @@ from core.workflow.nodes.human_input_v2.presentation import resolve_human_input_
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
-from enums.human_input import HumanInputFormStatus
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
@@ -47,6 +40,7 @@ from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
@@ -56,11 +50,13 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
 from graphon.runtime.container_state import CustomContainerRunState
+from models.human_input_contracts import HumanInputFormRecord
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
-from services.conversation_variable_updater import ConversationVariableUpdater
+from services.workflow.execution.adapters.human_input_events import build_human_input_pause_reason
+from services.workflow.execution.contracts import PreparedWorkflowRun, WorkflowRunRunner
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
@@ -76,7 +72,7 @@ class WorkflowRunAgg:
     def __init__(
         self,
         prepared: PreparedWorkflowRun,
-        runner: WorkflowBasedAppRunner,
+        runner: WorkflowRunRunner,
         pause_state_config: PauseStateLayerConfig | None,
         *,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -135,7 +131,6 @@ class WorkflowRunAgg:
             and default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)[0] == "1"
         }
         self._published_form_ids: set[str] = set()
-        self._form_repository = HumanInputFormSubmissionRepository()
         self.pause_reasons: Sequence[PauseReason] = ()
         is_resuming = self._runtime_state.graph_execution.paused
         histories = (
@@ -159,10 +154,6 @@ class WorkflowRunAgg:
             self._persistence_layer,
             build_workflow_agent_workspace_retirement_layer(dify_run_context=self._run_context),
         ]
-        if isinstance(prepared.generate_entity, AdvancedChatAppGenerateEntity):
-            application_layers.append(
-                ConversationVariablePersistenceLayer(ConversationVariableUpdater(session_factory.get_session_maker()))
-            )
         self._application_layers = (*application_layers, *prepared.application_layers)
         for layer in self._application_layers:
             self._entry.graph_engine.add_layer(layer)
@@ -185,7 +176,11 @@ class WorkflowRunAgg:
             self.index.seed_source(source.app_id, source.workflow_id, executions)
             source_histories[key] = executions
 
-        def source_listener(source: WorkflowToolSource, caller_workflow_id: str, caller_node_execution_id: str):
+        def source_listener(
+            source: WorkflowToolSource,
+            caller_workflow_id: str,
+            caller_node_execution_id: str,
+        ) -> Callable[[NodeEvent], None]:
             return self._persistence_layer.create_workflow_tool_event_listener(
                 source,
                 caller_workflow_id,
@@ -198,7 +193,7 @@ class WorkflowRunAgg:
     @staticmethod
     @trace_span(WorkflowAppRunnerHandler)
     def run(
-        runner: WorkflowBasedAppRunner,
+        runner: WorkflowRunRunner,
         pause_state_config: PauseStateLayerConfig | None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
@@ -298,15 +293,18 @@ class WorkflowRunAgg:
             yield failed
 
     def _load_forms(self, form_ids: Sequence[str]) -> dict[str, HumanInputFormRecord]:
-        forms = self._form_repository.get_by_form_ids(
-            form_ids,
-            tenant_id=self._run_context.tenant_id,
-            app_id=self._prepared.generate_entity.app_config.app_id,
-            workflow_run_id=self._run_id,
-        )
+        forms: dict[str, HumanInputFormRecord] = {}
         for form_id in form_ids:
-            if form_id not in forms:
+            form = self._runner.human_form_reader.get_by_form_id(form_id)
+            if (
+                form is None
+                or form.form_id != form_id
+                or form.tenant_id != self._run_context.tenant_id
+                or form.app_id != self._prepared.generate_entity.app_config.app_id
+                or form.workflow_run_id != self._run_id
+            ):
                 raise ValueError(f"Human input form not found or does not belong to this workflow run: {form_id}")
+            forms[form_id] = form
         return forms
 
     def _api_run_repository(self):
@@ -321,12 +319,6 @@ class WorkflowRunAgg:
         if not pending:
             return
         forms = self._load_forms(tuple(pending))
-        for form_id, form in forms.items():
-            if form.status == HumanInputFormStatus.SUBMITTED:
-                restored = DifyHumanInputNodeRuntime(self._run_context).restore_submitted_data(
-                    inputs=form.definition.inputs, submitted_data=form.submitted_data or {}
-                )
-                forms[form_id] = replace(form, submitted_data=dict(restored))
         self._runner.publish_human_input_results(self._entry, pending, forms, self._published_form_ids)
 
     def _persist_pause(self, event: GraphRunPausedEvent) -> None:
