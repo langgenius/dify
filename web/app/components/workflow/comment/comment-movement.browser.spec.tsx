@@ -70,7 +70,7 @@ function renderFixture(draft = false) {
 }
 
 it('keeps an authored comment focusable and draggable after adding keyboard movement', async () => {
-  // Browser-owned: real pointer capture, marker hit testing, and native button activation.
+  // Browser-owned: keyboard focus, real pointer capture, and preview hit testing.
   await page.viewport(1000, 800)
   const screen = await renderFixture()
   const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
@@ -82,15 +82,18 @@ it('keeps an authored comment focusable and draggable after adding keyboard move
   await userEvent.keyboard('{ArrowRight}')
   await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(initial.x + 5)
   const canvas = screen.getByRole('group', { name: 'Canvas' })
+  const preview = screen.getByText('Comment', { exact: true })
   await marker.hover()
-  const previewElement = document.querySelector<HTMLElement>('[data-role="comment-preview"]')
-  if (!previewElement) throw new Error('Real comment preview did not open')
-  await userEvent.dragAndDrop(page.elementLocator(previewElement), canvas, {
+  await expect.element(preview).toBeVisible()
+  await userEvent.dragAndDrop(preview, canvas, {
     targetPosition: { x: 300, y: 250 },
   })
   expect(marker.element().getBoundingClientRect().x).toBeGreaterThan(initial.x + 5)
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
-  await marker.click()
+  // Hover reveals the clickable preview over the marker, so open that visible surface.
+  await marker.hover()
+  await expect.element(preview).toBeVisible()
+  await preview.click()
   await expect.element(screen.getByRole('status')).toHaveTextContent('Comment opened')
 })
 
