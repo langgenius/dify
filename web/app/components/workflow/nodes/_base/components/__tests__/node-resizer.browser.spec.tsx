@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import ReactFlow, { useNodes } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -15,13 +14,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   expect(unexpectedFetch).not.toHaveBeenCalled()
 })
-
-// Editing and persistence are independent of the Note's rendered resize affordance.
-vi.mock('../../../../note-node/note-editor', () => ({
-  NoteEditorContextProvider: ({ children }: { children: ReactNode }) => children,
-  NoteEditor: () => <span>Note content</span>,
-  NoteEditorToolbar: () => null,
-}))
 
 const noteNodeTypes = { note: NoteNode }
 

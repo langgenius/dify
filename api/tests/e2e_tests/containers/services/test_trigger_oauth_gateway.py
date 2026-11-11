@@ -139,7 +139,7 @@ def created_builder(flask_app_with_containers: Flask) -> Iterator[_CreatedBuilde
     contexts.plugin_trigger_providers_lock.set(Lock())
     try:
         with flask_app_with_containers.app_context():
-            gateway = TriggerOAuthBuilderGateway(builders=application_services().workspaces.trigger_builders)
+            gateway = TriggerOAuthBuilderGateway(builders=application_services().triggers.builders)
             response = gateway.create(tenant_id=tenant_id, user_id=user_id, provider_id=_PROVIDER_ID)
             context = TriggerOAuthContext(
                 tenant_id=tenant_id,
