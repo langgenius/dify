@@ -6,12 +6,8 @@ from pydantic import BaseModel, Field
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
-from core.trigger.entities.entities import (
-    EventIdentity,
-    EventParameter,
-    SubscriptionConstructor,
-    TriggerCreationMethod,
-)
+from core.trigger.entities.entities import EventIdentity, EventParameter, SubscriptionConstructor
+from services.trigger.builder_entities import TriggerCreationMethod
 
 
 class TriggerProviderSubscriptionApiEntity(BaseModel):

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator, noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -40,7 +41,6 @@ from core.helper.trace_id_helper import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope

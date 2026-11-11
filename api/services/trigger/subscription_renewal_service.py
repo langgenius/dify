@@ -6,8 +6,8 @@ from typing import Any, Protocol
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_service import TriggerOAuthCredentials

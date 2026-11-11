@@ -44,7 +44,6 @@ from core.helper.encrypter import decrypt_token
 from core.plugin.entities.oauth import OAuthSchema
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import SubscriptionConstructor, TriggerProviderEntity, TriggerProviderIdentity
-from core.trigger.provider import PluginTriggerProviderController
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services, build_application_services
 from extensions.ext_key_provider import key_provider_manager
@@ -62,6 +61,7 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from services.trigger.oauth_client_service import TriggerOAuthClientService, TriggerOAuthProviderMetadata
+from services.trigger.plugin_provider import PluginTriggerProvider
 from tests.helpers.unit.config_override import config_overrides_context
 
 _PROVIDER = "langgenius/github/github"
@@ -76,7 +76,7 @@ _SCHEMA = [
 class _PluginMetadata:
     """Only plugin-daemon metadata is supplied locally; credential logic is real."""
 
-    provider: PluginTriggerProviderController
+    provider: PluginTriggerProvider
     sessions: list[Session]
     verified: bool = True
     provider_requests: int = 0
@@ -206,7 +206,7 @@ def harness(
             account_id, tenant_id = account.id, tenant.id
 
         sessions: list[Session] = []
-        provider = PluginTriggerProviderController(
+        provider = PluginTriggerProvider(
             entity=TriggerProviderEntity(
                 identity=TriggerProviderIdentity(
                     author="Dify",
