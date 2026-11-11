@@ -21,13 +21,24 @@ class KnowledgeSourceIntent(TypedDict):
     source_digest: NotRequired[str]
 
 
+KNOWLEDGE_SOURCE_DOMAIN_INSTRUCTION = (
+    " Knowledge source means a Dify Workspace dataset or native Knowledge source for retrieval-grounded answers. "
+    "External document search or fetch through a Tool or MCP is a tool source, regardless of provider or "
+    "whether its content is company, product or public documentation. A tool source alone does not require "
+    "native Knowledge. A mixed request that independently requires native Knowledge still retains that requirement."
+)
+
+
 INTENT_INSTRUCTION = (
     '\nIn the SAME response include knowledge_source_intent: {"state":"required|excluded|unspecified|unknown",'
     '"evidence":["exact source excerpt"]}. Use exactly these two keys. Classify the ORIGINAL USER SOURCE, '
-    "not derived requirement keys, proposed plans or catalogue availability. required includes any affirmative, "
-    "mixed, conditional or undecided knowledge-base/retrieval requirement, including an explicitly named source. "
-    "excluded means the user explicitly excludes knowledge use; a restriction on retrieval nodes/configuration "
-    "does not exclude the source. unspecified means no source decision; unknown means uncertain. "
+    "not derived requirement keys, proposed plans or catalogue availability."
+    + KNOWLEDGE_SOURCE_DOMAIN_INSTRUCTION
+    + " required includes any affirmative, mixed, conditional or undecided native Knowledge requirement, "
+    "including an explicitly named Workspace dataset or Knowledge source. "
+    "excluded means the user explicitly excludes native Knowledge use; a restriction on retrieval nodes/configuration "
+    "does not exclude the source. unspecified means no native Knowledge source decision, including tool-only "
+    "requests without an explicit Knowledge exclusion; unknown means uncertain. "
     "A negative list can include arbitrary activities, not only fixed resource names. Never invent an exclusion. "
     "For required/excluded cite 1-4 exact excerpts (at most 600 characters each) from the original goal or "
     "actual submitted answer label/value in USER SOURCE. Use the label together with its submitted value, "
