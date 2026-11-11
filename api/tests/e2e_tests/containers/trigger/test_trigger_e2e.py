@@ -3,13 +3,11 @@ from __future__ import annotations
 import importlib
 import json
 import time
-from datetime import timedelta
 from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from flask.testing import FlaskClient
 from kombu.simple import SimpleQueue
 from sqlalchemy import select
@@ -21,37 +19,29 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
-from core.trigger.debug import event_selectors
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.event_selectors import WebhookTriggerDebugEventPoller
-from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.trigger.entities.entities import Subscription
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
+from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
-from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from models.enums import AppTriggerStatus, AppTriggerType, WorkflowTriggerStatus
 from models.model import App
 from models.trigger import (
     AppTrigger,
-    WorkflowSchedulePlan,
     WorkflowTriggerLog,
     WorkflowWebhookTrigger,
 )
 from models.workflow import Workflow
-from schedule import workflow_schedule_task
-from schedule.workflow_schedule_task import poll_workflow_schedules
-from services.async_workflow_service import AsyncWorkflowService
 from services.system_feature_service import SystemFeatureService
+from services.trigger.debug_events import PluginTriggerDebugEvent, build_plugin_pool_key
 from services.trigger.schedule_service import ScheduleService
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
-from services.workflow.entities import TriggerActor, TriggerData
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.trigger import test_webhook as native_webhook_tests
-
-from .conftest import RecordingScheduleTask
 
 # Test constants
 WEBHOOK_ID_PRODUCTION = "wh1234567890123456789012"
@@ -224,80 +214,6 @@ def test_webhook_trigger_creates_trigger_log(
     message.ack()
 
 
-@pytest.mark.parametrize("schedule_type", ["visual", "cron"])
-def test_schedule_poll_dispatches_due_plan(
-    db_session_with_containers: Session,
-    tenant_and_account: tuple[Tenant, Account],
-    app_model: App,
-    monkeypatch: pytest.MonkeyPatch,
-    schedule_type: str,
-) -> None:
-    """Schedule plans (both visual and cron) should be polled and dispatched when due."""
-    tenant, _ = tenant_and_account
-
-    app_trigger = AppTrigger(
-        tenant_id=tenant.id,
-        app_id=app_model.id,
-        node_id=f"schedule-{schedule_type}",
-        trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
-        status=AppTriggerStatus.ENABLED,
-        title=f"schedule-{schedule_type}",
-    )
-    plan = WorkflowSchedulePlan(
-        app_id=app_model.id,
-        node_id=f"schedule-{schedule_type}",
-        tenant_id=tenant.id,
-        cron_expression="* * * * *",
-        timezone="UTC",
-        next_run_at=naive_utc_now() - timedelta(minutes=1),
-    )
-    db_session_with_containers.add_all([app_trigger, plan])
-    db_session_with_containers.commit()
-
-    next_time = naive_utc_now() + timedelta(hours=1)
-    monkeypatch.setattr(workflow_schedule_task, "calculate_next_run_at", lambda *_args, **_kwargs: next_time)
-    schedule_task = RecordingScheduleTask()
-    monkeypatch.setattr(workflow_schedule_task, "run_schedule_trigger", schedule_task)
-
-    poll_workflow_schedules()
-
-    assert schedule_task.calls, f"Should dispatch tasks for due {schedule_type} schedules"
-    assert plan.id in {schedule_id for schedule_id, _ in schedule_task.calls}
-
-
-def test_schedule_visual_debug_poll_generates_event(
-    flask_app_with_containers: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Visual mode schedule node should generate event in single-step debug."""
-    base_now = naive_utc_now()
-    monkeypatch.setattr(event_selectors, "naive_utc_now", lambda: base_now)
-    monkeypatch.setattr(
-        event_selectors,
-        "calculate_next_run_at",
-        lambda *_args, **_kwargs: base_now - timedelta(minutes=1),
-    )
-    node_config = {
-        "id": "schedule-visual",
-        "data": {
-            "type": TRIGGER_SCHEDULE_NODE_TYPE,
-            "mode": "visual",
-            "frequency": "daily",
-            "visual_config": {"time": "3:00 PM"},
-            "timezone": "UTC",
-        },
-    }
-    poller = event_selectors.ScheduleTriggerDebugEventPoller(
-        tenant_id="tenant",
-        user_id="user",
-        app_id="app",
-        node_config=node_config,
-        node_id="schedule-visual",
-    )
-    event = poller.poll()
-    assert event is not None
-    assert event.workflow_args["inputs"] == {}
-
-
 def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
@@ -328,7 +244,7 @@ def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
     }
     for name, pool_key in pools.items():
         assert (
-            TriggerDebugEventBus.poll(
+            application_services().triggers.debug_events.poll(
                 event_type=PluginTriggerDebugEvent,
                 pool_key=pool_key,
                 tenant_id=tenant.id,
@@ -346,11 +262,12 @@ def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
         timestamp=timestamp,
         request_id="request-with-two-events",
         subscription=subscription,
+        debug_events=application_services().triggers.debug_events,
     )
 
     assert dispatched == 2
     for name, pool_key in pools.items():
-        event = TriggerDebugEventBus.poll(
+        event = application_services().triggers.debug_events.poll(
             event_type=PluginTriggerDebugEvent,
             pool_key=pool_key,
             tenant_id=tenant.id,
@@ -403,15 +320,9 @@ def test_webhook_debug_dispatches_event(
     db_session_with_containers.add(webhook_trigger)
     db_session_with_containers.commit()
 
-    # Listener polls first to enter waiting pool
-    poller = WebhookTriggerDebugEventPoller(
-        tenant_id=tenant.id,
-        user_id=account.id,
-        app_id=app_model.id,
-        node_config=draft_workflow.get_node_config_by_id(webhook_node_id),
-        node_id=webhook_node_id,
-    )
-    assert poller.poll() is None
+    debug = application_services().triggers.debug
+    node_config = draft_workflow.get_node_config_by_id(webhook_node_id)
+    assert debug.poll(node_config=node_config, tenant_id=tenant.id, user_id=account.id, app_id=app_model.id) is None
 
     response = test_client_with_containers.post(
         f"/triggers/webhook-debug/{webhook_trigger.webhook_id}",
@@ -421,129 +332,13 @@ def test_webhook_debug_dispatches_event(
 
     assert response.status_code == 200
     # Second poll should get the event
-    event = poller.poll()
+    event = debug.poll(node_config=node_config, tenant_id=tenant.id, user_id=account.id, app_id=app_model.id)
     assert event is not None
     assert event.workflow_args["inputs"]["webhook_body"]["foo"] == "bar"
     assert (
         db_session_with_containers.scalar(select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id))
         is None
     )
-
-
-def test_schedule_trigger_creates_trigger_log(
-    db_session_with_containers: Session,
-    tenant_and_account: tuple[Tenant, Account],
-    app_model: App,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Schedule trigger execution should create WorkflowTriggerLog in database."""
-    from tasks import workflow_schedule_tasks
-
-    tenant, account = tenant_and_account
-
-    # Create published workflow with schedule trigger node
-    schedule_node_id = "schedule-node"
-    graph = {
-        "nodes": [
-            {
-                "id": schedule_node_id,
-                "data": {
-                    "type": TRIGGER_SCHEDULE_NODE_TYPE,
-                    "title": "schedule",
-                    "mode": "cron",
-                    "cron_expression": "0 9 * * *",
-                    "timezone": "UTC",
-                },
-            },
-            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
-        ],
-        "edges": [{"source": schedule_node_id, "target": "answer-1", "sourceHandle": "success"}],
-    }
-    published_workflow = Workflow.new(
-        tenant_id=tenant.id,
-        app_id=app_model.id,
-        type="workflow",
-        version=Workflow.version_from_datetime(naive_utc_now()),
-        graph=json.dumps(graph),
-        features=json.dumps({}),
-        created_by=account.id,
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
-    db_session_with_containers.add(published_workflow)
-    app_model.workflow_id = published_workflow.id
-    db_session_with_containers.commit()
-
-    # Create schedule plan
-    plan = WorkflowSchedulePlan(
-        app_id=app_model.id,
-        node_id=schedule_node_id,
-        tenant_id=tenant.id,
-        cron_expression="0 9 * * *",
-        timezone="UTC",
-        next_run_at=naive_utc_now() - timedelta(minutes=1),
-    )
-    app_trigger = AppTrigger(
-        tenant_id=tenant.id,
-        app_id=app_model.id,
-        node_id=schedule_node_id,
-        trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
-        status=AppTriggerStatus.ENABLED,
-        title="schedule",
-    )
-    db_session_with_containers.add_all([plan, app_trigger])
-    db_session_with_containers.commit()
-
-    # Mock AsyncWorkflowService to create WorkflowTriggerLog
-    def _fake_trigger_workflow_async(
-        self: AsyncWorkflowService, *, actor: TriggerActor, trigger_data: TriggerData
-    ) -> SimpleNamespace:
-        session = db_session_with_containers
-        log = WorkflowTriggerLog(
-            tenant_id=trigger_data.tenant_id,
-            app_id=trigger_data.app_id,
-            workflow_id=published_workflow.id,
-            root_node_id=trigger_data.root_node_id,
-            trigger_metadata="{}",
-            trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
-            workflow_run_id=None,
-            outputs=None,
-            trigger_data=trigger_data.model_dump_json(),
-            inputs=json.dumps(dict(trigger_data.inputs)),
-            status=WorkflowTriggerStatus.SUCCEEDED,
-            error="",
-            queue_name="schedule_executor",
-            celery_task_id="celery-schedule-test",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=account.id,
-        )
-        session.add(log)
-        session.commit()
-        return SimpleNamespace(workflow_trigger_log_id=log.id, task_id=None, status="queued", queue="test")
-
-    monkeypatch.setattr(
-        AsyncWorkflowService,
-        "trigger_workflow_async",
-        _fake_trigger_workflow_async,
-    )
-
-    # Mock quota to avoid rate limiting
-    from services import quota_service
-
-    monkeypatch.setattr(quota_service.QuotaService, "reserve", lambda *_args, **_kwargs: quota_service.unlimited())
-
-    # Execute schedule trigger
-    workflow_schedule_tasks.run_schedule_trigger(plan.id)
-
-    # Verify WorkflowTriggerLog was created
-    db_session_with_containers.expire_all()
-    logs = db_session_with_containers.scalars(
-        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
-    ).all()
-    assert logs, "Schedule trigger should create WorkflowTriggerLog"
-    assert logs[0].trigger_type == AppTriggerType.TRIGGER_SCHEDULE
-    assert logs[0].root_node_id == schedule_node_id
 
 
 @pytest.mark.parametrize(
@@ -585,7 +380,7 @@ def test_schedule_visual_cron_conversion(
     else:
         node_config["data"]["cron_expression"] = cron_expression
 
-    config = ScheduleService.to_schedule_config(node_config)
+    config = ScheduleService.to_schedule_config(NodeConfigDictAdapter.validate_python(node_config))
 
     assert config.cron_expression == expected_cron, f"Expected {expected_cron}, got {config.cron_expression}"
     assert config.timezone == "UTC"

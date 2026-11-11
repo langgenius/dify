@@ -15,6 +15,7 @@ from controllers.openapi._catalog import CATALOG_HEADER, current_catalog
 from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
+from controllers.openapi.auth.personal_access import CheckPersonalAccess
 from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
@@ -54,7 +55,8 @@ class Pipeline:
         so a stable sort leaves them first at equal rank — which is what keeps
         `CheckSubject` ahead of `_RequiresEnterprise`.
         """
-        for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
+        requirements = spec.requirements + self.fixed
+        for requirement in sorted(requirements, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
         with mounted(subject, auth, ctx):
             # Bind handler arguments while the admission Session is still open.
@@ -100,7 +102,7 @@ class _RequiresCurrentCatalog(Requirement):
 
 
 class AccountPipeline(Pipeline, serves=AccountSubject):
-    fixed = (_RequiresCurrentCatalog(), ResolveCaller())
+    fixed = (_RequiresCurrentCatalog(), CheckPersonalAccess(), ResolveCaller())
 
 
 class ResourceAccessPipeline(Pipeline, serves=ResourceAccessSubject):

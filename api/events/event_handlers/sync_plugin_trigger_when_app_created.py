@@ -22,7 +22,7 @@ def handle(
     if sender.mode != AppMode.WORKFLOW.value or published_workflow is None:
         return
 
-    application_services().workspaces.create_trigger_binding_service(session).sync(
+    application_services().triggers.create_binding_service(session).sync(
         tenant_id=sender.tenant_id,
         app_id=sender.id,
         nodes=published_workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE),
