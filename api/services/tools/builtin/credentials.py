@@ -18,6 +18,7 @@ def resolve_oauth_client(
     provider_id: str,
 ) -> PluginOAuthClientConfig | None:
     provider = ToolProviderID(provider_id)
+    plugin_unique_identifier = controller.plugin_unique_identifier
     config = providers.oauth_client(
         tenant_id=tenant_id,
         plugin_id=provider.plugin_id,
@@ -30,14 +31,14 @@ def resolve_oauth_client(
             cache=NoOpProviderCredentialCache(),
         )
         return PluginOAuthClientConfig(
-            controller.plugin_unique_identifier,
+            plugin_unique_identifier,
             dict(encrypter.decrypt(config.tenant_params)),
         )
     if config.system_params is None:
         return None
-    if not PluginService.is_plugin_verified(tenant_id, controller.plugin_unique_identifier):
+    if not PluginService.is_plugin_verified(tenant_id, plugin_unique_identifier):
         return None
     return PluginOAuthClientConfig(
-        controller.plugin_unique_identifier,
+        plugin_unique_identifier,
         dict(decrypt_system_params(config.system_params)),
     )

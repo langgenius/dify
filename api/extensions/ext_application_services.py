@@ -39,6 +39,7 @@ from extensions.application_services.knowledge import (
 from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.application_services.tools import ToolServices, build_tool_services
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.trigger import TriggerServices, build_trigger_services
@@ -310,6 +311,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    tools: ToolServices
     workflow_runtime: AppGenerationRuntime
     workflow_variables: WorkflowVariableService
     console_workflow_variables: ConsoleWorkflowVariableService
@@ -647,6 +649,7 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        tools=build_tool_services(database_client),
         workflow_runtime=build_workflow_execution_dependencies(database_client),
         workflow_variables=workflow_variables,
         console_workflow_variables=build_console_workflow_variables(
@@ -926,12 +929,18 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    """Bind services using configured database access and feature settings.
+
+    Both tool registries expose KnowledgeFS only when enabled. Composition
+    errors propagate to the caller rather than leaving a usable application.
+    """
     from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     # The Agent Knowledge Base tool cannot run without KnowledgeFS, so keep it out of tool lists when disabled.
     if get_knowledge_fs_features().enabled:
+        ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
         LegacyToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
     LegacyToolManager.configure_credential_resolver(resolve_tool_credentials)
     ToolManager.configure_credential_resolver(resolve_tool_credentials)
