@@ -476,6 +476,17 @@ def test_validate_credentials_uses_real_config_lookup(
         )
 
 
+@pytest.mark.parametrize("encrypted_config", [None, "", "not-json", '["api_key"]', '"api_key"', "null"])
+def test_get_single_config_tolerates_missing_malformed_and_non_object_credentials(
+    service: ServiceFixture, sqlite_session: Session, encrypted_config: str | None
+) -> None:
+    svc, _, _ = service
+    config = _config(sqlite_session, encrypted_config=encrypted_config)
+    assert svc.get_load_balancing_config(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
+    ) == {"id": config.id, "name": "primary", "credentials": {}, "enabled": True}
+
+
 def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
