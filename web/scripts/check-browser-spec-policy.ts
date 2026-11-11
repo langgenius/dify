@@ -84,54 +84,6 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/app-sidebar/__tests__/app-detail-section.browser.spec.tsx',
-    specifier: '@/context/permission-state',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app-sidebar/__tests__/app-detail-section.browser.spec.tsx',
-    specifier: '../app-info',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app-sidebar/__tests__/app-detail-top.browser.spec.tsx',
-    specifier: '@/app/components/apps/list-navigation-state',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app/access-point/__tests__/environment-tabs.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app/access-point/__tests__/environment-tabs.browser.spec.tsx',
-    specifier: '@/context/permission-state',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app/access-point/__tests__/environment-tabs.browser.spec.tsx',
-    specifier: '@/app/components/app/access-point/built-in-access-points',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app/access-point/__tests__/environment-tabs.browser.spec.tsx',
-    specifier: '@/app/components/app/access-point/deployed-environment-access-points',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/app/app-access-control/__tests__/group-picker-layout.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/app/deploy/__tests__/accessibility.browser.spec.tsx',
     specifier: 'react-i18next',
     occurrence: 1,
@@ -139,12 +91,6 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
   },
   {
     path: 'app/components/apps/__tests__/app-creation-url.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/apps/__tests__/delete-app.browser.spec.tsx',
     specifier: 'react-i18next',
     occurrence: 1,
     reason: legacyMockDebt,
