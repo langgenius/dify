@@ -101,7 +101,7 @@ describe('device flow transport', () => {
       const target = await deviceServer(secure)
       const proxy = await proxyServer()
       vi.stubEnv(key, proxy.url)
-      const { deviceApi } = await import('../auth/device-api')
+      const { deviceApi } = await import('@/auth/device-api')
       const { proxyDispatcher } = await import('./proxy')
       dispatchers.push(proxyDispatcher({ insecure: true })!)
 
@@ -119,7 +119,7 @@ describe('device flow transport', () => {
     const proxy = await proxyServer()
     vi.stubEnv('HTTP_PROXY', proxy.url)
     vi.stubEnv(key, '127.0.0.1')
-    const { deviceApi } = await import('../auth/device-api')
+    const { deviceApi } = await import('@/auth/device-api')
     const { proxyDispatcher } = await import('./proxy')
     dispatchers.push(proxyDispatcher({ insecure: true })!)
 
@@ -145,7 +145,7 @@ describe('device flow transport', () => {
       )
     })
     const target = await listen(server, true)
-    const { deviceApi } = await import('../auth/device-api')
+    const { deviceApi } = await import('@/auth/device-api')
     const { proxyDispatcher } = await import('./proxy')
     dispatchers.push(proxyDispatcher({ insecure: true })!)
 
@@ -158,7 +158,7 @@ describe('device flow transport', () => {
 
   it('rejects an untrusted TLS certificate unless insecure is enabled', async () => {
     const target = await deviceServer(true)
-    const { deviceApi } = await import('../auth/device-api')
+    const { deviceApi } = await import('@/auth/device-api')
     const { proxyDispatcher } = await import('./proxy')
     dispatchers.push(proxyDispatcher({ insecure: true })!)
 
