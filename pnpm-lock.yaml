@@ -735,8 +735,8 @@ catalogs:
       specifier: 7.4.21
       version: 7.4.21
     tsrs:
-      specifier: 0.18.0-ts7.1.0-dev.20260929
-      version: 0.18.0-ts7.1.0-dev.20260929
+      specifier: 0.24.0-ts7.1.0-beta
+      version: 0.24.0-ts7.1.0-beta
     typescript:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
@@ -852,7 +852,7 @@ importers:
         version: 6.45.0
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -916,7 +916,7 @@ importers:
         version: 4.13.17
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -970,7 +970,7 @@ importers:
         version: 4.1.3
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1010,7 +1010,7 @@ importers:
         version: 5.5.0
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1047,7 +1047,7 @@ importers:
         version: typescript@7.1.0-beta
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1156,7 +1156,7 @@ importers:
         version: 4.3.5
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1189,7 +1189,7 @@ importers:
         version: 0.2.0(supports-color@11.0.0)
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
 
   packages/image-resources:
     dependencies:
@@ -1220,7 +1220,7 @@ importers:
         version: typescript@7.1.0-beta
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@1.5.0(@types/node@25.9.9)(@volar/typescript@2.4.28(typescript@7.1.0-beta))(esbuild@0.28.2)(jiti@2.7.0)(typescript@7.1.0-beta)(yaml@2.9.1)'
@@ -1244,7 +1244,7 @@ importers:
         version: 3.0.2(@types/react@19.3.0)(react@19.3.1)
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1262,7 +1262,7 @@ importers:
         version: typescript@7.1.0-beta
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1320,7 +1320,7 @@ importers:
         version: 19.3.1(react@19.3.1)
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1441,7 +1441,7 @@ importers:
         version: 3.10.0(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1483,7 +1483,7 @@ importers:
         version: 5.1.0(@vitest/browser@5.1.0)(vitest@5.1.0)
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -1946,7 +1946,7 @@ importers:
         version: 4.3.5
       tsrs:
         specifier: 'catalog:'
-        version: 0.18.0-ts7.1.0-dev.20260929
+        version: 0.24.0-ts7.1.0-beta
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
@@ -4844,39 +4844,51 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
-  '@tsrs/darwin-arm64@0.18.0-ts7.1.0-dev.20260929':
-    resolution: {integrity: sha512-sAirMpaGA9uRQm2W+t4zC7PjnijNuFa4PCSIfLKKo0JyAUCRfnMeev0UGBQ9F3g+9Nz187tvikUs5Irh5+eajA==}
+  '@tsrs/darwin-arm64@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-GxGPRieCGIXevJgGlbne9pRqkfAN+VmBQvBHWWcF8rXLNX9yCxYo78/a7Auqjf723b4eFTlM5mgkclUit/Fu9w==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [darwin]
 
-  '@tsrs/linux-arm64-gnu@0.18.0-ts7.1.0-dev.20260929':
-    resolution: {integrity: sha512-zm9/z9yylig68JiZF4Aq0Cm26n09KEU8YoQRlG7tdDWTBNAIViYw8knxnWYsjMWVZ2XiU4mYq1xdrOKuOgABHg==}
+  '@tsrs/darwin-x64@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-TrXdOyEq++blyYp6KphoHGmsGxAn1flYzjm0peLEI3c88z1UQa+pKkcuPgZ6FOxTW6fSaT9572n21kz+0bWi/g==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@tsrs/linux-arm64-gnu@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-Ph5NK0vnaR4gnBW2LgrZsUPx4mKF+9tCQUYZFOHmny6SMojSsm/5GCiBu0sHZEZhmyIqq8UbineUEA7T0QImnw==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@tsrs/linux-arm64-musl@0.18.0-ts7.1.0-dev.20260929':
-    resolution: {integrity: sha512-Lw7VVU/YQ9JcarODICEiwzMLdFqZprqh5RGTgbS5Uc6I95P635/g5xA1pOC8RVs4efBvAR30J54iDG3l5JEYiw==}
+  '@tsrs/linux-arm64-musl@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-vjgx8wGuAVSOPLlb2eVQpQVolImZa7vsH/1kvYOaokcP/KZXVUmHzgroxK0t9gxJ0SXvT4VKNjWZ+t+4tDNu1A==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@tsrs/linux-x64-gnu@0.18.0-ts7.1.0-dev.20260929':
-    resolution: {integrity: sha512-EdBwBgNICGu1r1h23ixdcKwsMo6E9ll7ZsY3mNERNYqE1Pwdtcat99d5E7zB1J+oy/Xk6YqiizaB6nolIjpDTw==}
+  '@tsrs/linux-x64-gnu@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-tj1SNWBnJoBUzU2zrD18tUu3h6o36FXQGPpmIXsADHSfU5H9pVQdK/QzPIO76rb72P7foXHluE+xGTXXf8nNaA==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@tsrs/linux-x64-musl@0.18.0-ts7.1.0-dev.20260929':
-    resolution: {integrity: sha512-LHk+AOAtXuTlhJhOJ2+elriEIX17ycXljojeNxrrzckOipTG1LksoVWuCSas2nu00EnWAzrdKpt9oqPylUKZfQ==}
+  '@tsrs/linux-x64-musl@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-sizu0EdGw9ITqEaZKg60TDhDk5PXT9RzVkCdesBjk/BZhS0BVU2cRhvoRBmDbk+2vCUgW14j+Otg3tl+002qNQ==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
+
+  '@tsrs/win32-x64@0.24.0-ts7.1.0-beta':
+    resolution: {integrity: sha512-WAbzgd5JBOauQ/oL6DTdGEh09tM/q8tlGAcRORskhPK7eIQVVa8Js2pc7DVW0XokWTSADeD9v6HKtU2Ge0r/fQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [win32]
 
   '@tsslint/cli@3.1.4':
     resolution: {integrity: sha512-svoLfFkoWmdsDrIRLllFnrxydfMjKKZ1UBjv7Sua1KjFkx6VaJ88+YGYqNiTbB/dDcU10qnSMXRavNTJ0fjBkQ==}
@@ -8702,8 +8714,8 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  tsrs@0.18.0-ts7.1.0-dev.20260929:
-    resolution: {integrity: sha512-9T0b4Uam/yMFIK16GUx0fUrJqYZnJ/gvSmV9JB8NTyDePvwCI45WFWxyEV/UMV3KfdNRJG/PBsm3fSIB9WmWsA==}
+  tsrs@0.24.0-ts7.1.0-beta:
+    resolution: {integrity: sha512-Iy7q93qfRHcI0Y31IKx6fCsDQCsSjtrT01PIgOVolBXPJTMdm84oH1pEYyAMPQ/SnRqWDSWI8wEUHbv6e9TmHA==}
     engines: {node: '>=16.20.0'}
     hasBin: true
 
@@ -11769,19 +11781,25 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.2
 
-  '@tsrs/darwin-arm64@0.18.0-ts7.1.0-dev.20260929':
+  '@tsrs/darwin-arm64@0.24.0-ts7.1.0-beta':
     optional: true
 
-  '@tsrs/linux-arm64-gnu@0.18.0-ts7.1.0-dev.20260929':
+  '@tsrs/darwin-x64@0.24.0-ts7.1.0-beta':
     optional: true
 
-  '@tsrs/linux-arm64-musl@0.18.0-ts7.1.0-dev.20260929':
+  '@tsrs/linux-arm64-gnu@0.24.0-ts7.1.0-beta':
     optional: true
 
-  '@tsrs/linux-x64-gnu@0.18.0-ts7.1.0-dev.20260929':
+  '@tsrs/linux-arm64-musl@0.24.0-ts7.1.0-beta':
     optional: true
 
-  '@tsrs/linux-x64-musl@0.18.0-ts7.1.0-dev.20260929':
+  '@tsrs/linux-x64-gnu@0.24.0-ts7.1.0-beta':
+    optional: true
+
+  '@tsrs/linux-x64-musl@0.24.0-ts7.1.0-beta':
+    optional: true
+
+  '@tsrs/win32-x64@0.24.0-ts7.1.0-beta':
     optional: true
 
   '@tsslint/cli@3.1.4(@tsslint/compat-eslint@3.1.4(@typescript/typescript6@6.0.2))(@typescript/typescript6@6.0.2)':
@@ -16186,13 +16204,15 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsrs@0.18.0-ts7.1.0-dev.20260929:
+  tsrs@0.24.0-ts7.1.0-beta:
     optionalDependencies:
-      '@tsrs/darwin-arm64': 0.18.0-ts7.1.0-dev.20260929
-      '@tsrs/linux-arm64-gnu': 0.18.0-ts7.1.0-dev.20260929
-      '@tsrs/linux-arm64-musl': 0.18.0-ts7.1.0-dev.20260929
-      '@tsrs/linux-x64-gnu': 0.18.0-ts7.1.0-dev.20260929
-      '@tsrs/linux-x64-musl': 0.18.0-ts7.1.0-dev.20260929
+      '@tsrs/darwin-arm64': 0.24.0-ts7.1.0-beta
+      '@tsrs/darwin-x64': 0.24.0-ts7.1.0-beta
+      '@tsrs/linux-arm64-gnu': 0.24.0-ts7.1.0-beta
+      '@tsrs/linux-arm64-musl': 0.24.0-ts7.1.0-beta
+      '@tsrs/linux-x64-gnu': 0.24.0-ts7.1.0-beta
+      '@tsrs/linux-x64-musl': 0.24.0-ts7.1.0-beta
+      '@tsrs/win32-x64': 0.24.0-ts7.1.0-beta
 
   tunnel-agent@0.6.0:
     dependencies:
@@ -17014,7 +17034,7 @@ time:
   svgo@4.1.0: '2026-08-24T12:10:36.576Z'
   tailwindcss@4.3.5: '2026-11-06T15:16:02.164Z'
   tldts@7.4.21: '2026-11-10T22:07:30.231Z'
-  tsrs@0.18.0-ts7.1.0-dev.20260929: '2026-10-19T11:24:43.751Z'
+  tsrs@0.24.0-ts7.1.0-beta: '2026-11-10T16:24:25.680Z'
   typescript@7.1.0-beta: '2026-10-20T16:45:47.402Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
   undici@7.30.2: '2026-11-05T09:06:58.994Z'
