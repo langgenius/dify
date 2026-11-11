@@ -389,7 +389,7 @@ describe('Blocks', () => {
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('button', { name: /Nadia.*Researcher/ }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -511,11 +511,14 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('button', { name: /Nadia.*Researcher/ }))
 
-    await waitFor(() =>
-      expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
+    expect(screen.getByRole('button', { name: /Nadia.*Researcher/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
     )
+    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(queryMocks.toastError).not.toHaveBeenCalled()
     expect(onSelect).not.toHaveBeenCalled()
   })
 
@@ -546,14 +549,14 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('menuitem', {
+    const consoleLink = await screen.findByRole('link', {
       name: 'agentRoster.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('menuitem', {
+      await screen.findByRole('button', {
         name: 'agentRoster.roster.nodeSelector.startFromScratch',
       }),
     )

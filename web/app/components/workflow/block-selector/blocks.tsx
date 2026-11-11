@@ -11,6 +11,7 @@ import { Fragment, memo, useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
 import BlockIcon from '../block-icon'
 import { useHumanInputMigration } from '../nodes/human-input-v2/migration/context'
 import { getHumanInputCreationPolicy } from '../nodes/human-input-v2/migration/policy'
@@ -141,6 +142,9 @@ const Blocks = ({
                       agent_node_kind: 'dify_agent',
                       version: '2',
                     })
+                  }
+                  onSelectExternal={(agent) =>
+                    onSelect(BlockEnum.AgentV2, createExternalAgentWorkflowPreviewData(agent))
                   }
                 />
               )

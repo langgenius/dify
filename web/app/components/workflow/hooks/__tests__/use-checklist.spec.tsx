@@ -17,6 +17,8 @@ import ReactFlow, { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -687,6 +689,49 @@ describe('useChecklistBeforePublish', () => {
 })
 
 describe('useWorkflowRunValidation', () => {
+  it('blocks running and publishing a graph containing a local external agent preview', async () => {
+    const graph = buildConnectedGraph()
+    const preview = createNode({
+      id: 'external-preview',
+      data: {
+        type: BlockEnum.Agent,
+        title: 'External Agent',
+        ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+      },
+    })
+    const { wrapper } = createChecklistWrapper({
+      nodes: [...graph.nodes, preview],
+      edges: [
+        createEdge({ source: 'start', target: preview.id }),
+        createEdge({ source: preview.id, target: 'code' }),
+        createEdge({ source: 'code', target: 'end' }),
+      ],
+    })
+    const { result } = renderHook(
+      () => ({
+        nodes: useNodes<CommonNodeType>(),
+        run: useWorkflowRunValidation(),
+        publish: useChecklistBeforePublish(),
+      }),
+      { wrapper },
+    )
+
+    expect(result.current.run.warningNodes).toContainEqual(
+      expect.objectContaining({
+        id: preview.id,
+        errorMessages: ['agentRoster.external.workflow.runUnavailable'],
+        canNavigate: true,
+      }),
+    )
+    act(() => {
+      expect(result.current.run.validateBeforeRun()).toBe(false)
+    })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    expect(result.current.nodes.find((node) => node.id === preview.id)?.data.selected).toBe(true)
+  })
+
   it('blocks a run with disconnected nodes and explains why', async () => {
     const { nodes } = buildConnectedGraph()
     const { wrapper } = createChecklistWrapper({ nodes, edges: [] })

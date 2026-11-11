@@ -3658,11 +3658,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/block-selector/agent-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    }
-  },
   "web/app/components/workflow/block-selector/all-start-blocks.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -4133,9 +4128,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/node-control.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -4382,11 +4374,6 @@
     }
   },
   "web/app/components/workflow/nodes/agent-v2/components/agent-output-variables/edit-card.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/agent-v2/components/agent-output-variables/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }

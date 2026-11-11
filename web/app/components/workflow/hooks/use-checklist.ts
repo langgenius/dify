@@ -43,6 +43,7 @@ import {
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
@@ -181,7 +182,7 @@ const getDuplicateEndOutputMessages = (
 }
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider'])
+  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider', 'agentRoster'])
   const language = useGetLanguage()
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const contactIds = useMemo(() => getHumanInputContactIds(nodes), [nodes])
@@ -410,6 +411,16 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
+      if (node && isExternalAgentWorkflowPreviewData(node.data)) {
+        list.push({
+          id: node.id,
+          type: BlockEnum.AgentV2,
+          title: node.data.title,
+          errorMessages: [t(($) => $['external.workflow.runUnavailable'], { ns: 'agentRoster' })],
+          canNavigate: true,
+        })
+        continue
+      }
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
@@ -756,6 +767,19 @@ export const useChecklistBeforePublish = () => {
     const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
+    const externalAgentPreview = filteredNodes.find((node) =>
+      isExternalAgentWorkflowPreviewData(node.data),
+    )
+    if (externalAgentPreview) {
+      store.getState().setNodes(
+        nodes.map((node) => ({
+          ...node,
+          selected: node.id === externalAgentPreview.id,
+          data: { ...node.data, selected: node.id === externalAgentPreview.id },
+        })),
+      )
+      return false
+    }
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 

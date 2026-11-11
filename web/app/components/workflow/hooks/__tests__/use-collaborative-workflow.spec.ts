@@ -1,6 +1,9 @@
 import { act, waitFor } from '@testing-library/react'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import { BlockEnum } from '../../types'
 import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 const mocks = vi.hoisted(() => ({
@@ -75,4 +78,48 @@ it('updates the local graph while stripping selection state from broadcasts', as
   expect(nextEdges).toMatchObject([{ id: 'new-edge', source: 'new-node', target: 'target' }])
   expect(previousEdges[0].data).not.toHaveProperty('_connectedNodeIsSelected')
   expect(nextEdges[0].data).not.toHaveProperty('_connectedNodeIsSelected')
+})
+
+it('keeps external agent previews and their edges local through edits and deletion', async () => {
+  mocks.canApplyLocalGraphMutation.mockReturnValue(true)
+  const { result } = setup()
+  await waitFor(() => expect(result.current.getState().nodes).toHaveLength(2))
+  const originalNodes = result.current.getState().nodes
+  const preview = createNode({
+    id: 'external-preview',
+    data: {
+      type: BlockEnum.Agent,
+      ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+    },
+  })
+  const previewEdge = createEdge({ id: 'preview-edge', source: oldNode.id, target: preview.id })
+  act(() => {
+    result.current.setNodes([...originalNodes, preview], false)
+    result.current.setEdges([oldEdge, previewEdge], false)
+  })
+  expect(mocks.setNodes).not.toHaveBeenCalled()
+  expect(mocks.setEdges).not.toHaveBeenCalled()
+
+  act(() => {
+    result.current.setNodes([newNode, originalNodes[1]!, preview])
+    result.current.setEdges([newEdge, previewEdge])
+  })
+  expect(result.current.getState().nodes).toHaveLength(3)
+  expect(result.current.getState().edges).toHaveLength(2)
+  const [oldBroadcastNodes, newBroadcastNodes] = mocks.setNodes.mock.lastCall!
+  expect(oldBroadcastNodes.map((node: { id: string }) => node.id)).toEqual(['old-node', 'target'])
+  expect(newBroadcastNodes.map((node: { id: string }) => node.id)).toEqual(['new-node', 'target'])
+  expect(mocks.setEdges).toHaveBeenLastCalledWith(
+    [expect.objectContaining({ id: oldEdge.id })],
+    [expect.objectContaining({ id: newEdge.id })],
+  )
+
+  act(() => {
+    result.current.setNodes([newNode, originalNodes[1]!])
+    result.current.setEdges([newEdge])
+  })
+  expect(mocks.setEdges).toHaveBeenLastCalledWith(
+    [expect.objectContaining({ id: newEdge.id })],
+    [expect.objectContaining({ id: newEdge.id })],
+  )
 })

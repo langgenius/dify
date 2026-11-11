@@ -3,6 +3,7 @@ import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { ReactNode } from 'react'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
+import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -17,6 +18,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -24,11 +26,15 @@ import { createContext, use, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorAppIdAtom,
+  editorResourceKindAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
+import { WorkflowAgentSelectorContent } from './workflow-agent-selector'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
 
@@ -163,7 +169,7 @@ function AgentSelectorList({
               <MenuItem
                 key={agent.id}
                 closeOnClick={Boolean(agent.active_config_snapshot_id)}
-                className="h-auto gap-2 py-1.5 pr-3 pl-2"
+                className="h-auto gap-2 py-1.5 ps-2 pe-3"
                 onClick={() => handleSelect(agent)}
               >
                 <span aria-hidden className="shrink-0">
@@ -215,7 +221,7 @@ function AgentSelectorLoadingSkeleton() {
           <div
             key={key}
             className={cn(
-              'flex items-center gap-2 py-1.5 pr-3 pl-2 opacity-20',
+              'flex items-center gap-2 py-1.5 ps-2 pe-3 opacity-20',
               index === 3 && 'opacity-10',
             )}
           >
@@ -247,27 +253,32 @@ function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNod
 export function AgentBlockItem({
   block,
   onSelect,
+  onSelectExternal,
   onStartFromScratch,
 }: {
   block: NodeDefault
   onSelect: (agent: AgentRosterNodeData) => void
+  onSelectExternal?: (agent: ExternalAgentWorkflowPreviewAgent) => void
   onStartFromScratch: () => void
 }) {
   const { t } = useTranslation(['navigation'])
+  const { t: tAgentRoster } = useTranslation(['agentRoster'])
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const [open, setOpen] = useState(false)
 
   return (
-    <AgentSelectorMenu>
-      <AgentSelectorMenuTrigger
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
         openOnHover
         render={
           <Button
             variant="ghost"
             size="medium"
-            className="w-full justify-start gap-0 px-3 text-left data-popup-open:bg-state-base-hover"
+            className="w-full justify-start gap-0 px-3 text-start data-popup-open:bg-state-base-hover"
           />
         }
       >
-        <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+        <BlockIcon className="me-2 shrink-0" type={block.metaData.type} />
         <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
           {block.metaData.title}
         </span>
@@ -275,19 +286,28 @@ export function AgentBlockItem({
           size="xs"
           variant="dimm"
           text={t(($) => $['menus.status'], { ns: 'navigation' })}
-          className="ml-2 shrink-0"
+          className="ms-2 shrink-0"
         />
         <span
           aria-hidden
           className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-tertiary"
         />
-      </AgentSelectorMenuTrigger>
-      <AgentSelectorMenuContent
+      </PopoverTrigger>
+      <PopoverContent
         side="right"
         align="start"
-        onSelect={onSelect}
-        onStartFromScratch={onStartFromScratch}
-      />
-    </AgentSelectorMenu>
+        className="w-100 max-w-[calc(100vw-1rem)] overflow-hidden"
+      >
+        <PopoverTitle className="sr-only">
+          {tAgentRoster(($) => $['roster.nodeSelector.dialogLabel'])}
+        </PopoverTitle>
+        <WorkflowAgentSelectorContent
+          onSelect={onSelect}
+          onSelectExternal={resourceKind === 'app' ? onSelectExternal : undefined}
+          onStartFromScratch={onStartFromScratch}
+          onRequestClose={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }

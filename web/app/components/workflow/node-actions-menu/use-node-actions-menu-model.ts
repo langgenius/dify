@@ -8,6 +8,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleQuery } from '@/service/console'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
@@ -41,7 +42,11 @@ export function useNodeActionsMenuModel({
   )
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
-  const canRun = canRunWorkflow && !nodesReadOnly && canRunBySingle(data.type, isChildNode)
+  const canRun =
+    canRunWorkflow &&
+    !nodesReadOnly &&
+    !isExternalAgentWorkflowPreviewData(data) &&
+    canRunBySingle(data.type, isChildNode)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {
@@ -62,6 +67,7 @@ export function useNodeActionsMenuModel({
   }, [data.provider_id, data.provider_type, data.type, workflowTools])
 
   const handleRun = useCallback(() => {
+    if (!canRun) return
     const store = workflowStore.getState()
     store.setInitShowLastRunTab(true)
     store.setPendingSingleRun({
@@ -70,7 +76,7 @@ export function useNodeActionsMenuModel({
     })
     handleNodeSelect(id)
     onClose()
-  }, [handleNodeSelect, id, isSingleRunning, onClose, workflowStore])
+  }, [canRun, handleNodeSelect, id, isSingleRunning, onClose, workflowStore])
 
   const handleCopy = useCallback(() => {
     onClose()

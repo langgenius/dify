@@ -25,7 +25,6 @@ import {
   getOutputDisplayType,
   getOutputTypeOptionValue,
   insertOutputChildAtPath,
-  isDefaultOutput,
   toDeclaredOutputChild,
   updateOutputChildAtPath,
 } from './utils'
@@ -44,10 +43,10 @@ function OutputRow({
   onEdit: () => void
 }) {
   const { t } = useTranslation(['workflow', 'common', 'workflowAgent'])
-  const description = getOutputDescription(output, t)
+  const description = editable ? output.description || '' : getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
-      <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
+      <div className="flex h-6 items-center gap-x-1 ps-1 pe-0.5">
         <div className="flex min-w-0 grow items-center gap-x-1">
           <span className="flex h-5 min-w-0 items-center px-1">
             <span className="truncate code-sm-semibold leading-4 text-text-primary">
@@ -144,6 +143,8 @@ export function AgentOutputVariables({
   onChange,
   collapsed,
   onCollapse,
+  compact = false,
+  reservedOutputNames = AGENT_V2_RESERVED_OUTPUT_NAMES,
 }: AgentOutputVariablesProps) {
   const { t } = useTranslation(['workflowAgent'])
   const [editingState, setEditingState] = useState<EditingState | null>(null)
@@ -277,11 +278,28 @@ export function AgentOutputVariables({
     )
   }
   return (
-    <OutputVars collapsed={isCollapsed} onCollapse={handleCollapseChange}>
+    <OutputVars
+      collapsed={isCollapsed}
+      onCollapse={handleCollapseChange}
+      operations={
+        compact ? (
+          <IconButton
+            aria-label={t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflowAgent' })}
+            className="me-4"
+            onClick={() => {
+              handleCollapseChange(false)
+              handleNewOutput()
+            }}
+          >
+            <span aria-hidden className="i-ri-add-line size-4" />
+          </IconButton>
+        ) : undefined
+      }
+    >
       <div className="pb-2">
         <div className="flex flex-col">
           {outputs.map((output, index) => {
-            const editable = !isDefaultOutput(output)
+            const editable = !reservedOutputNames.has(output.name)
             const children = getOutputChildren(output)
             const isEditingOutput =
               editingState?.outputIndex === index &&
@@ -297,7 +315,7 @@ export function AgentOutputVariables({
                     key={`${output.name}-editing`}
                     editingIndex={index}
                     existingOutputs={outputs}
-                    reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
+                    reservedNames={reservedOutputNames}
                     state={editingState}
                     onCancel={() => setEditingState(null)}
                     onConfirm={handleConfirm}
@@ -332,18 +350,20 @@ export function AgentOutputVariables({
               </div>
             )
           })}
-          <div className="py-1">
-            <Separator decorative orientation="horizontal" className="my-2 bg-divider-subtle" />
-          </div>
+          {!compact && (
+            <div className="py-1">
+              <Separator decorative orientation="horizontal" className="my-2 bg-divider-subtle" />
+            </div>
+          )}
           {editingState && editingState.outputIndex == null ? (
             <OutputEditCard
               existingOutputs={outputs}
-              reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
+              reservedNames={reservedOutputNames}
               state={editingState}
               onCancel={() => setEditingState(null)}
               onConfirm={handleConfirm}
             />
-          ) : (
+          ) : !compact ? (
             <div className="pt-1">
               <Button
                 size="small"
@@ -355,7 +375,7 @@ export function AgentOutputVariables({
                 {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflowAgent' })}
               </Button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </OutputVars>

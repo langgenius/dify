@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -884,6 +885,27 @@ export const useNodesInteractions = () => {
           y: 0,
         },
       })
+      if (isExternalAgentWorkflowPreviewData(newNode.data)) {
+        const anchor = nodes.find((node) => node.id === (nextNodeId ?? prevNodeId))
+        const anchorPosition = anchor?.positionAbsolute ?? anchor?.position
+        const mousePosition = workflowStore.getState().mousePosition
+        newNode.position = anchorPosition
+          ? { x: anchorPosition.x + NODE_WIDTH_X_OFFSET, y: anchorPosition.y + Y_OFFSET }
+          : reactflow.screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
+        setNodes(
+          [
+            ...nodes.map((node) => ({
+              ...node,
+              selected: false,
+              data: { ...node.data, selected: false },
+            })),
+            newNode,
+          ],
+          false,
+        )
+        saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
+        return
+      }
       if (prevNodeId && !nextNodeId) {
         const prevNodeIndex = nodes.findIndex((node) => node.id === prevNodeId)
         const prevNode = nodes[prevNodeIndex]
@@ -1356,6 +1378,7 @@ export const useNodesInteractions = () => {
       createInlineAgentBindingForNode,
       saveStateToHistory,
       workflowStore,
+      reactflow,
       getAfterNodesInSameBranch,
       nodesMetaDataMap,
       t,
@@ -1375,6 +1398,15 @@ export const useNodesInteractions = () => {
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
+      if (
+        isExternalAgentWorkflowPreviewData({
+          ...defaultValue,
+          ...pluginDefaultValue,
+        } as Node['data'])
+      ) {
+        handleNodeAdd({ nodeType, sourceHandle, pluginDefaultValue }, { prevNodeId: currentNodeId })
+        return
+      }
       const insertionBlocker = getHumanInputInsertionBlocker(nodes, nodeType, {
         ...(defaultValue as Node['data']),
         ...pluginDefaultValue,
@@ -1576,6 +1608,7 @@ export const useNodesInteractions = () => {
       saveStateToHistory,
       nodesMetaDataMap,
       autoGenerateWebhookUrl,
+      handleNodeAdd,
       t,
     ],
   )

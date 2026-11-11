@@ -12,6 +12,8 @@ import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixt
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
@@ -434,6 +436,29 @@ describe('useNodesSyncDraft', () => {
               deleted_environment_variable_ids:
                 environmentVariablePatch.deletedEnvironmentVariableIds,
             },
+          }),
+        }),
+      )
+    })
+
+    it('excludes external agent previews and their connected edges from backend draft payloads', async () => {
+      const previewData = createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!)
+      const { result } = renderUseNodesSyncDraft({
+        nodes: [
+          startNode,
+          createNode({ id: 'external-preview', data: { type: BlockEnum.Agent, ...previewData } }),
+        ],
+        edges: [createEdge({ source: startNode.id, target: 'external-preview' })],
+      })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: expect.objectContaining({ nodes: [savedStartNode], edges: [] }),
           }),
         }),
       )

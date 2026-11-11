@@ -45,6 +45,8 @@ export type AgentOutputVariablesProps = {
   onChange: (outputs: DeclaredOutputConfig[]) => void
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
+  compact?: boolean
+  reservedOutputNames?: ReadonlySet<string>
 }
 
 export const OUTPUT_NAME_PATTERN = /^[a-z_]\w*$/i
