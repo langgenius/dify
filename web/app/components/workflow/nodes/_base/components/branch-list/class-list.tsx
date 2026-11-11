@@ -188,7 +188,7 @@ const ClassList: FC<Props> = ({
                       )}
                       style={{
                         // Performance hint for browser
-                        contain: 'layout style paint',
+                        contain: 'layout style',
                       }}
                     >
                       <div>
@@ -202,9 +202,8 @@ const ClassList: FC<Props> = ({
                         )}
                         <Item
                           labelId={`${labelIdPrefix}-${item.id}`}
-                          className={cn(canDrag && 'handle')}
                           headerClassName={cn(
-                            canDrag && 'cursor-grab group-focus-within:pl-5 group-hover:pl-5',
+                            canDrag && 'group-focus-within:pl-5 group-hover:pl-5',
                           )}
                           nodeId={nodeId}
                           key={item.id}
