@@ -248,10 +248,11 @@ class RecordingPollingRuntime(PluginModelRuntime):
 
 
 class RecordingHostedModerationClient(PluginModelClient):
-    """Record direct identifier dispatch without tenant provider discovery or daemon I/O."""
+    """Record installed and direct dispatch without tenant provider discovery or daemon I/O."""
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str, str, dict[str, Any], str, str | None]] = []
+        self.routes: list[str] = []
         self.error: Exception | None = None
         self.identifier_errors: dict[str, Exception] = {}
 
@@ -266,6 +267,36 @@ class RecordingHostedModerationClient(PluginModelClient):
         credentials: dict[str, Any],
         text: str,
         plugin_unique_identifier: str | None = None,
+    ) -> bool:
+        self.routes.append("tenant")
+        return self._record(tenant_id, user_id, plugin_id, provider, model, credentials, text, plugin_unique_identifier)
+
+    @override
+    def invoke_moderation_direct(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        text: str,
+        *,
+        plugin_unique_identifier: str,
+    ) -> bool:
+        self.routes.append("direct")
+        return self._record(tenant_id, user_id, plugin_id, provider, model, credentials, text, plugin_unique_identifier)
+
+    def _record(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        text: str,
+        plugin_unique_identifier: str | None,
     ) -> bool:
         self.calls.append(
             (
