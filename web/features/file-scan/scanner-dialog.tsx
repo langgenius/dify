@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
+import { ProviderTypeIcon } from './provider-type-icon'
 import {
   FILE_SCAN_PROVIDER_TYPES,
   fileScanProviderSendsFileContents,
@@ -55,20 +56,6 @@ type FileScanProviderDialogProps = {
 }
 
 const stringSetting = (value: unknown) => (typeof value === 'string' ? value : '')
-
-function ProviderTypeIcon({ type }: { type: FileScanProviderType }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        'size-4 text-text-secondary',
-        type === 'clamav' && 'i-ri-server-line',
-        type === 'api' && 'i-ri-plug-line',
-        type !== 'clamav' && type !== 'api' && 'i-ri-cloud-line',
-      )}
-    />
-  )
-}
 
 export function FileScanProviderDialog({
   onOpenChange,
