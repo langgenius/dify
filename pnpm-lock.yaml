@@ -501,8 +501,8 @@ catalogs:
       specifier: 2.4.0
       version: 2.4.0
     eslint-markdown:
-      specifier: 0.20.0
-      version: 0.20.0
+      specifier: 0.21.0
+      version: 0.21.0
     eslint-plugin-antfu:
       specifier: 3.3.1
       version: 3.3.1
@@ -516,8 +516,8 @@ catalogs:
       specifier: 3.4.2
       version: 3.4.2
     eslint-plugin-markdown-preferences:
-      specifier: 0.42.0
-      version: 0.42.0
+      specifier: 0.43.0
+      version: 0.43.0
     eslint-plugin-n:
       specifier: 18.5.0
       version: 18.5.0
@@ -805,6 +805,7 @@ overrides:
   happy-dom: 21.0.4
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.3.1: ^4.3.2
+  micromark-extension-math>katex: 0.18.10
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
   rollup@>=4.0.0 <4.59.0: 4.63.5
@@ -1402,7 +1403,7 @@ importers:
         version: 2.4.0(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
       eslint-markdown:
         specifier: 'catalog:'
-        version: 0.20.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
+        version: 0.21.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
       eslint-plugin-antfu:
         specifier: 'catalog:'
         version: 3.3.1(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
@@ -1417,7 +1418,7 @@ importers:
         version: 3.4.2(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
       eslint-plugin-markdown-preferences:
         specifier: 'catalog:'
-        version: 0.42.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+        version: 0.43.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
       eslint-plugin-n:
         specifier: 'catalog:'
         version: 18.5.0(@typescript/typescript6@6.0.2)(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))
@@ -6369,8 +6370,8 @@ packages:
     resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
     engines: {node: '>=0.12'}
 
-  entities@8.1.0:
-    resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
+  entities@9.0.0:
+    resolution: {integrity: sha512-oJFNDJg3kTPwAD1cNn2+WmUq4wFoo09npc3Ydf1D7ED4smRiWrsKnaLxykrTWgyGEcusc87P5dxlAleol9kpkg==}
     engines: {node: '>=20.19.0'}
 
   error-stack-parser-es@2.0.1:
@@ -6437,8 +6438,8 @@ packages:
       '@eslint/json':
         optional: true
 
-  eslint-markdown@0.20.0:
-    resolution: {integrity: sha512-NkL4FbdJTmPrK5lg1EC00c5oE7XhgLqefOVS77ekUf2A7d5ZxjAWskWEw0LYZKPN3dqZCl3TqxtdHyyhLN6Ucg==}
+  eslint-markdown@0.21.0:
+    resolution: {integrity: sha512-C69o4/CJBbV9EkReFSpQIYO78WV7HIkmkcRI62dWJu8QlQLAClkZcBQ6DuvDbXv6SbXCL6EPZeFqiw29FkKtKw==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24.0.0}
     peerDependencies:
       '@eslint/markdown': ^8.0.3
@@ -6487,8 +6488,8 @@ packages:
     peerDependencies:
       eslint: '>=9.38.0'
 
-  eslint-plugin-markdown-preferences@0.42.0:
-    resolution: {integrity: sha512-LVoGwsRDeLFooaj9OndJrof5OslnQQnZKStP+GX0DMnAt6Nt2tgJzP+URRNXqS54lYnIa0m6pBo7CO1n/utTsw==}
+  eslint-plugin-markdown-preferences@0.43.0:
+    resolution: {integrity: sha512-57n6ATNj97rkoi2/iNrO87hHDoGPqv2ma8b6/sr4okoClxTRbavUoAGgJwg3mmBZsH1DmWQUgJFSOvowvbTPvg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
     peerDependencies:
       '@eslint/markdown': ^7.4.0 || ^8.0.0
@@ -7861,8 +7862,8 @@ packages:
   parse5@7.3.0:
     resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==}
 
-  parse5@8.0.1:
-    resolution: {integrity: sha512-z1e/HMG90obSGeidlli3hj7cbocou0/wa5HacvI3ASx34PecNjNQeaHNo5WIZpWofN9kgkqV1q5YvXe3F0FoPw==}
+  parse5@8.1.1:
+    resolution: {integrity: sha512-EcR/6WDcU7b2N3vQSxKALCk9lXGtUMQxXio008OEMBE0kavu/7JLfBEeFPzi43nMqVDSbEn3QCK+BMCc9zO//w==}
 
   path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
@@ -13242,7 +13243,7 @@ snapshots:
 
   entities@7.0.1: {}
 
-  entities@8.1.0: {}
+  entities@9.0.0: {}
 
   error-stack-parser-es@2.0.1: {}
 
@@ -13313,11 +13314,11 @@ snapshots:
       esquery: 1.7.0
       jsonc-eslint-parser: 3.3.0
 
-  eslint-markdown@0.20.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0)):
+  eslint-markdown@0.21.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0)):
     dependencies:
       '@eslint/markdown': 8.0.3(supports-color@11.0.0)
       micromark-util-normalize-identifier: 2.0.1
-      parse5: 8.0.1
+      parse5: 8.1.1
     optionalDependencies:
       eslint: 10.14.0(jiti@2.7.0)(supports-color@11.0.0)
 
@@ -13389,7 +13390,7 @@ snapshots:
     transitivePeerDependencies:
       - '@eslint/json'
 
-  eslint-plugin-markdown-preferences@0.42.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0):
+  eslint-plugin-markdown-preferences@0.43.0(@eslint/markdown@8.0.3(supports-color@11.0.0))(eslint@10.14.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0):
     dependencies:
       '@eslint/markdown': 8.0.3(supports-color@11.0.0)
       diff-sequences: 29.6.3
@@ -14663,7 +14664,7 @@ snapshots:
     dependencies:
       '@types/katex': 0.16.8
       devlop: 1.1.0
-      katex: 0.16.47
+      katex: 0.18.10
       micromark-factory-space: 2.0.1
       micromark-util-character: 2.1.1
       micromark-util-symbol: 2.0.1
@@ -15261,9 +15262,9 @@ snapshots:
     dependencies:
       entities: 6.0.1
 
-  parse5@8.0.1:
+  parse5@8.1.1:
     dependencies:
-      entities: 8.1.0
+      entities: 9.0.0
 
   path-browserify@1.0.1: {}
 
@@ -16933,12 +16934,12 @@ time:
   es-module-lexer@3.0.4: '2026-10-15T04:35:33.820Z'
   es-toolkit@1.53.2: '2026-11-06T09:29:34.259Z'
   eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
-  eslint-markdown@0.20.0: '2026-10-24T02:15:47.330Z'
+  eslint-markdown@0.21.0: '2026-11-04T09:02:07.800Z'
   eslint-plugin-antfu@3.3.1: '2026-10-23T06:36:00.805Z'
   eslint-plugin-better-tailwindcss@4.11.0: '2026-11-09T22:22:08.087Z'
   eslint-plugin-jsdoc@65.4.5: '2026-11-06T18:47:11.404Z'
   eslint-plugin-jsonc@3.4.2: '2026-08-22T12:13:35.450Z'
-  eslint-plugin-markdown-preferences@0.42.0: '2026-07-14T00:58:47.572Z'
+  eslint-plugin-markdown-preferences@0.43.0: '2026-11-04T08:43:42.386Z'
   eslint-plugin-n@18.5.0: '2026-10-18T05:29:01.470Z'
   eslint-plugin-no-barrel-files@2.3.0: '2026-10-20T21:30:18.972Z'
   eslint-plugin-perfectionist@5.13.0: '2026-10-20T06:30:37.648Z'

@@ -55,6 +55,8 @@ overrides:
   happy-dom: 'catalog:'
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.3.1: ^4.3.2
+  # micromark math still declares vulnerable KaTeX 0.16; verify its HTML compiler separately.
+  micromark-extension-math>katex: 0.18.10
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
   rollup@>=4.0.0 <4.59.0: 4.63.5
@@ -183,12 +185,12 @@ catalog:
   es-toolkit: 1.53.2
   eslint: 10.14.0
   eslint-config-flat-gitignore: 2.4.0
-  eslint-markdown: 0.20.0
+  eslint-markdown: 0.21.0
   eslint-plugin-antfu: 3.3.1
   eslint-plugin-better-tailwindcss: 4.11.0
   eslint-plugin-jsdoc: 65.4.5
   eslint-plugin-jsonc: 3.4.2
-  eslint-plugin-markdown-preferences: 0.42.0
+  eslint-plugin-markdown-preferences: 0.43.0
   eslint-plugin-n: 18.5.0
   eslint-plugin-no-barrel-files: 2.3.0
   eslint-plugin-perfectionist: 5.13.0
