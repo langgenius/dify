@@ -4,6 +4,7 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Literal, Protocol, cast
 
+from core.app.apps.exc import AppGenerateError
 from core.credit_usage import CreditUsageCreatedByInput, normalize_credit_usage_created_by
 
 
@@ -29,6 +30,8 @@ class AppModerationRuntime(Protocol):
     def replacement(self, app_config: Any, error: Exception) -> tuple[str, str] | None: ...
 
     def workflow_replacement(self, app_config: Any) -> Callable[[str], tuple[str, str] | None]: ...
+
+    def workflow_error(self, app_config: Any, message: str) -> AppGenerateError | None: ...
 
 
 _app_moderation_runtime: ContextVar[AppModerationRuntime | None] = ContextVar("app_moderation_runtime", default=None)

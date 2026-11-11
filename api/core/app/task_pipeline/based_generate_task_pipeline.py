@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
 )
@@ -160,6 +161,14 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             self.output_moderation_handler.stop_thread()
             self.output_moderation_handler = None
         return replacement
+
+    def workflow_moderation_error(self, message: str) -> AppGenerateError | None:
+        """Restore a terminal moderation failure only from this invocation's captured runtime."""
+        return (
+            self._app_moderation.workflow_error(self._application_generate_entity.app_config, message)
+            if self._app_moderation is not None
+            else None
+        )
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """

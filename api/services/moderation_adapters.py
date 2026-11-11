@@ -37,6 +37,7 @@ from services.moderation_service import (
     ModerationReplacement,
     ModerationRequest,
     ModerationRule,
+    ModerationUnavailableError,
     ModerationVerdict,
 )
 
@@ -409,11 +410,14 @@ class LLMModerationGuard:
         stream_segment_size: int | None = None,
         platform: bool = False,
         output_observer: Callable[[object, str], None] | None = None,
+        failure_observer: Callable[[ModerationUnavailableError], None] | None = None,
     ) -> None:
         """Bind a nonempty tenant, phase enablement, and positive segment limits.
 
         None disables segmentation for that mode and preserves a single full-text
-        check. Disabled phases perform no inspection or I/O.
+        check. Disabled phases perform no inspection or I/O. An injected failure
+        observer retains typed unavailability for terminal workflow error recovery;
+        it never turns failed checks into approval or changes retry eligibility.
         """
         if not tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
@@ -428,6 +432,7 @@ class LLMModerationGuard:
         self._stream_segment_size = stream_segment_size
         self._platform = platform
         self._output_observer = output_observer
+        self._failure_observer = failure_observer
 
     @property
     def tenant_id(self) -> str:
@@ -473,7 +478,10 @@ class LLMModerationGuard:
             raise ModerationRejectedInvocationError(error.phase, str(error)) from error
         except Exception as error:
             logger.exception("Moderation %s check failed", phase)
-            raise ModerationUnavailableInvocationError() from error
+            unavailable = ModerationUnavailableInvocationError()
+            if self._failure_observer is not None:
+                self._failure_observer(unavailable)
+            raise unavailable from error
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
         """Return the original approved result or a guarded stream, propagating all failures.

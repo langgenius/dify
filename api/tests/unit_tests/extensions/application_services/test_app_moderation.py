@@ -46,6 +46,7 @@ from enums import DeploymentEdition
 from events.message_event import message_was_created
 from extensions.application_services.app_moderation import (
     DEFAULT_CHAT_MODERATION_REPLY,
+    ScopedAppModerationRuntime,
     app_moderation_scope,
     app_output_evaluator,
     app_rejection_replacement,
@@ -698,6 +699,58 @@ def test_workflow_replacement_uses_only_an_exact_rejection_from_the_same_scope(c
         "output",
     )
     assert handler("Unrelated workflow failure") is None
+
+
+def test_workflow_unavailability_requires_a_recorded_failure_in_the_same_app_invocation() -> None:
+    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
+    error = ModerationUnavailableInvocationError()
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        runtime = ScopedAppModerationRuntime(session)
+        assert runtime.workflow_error(config, str(error)) is None
+        session.record_unavailable(error)
+    restored = runtime.workflow_error(config, str(error))
+    assert restored is error
+    assert restored.error_code == "moderation_unavailable"
+    assert restored.status_code == 503
+    assert runtime.workflow_error(config, f"Run failed: {error}") is None
+    assert runtime.workflow_error(config.model_copy(update={"app_id": "other-app"}), str(error)) is None
+    assert runtime.workflow_error(config.model_copy(update={"tenant_id": "other-tenant"}), str(error)) is None
+    with app_moderation_scope("tenant-1", "app-1") as next_session:
+        assert ScopedAppModerationRuntime(next_session).workflow_error(config, str(error)) is None
+
+
+@pytest.mark.parametrize("platform", [False, True])
+@pytest.mark.parametrize("app_id", ["app-1", "other-app"])
+def test_workflow_failure_recording_is_scoped_without_sharing_explicit_policy_verdicts(
+    platform: bool, app_id: str
+) -> None:
+    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
+    client = RecordingHostedModerationClient()
+    client.error = RuntimeError("Private backend detail")
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"openai_api_key": "platform-key"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        )
+    )
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        runtime = ScopedAppModerationRuntime(session)
+        guard = build_llm_moderation_guard(
+            AppRequestContext(tenant_id="tenant-1", app_id=app_id),
+            service=service,
+            rule=ModerationRule(
+                type="openai_moderation",
+                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
+            ),
+            platform=platform,
+        )
+        with pytest.raises(ModerationUnavailableInvocationError) as failure:
+            guard.check_inputs([UserPromptMessage(content="safe")])
+        assert session.cached_verdict("safe", "input") is None
+        assert session.enabled is (platform and app_id == "app-1")
+    restored = runtime.workflow_error(config, str(failure.value))
+    assert restored is (failure.value if app_id == "app-1" else None)
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])

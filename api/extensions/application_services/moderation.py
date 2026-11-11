@@ -116,9 +116,10 @@ def build_llm_moderation_guard(
         raise ValueError("Platform moderation sharing requires an OpenAI rule.")
     from extensions.application_services.app_moderation import current_moderation_session
 
-    scope = current_moderation_session(context.tenant_id) if platform else None
-    if scope is not None and context.app_id and context.app_id != scope.app_id:
-        scope = None
+    session = current_moderation_session(context.tenant_id)
+    if session is not None and context.app_id and context.app_id != session.app_id:
+        session = None
+    scope = session if platform else None
     if scope is not None:
         scope.enabled = True
         context = AppRequestContext(tenant_id=context.tenant_id, app_id=scope.app_id)
@@ -145,4 +146,5 @@ def build_llm_moderation_guard(
         stream_segment_size=dify_config.MODERATION_BUFFER_SIZE,
         platform=platform,
         output_observer=scope.record_output if scope is not None else None,
+        failure_observer=session.record_unavailable if session is not None else None,
     )

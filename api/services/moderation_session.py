@@ -2,8 +2,9 @@
 
 Only exact input segments and prefixes of approved model streams are reusable.
 Substring matching, cross-invocation reuse, and caching unavailable checks are
-forbidden. A session belongs to one admitted tenant/app and is safe across its
-producer and response-consumer threads.
+forbidden. Unavailable error records preserve terminal failure identity, not
+reusable moderation decisions. A session belongs to one admitted tenant/app and
+is safe across its producer and response-consumer threads.
 
 Platform model admission enables verdict sharing, not platform funding of new
 app checks. Only a trusted main AI-credit model may admit those app checks;
@@ -13,7 +14,7 @@ workflow nodes cannot authorize checks of unrelated app content.
 from collections.abc import Callable
 from threading import RLock
 
-from services.moderation_service import ModerationPhase, ModerationRejectedError
+from services.moderation_service import ModerationPhase, ModerationRejectedError, ModerationUnavailableError
 
 
 class ModerationSession:
@@ -29,6 +30,17 @@ class ModerationSession:
         self._decisions: dict[tuple[ModerationPhase, str], ModerationRejectedError | None] = {}
         self._streams: dict[object, str] = {}
         self._rejections: dict[str, ModerationPhase] = {}
+        self._unavailable_errors: dict[str, ModerationUnavailableError] = {}
+
+    def record_unavailable(self, error: ModerationUnavailableError) -> None:
+        """Retain a real check failure for terminal error recovery, without caching a moderation verdict."""
+        with self._lock:
+            self._unavailable_errors[str(error)] = error
+
+    def unavailable_error(self, message: str) -> ModerationUnavailableError | None:
+        """Return only an exact failure from this invocation; unrelated terminal messages remain unclassified."""
+        with self._lock:
+            return self._unavailable_errors.get(message)
 
     def check(self, text: str, phase: ModerationPhase, checker: Callable[[], None]) -> None:
         """Reuse an exact verdict or execute the checker once; unavailable checks remain retryable."""

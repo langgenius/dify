@@ -29,6 +29,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
 )
 from core.app.entities.task_entities import (
+    ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     MessageEndStreamResponse,
     MessageStreamResponse,
@@ -46,7 +47,10 @@ from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, EndUser, Message
 from services.moderation_adapters import HostedOpenAIModerationGateway
-from services.moderation_invocation_errors import PlatformModerationRejectedInvocationError
+from services.moderation_invocation_errors import (
+    ModerationUnavailableInvocationError,
+    PlatformModerationRejectedInvocationError,
+)
 from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
 from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient, make_moderated_model
@@ -473,13 +477,17 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
 @pytest.mark.parametrize("previous_answer", ["", "approved prefix"])
 @pytest.mark.parametrize("configured", [False, True])
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
-def test_chatflow_moderation_reply_reaches_subscriber_before_workflow_terminal(
+@pytest.mark.parametrize("unavailable", [False, True])
+@pytest.mark.parametrize("stream", [False, True])
+def test_chatflow_moderation_result_survives_workflow_terminal(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     phase: ModerationPhase,
     previous_answer: str,
     configured: bool,
     invoke_from: InvokeFrom,
+    unavailable: bool,
+    stream: bool,
 ) -> None:
     app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
     workflow = make_workflow(
@@ -522,7 +530,7 @@ def test_chatflow_moderation_reply_reaches_subscriber_before_workflow_terminal(
         inputs={},
         files=[],
         user_id=user.id,
-        stream=True,
+        stream=stream,
         invoke_from=invoke_from,
         workflow_run_id="workflow-run-1",
         extras={"auto_generate_conversation_name": False},
@@ -551,15 +559,18 @@ def test_chatflow_moderation_reply_reaches_subscriber_before_workflow_terminal(
             conversation=ConversationSnapshot.from_conversation(conversation),
             message=MessageSnapshot.from_message(message),
             user=user,
-            stream=True,
+            stream=stream,
             dialogue_count=1,
             draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
                 invoke_from, user, tenant_id=app.tenant_id
             ),
         )
+        client = RecordingHostedModerationClient()
+        if unavailable:
+            client.error = RuntimeError("Private moderation backend failure")
         service = ModerationService(
             gateway=HostedOpenAIModerationGateway(
-                client=RecordingHostedModerationClient(),
+                client=client,
                 credentials={"openai_api_key": "platform-key"},
                 plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
             )
@@ -569,7 +580,10 @@ def test_chatflow_moderation_reply_reaches_subscriber_before_workflow_terminal(
             service=service,
             rule=ModerationRule(
                 type="openai_moderation",
-                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
+                config={
+                    "inputs_config": {"enabled": not unavailable or phase == "input"},
+                    "outputs_config": {"enabled": True},
+                },
             ),
             platform=True,
         )
@@ -578,13 +592,31 @@ def test_chatflow_moderation_reply_reaches_subscriber_before_workflow_terminal(
         def invoke() -> None:
             list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
 
-        with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
+        error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
+        with pytest.raises(error_type) as rejected:
             invoke()
     queue_manager.publish(QueueWorkflowStartedEvent(), PublishFrom.APPLICATION_MANAGER)
     pipeline._task_state.answer = previous_answer
     queue_manager.publish(
         QueueWorkflowFailedEvent(error=str(rejected.value), exceptions_count=1), PublishFrom.APPLICATION_MANAGER
     )
+    expected_reply = f"App {phase} refusal" if configured else DEFAULT_CHAT_MODERATION_REPLY
+    if not stream:
+        if unavailable:
+            with pytest.raises(ModerationUnavailableInvocationError) as failure:
+                pipeline.process()
+            assert failure.value.error_code == "moderation_unavailable"
+            assert failure.value.status_code == 503
+        else:
+            response = pipeline.process()
+            assert isinstance(response, ChatbotAppBlockingResponse)
+            assert response.data.answer == expected_reply
+        sqlite_session.refresh(message)
+        assert message.status == (MessageStatus.ERROR if unavailable else MessageStatus.NORMAL)
+        assert message.error == (str(rejected.value) if unavailable else None)
+        assert message.answer == ("" if unavailable else expected_reply)
+        assert provider.invocations == (0 if phase == "input" else 1)
+        return
     runtime_responses = pipeline.process()
     assert isinstance(runtime_responses, Generator)
     converted = AdvancedChatAppGenerateResponseConverter.convert(runtime_responses, invoke_from)
@@ -599,24 +631,30 @@ def test_chatflow_moderation_reply_reaches_subscriber_before_workflow_terminal(
         inputs={},
         started_reason=WorkflowStartReason.INITIAL,
     )
-    assert topic._queue.qsize() == 4
+    assert topic._queue.qsize() == (3 if unavailable else 4)
     subscription = topic.subscribe()
     events = list(stream_topic_events(subscription=subscription, idle_timeout=0.1))
     public_events = [event for event in events if isinstance(event, dict)]
-    assert [event["event"] for event in public_events] == [
-        "workflow_started",
-        "message_replace" if previous_answer else "message",
-        "message_end",
-        "workflow_finished",
-    ]
-    expected_reply = f"App {phase} refusal" if configured else DEFAULT_CHAT_MODERATION_REPLY
-    assert public_events[1]["answer"] == expected_reply
+    if unavailable:
+        assert [event["event"] for event in public_events] == ["workflow_started", "error", "workflow_finished"]
+        assert public_events[1]["code"] == "moderation_unavailable"
+        assert public_events[1]["status"] == 503
+        assert public_events[1]["message"] == str(ModerationUnavailableInvocationError())
+        assert "Private" not in json.dumps(public_events)
+    else:
+        assert [event["event"] for event in public_events] == [
+            "workflow_started",
+            "message_replace" if previous_answer else "message",
+            "message_end",
+            "workflow_finished",
+        ]
+        assert public_events[1]["answer"] == expected_reply
     assert public_events[-1]["data"]["status"] == "failed"
     assert public_events[-1]["data"]["error"] == str(rejected.value)
     assert subscription.closed
     assert topic._queue.empty()
     assert provider.invocations == (0 if phase == "input" else 1)
     sqlite_session.refresh(message)
-    assert message.answer == expected_reply
-    assert message.status == MessageStatus.NORMAL
-    assert message.error is None
+    assert message.answer == ("" if unavailable else expected_reply)
+    assert message.status == (MessageStatus.ERROR if unavailable else MessageStatus.NORMAL)
+    assert message.error == (str(rejected.value) if unavailable else None)

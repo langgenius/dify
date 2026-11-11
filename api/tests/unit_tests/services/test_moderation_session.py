@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from services.moderation_service import ModerationRejectedError
+from services.moderation_service import ModerationRejectedError, ModerationUnavailableError
 from services.moderation_session import ModerationSession
 
 
@@ -63,6 +63,20 @@ def test_approved_output_is_an_exact_stream_prefix_not_a_substring_or_compositio
     assert not session.approved_output("safe answerother")
     assert not session.approved_output("unsafe")
     assert not ModerationSession("tenant-2", "app-1").approved_output("safe")
+
+
+def test_recorded_unavailability_is_not_an_approval_or_a_cached_verdict() -> None:
+    session = ModerationSession("tenant-1", "app-1")
+    error = ModerationUnavailableError("Unavailable")
+    session.record_unavailable(error)
+
+    assert session.unavailable_error("Unavailable") is error
+    assert session.unavailable_error("Run failed: Unavailable") is None
+    assert ModerationSession("tenant-1", "app-1").unavailable_error("Unavailable") is None
+    assert session.rejected_phase("Unavailable") is None
+    assert session.cached_verdict("unchecked", "input") is None
+    session.check("unchecked", "input", lambda: None)
+    assert session.cached_verdict("unchecked", "input") is False
 
 
 def test_cached_verdicts_do_not_approve_unknown_or_failed_checks() -> None:

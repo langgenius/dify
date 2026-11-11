@@ -144,6 +144,14 @@ the Redis/SSE subscriber stops reading at that terminal event; sending the reply
 afterwards would persist it without ever delivering it to the WebApp client.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
+Chatflow model guards record real unavailable failures in their invocation-local
+session before workflow events stringify them. Only an exact recorded terminal
+failure restores the typed `moderation_unavailable` error; matching text alone
+cannot classify an unrelated failure or reuse another app invocation's state.
+The error event precedes `workflow_finished` so public subscribers receive its
+503 payload, while blocking requests raise the typed error for HTTP mapping.
+This failure record is not a cached verdict and does not prevent later checks
+from retrying. No unavailable check becomes a preset or default chat reply.
 Explicit non-platform model policy failures are also preserved. Completion,
 Workflow, RAG, and other non-chat paths retain the normal moderation error when
 there is no matching preset. Remote New Agent errors retain their existing

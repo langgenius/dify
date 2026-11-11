@@ -746,7 +746,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueWorkflowFailedEvent,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle workflow failed events."""
+        """Preserve rejection replies and emit scoped unavailable errors before terminal workflow delivery."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
         replacement = self._base_task_pipeline.workflow_moderation_replacement(event.error)
@@ -778,9 +778,15 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             yield workflow_finish_resp
             return
 
+        moderation_error = self._base_task_pipeline.workflow_moderation_error(event.error)
         with self._database_session() as session:
-            err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
+            err_event = QueueErrorEvent(error=moderation_error or ValueError(f"Run failed: {event.error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
+
+        if moderation_error is not None:
+            yield self._base_task_pipeline.error_to_stream_response(err)
+            yield workflow_finish_resp
+            return
 
         yield workflow_finish_resp
         yield self._base_task_pipeline.error_to_stream_response(err)

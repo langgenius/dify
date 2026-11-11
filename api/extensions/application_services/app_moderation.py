@@ -73,6 +73,13 @@ class ScopedAppModerationRuntime:
         """Capture exact scoped verdict matching before workflow contexts detach."""
         return workflow_rejection_handler(app_config)
 
+    def workflow_error(self, app_config: AppConfig, message: str) -> ModerationUnavailableInvocationError | None:
+        """Recover only a recorded failure owned by this app invocation, even after its context detaches."""
+        if app_config.tenant_id != self.session.tenant_id or app_config.app_id != self.session.app_id:
+            return None
+        error = self.session.unavailable_error(message)
+        return error if isinstance(error, ModerationUnavailableInvocationError) else None
+
 
 @contextmanager
 def app_moderation_scope(tenant_id: str, app_id: str) -> Generator[ModerationSession]:
