@@ -62,7 +62,7 @@ def test_publisher_preserves_legacy_worker_arguments_and_sends_reservation_in_he
 @pytest.mark.parametrize("batch_size", [0, -1])
 def test_invalid_batch_size_stops_before_database_or_external_io(harness: _Harness, batch_size: int) -> None:
     with harness.app.app_context(), pytest.raises(ValueError, match="batch size must be positive"):
-        application_services().workspaces.trigger_subscription_refresh.enqueue_due(
+        application_services().triggers.subscription_refresh.enqueue_due(
             now=100, credential_threshold=10, subscription_threshold=20, batch_size=batch_size
         )
     assert not harness.metadata.sessions
