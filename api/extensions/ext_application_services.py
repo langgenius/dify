@@ -36,12 +36,14 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.snippets import build_snippet_generation_service
 from extensions.application_services.tools import ToolServices, build_tool_services
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
+from extensions.application_services.trigger import TriggerServices, build_trigger_services
 from extensions.application_services.workflow import (
     build_console_workflow_service,
     build_workflow_drafts,
@@ -104,6 +106,7 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
+from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
@@ -210,6 +213,8 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.openapi_execution_service import OpenApiExecutionService
+from services.personal_access_token_service import PersonalAccessTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -343,6 +348,8 @@ class ApplicationServices:
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     resource_access_tokens: ResourceAccessTokenService
+    personal_access_tokens: PersonalAccessTokenService
+    openapi_executions: OpenApiExecutionService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -397,6 +404,7 @@ class ApplicationServices:
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
+    triggers: TriggerServices
     workflow_app_logs: WorkflowAppLogQueryService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
@@ -557,7 +565,7 @@ def build_application_services(
         datasets=dataset_dependencies.datasets,
     )
     console_workflows = build_console_workflow_service(
-        invoke_plugin_event=lambda **kwargs: workspace_services.trigger_events.invoke_debug(**kwargs),
+        trigger_debug=lambda: triggers.debug,
         database_client=database_client,
         redis=redis,
         variables=workflow_variables,
@@ -627,6 +635,18 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     credential_queries = CredentialQueryRepository(session_factory=database_client)
+    trigger_subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
+    triggers = build_trigger_services(
+        database_client=database_client,
+        redis=redis,
+        credentials=credential_queries,
+        subscriptions=trigger_subscriptions,
+        workflow_queries=app_definition_repository,
+        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
+        trigger_end_users=AppScopedTriggerEndUsers(
+            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
+        ),
+    )
     workspace_services = build_workspace_services(
         database_client=database_client,
         workspaces=workspace_repository,
@@ -638,11 +658,8 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
         credentials=credential_queries,
-        workflow_queries=app_definition_repository,
-        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
-        trigger_end_users=AppScopedTriggerEndUsers(
-            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
-        ),
+        trigger_subscriptions=trigger_subscriptions,
+        trigger_builders=triggers.builders,
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
@@ -737,6 +754,12 @@ def build_application_services(
             dataset_access=dataset_dependencies.access,
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
+        personal_access_tokens=build_personal_access_token_service(
+            database_client=database_client, apps=apps.console, datasets=knowledge.datasets
+        ),
+        openapi_executions=OpenApiExecutionService(
+            runs=lambda: DifyAPIRepositoryFactory.create_api_workflow_run_repository(database_client),
+        ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=tracing_configs,
         agent_tracing_configs=AgentTracingConfigService(
@@ -921,6 +944,7 @@ def build_application_services(
             session_factory=database_client,
         ),
         workspaces=workspace_services,
+        triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogRepository(session_factory=database_client),
         ),
@@ -965,7 +989,7 @@ def init_app(app: Flask) -> None:
     errors propagate to the caller rather than leaving a usable application.
     """
     from extensions.application_services.tools import resolve_tool_credentials
-    from extensions.ext_login import bind_account_loader
+    from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     # The Agent Knowledge Base tool cannot run without KnowledgeFS, so keep it out of tool lists when disabled.
@@ -981,6 +1005,7 @@ def init_app(app: Flask) -> None:
     app.extensions[_EXTENSION_KEY] = services
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
 
 
 def application_services() -> ApplicationServices:

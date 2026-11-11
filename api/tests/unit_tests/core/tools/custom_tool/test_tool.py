@@ -704,3 +704,36 @@ class TestApiToolCases:
 
             # Verify the error message
             assert "Request failed with status code 404" in str(exc_info.value)
+
+
+class TestApiToolPathParameterEncodingCases:
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("raw", "expected_path"),
+        [
+            ("a?b=1#c", "/items/a%3Fb%3D1%23c"),
+            ("50%", "/items/50%25"),
+            ("a/b c", "/items/a%2Fb%20c"),
+            ("line1\nline2", "/items/line1%0Aline2"),
+            ("订单 1", "/items/%E8%AE%A2%E5%8D%95%201"),
+        ],
+    )
+    def test_path_parameters_are_percent_encoded(monkeypatch: pytest.MonkeyPatch, raw: str, expected_path: str) -> None:
+        tool = _build_tool(
+            openapi={
+                "parameters": [
+                    {"in": "path", "name": "id", "required": True, "schema": {"type": "string"}},
+                ]
+            }
+        )
+        captured: list[httpx.Request] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(200, json={"ok": True})
+
+        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            tool.do_http_request(tool.api_bundle.server_url, "GET", {}, {"id": raw})
+
+        assert captured[0].url.raw_path.decode() == expected_path

@@ -10,11 +10,12 @@ from flask import has_app_context
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.impl.exc import PluginDaemonInternalServerError
-from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_application_services import application_services
+from extensions.ext_storage import storage
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from services.trigger.debug_events import PluginTriggerDebugEvent
 from services.trigger.event_gateway import PluginTriggerEventGateway
 from services.trigger.event_service import TriggerEventService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
@@ -62,7 +63,7 @@ def test_missing_debug_subscription_uses_injected_reader_without_flask_context(
             TriggerEventService(
                 subscriptions=subscriptions,
                 plugins=PluginTriggerEventGateway(),
-                requests=TriggerHttpRequestCachingService,
+                requests=TriggerHttpRequestCachingService(storage=storage),
             ).invoke_debug(
                 tenant_id=str(uuid4()),
                 user_id=event.user_id,
@@ -76,7 +77,7 @@ def test_missing_debug_subscription_uses_injected_reader_without_flask_context(
 def _get(harness: _Harness, tenant_id: str, subscription_id: str) -> TriggerSubscriptionRuntime | None:
     def run() -> TriggerSubscriptionRuntime | None:
         with harness.app.app_context():
-            return application_services().workspaces.trigger_subscriptions.get_for_execution(
+            return application_services().triggers.subscriptions.get_for_execution(
                 tenant_id=tenant_id, subscription_id=subscription_id
             )
 
