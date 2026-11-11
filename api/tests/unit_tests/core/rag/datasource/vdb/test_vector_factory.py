@@ -5,7 +5,6 @@ import sys
 import types
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -502,7 +501,7 @@ class _CreateRecorder:
 class _FakeVectorFactory:
     """Factory stand-in returning the supplied processor from init_vector."""
 
-    processor: Any = None
+    processor: _CreateRecorder | None = None
 
     def init_vector(self, dataset, attributes, embeddings, *, session):
         return _FakeVectorFactory.processor
@@ -542,7 +541,7 @@ def test_create_multimodal_rejects_embeddings_count_mismatch(
     vector = _build_vector(vector_factory_module, monkeypatch, _RecordingEmbeddings([[0.1, 0.2]]), processor)
     vector._session = sqlite_session
     vector._dataset = Dataset(tenant_id=upload_file.tenant_id, name="dataset", created_by=upload_file.created_by)
-    monkeypatch.setattr(vector_factory_module.storage, "load_once", lambda key: b"abc")
+    monkeypatch.setattr(vector_factory_module.storage, "load_once", lambda _key: b"abc")
 
     second_upload = UploadFile(
         tenant_id=upload_file.tenant_id,
