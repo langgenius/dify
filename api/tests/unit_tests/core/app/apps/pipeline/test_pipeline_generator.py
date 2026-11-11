@@ -13,7 +13,13 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.datasource.__base.datasource_runtime import DatasourceRuntime
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    OnlineDriveBrowseFilesResponse,
+    OnlineDriveFile,
+    OnlineDriveFileBucket,
+)
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
@@ -40,6 +46,36 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
     def model_dump(self):
         return dict(self.__dict__)
+
+
+class FakeDriveRuntime:
+    def __init__(self, *, use_prefix: bool = False):
+        self.runtime = DatasourceRuntime(tenant_id=TENANT_ID)
+        self.use_prefix = use_prefix
+        self.used_credentials = []
+
+    def datasource_provider_type(self):
+        return DatasourceProviderType.ONLINE_DRIVE
+
+    def online_drive_browse_files(self, user_id, request, provider_type):
+        self.used_credentials.append(dict(self.runtime.credentials))
+        file_id = request.prefix if self.use_prefix else "child"
+        return iter(
+            [
+                OnlineDriveBrowseFilesResponse(
+                    result=[
+                        OnlineDriveFileBucket(
+                            files=[OnlineDriveFile(id=file_id, name="child.pdf", type="file", size=0)]
+                        )
+                    ]
+                )
+            ]
+        )
+
+
+class PipelineConfigForTest:
+    app_id = "pipe"
+    rag_pipeline_variables = []
 
 
 @pytest.fixture
@@ -304,27 +340,13 @@ def test_generate_drive_preserves_credential_for_execution(
         }
     )
     pipeline, _, workflow = _persist_pipeline_scope(sqlite_session, workflow=workflow)
-    runtime = MagicMock()
-    runtime.runtime = SimpleNamespace(credentials=None)
-    runtime.online_drive_browse_files.return_value = iter(
-        [
-            SimpleNamespace(
-                result=[
-                    SimpleNamespace(
-                        files=[SimpleNamespace(id="child", name="child.pdf", type="file")],
-                        is_truncated=False,
-                        next_page_parameters=None,
-                    )
-                ]
-            )
-        ]
-    )
+    runtime = FakeDriveRuntime()
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch.object(generator._datasource_providers, "get_datasource_credentials", return_value={"token": "value"})
     mocker.patch.object(
         module.PipelineConfigManager,
         "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
+        return_value=PipelineConfigForTest(),
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={})
     mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_execution_repository")
@@ -892,21 +914,7 @@ def test_online_drive_preserves_selected_credentials_for_files_and_folders(gener
             ]
         }
     )
-    runtime = MagicMock()
-    runtime.runtime = SimpleNamespace(credentials=None)
-    runtime.online_drive_browse_files.return_value = iter(
-        [
-            SimpleNamespace(
-                result=[
-                    SimpleNamespace(
-                        files=[SimpleNamespace(id="child", name="child.pdf", type="file")],
-                        is_truncated=False,
-                        next_page_parameters=None,
-                    )
-                ]
-            )
-        ]
-    )
+    runtime = FakeDriveRuntime()
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     credentials = mocker.patch.object(
         generator._datasource_providers, "get_datasource_credentials", return_value={"token": "folder"}
@@ -1005,27 +1013,7 @@ def test_online_drive_folders_use_their_own_credentials(generator, mocker: Mocke
             ]
         }
     )
-    runtime = MagicMock()
-    runtime.runtime = SimpleNamespace(credentials=None)
-    used_credentials = []
-
-    def browse(**kwargs):
-        used_credentials.append(runtime.runtime.credentials)
-        return iter(
-            [
-                SimpleNamespace(
-                    result=[
-                        SimpleNamespace(
-                            files=[SimpleNamespace(id=kwargs["request"].prefix, name="file", type="file")],
-                            is_truncated=False,
-                            next_page_parameters=None,
-                        )
-                    ]
-                )
-            ]
-        )
-
-    runtime.online_drive_browse_files.side_effect = browse
+    runtime = FakeDriveRuntime(use_prefix=True)
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
     mocker.patch.object(
         generator._datasource_providers, "get_datasource_credentials", side_effect=[{"token": "one"}, {}]
@@ -1041,7 +1029,7 @@ def test_online_drive_folders_use_their_own_credentials(generator, mocker: Mocke
         "start",
         _build_user(),
     )
-    assert used_credentials == [{"token": "one"}, {}]
+    assert runtime.used_credentials == [{"token": "one"}, {}]
     assert [item["credential_id"] for item in result] == ["cred-one", "cred-two"]
 
 
