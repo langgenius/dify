@@ -18,9 +18,8 @@ from services.tracing.errors import TraceCollectionError
 from services.tracing.service import ApplicationTracingService
 
 if TYPE_CHECKING:
-    from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
+    from extensions.tracing import AgentAppTracingContext, WorkflowAgentTracingContext
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class RuntimeApplicationTracingHooks(ApplicationTracingHooks):
         self._traces = traces
 
     @override
-    def prepare_agent_app(self, context: AgentAppRuntimeBuildContext) -> ApplicationTracingContext | None:
+    def prepare_agent_app(self, context: AgentAppTracingContext) -> ApplicationTracingContext | None:
         try:
             return self._traces.prepare_invocation(
                 tenant_id=context.dify_context.tenant_id,
@@ -72,7 +71,7 @@ class RuntimeApplicationTracingHooks(ApplicationTracingHooks):
 
     @override
     def prepare_workflow_agent(
-        self, context: WorkflowAgentRuntimeBuildContext, conversation_id: str | None
+        self, context: WorkflowAgentTracingContext, conversation_id: str | None
     ) -> ApplicationTracingContext | None:
         try:
             # Hidden Tool nodes own a different app but share the caller's run and are

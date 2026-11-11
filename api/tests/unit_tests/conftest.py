@@ -70,6 +70,9 @@ for _name in {*dir(ext_redis.RedisClientWrapper), *dir(Redis)}:
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
+    from models.annotation_reply import AnnotationReplies
+    from models.human_input_contracts import HumanInputFormFactory
+    from repositories.app.generation_repository import AppGenerationRepository
     from repositories.tools.provider_repository import ToolProviderRepository
     from repositories.tools.workflow_repository import WorkflowToolRepository
     from services.tag_application_service import TagApplicationService
@@ -469,3 +472,26 @@ def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]) ->
         database_client=sqlite_session_factory,
         variables=build_workflow_variable_service(database_client=sqlite_session_factory),
     )
+
+
+@pytest.fixture
+def app_records(sqlite_session_factory: sessionmaker[Session]) -> AppGenerationRepository:
+    from repositories.app.generation_repository import AppGenerationRepository
+
+    return AppGenerationRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def annotation_replies(sqlite_session_factory: sessionmaker[Session]) -> AnnotationReplies:
+    from extensions.application_services.annotation import build_annotation_replies
+
+    return build_annotation_replies(sqlite_session_factory)
+
+
+@pytest.fixture
+def human_forms(sqlite_session_factory: sessionmaker[Session]) -> HumanInputFormFactory:
+    from functools import partial
+
+    from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
+
+    return partial(HumanInputFormRepositoryImpl, sessions=sqlite_session_factory)

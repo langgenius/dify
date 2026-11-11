@@ -7,8 +7,10 @@ from flask import Flask
 
 from core.helper.trace_id_helper import ParentTraceContext
 from extensions.tracing import (
+    AgentAppTracingContext,
     ApplicationTracingHooks,
     ExecutionTraceScopes,
+    WorkflowAgentTracingContext,
     application_tracing_hooks,
     bind_tracing,
     correlation_from_extras,
@@ -17,9 +19,7 @@ from extensions.tracing import (
 )
 
 if TYPE_CHECKING:
-    from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 
 
 class _Recorder:
@@ -68,12 +68,12 @@ class _Scopes(ExecutionTraceScopes):
 
 class _Hooks(ApplicationTracingHooks):
     @override
-    def prepare_agent_app(self, context: "AgentAppRuntimeBuildContext") -> ApplicationTracingContext | None:
+    def prepare_agent_app(self, context: AgentAppTracingContext) -> ApplicationTracingContext | None:
         return None
 
     @override
     def prepare_workflow_agent(
-        self, context: "WorkflowAgentRuntimeBuildContext", conversation_id: str | None
+        self, context: WorkflowAgentTracingContext, conversation_id: str | None
     ) -> ApplicationTracingContext | None:
         return None
 
