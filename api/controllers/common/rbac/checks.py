@@ -67,3 +67,32 @@ def enforce_rbac_checks(
         if allowed:
             return
     raise Forbidden()
+
+
+# Permission keys reported by the RBAC service for an app. The built-in role
+# projections in ``services.rbac.builtin`` are the source of truth for these
+# key names. A scene-based check cannot express "may view the app's published
+# access points": there is no app-scoped access-point-view scene, so reads of
+# the published access-point surface consult the keys instead.
+APP_ACCESS_POINT_VIEW_KEY = "app.acl.access_point_view"
+APP_VIEW_LAYOUT_KEY = "app.acl.view_layout"
+
+
+def enforce_app_access_point_read(*, tenant_id: str, account_id: str, app_id: str) -> None:
+    """Allow reading an app's published access-point surface.
+
+    Preconditions: ``tenant_id``, ``account_id`` and ``app_id`` identify the
+    admitted caller and the app being read.
+    Postconditions: returns when the caller holds ``app.acl.access_point_view``
+    or ``app.acl.view_layout`` for the app. When RBAC is disabled it returns
+    without consulting the RBAC service, preserving legacy behavior (the scene
+    check is a no-op there too).
+    Failure behavior: raises ``Forbidden`` when RBAC is enabled and the caller
+    holds neither key for the app, including when the service reports no keys
+    for the app at all. The check fails closed.
+    """
+    if not dify_config.RBAC_ENABLED:
+        return
+    permission_keys = RBACService.AppPermissions.batch_get(tenant_id, account_id, [app_id]).get(app_id, [])
+    if APP_ACCESS_POINT_VIEW_KEY not in permission_keys and APP_VIEW_LAYOUT_KEY not in permission_keys:
+        raise Forbidden()

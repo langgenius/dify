@@ -2,7 +2,7 @@ from flask import request
 
 from core.rbac import RBACPermission, RBACResourceScope
 
-from .checks import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
+from .checks import RBAC_CHECKS_ATTR, RBACCheck, enforce_app_access_point_read, enforce_rbac_checks
 from .locators import (
     AgentBehindApp,
     AgentId,
@@ -29,6 +29,7 @@ __all__ = [
     "ResourceIdentity",
     "ResourceLocator",
     "Workspace",
+    "enforce_app_access_point_read",
     "enforce_rbac_checks",
     "rbac_language",
 ]

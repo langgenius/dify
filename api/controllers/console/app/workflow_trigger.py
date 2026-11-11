@@ -7,7 +7,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, field_validator
 
 from configs import dify_config
-from controllers.common.rbac import PlainApp, RBACCheck
+from controllers.common.rbac import PlainApp, RBACCheck, enforce_app_access_point_read
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError, AppTriggerNotFoundError, WebhookTriggerNotFoundError
@@ -131,9 +131,17 @@ class WebhookTriggerApi(Resource):
 class AppTriggersApi(Resource):
     @error_responses(AppNotFoundError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
-    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
+    @console_account_admission()
     def get(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Get app triggers list"""
+        # The Access Point page fetches this for members who can view access
+        # points but cannot view the layout; the layout scene cannot express
+        # that, so the read consults the caller's app permission keys.
+        enforce_app_access_point_read(
+            tenant_id=context.active_workspace_id,
+            account_id=context.account_id,
+            app_id=str(app_id),
+        )
         try:
             triggers = application_services().apps.triggers.list_triggers(context, str(app_id))
         except ConsoleAppNotFoundError as error:

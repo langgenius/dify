@@ -441,6 +441,61 @@ def test_app_owner_with_rbac_enabled_uses_real_owner_admission(harness: _Harness
     assert response.get_json()["status"] == AppTriggerStatus.DISABLED
 
 
+@pytest.mark.parametrize(
+    "permission_keys",
+    [
+        pytest.param(["app.acl.access_point_view"], id="access-point-view"),
+        pytest.param(["app.acl.view_layout"], id="view-layout"),
+    ],
+)
+def test_list_triggers_allows_access_point_viewers_without_layout(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, permission_keys: list[str]
+) -> None:
+    """The Access Point page fetches triggers for members who can view access
+    points but cannot view the layout; the scene check cannot express that,
+    so the read consults the caller's app permission keys instead."""
+    from werkzeug.exceptions import Forbidden
+
+    from controllers.console import flask_admission
+    from services.enterprise.rbac_service import RBACService
+
+    app_id = harness.create_app()
+    monkeypatch.setattr(
+        flask_admission,
+        "enforce_rbac_checks",
+        lambda **_kwargs: (_ for _ in ()).throw(Forbidden()),
+    )
+    monkeypatch.setattr(
+        RBACService.AppPermissions,
+        "batch_get",
+        lambda _tenant_id, _account_id, _app_ids, **_kwargs: {app_id: permission_keys},
+    )
+    with config_overrides_context(RBAC_ENABLED=True):
+        response = harness.call(_ENDPOINTS[1], app_id)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"data": []}
+
+
+def test_list_triggers_denies_without_access_point_or_layout_permission(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from controllers.console import flask_admission
+    from services.enterprise.rbac_service import RBACService
+
+    app_id = harness.create_app()
+    monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        RBACService.AppPermissions,
+        "batch_get",
+        lambda _tenant_id, _account_id, _app_ids, **_kwargs: {app_id: ["app.acl.monitor"]},
+    )
+    with config_overrides_context(RBAC_ENABLED=True):
+        response = harness.call(_ENDPOINTS[1], app_id)
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
+
 def test_update_requires_csrf_before_persistence(harness: _Harness) -> None:
     app_id = harness.create_app()
     trigger_id = harness.create_trigger(app_id)

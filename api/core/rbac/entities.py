@@ -42,7 +42,6 @@ class RBACPermission(StrEnum):
     APP_LOG_AND_ANNOTATION = "app_log_and_annotation"
     APP_DELETE = "app_delete"
     APP_ACCESS_CONFIG = "app_access_config"
-    APP_ACCESS_POINT_VIEW = "app_access_point_view"
 
     AGENT_CREATE = "agent_create"
     AGENT_PREVIEW = "agent_preview"

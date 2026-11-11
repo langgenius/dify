@@ -76,22 +76,15 @@ class TestMcpServerAdmissionCases:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("method", "permissions"),
+        ("method", "permission"),
         [
-            (
-                AppMCPServerController.get,
-                (RBACPermission.APP_VIEW_LAYOUT, RBACPermission.APP_ACCESS_POINT_VIEW),
-            ),
-            (AppMCPServerController.post, (RBACPermission.APP_EDIT,)),
-            (AppMCPServerController.put, (RBACPermission.APP_EDIT,)),
-            (AppMCPServerRefreshController.post, (RBACPermission.APP_EDIT,)),
+            (AppMCPServerController.post, RBACPermission.APP_EDIT),
+            (AppMCPServerController.put, RBACPermission.APP_EDIT),
+            (AppMCPServerRefreshController.post, RBACPermission.APP_EDIT),
         ],
     )
     def test_rbac_checks_keep_app_scope(
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        method: Callable[..., object],
-        permissions: tuple[RBACPermission, ...],
+        app: Flask, monkeypatch: pytest.MonkeyPatch, method: Callable[..., object], permission: RBACPermission
     ) -> None:
         account = make_account(role=TenantAccountRole.NORMAL)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
@@ -105,8 +98,9 @@ class TestMcpServerAdmissionCases:
         ) -> None:
             assert (tenant_id, account_id) == ("workspace", account.id)
             assert path_args == {"app_id": _MCP_SERVER_ADMISSION_APP_ID}
-            assert [check.scene for check in checks] == list(permissions)
-            assert all(isinstance(check.locator, PlainApp) for check in checks)
+            assert len(checks) == 1
+            assert checks[0].scene == permission
+            assert isinstance(checks[0].locator, PlainApp)
             called.append(True)
             raise Forbidden
 
@@ -114,6 +108,104 @@ class TestMcpServerAdmissionCases:
         with app.test_request_context(), pytest.raises(Forbidden):
             admission(method)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
         assert called == [True]
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "permission_keys",
+        [
+            pytest.param(["app.acl.access_point_view"], id="access-point-view"),
+            pytest.param(["app.acl.view_layout"], id="view-layout"),
+            pytest.param(["app.acl.monitor", "app.acl.access_point_view"], id="access-point-view-among-others"),
+        ],
+    )
+    def test_get_allows_access_point_viewers_without_layout(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, permission_keys: list[str]
+    ) -> None:
+        """The Access Point page fetches the MCP server for members who can view
+        access points but cannot view the layout; the scene check cannot express
+        that, so the read consults the caller's app permission keys instead."""
+        from services.enterprise.rbac_service import RBACService
+
+        account = make_account(role=TenantAccountRole.NORMAL)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+        monkeypatch.setattr(
+            flask_admission, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace")
+        )
+        monkeypatch.setattr(
+            flask_admission,
+            "enforce_rbac_checks",
+            lambda **_kwargs: (_ for _ in ()).throw(Forbidden()),
+        )
+        monkeypatch.setattr(
+            RBACService.AppPermissions,
+            "batch_get",
+            lambda _tenant_id, _account_id, _app_ids, **_kwargs: {str(_MCP_SERVER_ADMISSION_APP_ID): permission_keys},
+        )
+        monkeypatch.setattr(
+            mcp_server,
+            "application_services",
+            lambda: SimpleNamespace(
+                app_mcp_servers=SimpleNamespace(get=lambda _context, _app_id: _MCP_SERVER_ADMISSION_RECORD)
+            ),
+        )
+        with app.test_request_context():
+            response = admission(AppMCPServerController.get)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
+        assert response["id"] == _MCP_SERVER_ADMISSION_RECORD.id
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "permission_keys",
+        [
+            pytest.param(["app.acl.monitor"], id="monitor-only"),
+            pytest.param([], id="no-keys"),
+        ],
+    )
+    def test_get_denies_without_access_point_or_layout_permission(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, permission_keys: list[str]
+    ) -> None:
+        from services.enterprise.rbac_service import RBACService
+
+        account = make_account(role=TenantAccountRole.NORMAL)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+        monkeypatch.setattr(
+            flask_admission, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace")
+        )
+        monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
+        monkeypatch.setattr(
+            RBACService.AppPermissions,
+            "batch_get",
+            lambda _tenant_id, _account_id, _app_ids, **_kwargs: {str(_MCP_SERVER_ADMISSION_APP_ID): permission_keys},
+        )
+        monkeypatch.setattr(
+            mcp_server,
+            "application_services",
+            lambda: SimpleNamespace(
+                app_mcp_servers=SimpleNamespace(get=lambda _context, _app_id: _MCP_SERVER_ADMISSION_RECORD)
+            ),
+        )
+        with app.test_request_context(), pytest.raises(Forbidden):
+            admission(AppMCPServerController.get)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
+
+    @staticmethod
+    def test_get_denies_when_app_has_no_permission_keys(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        from services.enterprise.rbac_service import RBACService
+
+        account = make_account(role=TenantAccountRole.NORMAL)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+        monkeypatch.setattr(
+            flask_admission, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace")
+        )
+        monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
+        monkeypatch.setattr(RBACService.AppPermissions, "batch_get", lambda *_args, **_kwargs: {})
+        monkeypatch.setattr(
+            mcp_server,
+            "application_services",
+            lambda: SimpleNamespace(
+                app_mcp_servers=SimpleNamespace(get=lambda _context, _app_id: _MCP_SERVER_ADMISSION_RECORD)
+            ),
+        )
+        with app.test_request_context(), pytest.raises(Forbidden):
+            admission(AppMCPServerController.get)(None, app_id=_MCP_SERVER_ADMISSION_APP_ID)
 
     @staticmethod
     @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR])

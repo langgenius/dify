@@ -7,7 +7,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Conflict, NotFound
 
-from controllers.common.rbac import PlainApp, RBACCheck
+from controllers.common.rbac import PlainApp, RBACCheck, enforce_app_access_point_read
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
@@ -85,15 +85,16 @@ class AppMCPServerController(Resource):
     @console_ns.response(
         200, "MCP server configuration retrieved successfully", console_ns.models[AppMCPServerResponse.__name__]
     )
-    # The Access Point page is readable by members who hold access-point-view
-    # but not view-layout, so either scene may read the server configuration.
-    @console_account_admission(
-        rbac_checks=[
-            RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),
-            RBACCheck(RBACPermission.APP_ACCESS_POINT_VIEW, PlainApp()),
-        ]
-    )
+    @console_account_admission()
     def get(self, request_context: RequestContext, app_id: UUID):
+        # The Access Point page fetches this for members who can view access
+        # points but cannot view the layout; the layout scene cannot express
+        # that, so the read consults the caller's app permission keys.
+        enforce_app_access_point_read(
+            tenant_id=request_context.active_workspace_id,
+            account_id=request_context.account_id,
+            app_id=str(app_id),
+        )
         try:
             server = application_services().app_mcp_servers.get(request_context, str(app_id))
         except AppMCPServerAppNotFoundError as error:
