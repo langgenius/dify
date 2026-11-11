@@ -48,14 +48,7 @@ class RBACMyPermissionsApi(Resource):
 
 @console_ns.route("/workspaces/current/rbac/members/<uuid:member_id>/rbac-roles")
 class RBACMemberRolesApi(Resource):
-    @console_account_admission(
-        rbac_checks=[
-            RBACCheck(
-                RBACPermission.WORKSPACE_ROLE_MANAGE,
-                Workspace(),
-            )
-        ]
-    )
+    @console_account_admission()
     @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[dto.MemberRolesResponse.__name__])
     def get(self, context: RequestContext, member_id):
