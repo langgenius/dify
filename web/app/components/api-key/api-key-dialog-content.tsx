@@ -78,8 +78,6 @@ export function ApiKeyDialogContent({
   )
 }
 
-export const API_KEY_LIMIT = 10
-
 type ApiKeyCreateActionProps = Pick<
   ButtonProps,
   'ref' | 'disabled' | 'loading' | 'onClick' | 'focusableWhenDisabled'

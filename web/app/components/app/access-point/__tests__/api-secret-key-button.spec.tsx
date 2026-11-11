@@ -7,6 +7,7 @@ import { ApiSecretKeyButton } from '../built-in-access-points/api-secret-key-but
 import { EnvironmentApiKeyButton } from '../deployed-environment-access-points/environment-api-key-button'
 
 const appApiKeys = {
+  max_keys: 10,
   data: [
     {
       id: 'key-1',
