@@ -57,7 +57,7 @@ class WorkflowAgentPublishService:
         self._validator = WorkflowAgentNodeValidator(repository=repository)
 
     def synchronize_draft(self, *, draft_workflow: WorkflowBindingScope, account_id: str) -> set[str]:
-        retired = self._synchronize_bindings(draft_workflow=draft_workflow, account_id=account_id)
+        retired = self.synchronize_bindings(draft_workflow=draft_workflow, account_id=account_id)
         self.validate_agent_nodes_for_draft_sync(draft_workflow=draft_workflow)
         return retired
 
@@ -210,12 +210,17 @@ class WorkflowAgentPublishService:
                 f"Workflow Agent node {binding.node_id} has invalid Agent Soul config refs: {'; '.join(missing_refs)}"
             )
 
-    def _synchronize_bindings(
+    def synchronize_bindings(
         self,
         *,
         draft_workflow: WorkflowBindingScope,
         account_id: str,
     ) -> set[str]:
+        """Synchronize bindings without validating the complete draft workflow.
+
+        Callers may supplement node jobs in the same transaction before invoking
+        ``validate_agent_nodes_for_draft_sync``.
+        """
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
         existing_bindings = self._repository.list_bindings(draft_workflow)
         existing_by_node_id = {binding.node_id: binding for binding in existing_bindings}

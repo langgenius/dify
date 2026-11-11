@@ -734,7 +734,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         """Prepare a serializable request for Engine-owned Workflow Tool execution."""
         from services.tools.workflow.tool import WorkflowTool
 
-        tool = self._binding_from_handle(tool_runtime).tool
+        try:
+            tool = self._binding_from_handle(tool_runtime).tool
+        except TypeError as exc:
+            raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool") from exc
         if not isinstance(tool, WorkflowTool):
             raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool")
 

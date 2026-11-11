@@ -7,10 +7,7 @@ import pytest
 from flask import current_app, g
 
 from context.flask_app_context import capture_flask_context
-from core.app.layers import execution_context_layer as module
-from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.app.workflow.file_runtime import create_dify_workflow_file_runtime, init_app
-from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
 from dify_app import DifyApp
 from graphon.engine import Engine
 from graphon.engine.layer import Layer
@@ -18,6 +15,9 @@ from graphon.engine_events import GraphRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from graphon.nodes.base.node import Node
+from services.workflow.execution.adapters import execution_context_layer as module
+from services.workflow.execution.adapters.execution_context_layer import ExecutionContextLayer
+from services.workflow.execution.adapters.workflow_tool_container_handler import WorkflowToolContainerHandler
 from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
     _workflow_tool_container_outer_graph as _outer_graph,
 )

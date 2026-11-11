@@ -15,11 +15,11 @@ from sqlalchemy.orm import Session
 import controllers.web.human_input_form as human_input_module
 from controllers.common.errors import AccessDeniedError, NotFoundError
 from controllers.web.error import WebFormRateLimitExceededError
-from core.repositories.human_input_repository import HumanInputFormRecord
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType, ValueSourceType
 from models import Tenant
 from models.account import TenantStatus
 from models.enums import CustomizeTokenStrategy
+from models.human_input_contracts import HumanInputFormRecord
 from models.human_input_entities import FormDefinition, ParagraphInputConfig, SelectInputConfig, StringListSource
 from models.model import App, AppMode, IconType, Site
 from services.entities.feature_entities import FeatureModel
