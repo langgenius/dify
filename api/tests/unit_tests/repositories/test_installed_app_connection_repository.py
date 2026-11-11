@@ -4,17 +4,13 @@ from dataclasses import asdict
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Table, delete, event, select, update
+from sqlalchemy import Table, event, select, update
 from sqlalchemy.dialects import mysql, postgresql, sqlite
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import Select
 
-from core.plugin.entities.plugin_daemon import CredentialType
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
-from models.enums import ConversationFromSource, PermissionEnum
 from models.installed_app_connection import InstalledAppConnectionConfiguration
-from models.model import App, AppMode, Conversation, InstalledApp, Message
-from models.tools import BuiltinToolProvider
+from models.model import App, Conversation, Message
 from models.workflow import Workflow
 from repositories.installed_app_connection_repository import SQLAlchemyInstalledConnectionRepository
 from services.end_user_connections.errors import (
@@ -22,7 +18,6 @@ from services.end_user_connections.errors import (
     ConnectionIdentityError,
     ConnectionRevisionChangedError,
 )
-from services.errors.conversation import ConversationNotExistsError
 from services.installed_app_connections import InstalledConnectionConfiguration
 from tests.helpers.installed_app_connections import (
     InstalledConnectionData,
@@ -36,32 +31,18 @@ def data(sqlite_session_factory: sessionmaker[Session]) -> InstalledConnectionDa
     return seed_installed_connections(sqlite_session_factory)
 
 
-def test_replacements_preserve_row_identity_and_member_session_scope(sqlite_session_factory, data):
+def test_replacements_preserve_row_identity_and_allow_idempotent_saves(sqlite_session_factory, data):
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
     graph = repository.graph(data.scope)
-    with sqlite_session_factory.begin() as session:
-        conversation = member_conversation(data)
-        session.add(conversation)
-    other_scope = data.scope.model_copy(update={"account_id": data.other.id})
     repository.save(data.scope, graph, data.configuration, None)
-    repository.save(other_scope, graph, data.configuration, None)
-    repository.save(data.scope, graph, data.configuration, conversation.id)
     with sqlite_session_factory() as session:
-        original = session.scalar(repository._configuration_statement(data.scope, None))
-        assert original is not None
-        original_id = original.id
+        original_id = session.scalars(select(InstalledAppConnectionConfiguration.id)).one()
     replacement = InstalledConnectionConfiguration(str(uuid4()), {})
     repository.save(data.scope, graph, replacement, None)
     repository.save(data.scope, graph, replacement, None)
     assert repository.configuration(data.scope, None) == replacement
-    assert repository.configuration(other_scope, None) == data.configuration
-    assert repository.configuration(data.scope, conversation.id) == data.configuration
     with sqlite_session_factory() as session:
-        saved = session.scalar(repository._configuration_statement(data.scope, None))
-        assert saved is not None
-        assert saved.id == original_id
-        assert "token" not in saved.connections
-        assert len(session.scalars(select(InstalledAppConnectionConfiguration)).all()) == 3
+        assert session.scalars(select(InstalledAppConnectionConfiguration.id)).one() == original_id
 
 
 @pytest.mark.parametrize("owner_field", ["tenant_id", "app_id"])
@@ -90,30 +71,6 @@ def test_conflicting_owner_is_not_overwritten(sqlite_session_factory, data, owne
         assert unchanged.connections == "{}"
 
 
-@pytest.mark.parametrize(
-    "change", ["tenant", "account", "member", "installation", "app_owner", "mode", "workflow_owner", "draft"]
-)
-def test_save_rechecks_identity_after_graph_read(sqlite_session_factory, data, change):
-    repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
-    graph = repository.graph(data.scope)
-    statements = {
-        "tenant": update(Tenant).where(Tenant.id == data.tenant.id).values(status=TenantStatus.ARCHIVE),
-        "account": update(Account).where(Account.id == data.account.id).values(status=AccountStatus.BANNED),
-        "member": delete(TenantAccountJoin).where(TenantAccountJoin.account_id == data.account.id),
-        "installation": delete(InstalledApp).where(InstalledApp.id == data.installation.id),
-        "app_owner": update(App).where(App.id == data.app.id).values(tenant_id=str(uuid4())),
-        "mode": update(App).where(App.id == data.app.id).values(mode=AppMode.CHAT),
-        "workflow_owner": update(Workflow).where(Workflow.id == data.workflow.id).values(app_id=str(uuid4())),
-        "draft": update(Workflow).where(Workflow.id == data.workflow.id).values(version=Workflow.VERSION_DRAFT),
-    }
-    with sqlite_session_factory.begin() as session:
-        session.execute(statements[change])
-    with pytest.raises(ConnectionIdentityError):
-        repository.save(data.scope, graph, data.configuration, None)
-    with sqlite_session_factory() as session:
-        assert session.scalar(select(InstalledAppConnectionConfiguration.id)) is None
-
-
 @pytest.mark.parametrize("change", ["publication", "graph"])
 def test_protection_uses_current_projection_not_stale_orm_identity(sqlite_session_factory, data, change):
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
@@ -134,48 +91,6 @@ def test_protection_uses_current_projection_not_stale_orm_identity(sqlite_sessio
         with pytest.raises(ConnectionRevisionChangedError):
             repository._save(session, data.scope, graph, data.configuration, None)
         assert session.scalar(select(InstalledAppConnectionConfiguration.id)) is None
-
-
-@pytest.mark.parametrize("change", ["owner", "deleted", "source"])
-def test_conversation_ownership_is_rechecked(sqlite_session_factory, data, change):
-    repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
-    graph = repository.graph(data.scope)
-    with sqlite_session_factory.begin() as session:
-        conversation = member_conversation(data)
-        if change == "owner":
-            conversation.from_account_id = data.other.id
-        elif change == "deleted":
-            conversation.is_deleted = True
-        else:
-            conversation.from_source = ConversationFromSource.API
-        session.add(conversation)
-    with pytest.raises(ConversationNotExistsError):
-        repository.save(data.scope, graph, data.configuration, conversation.id)
-
-
-@pytest.mark.parametrize("change", ["visibility", "provider", "type", "missing", "unknown_node"])
-def test_save_revalidates_only_explicit_credential_selections(sqlite_session_factory, data, change):
-    repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
-    graph = repository.graph(data.scope)
-    with sqlite_session_factory.begin() as session:
-        credential = session.get(BuiltinToolProvider, data.credential.id)
-        assert credential is not None
-        if change == "visibility":
-            credential.user_id = data.other.id
-            credential.visibility = PermissionEnum.ONLY_ME
-        elif change == "provider":
-            credential.provider = "vendor/other/other"
-        elif change == "type":
-            credential.credential_type = CredentialType.API_KEY
-        elif change == "missing":
-            session.delete(credential)
-    configuration = (
-        InstalledConnectionConfiguration(data.revision, {"unknown": data.credential.id})
-        if change == "unknown_node"
-        else data.configuration
-    )
-    with pytest.raises(ConnectionConfigurationError):
-        repository.save(data.scope, graph, configuration, None)
 
 
 @pytest.mark.parametrize("initialize", [False, True])

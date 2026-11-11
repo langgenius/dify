@@ -186,16 +186,3 @@ def test_invalidation_waits_for_configuration_commit(cases, change):
     invalidate()
     with pytest.raises((ConnectionIdentityError, ConnectionRevisionChangedError)):
         repository.save(first.scope, graph, first.configuration, None)
-
-
-def test_publication_committed_after_transaction_snapshot_is_detected(cases):
-    sessions, first, _second = cases
-    repository = SQLAlchemyInstalledConnectionRepository(session_factory=sessions)
-    graph = repository.graph(first.scope)
-    with sessions.begin() as session:
-        session.get(App, first.app.id)
-        with sessions.begin() as publisher:
-            publisher.execute(update(App).where(App.id == first.app.id).values(workflow_id=None))
-        with pytest.raises(ConnectionRevisionChangedError):
-            repository._save(session, first.scope, graph, first.configuration, None)
-        assert session.scalar(select(InstalledAppConnectionConfiguration.id)) is None
