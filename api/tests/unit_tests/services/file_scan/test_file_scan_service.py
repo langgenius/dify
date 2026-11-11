@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar, override
 
 import pytest
 from sqlalchemy import select
@@ -62,9 +63,11 @@ class _Scanner(FileScanner):
         self.external_ids: list[str | None] = []
 
     @classmethod
+    @override
     def validate_settings(cls, credentials: Mapping[str, str], config: Mapping[str, object]) -> None:
         del credentials, config
 
+    @override
     def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
         self.external_ids.append(external_id)
         target.load()
@@ -174,7 +177,9 @@ def test_scope_without_a_policy_or_with_scanning_off_is_allowed_without_reading_
 
     monkeypatch.setattr(service_module.dify_config, "FILE_SCAN_ENABLED", False)
     with sqlite_session_factory.begin() as session:
-        session.scalar(select(FileScanPolicy)).enabled = True
+        policy = session.scalar(select(FileScanPolicy))
+        assert policy is not None
+        policy.enabled = True
     assert _scan(service, upload_file_id).status == "disabled"
     assert scanner.external_ids == []
     assert storage.loads == 0
@@ -246,6 +251,7 @@ def test_one_bad_file_does_not_change_the_outcome_of_the_others(
     }
 
     class ByName(_Scanner):
+        @override
         def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
             del external_id
             return verdicts[target.file_name]
@@ -548,29 +554,33 @@ def test_policy_defaults_validation_and_scope_cleanup(sqlite_session_factory: se
 
 
 class _CheckedScanner(_Scanner):
-    checks = 0
-    fail_with: Exception | None = None
-    credential_fields = ("api_key",)
+    checks: ClassVar[int] = 0
+    fail_with: ClassVar[Exception | None] = None
+    credential_fields: ClassVar[tuple[str, ...]] = ("api_key",)
 
     def __init__(self, credentials: Mapping[str, str], config: Mapping[str, object]) -> None:
         super().__init__(ScanVerdict.clean())
         self.credentials, self.config = credentials, config
 
     @classmethod
+    @override
     def validate_settings(cls, credentials: Mapping[str, str], config: Mapping[str, object]) -> None:
         del config
         if not credentials.get("api_key"):
             raise ScannerConfigError("api_key is required")
 
+    @override
     def check(self) -> None:
         type(self).checks += 1
-        if type(self).fail_with:
-            raise type(self).fail_with
+        failure = type(self).fail_with
+        if failure is not None:
+            raise failure
 
 
 @pytest.fixture
 def checked_scanner(monkeypatch: pytest.MonkeyPatch) -> type[_CheckedScanner]:
-    _CheckedScanner.checks, _CheckedScanner.fail_with = 0, None
+    _CheckedScanner.checks = 0
+    _CheckedScanner.fail_with = None
     classes = {**provider_module.SCANNER_CLASSES, ScanProviderType.CLOUDMERSIVE: _CheckedScanner}
     monkeypatch.setattr(provider_module, "SCANNER_CLASSES", classes)
     monkeypatch.setattr(provider_module, "scanner_class", lambda provider_type: classes[provider_type])

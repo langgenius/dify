@@ -728,7 +728,7 @@ def test_extract_scans_the_uploaded_file_under_the_dataset_policy(backend: Backe
         patch(f"{MODULE}.IndexProcessorFactory") as processors,
     ):
         scan_service.return_value.scan_upload_file.return_value = ScanOutcome(allowed=True, status="clean")
-        processors.return_value.init_index_processor.return_value.extract.return_value = []
+        processors.return_value.init_index_processor.return_value.extract.return_value = list[IndexDocument]()
 
         adapter.extract(_file_job(job))
 
@@ -767,7 +767,7 @@ def test_extract_does_not_scan_sources_that_are_not_uploaded_files(backend: Back
         patch(f"{MODULE}.FileScanService") as scan_service,
         patch(f"{MODULE}.IndexProcessorFactory") as processors,
     ):
-        processors.return_value.init_index_processor.return_value.extract.return_value = []
+        processors.return_value.init_index_processor.return_value.extract.return_value = list[IndexDocument]()
         adapter.extract(job)
 
     scan_service.assert_not_called()
