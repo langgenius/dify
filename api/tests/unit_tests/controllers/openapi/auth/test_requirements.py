@@ -709,6 +709,12 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
+        "app_dsl.package_import",
+        "POST",
+        "/workspaces/{workspace_id}/apps/packages",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
         "app_dsl.check",
         "POST",
         "/workspaces/{workspace_id}/apps/imports:check",
@@ -724,6 +730,12 @@ ROUTES: tuple[Route, ...] = (
         "app_dsl.export",
         "GET",
         "/apps/{app_id}/dsl",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_dsl.package_export",
+        "GET",
+        "/apps/{app_id}/package",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route(
@@ -1351,6 +1363,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "app_dsl.package_import": {**_ACCOUNT_MEMBER_WITH_ROLE, Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION},
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "node_types.list": dict(_ANY_BEARER),
@@ -1365,6 +1378,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "webapp_access.describe": dict(_WEBAPP_ACCESS_EDITOR),
     "apps.describe": dict(_ACCOUNT_READER_APP),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
+    "app_dsl.package_export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
@@ -1460,12 +1474,27 @@ _REQ_DSL_WORKSPACE = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
     CheckWorkspaceRole(_EDITOR_UP),
 )
+_REQ_DSL_PACKAGE_IMPORT = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckWorkspaceRole(_EDITOR_UP),
+    CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
+)
 _REQ_DSL_APP = (
     CheckSubject(allowed=_ACCOUNT),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_READ),
     CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
+    CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_DSL_PACKAGE_APP = (
+    *_REQ_DSL_APP[:-2],
+    CheckRBACPermission(
+        RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp()),
+        RBACCheck(RBACPermission.AGENT_IMPORT_EXPORT_DSL, AgentBehindApp()),
+    ),
     CheckWorkspaceRole(_EDITOR_UP),
 )
 _REQ_APP_DESCRIBE = (
@@ -1669,9 +1698,11 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
+    "app_dsl.package_import": _REQ_DSL_PACKAGE_IMPORT,
     "app_dsl.check": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
     "app_dsl.export": _REQ_DSL_APP,
+    "app_dsl.package_export": _REQ_DSL_PACKAGE_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
     "app_run.workflow": _RESOURCE_RUN,
     "app_run.chat": _RESOURCE_RUN,
@@ -2241,6 +2272,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("patch", "/apps/{app_id}/service-api/agent"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/dependencies:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/dsl"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/package"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "422", "default"}),
     ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
@@ -2287,6 +2319,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports"): frozenset({"200", "202", "400", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/apps/packages"): frozenset({"200", "202", "400", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports:check"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports/{import_id}:confirm"): frozenset({"200", "400", "default"}),
     ("get", "/workspaces/{workspace_id}/members"): frozenset({"200", "422", "default"}),
