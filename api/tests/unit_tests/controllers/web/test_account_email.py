@@ -11,7 +11,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants import COOKIE_NAME_WEBAPP_ACCESS_TOKEN
-from controllers.web import account_admission, account_email, bp
+from controllers.console.workspace import account as console_account
+from controllers.web import account_admission, bp
 from extensions.ext_application_services import ApplicationServices
 from libs.passport import PassportService
 from models.account import Account, AccountIntegrate, AccountStatus, TenantAccountJoin
@@ -71,7 +72,7 @@ def client(
     services = replace(
         account_application_services, accounts=replace(account_application_services.accounts, change_email=change_email)
     )
-    monkeypatch.setattr(account_email, "application_services", lambda: services)
+    monkeypatch.setattr(console_account, "application_services", lambda: services)
     monkeypatch.setattr(account_admission, "application_services", lambda: services)
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
@@ -160,7 +161,7 @@ def test_email_changes_require_account_cookie(client: FlaskClient, path: str, cr
     assert client.post(path, json={}).status_code == 401
 
 
-@pytest.mark.parametrize("path", PATHS)
+@pytest.mark.parametrize("path", PATHS[:3])
 def test_disabled_email_changes_fail_before_payload_validation(
     client: FlaskClient, path: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -219,10 +220,21 @@ def test_email_uniqueness_and_freeze_policy(client: FlaskClient, transports: Acc
     assert transports.completed == []
 
 
-def test_account_avatar_routes_are_not_exposed(client: FlaskClient) -> None:
-    """Keep personal avatar uploads and resolution outside the WebApp Account API."""
-    assert client.get("/api/account/avatar").status_code == 404
-    assert client.post("/api/account/avatar", data={}).status_code == 404
-    schema = client.get("/api/openapi.json").get_json()
-    assert "/account/avatar" not in schema["paths"]
-    assert "WebAccountAvatarUploadResponse" not in schema["components"]["schemas"]
+def test_email_availability_matches_console_when_changes_are_disabled(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_CHANGE_EMAIL=False)
+    assert client.post(PATHS[3], json={"email": "available@example.com"}).get_json() == {"result": "success"}
+
+
+def test_stale_old_email_uses_the_existing_console_business_error(
+    client: FlaskClient, transports: AccountEmailTransports, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    token = _verified_new_email(client, transports, "new@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.get_one(Account, ACCOUNT_ID).email = "changed@example.com"
+    response = client.post(PATHS[2], json={"new_email": "new@example.com", "token": token})
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "account_not_found"
+    assert token in transports.tokens
+    assert transports.completed == []

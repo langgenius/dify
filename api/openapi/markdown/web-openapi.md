@@ -26,7 +26,7 @@ Web application API operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Verification challenge | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [EmailChangeRateLimitExceededError](#emailchangeratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -61,7 +61,7 @@ Web application API operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/validity
@@ -1809,6 +1809,14 @@ This email account has been deleted within the past 30 days and is temporarily u
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AccountInFreezeError |  | This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration. |  |
+
+#### AccountNotFoundError
+
+Account not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AccountNotFoundError |  | Account not found. |  |
 
 #### AccountProfilePatchPayload
 

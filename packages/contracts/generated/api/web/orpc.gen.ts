@@ -5,6 +5,7 @@ import * as z from 'zod'
 import {
   zAccountBannedError,
   zAccountInFreezeError,
+  zAccountNotFoundError,
   zAgentNotPublishedError,
   zAgentVersionNotFoundError,
   zAlreadySubmittedError,
@@ -308,6 +309,7 @@ export const post2 = oc
   .output(zPostAccountChangeEmailResetResponse)
   .errors({
     account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
     email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
@@ -357,6 +359,7 @@ export const post4 = oc
   .input(z.object({ body: zPostAccountChangeEmailBody }))
   .output(zPostAccountChangeEmailResponse)
   .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
     email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
     email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
     invalid_email: { status: 400, data: zInvalidEmailError },

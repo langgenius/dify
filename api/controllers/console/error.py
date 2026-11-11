@@ -1,9 +1,4 @@
-from controllers import account_email_errors
 from libs.exception import BaseHTTPException
-
-AccountInFreezeError = account_email_errors.AccountInFreezeError
-EmailDomainSuspendedError = account_email_errors.EmailDomainSuspendedError
-EmailSendIpLimitError = account_email_errors.EmailSendIpLimitError
 
 
 class PaidPlanRequiredError(BaseHTTPException):
@@ -93,10 +88,31 @@ class InvalidAccountPasswordRequestError(BaseHTTPException):
     code = 400
 
 
+class EmailSendIpLimitError(BaseHTTPException):
+    error_code = "email_send_ip_limit"
+    description = "Too many emails have been sent from this IP address recently. Please try again later."
+    code = 429
+
+
 class UnauthorizedAndForceLogout(BaseHTTPException):
     error_code = "unauthorized_and_force_logout"
     description = "Unauthorized and force logout."
     code = 401
+
+
+class AccountInFreezeError(BaseHTTPException):
+    error_code = "account_in_freeze"
+    code = 400
+    description = (
+        "This email account has been deleted within the past 30 days "
+        "and is temporarily unavailable for new account registration."
+    )
+
+
+class EmailDomainSuspendedError(BaseHTTPException):
+    error_code = "email_domain_suspended"
+    code = 400
+    description = "This email domain has been suspended."
 
 
 class EducationVerifyLimitError(BaseHTTPException):

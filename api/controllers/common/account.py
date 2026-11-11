@@ -1,4 +1,4 @@
-"""Shared transport validation for Account settings."""
+"""Shared transport validation for Account profile changes."""
 
 from typing import Annotated, Literal
 
@@ -6,30 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from constants.languages import supported_language
-from libs.helper import EmailStr, timezone
+from libs.helper import timezone
 from services.entities.account_entities import AccountProfileChanges
-
-
-class ChangeEmailSendPayload(BaseModel):
-    email: EmailStr
-    language: str | None = None
-    phase: str | None = None
-    token: str | None = None
-
-
-class ChangeEmailValidityPayload(BaseModel):
-    email: EmailStr
-    code: str
-    token: str
-
-
-class ChangeEmailResetPayload(BaseModel):
-    new_email: EmailStr
-    token: str
-
-
-class CheckEmailUniquePayload(BaseModel):
-    email: EmailStr
 
 
 class AccountProfilePatchPayload(BaseModel):

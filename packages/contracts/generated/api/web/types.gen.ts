@@ -27,6 +27,11 @@ export type AccountInFreezeError = ErrorResponse & {
   status: 400
 }
 
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
 export type AccountProfilePatchPayload = {
   avatar?: string
   interface_language?: string
@@ -2061,7 +2066,7 @@ export type PostAccountChangeEmailData = {
 }
 
 export type PostAccountChangeEmailErrors = {
-  400: InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  400: AccountNotFoundError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
   429: EmailChangeRateLimitExceededError | EmailSendIpLimitError | ErrorResponse
   default: ErrorResponse
 }
@@ -2108,6 +2113,7 @@ export type PostAccountChangeEmailResetData = {
 export type PostAccountChangeEmailResetErrors = {
   400:
     | AccountInFreezeError
+    | AccountNotFoundError
     | EmailAlreadyInUseError
     | EmailDomainSuspendedError
     | InvalidOrExpiredTokenError

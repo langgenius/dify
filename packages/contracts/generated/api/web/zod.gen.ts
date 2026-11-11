@@ -585,6 +585,18 @@ export const zAccountInFreezeError = zErrorResponse.and(
 )
 
 /**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentNotPublishedError
  *
  * Agent has not been published. Please publish the Agent before using the web app.

@@ -91,23 +91,6 @@ make type-check
 
 ## API contracts
 
-### WebApp Account settings
-
-Personal settings use the WebApp Account cookie, not an App passport or a Console
-session. Mutations require the configured WebApp Origin. No workspace membership
-or Builder initialization is required.
-
-Email changes use `/api/account/change-email`, `/validity`, `/reset`, and
-`/check-email-unique`, with the same payloads and deployment policy as Console.
-Verify the current email before requesting a `new_email` challenge, verify that
-challenge, then submit its verified token to `/reset`. Tokens are Account-bound;
-the reset response contains only personal settings.
-
-Console and WebApp share email-change transport handlers and HTTP errors; each
-surface owns its admission, Account serialization, and missing-Account response.
-
-### EndUser execution authorization
-
 Service API requests that resolve an EndUser are forbidden when the app's current
 published workflow declares EndUser tool authentication. A caller-supplied `user`
 identifier is not proof of personal authorization. This applies to both app API
