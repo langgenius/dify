@@ -132,12 +132,6 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/app/deploy/__tests__/accessibility.browser.spec.tsx',
-    specifier: 'react-i18next',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/apps/__tests__/app-creation-url.browser.spec.tsx',
     specifier: 'react-i18next',
     occurrence: 1,
@@ -591,12 +585,7 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
 ]
 
 // Existing oversized suites only. Each W2 split must delete its exact entry.
-const LINE_ALLOWLIST: LineAllowance[] = [
-  {
-    path: 'app/components/app/deploy/__tests__/accessibility.browser.spec.tsx',
-    reason: '694-line legacy suite; blocked by open PR #45540',
-  },
-]
+const LINE_ALLOWLIST: LineAllowance[] = []
 
 export type PolicyViolation = {
   kind: 'missing-boundary-comment' | 'oversized-spec'
