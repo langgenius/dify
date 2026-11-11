@@ -1,12 +1,11 @@
 import pytest
-from pydantic import ValidationError
-
 from core.rag.entities.metadata_entities import (
     Condition,
     ConditionValue,
     MetadataFilteringCondition,
     SupportedComparisonOperator,
 )
+from pydantic import ValidationError
 
 STRING_OPERATORS = [
     "contains",
