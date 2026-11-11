@@ -1113,10 +1113,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         state: str,
         pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
         *,
-        outputs: Mapping[str, Any] | None,
-        total_tokens: int,
-        total_steps: int,
-        exceptions_count: int,
+        outputs: Mapping[str, Any] | None = None,
+        total_tokens: int | None = None,
+        total_steps: int | None = None,
+        exceptions_count: int | None = None,
     ) -> WorkflowPauseEntity:
         """Persist a workflow pause as one atomic transition.
 
@@ -1125,8 +1125,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         single transaction, so a run is observably paused only when a readable
         resumption state exists. The snapshot object is written to storage
         before its database reference is committed, and the superseded
-        snapshot object is cleaned up on a best-effort basis inside
-        ``_delete_pause_model``.
+        snapshot object is deleted after that commit, on a best-effort basis.
+
+        The execution state parameters are optional: passing ``None`` leaves
+        the corresponding run column unchanged, while an explicit value
+        (including ``0``) overwrites it.
 
         Args:
             workflow_run_id: Identifier of the workflow run to pause
@@ -1150,6 +1153,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         # The subsequent run lock checks durable stop intent before publishing pause.
         state_obj_key = f"workflow-state-{uuid.uuid4()}.json"
         storage.save(state_obj_key, state.encode())
+        superseded_state_object_key: str | None = None
         try:
             previous_pause_model_query = select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id)
             with self._session_maker() as session, session.begin():
@@ -1172,7 +1176,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
                 previous_pause = session.scalars(previous_pause_model_query).first()
                 if previous_pause:
-                    self._delete_pause_model(session, previous_pause)
+                    # Keep object storage out of the transaction: a rollback must
+                    # restore the superseded pause with a readable snapshot.
+                    superseded_state_object_key = previous_pause.state_object_key
+                    session.delete(previous_pause)
                     # we need to flush here to ensure that the old one is actually deleted.
                     session.flush()
 
@@ -1196,12 +1203,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
                 # Update workflow run status and execution statistics in the same transaction
                 workflow_run.status = WorkflowExecutionStatus.PAUSED
-                workflow_run.outputs = (
-                    json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(outputs)) if outputs else None
-                )
-                workflow_run.total_tokens = total_tokens
-                workflow_run.total_steps = total_steps
-                workflow_run.exceptions_count = exceptions_count
+                if outputs is not None:
+                    workflow_run.outputs = json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(outputs))
+                if total_tokens is not None:
+                    workflow_run.total_tokens = total_tokens
+                if total_steps is not None:
+                    workflow_run.total_steps = total_steps
+                if exceptions_count is not None:
+                    workflow_run.exceptions_count = exceptions_count
 
                 # Save everything in a transaction
                 session.add(pause_model)
@@ -1209,7 +1218,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 session.add_all(pause_reason_models)
 
                 logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
-                return _PrivateWorkflowPauseEntity(pause_model=pause_model)
+                pause_entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
         except Exception:
             try:
                 storage.delete(state_obj_key)
@@ -1218,6 +1227,19 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     "Failed to clean up unpublished workflow pause state, workflow_run_id=%s", workflow_run_id
                 )
             raise
+
+        # Storage is external I/O; a cleanup failure must not undo the pause
+        # transition that just committed.
+        if superseded_state_object_key is not None:
+            try:
+                storage.delete(superseded_state_object_key)
+            except Exception:
+                logger.exception(
+                    "Failed to delete superseded workflow state, workflow_run_id=%s, object_key=%s",
+                    workflow_run_id,
+                    superseded_state_object_key,
+                )
+        return pause_entity
 
     @override
     def create_workflow_pause(
@@ -1232,10 +1254,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             state_owner_user_id,
             state,
             pause_reasons,
-            outputs=None,
-            total_tokens=0,
-            total_steps=0,
-            exceptions_count=0,
         )
 
     @override

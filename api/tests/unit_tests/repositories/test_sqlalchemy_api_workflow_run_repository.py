@@ -786,3 +786,86 @@ def test_pausing_twice_replaces_the_snapshot_when_the_superseded_object_survives
     assert [pause_model.state_object_key for pause_model in pause_models] == [second_save.call_args.args[0]]
     assert second_save.call_args.args[0] != superseded_key
     assert "DeleteObject denied" in caplog.text
+
+
+def test_commit_failure_after_a_previous_pause_keeps_its_snapshot_object(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """A rolled-back pause must not delete the superseded snapshot it restores."""
+    _running_run(sqlite_session)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+    stored_objects: dict[str, bytes] = {}
+    saved_keys: list[str] = []
+
+    def save_object(key: str, value: bytes) -> None:
+        saved_keys.append(key)
+        stored_objects[key] = value
+
+    def delete_object(key: str) -> None:
+        stored_objects.pop(key)
+
+    def _fail_insert(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("database commit failed")
+
+    with patch(_STORAGE_SAVE, side_effect=save_object), patch(_STORAGE_DELETE, side_effect=delete_object):
+        _pause(repository, state='{"v": 1}', outputs=None)
+        superseded_key = saved_keys[0]
+
+        event.listen(WorkflowPause, "before_insert", _fail_insert)
+        try:
+            with pytest.raises(RuntimeError, match="database commit failed"):
+                _pause(repository, state='{"v": 2}', outputs=None)
+        finally:
+            event.remove(WorkflowPause, "before_insert", _fail_insert)
+
+    sqlite_session.expire_all()
+    pause_models = sqlite_session.scalars(select(WorkflowPause)).all()
+    assert [pause_model.state_object_key for pause_model in pause_models] == [superseded_key]
+    # The committed PAUSED run still points at this object; deleting it before the
+    # transaction resolved would leave the pause unresumable.
+    assert superseded_key in stored_objects, "the superseded snapshot was deleted before the commit resolved"
+    assert stored_objects[superseded_key] == b'{"v": 1}'
+    # The unpublished replacement snapshot is an orphan and was cleaned up.
+    assert saved_keys[1] not in stored_objects
+
+
+def test_create_workflow_pause_preserves_existing_outputs_and_statistics(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Legacy callers pass no execution state, so existing columns must survive."""
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.RUNNING)
+    run.outputs = json.dumps({"answer": "kept"})
+    run.total_tokens = 42
+    run.total_steps = 5
+    run.exceptions_count = 3
+    sqlite_session.add(run)
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    with patch(_STORAGE_SAVE):
+        repository.create_workflow_pause(
+            "run-1",
+            "owner-1",
+            '{"state": "legacy"}',
+            [
+                HumanInputRequired(
+                    form_id="form-1",
+                    form_content="Please approve",
+                    inputs=[],
+                    actions=[],
+                    node_id="node-1",
+                    node_title="Ask for approval",
+                )
+            ],
+        )
+
+    sqlite_session.expire_all()
+    workflow_run = sqlite_session.get(WorkflowRun, "run-1")
+    assert workflow_run is not None
+    assert workflow_run.status == WorkflowExecutionStatus.PAUSED
+    assert json.loads(workflow_run.outputs or "{}") == {"answer": "kept"}
+    assert workflow_run.total_tokens == 42
+    assert workflow_run.total_steps == 5
+    assert workflow_run.exceptions_count == 3

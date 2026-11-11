@@ -1053,6 +1053,45 @@ class TestWorkflowRunAggCases:
             assert all(form.status == HumanInputFormStatus.EXPIRED for form in forms)
 
     @staticmethod
+    @pytest.mark.usefixtures("_local_storage")
+    def test_workflow_pause_stopped_error_forces_the_stop_and_expires_forms(
+        sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from core.app.entities.queue_entities import QueueStopEvent
+        from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+        from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
+
+        runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
+        entity = runner.application_generate_entity
+
+        def lose_stop_race(*_args: object, **_kwargs: object) -> None:
+            raise WorkflowPauseStoppedError("Workflow stopped while persisting pause")
+
+        monkeypatch.setattr(
+            "repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository.pause_workflow_run",
+            lose_stop_race,
+        )
+
+        WorkflowRunAgg.run(
+            runner, PauseStateLayerConfig(sqlite_engine, entity.user_id), workflow_repository, node_repository
+        )
+        events = [message.event for message in runner._queue_manager.listen()]
+        assert isinstance(events[-1], QueueStopEvent), events
+        assert not any(isinstance(event, QueueWorkflowPausedEvent) for event in events)
+        with Session(sqlite_engine) as session:
+            run = session.get(WorkflowRun, entity.workflow_execution_id)
+            assert run is not None
+            # The forced stop resolved the race: the run is durably stopped...
+            assert run.status == WorkflowExecutionStatus.STOPPED
+            assert run.stop_requested_at is not None
+            assert run.error == "User requested stop"
+            assert session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id)) is None
+            # ...and its pending human input forms cannot be filled afterwards.
+            forms = session.scalars(select(HumanInputForm).where(HumanInputForm.workflow_run_id == run.id)).all()
+            assert forms
+            assert all(form.status == HumanInputFormStatus.EXPIRED for form in forms)
+
+    @staticmethod
     def test_legacy_caller_rejects_human_input_before_creating_run_or_form(sqlite_engine: Engine) -> None:
         from models.human_input import HumanInputForm
 

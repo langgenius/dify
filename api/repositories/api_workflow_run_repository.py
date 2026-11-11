@@ -575,10 +575,10 @@ class APIWorkflowRunRepository(Protocol):
         state: str,
         pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
         *,
-        outputs: Mapping[str, Any] | None,
-        total_tokens: int,
-        total_steps: int,
-        exceptions_count: int,
+        outputs: Mapping[str, Any] | None = None,
+        total_tokens: int | None = None,
+        total_steps: int | None = None,
+        exceptions_count: int | None = None,
     ) -> WorkflowPauseEntity:
         """Persist a workflow pause as a single atomic transition.
 
@@ -590,9 +590,12 @@ class APIWorkflowRunRepository(Protocol):
 
         The immutable snapshot object is written to storage *before* the
         transaction commits its reference; the superseded snapshot object is
-        deleted on a best-effort basis while its record is replaced inside the
-        same transaction. A failed cleanup may leave an orphan object but must
-        not invalidate workflow state.
+        deleted after that commit, on a best-effort basis. A failed cleanup
+        may leave an orphan object but must not invalidate workflow state.
+
+        The execution state parameters are optional: passing ``None`` leaves
+        the corresponding run column unchanged (legacy callers), while an
+        explicit value (including ``0``) overwrites it.
 
         Args:
             workflow_run_id: Identifier of the workflow run to pause

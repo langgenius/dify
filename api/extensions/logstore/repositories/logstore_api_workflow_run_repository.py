@@ -182,10 +182,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         state: str,
         pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
         *,
-        outputs: Mapping[str, Any] | None,
-        total_tokens: int,
-        total_steps: int,
-        exceptions_count: int,
+        outputs: Mapping[str, Any] | None = None,
+        total_tokens: int | None = None,
+        total_steps: int | None = None,
+        exceptions_count: int | None = None,
     ) -> WorkflowPauseEntity:
         return self._control_repository.pause_workflow_run(
             workflow_run_id,
