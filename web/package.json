@@ -50,7 +50,7 @@
     "@floating-ui/react": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",
     "@heroicons/react": "catalog:",
-    "@lexical/code": "catalog:",
+    "@lexical/code-core": "catalog:",
     "@lexical/link": "catalog:",
     "@lexical/list": "catalog:",
     "@lexical/react": "catalog:",
