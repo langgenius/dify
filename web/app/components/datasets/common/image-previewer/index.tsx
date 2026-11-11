@@ -1,8 +1,9 @@
+import type { HotkeyRegistrationHandle } from '@tanstack/react-hotkeys'
 import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { formatForDisplay, getHotkeyManager } from '@tanstack/react-hotkeys'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { formatFileSize } from '@/utils/format'
@@ -143,16 +144,40 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
     [fetchImage],
   )
 
-  useHotkey('ArrowLeft', prevImage, {
-    target: previewRef,
-    enabled: currentIndex > 0,
-    requireReset: true,
-  })
-  useHotkey('ArrowRight', nextImage, {
-    target: previewRef,
-    enabled: currentIndex < images.length - 1,
-    requireReset: true,
-  })
+  const previousHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const nextHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const handlePrevious = useEffectEvent(prevImage)
+  const handleNext = useEffectEvent(nextImage)
+
+  useEffect(() => {
+    const target = previewRef.current
+    if (!target) return
+    // React hotkeys run at document, beyond DialogPopup's arrow propagation boundary.
+    const manager = getHotkeyManager()
+    const previousHotkey = manager.register('ArrowLeft', () => handlePrevious(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    const nextHotkey = manager.register('ArrowRight', () => handleNext(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    previousHotkeyRef.current = previousHotkey
+    nextHotkeyRef.current = nextHotkey
+    return () => {
+      previousHotkey.unregister()
+      nextHotkey.unregister()
+      previousHotkeyRef.current = null
+      nextHotkeyRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    previousHotkeyRef.current?.setOptions({ enabled: currentIndex > 0 })
+    nextHotkeyRef.current?.setOptions({ enabled: currentIndex < images.length - 1 })
+  }, [currentIndex, images.length])
 
   return (
     <>
