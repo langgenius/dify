@@ -28,7 +28,6 @@ from controllers.console.apikey import (
 from controllers.console.app.app import (
     APP_LIST_QUERY_ARRAY_FIELDS,
     AppListQuery,
-    _app_detail_response,
 )
 from controllers.console.app.app import (
     AppDetailWithSite as GenericAppDetailWithSite,
@@ -42,6 +41,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.app.response import app_detail_response
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
@@ -455,7 +455,7 @@ def _serialize_agent_app_detail(
 
 def _agent_app_detail_response(detail: AgentAppDetail) -> dict[str, object]:
     """Render detached App and Agent details using the existing Console response schema."""
-    payload = _app_detail_response(detail.app).model_dump(mode="json")
+    payload = app_detail_response(detail.app).model_dump(mode="json")
     payload.update(
         id=detail.agent_id,
         app_id=detail.app_id,
