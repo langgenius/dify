@@ -1240,9 +1240,11 @@ export const zKnowledgeFsInitialWebsiteSourcePreviewPayload = z.object({
  * KnowledgeFSInitialSourcePreviewDocumentResponse
  */
 export const zKnowledgeFsInitialSourcePreviewDocumentResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   name: z.string(),
   page_id: z.string(),
+  parent_id: z.string().nullish(),
   provider_item_id: z.string(),
   type: z.string(),
   workspace_id: z.string(),
@@ -1280,6 +1282,7 @@ export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
   documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
   files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
   kind: z.enum(['online_document', 'online_drive', 'website_crawl']),
+  next_cursor: z.string().nullish(),
   next_page_parameters: z.record(z.string(), zJsonValue).nullish(),
   pages: z.array(zKnowledgeFsInitialSourcePreviewPageResponse).optional(),
 })
@@ -3322,6 +3325,7 @@ export const zKnowledgeFsSourceFilesResponse = z.object({
  * KnowledgeFSSourcePageResponse
  */
 export const zKnowledgeFsSourcePageResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   page_id: z.string(),
   page_name: z.string(),
@@ -4918,6 +4922,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
   cursor: z.string().min(1).max(4096).optional(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).optional(),
+  view: z.string().optional(),
 })
 
 /**
