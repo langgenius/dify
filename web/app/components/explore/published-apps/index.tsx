@@ -1,6 +1,5 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
 import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -74,16 +73,6 @@ function PublishedAppsList() {
           void setView(next)
         }}
       />
-      {list.isError && (
-        <div className="space-y-2 px-8 py-4">
-          <p role="alert" className="system-sm-regular text-text-destructive">
-            {list.error.message}
-          </p>
-          <Button onClick={() => list.refetch()}>
-            {t(($) => $['operation.retry'], { ns: 'common' })}
-          </Button>
-        </div>
-      )}
       {loading ? (
         <ul
           className={APP_LIST_GRID_CLASS_NAME}

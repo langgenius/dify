@@ -7,6 +7,7 @@ import type {
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import PublishedApps from '..'
 
 const service = vi.hoisted(() => ({
@@ -219,16 +220,35 @@ it('shows an empty state without opening a runtime when no apps are installed', 
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
 })
 
-it('keeps a failed list retryable rather than showing an empty result', async () => {
-  service.list.mockRejectedValueOnce(new Error('Published apps unavailable'))
-  const screen = await renderPublished()
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('Published apps unavailable')
-  await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
-  await screen.getByRole('button', { name: 'common.operation.retry' }).click()
-  await expect
-    .element(screen.getByRole('button', { name: 'Assistant first', exact: true }))
-    .toBeVisible()
+it('hides list errors without showing a false empty state and remains usable through filtering', async () => {
+  const failedList = createDeferred<InstalledAppListResponse>()
+  service.list.mockImplementation(
+    ({ query }: { query: NonNullable<GetInstalledAppsData['query']> }) =>
+      query.mode === 'agent-chat'
+        ? failedList.promise
+        : Promise.resolve(page([createApp('workflow', false, 'workflow')])),
+  )
+  const screen = await renderPublished('category=agent-chat')
+  const loading = screen.getByRole('list', { name: 'common.loading' })
+  await expect.element(loading).toBeVisible()
+  failedList.reject(new Error('Published apps unavailable'))
+  await expect.element(loading).not.toBeInTheDocument()
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
+  await expect.element(screen.getByText('Published apps unavailable')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'common.operation.retry' }))
+    .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
+
+  await screen.getByRole('combobox', { name: 'app.studio.filters.types' }).click()
+  await screen.getByRole('option', { name: 'app.types.workflow' }).click()
+  await expect
+    .element(screen.getByRole('button', { name: 'Assistant workflow', exact: true }))
+    .toBeVisible()
+  expect(service.list).toHaveBeenLastCalledWith({
+    query: { limit: 100, cursor: undefined, mode: 'workflow', sort_by: 'last_modified' },
+  })
+  expect(service.urlUpdate.mock.lastCall?.[0].searchParams.get('category')).toBe('workflow')
 })
 
 it('requests the selected sort and type, updates the URL and displays the server result order', async () => {
