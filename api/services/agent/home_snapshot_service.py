@@ -49,8 +49,14 @@ class AgentHomeSnapshotService:
         *,
         session: Session,
         build_draft: AgentConfigDraft,
-    ) -> AgentHomeSnapshot:
-        """Checkpoint the exact participant owned by ``build_draft``."""
+    ) -> AgentHomeSnapshot | None:
+        """Checkpoint the exact participant owned by ``build_draft``.
+
+        Returns ``None`` when the runtime backend does not support Home
+        Snapshots (explicit ``snapshot_ref: null`` response): the apply still
+        succeeds and the new Home is materialized image-fresh. No ledger row
+        is persisted in that case — there is no snapshot to track.
+        """
 
         source_binding_id = build_draft.agent_workspace_binding_id
         if source_binding_id is None:
@@ -112,6 +118,8 @@ class AgentHomeSnapshotService:
         except DifyAgentClientError as exc:
             raise AgentHomeSnapshotCreateFailedError(str(exc)) from exc
 
+        if response.snapshot_ref is None:
+            return None
         home_snapshot = AgentHomeSnapshot(
             id=home_snapshot_id,
             tenant_id=build_draft.tenant_id,

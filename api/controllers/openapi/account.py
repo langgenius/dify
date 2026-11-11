@@ -8,6 +8,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
@@ -38,10 +39,18 @@ class AccountApi(Resource):
         kind=Kind.OBJECT,
         summary="Current account",
         examples=(Example(title="Show the logged-in account and its workspaces", input={}),),
+        pat_policy=PersonalAccessTokenPolicy.IDENTITY_DISCOVERY,
         requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.FULL)),
         returns=(200, AccountResponse, "Account info"),
     )
     def get(self, ctx: Context):
+        """Return account details with workspace visibility bounded by PAT scope.
+
+        The account snapshot supplies current memberships and the default workspace.
+        A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+        present only when its workspace remains visible. Non-PAT requests have no
+        workspace filter. This handler is read-only and does not change membership.
+        """
         request_context = _request_context(ctx)
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{request_context.account_id}")
 
@@ -49,12 +58,19 @@ class AccountApi(Resource):
             snapshot = application_services().accounts.access.get(request_context)
         except AccountNotFoundError:
             raise Unauthorized("account not found") from None
+        workspaces = snapshot.workspaces
+        if ctx.personal_workspace_ids is not None:
+            workspaces = tuple(workspace for workspace in workspaces if workspace.id in ctx.personal_workspace_ids)
+        visible_workspace_ids = {workspace.id for workspace in workspaces}
+        default_workspace_id = (
+            snapshot.default_workspace_id if snapshot.default_workspace_id in visible_workspace_ids else None
+        )
         return AccountResponse(
             subject_type=ctx.subject.subject_type,
             subject_email=snapshot.account.email,
             account=_account_payload(snapshot.account),
-            workspaces=[_workspace_payload(workspace) for workspace in snapshot.workspaces],
-            default_workspace_id=snapshot.default_workspace_id,
+            workspaces=[_workspace_payload(workspace) for workspace in workspaces],
+            default_workspace_id=default_workspace_id,
         )
 
 

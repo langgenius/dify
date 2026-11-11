@@ -181,7 +181,7 @@ class TriggerProviderIconApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Trigger provider icon")
     @console_account_admission()
     def get(self, context: RequestContext, provider: str) -> str:
-        return application_services().workspaces.trigger_providers.get_icon(
+        return application_services().triggers.providers.get_icon(
             tenant_id=context.active_workspace_id, provider_id=TriggerProviderID(provider)
         )
 
@@ -197,7 +197,7 @@ class TriggerProviderListApi(Resource):
     def get(self, context: RequestContext) -> list[dict[str, Any]]:
         """List all trigger providers for the current tenant"""
         return TriggerProviderListResponse(
-            application_services().workspaces.trigger_providers.list(tenant_id=context.active_workspace_id),
+            application_services().triggers.providers.list(tenant_id=context.active_workspace_id),
         ).model_dump(mode="json")
 
 
@@ -213,7 +213,7 @@ class TriggerProviderInfoApi(Resource):
         """Get info for a trigger provider"""
         return dump_response(
             TriggerProviderApiEntity,
-            application_services().workspaces.trigger_providers.get(
+            application_services().triggers.providers.get(
                 tenant_id=context.active_workspace_id, provider_id=TriggerProviderID(provider)
             ),
         )
@@ -238,7 +238,7 @@ class TriggerSubscriptionListApi(Resource):
 
         try:
             return TriggerProviderSubscriptionListResponse(
-                application_services().workspaces.trigger_subscriptions.list(
+                application_services().triggers.subscriptions.list(
                     tenant_id=context.active_workspace_id,
                     account_id=context.account_id,
                     provider_id=TriggerProviderID(provider),
@@ -273,13 +273,11 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
 
         try:
             credential_type = CredentialType.of(req_data.credential_type)
-            subscription_builder = (
-                application_services().workspaces.trigger_builders.create_trigger_subscription_builder(
-                    tenant_id=context.active_workspace_id,
-                    user_id=context.account_id,
-                    provider_id=TriggerProviderID(provider),
-                    credential_type=credential_type,
-                )
+            subscription_builder = application_services().triggers.builders.create_trigger_subscription_builder(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
+                provider_id=TriggerProviderID(provider),
+                credential_type=credential_type,
             )
             return TriggerSubscriptionBuilderCreateResponse(subscription_builder=subscription_builder).model_dump(
                 mode="json"
@@ -304,7 +302,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     )
     def get(self, context: RequestContext, provider: str, subscription_builder_id: str) -> dict[str, Any]:
         """Get a subscription instance for a trigger provider"""
-        subscription_builder = application_services().workspaces.trigger_builders.get_subscription_builder_by_id(
+        subscription_builder = application_services().triggers.builders.get_subscription_builder_by_id(
             tenant_id=context.active_workspace_id,
             user_id=context.account_id,
             provider_id=TriggerProviderID(provider),
@@ -339,7 +337,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
 
         try:
             # Use atomic update_and_verify to prevent race conditions
-            result = application_services().workspaces.trigger_builders.update_and_verify_builder(
+            result = application_services().triggers.builders.update_and_verify_builder(
                 tenant_id=context.active_workspace_id,
                 user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
@@ -381,7 +379,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
         try:
             return (
                 application_services()
-                .workspaces.trigger_builders.update_trigger_subscription_builder(
+                .triggers.builders.update_trigger_subscription_builder(
                     tenant_id=context.active_workspace_id,
                     user_id=context.account_id,
                     provider_id=TriggerProviderID(provider),
@@ -417,7 +415,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
         """Get the request logs for a subscription instance for a trigger provider"""
 
         try:
-            logs = application_services().workspaces.trigger_builders.list_logs(
+            logs = application_services().triggers.builders.list_logs(
                 tenant_id=context.active_workspace_id,
                 user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
@@ -457,7 +455,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         """Build a subscription instance for a trigger provider"""
         try:
             # Use atomic update_and_build to prevent race conditions
-            application_services().workspaces.trigger_builders.update_and_build_builder(
+            application_services().triggers.builders.update_and_build_builder(
                 tenant_id=context.active_workspace_id,
                 user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
@@ -500,7 +498,7 @@ class TriggerSubscriptionUpdateApi(Resource):
     ) -> dict[str, Any]:
         """Rename a subscription or rebuild its provider configuration."""
         try:
-            application_services().workspaces.trigger_subscription_management.update(
+            application_services().triggers.subscription_management.update(
                 tenant_id=context.active_workspace_id,
                 subscription_id=subscription_id,
                 name=req_data.name,
@@ -528,7 +526,7 @@ class TriggerSubscriptionDeleteApi(Resource):
     def post(self, context: RequestContext, subscription_id: str) -> dict[str, Any]:
         """Delete the subscription and its workflow trigger bindings."""
         try:
-            application_services().workspaces.trigger_subscription_management.delete(
+            application_services().triggers.subscription_management.delete(
                 tenant_id=context.active_workspace_id,
                 subscription_id=subscription_id,
             )
@@ -550,7 +548,7 @@ class TriggerOAuthAuthorizeApi(Resource):
     def get(self, context: RequestContext, provider: str) -> Response:
         """Initiate OAuth authorization flow for a trigger provider."""
         try:
-            result = application_services().workspaces.trigger_oauth.authorize(
+            result = application_services().triggers.oauth.authorize(
                 tenant_id=context.active_workspace_id,
                 user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
@@ -597,7 +595,7 @@ class TriggerOAuthCallbackApi(Resource):
     def get(self, provider: str) -> Response:
         """Complete the cookie-bound flow without requiring a Console login."""
         try:
-            application_services().workspaces.trigger_oauth.callback(
+            application_services().triggers.oauth.callback(
                 provider=provider,
                 context_id=request.cookies.get("context_id"),
                 redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
@@ -634,7 +632,7 @@ class TriggerOAuthClientManageApi(Resource):
     def get(self, context: RequestContext, provider: str) -> dict[str, object]:
         """Get the masked OAuth client configuration for a provider."""
         try:
-            configuration = application_services().workspaces.trigger_oauth_clients.get(
+            configuration = application_services().triggers.oauth_clients.get(
                 tenant_id=context.active_workspace_id,
                 provider_id=TriggerProviderID(provider),
             )
@@ -666,7 +664,7 @@ class TriggerOAuthClientManageApi(Resource):
     def post(self, req_data: TriggerOAuthClientPayload, context: RequestContext, provider: str) -> dict[str, object]:
         """Configure the workspace's custom OAuth client for a provider."""
         try:
-            application_services().workspaces.trigger_oauth_clients.save(
+            application_services().triggers.oauth_clients.save(
                 tenant_id=context.active_workspace_id,
                 provider_id=TriggerProviderID(provider),
                 client_params=req_data.client_params,
@@ -687,7 +685,7 @@ class TriggerOAuthClientManageApi(Resource):
     )
     def delete(self, context: RequestContext, provider: str) -> dict[str, object]:
         """Remove the workspace's custom OAuth client configuration."""
-        application_services().workspaces.trigger_oauth_clients.delete(
+        application_services().triggers.oauth_clients.delete(
             tenant_id=context.active_workspace_id,
             provider_id=TriggerProviderID(provider),
         )
@@ -721,7 +719,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     ) -> dict[str, Any]:
         """Verify credentials against the subscription's own provider without updating it."""
         try:
-            result = application_services().workspaces.trigger_subscription_management.verify(
+            result = application_services().triggers.subscription_management.verify(
                 tenant_id=context.active_workspace_id,
                 user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),

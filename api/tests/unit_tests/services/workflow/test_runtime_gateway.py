@@ -15,7 +15,6 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.file_access import DatabaseFileAccessController
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.trigger.debug.event_selectors import TriggerDebugEvent
 from extensions.application_services.workflow import (
     WorkflowExecutionDependencies,
     build_workflow_execution_dependencies,
@@ -24,6 +23,7 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.ext_storage import storage
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.entities import WorkflowNodeExecution
+from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import File
 from machinery.context import RequestContext
 from models import Account, EndUser
@@ -50,6 +50,7 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskControlService
 from services.file_service import FileService
 from services.tools.provider_queries import ToolProviderIcons
+from services.trigger.debug_service import TriggerDebugEvent, TriggerDebugService
 from services.workflow import runtime_gateway as module
 from services.workflow.console_service import (
     ConsoleWorkflowService,
@@ -131,8 +132,9 @@ def runtime_gateway(
 
     generator = create_autospec(AppGenerateService, spec_set=True)
     generator.generate_workflow_stream.side_effect = generate
+    debug = create_autospec(TriggerDebugService, instance=True, spec_set=True)
     gateway = WorkflowRuntimeGateway(
-        invoke_plugin_event=lambda **_: None,
+        trigger_debug=lambda: debug,
         runtime=build_workflow_execution_dependencies(factory),
         session_factory=factory,
         workflows=workflows,
@@ -915,9 +917,17 @@ def test_real_stream_preparation_releases_reads_before_external_io(
 
 
 def test_trigger_poll_runs_outside_database_session(
-    runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]], monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session],
+    runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gateway, sessions = runtime
+    with sqlite_session_factory.begin() as session:
+        draft = session.scalar(select(Workflow).where(Workflow.version == "draft"))
+        assert draft is not None
+        draft.graph = json.dumps(
+            {"nodes": [{"id": "node", "data": {"type": "trigger-webhook", "title": "Webhook"}}], "edges": []}
+        )
 
     class Poller:
         def poll(self) -> TriggerDebugEvent:
@@ -925,7 +935,7 @@ def test_trigger_poll_runs_outside_database_session(
             assert all(session.closed for session in sessions)
             return TriggerDebugEvent(node_id="node", workflow_args={"inputs": {}})
 
-    monkeypatch.setattr(module, "create_event_poller", lambda **_kwargs: Poller())
+    monkeypatch.setattr(gateway._trigger_debug(), "poll", lambda **_kwargs: Poller().poll())
     result = gateway.poll_trigger(CONTEXT, "app-1", ["node"], single_node=False, select_all=False)
     assert result is not None
     assert result.node_id == "node"
@@ -945,7 +955,7 @@ def test_schedule_single_node_does_not_poll(
     def unexpected(**_kwargs: object) -> None:
         pytest.fail("schedule single-step must not wait for an event")
 
-    monkeypatch.setattr(module, "create_event_poller", unexpected)
+    monkeypatch.setattr(gateway._trigger_debug(), "poll", unexpected)
     result = gateway.poll_trigger(CONTEXT, "app-1", ["timer"], single_node=True, select_all=False)
     assert result is not None
     assert result.workflow_args == {}
@@ -1113,11 +1123,11 @@ def test_trigger_consumption_and_real_execution_share_detached_revision(
                 draft.graph = json.dumps(changed)
             return TriggerDebugEvent(node_id="trigger", workflow_args={"inputs": {"payload": "from-A"}})
 
-    def poller(*, draft_workflow: Workflow, **_kwargs: object) -> Poller:
-        assert draft_workflow.graph_dict["nodes"][0]["data"]["subscription_id"] == "subscription-A"
-        return Poller()
+    def poller(*, node_config: NodeConfigDict, **_kwargs: object) -> TriggerDebugEvent:
+        assert node_config["data"].model_dump()["subscription_id"] == "subscription-A"
+        return Poller().poll()
 
-    monkeypatch.setattr(module, "create_event_poller", poller)
+    monkeypatch.setattr(gateway._trigger_debug(), "poll", poller)
     service = ConsoleWorkflowService(
         conversion=create_autospec(WorkflowConversion, instance=True, spec_set=True),
         agent_services=WorkflowAgentPublishService,
@@ -1387,15 +1397,16 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
                 draft.graph = json.dumps(changed)
             return TriggerDebugEvent(node_id="trigger", workflow_args={"inputs": {"payload": "from-A"}})
 
-    def poller(*, draft_workflow: Workflow, **_kwargs: object) -> Poller:
-        assert draft_workflow.graph_dict == original_graph
-        return Poller()
+    def poller(*, node_config: NodeConfigDict, **_kwargs: object) -> TriggerDebugEvent:
+        assert node_config["id"] == original_graph["nodes"][0]["id"]
+        assert node_config["data"].model_dump()["subscription_id"] == "subscription-A"
+        return Poller().poll()
 
-    def select_events(*, draft_workflow: Workflow, **kwargs: object) -> TriggerDebugEvent:
-        return poller(draft_workflow=draft_workflow, **kwargs).poll()
+    def select_events(*, node_configs: Iterable[NodeConfigDict], **kwargs: object) -> TriggerDebugEvent:
+        return poller(node_config=next(iter(node_configs)), **kwargs)
 
-    monkeypatch.setattr(module, "create_event_poller", poller)
-    monkeypatch.setattr(module, "select_trigger_debug_events", select_events)
+    monkeypatch.setattr(gateway._trigger_debug(), "poll", poller)
+    monkeypatch.setattr(gateway._trigger_debug(), "select_events", select_events)
     apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="streams")
     limiter = create_autospec(RateLimit, instance=True, spec_set=True)
     limiter.generate.side_effect = lambda response, *_args: response
@@ -1668,8 +1679,8 @@ def test_trigger_pins_agent_job_and_soul_until_worker_finishes(
                 )
             return TriggerDebugEvent(node_id="trigger", workflow_args={"inputs": {"payload": "A"}})
 
-    monkeypatch.setattr(module, "create_event_poller", lambda **_kwargs: Poller())
-    monkeypatch.setattr(module, "select_trigger_debug_events", lambda **_kwargs: Poller().poll())
+    monkeypatch.setattr(gateway._trigger_debug(), "poll", lambda **_kwargs: Poller().poll())
+    monkeypatch.setattr(gateway._trigger_debug(), "select_events", lambda **_kwargs: Poller().poll())
     apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="streams")
     limiter = create_autospec(RateLimit, instance=True, spec_set=True)
     limiter.generate.side_effect = lambda response, *_args: response
@@ -1758,7 +1769,7 @@ def test_trigger_cancels_reserved_agent_references_without_starting_execution(
     def denied(**_kwargs: object) -> None:
         raise ValueError("prepare failed")
 
-    monkeypatch.setattr(module, "create_event_poller", lambda **_kwargs: Poller())
+    monkeypatch.setattr(gateway._trigger_debug(), "poll", lambda **_kwargs: Poller().poll())
     monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", denied)
     if outcome == "empty":
         assert gateway.poll_trigger(CONTEXT, "app-1", ["trigger"], single_node=False, select_all=False) is None

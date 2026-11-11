@@ -14,7 +14,6 @@ from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackH
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
-from core.trigger.debug.event_selectors import PluginTriggerEventInvoker
 from extensions.ext_redis import RedisClientWrapper
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.annotation_reply import AnnotationReplies
@@ -31,6 +30,8 @@ from services.rbac.members import MemberService
 from services.tools.provider_queries import ToolProviders
 from services.tools.tool_engine import ToolEngine
 from services.workflow.contracts import WorkflowSnapshot
+
+from services.trigger.debug_service import TriggerDebugService
 from services.workflow.execution.chatflow_ports import ChatflowRecords, ConversationVariables
 from services.workflow.execution.contracts import WorkflowRunDriver
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
@@ -253,7 +254,7 @@ def build_console_workflow_service(
     redis: RedisClientWrapper,
     variables: WorkflowExecutionVariables,
     rbac_members: MemberService,
-    invoke_plugin_event: PluginTriggerEventInvoker,
+    trigger_debug: Callable[[], TriggerDebugService],
 ) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
     from core.app.file_access import DatabaseFileAccessController
     from core.helper.encrypter import decrypt_token
@@ -299,7 +300,7 @@ def build_console_workflow_service(
         drafts=build_workflow_draft_service(drafts, lifecycle, database_client),
         lifecycle=lifecycle,
         runtime=WorkflowRuntimeGateway(
-            invoke_plugin_event=invoke_plugin_event,
+            trigger_debug=trigger_debug,
             runtime=build_workflow_execution_dependencies(database_client),
             variables=variables,
             session_factory=database_client,
