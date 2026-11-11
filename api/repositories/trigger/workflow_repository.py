@@ -7,8 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate
-from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from libs.schedule_utils import calculate_next_run_at
 from models import App
 from models.enums import AppTriggerStatus
@@ -124,15 +123,10 @@ class WorkflowTriggerRepository:
         elif existing is None:
             WorkflowTriggerRepository.create_schedule(app.tenant_id, app.id, config, session=session)
         else:
-            WorkflowTriggerRepository.update_schedule(
-                existing.id,
-                SchedulePlanUpdate(
-                    node_id=config.node_id,
-                    cron_expression=config.cron_expression,
-                    timezone=config.timezone,
-                ),
-                session=session,
-            )
+            existing.node_id = config.node_id
+            existing.cron_expression = config.cron_expression
+            existing.timezone = config.timezone
+            existing.next_run_at = calculate_next_run_at(config.cron_expression, config.timezone)
 
     @staticmethod
     def create_schedule(
@@ -167,47 +161,4 @@ class WorkflowTriggerRepository:
         session.add(schedule)
         session.flush()
 
-        return schedule
-
-    @staticmethod
-    def update_schedule(schedule_id: str, updates: SchedulePlanUpdate, *, session: Session) -> WorkflowSchedulePlan:
-        """
-        Update an existing schedule with validated configuration.
-
-        Args:
-            session: Database session
-            schedule_id: Schedule ID to update
-            updates: Validated update configuration
-
-        Raises:
-            ScheduleNotFoundError: If schedule not found
-
-        Returns:
-            Updated WorkflowSchedulePlan instance
-        """
-        schedule = session.get(WorkflowSchedulePlan, schedule_id)
-        if not schedule:
-            raise ScheduleNotFoundError(f"Schedule not found: {schedule_id}")
-
-        # If time-related fields are updated, synchronously update the next_run_at.
-        time_fields_updated = False
-
-        if updates.node_id is not None:
-            schedule.node_id = updates.node_id
-
-        if updates.cron_expression is not None:
-            schedule.cron_expression = updates.cron_expression
-            time_fields_updated = True
-
-        if updates.timezone is not None:
-            schedule.timezone = updates.timezone
-            time_fields_updated = True
-
-        if time_fields_updated:
-            schedule.next_run_at = calculate_next_run_at(
-                schedule.cron_expression,
-                schedule.timezone,
-            )
-
-        session.flush()
         return schedule
