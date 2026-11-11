@@ -4,7 +4,7 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -47,7 +47,6 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     enterprise_license_required,
-    is_admin_or_owner_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -81,8 +80,7 @@ from machinery.context import RequestContext
 from models import Account
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import ApiTokenType
-from models.model import ApiToken, App, IconType
+from models.model import App, IconType
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
     AgentAccessNotReadyError,
@@ -172,28 +170,6 @@ class AgentAppCopyPayload(BaseModel):
         if value is None:
             return None
         return value.strip()
-
-
-class AgentApiStatusPayload(BaseModel):
-    enable_api: bool = Field(..., description="Enable or disable Agent service API")
-
-
-class AgentApiAccessResponse(BaseModel):
-    access_ready: bool
-    enabled: bool
-    service_api_base_url: str
-    streaming_only: bool = True
-    chat_endpoint: str
-    stop_endpoint: str
-    conversations_endpoint: str
-    messages_endpoint: str
-    files_upload_endpoint: str
-    parameters_endpoint: str
-    info_endpoint: str
-    meta_endpoint: str
-    api_rpm: int
-    api_rph: int
-    api_key_count: int
 
 
 class AgentAppPublishedReferenceResponse(BaseModel):
@@ -373,7 +349,6 @@ register_schema_models(
     AgentPublishPayload,
     AgentBuildDraftCheckoutPayload,
     ComposerSavePayload,
-    AgentApiStatusPayload,
     AgentAppListQuery,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
@@ -386,7 +361,6 @@ register_response_schema_models(
     console_ns,
     AgentPublicationCountsResponse,
     AgentAppPagination,
-    AgentApiAccessResponse,
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
@@ -569,49 +543,6 @@ def _resolve_agent_app_model(session: Session, *, tenant_id: str, agent_id: UUID
 
 def _resolve_agent_runtime_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
     return _agent_roster_service(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
-
-
-def _agent_api_key_count(session: Session, app_model: App) -> int:
-    return (
-        session.scalar(
-            select(func.count(ApiToken.id)).where(
-                or_(ApiToken.tenant_id == app_model.tenant_id, ApiToken.tenant_id.is_(None)),
-                ApiToken.type == ApiTokenType.APP,
-                ApiToken.app_id == app_model.id,
-            )
-        )
-        or 0
-    )
-
-
-def _agent_app_access_ready(session: Session, app_model: App) -> bool:
-    agent = _agent_roster_service(session).get_app_backing_agent(
-        tenant_id=app_model.tenant_id,
-        app_id=str(app_model.id),
-    )
-    return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
-
-
-def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
-    base_url = app_model.api_base_url
-    access_ready = _agent_app_access_ready(session, app_model)
-    response = AgentApiAccessResponse(
-        access_ready=access_ready,
-        enabled=bool(app_model.enable_api and access_ready),
-        service_api_base_url=base_url,
-        chat_endpoint=f"{base_url}/chat-messages",
-        stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
-        conversations_endpoint=f"{base_url}/conversations",
-        messages_endpoint=f"{base_url}/messages",
-        files_upload_endpoint=f"{base_url}/files/upload",
-        parameters_endpoint=f"{base_url}/parameters",
-        info_endpoint=f"{base_url}/info",
-        meta_endpoint=f"{base_url}/meta",
-        api_rpm=app_model.api_rpm or 0,
-        api_rph=app_model.api_rph or 0,
-        api_key_count=_agent_api_key_count(session, app_model),
-    )
-    return response.model_dump(mode="json")
 
 
 def _agent_observability_service(session: Session) -> AgentObservabilityService:
@@ -1049,41 +980,6 @@ class AgentAppCopyApi(Resource):
             icon_background=req_data.icon_background,
         )
         return _serialize_agent_app_detail(session, copied_app, current_user=current_user), 201
-
-
-@console_ns.route("/agent/<uuid:agent_id>/api-access")
-class AgentApiAccessApi(Resource):
-    @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent service API access", console_ns.models[AgentApiAccessResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_api_access(session, app_model)
-
-
-@console_ns.route("/agent/<uuid:agent_id>/api-enable")
-class AgentApiStatusApi(Resource):
-    @error_responses(AgentAccessNotReadyError, AgentNotFoundError)
-    @console_ns.expect(console_ns.models[AgentApiStatusPayload.__name__])
-    @console_ns.response(200, "Agent service API status updated", console_ns.models[AgentApiAccessResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
-    @with_current_tenant_id
-    @with_session
-    @model_validate(AgentApiStatusPayload)
-    def post(self, req_data: AgentApiStatusPayload, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        app_model = AppService().update_app_api_status(app_model, req_data.enable_api, session=session)
-        return _serialize_agent_api_access(session, app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
