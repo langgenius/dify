@@ -396,10 +396,13 @@ def test_personal_access_check_skips_oauth_without_loading_resources(
 def test_account_pipeline_denies_pat_without_policy_before_loading_resources(
     app: Flask, sqlite_session: Session
 ) -> None:
+    """Given a PAT without an access policy, reject the request before loading resources."""
     subject = AccountSubject(make_auth(TokenType.PERSONAL_ACCESS))
     ctx = make_ctx(sqlite_session, subject)
-    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
-        with pytest.raises(Forbidden, match="personal_access_token_not_supported"):
-            _run(AccountPipeline(), subject, ctx, sqlite_session, call=never_reached)
+    with (
+        app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)),
+        pytest.raises(Forbidden, match="personal_access_token_not_supported"),
+    ):
+        _run(AccountPipeline(), subject, ctx, sqlite_session, call=never_reached)
 
     assert try_get_auth_ctx() is None
