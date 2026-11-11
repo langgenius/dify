@@ -10,6 +10,7 @@ import pytest
 
 from core.human_input_v2.entities import IMProvider, IMSyncRunStatus
 from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun
+from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import IMSyncRunId, TenantId, WorkspaceScope
 from services.human_input_v2.im_contact_sync.coordinator import IMChannelReconciliationService, IMSyncRetryableError
 from services.human_input_v2.im_contact_sync.service import IMSyncService
@@ -25,7 +26,7 @@ def _queued_run() -> IMSyncRun:
         sync_run_id=IMSyncRunId("run-1"),
         channel_revision=IMChannelRevision("channel-1", 1),
         provider=IMProvider.FEISHU,
-        started_by_account_id=None,
+        started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
         now=_NOW,
     )
 
