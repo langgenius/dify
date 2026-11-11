@@ -221,7 +221,7 @@ catalog:
   hono: 4.13.17
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  i18next: 26.7.2
+  i18next: 27.1.1
   i18next-resources-for-ts: 2.1.2
   i18next-resources-to-backend: 1.2.4
   iconify-import-svg: 0.2.0
@@ -259,7 +259,7 @@ catalog:
   react: 19.3.1
   react-dom: 19.3.1
   react-easy-crop: 6.2.5
-  react-i18next: 17.1.13
+  react-i18next: 18.0.1
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.3.1
