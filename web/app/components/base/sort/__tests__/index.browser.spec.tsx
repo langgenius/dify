@@ -1,28 +1,32 @@
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import common from '@/i18n/locales/en-US/common.json'
 import { Sort } from '../index'
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'common.sorting.sortBy': 'Sort by:',
-    'common.sorting.ascending': 'Sort ascending',
-    'common.sorting.descending': 'Sort descending',
-  })
-})
+vi.unmock('react-i18next')
 
 it('keeps long field names readable and the direction action reachable in a narrow RTL layout', async () => {
   await page.viewport(320, 600)
   const label = 'Zeitpunkt der letzten Aktualisierung des Dokuments'
   const onValueChange = vi.fn()
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { common } },
+    keySeparator: false,
+  })
   const screen = await render(
-    <div dir="rtl" style={{ display: 'flex', flexDirection: 'column', width: 240 }}>
-      <Sort
-        items={[{ value: 'updated_at', name: label }]}
-        value={{ field: 'updated_at', order: 'desc' }}
-        onValueChange={onValueChange}
-      />
-    </div>,
+    <I18nextProvider i18n={i18n}>
+      <div dir="rtl" style={{ display: 'flex', flexDirection: 'column', width: 240 }}>
+        <Sort
+          items={[{ value: 'updated_at', name: label }]}
+          value={{ field: 'updated_at', order: 'desc' }}
+          onValueChange={onValueChange}
+        />
+      </div>
+    </I18nextProvider>,
   )
   const trigger = screen.getByRole('button', { name: `Sort by: ${label}` })
   const direction = screen.getByRole('button', { name: 'Sort ascending' })

@@ -1929,6 +1929,7 @@ export const useChat = (
   )
 
   useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The existing clearChatList command resets the imperative chat session and acknowledges it to its owner.
     if (clearChatList) handleRestart(() => clearChatListCallback?.(false))
   }, [clearChatList, clearChatListCallback, handleRestart])
 
