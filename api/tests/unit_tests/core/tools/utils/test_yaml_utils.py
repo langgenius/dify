@@ -4,7 +4,7 @@ from textwrap import dedent
 import pytest
 from yaml import YAMLError
 
-from core.tools.utils.yaml_utils import _load_yaml_file
+from core.tools.utils.yaml_utils import _load_yaml_file, load_yaml_file_cached
 
 EXAMPLE_YAML_FILE = "example_yaml.yaml"
 INVALID_YAML_FILE = "invalid_yaml.yaml"
@@ -73,6 +73,15 @@ def test_load_valid_yaml_file(prepare_example_yaml_file: str) -> None:
     assert set(yaml_data["languages"]) == {"Python", "Java", "C++"}
     assert yaml_data.get("empty_key") is None
     assert yaml_data.get("non_existed_key") is None
+
+
+def test_load_yaml_file_cached_reuses_parsed_value(prepare_example_yaml_file: str) -> None:
+    load_yaml_file_cached.cache_clear()
+
+    assert load_yaml_file_cached(prepare_example_yaml_file)["age"] == 30
+    assert load_yaml_file_cached(prepare_example_yaml_file)["age"] == 30
+
+    assert load_yaml_file_cached.cache_info().hits == 1
 
 
 def test_load_invalid_yaml_file(prepare_invalid_yaml_file: str) -> None:
