@@ -41,6 +41,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
         command === 'serve' && isPreview !== true
           ? (await import('code-inspector-plugin')).codeInspectorPlugin({
               bundler: 'vite',
+              behavior: { locate: true, defaultAction: 'locate' },
             })
           : undefined
 
