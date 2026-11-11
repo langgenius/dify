@@ -1448,6 +1448,19 @@ forbidden_modules =
     extensions
 allow_indirect_imports = True
 
+[importlinter:contract:draft-variable-record-boundary]
+name = Draft variable loading and output preparation exchange plain records and commands
+type = forbidden
+source_modules =
+    services.workflow.draft_variable_service
+    services.workflow.draft_variable_contracts
+forbidden_modules =
+    models
+    sqlalchemy
+    repositories
+    services.file_service
+allow_indirect_imports = True
+
 [importlinter:contract:api-tool-provider-boundary]
 name = API tool providers build runtimes from loaded configuration
 type = forbidden
@@ -1478,6 +1491,38 @@ forbidden_modules =
     repositories
     extensions.application_services
     extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-variable-application-boundary]
+name = Workflow variable services consume injected persistence and storage ports
+type = forbidden
+source_modules =
+    services.workflow.variable_service
+    services.workflow.draft_variable_service
+forbidden_modules =
+    repositories
+    sqlalchemy
+    flask
+    controllers
+    extensions
+allow_indirect_imports = True
+
+[importlinter:contract:console-draft-variable-use-case-boundary]
+name = Console variable use cases receive persistence and file resolution through ports
+type = forbidden
+source_modules =
+    services.workflow.console_variable_service
+forbidden_modules =
+    sqlalchemy
+    extensions.ext_database
+    core.db
+    flask
+    werkzeug
+    controllers
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+    factories.file_factory
 allow_indirect_imports = True
 
 [importlinter:contract:annotation-reply-persistence-boundary]
