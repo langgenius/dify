@@ -25,6 +25,7 @@ import {
   withDatasourceParameterDefaults,
 } from './datasource-parameter-model'
 import { SourceNameField, SourceSyncPolicyField } from './fields'
+import { InitialGitHubTreePreview } from './initial-github-tree-preview'
 
 type NextPageRequest = {
   bucket?: string
@@ -160,6 +161,9 @@ function ConnectedSourceConfigurationFields({
   // previews start a new session so pending root or pagination responses are discarded.
   const previewSessionRef = useRef(0)
   const driveTransport = providerOption.providerType === 'online_drive'
+  const githubTreePreview =
+    providerOption.plugin.plugin_id === 'langgenius/github_datasource' &&
+    providerOption.datasource.identity.name === 'github'
   const parameterSchemas = useMemo(
     () => datasourceParameterSchemas(providerOption.datasource),
     [providerOption.datasource],
@@ -371,7 +375,17 @@ function ConnectedSourceConfigurationFields({
           onDraftChange({ ...draft, parameters: nextParameters })
         }}
       />
-      {!previewed && (
+      {githubTreePreview && (
+        <InitialGitHubTreePreview
+          key={JSON.stringify(parameters)}
+          binding={previewBinding}
+          disabled={disabled || !parametersValid}
+          parameters={parameters}
+          selectedResources={selectedResources}
+          onSelectionChange={onSelectionChange ?? setLocalSelection}
+        />
+      )}
+      {!githubTreePreview && !previewed && (
         <Button
           type="button"
           variant="primary"
@@ -383,12 +397,12 @@ function ConnectedSourceConfigurationFields({
           {t(($) => $.preview)}
         </Button>
       )}
-      {loading && (
+      {!githubTreePreview && loading && (
         <div className="flex min-h-40 items-center justify-center rounded-lg border border-divider-subtle">
           <LoadingPlaceholder />
         </div>
       )}
-      {error && (
+      {!githubTreePreview && error && (
         <div role="alert" className="rounded-lg bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
           <Button className="mt-3" type="button" onClick={() => void requestPreview()}>
@@ -396,7 +410,7 @@ function ConnectedSourceConfigurationFields({
           </Button>
         </div>
       )}
-      {previewed && !loading && (
+      {!githubTreePreview && previewed && !loading && (
         <section className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
           <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
             <Checkbox

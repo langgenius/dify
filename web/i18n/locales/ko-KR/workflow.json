@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "이 사람 입력 단계에 응답할 수 있는 사람을 선택하세요.",
   "nodes.humanInputV2.recipients.initiator": "Web App 또는 CLI를 통해 이번 실행을 시작한 사용자가 승인할 수 있습니다",
   "nodes.humanInputV2.recipients.initiatorDescription": "이 워크플로 실행을 시작한 사람이 응답할 수 있습니다.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "트리거로 시작된 실행에는 승인 요청을 받을 시작자가 없습니다. 연락처를 선택하거나 변수로 이메일 주소를 지정하세요.",
   "nodes.humanInputV2.recipients.inputHelp": "여러 이메일 주소를 쉼표로 구분하여 입력하거나 붙여넣으세요. /를 눌러 변수를 삽입하세요.",
   "nodes.humanInputV2.recipients.insertVariable": "변수 삽입",
   "nodes.humanInputV2.recipients.loadError": "연락처를 불러올 수 없습니다. 저장된 연락처 ID는 유지됩니다.",

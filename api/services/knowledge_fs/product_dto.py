@@ -312,11 +312,13 @@ class KnowledgeFSInitialSourcePreviewPageResponse(ResponseModel):
 
 
 class KnowledgeFSInitialSourcePreviewDocumentResponse(ResponseModel):
+    has_children: bool | None = Field(default=None, validation_alias=AliasChoices("has_children", "hasChildren"))
     last_edited_time: str | None = Field(
         default=None, validation_alias=AliasChoices("last_edited_time", "lastEditedTime")
     )
     name: str
     page_id: str = Field(validation_alias=AliasChoices("page_id", "pageId"))
+    parent_id: str | None = Field(default=None, validation_alias=AliasChoices("parent_id", "parentId"))
     provider_item_id: str = Field(validation_alias=AliasChoices("provider_item_id", "providerItemId"))
     type: str
     workspace_id: str = Field(validation_alias=AliasChoices("workspace_id", "workspaceId"))
@@ -341,6 +343,7 @@ class KnowledgeFSInitialSourcePreviewResponse(ResponseModel):
     documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = Field(default_factory=list)
     files: list[KnowledgeFSInitialSourcePreviewFileResponse] = Field(default_factory=list)
     kind: Literal["online_document", "online_drive", "website_crawl"]
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
     next_page_parameters: dict[str, JsonValue] | None = Field(
         default=None,
         validation_alias=AliasChoices("next_page_parameters", "nextPageParameters"),
@@ -2663,11 +2666,14 @@ class KnowledgeFSSourceCrawlResponse(ResponseModel):
 class KnowledgeFSSourcePagesQuery(BaseModel):
     cursor: str | None = Field(default=None, min_length=1, max_length=4_096)
     limit: int = Field(default=50, ge=1, le=200)
+    parent_id: str | None = Field(default=None, min_length=1, max_length=4_096, alias="parentId")
+    view: Literal["tree"] | None = None
 
     model_config = ConfigDict(extra="forbid")
 
 
 class KnowledgeFSSourcePageResponse(ResponseModel):
+    has_children: bool | None = Field(default=None, validation_alias=AliasChoices("has_children", "hasChildren"))
     last_edited_time: str | None = Field(
         default=None, validation_alias=AliasChoices("last_edited_time", "lastEditedTime")
     )

@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "Alege cine poate răspunde la acest pas de input uman.",
   "nodes.humanInputV2.recipients.initiator": "Utilizatorul care pornește această execuție prin Web App sau CLI poate aproba",
   "nodes.humanInputV2.recipients.initiatorDescription": "Persoana care pornește această rulare a fluxului de lucru poate răspunde.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Execuțiile pornite de un declanșator nu au un inițiator care să primească cereri de aprobare. Selectează un contact sau specifică o adresă de e-mail folosind o variabilă.",
   "nodes.humanInputV2.recipients.inputHelp": "Introdu sau lipește mai multe adrese de e-mail separate prin virgule. Apasă / pentru a insera o variabilă.",
   "nodes.humanInputV2.recipients.insertVariable": "Inserează o variabilă",
   "nodes.humanInputV2.recipients.loadError": "Contactele nu au putut fi încărcate. ID-urile de contact salvate sunt păstrate.",

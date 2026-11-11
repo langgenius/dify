@@ -7,39 +7,36 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any
 from uuid import UUID
 
 from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
-from core.app.layers.trigger_post_layer import TriggerPostLayer
-from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.runtime import RuntimeState
 from models.account import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, EndUser, Tenant
-from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.app_task_service import AppTaskService
 from services.errors.app import WorkflowNotFoundError
+from services.human_input_v2.submission_service import HumanInputSubmissionService
+from services.trigger.execution_layer import TriggerPostLayer
 from services.workflow.entities import (
-    TriggerData,
     WorkflowResumeTaskData,
     WorkflowTaskData,
 )
-from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
@@ -47,155 +44,22 @@ from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkf
 logger = logging.getLogger(__name__)
 
 
-class WorkflowGeneratorArgsDict(TypedDict):
-    inputs: dict[str, Any]
-    files: list[Any]
-
-
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
-def execute_workflow_professional(task_data_dict: dict[str, Any]):
-    """Execute workflow for professional tier with highest priority"""
+def execute_workflow_professional(task_data_dict: dict[str, Any]) -> None:
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
-        queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
-        schedule_strategy=AsyncWorkflowSystemStrategy,
-        granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
-    )
-    _execute_workflow_common(
-        task_data,
-        AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
-        cfs_plan_scheduler_entity,
-    )
+    application_services().triggers.executions.execute(task_data.workflow_trigger_log_id)
 
 
 @shared_task(queue=AsyncWorkflowQueue.TEAM_QUEUE)
-def execute_workflow_team(task_data_dict: dict[str, Any]):
-    """Execute workflow for team tier"""
+def execute_workflow_team(task_data_dict: dict[str, Any]) -> None:
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
-        queue=AsyncWorkflowQueue.TEAM_QUEUE,
-        schedule_strategy=AsyncWorkflowSystemStrategy,
-        granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
-    )
-    _execute_workflow_common(
-        task_data,
-        AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
-        cfs_plan_scheduler_entity,
-    )
+    application_services().triggers.executions.execute(task_data.workflow_trigger_log_id)
 
 
 @shared_task(queue=AsyncWorkflowQueue.SANDBOX_QUEUE)
-def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
-    """Execute workflow for free tier with lower retry limit"""
+def execute_workflow_sandbox(task_data_dict: dict[str, Any]) -> None:
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
-        queue=AsyncWorkflowQueue.SANDBOX_QUEUE,
-        schedule_strategy=AsyncWorkflowSystemStrategy,
-        granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
-    )
-    _execute_workflow_common(
-        task_data,
-        AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
-        cfs_plan_scheduler_entity,
-    )
-
-
-def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDict:
-    """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
-    return {
-        "inputs": dict(trigger_data.inputs),
-        "files": list(trigger_data.files),
-    }
-
-
-def _execute_workflow_common(
-    task_data: WorkflowTaskData,
-    cfs_plan_scheduler: AsyncWorkflowCFSPlanScheduler,
-    cfs_plan_scheduler_entity: AsyncWorkflowCFSPlanEntity,
-):
-    """Execute workflow with common logic and trigger log updates."""
-
-    with session_factory.create_session() as session:
-        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-
-        # Get trigger log
-        trigger_log = trigger_log_repo.get_by_id(task_data.workflow_trigger_log_id)
-
-        if not trigger_log:
-            # This should not happen, but handle gracefully
-            return
-
-        # Reconstruct execution data from trigger log
-        trigger_data = TriggerData.model_validate_json(trigger_log.trigger_data)
-
-        # Update status to running
-        trigger_log.status = WorkflowTriggerStatus.RUNNING
-        trigger_log_repo.update(trigger_log)
-        session.commit()
-
-        start_time = datetime.now(UTC)
-
-        try:
-            # Get app and workflow models
-            app_model = session.scalar(select(App).where(App.id == trigger_log.app_id))
-
-            if not app_model:
-                raise WorkflowNotFoundError(f"App not found: {trigger_log.app_id}")
-
-            workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
-            if not workflow:
-                raise WorkflowNotFoundError(f"Workflow not found: {trigger_log.workflow_id}")
-
-            user = _get_user(session, trigger_log)
-
-            # Execute workflow using WorkflowAppGenerator
-            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-
-            # Adapt trigger inputs and files for the generator.
-            args = _build_generator_args(trigger_data)
-
-            pause_config = PauseStateLayerConfig(
-                session_factory=session_factory.get_session_maker(),
-                state_owner_user_id=workflow.created_by,
-            )
-
-            # NOTE (hj24)
-            # Release the transaction before the blocking generate() call,
-            # otherwise the connection stays "idle in transaction" for hours.
-            session.commit()
-            # NOTE END
-
-            generator.generate(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                execution_identity=build_workflow_execution_identity(user),
-                args=args,
-                invoke_from=InvokeFrom.SERVICE_API,
-                streaming=False,
-                call_depth=0,
-                triggered_from=trigger_data.trigger_from,
-                root_node_id=trigger_data.root_node_id,
-                graph_engine_layers=[
-                    # TODO: Re-enable TimeSliceLayer after the HITL release.
-                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
-                ],
-                pause_state_config=pause_config,
-            )
-
-        except Exception as e:
-            # Calculate elapsed time for failed execution
-            elapsed_time = (datetime.now(UTC) - start_time).total_seconds()
-
-            # Update trigger log with failure
-            trigger_log.status = WorkflowTriggerStatus.FAILED
-            trigger_log.error = str(e)
-            trigger_log.finished_at = datetime.now(UTC)
-            trigger_log.elapsed_time = elapsed_time
-            trigger_log_repo.update(trigger_log)
-
-            # Final failure - no retry logic (simplified like RAG tasks)
-            session.commit()
+    application_services().triggers.executions.execute(task_data.workflow_trigger_log_id)
 
 
 @shared_task(name="resume_workflow_execution")
@@ -289,7 +153,10 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     start_time = datetime.now(UTC)
     graph_engine_layers = []
-    trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)
+    trigger_logs = application_services().triggers.execution_logs
+    trigger_log = trigger_logs.find_for_run(
+        tenant_id=workflow_run.tenant_id, app_id=workflow_run.app_id, workflow_run_id=task_data.workflow_run_id
+    )
 
     if trigger_log:
         cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
@@ -302,7 +169,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         graph_engine_layers.extend(
             [
                 TimeSliceLayer(cfs_plan_scheduler),
-                TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
+                TriggerPostLayer(logs=trigger_logs, log=trigger_log, start_time=start_time),
             ]
         )
 
@@ -319,12 +186,17 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
         response_stream_filter=response_stream_filter,
+        restore_file_access=partial(
+            HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+            app_id=app_model.id,
+            workflow_run_id=workflow_run.id,
+        ),
     )
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
 
-def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) -> Account | EndUser:
-    """Compose user from trigger log"""
+def _get_user(session: Session, workflow_run: WorkflowRun) -> Account | EndUser:
+    """Legacy HITL resume hydration; trigger task execution uses its scoped repository."""
     tenant = session.scalar(select(Tenant).where(Tenant.id == workflow_run.tenant_id))
     if not tenant:
         raise _TenantNotFoundError(
@@ -350,17 +222,6 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
         )
 
     return user
-
-
-def _query_trigger_log_info(session_factory: sessionmaker[Session], workflow_run_id) -> WorkflowTriggerLog | None:
-    with session_factory() as session, session.begin():
-        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-        trigger_log = trigger_log_repo.get_by_workflow_run_id(workflow_run_id)
-        if not trigger_log:
-            logger.debug("Trigger log not found for workflow_run: workflow_run_id=%s", workflow_run_id)
-            return None
-
-        return trigger_log
 
 
 class _TenantNotFoundError(Exception):

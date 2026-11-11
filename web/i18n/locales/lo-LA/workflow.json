@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "ເລືອກຜູ້ທີ່ສາມາດຕອບຂັ້ນຕອນການປ້ອນຂໍ້ມູນໂດຍມະນຸດນີ້ໄດ້.",
   "nodes.humanInputV2.recipients.initiator": "ຜູ້ໃຊ້ທີ່ເລີ່ມການເຮັດວຽກຄັ້ງນີ້ຜ່ານ Web App ຫຼື CLI ສາມາດອະນຸມັດໄດ້",
   "nodes.humanInputV2.recipients.initiatorDescription": "ຜູ້ທີ່ເລີ່ມການເຮັດວຽກຂອງ Workflow ຄັ້ງນີ້ສາມາດຕອບໄດ້.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "ການເຮັດວຽກທີ່ເລີ່ມຈາກຕົວກະຕຸ້ນບໍ່ມີຜູ້ເລີ່ມທີ່ຈະຮັບຄຳຂໍອະນຸມັດ. ເລືອກຜູ້ຕິດຕໍ່ ຫຼື ໃຊ້ຕົວແປເພື່ອລະບຸທີ່ຢູ່ອີເມວ.",
   "nodes.humanInputV2.recipients.inputHelp": "ພິມ ຫຼື ວາງຫຼາຍອີເມວໂດຍໃຊ້ , ຄັ່ນແຕ່ລະອີເມວ. ກົດ / ເພື່ອແຊກຕົວແປ.",
   "nodes.humanInputV2.recipients.insertVariable": "ແຊກຕົວແປ",
   "nodes.humanInputV2.recipients.loadError": "ບໍ່ສາມາດໂຫຼດຜູ້ຕິດຕໍ່ໄດ້. ID ຜູ້ຕິດຕໍ່ທີ່ບັນທຶກໄວ້ຍັງຖືກຮັກສາໄວ້.",
