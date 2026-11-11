@@ -30,19 +30,18 @@ from clients.agent_backend import (
     AgentBackendRunRequestBuilder,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
-from core.app.apps.agent_app.runtime_request_builder import (
-    AgentAppRuntimeBuildContext,
-    AgentAppRuntimeRequestBuilder,
-    AgentAppRuntimeRequestBuildError,
-)
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
+from services.app.generation.adapters.agent_request_builder import (
+    AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequestBuilder,
+    AgentAppRuntimeRequestBuildError,
+)
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
@@ -66,7 +65,7 @@ class _TraceRecorder:
 @pytest.fixture(autouse=True)
 def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+        "services.app.generation.adapters.agent_request_builder.load_runtime_agent_skill_configs",
         lambda **_kwargs: [],
     )
 
@@ -80,7 +79,7 @@ def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[ob
         return 32_768
 
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        "services.app.generation.adapters.agent_request_builder.resolve_model_context_window",
         resolve,
     )
     return calls
@@ -161,7 +160,7 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
     )
 
     with app.app_context():
-        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(context)  # type: ignore[arg-type]
     layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
     assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
     redacted = next(
@@ -176,7 +175,7 @@ class _NoToolsBuilder:
         self.knowledge_fs_spaces = ()
 
     def build_layers(self, **kwargs):
-        self.knowledge_fs_spaces = kwargs["knowledge_fs_spaces"]
+        self.knowledge_fs_spaces = kwargs.get("knowledge_fs_spaces", ())
         return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
 
 
@@ -344,7 +343,7 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_sends_images_directly_to_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            "services.app.generation.adapters.agent_request_builder.resolve_model_supports_vision",
             lambda **_kwargs: True,
         )
         prompt_content_calls: list[tuple[File, ImagePromptMessageContent.DETAIL | None]] = []
@@ -364,7 +363,7 @@ class TestAgentAppRuntimeRequestBuilder:
             )
 
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            "services.app.generation.adapters.agent_request_builder.file_manager.to_prompt_message_content",
             to_prompt_message_content,
         )
         builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
@@ -391,7 +390,7 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_keeps_image_locator_for_non_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            "services.app.generation.adapters.agent_request_builder.resolve_model_supports_vision",
             lambda **_kwargs: False,
         )
         builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
@@ -418,7 +417,7 @@ class TestAgentAppRuntimeRequestBuilder:
     ) -> None:
         apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            "services.app.generation.adapters.agent_request_builder.resolve_model_supports_vision",
             lambda **_kwargs: vision,
         )
         model_factory = RecordingModelFactory(schema=llm_schema(features=[ModelFeature.VISION] if vision else []))
@@ -435,7 +434,8 @@ class TestAgentAppRuntimeRequestBuilder:
             )
 
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content", image_content
+            "services.app.generation.adapters.agent_request_builder.file_manager.to_prompt_message_content",
+            image_content,
         )
         soul = _soul_with_model()
         soul.knowledge = AgentSoulConfig.model_validate(
@@ -497,11 +497,11 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            "services.app.generation.adapters.agent_request_builder.resolve_model_supports_vision",
             lambda **_kwargs: True,
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            "services.app.generation.adapters.agent_request_builder.file_manager.to_prompt_message_content",
             lambda *_args, **_kwargs: ImagePromptMessageContent(
                 format="png",
                 base64_data="aW1hZ2UtYnl0ZXM=",
@@ -523,11 +523,11 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_keeps_non_image_locator_when_vision_image_is_direct(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            "services.app.generation.adapters.agent_request_builder.resolve_model_supports_vision",
             lambda **_kwargs: True,
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            "services.app.generation.adapters.agent_request_builder.file_manager.to_prompt_message_content",
             lambda *_args, **_kwargs: ImagePromptMessageContent(
                 format="png",
                 url="https://files.example.com/earth.png",
@@ -995,7 +995,7 @@ class TestAgentAppConfigLayer:
 
     def test_config_layer_includes_bound_workspace_skills(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+            "services.app.generation.adapters.agent_request_builder.load_runtime_agent_skill_configs",
             lambda **_kwargs: [
                 DifyConfigSkillConfig(
                     name="workspace-skill",

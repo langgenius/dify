@@ -20,7 +20,7 @@ from core.plugin.plugin_service import PluginService
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
-from core.workflow.node_factory import DifyNodeFactory, get_node_type_classes_mapping
+from core.workflow.node_factory import get_node_type_classes_mapping
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
@@ -42,26 +42,41 @@ from graphon.nodes.variable_assigner.v1.node import (
 from graphon.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory as ServiceDifyNodeFactory
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class DummyNode:
-    def __init__(self, *, node_id, data, init_params, runtime_state, **kwargs):
+    def __init__(
+        self,
+        *,
+        node_id: str,
+        data: dict[str, object],
+        init_params: InitParams,
+        runtime_state: RuntimeState,
+        **kwargs: object,
+    ) -> None:
         self.id = node_id
         self.data = data
         self.init_params = init_params
         self.runtime_state = runtime_state
         self.kwargs = kwargs
 
+    @classmethod
+    def validate_node_data(cls, node_data: BaseNodeData | Mapping[str, object]) -> BaseNodeData:
+        payload = node_data.model_dump(mode="python") if isinstance(node_data, BaseNodeData) else dict(node_data)
+        return BaseNodeData.model_validate(payload)
+
 
 class DummyCodeNode(DummyNode):
     @classmethod
-    def default_code_providers(cls):
+    def default_code_providers(cls) -> tuple[()]:
         return ()
 
 
@@ -100,13 +115,13 @@ class TestNodeFactoryCases:
             )
 
         @staticmethod
-        def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class):
+        def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class: type[DummyNode]) -> None:
             monkeypatch.setattr(
-                "core.workflow.node_factory.resolve_workflow_node_class",
+                "services.workflow.execution.adapters.node_factory.resolve_workflow_node_class",
                 lambda **_kwargs: node_class,
             )
 
-        def _factory(self):
+        def _factory(self) -> ServiceDifyNodeFactory:
             run_context = build_dify_run_context(
                 tenant_id="tenant",
                 app_id="app",
@@ -115,47 +130,60 @@ class TestNodeFactoryCases:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-            return DifyNodeFactory(
-                init_params=SimpleNamespace(run_context=run_context),
-                runtime_state=SimpleNamespace(),
+            return ServiceDifyNodeFactory(
+                init_params=InitParams(
+                    workflow_id="workflow-id",
+                    graph_config={},
+                    run_context=run_context,
+                    call_depth=0,
+                ),
+                runtime_state=RuntimeState(
+                    workflow_id="workflow-id",
+                    variable_pool=VariablePool(),
+                    start_at=0,
+                ),
             )
 
-        def test_create_node_unknown_type(self):
+        def test_create_node_unknown_type(self) -> None:
             factory = self._factory()
 
             with pytest.raises(ValueError, match="No class mapping found for node type: unknown"):
                 factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
 
-        def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
-            monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
+            monkeypatch.setattr(
+                "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping", lambda: {}
+            )
 
             with pytest.raises(ValueError, match="No class mapping found for node type: start"):
                 factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
-        def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
             monkeypatch.setattr(
-                "core.workflow.node_factory.get_node_type_classes_mapping",
+                "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping",
                 lambda: {BuiltinNodeTypes.START: {"1": None}},
             )
-            monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "latest")
+            monkeypatch.setattr("services.workflow.execution.adapters.node_factory.LATEST_VERSION", "latest")
 
             with pytest.raises(ValueError, match="No latest version class found for node type: start"):
                 factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
-        def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
             selected_versions: list[tuple[str, str]] = []
 
             class DummyNodeV2(DummyNode):
                 pass
 
-            def _get_mapping():
+            def _get_mapping() -> Mapping[NodeType, Mapping[str, type[DummyNode]]]:
                 selected_versions.append(("snapshot", "called"))
                 return {BuiltinNodeTypes.START: {"1": DummyNode, "2": DummyNodeV2}}
 
-            monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", _get_mapping)
+            monkeypatch.setattr(
+                "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping", _get_mapping
+            )
 
             node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START, "version": "2"}})
 
@@ -163,7 +191,7 @@ class TestNodeFactoryCases:
             assert node.id == "node-1"
             assert selected_versions == [("snapshot", "called")]
 
-        def test_create_node_code_branch(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_code_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
             self._stub_node_resolution(monkeypatch, DummyCodeNode)
 
@@ -172,7 +200,7 @@ class TestNodeFactoryCases:
             assert isinstance(node, DummyCodeNode)
             assert node.id == "node-1"
 
-        def test_create_node_template_transform_branch(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_template_transform_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
             self._stub_node_resolution(monkeypatch, DummyTemplateTransformNode)
 
@@ -181,7 +209,7 @@ class TestNodeFactoryCases:
             assert isinstance(node, DummyTemplateTransformNode)
             assert "jinja2_template_renderer" in node.kwargs
 
-        def test_create_node_http_request_branch(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_http_request_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
             self._stub_node_resolution(monkeypatch, DummyHttpRequestNode)
 
@@ -190,16 +218,19 @@ class TestNodeFactoryCases:
             assert isinstance(node, DummyHttpRequestNode)
             assert "http_request_config" in node.kwargs
 
-        def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_knowledge_retrieval_branch(
+            self, monkeypatch: pytest.MonkeyPatch, workflow_runtime: WorkflowRuntime
+        ) -> None:
             factory = self._factory()
+            factory._workflow_runtime = workflow_runtime
             self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
 
             node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
 
             assert isinstance(node, DummyKnowledgeRetrievalNode)
-            assert node.kwargs == {}
+            assert "retrieval" in node.kwargs
 
-        def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
+        def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
             factory = self._factory()
             self._stub_node_resolution(monkeypatch, DummyDocumentExtractorNode)
 

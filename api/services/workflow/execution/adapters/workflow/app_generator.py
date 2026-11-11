@@ -42,9 +42,8 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
-from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from services.app.file_input_defaults import grant_file_default_access
-from services.app.generation.input_adapter import AppInputAdapter
+from services.app.generation.input_adapter import AppInputAdapter, noop_restore_file_access
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import get_default_root_node_id
 from services.workflow.execution.adapters.workflow.active_workflow_tasks import active_workflow_task
@@ -60,6 +59,7 @@ from services.workflow.execution.ports import WorkflowRuntime
 
 if TYPE_CHECKING:
     from services.workflow.execution.contracts import WorkflowRunDriver
+    from services.workflow_execution_identity import WorkflowExecutionIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -284,9 +284,13 @@ class WorkflowAppGenerator(AppInputAdapter):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
+
+        Restore committed HITL file grants in the new execution scope before
+        copying worker contexts; the default callback leaves grants unchanged.
 
         ``trace_scope`` is excluded from generate-entity serialization. Recreate
         it from the admitted app and saved correlation before resuming persistence.
@@ -318,6 +322,7 @@ class WorkflowAppGenerator(AppInputAdapter):
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=restore_file_access,
         )
 
     def _generate(
@@ -337,9 +342,13 @@ class WorkflowAppGenerator(AppInputAdapter):
         graph_runtime_state: RuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
+
+        HITL submissions must be committed before restoring their EndUser file
+        grants, which occurs before worker and response contexts are captured.
 
         :param app_model: App
         :param workflow: Workflow
@@ -356,6 +365,7 @@ class WorkflowAppGenerator(AppInputAdapter):
             invoke_from=invoke_from,
         ):
             grant_file_default_access(application_generate_entity.app_config.variables)
+            restore_file_access()
             if self._cancellation is not None:
                 self._cancellation.raise_if_cancelled()
             # init queue manager

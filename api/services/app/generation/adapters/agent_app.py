@@ -306,6 +306,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     home_snapshot_id=config.home_snapshot_id,
                     conversation_id=conversation.id,
                     query=query,
+                    inputs=application_generate_entity.inputs,
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
@@ -373,7 +374,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         """Apply input moderation + annotation reply before the backend call.
 
         Returns ``(handled, query, annotation_reply)``. Annotation output is
-        published by the caller after the hit repository commits.
+        published by the caller after the hit repository commits. Successful
+        moderation replaces the entity inputs with the checked values.
         """
         from core.moderation.base import ModerationError
         from core.moderation.input_moderation import InputModeration
@@ -386,7 +388,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         # content moderation (sensitive_word_avoidance); a blocked input yields a
         # preset answer, an "overridden" action returns a sanitized query.
         try:
-            _, _, query = InputModeration().check(
+            _, inputs, query = InputModeration().check(
                 app_id=app_config.app_id,
                 tenant_id=app_config.tenant_id,
                 app_config=app_config,
@@ -398,6 +400,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         except ModerationError as e:
             publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)
             return True, query, None
+
+        application_generate_entity.inputs = inputs
 
         # annotation reply: a matching annotation answers the turn deterministically.
         if query:

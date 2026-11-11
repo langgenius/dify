@@ -9,10 +9,8 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
-from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
@@ -21,10 +19,15 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import get_current_file_access_scope
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
+from models.annotation_reply import AnnotationReplies
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
-from services.workflow_run_agg import WorkflowRunAgg
+from repositories.app.generation_repository import AppGenerationRepository
+from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
+from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -89,11 +92,23 @@ def generator(
     agent_runtime_app: Flask,
     agent_queue_manager: MessageBasedAppQueueManager,
     agent_records: tuple[Conversation, Message],
+    monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    annotation_replies: AnnotationReplies,
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> AgentChatAppGenerator:
     assert agent_runtime_app.name
     assert agent_queue_manager is not None
     assert agent_records[0].id == "conv"
-    return AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    return AgentChatAppGenerator(
+        dataset_tools=workflow_runtime.dataset_tools,
+        annotations=annotation_replies,
+        records=app_records,
+        tool_sessions=sqlite_session_factory,
+        workflow_runtime=workflow_runtime,
+    )
 
 
 @pytest.fixture
@@ -205,6 +220,8 @@ class TestAgentChatAppGeneratorGenerate:
 
         user = _account()
         invoke_from = InvokeFrom.DEBUGGER
+        agent_records[0].from_source = ConversationFromSource.CONSOLE
+        sqlite_session.commit()
 
         get_model_config = CallRecorder(app_model_config)
         prepare_inputs = CallRecorder({"x": 1})
@@ -216,23 +233,20 @@ class TestAgentChatAppGeneratorGenerate:
         generator._handle_response = handle_response  # type: ignore[method-assign]
 
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.config_validate",
+            "services.app.generation.adapters.agent_chat.AgentChatAppConfigManager.config_validate",
             CallRecorder({"validated": True}),
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
+            "services.app.generation.adapters.agent_chat.AgentChatAppConfigManager.get_app_config",
             CallRecorder(agent_generate_entity.app_config),
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
+            "services.app.generation.adapters.agent_chat.ModelConfigConverter.convert",
             CallRecorder(agent_generate_entity.model_conf),
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert", CallRecorder(None)
-        )
-        monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.ConversationService.get_conversation",
-            CallRecorder(agent_records[0]),
+            "services.app.generation.adapters.agent_chat.FileUploadConfigManager.convert",
+            CallRecorder(None),
         )
         runner_calls: list[dict[str, object]] = []
 
@@ -241,12 +255,12 @@ class TestAgentChatAppGeneratorGenerate:
 
         monkeypatch.setattr(AgentChatAppRunner, "run", observe_runner)
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
+            "services.app.generation.adapters.agent_chat.AgentChatAppGenerateResponseConverter.convert",
             CallRecorder({"result": "ok"}),
         )
         trace_scope = _trace_scope()
         create_trace_scope = CallRecorder(trace_scope)
-        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.create_trace_scope", create_trace_scope)
+        monkeypatch.setattr("services.app.generation.adapters.agent_chat.create_trace_scope", create_trace_scope)
 
         args = {
             "query": "hello",
@@ -268,8 +282,8 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
-        assert get_model_config.calls[-1].kwargs["session"] is session
-        assert init_records.calls[-1].kwargs["session"] is session
+        assert "session" not in get_model_config.calls[-1].kwargs
+        assert "session" not in init_records.calls[-1].kwargs
         assert len(scheduled_threads) == 1
         thread = scheduled_threads[0]
         assert type(thread) is threading.Thread
@@ -326,21 +340,18 @@ class TestAgentChatAppGeneratorGenerate:
         monkeypatch.setattr(AppModelConfig, "to_dict", to_dict)
 
         load_annotation_reply_config = CallRecorder(annotation_reply)
-        monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.load_annotation_reply_config",
-            load_annotation_reply_config,
-        )
+        monkeypatch.setattr(generator._records, "annotation_config", load_annotation_reply_config)
         get_app_config = CallRecorder(agent_generate_entity.app_config)
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
+            "services.app.generation.adapters.agent_chat.AgentChatAppConfigManager.get_app_config",
             get_app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
+            "services.app.generation.adapters.agent_chat.ModelConfigConverter.convert",
             CallRecorder(agent_generate_entity.model_conf),
         )
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert",
+            "services.app.generation.adapters.agent_chat.FileUploadConfigManager.convert",
             CallRecorder(None),
         )
         runner_calls: list[dict[str, object]] = []
@@ -351,7 +362,7 @@ class TestAgentChatAppGeneratorGenerate:
         monkeypatch.setattr(AgentChatAppRunner, "run", observe_runner)
 
         monkeypatch.setattr(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
+            "services.app.generation.adapters.agent_chat.AgentChatAppGenerateResponseConverter.convert",
             CallRecorder({"result": "ok"}),
         )
 
@@ -368,7 +379,9 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
-        assert load_annotation_reply_config.calls == [RecordedCall(args=(session, "app1"), kwargs={})]
+        assert load_annotation_reply_config.calls == [
+            RecordedCall(args=(), kwargs={"tenant_id": "tenant", "app_id": "app1"})
+        ]
         assert to_dict.calls == [RecordedCall(args=(), kwargs={"annotation_reply": annotation_reply})]
         assert get_app_config.calls[-1].kwargs["annotation_reply"] is annotation_reply
         assert len(scheduled_threads) == 1
@@ -451,7 +464,7 @@ class TestAgentChatAppGeneratorWorker:
         _raise_in_runner(monkeypatch, ValueError("bad"))
         apply_config_overrides(monkeypatch, DEBUG=True)
 
-        with caplog.at_level(logging.ERROR, logger="core.app.apps.agent_chat.app_generator"):
+        with caplog.at_level(logging.ERROR, logger="services.app.generation.adapters.agent_chat"):
             generator._generate_worker(
                 flask_app=agent_runtime_app,
                 context=contextvars.copy_context(),

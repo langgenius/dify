@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.nodes.list_operator.entities import FilterOperator
 from graphon.runtime import VariablePool
@@ -13,6 +12,7 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from graphon.variables import StringSegment, VariableBase
 from models.human_input_entities import HumanInputNodeData
 from models.workflow import WorkflowDraftVariable
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow_draft_variable_service import DraftVarLoader
 from services.workflow_node_variables import get_human_input_form_variable_mapping, load_additional_node_variables
 

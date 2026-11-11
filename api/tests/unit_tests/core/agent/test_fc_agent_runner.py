@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
@@ -16,8 +16,6 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentEntity
 from core.agent.errors import AgentMaxIterationError
-from core.agent.fc_agent_runner import FunctionCallAgentRunner
-from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -25,6 +23,7 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, Cr
 from core.app.entities.queue_entities import QueueMessageFileEvent
 from core.credit_usage import CreditUsageAppType
 from core.model_manager import ModelInstance
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -38,21 +37,22 @@ from graphon.model_runtime.entities.message_entities import (
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
-from services.workflow_run_agg import WorkflowRunAgg
+from repositories.app.generation_repository import AppGenerationRepository
+from services.agent.chat.function_call_runner import FunctionCallAgentRunner
 
 # ==============================
 # Dummy Helper Classes
 # ==============================
 
 
-def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
+def build_usage(pt: int = 1, ct: int = 1, tt: int = 2) -> LLMUsage:
     usage = LLMUsage.empty_usage()
     usage.prompt_tokens = pt
     usage.completion_tokens = ct
     usage.total_tokens = tt
-    usage.prompt_price = 0
-    usage.completion_price = 0
-    usage.total_price = 0
+    usage.prompt_price = Decimal(0)
+    usage.completion_price = Decimal(0)
+    usage.total_price = Decimal(0)
     return usage
 
 
@@ -107,8 +107,8 @@ def _trace_scope() -> TraceScope:
 
 
 class DummyMessage:
-    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None):
-        self.content: str | None = content
+    def __init__(self, content: object = None, tool_calls: list[Any] | None = None) -> None:
+        self.content: object = content
         self.tool_calls: list[Any] = tool_calls or []
 
 
@@ -119,7 +119,7 @@ class DummyDelta:
 
 
 class DummyChunk:
-    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
+    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None) -> None:
         self.delta: DummyDelta = DummyDelta(message=message, usage=usage)
 
 
@@ -129,11 +129,24 @@ class DummyResult:
         message: DummyMessage | None = None,
         usage: LLMUsage | None = None,
         prompt_messages: list[DummyMessage] | None = None,
-    ):
+    ) -> None:
         self.message: DummyMessage | None = message
         self.usage: LLMUsage | None = usage
         self.prompt_messages: list[DummyMessage] = prompt_messages or []
         self.system_fingerprint: str = ""
+
+
+class _TestFunctionCallAgentRunner(FunctionCallAgentRunner):
+    """Expose dynamically mocked collaborators used by focused runner tests."""
+
+    session: Session
+    model_instance: Any
+    create_agent_thought: Any
+    save_agent_thought: Any
+    queue_manager: Any
+    _init_prompt_tools: Any
+    _tool_invoker: Any
+    app_config: Any
 
 
 # ==============================
@@ -143,7 +156,9 @@ class DummyResult:
 
 @pytest.fixture
 def real_runner(
-    sqlite_session: Session,
+    app_records: AppGenerationRepository,
+    workflow_runtime: WorkflowExecutionDependencies,
+    agent_tool_invoker: MagicMock,
     agent_records: tuple[Conversation, Message],
     agent_generate_entity: AgentChatAppGenerateEntity,
     agent_queue_manager: MessageBasedAppQueueManager,
@@ -155,8 +170,10 @@ def real_runner(
     assert app_config.agent is not None
     app_config.agent.strategy = AgentEntity.Strategy.FUNCTION_CALLING
     return FunctionCallAgentRunner(
-        execution_driver=WorkflowRunAgg.run,
-        session=sqlite_session,
+        records=app_records,
+        dataset_tools=workflow_runtime.dataset_tools,
+        tool_invoker=agent_tool_invoker,
+        workflow_runtime=workflow_runtime,
         tenant_id=app_config.tenant_id,
         application_generate_entity=agent_generate_entity,
         conversation=conversation,
@@ -182,16 +199,22 @@ def _tool_call(call_id: str, name: str, arguments: str) -> AssistantPromptMessag
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCallAgentRunner]:
+def runner(
+    mocker: MockerFixture,
+    sqlite_engine: Engine,
+    app_records: AppGenerationRepository,
+    workflow_runtime: WorkflowExecutionDependencies,
+    agent_tool_invoker: MagicMock,
+) -> Iterator[_TestFunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
-        "core.agent.base_agent_runner.BaseAgentRunner.__init__",
+        "services.agent.chat.base_runner.BaseAgentRunner.__init__",
         return_value=None,
     )
 
     # Patch streaming chunk models to avoid validation on dummy message objects
-    mocker.patch("core.agent.fc_agent_runner.LLMResultChunk", MagicMock)
-    mocker.patch("core.agent.fc_agent_runner.LLMResultChunkDelta", MagicMock)
+    mocker.patch("services.agent.chat.function_call_runner.LLMResultChunk", MagicMock)
+    mocker.patch("services.agent.chat.function_call_runner.LLMResultChunkDelta", MagicMock)
 
     app_config = MagicMock()
     app_config.app_id = "app"
@@ -213,8 +236,11 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     message = _make_message(message_id="msg1")
     conversation = _make_conversation()
 
-    runner = FunctionCallAgentRunner(
-        execution_driver=WorkflowRunAgg.run,
+    runner = _TestFunctionCallAgentRunner(
+        records=app_records,
+        dataset_tools=workflow_runtime.dataset_tools,
+        tool_invoker=agent_tool_invoker,
+        workflow_runtime=workflow_runtime,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,
@@ -238,6 +264,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     runner.message = message
     runner.user_id = "user"
     runner.model_instance = model_instance
+    runner._tool_invoker = agent_tool_invoker
 
     runner.stream_tool_call = False
     runner.memory = None
@@ -255,6 +282,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     runner.update_prompt_message_tool = MagicMock()
 
     try:
+        runner._records = app_records
         yield runner
     finally:
         runner.session.close()
@@ -333,7 +361,7 @@ class TestExtractToolCalls:
 
 
 class TestInitSystemMessage:
-    def test_init_system_message_empty_prompt_messages(self, runner: FunctionCallAgentRunner):
+    def test_init_system_message_empty_prompt_messages(self, runner: _TestFunctionCallAgentRunner) -> None:
         result = runner._init_system_message("system", [])
         assert len(result) == 1
 
@@ -342,7 +370,7 @@ class TestInitSystemMessage:
         result = real_runner._init_system_message("system", [query])
         assert result == [SystemPromptMessage(content="system"), query]
 
-    def test_init_system_message_no_template(self, runner: FunctionCallAgentRunner):
+    def test_init_system_message_no_template(self, runner: _TestFunctionCallAgentRunner) -> None:
         result = runner._init_system_message("", [])
         assert result == []
 
@@ -353,18 +381,20 @@ class TestInitSystemMessage:
 
 
 class TestOrganizeUserQuery:
-    def test_without_files(self, runner: FunctionCallAgentRunner):
+    def test_without_files(self, runner: _TestFunctionCallAgentRunner) -> None:
         result = runner._organize_user_query("query", [])
         assert len(result) == 1
 
-    def test_with_none_query(self, runner: FunctionCallAgentRunner):
-        result = runner._organize_user_query(None, [])
+    def test_with_none_query(self, runner: _TestFunctionCallAgentRunner) -> None:
+        result = runner._organize_user_query(None, [])  # pyrefly: ignore[bad-argument-type]
         assert len(result) == 1
 
-    def test_with_files_uses_image_detail_config(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+    def test_with_files_uses_image_detail_config(
+        self, runner: _TestFunctionCallAgentRunner, mocker: MockerFixture
+    ) -> None:
         file_content = TextPromptMessageContent(data="file-content")
         mock_to_prompt = mocker.patch(
-            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
+            "services.agent.chat.function_call_runner.file_manager.to_prompt_message_content",
             return_value=file_content,
         )
 
@@ -394,7 +424,7 @@ class TestClearUserPromptImageMessages:
         assert result == [UserPromptMessage(content="hello\n[image]")]
         assert user_msg.content == [text, image]
 
-    def test_clear_includes_file_placeholder(self, runner: FunctionCallAgentRunner):
+    def test_clear_includes_file_placeholder(self, runner: _TestFunctionCallAgentRunner) -> None:
         text = TextPromptMessageContent(data="hello")
         image = ImagePromptMessageContent(format="url", mime_type="image/png")
         document = DocumentPromptMessageContent(format="url", mime_type="application/pdf")
@@ -405,7 +435,7 @@ class TestClearUserPromptImageMessages:
 
         assert result[0].content == "hello\n[image]\n[file]"
 
-    def test_keeps_knowledge_retrieval_image_message(self, runner: FunctionCallAgentRunner):
+    def test_keeps_knowledge_retrieval_image_message(self, runner: _TestFunctionCallAgentRunner) -> None:
         text = TextPromptMessageContent(data="query")
         image = ImagePromptMessageContent(format="url", mime_type="image/png")
         user_msg = UserPromptMessage(name="knowledge_retrieval", content=[image, text])
@@ -421,33 +451,28 @@ class TestClearUserPromptImageMessages:
 
 
 class TestBuildDatasetToolImageContents:
-    def test_returns_empty_when_vision_disabled(self, runner: FunctionCallAgentRunner):
+    def test_returns_empty_when_vision_disabled(self, runner: _TestFunctionCallAgentRunner) -> None:
         tool = MagicMock()
         tool.__class__.__name__ = "DatasetRetrieverTool"
         response = "![image](http://localhost:5001/files/890985e9-c2f1-484e-bc7b-62010a337e6d/file-preview)"
 
-        assert runner._build_dataset_tool_image_contents(runner.session, response, tool) == []
+        assert runner._build_dataset_tool_image_contents(response, tool) == []
 
     def test_builds_image_contents_from_dataset_tool_preview_links(
-        self, runner: FunctionCallAgentRunner, mocker: MockerFixture
-    ):
-        from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+        self, runner: _TestFunctionCallAgentRunner, mocker: MockerFixture
+    ) -> None:
+        from services.tools.dataset.tool import DatasetRetrieverTool
 
         runner.vision_enabled = True
         image_content = ImagePromptMessageContent(format="url", mime_type="image/png")
         to_prompt_content = mocker.patch(
-            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
+            "services.agent.chat.function_call_runner.file_manager.to_prompt_message_content",
             return_value=image_content,
         )
-        grant_access = mocker.patch("core.agent.fc_agent_runner.grant_upload_file_access")
-        sign_preview = mocker.patch(
-            "core.agent.fc_agent_runner.sign_upload_file_preview_url",
-            return_value="http://localhost:5001/files/file-id/file-preview?sign=1",
-        )
-        build_reference = mocker.patch("core.agent.fc_agent_runner.build_file_reference", return_value="file-ref")
+        grant_access = mocker.patch("services.agent.chat.function_call_runner.grant_upload_file_access")
 
         upload_file = UploadFile(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=runner.tenant_id,
             storage_type=StorageType.LOCAL,
             key="image_files/chart.png",
             name="chart.png",
@@ -484,10 +509,12 @@ class TestBuildDatasetToolImageContents:
             "file ![file](http://localhost:5001/files/11111111-1111-1111-1111-111111111111/file-preview)"
         )
 
+        from core.app.app_config.entities import DatasetRetrieveConfigEntity
+        from core.app.entities.app_invoke_entities import InvokeFrom
         from core.tools.__base.tool_runtime import ToolRuntime
         from core.tools.entities.common_entities import I18nObject
         from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
-        from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
+        from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 
         tool = DatasetRetrieverTool(
             entity=ToolEntity(
@@ -498,25 +525,22 @@ class TestBuildDatasetToolImageContents:
                 description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
             ),
             runtime=ToolRuntime(tenant_id=upload_file.tenant_id),
-            retrieval_tool=RetrievalTool(
-                tenant_id=upload_file.tenant_id,
-                dataset_id="dataset-id",
-                return_resource=True,
-                retriever_from="dev",
-                retrieve_config=DatasetRetrieveConfigEntity(
-                    retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
-                ),
-                inputs={},
-            ),
+            retrieval=create_autospec(DatasetRetrieval, instance=True),
+            dataset_id="dataset-id",
+            config=DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE),
+            top_k=2,
+            inputs={},
+            invoke_from=InvokeFrom.DEBUGGER,
+            return_resource=True,
+            hit_callback=MagicMock(),
+            app_id="app",
         )
-        contents = runner._build_dataset_tool_image_contents(session, response, tool)
+        contents = runner._build_dataset_tool_image_contents(response, tool)
 
         assert contents == [image_content]
         assert contents[0].type == PromptMessageContentType.IMAGE
         grant_access.assert_called_once()
         assert list(grant_access.call_args.args[0]) == ["890985e9-c2f1-484e-bc7b-62010a337e6d"]
-        sign_preview.assert_called_once_with(upload_file.id, upload_file.extension)
-        build_reference.assert_called_once_with(record_id=str(upload_file.id))
         to_prompt_content.assert_called_once()
 
 
@@ -526,14 +550,14 @@ class TestBuildDatasetToolImageContents:
 
 
 class TestRunMethod:
-    def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
+    def test_run_non_streaming_no_tool_calls(self, runner: _TestFunctionCallAgentRunner) -> None:
         message = _make_message()
         dummy_message = DummyMessage(content="hello")
         result = DummyResult(message=dummy_message, usage=build_usage())
 
         runner.model_instance.invoke_llm.return_value = result
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
         assert "session" not in runner.create_agent_thought.call_args.kwargs
         assert "session" not in runner.save_agent_thought.call_args.kwargs
@@ -547,7 +571,7 @@ class TestRunMethod:
         queue_calls = runner.queue_manager.publish.call_args_list
         assert any(call.args and call.args[0].__class__.__name__ == "QueueMessageEndEvent" for call in queue_calls)
 
-    def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
+    def test_run_streaming_branch(self, runner: _TestFunctionCallAgentRunner) -> None:
         runner.stream_tool_call = True
         events: list[str] = []
         session = runner.session
@@ -569,17 +593,17 @@ class TestRunMethod:
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
 
-        def generator():
+        def generator() -> Iterator[DummyChunk]:
             events.append("first-chunk")
             yield chunk
 
         runner.model_instance.invoke_llm.return_value = generator()
 
-        outputs = list(runner.run(session, message, "query"))
-        assert events == ["commit", "close", "first-chunk"]
+        outputs = list(runner.run(message, "query"))
+        assert events == ["first-chunk"]
         assert len(outputs) == 1
 
-    def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):
+    def test_run_streaming_tool_calls_list_content(self, runner: _TestFunctionCallAgentRunner) -> None:
         message = _make_message()
         runner.stream_tool_call = True
 
@@ -591,7 +615,7 @@ class TestRunMethod:
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content, tool_calls=[tool_call]), usage=build_usage())
 
-        def generator():
+        def generator() -> Iterator[DummyChunk]:
             yield chunk
 
         final_message = DummyMessage(content="done", tool_calls=[])
@@ -599,10 +623,10 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.side_effect = [generator(), final_result]
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
+    def test_run_non_streaming_list_content(self, runner: _TestFunctionCallAgentRunner) -> None:
         message = _make_message()
         content = [TextPromptMessageContent(data="hi")]
         dummy_message = DummyMessage(content=content)
@@ -610,11 +634,13 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.return_value = result
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
-    def test_run_streaming_tool_call_inputs_type_error(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+    def test_run_streaming_tool_call_inputs_type_error(
+        self, runner: _TestFunctionCallAgentRunner, mocker: MockerFixture
+    ) -> None:
         message = _make_message()
         runner.stream_tool_call = True
 
@@ -625,24 +651,24 @@ class TestRunMethod:
 
         chunk = DummyChunk(message=DummyMessage(content="hi", tool_calls=[tool_call]), usage=build_usage())
 
-        def generator():
+        def generator() -> Iterator[DummyChunk]:
             yield chunk
 
         runner.model_instance.invoke_llm.return_value = generator()
 
         real_dumps = json.dumps
 
-        def flaky_dumps(obj, *args, **kwargs):
-            if kwargs.get("ensure_ascii") is False:
-                return real_dumps(obj, *args, **kwargs)
+        def flaky_dumps(obj: object, *, ensure_ascii: bool = True) -> str:
+            if not ensure_ascii:
+                return real_dumps(obj, ensure_ascii=ensure_ascii)
             raise TypeError("boom")
 
-        mocker.patch("core.agent.fc_agent_runner.json.dumps", side_effect=flaky_dumps)
+        mocker.patch("services.agent.chat.function_call_runner.json.dumps", side_effect=flaky_dumps)
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
 
-    def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
+    def test_run_with_missing_tool_instance(self, runner: _TestFunctionCallAgentRunner) -> None:
         message = _make_message()
 
         tool_call = MagicMock()
@@ -657,10 +683,10 @@ class TestRunMethod:
 
         runner.model_instance.invoke_llm.side_effect = [result, final_result]
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+    def test_run_with_tool_instance_and_files(self, runner: _TestFunctionCallAgentRunner) -> None:
         message = _make_message()
         trace_scope = _trace_scope()
         runner.application_generate_entity.trace_scope = trace_scope
@@ -683,14 +709,11 @@ class TestRunMethod:
 
         tool_invoke_meta = MagicMock()
         tool_invoke_meta.to_dict.return_value = {"ok": True}
-        agent_invoke = mocker.patch(
-            "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], tool_invoke_meta),
-        )
+        runner._tool_invoker.return_value = ("ok", ["file1"], tool_invoke_meta)
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
-        assert agent_invoke.call_args.kwargs["trace_scope"] is trace_scope
+        assert runner._tool_invoker.call_args.kwargs["trace_scope"] is trace_scope
         assert any(
             isinstance(call.args[0], QueueMessageFileEvent)
             and call.args[0].message_file_id == "file1"
@@ -698,7 +721,7 @@ class TestRunMethod:
             for call in runner.queue_manager.publish.call_args_list
         )
 
-    def test_run_max_iteration_error(self, runner: FunctionCallAgentRunner):
+    def test_run_max_iteration_error(self, runner: _TestFunctionCallAgentRunner) -> None:
         runner.app_config.agent.max_iteration = 0
 
         message = _make_message()
@@ -714,4 +737,4 @@ class TestRunMethod:
         runner.model_instance.invoke_llm.return_value = result
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(runner.session, message, "query"))
+            list(runner.run(message, "query"))
