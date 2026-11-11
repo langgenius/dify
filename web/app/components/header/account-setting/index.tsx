@@ -29,6 +29,7 @@ import {
 import { env } from '@/env'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
+import { FileScanProvidersPage } from '@/features/file-scan/scanner-page'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
@@ -80,6 +81,7 @@ export default function AccountSetting({
     'navigation',
     'accountSettings',
     'contacts',
+    'fileScan',
   ])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const enableReplaceWebAppLogo = featuresQuery.data?.can_replace_logo
@@ -103,6 +105,8 @@ export default function AccountSetting({
     featuresQuery.isSuccess &&
     isContactsImPlatformEnabled(selectIMCentrallyManaged(featuresQuery.data))
   const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
+  // Every member may see the scanners; only owners and admins can change them.
+  const canViewFileScan = featuresQuery.data?.enable_file_scan === true
   const activeMenu = (() => {
     if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)
       return ACCOUNT_SETTING_TAB.MEMBERS
@@ -119,6 +123,8 @@ export default function AccountSetting({
     )
       return ACCOUNT_SETTING_TAB.MEMBERS
     if (activeTab === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && !canViewAccessTokens)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.FILE_SCAN && !canViewFileScan)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return activeTab
   })()
@@ -169,6 +175,13 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-key-2-fill', iconClassName)} />,
     },
     {
+      key: ACCOUNT_SETTING_TAB.FILE_SCAN,
+      name: t(($) => $['settings.title'], { ns: 'fileScan' }),
+      description: t(($) => $['settings.description'], { ns: 'fileScan' }),
+      icon: <span className={cn('i-ri-shield-check-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-check-fill', iconClassName)} />,
+    },
+    {
       key: ACCOUNT_SETTING_TAB.BILLING,
       name: t(($) => $['settings.billing'], { ns: 'navigation' }),
       description: t(($) => $['plansCommon.receiptInfo'], { ns: 'billing' }),
@@ -212,6 +225,8 @@ export default function AccountSetting({
     }
 
     if (canViewAccessTokens) visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_TOKEN)
+
+    if (canViewFileScan) visibleTabs.push(ACCOUNT_SETTING_TAB.FILE_SCAN)
 
     if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
@@ -347,6 +362,7 @@ export default function AccountSetting({
                     )}
                     {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.FILE_SCAN && <FileScanProvidersPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                       <WorkflowLogArchivesPage />

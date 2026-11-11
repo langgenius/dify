@@ -135,7 +135,7 @@ describe('useInspectVarsCrudCommon', () => {
 
     await waitFor(() => {
       expect(mockFetchNodeInspectVars).toHaveBeenCalledWith(
-        { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
         'node-1',
       )
       expect(store.getState().nodesWithInspectVars[0]).toMatchObject({

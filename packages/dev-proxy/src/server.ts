@@ -124,8 +124,10 @@ const createProxyRequestHeaders = (
   headers: Headers,
   targetUrl: URL,
   cookieRewrite: CookieRewriteOptions | false | undefined,
+  requestHeaders?: DevProxyRoute['requestHeaders'],
 ) => {
   const upstreamHeaders = new Headers(headers)
+  Object.entries(requestHeaders || {}).forEach(([name, value]) => upstreamHeaders.set(name, value))
   removeHopByHopHeaders(upstreamHeaders)
   upstreamHeaders.delete('host')
   upstreamHeaders.set('accept-encoding', UPSTREAM_ACCEPT_ENCODING)
@@ -212,6 +214,7 @@ const proxyRequest = async (
     context.req.raw.headers,
     targetUrl,
     route.cookieRewrite,
+    route.requestHeaders,
   )
   const requestInit: RequestInit & { duplex?: 'half' } = {
     method: context.req.method,
@@ -345,6 +348,7 @@ export const createWebSocketUpgradeHandler = (
       createHeadersFromIncomingMessage(request),
       targetUrl,
       route.cookieRewrite,
+      route.requestHeaders,
     )
     requestHeaders.set('connection', 'Upgrade')
     requestHeaders.set('upgrade', upgradeProtocol)
@@ -496,7 +500,12 @@ const registerSessionImportRoute = (
 
     const upstreamResponse = await fetchImpl(refreshUrl, {
       method: 'POST',
-      headers: createProxyRequestHeaders(localHeaders, refreshUrl, route.cookieRewrite),
+      headers: createProxyRequestHeaders(
+        localHeaders,
+        refreshUrl,
+        route.cookieRewrite,
+        route.requestHeaders,
+      ),
       redirect: 'manual',
     })
     if (!upstreamResponse.ok)

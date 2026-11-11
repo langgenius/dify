@@ -25,6 +25,7 @@
   "enterYourName": "โปรดป้อนชื่อผู้ใช้ของคุณ",
   "error.emailEmpty": "ต้องระบุที่อยู่อีเมล",
   "error.emailInValid": "โปรดป้อนที่อยู่อีเมลที่ถูกต้อง",
+  "error.initPasswordIncorrect": "รหัสผ่านสำหรับการเริ่มต้นไม่ถูกต้อง",
   "error.invalidEmailOrPassword": "อีเมลหรือรหัสผ่านไม่ถูกต้อง.",
   "error.invalidSSOProtocol": "โปรโตคอล SSO ไม่ถูกต้อง",
   "error.nameEmpty": "ต้องระบุชื่อ",

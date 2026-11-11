@@ -117,7 +117,7 @@ function renderSnippet({
   published = false,
 }: { canEdit?: boolean; nodes?: Node[]; published?: boolean } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: false, enable_marketplace: false },
+    systemFeatures: { enable_marketplace: false },
     workspacePermissionKeys: canEdit ? ['snippets.create_and_modify'] : ['snippets.management'],
   })
   seedAppDslVersion(queryClient)

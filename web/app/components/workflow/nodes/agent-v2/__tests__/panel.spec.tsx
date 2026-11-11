@@ -32,7 +32,7 @@ const openOutputs = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('Agent task and declared outputs', () => {
   it('shows the calling workflow tracing summary only inside a workflow app', () => {
     const workflow = createPanelEnvironment({
-      resource: { kind: 'app', appId: 'workflow-1', mode: 'workflow' },
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'workflow-1', mode: 'workflow' },
     })
     const { unmount } = workflow.render()
     expect(screen.getByTestId('inherited-tracing')).toHaveTextContent('workflow-1')

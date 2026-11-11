@@ -21,6 +21,7 @@ from models.knowledge_fs import (
 from models.model import Account, UploadFile
 from services import file_service as file_service_module
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
+from services.file_scan import FileScanService, ScanErrorCode, ScanOutcome, ScanScope
 from services.knowledge_fs import staged_upload_service as staged_upload_module
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.object_storage import KnowledgeFSObjectStorageService
@@ -34,6 +35,7 @@ from services.knowledge_fs.staged_upload_service import (
     KnowledgeFSStagedUploadConflictError,
     KnowledgeFSStagedUploadInvalidError,
     KnowledgeFSStagedUploadNotFoundError,
+    KnowledgeFSStagedUploadScanBlockedError,
     KnowledgeFSStagedUploadService,
     KnowledgeFSStagedUploadTooLargeError,
 )
@@ -1010,3 +1012,103 @@ def test_claim_response_rejects_incomplete_persisted_identifiers() -> None:
     staged = _staged_upload()
     with pytest.raises(KnowledgeFSStagedUploadConflictError, match="completion is incomplete"):
         staged_upload_module._claim_response(staged)
+
+
+class _FileScan(FileScanService):
+    """A ``FileScanService`` with scripted outcomes."""
+
+    def __init__(self, *outcomes: ScanOutcome) -> None:
+        self.outcomes = list(outcomes)
+        self.calls: list[dict[str, object]] = []
+
+    def scan_upload_file(
+        self, *, tenant_id: str, upload_file_id: str, scope: ScanScope, wait_for_result: bool = True
+    ) -> ScanOutcome:
+        self.calls.append(
+            {
+                "tenant_id": tenant_id,
+                "upload_file_id": upload_file_id,
+                "scope": scope,
+                "wait_for_result": wait_for_result,
+            }
+        )
+        return self.outcomes.pop(0)
+
+
+def _scanning_service(
+    service_context: tuple[KnowledgeFSStagedUploadService, FakeFacade, FakeStorage],
+    monkeypatch: pytest.MonkeyPatch,
+    *outcomes: ScanOutcome,
+) -> tuple[KnowledgeFSStagedUploadService, FakeFacade, _FileScan]:
+    service, facade, _ = service_context
+    file_scan = _FileScan(*outcomes)
+    monkeypatch.setattr(service, "_file_scan", file_scan)
+    return service, facade, file_scan
+
+
+def _claim(service: KnowledgeFSStagedUploadService):
+    return service.claim(
+        tenant_id=_TENANT_ID,
+        account_id=_ACCOUNT_ID,
+        control_space_id=_CONTROL_SPACE_ID,
+        payload=KnowledgeFSDocumentStagedUploadPayload(upload_id=_STAGED_UPLOAD_ID),
+    )
+
+
+def test_claim_rejected_by_the_malware_scan_never_reaches_knowledge_fs(
+    sqlite_session_factory: sessionmaker[Session],
+    service_context: tuple[KnowledgeFSStagedUploadService, FakeFacade, FakeStorage],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    blocked = ScanOutcome(
+        allowed=False,
+        status="infected",
+        code=ScanErrorCode.MALWARE_DETECTED,
+        file_name="guide.pdf",
+        threats=("Evil.A",),
+    )
+    service, facade, file_scan = _scanning_service(service_context, monkeypatch, blocked)
+    _seed(sqlite_session_factory, upload_file=_upload_file())
+
+    with pytest.raises(KnowledgeFSStagedUploadScanBlockedError) as error:
+        _claim(service)
+
+    assert error.value.outcome is blocked
+    assert facade.create_calls == []
+    assert facade.complete_calls == []
+    assert file_scan.calls == [
+        {
+            "tenant_id": _TENANT_ID,
+            "upload_file_id": _UPLOAD_FILE_ID,
+            "scope": ScanScope("knowledge_fs_space", _CONTROL_SPACE_ID),
+            "wait_for_result": False,
+        }
+    ]
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSStagedUpload, _STAGED_UPLOAD_ID)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSStagedUploadStatus.FAILED
+        assert persisted.last_error_code == "file_scan_malware_detected"
+
+
+def test_claim_can_be_repeated_until_a_running_scan_finishes(
+    sqlite_session_factory: sessionmaker[Session],
+    service_context: tuple[KnowledgeFSStagedUploadService, FakeFacade, FakeStorage],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = ScanOutcome(allowed=False, status="unavailable", code=ScanErrorCode.PENDING, file_name="guide.pdf")
+    clean = ScanOutcome(allowed=True, status="clean")
+    service, facade, file_scan = _scanning_service(service_context, monkeypatch, pending, clean)
+    _seed(sqlite_session_factory, upload_file=_upload_file())
+
+    with pytest.raises(KnowledgeFSStagedUploadScanBlockedError) as error:
+        _claim(service)
+    assert error.value.outcome.retryable
+    assert facade.create_calls == []
+
+    response = _claim(service)
+
+    assert response.status == "accepted"
+    assert len(file_scan.calls) == 2
+    assert len(facade.create_calls) == 1
+    assert len(facade.complete_calls) == 1

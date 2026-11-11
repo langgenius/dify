@@ -74,7 +74,7 @@ const sharedModel: EnvironmentVariable = {
 
 const renderPanel = ({
   data = createData(),
-  resource = { kind: 'app', appId: 'test-app', mode: 'workflow' },
+  resource = { kind: 'app', collaborationEnabled: false, appId: 'test-app', mode: 'workflow' },
   environmentVariables = [sharedModel],
 }: {
   data?: LLMNodeType

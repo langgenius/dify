@@ -1,3 +1,4 @@
+import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
@@ -1477,6 +1478,72 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it.each([true, false])(
+    'preserves roster publication and reference data when renaming an agent with published state %s',
+    async (isPublished) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = createQueryClient()
+      const agent = {
+        ...createAgent(),
+        active_config_is_published: isPublished,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 1,
+        published_references: [{ app_id: 'workflow-1', app_name: 'Research Workflow' }],
+      }
+      const otherAgent = {
+        ...createAgent({ id: 'agent-2', name: 'Other Agent' }),
+        active_config_is_published: false,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 0,
+      }
+      const rosterPage = {
+        data: [agent, otherAgent],
+        has_more: false,
+        limit: 30,
+        page: 1,
+        publication_counts: { drafts: isPublished ? 1 : 2, published: isPublished ? 1 : 0 },
+        total: 2,
+      } satisfies AgentAppPagination
+      const listQueryKey = consoleQuery.agent.get.queryKey({
+        input: { query: { page: 1, limit: 30 } },
+      })
+      const infiniteQueryKey = consoleQuery.agent.get.infiniteOptions({
+        input: (pageParam) => ({ query: { page: Number(pageParam), limit: 30 } }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      }).queryKey
+      queryClient.setQueryData(listQueryKey, rosterPage)
+      queryClient.setQueryData(infiniteQueryKey, { pages: [rosterPage], pageParams: [1] })
+      const updatedAgent = createAgent({ name: 'Updated Agent' })
+
+      await consoleQuery.agent.byAgentId.put.mutationOptions().onSuccess!(
+        updatedAgent,
+        { params: { agent_id: agent.id }, body: { name: updatedAgent.name } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+      const expectedPage = {
+        ...rosterPage,
+        data: [{ ...agent, name: updatedAgent.name }, otherAgent],
+      }
+      expect(queryClient.getQueryData(listQueryKey)).toEqual(expectedPage)
+      expect(queryClient.getQueryData(infiniteQueryKey)).toEqual({
+        pages: [expectedPage],
+        pageParams: [1],
+      })
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.agent.byAgentId.get.queryKey({
+            input: { params: { agent_id: agent.id } },
+          }),
+        ),
+      ).toEqual(updatedAgent)
+    },
+  )
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
@@ -1787,6 +1854,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const staging = {
+        deployment_id: 'deployment-staging',
         environment: {
           id: 'staging',
           display_name: 'Staging',
@@ -1795,7 +1863,11 @@ describe('consoleQuery App Deploy cache behavior', () => {
         },
         access: { enable_api: true, enable_site: true },
       }
-      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const production = {
+        ...staging,
+        deployment_id: 'deployment-production',
+        environment: { ...staging.environment, id: 'production' },
+      }
       const deployments = consoleQuery.enterprise.appDeploy.deploymentService
       const list = deployments.listEnvironmentDeployments.queryOptions({
         input: { params: { app_id: params.app_id } },

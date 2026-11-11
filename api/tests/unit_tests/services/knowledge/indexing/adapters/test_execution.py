@@ -713,3 +713,61 @@ def test_discard_touches_no_index_when_load_wrote_nothing(
 
     vector.assert_not_called()
     redis.lock.assert_not_called()
+
+
+def _file_job(job: IndexingDocument) -> IndexingDocument:
+    return replace(job, source=job.source._replace(source_type="upload_file", source_info={"upload_file_id": "file-1"}))
+
+
+def test_extract_scans_the_uploaded_file_under_the_dataset_policy(backend: BackendFixture) -> None:
+    from services.file_scan import ScanOutcome, ScanScope
+
+    adapter, _, _, sources, job, _ = backend
+    with (
+        patch(f"{MODULE}.FileScanService") as scan_service,
+        patch(f"{MODULE}.IndexProcessorFactory") as processors,
+    ):
+        scan_service.return_value.scan_upload_file.return_value = ScanOutcome(allowed=True, status="clean")
+        processors.return_value.init_index_processor.return_value.extract.return_value = []
+
+        adapter.extract(_file_job(job))
+
+    scan_service.return_value.scan_upload_file.assert_called_once_with(
+        tenant_id="workspace-1", upload_file_id="file-1", scope=ScanScope("dataset", "dataset-1")
+    )
+    sources.resolve_for_indexing.assert_called_once()
+
+
+def test_extract_stops_before_reading_a_file_the_malware_scan_rejects(backend: BackendFixture) -> None:
+    from services.file_scan import FileScanBlockedError, ScanErrorCode, ScanOutcome
+
+    adapter, _, _, sources, job, _ = backend
+    blocked = ScanOutcome(
+        allowed=False,
+        status="infected",
+        code=ScanErrorCode.MALWARE_DETECTED,
+        file_name="report.docx",
+        threats=("Win.Trojan.Agent-123",),
+    )
+    with patch(f"{MODULE}.FileScanService") as scan_service:
+        scan_service.return_value.scan_upload_file.return_value = blocked
+        with pytest.raises(FileScanBlockedError) as error:
+            adapter.extract(_file_job(job))
+
+    sources.resolve_for_indexing.assert_not_called()
+    # The stored document error is this sentence: it names the file, the reason and the consequence.
+    assert adapter.describe_error(error.value) == (
+        '"report.docx" was blocked by the malware scan: Win.Trojan.Agent-123 detected. The original file was deleted.'
+    )
+
+
+def test_extract_does_not_scan_sources_that_are_not_uploaded_files(backend: BackendFixture) -> None:
+    adapter, _, _, _, job, _ = backend
+    with (
+        patch(f"{MODULE}.FileScanService") as scan_service,
+        patch(f"{MODULE}.IndexProcessorFactory") as processors,
+    ):
+        processors.return_value.init_index_processor.return_value.extract.return_value = []
+        adapter.extract(job)
+
+    scan_service.assert_not_called()

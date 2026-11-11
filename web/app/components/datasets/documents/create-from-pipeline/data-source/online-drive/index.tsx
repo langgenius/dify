@@ -162,12 +162,15 @@ const OnlineDrive = ({
     (file: OnlineDriveFile) => {
       const { selectedFileIds, setSelectedFileIds } = dataSourceStore.getState()
       if (file.type === OnlineDriveFileType.bucket) return
+      if (!supportBatchUpload) {
+        setSelectedFileIds([file.id])
+        return
+      }
       const newSelectedFileList = produce(selectedFileIds, (draft) => {
         if (draft.includes(file.id)) {
           const index = draft.indexOf(file.id)
           draft.splice(index, 1)
         } else {
-          if (!supportBatchUpload && draft.length >= 1) return
           draft.push(file.id)
         }
       })

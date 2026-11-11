@@ -61,6 +61,14 @@ stylesheet:
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
 ```
 
+## Theme
+
+Tokens and the `dark:` variant read the `data-theme` attribute that the consumer sets to `light` or
+`dark` on `<html>`; tokens have no values without it. Appearance follows the theme through semantic
+tokens first. When no token renders the same value, use `dark:`, which ignores the system color
+scheme. Do not choose classes from a theme value in JavaScript; read the theme there only when a
+value must leave CSS.
+
 ## Writing direction
 
 Use logical inline-direction utilities for spacing, offsets, borders, corners, and alignment.

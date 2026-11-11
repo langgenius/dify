@@ -16,12 +16,31 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { noop } from 'es-toolkit/function'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
   legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
+
+async function refreshRejectedPersonalToken(
+  error: unknown,
+  client: QueryClient,
+  tokenId: string,
+  query: RouterUtils<ConsoleClient>,
+) {
+  const status = getHttpErrorStatus(error)
+  if (status !== 403 && status !== 404 && status !== 409) return
+  await Promise.all([
+    client.invalidateQueries({ queryKey: query.account.personalAccessTokens.get.key() }),
+    client.invalidateQueries({
+      queryKey: query.account.personalAccessTokens.byTokenId.get.queryKey({
+        input: { params: { token_id: tokenId } },
+      }),
+    }),
+  ])
+}
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -1021,6 +1040,58 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       account: {
+        personalAccessTokens: {
+          byTokenId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  context.client.removeQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                  await context.client.invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onError: (error, variables, _onMutateResult, context) =>
+                  refreshRejectedPersonalToken(
+                    error,
+                    context.client,
+                    variables.params.token_id,
+                    consoleQuery,
+                  ),
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  await Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client
+                  .invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                  .catch(noop)
+              },
+            },
+          },
+        },
         education: {
           get: {
             queryOptions: {
@@ -1716,6 +1787,24 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            fileScanPolicy: {
+              put: {
+                mutationOptions: {
+                  onSuccess: (policy, variables, _result, context) => {
+                    context.client.setQueryData(
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                      policy,
+                    )
+                    // Each scanner reports how many knowledge bases select it.
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
+              },
+            },
             tidy: {
               settings: {
                 patch: {
@@ -1801,6 +1890,24 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          fileScanPolicy: {
+            put: {
+              mutationOptions: {
+                onSuccess: (policy, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    policy,
+                  )
+                  // Each scanner reports how many knowledge bases select it.
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _result, context) => {
@@ -2410,7 +2517,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     return {
                       ...oldList,
                       data: oldList.data.map((item) =>
-                        item.id === updatedAgent.id ? updatedAgent : item,
+                        item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                       ),
                     }
                   },
@@ -2432,7 +2539,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       pages: oldList.pages.map((page) => ({
                         ...page,
                         data: page.data.map((item) =>
-                          item.id === updatedAgent.id ? updatedAgent : item,
+                          item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                         ),
                       })),
                     }
@@ -2625,6 +2732,55 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
                     oldExtensions?.filter((extension) => extension.id !== variables.params.id),
                 )
+              },
+            },
+          },
+        },
+      },
+      fileScan: {
+        providers: {
+          post: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.fileScan.providers.get.key(),
+                })
+              },
+            },
+          },
+          byProviderId: {
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            test: {
+              post: {
+                // A finished check always stores a new status, including a failing one.
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
               },
             },
           },

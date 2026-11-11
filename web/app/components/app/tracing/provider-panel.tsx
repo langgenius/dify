@@ -6,7 +6,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RadioItem } from '@langgenius/dify-ui/radio-group'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ProviderCapabilities } from './provider-capabilities'
@@ -40,7 +40,7 @@ export function ProviderPanel({
   configError,
 }: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
-  const { data: agentTracingEnabled } = useQuery({
+  const { data: agentTracingEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (features) => features.agent_tracing_api_collection_enabled,
   })
