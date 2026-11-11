@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "انتخاب کنید چه کسی می‌تواند به این مرحله ورودی انسانی پاسخ دهد.",
   "nodes.humanInputV2.recipients.initiator": "کاربری که این اجرا را از طریق Web App یا CLI آغاز می‌کند، می‌تواند تأیید کند",
   "nodes.humanInputV2.recipients.initiatorDescription": "فردی که این اجرای گردش کار را آغاز می‌کند می‌تواند پاسخ دهد.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "در اجراهایی که با محرک شروع می‌شوند، آغازکننده‌ای برای دریافت درخواست‌های تأیید وجود ندارد. یک مخاطب انتخاب کنید یا نشانی ایمیل را با یک متغیر مشخص کنید.",
   "nodes.humanInputV2.recipients.inputHelp": "چند نشانی ایمیل را با جداکنندهٔ ویرگول تایپ یا جای‌گذاری کنید. برای درج متغیر، / را فشار دهید.",
   "nodes.humanInputV2.recipients.insertVariable": "درج متغیر",
   "nodes.humanInputV2.recipients.loadError": "بارگذاری مخاطبان ممکن نبود. شناسه‌های ذخیره‌شده مخاطبان حفظ شده‌اند.",

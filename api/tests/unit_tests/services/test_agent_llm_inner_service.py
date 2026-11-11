@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import ModelSettings, ProviderQuotaType, QuotaUnit
 from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
@@ -57,17 +57,15 @@ def _model_instance(
     provider_model.status = status
     configuration = MagicMock()
     configuration.get_provider_model.return_value = provider_model
+    configuration.provider.provider = "openai"
+    configuration.model_settings = list[ModelSettings]()
     bundle = MagicMock()
     bundle.configuration = configuration
+    bundle.model_type_instance = make_model_instance(provider="openai", model="gpt-test").model_type_instance
 
-    instance = object.__new__(QuotaManagedModelInstance)
-    instance.provider_model_bundle = bundle
-    instance.model_name = "gpt-test"
-    instance.provider = "openai"
-    instance.credentials = {"api_key": "hosted"}
-    instance.model_type_instance = MagicMock()
-    instance.load_balancing_manager = None
-    instance._request_metadata = None
+    instance = QuotaManagedModelInstance(
+        provider_model_bundle=bundle, model="gpt-test", credentials={"api_key": "hosted"}
+    )
     return instance, provider_model
 
 
@@ -193,7 +191,7 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     def provider_stream() -> Generator[LLMResultChunk]:
         yield provider_chunk
 
-    with patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()) as provider_invoke:
+    with patch.object(ModelInstance, "_invoke_llm", return_value=provider_stream()) as provider_invoke:
         chunks = list(service.invoke(prepared))
 
     assert chunks == [provider_chunk]
@@ -322,7 +320,7 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
         patch("services.credit_pool_service.CreditPoolService._use_billing_quota", return_value=True),
         patch("services.billing_service.BillingService.quota_reserve", side_effect=reserve),
         patch("services.billing_service.BillingService.quota_commit", side_effect=commit),
-        patch.object(ModelInstance, "invoke_llm", side_effect=provider_invoke),
+        patch.object(ModelInstance, "_invoke_llm", side_effect=provider_invoke),
     ):
         first = list(service.invoke(prepared))
         second = list(service.invoke(prepared))
@@ -352,7 +350,7 @@ def test_gateway_releases_reservation_when_provider_fails_before_delivery(
         raise RuntimeError("provider failed")
         yield
 
-    with patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()):
+    with patch.object(ModelInstance, "_invoke_llm", return_value=failing_stream()):
         with pytest.raises(RuntimeError, match="provider failed"):
             list(service.invoke(prepared))
 
@@ -382,7 +380,7 @@ def test_gateway_buffers_usage_based_quota_until_terminal_usage(
         events.append("provider:last")
         yield _chunk("last", usage=terminal_usage)
 
-    with patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()):
+    with patch.object(ModelInstance, "_invoke_llm", return_value=provider_stream()):
         stream = service.invoke(prepared)
         first = next(stream)
         events.append("consumer:first")

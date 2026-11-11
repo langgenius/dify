@@ -141,6 +141,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :conversation conversation
         :return:
         """
+        from core.model_context import get_app_moderation_runtime
+
+        moderation = get_app_moderation_runtime()
+        if moderation is not None:
+            moderation.configure(application_generate_entity)
         app_config: EasyUIBasedAppConfig = cast(EasyUIBasedAppConfig, application_generate_entity.app_config)
 
         # get from source

@@ -22,11 +22,16 @@ from controllers.common.errors import (
 from controllers.console import api as console_api
 from controllers.inner_api import api as inner_api
 from controllers.service_api import api as service_api
+from controllers.web import api as web_api
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceApplicationError
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
 
 
 @pytest.mark.parametrize("source_api", [console_api, service_api], ids=["console", "service_api"])
@@ -89,6 +94,50 @@ def test_refresh_unavailability_has_one_documented_response(source_api: External
     assert response.status_code == 503
     assert response.json == {"code": "service_unavailable", "message": str(error), "status": 503}
     assert source_api.resolve_error(CredentialRefreshUnavailableError) == (503, "service_unavailable")
+
+
+@pytest.mark.parametrize("source_api", [console_api, service_api, web_api], ids=["console", "service_api", "web"])
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (
+            ModerationRejectedInvocationError("input", "Model input was rejected by moderation."),
+            400,
+            "moderation_rejected",
+            "Model input was rejected by moderation.",
+        ),
+        (
+            ModerationRejectedInvocationError("output", "Model output was rejected by moderation."),
+            400,
+            "moderation_rejected",
+            "Model output was rejected by moderation.",
+        ),
+        (
+            ModerationUnavailableInvocationError(),
+            503,
+            "moderation_unavailable",
+            "This message can’t be processed right now. Please try again later.",
+        ),
+    ],
+)
+def test_moderation_errors_have_matching_http_and_stream_contracts(
+    source_api: ExternalApi, error: Exception, status: int, code: str, message: str
+) -> None:
+    app = Flask(__name__)
+    api = Api(app, doc=False)
+    api.error_handlers = source_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def get(self) -> ResponseReturnValue:
+            raise error
+
+    api.add_resource(Endpoint, "/error")
+    response = app.test_client().get("/error")
+
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+    assert source_api.resolve_error(type(error)) == (status, code)
+    assert code in source_api.implicit_error_codes(status)
 
 
 class TestFilenameNotExistsError:

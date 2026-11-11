@@ -9,6 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.app.apps.exc import ModerationInvocationError
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
@@ -384,7 +385,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         """
         For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
         and write it to the summary attribute of PreviewDetail.
-        In preview mode (indexing-estimate), if any summary generation fails, the method will raise an exception.
+        In preview mode, failures raise rather than returning partial previews.
+        Moderation failures retain their original type for the HTTP error mapping.
 
         Note: For parent-child structure, we only generate summaries for parent chunks.
         """
@@ -460,6 +462,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         # In preview mode (indexing-estimate), if there are any errors, fail the request
         if errors:
+            for error in errors:
+                if isinstance(error, ModerationInvocationError):
+                    raise error
             error_messages = [str(e) for e in errors]
             error_summary = (
                 f"Failed to generate summaries for {len(errors)} chunk(s). "

@@ -16,6 +16,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -424,8 +425,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle ping events."""
         yield self._base_task_pipeline.ping_stream_response()
 
-    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
+    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle error events."""
+        replacement = self._base_task_pipeline.moderation_replacement(event.error)
+        if replacement is not None:
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session)
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
+            return
         with self._database_session() as session:
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline.error_to_stream_response(err)
@@ -744,6 +759,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             exceptions_count=event.exceptions_count,
         )
 
+        replacement = self._base_task_pipeline.workflow_moderation_replacement(event.error)
+        if replacement is not None:
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session, graph_runtime_state=validated_state)
+            yield workflow_finish_resp
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
+            return
+
         with self._database_session() as session:
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
@@ -958,11 +989,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
     ) -> Generator[StreamResponse]:
+        """Convert invocation failures into existing error events without escaping the response generator."""
+        try:
+            yield from self._process_stream_events(tts_publisher)
+        except AppGenerateError as error:
+            yield from self._handle_error_event(QueueErrorEvent(error=error))
+
+    def _process_stream_events(
+        self,
+        tts_publisher: AppGeneratorTTSPublisher | None,
+    ) -> Generator[StreamResponse]:
         """
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 57-if-statement version.
         """
         for queue_message in self._base_task_pipeline.queue_manager.listen():
+            self._base_task_pipeline.raise_output_moderation_error()
             event = queue_message.event
 
             match event:

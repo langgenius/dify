@@ -15414,6 +15414,8 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/im-sync-runs
+**Start or reuse a workspace run using the authenticated Account ID**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15425,7 +15427,7 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest
-Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.
 
 #### Responses
 
@@ -27181,6 +27183,7 @@ A trimmed version of `HumanInputContact` that only includes the fields needed fo
 | ---- | ---- | ----------- | -------- |
 | avatar_url | string | URL of the contact's avatar. | No |
 | created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
 | id | string | Unique contact identifier. | Yes |
 | name | string | Display name shown in the contact directory. | Yes |
 
@@ -27543,8 +27546,8 @@ Stable reconciliation bucket for one synchronized directory entry.
 
 One IM sync run snapshot.
 
-The latest-only UI displays ``finished_at`` as the explicit sync time. The
-transport contract intentionally does not expose a ``started_by`` actor.
+The latest-only UI displays ``finished_at`` as the explicit sync time.
+The initiator display name is resolved from the initiating Dify Account.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27553,6 +27556,7 @@ transport contract intentionally does not expose a ``started_by`` actor.
 | error_message | string | Terminal error message. Present only when the sync run status is `failed`. | No |
 | finished_at | integer | Unix timestamp in seconds when the sync run finished. This is the sync time displayed by the latest-only UI and is None while the run is unfinished. | No |
 | id | string | Unique sync run identifier. | Yes |
+| initiator_display_name | string | Current initiating Account name; empty for EE administrators or an unavailable Account. | Yes |
 | provider | [IMProvider](#improvider) | IM provider associated with the sync run. | Yes |
 | result_counts | [IMSyncRunResultCounts](#imsyncrunresultcounts) | Aggregate reconciliation counts for the current run snapshot. | Yes |
 | started_at | integer | Unix timestamp in seconds when the sync run started. | No |
@@ -39034,159 +39038,3 @@ Accepts the payload sent by the Create/Edit Role dialog.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | _UUIDString | string |  |  |
-
-## FastOpenAPI Preview (OpenAPI 3.1)
-
-### Dify API (FastOpenAPI PoC)
-FastOpenAPI proof of concept for Dify API
-
-#### Version: 1.0
-
----
-
-##### [GET] /console/api/init
-**Get initialization validation status.**
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [InitStatusResponse](#initstatusresponse)<br> |
-
-##### [POST] /console/api/init
-**Validate initialization password.**
-
-###### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [InitValidatePayload](#initvalidatepayload)<br> |
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Created | **application/json**: [InitValidateResponse](#initvalidateresponse)<br> |
-
-##### [GET] /console/api/ping
-**Health check endpoint for connection testing.**
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [PingResponse](#pingresponse)<br> |
-
-##### [GET] /console/api/setup
-**Get system setup status.
-
-NOTE: This endpoint is unauthenticated by design.
-
-During first-time bootstrap there is no admin account yet, so frontend initialization must be
-able to query setup progress before any login flow exists.
-
-Only bootstrap-safe status information should be returned by this endpoint.
-**
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [SetupStatusResponse](#setupstatusresponse)<br> |
-
-##### [POST] /console/api/setup
-**Initialize system setup with admin account.
-
-NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
-and init-password validation rather than user session authentication.
-**
-
-###### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [SetupRequestPayload](#setuprequestpayload)<br> |
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Created | **application/json**: [SetupResponse](#setupresponse)<br> |
-
-##### [GET] /console/api/version
-**Check for application version updates.**
-
-###### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| current_version | query |  | Yes | string |
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [VersionResponse](#versionresponse)<br> |
-
----
-##### Schemas
-
-###### ErrorSchema
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| error | { **"details"**: string, **"message"**: string, **"status"**: integer, **"type"**: string } |  | Yes |
-
-###### InitStatusResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| status | string, <br>**Available values:** "finished", "not_started" | Initialization status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
-
-###### InitValidatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| password | string | Initialization password | Yes |
-
-###### InitValidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string | Operation result | Yes |
-
-###### PingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string | Health check result | Yes |
-
-###### SetupRequestPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string | Admin email address | Yes |
-| language | string | Admin language | No |
-| name | string | Admin name (max 30 characters) | Yes |
-| password | string | Admin password | Yes |
-
-###### SetupResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string | Setup result | Yes |
-
-###### SetupStatusResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| setup_at | string | Setup completion time (ISO format) | No |
-| step | string, <br>**Available values:** "finished", "not_started" | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
-
-###### VersionResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| release_notes | string | Release notes for latest version | Yes |
-| version | string | Latest version number | Yes |

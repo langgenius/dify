@@ -2,16 +2,18 @@
 
 import logging
 import re
-import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, TypedDict, override
 
 import pandas as pd
-from flask import Flask, current_app
+from flask import Flask
+from flask.globals import app_ctx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
+from core.app.apps.exc import ModerationInvocationError
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -56,6 +58,11 @@ class QAIndexProcessor(BaseIndexProcessor):
     def transform(
         self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
     ) -> list[Document]:
+        """Generate QA chunks, propagating moderation failures from preview and bounded workers.
+
+        No partial result is returned after a failed moderation check. Ordinary
+        generation failures retain the formatter's existing best-effort behavior.
+        """
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -94,33 +101,34 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_node.page_content = remove_leading_symbols(page_content)
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
+        tenant_id = kwargs.get("tenant_id")
+        if not isinstance(tenant_id, str) or not tenant_id:
+            raise ValueError("tenant_id is required for QA generation")
+        flask_app = app_ctx.app
         if preview:
             self._format_qa_document(
-                current_app._get_current_object(),  # type: ignore
-                kwargs.get("tenant_id"),  # type: ignore
+                flask_app,
+                tenant_id,
                 all_documents[0],
                 all_qa_documents,
                 kwargs.get("doc_language", "English"),
             )
         else:
-            for i in range(0, len(all_documents), 10):
-                threads = []
-                sub_documents = all_documents[i : i + 10]
-                for doc in sub_documents:
-                    document_format_thread = threading.Thread(
-                        target=self._format_qa_document,
-                        kwargs={
-                            "flask_app": current_app._get_current_object(),  # type: ignore
-                            "tenant_id": kwargs.get("tenant_id"),  # type: ignore
-                            "document_node": doc,
-                            "all_qa_documents": all_qa_documents,
-                            "document_language": kwargs.get("doc_language", "English"),
-                        },
-                    )
-                    threads.append(document_format_thread)
-                    document_format_thread.start()
-                for thread in threads:
-                    thread.join()
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                for start in range(0, len(all_documents), 10):
+                    futures = [
+                        executor.submit(
+                            self._format_qa_document,
+                            flask_app,
+                            tenant_id,
+                            document,
+                            all_qa_documents,
+                            kwargs.get("doc_language", "English"),
+                        )
+                        for document in all_documents[start : start + 10]
+                    ]
+                    for future in futures:
+                        future.result()
         return all_qa_documents
 
     def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
@@ -254,6 +262,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         return preview_texts
 
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
+        """Append generated QA chunks; moderation errors propagate instead of becoming empty chunks."""
         format_documents = []
         if document_node.page_content is None or not document_node.page_content.strip():
             return
@@ -273,6 +282,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                         qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
+            except ModerationInvocationError:
+                raise
             except Exception:
                 logger.exception("Failed to format qa document")
 

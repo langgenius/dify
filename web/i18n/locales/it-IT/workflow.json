@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "Scegli chi può rispondere a questo passaggio di input umano.",
   "nodes.humanInputV2.recipients.initiator": "L’utente che avvia questa esecuzione tramite Web App o CLI può approvare",
   "nodes.humanInputV2.recipients.initiatorDescription": "La persona che avvia questa esecuzione del flusso di lavoro può rispondere.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Quando un trigger avvia l’esecuzione, nessun utente può ricevere le richieste di approvazione come iniziatore. Seleziona un contatto o indica un indirizzo email tramite una variabile.",
   "nodes.humanInputV2.recipients.inputHelp": "Digita o incolla più indirizzi email separati da virgole. Premi / per inserire una variabile.",
   "nodes.humanInputV2.recipients.insertVariable": "Inserisci variabile",
   "nodes.humanInputV2.recipients.loadError": "Impossibile caricare i contatti. Gli ID dei contatti salvati vengono mantenuti.",

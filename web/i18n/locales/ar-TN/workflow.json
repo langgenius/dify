@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "اختر من يمكنه الرد على خطوة الإدخال البشري هذه.",
   "nodes.humanInputV2.recipients.initiator": "يمكن للمستخدم الذي يبدأ هذا التشغيل عبر Web App أو CLI الموافقة",
   "nodes.humanInputV2.recipients.initiatorDescription": "يمكن للشخص الذي يبدأ تشغيل سير العمل هذا الرد.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "عمليات التشغيل التي تبدأ عبر مُشغّل ليس لها مُبادر يتلقى طلبات الموافقة. اختر جهة اتصال أو استخدم متغيرًا لتحديد عنوان بريد إلكتروني.",
   "nodes.humanInputV2.recipients.inputHelp": "اكتب أو الصق عدة عناوين بريد إلكتروني مفصولة بفواصل. اضغط على / لإدراج متغير.",
   "nodes.humanInputV2.recipients.insertVariable": "إدراج متغيّر",
   "nodes.humanInputV2.recipients.loadError": "تعذّر تحميل جهات الاتصال. تم الاحتفاظ بمعرّفات جهات الاتصال المحفوظة.",

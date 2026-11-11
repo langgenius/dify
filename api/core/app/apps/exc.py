@@ -5,5 +5,9 @@ class AppGenerateError(ValueError):
     status_code: int
 
 
+class ModerationInvocationError(AppGenerateError):
+    """A model moderation failure that consumers must not downgrade to a best-effort result."""
+
+
 class GenerateTaskStoppedError(Exception):
     pass

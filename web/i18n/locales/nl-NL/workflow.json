@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "Kies wie op deze Human Input-stap kan reageren.",
   "nodes.humanInputV2.recipients.initiator": "De gebruiker die deze uitvoering via Web App of CLI start, kan goedkeuren",
   "nodes.humanInputV2.recipients.initiatorDescription": "De persoon die deze workflowuitvoering start, kan reageren.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Bij uitvoeringen die door een trigger worden gestart, is er geen initiator die goedkeuringsverzoeken kan ontvangen. Selecteer een contact of geef een e-mailadres op via een variabele.",
   "nodes.humanInputV2.recipients.inputHelp": "Typ of plak meerdere e-mailadressen, gescheiden door komma’s. Druk op / om een variabele in te voegen.",
   "nodes.humanInputV2.recipients.insertVariable": "Variabele invoegen",
   "nodes.humanInputV2.recipients.loadError": "Contacten konden niet worden geladen. Opgeslagen contact-ID’s blijven behouden.",

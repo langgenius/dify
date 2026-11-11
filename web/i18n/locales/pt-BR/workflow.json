@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "Escolha quem pode responder a esta etapa de Entrada Humana.",
   "nodes.humanInputV2.recipients.initiator": "O usuário que inicia esta execução pelo Web App ou CLI pode aprovar",
   "nodes.humanInputV2.recipients.initiatorDescription": "A pessoa que inicia esta execução do fluxo de trabalho pode responder.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "As execuções iniciadas por um gatilho não têm um iniciador que possa receber solicitações de aprovação. Selecione um contato ou use uma variável para informar um endereço de e-mail.",
   "nodes.humanInputV2.recipients.inputHelp": "Digite ou cole vários endereços de e-mail separados por vírgulas. Pressione / para inserir uma variável.",
   "nodes.humanInputV2.recipients.insertVariable": "Inserir variável",
   "nodes.humanInputV2.recipients.loadError": "Não foi possível carregar os contatos. Os IDs de contato armazenados foram preservados.",

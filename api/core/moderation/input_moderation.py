@@ -7,7 +7,7 @@ from dify_trace_sdk.events import ModerationChecked, json_safe
 
 from core.app.app_config.entities import AppConfig
 from core.app.entities.app_invoke_entities import get_credit_usage_app_type
-from core.model_context import use_credit_usage_metadata
+from core.model_context import get_app_moderation_runtime, use_credit_usage_metadata
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
 from libs.datetime_utils import measure_time
@@ -45,12 +45,18 @@ class InputModeration:
         moderation_type = sensitive_word_avoidance_config.type
 
         with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_config.app_mode)}):
-            moderation_factory = ModerationFactory(
-                name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config
-            )
-
             with measure_time() as timer:
-                moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
+                runtime = get_app_moderation_runtime()
+                moderation_result = runtime.evaluate_input(app_config, inputs, query) if runtime is not None else None
+                if moderation_result is None:
+                    # Direct kernel callers without an app scope keep the legacy backend path.
+                    moderation_factory = ModerationFactory(
+                        name=moderation_type,
+                        app_id=app_id,
+                        tenant_id=tenant_id,
+                        config=sensitive_word_avoidance_config.config,
+                    )
+                    moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
 
         if trace_scope is not None:
             trace_scope.emit(

@@ -148,6 +148,17 @@ class TestOutputModeration:
             name="keywords", app_id="app", tenant_id="tenant", config={"keywords": "badword"}
         )
 
+    def test_bound_output_evaluator_bypasses_legacy_factory(self, output_moderation: OutputModeration) -> None:
+        expected = ModerationOutputsResult(
+            flagged=True, action=ModerationAction.OVERRIDDEN, text="masked", preset_response=""
+        )
+        output_moderation.output_evaluator = lambda _text: expected
+
+        with patch("core.moderation.output_moderation.ModerationFactory") as factory:
+            assert output_moderation.moderation("tenant", "app", "badword") == expected
+
+        factory.assert_not_called()
+
     @patch("core.moderation.output_moderation.ModerationFactory")
     def test_moderation_exception(self, mock_factory_class: MagicMock, output_moderation: OutputModeration) -> None:
         mock_factory_class.side_effect = Exception("error")

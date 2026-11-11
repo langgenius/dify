@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "Wybierz, kto może odpowiedzieć w tym kroku danych wprowadzanych przez człowieka.",
   "nodes.humanInputV2.recipients.initiator": "Użytkownik, który uruchomi to wykonanie przez Web App lub CLI, może je zatwierdzić",
   "nodes.humanInputV2.recipients.initiatorDescription": "Osoba rozpoczynająca to uruchomienie przepływu pracy może odpowiedzieć.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Uruchomienia przez wyzwalacz nie mają inicjatora, który mógłby otrzymywać prośby o zatwierdzenie. Wybierz kontakt lub podaj adres e-mail za pomocą zmiennej.",
   "nodes.humanInputV2.recipients.inputHelp": "Wpisz lub wklej wiele adresów e-mail oddzielonych przecinkami. Naciśnij /, aby wstawić zmienną.",
   "nodes.humanInputV2.recipients.insertVariable": "Wstaw zmienną",
   "nodes.humanInputV2.recipients.loadError": "Nie udało się wczytać kontaktów. Zapisane identyfikatory kontaktów zostały zachowane.",

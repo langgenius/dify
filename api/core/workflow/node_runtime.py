@@ -351,20 +351,30 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         if reservation is not None:
             QuotaManagedModelInstance.release_quota_safely(reservation)
 
-    def _settle_polling_quota(self, polling_result: LLMPollingResult) -> LLMPollingResult:
+    def _finalize_polling_result(self, polling_result: LLMPollingResult) -> LLMPollingResult:
+        """Settle terminal usage before moderating successful output, including immediate success.
+
+        RUNNING results remain unchanged. Rejected successful output is never
+        delivered, but already consumed quota remains committed. Non-quota models
+        use the same policy, and backend failures propagate without approval.
+        """
         reservation = self._polling_quota_reservation
-        if reservation is None or polling_result.status == LLMPollingStatus.RUNNING:
+        if polling_result.status == LLMPollingStatus.RUNNING:
             return polling_result
 
         try:
             if polling_result.status == LLMPollingStatus.SUCCEEDED:
                 if polling_result.result is None:
                     raise ValueError("A successful LLM polling result must include a model result.")
-                reservation.commit(polling_result.result.usage)
-            else:
+                if reservation is not None:
+                    reservation.commit(polling_result.result.usage)
+                if self._model_instance.moderation is not None:
+                    self._model_instance.moderation.check_result(polling_result.result)
+            elif reservation is not None:
                 reservation.release()
         except Exception:
-            QuotaManagedModelInstance.release_quota_safely(reservation)
+            if reservation is not None:
+                QuotaManagedModelInstance.release_quota_safely(reservation)
             raise
         finally:
             self._polling_quota_reservation = None
@@ -381,7 +391,16 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
+        """Check assembly-bound input policy before reserving quota or submitting a polling task.
+
+        Previous task resources are finalized first. Rejected input submits no
+        new task and creates no new reservation; terminal output is checked after
+        accounting and before delivery. Submission and moderation failures propagate.
+        """
         self.finalize_llm_polling()
+
+        if self._model_instance.moderation is not None:
+            self._model_instance.moderation.check_inputs(prompt_messages)
 
         if isinstance(self._model_instance, QuotaManagedModelInstance):
             self._polling_quota_reservation = self._model_instance._reserve_quota_for_request(self._request_metadata)
@@ -397,7 +416,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
                 stop=stop,
                 json_schema=dict(json_schema) if json_schema is not None else None,
             )
-            return self._settle_polling_quota(polling_result)
+            return self._finalize_polling_result(polling_result)
         except Exception:
             self.finalize_llm_polling()
             raise
@@ -408,6 +427,12 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         *,
         plugin_state: Mapping[str, JsonValue],
     ) -> LLMPollingResult:
+        """Poll an existing task and deliver only approved successful results after quota settlement.
+
+        RUNNING results pass through unchanged. Polling and moderation failures
+        propagate, releasing only outstanding quota rather than refunding a
+        successful model invocation whose output was rejected.
+        """
         try:
             polling_result = self._polling_runtime.check_llm_polling(
                 provider=self.provider,
@@ -415,7 +440,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
                 credentials=self._model_instance.credentials,
                 plugin_state=dict(plugin_state),
             )
-            return self._settle_polling_quota(polling_result)
+            return self._finalize_polling_result(polling_result)
         except Exception:
             self.finalize_llm_polling()
             raise

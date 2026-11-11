@@ -20,6 +20,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.errors.error import QuotaExceededError
+from core.model_context import get_app_moderation_runtime
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
@@ -46,17 +47,25 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         stream: bool,
     ):
         self._application_generate_entity = application_generate_entity
+        self._app_moderation = get_app_moderation_runtime()
+        self._workflow_moderation_replacement = (
+            self._app_moderation.workflow_replacement(application_generate_entity.app_config)
+            if self._app_moderation is not None
+            else None
+        )
         self.queue_manager = queue_manager
         self.start_at = time.perf_counter()
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
-        """Classify an error and optionally stage its authorized message mutation.
+        """Stop pending moderation and classify an authorized message mutation.
 
         The caller owns commit or rollback. A migrated Chatbot message rejects its
         old actor before mutation, rather than overwriting Account error state.
         """
+        if self.output_moderation_handler is not None:
+            self.output_moderation_handler.stop_thread()
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -153,8 +162,35 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
                 queue_manager=self.queue_manager,
+                output_evaluator=self._app_moderation.output_evaluator(app_config)
+                if self._app_moderation is not None
+                else None,
             )
         return None
+
+    def moderation_replacement(self, error: Exception) -> tuple[str, str] | None:
+        """Render platform verdicts using a matching app preset or chat default; never hide backend failures."""
+        replacement = (
+            self._app_moderation.replacement(self._application_generate_entity.app_config, error)
+            if self._app_moderation is not None
+            else None
+        )
+        if replacement is not None and self.output_moderation_handler is not None:
+            self.output_moderation_handler.stop_thread()
+            self.output_moderation_handler = None
+        return replacement
+
+    def workflow_moderation_replacement(self, message: str) -> tuple[str, str] | None:
+        """Reuse only an invocation-local platform rejection matching the workflow terminal error."""
+        replacement = (
+            self._workflow_moderation_replacement(message)
+            if self._workflow_moderation_replacement is not None
+            else None
+        )
+        if replacement is not None and self.output_moderation_handler is not None:
+            self.output_moderation_handler.stop_thread()
+            self.output_moderation_handler = None
+        return replacement
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """
@@ -175,3 +211,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
                 return completion
 
         return None
+
+    def raise_output_moderation_error(self) -> None:
+        """Stop response consumption after a failed background check, including already queued output."""
+        handler = self.output_moderation_handler
+        if handler is not None and handler.error is not None:
+            raise handler.error

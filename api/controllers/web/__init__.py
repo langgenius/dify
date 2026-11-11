@@ -4,7 +4,12 @@ from flask import Blueprint
 from flask_restx import Namespace
 
 from controllers.common.app_access_error import register_app_access_error_metadata
-from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
+from controllers.common.errors import (
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
+    register_moderation_error_handlers,
+)
 from controllers.console.error import NotInitValidateError, NotSetupError
 from controllers.web.error import (
     WebAppAccessServiceUnavailableError,
@@ -23,6 +28,7 @@ api = ExternalApi(
     title="Web API",
     description="Public APIs for web applications including file uploads, chat interactions, and app management",
 )
+register_moderation_error_handlers(api)
 # The passport guard on every Web API resource raises these; the web client answers them
 # centrally (sign-in redirect, access-denied and not-found pages), so no operation lists them.
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` are the codes Werkzeug's own

@@ -460,6 +460,7 @@
   "nodes.humanInputV2.recipients.help": "Pilih siapa yang dapat merespons langkah Input Manusia ini.",
   "nodes.humanInputV2.recipients.initiator": "Pengguna yang memulai proses ini melalui Web App atau CLI dapat menyetujui",
   "nodes.humanInputV2.recipients.initiatorDescription": "Orang yang memulai eksekusi alur kerja ini dapat merespons.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Eksekusi yang dimulai oleh pemicu tidak memiliki inisiator yang dapat menerima permintaan persetujuan. Pilih kontak atau gunakan variabel untuk menentukan alamat email.",
   "nodes.humanInputV2.recipients.inputHelp": "Ketik atau tempel beberapa alamat email yang dipisahkan dengan koma. Tekan / untuk menyisipkan variabel.",
   "nodes.humanInputV2.recipients.insertVariable": "Sisipkan variabel",
   "nodes.humanInputV2.recipients.loadError": "Kontak tidak dapat dimuat. ID kontak yang tersimpan tetap dipertahankan.",

@@ -38,6 +38,37 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:moderation-service-boundary]
+name = Strict moderation use cases depend only on plain contracts and injected gateways
+type = forbidden
+source_modules =
+    services.moderation_service
+    services.moderation_session
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-moderation-runtime-boundary]
+name = Model assembly and invocation receive moderation through injection rather than application or persistence imports
+type = forbidden
+source_modules =
+    core.model_manager
+    core.workflow.node_runtime
+forbidden_modules =
+    services.moderation_service
+    services.moderation_adapters
+    repositories.api_based_extension_repository
+allow_indirect_imports = True
+
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
 type = layers

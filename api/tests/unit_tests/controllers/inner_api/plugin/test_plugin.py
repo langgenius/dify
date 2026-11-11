@@ -8,11 +8,14 @@ handler tests use inspect.unwrap() to bypass them.
 """
 
 import inspect
+from dataclasses import dataclass
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy import Connection, Engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api.plugin import plugin as plugin_module
 from controllers.inner_api.plugin.plugin import (
@@ -37,12 +40,23 @@ from controllers.inner_api.plugin.plugin import (
     PluginUploadFileRequestApi,
 )
 from core.datasource.entities.datasource_entities import DatasourceProviderType
-from core.plugin.entities.request import RequestInvokeDatasource, RequestInvokeTextEmbedding, RequestListModels
+from core.plugin.entities.request import (
+    RequestInvokeApp,
+    RequestInvokeDatasource,
+    RequestInvokeTextEmbedding,
+    RequestListModels,
+)
 from core.workflow.file_reference import build_file_reference
+from extensions.application_services.app_moderation import app_moderation_scope, current_moderation_session
+from extensions.ext_application_services import AppScopedEndUserServices
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
+from services.moderation_session import ModerationSession
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_tenant
+from tests.helpers.unit.model_factories import make_app, make_end_user, make_tenant
 
 
 def _tenant() -> Tenant:
@@ -342,6 +356,75 @@ class TestPluginInvokeAppApi:
     def test_has_post_method(self, api_instance):
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
+
+
+@dataclass(frozen=True)
+class PluginAppServices:
+    app_scoped_end_users: AppScopedEndUserServices
+
+
+@pytest.mark.parametrize("response_mode", ["blocking", "streaming"])
+def test_plugin_app_invocation_binds_isolated_scope_and_restores_it_on_failure(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    response_mode: Literal["blocking", "streaming"],
+) -> None:
+    flask_app = Flask(__name__)
+    repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+    flask_app.extensions["application_services"] = PluginAppServices(
+        AppScopedEndUserServices(
+            commands=AppScopedEndUserService(end_users=repository),
+            queries=AppScopedEndUserQueryService(end_users=repository),
+        )
+    )
+    app = make_app()
+    user = make_end_user(app_id=app.id)
+    tenant = make_tenant()
+    with sqlite_session_factory() as database:
+        database.add_all([app, user, tenant])
+        database.commit()
+
+    observed: list[ModerationSession | None] = []
+
+    def record_scope(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        if statement.lstrip().upper().startswith("SELECT"):
+            observed.append(current_moderation_session(tenant.id))
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_scope)
+    request_sessions: list[ModerationSession] = []
+    try:
+        with flask_app.app_context(), app_moderation_scope(tenant.id, app.id) as parent:
+            for _attempt in range(2):
+                observed.clear()
+                with sqlite_session_factory() as database:
+                    with pytest.raises(ValueError, match="missing query"):
+                        _extract_raw_post(PluginInvokeAppApi)(
+                            PluginInvokeAppApi(),
+                            session=database,
+                            user_model=user,
+                            tenant_model=tenant,
+                            payload=RequestInvokeApp(app_id=app.id, inputs={}, query="", response_mode=response_mode),
+                        )
+                assert current_moderation_session(tenant.id) is parent
+                assert observed
+                scope = observed[0]
+                assert scope is not None
+                assert scope is not parent
+                assert scope.tenant_id == tenant.id
+                assert scope.app_id == app.id
+                assert all(session is scope for session in observed)
+                request_sessions.append(scope)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_scope)
+    assert request_sessions[0] is not request_sessions[1]
+    assert current_moderation_session(tenant.id) is None
 
 
 class TestPluginInvokeEncryptApi:
