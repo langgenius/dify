@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 
 class HostedModerationPluginClient(Protocol):
-    """Direct daemon dispatch surface for a pinned hosted moderation plugin."""
+    """Keep installed-tenant dispatch distinct from server-selected direct fallback."""
 
     def invoke_moderation(
         self,
@@ -60,6 +60,19 @@ class HostedModerationPluginClient(Protocol):
         text: str,
         *,
         plugin_unique_identifier: str | None = None,
+    ) -> bool: ...
+
+    def invoke_moderation_direct(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        text: str,
+        *,
+        plugin_unique_identifier: str,
     ) -> bool: ...
 
 
@@ -134,14 +147,19 @@ class HostedOpenAIModerationGateway:
         if not valid_package or plugin_id != "langgenius/openai":
             raise ValueError("Hosted moderation requires a pinned langgenius/openai plugin identifier.")
 
-    def _invoke(self, context: AppRequestContext, text: str, identifier: str) -> bool:
-        """Invoke one admitted package with platform credentials; reject malformed verdicts."""
+    def _invoke(self, context: AppRequestContext, text: str, identifier: str, *, direct: bool) -> bool:
+        """Invoke an admitted package; direct fallback never resolves a tenant installation.
+
+        The caller selects direct dispatch only for the SRE-pinned fallback.
+        Both routes retain platform credentials, tenant context, and strict verdict validation.
+        """
         self._validate_identifier(identifier)
         if self._credentials is None:
             raise InvokeAuthorizationError("Hosted moderation credentials are not configured.")
         if not text:
             return False
-        flagged = self._client.invoke_moderation(
+        invoke = self._client.invoke_moderation_direct if direct else self._client.invoke_moderation
+        flagged = invoke(
             tenant_id=context.tenant_id,
             user_id=None,
             plugin_id="langgenius/openai",
@@ -163,7 +181,7 @@ class HostedOpenAIModerationGateway:
                     self._tenant_identifiers[context.tenant_id] = self._tenant_plugins.resolve(context.tenant_id)
                 identifier = self._tenant_identifiers[context.tenant_id]
                 if identifier is not None:
-                    return self._invoke(context, text, identifier), "tenant"
+                    return self._invoke(context, text, identifier, direct=False), "tenant"
             except Exception as error:
                 self._tenant_identifiers[context.tenant_id] = None
                 logger.warning(
@@ -176,7 +194,7 @@ class HostedOpenAIModerationGateway:
             raise InvokeAuthorizationError(
                 "No trusted tenant OpenAI plugin or configured moderation fallback is available."
             )
-        return self._invoke(context, text, self._plugin_unique_identifier), "configured"
+        return self._invoke(context, text, self._plugin_unique_identifier, direct=True), "configured"
 
     def check(
         self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase

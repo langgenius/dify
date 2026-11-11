@@ -35,6 +35,104 @@ from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, 
 PLUGIN_IDENTIFIER = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
+@pytest.mark.parametrize("user_id", [None, "user-1"])
+@pytest.mark.parametrize("flagged", [False, True])
+def test_direct_moderation_sends_explicit_tenant_and_user_context(
+    monkeypatch: pytest.MonkeyPatch, user_id: str | None, flagged: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, text="data: " + json.dumps({"code": 0, "message": "", "data": {"result": flagged}}))
+
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+        monkeypatch.setattr(client_module, "_httpx_client", http_client)
+        assert (
+            PluginModelClient().invoke_moderation_direct(
+                tenant_id="tenant-1",
+                user_id=user_id,
+                plugin_id="org/plugin",
+                provider="provider-a",
+                model="moderation-a",
+                credentials={"api_key": "platform-key"},
+                text="content",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
+            is flagged
+        )
+
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v2/invoke/dispatch/moderation/invoke"
+    assert requests[0].headers["X-Plugin-ID"] == "org/plugin"
+    assert requests[0].headers["X-Plugin-Unique-Identifier"] == PLUGIN_IDENTIFIER
+    assert "X-Api-Key" in requests[0].headers
+    payload = json.loads(requests[0].content)
+    assert payload["tenant_id"] == "tenant-1"
+    assert payload.get("user_id") == user_id
+    assert payload["data"] == {
+        "provider": "provider-a",
+        "model_type": "moderation",
+        "model": "moderation-a",
+        "credentials": {"api_key": "platform-key"},
+        "text": "content",
+    }
+
+
+@pytest.mark.parametrize(
+    ("tenant_id", "identifier"),
+    [
+        ("", PLUGIN_IDENTIFIER),
+        (" \t", PLUGIN_IDENTIFIER),
+        ("tenant-1", ""),
+        ("tenant-1", " \t"),
+        ("tenant-1", "org/other:1.0.0@checksum"),
+    ],
+)
+def test_direct_moderation_rejects_missing_scope_or_mismatched_identity_before_http(
+    monkeypatch: pytest.MonkeyPatch, tenant_id: str, identifier: str
+) -> None:
+    def unexpected_request(_request: httpx.Request) -> httpx.Response:
+        raise AssertionError("Invalid direct dispatch must not send credentials")
+
+    with httpx.Client(transport=httpx.MockTransport(unexpected_request)) as http_client:
+        monkeypatch.setattr(client_module, "_httpx_client", http_client)
+        with pytest.raises(ValueError, match="required|does not match"):
+            PluginModelClient().invoke_moderation_direct(
+                tenant_id=tenant_id,
+                user_id=None,
+                plugin_id="org/plugin",
+                provider="provider-a",
+                model="moderation-a",
+                credentials={"api_key": "platform-key"},
+                text="content",
+                plugin_unique_identifier=identifier,
+            )
+
+
+def test_direct_moderation_rejects_an_empty_daemon_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, text="")
+
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+        monkeypatch.setattr(client_module, "_httpx_client", http_client)
+        with pytest.raises(ValueError, match="Failed to invoke moderation"):
+            PluginModelClient().invoke_moderation_direct(
+                tenant_id="tenant-1",
+                user_id=None,
+                plugin_id="org/plugin",
+                provider="provider-a",
+                model="moderation-a",
+                credentials={},
+                text="content",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
+    assert len(requests) == 1
+
+
 class TestModelClientCases:
     class TestPluginModelClient:
         def test_fetch_model_providers(self, mocker: MockerFixture):

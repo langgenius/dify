@@ -55,11 +55,22 @@ The fallback identifier is validated only if needed; a working trusted tenant
 plugin does not require it. Missing both routes, platform credentials, or a
 working backend fails closed. A user's API key is never substituted.
 
-Moderation dispatches directly to the selected plugin identifier with platform
-credentials. Tenants without a trusted OpenAI installation can use the SRE
-fallback package. The plugin
-runtime must already be installed and loaded in plugin daemon; identifier
-dispatch does not bootstrap a missing package. Moderation does not construct a
+The verified tenant route uses `/plugin/{tenant_id}/dispatch/moderation/invoke`,
+which authorizes the plugin through the tenant's installation record. The SRE
+fallback instead uses `/v2/invoke/dispatch/moderation/invoke` with a mandatory
+`X-Plugin-Unique-Identifier` and the admitted `tenant_id` in JSON. Both routes
+keep daemon server-key authentication, platform credentials, and pinned package
+identity. An arbitrary client request cannot select direct dispatch or replace
+the server-managed fallback identifier.
+
+The v2 route is the daemon's existing direct-runtime invocation surface, originally
+introduced for Slim remote CLI calls. It parses the supplied identifier, preserves
+tenant execution context and cluster routing, and does not query tenant plugin
+installations. It is not an installation endpoint or a public tenant API. The
+fallback runtime must already be deployed and available to the daemon; direct
+dispatch does not bootstrap a missing package. The fallback remains an SRE-owned
+trust decision, while tenant-selected packages still require Marketplace and
+verified-manifest checks. Moderation does not construct a
 tenant model instance or enter `CreditPoolService`, so it neither reserves nor
 deducts user credits. The target LLM retains its normal accounting, including
 charging consumed usage when output is rejected.

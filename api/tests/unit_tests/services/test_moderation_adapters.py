@@ -1,7 +1,10 @@
+import json
 from collections.abc import Callable, Generator, Iterator
 from threading import Thread
+from typing import Literal
 from uuid import uuid4
 
+import httpx
 import pytest
 from flask import Flask, request
 from sqlalchemy import Engine
@@ -12,6 +15,8 @@ from core.app.apps.exc import AppGenerateError
 from core.app.llm.quota import ModelQuotaReservationState
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.impl import base as client_module
+from core.plugin.impl.model import PluginModelClient
 from enums import DeploymentEdition
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
 from extensions.ext_code_based_extension import code_based_extension
@@ -154,6 +159,7 @@ def test_platform_prefers_tenant_plugin_and_logs_rejection_without_content(
     assert len(client.calls) == 1
     assert client.calls[0][6] == (identifier or fallback)
     assert client.calls[0][4] == {"api_key": "platform-key"}
+    assert client.routes == (["direct"] if identifier is None else ["tenant"])
     assert ("Platform moderation rejected content" in caplog.text) is flagged
     assert text not in caplog.text
     assert "platform-key" not in caplog.text
@@ -197,6 +203,7 @@ def test_tenant_invoke_failure_switches_to_configured_fallback_for_remaining_che
     assert not gateway.check(context, rule=rule, request=ModerationRequest(text="safe"), phase="input").flagged
     assert not gateway.check(context, rule=rule, request=ModerationRequest(text="safe again"), phase="input").flagged
     assert [call[6] for call in client.calls] == [tenant_identifier, fallback, fallback]
+    assert client.routes == ["tenant", "direct", "direct"]
     assert plugins.tenants == ["tenant-1"]
 
 
@@ -217,6 +224,111 @@ def test_trusted_tenant_plugin_does_not_require_a_valid_fallback_identifier() ->
         phase="input",
     ).flagged
     assert client.calls[0][6] == tenant_identifier
+    assert client.routes == ["tenant"]
+
+
+@pytest.mark.parametrize("tenant_route", ["missing", "available", "unavailable"])
+@pytest.mark.parametrize("flagged", [False, True])
+@pytest.mark.parametrize("tenant_id", ["tenant-1", "tenant-2"])
+def test_hosted_moderation_keeps_tenant_installation_dispatch_separate_from_direct_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    tenant_route: Literal["missing", "available", "unavailable"],
+    flagged: bool,
+    tenant_id: str,
+) -> None:
+    config_overrides(PLUGIN_DAEMON_KEY="daemon-server-key")
+    tenant_identifier = "langgenius/openai:1.0.0@" + "a" * 32
+    fallback_identifier = "langgenius/openai:2.0.0@" + "b" * 32
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "POST"
+        assert request.headers["X-Api-Key"] == "daemon-server-key"
+        assert request.headers["X-Plugin-ID"] == "langgenius/openai"
+        payload = json.loads(request.content)
+        assert payload["data"] == {
+            "provider": "openai",
+            "model_type": "moderation",
+            "model": "omni-moderation-latest",
+            "credentials": {"openai_api_key": "platform-key"},
+            "text": "content",
+        }
+        if request.url.path.startswith("/plugin/"):
+            assert request.url.path == f"/plugin/{tenant_id}/dispatch/moderation/invoke"
+            assert request.headers["X-Plugin-Unique-Identifier"] == tenant_identifier
+            if tenant_route != "available":
+                return httpx.Response(404, json={"code": -404, "message": "Plugin not installed", "data": None})
+        else:
+            assert request.url.path == "/v2/invoke/dispatch/moderation/invoke"
+            assert request.headers["X-Plugin-Unique-Identifier"] == fallback_identifier
+            assert payload["tenant_id"] == tenant_id
+            assert "user_id" not in payload
+        return httpx.Response(200, text="data: " + json.dumps({"code": 0, "message": "", "data": {"result": flagged}}))
+
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+        monkeypatch.setattr(client_module, "_httpx_client", http_client)
+        gateway = HostedOpenAIModerationGateway(
+            client=PluginModelClient(),
+            credentials={"openai_api_key": "platform-key"},
+            plugin_unique_identifier=fallback_identifier,
+            tenant_plugins=RecordingTenantPlugins(None if tenant_route == "missing" else tenant_identifier),
+        )
+        verdict = gateway.check(
+            AppRequestContext(tenant_id=tenant_id, app_id="app-1"),
+            rule=ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}}),
+            request=ModerationRequest(text="content"),
+            phase="input",
+        )
+    assert verdict.flagged is flagged
+    paths = [request.url.path for request in requests]
+    tenant_path = f"/plugin/{tenant_id}/dispatch/moderation/invoke"
+    direct_path = "/v2/invoke/dispatch/moderation/invoke"
+    assert (
+        paths
+        == {
+            "missing": [direct_path],
+            "available": [tenant_path],
+            "unavailable": [tenant_path, direct_path],
+        }[tenant_route]
+    )
+
+
+@pytest.mark.parametrize("status_code", [404, 500])
+def test_unavailable_direct_fallback_fails_closed_without_trying_a_tenant_provider(
+    monkeypatch: pytest.MonkeyPatch, status_code: int
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.url.path == "/v2/invoke/dispatch/moderation/invoke"
+        return httpx.Response(status_code, json={"code": -1, "message": "Runtime unavailable", "data": None})
+
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+        monkeypatch.setattr(client_module, "_httpx_client", http_client)
+        guard = build_llm_moderation_guard(
+            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+            service=ModerationService(
+                gateway=HostedOpenAIModerationGateway(
+                    client=PluginModelClient(),
+                    credentials={"openai_api_key": "platform-key"},
+                    plugin_unique_identifier="langgenius/openai:1.0.0@" + "a" * 32,
+                    tenant_plugins=RecordingTenantPlugins(None),
+                )
+            ),
+            rule=ModerationRule(
+                type="openai_moderation",
+                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
+            ),
+            platform=True,
+        )
+        with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
+            guard.check_inputs([UserPromptMessage(content="content")])
+    assert unavailable.value.status_code == 503
+    assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
+    assert len(requests) == 1
 
 
 @pytest.fixture
