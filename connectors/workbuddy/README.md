@@ -17,6 +17,7 @@ The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script p
 ## Notes
 
 - `skill-meta.json` holds the skill header fields only WorkBuddy reads. The script adds them to the packaged `SKILL.md`. Keep them out of the skill in `skills/`.
+- `skill-intro.md` (optional) is text only for this connector's agent, such as how to log in. The script inserts it at the top of the packaged `SKILL.md` body.
 - Bump `version` in `connector-meta.json` on every submission.
 - Upload the zip on the WorkBuddy open platform: https://open.workbuddy.cn
 - If parsing fails, contact openworkbuddy@tencent.com.

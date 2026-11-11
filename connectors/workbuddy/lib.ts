@@ -35,11 +35,22 @@ export function skillFields(meta: SkillMeta, version: string): Record<string, Fi
   return { ...meta.fields, version }
 }
 
-export function insertFrontmatter(skillMd: string, fields: Record<string, FieldValue>): string {
-  const lines = skillMd.split('\n')
+function frontmatterCloseIndex(lines: readonly string[]): number {
   const closeIndex = lines.indexOf(FRONTMATTER_FENCE, 1)
   if (lines[0] !== FRONTMATTER_FENCE || closeIndex === -1)
     throw new Error('SKILL.md has no frontmatter')
+  return closeIndex
+}
+
+export function insertAfterFrontmatter(skillMd: string, text: string): string {
+  const lines = skillMd.split('\n')
+  lines.splice(frontmatterCloseIndex(lines) + 1, 0, '', text.trimEnd())
+  return lines.join('\n')
+}
+
+export function insertFrontmatter(skillMd: string, fields: Record<string, FieldValue>): string {
+  const lines = skillMd.split('\n')
+  const closeIndex = frontmatterCloseIndex(lines)
 
   const existing = new Set(lines.slice(1, closeIndex).map((line) => KEY_LINE.exec(line)?.[1]))
   const added: string[] = []

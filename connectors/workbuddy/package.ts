@@ -12,7 +12,7 @@ import {
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { insertFrontmatter, latestStableTag, skillFields } from './lib.ts'
+import { insertAfterFrontmatter, insertFrontmatter, latestStableTag, skillFields } from './lib.ts'
 
 const WORKBUDDY_DIR = fileURLToPath(new URL('.', import.meta.url))
 const REPO_ROOT = join(WORKBUDDY_DIR, '..', '..')
@@ -22,6 +22,7 @@ const ARCHIVE_MAX_BYTES = 256 * 1024 * 1024
 const BUILD_DIR = join(WORKBUDDY_DIR, BUILD_NAME)
 const ICON_FILES = ['icon.svg', 'icon.png', 'icon.jpg']
 const COPIED_FILES = ['connector-meta.json', 'cli.json']
+const SKILL_INTRO_FILE = 'skill-intro.md'
 
 function run(command: string, args: string[], cwd = REPO_ROOT): string {
   return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
@@ -77,10 +78,11 @@ function main() {
   execFileSync('tar', ['-x', '-C', outDir], { input: archive })
 
   const skillPath = join(outDir, 'skills', meta.skill, 'SKILL.md')
-  writeFileSync(
-    skillPath,
-    insertFrontmatter(readFileSync(skillPath, 'utf8'), skillFields(meta, version)),
-  )
+  let skillMd = insertFrontmatter(readFileSync(skillPath, 'utf8'), skillFields(meta, version))
+  const introPath = join(sourceDir, SKILL_INTRO_FILE)
+  if (existsSync(introPath))
+    skillMd = insertAfterFrontmatter(skillMd, readFileSync(introPath, 'utf8'))
+  writeFileSync(skillPath, skillMd)
 
   const icon = ICON_FILES.find((name) => existsSync(join(sourceDir, name)))
   if (!icon) throw new Error(`no icon found (${ICON_FILES.join(', ')}) in ${sourceDir}`)
