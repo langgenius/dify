@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -1056,3 +1057,98 @@ def test_parse_docx_zip_without_document_xml_raises_clear_error(
     extractor = _new_extractor(monkeypatch, path)
     with pytest.raises(ValueError, match="word/document.xml"):
         extractor.parse_docx(str(path))
+
+
+def test_parse_docx_legacy_conversion_timeout_raises_clear_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: "/usr/bin/soffice")
+
+    def _times_out(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 120)
+
+    monkeypatch.setattr(we.subprocess, "run", _times_out)
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="timed out"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_legacy_conversion_uses_renamed_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: "/usr/bin/soffice")
+
+    def _convert_with_renamed_output(cmd, **kwargs):
+        outdir = Path(cmd[5])
+        (outdir / "converted.docx").write_bytes(_make_base_docx_bytes())
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(we.subprocess, "run", _convert_with_renamed_output)
+
+    extractor = _new_extractor(monkeypatch, path)
+    assert extractor.parse_docx(str(path)) == _EXPECTED_BASE_CONTENT
+
+
+def test_parse_docx_legacy_conversion_failure_raises_clear_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: "/usr/bin/soffice")
+    monkeypatch.setattr(
+        we.subprocess,
+        "run",
+        lambda cmd, **kwargs: subprocess.CompletedProcess(cmd, 1),
+    )
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="exit code 1"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_xml_fallback_rejects_malformed_document_xml(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        zout.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+        )
+        zout.writestr("word/document.xml", "this is not XML at all")
+    path = tmp_path / "malformed.docx"
+    path.write_bytes(buf.getvalue())
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="not valid XML"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_xml_fallback_rejects_document_xml_without_body(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        zout.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+        )
+        zout.writestr(
+            "word/document.xml",
+            '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            "<w:other/></w:document>",
+        )
+    path = tmp_path / "no-body.docx"
+    path.write_bytes(buf.getvalue())
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="has no body"):
+        extractor._parse_docx_xml_fallback(str(path))
+
+
+def test_fallback_table_to_markdown_returns_empty_string_for_table_without_rows() -> None:
+    table = ET.fromstring('<w:tbl xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>')
+    assert WordExtractor._fallback_table_to_markdown(table) == ""
