@@ -5,11 +5,28 @@ import {
 } from './generated/api/console/account/zod.gen.ts'
 import {
   zAccountProfilePatchPayload as zWebAccountProfilePatchPayload,
+  zChangeEmailResetPayload,
+  zChangeEmailSendPayload,
+  zChangeEmailValidityPayload,
   zWebAccountPasswordPayload,
   zWebAccountProfileResponse,
 } from './generated/api/web/zod.gen.ts'
 
 describe('generated account profile schema', () => {
+  it('requires verification tokens before confirming an email change', () => {
+    expect(zChangeEmailSendPayload.safeParse({ email: 'jane@example.com' }).success).toBe(true)
+    expect(
+      zChangeEmailValidityPayload.safeParse({ email: 'jane@example.com', code: '123456' }).success,
+    ).toBe(false)
+    expect(zChangeEmailResetPayload.safeParse({ new_email: 'new@example.com' }).success).toBe(false)
+    expect(
+      zChangeEmailResetPayload.parse({ new_email: 'new@example.com', token: 'verified' }),
+    ).toEqual({
+      new_email: 'new@example.com',
+      token: 'verified',
+    })
+  })
+
   it('matches the server rules for partial updates', () => {
     expect(zAccountProfilePatchPayload.safeParse({ name: 'Jane' }).success).toBe(true)
     expect(zAccountProfilePatchPayload.safeParse({}).success).toBe(true)
