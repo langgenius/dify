@@ -99,7 +99,7 @@ catalog:
   '@lexical/utils': 0.47.0
   '@mediabunny/mp3-encoder': 1.65.2
   '@monaco-editor/react': 4.7.0
-  '@napi-rs/keyring': 1.3.0
+  '@napi-rs/keyring': 2.1.2
   '@orpc/client': 1.16.2
   '@orpc/contract': 1.16.2
   '@orpc/openapi-client': 1.16.2
