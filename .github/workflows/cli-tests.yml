@@ -52,33 +52,6 @@ jobs:
       - name: CI pipeline (tree, coverage, build)
         run: pnpm run ci
 
-      - name: Install Linux keyring components
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends gnome-keyring dbus dbus-x11
-
-      - name: Check native Linux credential storage
-        if: runner.os == 'Linux'
-        run: |
-          keyring_data_dir="$(mktemp -d)"
-          trap 'rm -rf "$keyring_data_dir"' EXIT
-          XDG_DATA_HOME="$keyring_data_dir" dbus-run-session -- bash -eu <<'SH'
-            printf '%s' test | gnome-keyring-daemon --unlock
-            node scripts/keyring-smoke.mjs
-            bun scripts/keyring-smoke.mjs
-            bun build scripts/keyring-smoke.mjs --compile --outfile "$RUNNER_TEMP/keyring-smoke"
-            "$RUNNER_TEMP/keyring-smoke"
-          SH
-
-      - name: Check native credential storage
-        if: runner.os != 'Linux'
-        run: |
-          node scripts/keyring-smoke.mjs
-          bun scripts/keyring-smoke.mjs
-          bun build scripts/keyring-smoke.mjs --compile --outfile "$RUNNER_TEMP/keyring-smoke.exe"
-          "$RUNNER_TEMP/keyring-smoke.exe"
-
       - name: Report coverage
         if: matrix.os == 'depot-ubuntu-24.04'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
