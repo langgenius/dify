@@ -48,6 +48,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     from . import (
         account,
+        account_email,
         app,
         audio,
         completion,
@@ -77,6 +78,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         account,
+        account_email,
         app,
         audio,
         completion,
@@ -107,6 +109,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     account,
+    account_email,
     app,
     audio,
     completion,
@@ -138,6 +141,7 @@ api.add_namespace(web_ns)
 
 __all__ = [
     "account",
+    "account_email",
     "api",
     "app",
     "audio",

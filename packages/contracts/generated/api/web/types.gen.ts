@@ -22,6 +22,16 @@ export type AccountBannedError = ErrorResponse & {
   status: 400
 }
 
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
 export type AccountProfilePatchPayload = {
   avatar?: string
   interface_language?: string
@@ -134,6 +144,24 @@ export type BrandingModel = {
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
+export type ChangeEmailResetPayload = {
+  new_email: string
+  token: string
+}
+
+export type ChangeEmailSendPayload = {
+  email: string
+  language?: string | null
+  phase?: string | null
+  token?: string | null
+}
+
+export type ChangeEmailValidityPayload = {
+  code: string
+  email: string
+  token: string
+}
+
 export type ChatMessagePayload = {
   connection_revision?: string | null
   connections?: {
@@ -150,6 +178,10 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+}
+
+export type CheckEmailUniquePayload = {
+  email: string
 }
 
 export type ClaimablePassportResponse = {
@@ -443,6 +475,21 @@ export type CurrentPasswordIncorrectError = ErrorResponse & {
 
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
+export type EmailAlreadyInUseError = ErrorResponse & {
+  code: 'email_already_in_use'
+  status: 400
+}
+
+export type EmailChangeLimitError = ErrorResponse & {
+  code: 'email_change_limit'
+  status: 429
+}
+
+export type EmailChangeRateLimitExceededError = ErrorResponse & {
+  code: 'email_change_rate_limit_exceeded'
+  status: 429
+}
+
 export type EmailCodeError = ErrorResponse & {
   code: 'email_code_error'
   status: 400
@@ -457,6 +504,11 @@ export type EmailCodeLoginVerifyPayload = {
   code: string
   email: string
   token: string
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
 }
 
 export type EmailPasswordResetLimitError = ErrorResponse & {
@@ -2005,6 +2057,102 @@ export type WebMessageListItemWritable = {
   status: string
   total_price?: string | null
 }
+
+export type PostAccountChangeEmailData = {
+  body: ChangeEmailSendPayload
+  path?: never
+  query?: never
+  url: '/account/change-email'
+}
+
+export type PostAccountChangeEmailErrors = {
+  400: AccountNotFoundError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailChangeRateLimitExceededError | EmailSendIpLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailError =
+  PostAccountChangeEmailErrors[keyof PostAccountChangeEmailErrors]
+
+export type PostAccountChangeEmailResponses = {
+  200: SimpleResultDataResponse
+}
+
+export type PostAccountChangeEmailResponse =
+  PostAccountChangeEmailResponses[keyof PostAccountChangeEmailResponses]
+
+export type PostAccountChangeEmailCheckEmailUniqueData = {
+  body: CheckEmailUniquePayload
+  path?: never
+  query?: never
+  url: '/account/change-email/check-email-unique'
+}
+
+export type PostAccountChangeEmailCheckEmailUniqueErrors = {
+  400: AccountInFreezeError | EmailAlreadyInUseError | EmailDomainSuspendedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailCheckEmailUniqueError =
+  PostAccountChangeEmailCheckEmailUniqueErrors[keyof PostAccountChangeEmailCheckEmailUniqueErrors]
+
+export type PostAccountChangeEmailCheckEmailUniqueResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAccountChangeEmailCheckEmailUniqueResponse =
+  PostAccountChangeEmailCheckEmailUniqueResponses[keyof PostAccountChangeEmailCheckEmailUniqueResponses]
+
+export type PostAccountChangeEmailResetData = {
+  body: ChangeEmailResetPayload
+  path?: never
+  query?: never
+  url: '/account/change-email/reset'
+}
+
+export type PostAccountChangeEmailResetErrors = {
+  400:
+    | AccountInFreezeError
+    | AccountNotFoundError
+    | EmailAlreadyInUseError
+    | EmailDomainSuspendedError
+    | InvalidOrExpiredTokenError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailResetError =
+  PostAccountChangeEmailResetErrors[keyof PostAccountChangeEmailResetErrors]
+
+export type PostAccountChangeEmailResetResponses = {
+  200: WebAccountResponse
+}
+
+export type PostAccountChangeEmailResetResponse =
+  PostAccountChangeEmailResetResponses[keyof PostAccountChangeEmailResetResponses]
+
+export type PostAccountChangeEmailValidityData = {
+  body: ChangeEmailValidityPayload
+  path?: never
+  query?: never
+  url: '/account/change-email/validity'
+}
+
+export type PostAccountChangeEmailValidityErrors = {
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailChangeLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailValidityError =
+  PostAccountChangeEmailValidityErrors[keyof PostAccountChangeEmailValidityErrors]
+
+export type PostAccountChangeEmailValidityResponses = {
+  200: VerificationTokenResponse
+}
+
+export type PostAccountChangeEmailValidityResponse =
+  PostAccountChangeEmailValidityResponses[keyof PostAccountChangeEmailValidityResponses]
 
 export type PostAccountPasswordData = {
   body: WebAccountPasswordPayload

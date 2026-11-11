@@ -1,6 +1,6 @@
 """Application service implementing the account change-email state machine."""
 
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from services.account_change_email_ports import (
     AccountEmailPolicyGateway,
     ChangeEmailCodeGenerator,
@@ -56,7 +56,7 @@ class AccountChangeEmailService:
 
     def send_code(
         self,
-        context: RequestContext,
+        context: AccountRequestContext | RequestContext,
         *,
         requested_email: str,
         language: str,
@@ -122,7 +122,7 @@ class AccountChangeEmailService:
 
     def verify_code(
         self,
-        context: RequestContext,
+        context: AccountRequestContext | RequestContext,
         *,
         email: str,
         code: str,
@@ -154,7 +154,7 @@ class AccountChangeEmailService:
 
     def reset(
         self,
-        context: RequestContext,
+        context: AccountRequestContext | RequestContext,
         *,
         new_email: str,
         token: str,

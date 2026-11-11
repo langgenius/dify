@@ -138,6 +138,33 @@ export const zBrandingModel = z.object({
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 
 /**
+ * ChangeEmailResetPayload
+ */
+export const zChangeEmailResetPayload = z.object({
+  new_email: z.string(),
+  token: z.string(),
+})
+
+/**
+ * ChangeEmailSendPayload
+ */
+export const zChangeEmailSendPayload = z.object({
+  email: z.string(),
+  language: z.string().nullish(),
+  phase: z.string().nullish(),
+  token: z.string().nullish(),
+})
+
+/**
+ * ChangeEmailValidityPayload
+ */
+export const zChangeEmailValidityPayload = z.object({
+  code: z.string(),
+  email: z.string(),
+  token: z.string(),
+})
+
+/**
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
@@ -150,6 +177,13 @@ export const zChatMessagePayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
+})
+
+/**
+ * CheckEmailUniquePayload
+ */
+export const zCheckEmailUniquePayload = z.object({
+  email: z.string(),
 })
 
 /**
@@ -539,6 +573,30 @@ export const zAccountBannedError = zErrorResponse.and(
 )
 
 /**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentNotPublishedError
  *
  * Agent has not been published. Please publish the Agent before using the web app.
@@ -839,6 +897,42 @@ export const zCurrentPasswordIncorrectError = zErrorResponse.and(
 )
 
 /**
+ * EmailAlreadyInUseError
+ *
+ * A user with this email already exists.
+ */
+export const zEmailAlreadyInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_already_in_use'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailChangeLimitError
+ *
+ * Too many failed email change attempts. Please try again in 24 hours.
+ */
+export const zEmailChangeLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_change_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * EmailChangeRateLimitExceededError
+ *
+ * Too many email change emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailChangeRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_change_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * EmailCodeError
  *
  * Email code is invalid or expired.
@@ -846,6 +940,18 @@ export const zCurrentPasswordIncorrectError = zErrorResponse.and(
 export const zEmailCodeError = zErrorResponse.and(
   z.object({
     code: z.literal('email_code_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
     status: z.literal(400),
   }),
 )
@@ -3070,6 +3176,34 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
 })
+
+export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
+
+/**
+ * Verification challenge
+ */
+export const zPostAccountChangeEmailResponse = zSimpleResultDataResponse
+
+export const zPostAccountChangeEmailCheckEmailUniqueBody = zCheckEmailUniquePayload
+
+/**
+ * Email available
+ */
+export const zPostAccountChangeEmailCheckEmailUniqueResponse = zSimpleResultResponse
+
+export const zPostAccountChangeEmailResetBody = zChangeEmailResetPayload
+
+/**
+ * Updated Account settings
+ */
+export const zPostAccountChangeEmailResetResponse = zWebAccountResponse
+
+export const zPostAccountChangeEmailValidityBody = zChangeEmailValidityPayload
+
+/**
+ * Verified challenge
+ */
+export const zPostAccountChangeEmailValidityResponse = zVerificationTokenResponse
 
 export const zPostAccountPasswordBody = zWebAccountPasswordPayload
 
