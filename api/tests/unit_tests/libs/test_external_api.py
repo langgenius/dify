@@ -313,12 +313,12 @@ _ERROR_BODY_REF = {"$ref": "#/components/schemas/ErrorResponse"}
 
 
 class _Schema(BaseModel):
-    """The slice of a JSON-Schema node the documented responses are read through."""
+    """Read the documented response schema and preserve public key names through aliases."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     ref: str | None = Field(default=None, alias="$ref")
-    anyOf: list["_Schema"] = Field(default_factory=list)
+    any_of: list["_Schema"] = Field(default_factory=list, alias="anyOf")
 
 
 class _MediaType(BaseModel):
@@ -465,10 +465,13 @@ def _responses(document: _Document) -> dict[str, _Response]:
 
 
 def _error_options(document: _Document, status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
-    """The component names a status documents, in order, before the open error body that ends them."""
+    """Given a documented status ending in the open error body, return its component names.
+
+    Invalid response shapes raise AssertionError. The document stays unchanged.
+    """
     schema = _responses(document)[status].content["application/json"].schema_
     assert schema is not None
-    options = schema.anyOf or [schema]
+    options = schema.any_of or [schema]
     # A generic error can answer any documented status, so the open body is always the last option.
     assert options[-1].model_dump(by_alias=True, exclude_defaults=True) == body_ref
     names: list[str] = []
