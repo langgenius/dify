@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { webAppQuery } from '@/service/webapp'
@@ -11,9 +11,11 @@ import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/serv
 import { getAvatarInitial } from '@/utils/avatar'
 import ChangePasswordDialog from './change-password-dialog'
 import EditAccountNameDialog from './edit-account-name-dialog'
+import EmailChangeModal from './email-change-modal'
 
 function AccountSession({ authSession }: { authSession: number }) {
   const { t } = useTranslation(['common', 'accountSettings'])
+  const [showEmailChange, setShowEmailChange] = useState(false)
   const profile = useQuery(
     webAppQuery.account.profile.get.queryOptions({
       queryKey: [...webAppQuery.account.profile.get.queryKey(), authSession],
@@ -74,8 +76,15 @@ function AccountSession({ authSession }: { authSession: number }) {
             <h2 className="system-sm-semibold text-text-secondary">
               {t(($) => $['account.email'], { ns: 'accountSettings' })}
             </h2>
-            <div className="mt-2 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
-              <span className="ps-1 wrap-anywhere">{account.email}</span>
+            <div className="mt-2 flex w-full items-center justify-between gap-2">
+              <div className="min-w-0 flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
+                <span className="ps-1 wrap-anywhere">{account.email}</span>
+              </div>
+              {features.data?.enable_change_email && (
+                <Button variant="tertiary" onClick={() => setShowEmailChange(true)}>
+                  {t(($) => $['operation.change'], { ns: 'common' })}
+                </Button>
+              )}
             </div>
           </div>
           {features.data?.enable_email_password_login && (
@@ -93,6 +102,13 @@ function AccountSession({ authSession }: { authSession: number }) {
                 authSession={authSession}
               />
             </div>
+          )}
+          {showEmailChange && (
+            <EmailChangeModal
+              email={account.email}
+              authSession={authSession}
+              onClose={() => setShowEmailChange(false)}
+            />
           )}
         </>
       ) : null}
