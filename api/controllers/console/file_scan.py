@@ -11,7 +11,6 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 from configs import dify_config
@@ -23,7 +22,6 @@ from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from models.dataset import Dataset
 from models.file_scan import FileScanFallbackAction
 from services.file_scan import (
     FileScanPolicyService,
@@ -34,7 +32,7 @@ from services.file_scan import (
     ScanPolicy,
     ScanScope,
 )
-from services.file_scan.entities import SCOPE_DATASET, SCOPE_KNOWLEDGE_FS_SPACE
+from services.file_scan.entities import SCOPE_KNOWLEDGE_FS_SPACE
 from services.file_scan.provider_service import FileScanProviderView
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
@@ -268,15 +266,12 @@ class FileScanProviderTestApi(Resource):
 
 
 def _dataset_scope(request_context: RequestContext, dataset_id: UUID) -> ScanScope:
-    with session_factory.create_session() as session:
-        found = session.scalar(
-            select(Dataset.id).where(
-                Dataset.id == str(dataset_id), Dataset.tenant_id == request_context.active_workspace_id
-            )
-        )
-    if found is None:
+    scope = FileScanPolicyService().dataset_scope(
+        tenant_id=request_context.active_workspace_id, dataset_id=str(dataset_id)
+    )
+    if scope is None:
         raise NotFound()
-    return ScanScope(SCOPE_DATASET, str(dataset_id))
+    return scope
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/file-scan-policy")

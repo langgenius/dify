@@ -2,8 +2,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
+from models.dataset import Dataset
 from models.file_scan import FileScanFallbackAction, FileScanPolicy, FileScanProvider
-from services.file_scan.entities import ScanPolicy, ScanScope
+from services.file_scan.entities import SCOPE_DATASET, ScanPolicy, ScanScope
 from services.file_scan.errors import FileScanValidationError
 
 
@@ -45,6 +46,12 @@ class FileScanPolicyService:
             row.updated_by = account_id
             session.commit()
             return _to_policy(row)
+
+    def dataset_scope(self, *, tenant_id: str, dataset_id: str) -> ScanScope | None:
+        """The scope of a Classic Knowledge Base, or ``None`` when the workspace has no such dataset."""
+        with self._session_maker() as session:
+            found = session.scalar(select(Dataset.id).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id))
+        return ScanScope(SCOPE_DATASET, dataset_id) if found is not None else None
 
     def delete_scope(self, *, tenant_id: str, scope: ScanScope) -> None:
         """Forget the policy of a deleted resource."""

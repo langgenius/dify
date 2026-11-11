@@ -1,6 +1,8 @@
 import socket
 import threading
+from collections.abc import Iterator
 from types import ModuleType
+from typing import ClassVar, override
 
 import httpx
 import pytest
@@ -55,6 +57,7 @@ def _use_http(monkeypatch: pytest.MonkeyPatch, module: ModuleType, *responses: h
 
 def test_scan_never_raises_and_reports_unexpected_failures_as_unavailable() -> None:
     class Broken(CloudmersiveScanner):
+        @override
         def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
             raise RuntimeError(f"boom {target.file_name} {external_id}")
 
@@ -213,7 +216,9 @@ def test_scanii_settings_validation() -> None:
 # --- MetaDefender
 
 
-def _metadefender(monkeypatch: pytest.MonkeyPatch, *responses: httpx.Response, wait: float = 50.0):
+def _metadefender(
+    monkeypatch: pytest.MonkeyPatch, *responses: httpx.Response, wait: float = 50.0
+) -> tuple[MetaDefenderScanner, _Http]:
     from core.file_scan.scanners import metadefender as module
 
     http = _use_http(monkeypatch, module, *responses)
@@ -376,7 +381,7 @@ class _FakeClamd:
 
 
 @pytest.fixture
-def clamd():
+def clamd() -> Iterator[_FakeClamd]:
     server = _FakeClamd(max_stream=200_000)
     yield server
     server.close()
@@ -407,9 +412,9 @@ def test_clamav_unreachable_is_a_network_problem() -> None:
 
 
 class _Requestor:
-    result: object = None
-    error: str | None = None
-    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]] = []
+    result: ClassVar[object] = None
+    error: ClassVar[str | None] = None
+    calls: ClassVar[list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]]] = []
 
     def __init__(self, api_endpoint: str, api_key: str) -> None:
         self._endpoint, self._key = api_endpoint, api_key
@@ -423,7 +428,9 @@ class _Requestor:
 
 @pytest.fixture
 def requestor(monkeypatch: pytest.MonkeyPatch) -> type[_Requestor]:
-    _Requestor.result, _Requestor.error, _Requestor.calls = None, None, []
+    _Requestor.result = None
+    _Requestor.error = None
+    _Requestor.calls.clear()
     monkeypatch.setattr(api_module, "APIBasedExtensionRequestor", _Requestor)
     return _Requestor
 

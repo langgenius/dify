@@ -26,6 +26,7 @@ from services.knowledge_fs import staged_upload_service as staged_upload_module
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.object_storage import KnowledgeFSObjectStorageService
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDocumentStagedUploadPayload,
     KnowledgeFSUploadSessionCreateResponse,
     KnowledgeFSUploadSessionMutationResponse,
@@ -1021,6 +1022,7 @@ class _FileScan(FileScanService):
         self.outcomes = list(outcomes)
         self.calls: list[dict[str, object]] = []
 
+    @override
     def scan_upload_file(
         self, *, tenant_id: str, upload_file_id: str, scope: ScanScope, wait_for_result: bool = True
     ) -> ScanOutcome:
@@ -1046,7 +1048,7 @@ def _scanning_service(
     return service, facade, file_scan
 
 
-def _claim(service: KnowledgeFSStagedUploadService):
+def _claim(service: KnowledgeFSStagedUploadService) -> KnowledgeFSDocumentStagedUploadAcceptedResponse:
     return service.claim(
         tenant_id=_TENANT_ID,
         account_id=_ACCOUNT_ID,
