@@ -1,5 +1,4 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { Locale } from '@/i18n/locale'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -362,7 +361,11 @@ describe('human-input utils', () => {
       const twoMinutesAgo = now - 2 * 60 * 1000
 
       expect(getRelativeTime(twoMinutesAgo, 'en-US')).toBe('2 minutes ago')
-      expect(getRelativeTime(twoMinutesAgo, 'es-ES' as Locale)).toBe('2 minutes ago')
+      expect(getRelativeTime(twoMinutesAgo, 'es-ES')).toBe('hace 2 minutos')
+      expect(getRelativeTime(twoMinutesAgo, 'fr-FR')).toBe('il y a 2 minutes')
+      expect(getRelativeTime(twoMinutesAgo, 'zh-Hant')).toBe('2 分鐘前')
+      expect(getRelativeTime(twoMinutesAgo, 'ar-TN')).toBe('منذ 2 دقائق')
+      expect(getRelativeTime(twoMinutesAgo, 'lo-LA')).toBe('2 ນາທີຜ່ານມາ')
     })
 
     it('should compare utc timestamp against current time', () => {
