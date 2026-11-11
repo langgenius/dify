@@ -43,7 +43,11 @@ from services.entities.model_billing_gemini_mapping import (
     gemini_source_operations,
 )
 from services.entities.model_billing_gemini_mapping import SelectedGeminiSourceVariant as SelectedGeminiSourceVariant  # noqa: PLC0414
-from services.entities.model_billing_gemini_v8_mapping import GEMINI_0913_SOURCE_UID, SourceGeminiV8VariantMapping
+from services.entities.model_billing_gemini_v8_mapping import (
+    GEMINI_0913_SOURCE_UID,
+    GEMINI_0915_SOURCE_UID,
+    SourceGeminiV8VariantMapping,
+)
 from services.entities.model_billing_gemini_v8_mapping import (
     SelectedGeminiV8SourceVariant as SelectedGeminiV8SourceVariant,  # noqa: PLC0414
 )
@@ -233,7 +237,7 @@ def build_source_adapter_contract(
     if isinstance(mapping, SelectedGeminiV8SourceVariant):
         build_gemini_v8 = (
             build_gemini_credit_v2_source_contract
-            if mapping.variant.source_plugin_uid == GEMINI_0913_SOURCE_UID
+            if mapping.variant.source_plugin_uid in {GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID}
             else build_gemini_credit_source_contract
         )
         gemini_v8_contract = build_gemini_v8(
@@ -1230,13 +1234,13 @@ def hosted_gemini_source_fact(
 ) -> HostedGeminiSourceFact | None:
     """Capture actual SYSTEM dictionary classifications, before substitution.
 
-    Source0912/0913 LLMs use only the reviewed None/exact Google-root base,
+    Source0912/0913/0915 LLMs use only the reviewed None/exact Google-root base,
     None/disabled metadata and None/empty file prefix. Embeddings do not consume
     these three fields. Nothing retains a key, raw URL or credential dictionary.
     """
     if (
         str(ModelProviderID(provider)) != "langgenius/gemini/google"
-        or source_uid not in {GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID}
+        or source_uid not in {GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID}
         or type(credentials) is not dict
     ):
         return None
@@ -1318,7 +1322,7 @@ def gemini_v8_source_variant_context(
         type(fact) is not HostedGeminiSourceFact
         or fact.provider != str(ModelProviderID(provider))
         or fact.plugin_unique_identifier != source_uid
-        or source_uid not in {GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID}
+        or source_uid not in {GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID}
         or model_type not in {ModelType.LLM, ModelType.TEXT_EMBEDDING}
     ):
         return None
@@ -1447,7 +1451,7 @@ def restore_variant_source_contract(
     if isinstance(mapping, SelectedGeminiV8SourceVariant):
         restore_gemini_v8 = (
             restore_gemini_credit_v2_source_contract
-            if mapping.variant.source_plugin_uid == GEMINI_0913_SOURCE_UID
+            if mapping.variant.source_plugin_uid in {GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID}
             else restore_gemini_credit_source_contract
         )
         return restore_gemini_v8(

@@ -3,7 +3,7 @@
 This DTO validates declaration shape only. A syntactically valid digest is not
 reviewed source, SDK/runtime, installed package or target capability evidence.
 No registry dispatch, factory, credential, SYSTEM/BYOK or upgrade authority is
-added here. Real 0913 contracts must be reviewed before this family is wired.
+added here. Exact 0913/0915 contracts are reviewed separately by the factory.
 """
 
 from dataclasses import dataclass
@@ -21,10 +21,12 @@ from services.entities.model_billing_gemini_mapping import (
 from services.entities.model_billing_mapping import _StrictModel
 
 GEMINI_0913_SOURCE_UID = "langgenius/gemini:0.9.13@4378187cfc50d4253573f4d96baa13228d8ed2eb746ac3bae492a8eaee2da458"
+GEMINI_0915_SOURCE_UID = "langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64"
 
 type GeminiV8SourceUID = Literal[
     "langgenius/gemini:0.9.12@9bb9eff3f9c99a8f1f87bdd5e0f178d5493918939dd0e02825ae8383bd0fd7ed",
     "langgenius/gemini:0.9.13@4378187cfc50d4253573f4d96baa13228d8ed2eb746ac3bae492a8eaee2da458",
+    "langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
 ]
 
 
@@ -48,11 +50,11 @@ class GeminiV8SourceVariant(_StrictModel):
 
     @model_validator(mode="after")
     def closed_capability(self) -> Self:
-        prefix, adapter = (
-            ("gemini0912-native-v1:", "gemini_credit_source_v1")
-            if self.source_plugin_uid == GEMINI_SOURCE_UID
-            else ("gemini0913-native-v1:", "gemini_credit_source_v2")
-        )
+        prefix, adapter = {
+            GEMINI_SOURCE_UID: ("gemini0912-native-v1:", "gemini_credit_source_v1"),
+            GEMINI_0913_SOURCE_UID: ("gemini0913-native-v1:", "gemini_credit_source_v2"),
+            GEMINI_0915_SOURCE_UID: ("gemini0915-native-v1:", "gemini_credit_source_v2"),
+        }[self.source_plugin_uid]
         if (
             self.source_profile_id != prefix + self.target.model
             or self.parameter_adapter.id != adapter
@@ -71,7 +73,7 @@ class SourceGeminiV8VariantMapping(_StrictModel):
     source: GeminiMappingSource
     settlement_owner: Literal["shared_credit_pool"]
     pool_types: list[Literal["paid", "trial"]] = Field(min_length=1)
-    variants: list[GeminiV8SourceVariant] = Field(min_length=1, max_length=2)
+    variants: list[GeminiV8SourceVariant] = Field(min_length=1, max_length=3)
 
     @model_validator(mode="before")
     @classmethod

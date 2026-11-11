@@ -20,6 +20,7 @@ from services.entities.model_billing_gemini_mapping import (
 )
 from services.entities.model_billing_gemini_v8_mapping import (
     GEMINI_0913_SOURCE_UID,
+    GEMINI_0915_SOURCE_UID,
     SelectedGeminiV8SourceVariant,
     SourceGeminiV8VariantMapping,
     SourceGeminiV8VariantSelection,
@@ -132,6 +133,52 @@ def selection(record: SyntheticRecord) -> dict[str, object]:
         },
         "registry_digest": "sha256:" + "d" * 64,
     }
+
+
+def synthetic_0915_record(model: str = "gemini-2.5-flash") -> SyntheticRecord:
+    raw = synthetic_record(model)
+    new = deepcopy(raw["variants"][1])
+    new["variant_id"] = f"synthetic-0915-{model}"
+    new["source_plugin_uid"] = GEMINI_0915_SOURCE_UID
+    new["source_profile_id"] = f"gemini0915-native-v1:{model}"
+    raw["variants"].append(new)
+    return raw
+
+
+@pytest.mark.parametrize("model", sorted(GEMINI_SOURCE_LLM_MODELS | GEMINI_SOURCE_EMBEDDING_MODELS))
+def test_additive_0915_exact_three_uid_shape_and_selection(model: str) -> None:
+    raw = synthetic_0915_record(model)
+    parsed = SourceGeminiV8VariantMapping.model_validate(raw)
+    assert parsed.model_dump(mode="json") == raw
+    new = parsed.variants[2]
+    assert new.source_plugin_uid == GEMINI_0915_SOURCE_UID
+    assert new.source_profile_id == "gemini0915-native-v1:" + model
+    assert new.parameter_adapter.id == "gemini_credit_source_v2"
+    frozen = SourceGeminiV8VariantSelection.model_validate(selection({**raw, "variants": [raw["variants"][2]]}))
+    assert frozen.source_plugin_uid == GEMINI_0915_SOURCE_UID
+    assert SourceGeminiV8VariantSelection.model_validate_json(frozen.model_dump_json()) == frozen
+    # Existing declarations are neither relabelled nor assigned new digests.
+    assert parsed.variants[:2] == SourceGeminiV8VariantMapping.model_validate(synthetic_record(model)).variants
+
+
+@pytest.mark.parametrize("mutation", ["four", "uid", "profile", "adapter", "version", "settings"])
+def test_0915_shape_rejects_unknown_identity_crossed_profile_or_widening(mutation: str) -> None:
+    raw = synthetic_0915_record()
+    row = raw["variants"][2]
+    if mutation == "four":
+        raw["variants"].append(deepcopy(row))
+    elif mutation == "uid":
+        row["source_plugin_uid"] = GEMINI_0915_SOURCE_UID[:-1] + "0"
+    elif mutation == "profile":
+        row["source_profile_id"] = "gemini0913-native-v1:gemini-2.5-flash"
+    elif mutation == "adapter":
+        row["parameter_adapter"]["id"] = "gemini_credit_source_v1"
+    elif mutation == "version":
+        raw["schema_version"] = 9
+    else:
+        row["source_settings"]["source_base_policy"] = "not_used"
+    with pytest.raises(ValidationError):
+        SourceGeminiV8VariantMapping.model_validate(raw)
 
 
 @pytest.mark.parametrize("model", sorted(GEMINI_SOURCE_LLM_MODELS | GEMINI_SOURCE_EMBEDDING_MODELS))

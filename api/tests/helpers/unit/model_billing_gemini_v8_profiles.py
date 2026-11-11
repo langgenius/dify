@@ -10,18 +10,40 @@ from typing import Any, cast
 
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from services.entities.model_billing_gemini_mapping import GEMINI_SOURCE_UID, gemini_source_operations
-from services.entities.model_billing_gemini_v8_mapping import GEMINI_0913_SOURCE_UID
+from services.entities.model_billing_gemini_v8_mapping import GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID
 from tests.helpers.unit.model_billing_gemini_profiles import GeminiProfile
 from tests.helpers.unit.model_billing_gemini_profiles import profiles as profiles0912
 
 SOURCE_PROVIDER = "langgenius/gemini/google"
 REVISION = "offline-gemini-v8-never-published"
 SOURCE_UIDS = (GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID)
+ALL_SOURCE_UIDS = (*SOURCE_UIDS, GEMINI_0915_SOURCE_UID)
 
 
 def profiles(source_uid: str) -> list[GeminiProfile]:
     if source_uid == GEMINI_SOURCE_UID:
         return profiles0912()
+    if source_uid == GEMINI_0915_SOURCE_UID:
+        path = (
+            Path(__file__).resolve().parents[2] / "unit_tests/services/fixtures/gemini0915_source_profiles.packed.json"
+        )
+        blob = path.read_bytes()
+        if hashlib.sha256(blob).hexdigest() != "3bcf5efd60e7f8fb3503448b20cf838b61cfc5265a8f179d96ad39c250ab02e9":
+            raise ValueError("Frozen0915 packet changed")
+        packed = json.loads(blob)
+        raw = gzip.decompress(base64.b64decode(packed["payload_base64"], validate=True))
+        if hashlib.sha256(raw).hexdigest() != packed["raw_sha256"] or packed["raw_sha256"] != (
+            "be28658b518142cbb03885f3b29239fc50fd81198f56cc0336d1a09271aa49b8"
+        ):
+            raise ValueError("Frozen0915 raw profile changed")
+        rows = cast(list[GeminiProfile], json.loads(raw)["profiles"])
+        if len(rows) != 9 or any(
+            row["adapter_id"] != "gemini_credit_source_v2"
+            or row["profile_id"] != "gemini0915-native-v1:" + row["source_model"]
+            for row in rows
+        ):
+            raise ValueError("Frozen0915 profile set changed")
+        return rows
     if source_uid != GEMINI_0913_SOURCE_UID:
         raise ValueError("Unknown exact source UID")
     path = Path(__file__).resolve().parents[2] / "unit_tests/services/fixtures/gemini0913_source_profiles.packed.json"

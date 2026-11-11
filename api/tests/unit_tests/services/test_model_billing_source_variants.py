@@ -2137,9 +2137,9 @@ def test_credit_llm_family_append_preserves_all_prior_registry_shapes_and_digest
         )
 
 
-@pytest.mark.parametrize("source_uid", gemini_v8.SOURCE_UIDS)
+@pytest.mark.parametrize("source_uid", gemini_v8.ALL_SOURCE_UIDS)
 @pytest.mark.parametrize("model", [row["source_model"] for row in gemini_v8.profiles(gemini_v8.SOURCE_UIDS[0])])
-def test_v8_real_two_uid_resolution_factory_restore_and_prospective(source_uid: str, model: str) -> None:
+def test_v8_real_three_uid_resolution_factory_restore_and_prospective(source_uid: str, model: str) -> None:
     from services import model_billing_gemini_credit_source_adapter as legacy
     from services import model_billing_gemini_credit_source_v2_adapter as current
     from services.entities.model_billing_gemini_v8_mapping import SourceGeminiV8VariantSelection
@@ -2149,7 +2149,7 @@ def test_v8_real_two_uid_resolution_factory_restore_and_prospective(source_uid: 
     row = next(item for item in rows if item["source_model"] == model)
     schemas = [gemini_v8.schema(item) for item in rows]
     observed = gemini_v8.schema(row)
-    registry = source_mapping_revision(gemini_v8.registry(), gemini_v8.REVISION)
+    registry = source_mapping_revision(gemini_v8.registry(gemini_v8.ALL_SOURCE_UIDS), gemini_v8.REVISION)
     fact = hosted_gemini_source_fact(
         provider=gemini_v8.SOURCE_PROVIDER,
         source_uid=source_uid,
@@ -2199,7 +2199,7 @@ def test_v8_real_two_uid_resolution_factory_restore_and_prospective(source_uid: 
         )
         == selected
     )
-    assert len(registry.selected_prospective()) == 18
+    assert len(registry.selected_prospective()) == 27
     validate_frozen_mapping_evidence(
         selected,
         provider=gemini_v8.SOURCE_PROVIDER,
@@ -2212,7 +2212,7 @@ def test_v8_real_two_uid_resolution_factory_restore_and_prospective(source_uid: 
     )
 
 
-@pytest.mark.parametrize("source_uid", gemini_v8.SOURCE_UIDS)
+@pytest.mark.parametrize("source_uid", gemini_v8.ALL_SOURCE_UIDS)
 def test_v8_fresh_facts_unknown_uid_drift_and_wrong_context_cannot_authorize(source_uid: str) -> None:
     from core.entities.provider_entities import HostedGeminiSourceFact
     from services.entities.model_billing_gemini_mapping import GeminiSourceSettings
@@ -2226,7 +2226,7 @@ def test_v8_fresh_facts_unknown_uid_drift_and_wrong_context_cannot_authorize(sou
     row = gemini_v8.profiles(source_uid)[0]
     observed = gemini_v8.schema(row)
     identity = (gemini_v8.SOURCE_PROVIDER, observed.model_type, row["source_model"])
-    registry = source_mapping_revision(gemini_v8.registry(), gemini_v8.REVISION)
+    registry = source_mapping_revision(gemini_v8.registry(gemini_v8.ALL_SOURCE_UIDS), gemini_v8.REVISION)
     fact = hosted_gemini_source_fact(
         provider=gemini_v8.SOURCE_PROVIDER,
         source_uid=source_uid,
@@ -2271,7 +2271,7 @@ def test_v8_fresh_facts_unknown_uid_drift_and_wrong_context_cannot_authorize(sou
         registry.resolve(
             identity, context=GeminiSourceVariantContext(source_uid, GeminiSourceSettings(**row["source_settings"]))
         )
-    if source_uid == gemini_v8.SOURCE_UIDS[1]:
+    if source_uid != gemini_v8.SOURCE_UIDS[0]:
         assert (
             gemini_source_variant_context(
                 fact,
@@ -2282,6 +2282,16 @@ def test_v8_fresh_facts_unknown_uid_drift_and_wrong_context_cannot_authorize(sou
             )
             is None
         )
+
+
+def test_v8_original_two_uid_registry_digest_and_profiles_remain_unchanged() -> None:
+    registry = source_mapping_revision(gemini_v8.registry(), gemini_v8.REVISION)
+    assert registry.digest == "sha256:ba24344e91d625f1e699710f5108b41e1cd7766731366f1dfcfeec8e9196a8ce"
+    assert len(registry.selected_prospective()) == 18
+    assert all(
+        restore_variant_source_contract(item).source_plugin_unique_identifier in gemini_v8.SOURCE_UIDS
+        for item in registry.selected_prospective()
+    )
 
 
 @pytest.mark.parametrize(

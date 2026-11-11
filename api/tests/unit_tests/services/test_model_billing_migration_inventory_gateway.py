@@ -1743,6 +1743,7 @@ def test_credit_llm_family_checks_selected_source_and_every_prospective_target(
     [
         "langgenius/gemini:0.9.12@9bb9eff3f9c99a8f1f87bdd5e0f178d5493918939dd0e02825ae8383bd0fd7ed",
         "langgenius/gemini:0.9.13@4378187cfc50d4253573f4d96baa13228d8ed2eb746ac3bae492a8eaee2da458",
+        "langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
     ],
 )
 @pytest.mark.parametrize("model", ["gemini-2.5-flash", "gemini-embedding-001", "gemini-embedding-2-preview"])
@@ -1753,7 +1754,7 @@ def test_v8_real_target_identity_guard_never_normalizes_wrong_models(source_uid:
 
     row = next(item for item in gemini.profiles(source_uid) if item["source_model"] == model)
     observed = gemini.schema(row)
-    registry = source_mapping_revision(gemini.registry(), gemini.REVISION, normalize_provider=str)
+    registry = source_mapping_revision(gemini.registry(gemini.ALL_SOURCE_UIDS), gemini.REVISION, normalize_provider=str)
     selected = registry.resolve(
         (gemini.SOURCE_PROVIDER, observed.model_type, model),
         context=GeminiV8SourceVariantContext(source_uid, GeminiSourceSettings(**row["source_settings"])),

@@ -1,7 +1,8 @@
-"""Pure exact Gemini0913 source factory, separate from immutable0912/V6.
+"""Pure exact Gemini0913/0915 source factory, separate from immutable0912/V6.
 
-Pins bind the frozen v2 packet fd9d7680 / raw8c32f42e to the actual Source
-catalog/runtime Core entities. They prove no installed target, current SDK,
+Pins bind the frozen 0913 packet fd9d7680 / raw8c32f42e and additive 0915 packet
+3bcf5efd / rawbe28658b to the actual Source catalog/runtime Core entities.
+They prove no installed target, current SDK,
 network, credential, migration, billing or release authority. None runtime
 schema remains frozen/prospective restoration, never observed RPC evidence.
 """
@@ -18,7 +19,7 @@ from services.entities.model_billing_gemini_mapping import (
     GeminiSourceSettings,
     gemini_source_model_type,
 )
-from services.entities.model_billing_gemini_v8_mapping import GEMINI_0913_SOURCE_UID
+from services.entities.model_billing_gemini_v8_mapping import GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID
 from services.entities.model_billing_mapping import SourceParameterContract, model_schema_digest
 
 GEMINI_CREDIT_SOURCE_ADAPTER_ID = "gemini_credit_source_v2"
@@ -135,6 +136,105 @@ _REVIEWED_CONTRACTS = (
         adapter_id="gemini_credit_source_v2",
         algorithm_revision="1",
     ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-2.5-flash",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-2.5-flash",
+        source_schema_digest="sha256:9dfef26ae8e27359f74312f87ca295e08ec59f187c889d4fc5eed747f22682ef",
+        source_runtime_schema_digest="sha256:e3a9e5a6146b14480e5f9948993afeab62e640b1559bd953fea98651ee1d5a21",
+        target_model="gemini-2.5-flash",
+        rules_digest="sha256:1ac05d1731ea1e1eda93384c798a4f429815a9ee569c1069d5327576657e5b85",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-3.1-flash-lite",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-3.1-flash-lite",
+        source_schema_digest="sha256:26dc99d59bdab5b1ff139aad894dae0fc15c9baf06777af67b9462f113193504",
+        source_runtime_schema_digest="sha256:0ee6cea0716356f3d3951066ec994ba34b50cf48fecf8d07c9e9611861e627a4",
+        target_model="gemini-3.1-flash-lite",
+        rules_digest="sha256:4a773b372cc15b9ad11ab3dcf7e875d62c31064927c25a5bbd1f435923f7363e",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-3.1-pro-preview",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-3.1-pro-preview",
+        source_schema_digest="sha256:9aceca99ac88649944f9d78102241853c8144d1a11f4c086bb5f27bc38766e34",
+        source_runtime_schema_digest="sha256:3a2ce7dce3477bd042314941826492a5496aeb8bdb047285514a305d810e918e",
+        target_model="gemini-3.1-pro-preview",
+        rules_digest="sha256:2060999a483681b809792a16a74f528c1f44a2e99a28a3f188ffe7c509df8139",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-3.5-flash",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-3.5-flash",
+        source_schema_digest="sha256:fa5fbdb6fa5ef69496f62f6dc2f4ead6b34d82f26cb6fc793fabf25577b667aa",
+        source_runtime_schema_digest="sha256:54aefc309ce57ff15f93ee606bb0919f1eb9649d057957cb6ea1fb2b60a3ab44",
+        target_model="gemini-3.5-flash",
+        rules_digest="sha256:c3cde0fdff1e3ed82b73519ada3f9088893aaf0278897c0e4231517596ea0fb1",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-3.5-flash-lite",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-3.5-flash-lite",
+        source_schema_digest="sha256:230f022992a7882a800fc31d4b754ca51032a2342a4644ce250f58abc4bf07c9",
+        source_runtime_schema_digest="sha256:613acb7a29a51dffcf3ffd506f306ba6002599d5765a1baffb66d3ade9257355",
+        target_model="gemini-3.5-flash-lite",
+        rules_digest="sha256:123b856f1796e49e280ee6fc6effa6f5a773d21a9f273535ade1555199613c65",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-3.7-flash",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-3.7-flash",
+        source_schema_digest="sha256:c718fa257170b98e87fd7a0c00c56613cb611d4d18ad1256dd375c9eaf908676",
+        source_runtime_schema_digest="sha256:7b1cd0a9ea9fbe14386d8458a6bec68833343cdbf4383c460bf0ac2a20f68189",
+        target_model="gemini-3.7-flash",
+        rules_digest="sha256:db6a2052039428cb8c3b7749bd802b0385efad8a9c641ed163520781509c072f",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-3-flash-preview",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-3-flash-preview",
+        source_schema_digest="sha256:7a0371459f73f0ba41d20f0ef274923e131032931fb55c9865c7478b42a10f2b",
+        source_runtime_schema_digest="sha256:ccaa15b0d9e20840ab62d077c5c0a62fd9f5339d04f4d4ab0a978962ac83dab1",
+        target_model="gemini-3-flash-preview",
+        rules_digest="sha256:0a1ce7212bd765d73e60fda2436849c151cb6c76a1e4592c7ec07878b5151afa",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-embedding-001",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-embedding-001",
+        source_schema_digest="sha256:470e3397c5097df3b54673901fc321ce298e6081369bc731432e042daa04fb5d",
+        source_runtime_schema_digest="sha256:470e3397c5097df3b54673901fc321ce298e6081369bc731432e042daa04fb5d",
+        target_model="gemini-embedding-001",
+        rules_digest="sha256:68e37aed09839a70ca70e26e26c5181a6d65c217ac4bc0833b17121fb8310df6",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
+    GeminiCreditSourceV2Contract(
+        profile_id="gemini0915-native-v1:gemini-embedding-2-preview",
+        source_plugin_unique_identifier="langgenius/gemini:0.9.15@16056d9c7a2de92433d96e5f18d17c444f9ff55bb7d6f91928023e25d14b1e64",
+        source_model="gemini-embedding-2-preview",
+        source_schema_digest="sha256:b16129e398a864dd0baee0c957c4c42573ef888b785c6aaec9d78ac2785e063b",
+        source_runtime_schema_digest="sha256:b16129e398a864dd0baee0c957c4c42573ef888b785c6aaec9d78ac2785e063b",
+        target_model="gemini-embedding-2-preview",
+        rules_digest="sha256:5d1445195b3b24449577f13ae9d7aad26677809d702c5381624e5999b09be092",
+        adapter_id="gemini_credit_source_v2",
+        algorithm_revision="1",
+    ),
 )
 _MARKER_FIELDS = frozenset(
     {
@@ -168,7 +268,7 @@ def validate_gemini_credit_source_identity(
         type(source_provider) is not str
         or source_provider != GEMINI_CREDIT_SOURCE_PROVIDER
         or type(source_plugin_unique_identifier) is not str
-        or source_plugin_unique_identifier != GEMINI_0913_SOURCE_UID
+        or source_plugin_unique_identifier not in {GEMINI_0913_SOURCE_UID, GEMINI_0915_SOURCE_UID}
         or type(source_model) is not str
         or type(target_model) is not str
         or source_model != target_model
@@ -263,7 +363,15 @@ def build_gemini_credit_source_contract(
     )
     _settings(source_settings, source_model)
     actual = _schema_digest(source_schema, source_model)
-    contract = next((row for row in _REVIEWED_CONTRACTS if row.source_model == source_model), None)
+    contract = next(
+        (
+            row
+            for row in _REVIEWED_CONTRACTS
+            if row.source_model == source_model
+            and row.source_plugin_unique_identifier == source_plugin_unique_identifier
+        ),
+        None,
+    )
     if (
         contract is None
         or type(adapter_id) is not str
