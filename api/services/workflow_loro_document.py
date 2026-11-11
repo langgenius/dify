@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from loro import EncodedBlobMode, ExportMode, LoroDoc, LoroList, LoroMap, ValueOrContainer, VersionVector
 
@@ -53,7 +53,9 @@ def _child_map(parent: LoroMap, key: str) -> LoroMap:
     existing = parent.get(key)
     if isinstance(existing, ValueOrContainer.Container) and isinstance(existing.container, LoroMap):
         return existing.container
-    return cast(LoroMap, parent.insert_container(key, LoroMap()))
+    child = parent.insert_container(key, LoroMap())
+    assert isinstance(child, LoroMap)
+    return child
 
 
 def _replace_map(target: LoroMap, values: dict[str, LoroValue], *, node: bool = False, data: bool = False) -> None:
@@ -72,7 +74,9 @@ def _replace_map(target: LoroMap, values: dict[str, LoroValue], *, node: bool = 
                     if len(target_list):
                         target_list.delete(0, len(target_list))
                 else:
-                    target_list = cast(LoroList, target.insert_container(key, LoroList()))
+                    child = target.insert_container(key, LoroList())
+                    assert isinstance(child, LoroList)
+                    target_list = child
                 for index, item in enumerate(value):
                     target_list.insert(index, item)
             else:
@@ -127,9 +131,14 @@ def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
     for kind, order_key in _ORDER_KEYS.items():
         items = _mapping(doc.get_map(kind).get_deep_value())
         order = graph.pop(order_key, [])
-        if not isinstance(order, list) or not all(isinstance(key, str) for key in order):
+        if not isinstance(order, list):
             raise LoroDraftUpdateError("Invalid graph order.")
-        ordered_ids = dict.fromkeys([*cast(list[str], order), *sorted(items)])
+        ordered_ids: dict[str, None] = {}
+        for key in order:
+            if not isinstance(key, str):
+                raise LoroDraftUpdateError("Invalid graph order.")
+            ordered_ids[key] = None
+        ordered_ids.update(dict.fromkeys(sorted(items)))
         projected: list[LoroValue] = []
         for key in ordered_ids:
             if key in items:

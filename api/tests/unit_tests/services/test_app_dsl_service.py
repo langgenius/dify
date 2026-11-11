@@ -1008,6 +1008,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
     workflow_service = SimpleNamespace(
         get_draft_workflow=Mock(return_value=None),
         sync_draft_workflow=Mock(return_value=workflow),
+        align_loro_draft_after_graph_write=Mock(return_value=None),
     )
     monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
     monkeypatch.setattr(
@@ -1043,6 +1044,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         agent_ids={"retired-agent"},
         account_id="account-1",
     )
+    workflow_service.align_loro_draft_after_graph_write.assert_called_once_with(workflow, replace=True, session=session)
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
