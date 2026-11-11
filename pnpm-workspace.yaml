@@ -172,7 +172,7 @@ catalog:
   axe-core: 4.14.0
   bowser: 2.15.0
   c12: 4.0.0-rc.4
-  chokidar: 5.0.0
+  chokidar: 6.0.0
   class-variance-authority: 0.7.1
   cn: 0.5.2
   code-inspector-plugin: 1.6.6

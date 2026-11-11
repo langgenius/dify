@@ -438,8 +438,8 @@ catalogs:
       specifier: 4.0.0-rc.4
       version: 4.0.0-rc.4
     chokidar:
-      specifier: 5.0.0
-      version: 5.0.0
+      specifier: 6.0.0
+      version: 6.0.0
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -1039,7 +1039,7 @@ importers:
         version: 4.0.0-rc.4(dotenv@17.4.2)(jiti@2.7.0)(magicast@0.5.5)
       chokidar:
         specifier: 'catalog:'
-        version: 5.0.0
+        version: 6.0.0
       hono:
         specifier: 'catalog:'
         version: 4.13.17
@@ -5933,6 +5933,10 @@ packages:
     resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
     engines: {node: '>= 20.19.0'}
 
+  chokidar@6.0.0:
+    resolution: {integrity: sha512-Ec2Z7wpcKBiMpR7DxteoqS/sq5G5d2A4fpxzPv6+fD7xNNdrTghn7L11YwV5EN1B3i72Erc3XVT5FkWIDx90+A==}
+    engines: {node: '>= 22.22'}
+
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
@@ -8172,8 +8176,8 @@ packages:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
     engines: {node: '>= 6'}
 
-  readdirp@5.0.0:
-    resolution: {integrity: sha512-9u/XQ1pvrQtYyMpZe7DXKv2p5CNvyVwzUB6uhLAnQwHMSgKMBR62lc7AHljaeteeHXn11XTAaLLUVZYVZyuRBQ==}
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
     engines: {node: '>= 20.19.0'}
 
   recast@0.23.12:
@@ -12871,7 +12875,11 @@ snapshots:
 
   chokidar@5.0.0:
     dependencies:
-      readdirp: 5.0.0
+      readdirp: 5.1.1
+
+  chokidar@6.0.0:
+    dependencies:
+      readdirp: 5.1.1
 
   chownr@1.1.4:
     optional: true
@@ -15607,7 +15615,7 @@ snapshots:
       util-deprecate: 1.0.2
     optional: true
 
-  readdirp@5.0.0: {}
+  readdirp@5.1.1: {}
 
   recast@0.23.12:
     dependencies:
@@ -16938,7 +16946,7 @@ time:
   axe-core@4.14.0: '2026-10-05T17:43:36.099Z'
   bowser@2.15.0: '2026-10-26T20:06:27.699Z'
   c12@4.0.0-rc.4: '2026-10-27T11:36:44.468Z'
-  chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
+  chokidar@6.0.0: '2026-10-19T20:52:41.519Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
   cn@0.5.2: '2026-11-02T08:02:09.226Z'
   code-inspector-plugin@1.6.6: '2026-07-07T04:00:26.523Z'
