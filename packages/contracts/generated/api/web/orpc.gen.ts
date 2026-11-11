@@ -4,6 +4,8 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAccountBannedError,
+  zAccountInFreezeError,
+  zAccountNotFoundError,
   zAgentNotPublishedError,
   zAgentVersionNotFoundError,
   zAlreadySubmittedError,
@@ -29,7 +31,11 @@ import {
   zConversationNotFoundError,
   zCredentialCheckUnavailableError,
   zCurrentPasswordIncorrectError,
+  zEmailAlreadyInUseError,
+  zEmailChangeLimitError,
+  zEmailChangeRateLimitExceededError,
   zEmailCodeError,
+  zEmailDomainSuspendedError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
   zEndUserBusyError,
@@ -166,6 +172,14 @@ import {
   zPatchConversationsByCIdPinResponse,
   zPatchConversationsByCIdUnpinPath,
   zPatchConversationsByCIdUnpinResponse,
+  zPostAccountChangeEmailBody,
+  zPostAccountChangeEmailCheckEmailUniqueBody,
+  zPostAccountChangeEmailCheckEmailUniqueResponse,
+  zPostAccountChangeEmailResetBody,
+  zPostAccountChangeEmailResetResponse,
+  zPostAccountChangeEmailResponse,
+  zPostAccountChangeEmailValidityBody,
+  zPostAccountChangeEmailValidityResponse,
   zPostAccountPasswordBody,
   zPostAccountPasswordResponse,
   zPostAudioToTextResponse,
@@ -255,12 +269,117 @@ import {
 } from './zod.gen.ts'
 
 /**
+ * Check email availability for an admitted Account; do not mutate accounts or tokens
+ */
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountChangeEmailCheckEmailUnique',
+    path: '/account/change-email/check-email-unique',
+    summary: 'Check email availability for an admitted Account; do not mutate accounts or tokens',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostAccountChangeEmailCheckEmailUniqueBody }))
+  .output(zPostAccountChangeEmailCheckEmailUniqueResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+  })
+
+export const checkEmailUnique = {
+  post,
+}
+
+/**
+ * Change only the admitted Account's verified address; failures preserve identity and memberships
+ */
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountChangeEmailReset',
+    path: '/account/change-email/reset',
+    summary:
+      "Change only the admitted Account's verified address; failures preserve identity and memberships",
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostAccountChangeEmailResetBody }))
+  .output(zPostAccountChangeEmailResetResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
+
+export const reset = {
+  post: post2,
+}
+
+/**
+ * Verify this Account's challenge and promote its token without changing identity
+ */
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountChangeEmailValidity',
+    path: '/account/change-email/validity',
+    summary: "Verify this Account's challenge and promote its token without changing identity",
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostAccountChangeEmailValidityBody }))
+  .output(zPostAccountChangeEmailValidityResponse)
+  .errors({
+    email_change_limit: { status: 429, data: zEmailChangeLimitError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
+
+export const validity = {
+  post: post3,
+}
+
+/**
+ * Send an old/new-email challenge for the cookie Account; no profile changes occur
+ */
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountChangeEmail',
+    path: '/account/change-email',
+    summary: 'Send an old/new-email challenge for the cookie Account; no profile changes occur',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostAccountChangeEmailBody }))
+  .output(zPostAccountChangeEmailResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
+
+export const changeEmail = {
+  post: post4,
+  checkEmailUnique,
+  reset,
+  validity,
+}
+
+/**
  * Set or change the admitted Account's password when password login is enabled
  *
  * A same-origin Account cookie is required. Existing credentials require the
  * current password; confirmation and policy failures leave credentials unchanged.
  */
-export const post = oc
+export const post5 = oc
   .route({
     description:
       'A same-origin Account cookie is required. Existing credentials require the\ncurrent password; confirmation and policy failures leave credentials unchanged.',
@@ -280,7 +399,7 @@ export const post = oc
   })
 
 export const password = {
-  post,
+  post: post5,
 }
 
 /**
@@ -324,6 +443,7 @@ export const profile = {
 }
 
 export const account = {
+  changeEmail,
   password,
   profile,
 }
@@ -333,7 +453,7 @@ export const account = {
  *
  * Convert audio file to text using speech-to-text service.
  */
-export const post2 = oc
+export const post6 = oc
   .route({
     description: 'Convert audio file to text using speech-to-text service.',
     inputStructure: 'detailed',
@@ -361,13 +481,13 @@ export const post2 = oc
   })
 
 export const audioToText = {
-  post: post2,
+  post: post6,
 }
 
 /**
  * Stop a running chat message task.
  */
-export const post3 = oc
+export const post7 = oc
   .route({
     description: 'Stop a running chat message task.',
     inputStructure: 'detailed',
@@ -381,7 +501,7 @@ export const post3 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const stop = {
-  post: post3,
+  post: post7,
 }
 
 export const byTaskId = {
@@ -391,7 +511,7 @@ export const byTaskId = {
 /**
  * Create a chat message for conversational applications.
  */
-export const post4 = oc
+export const post8 = oc
   .route({
     description: 'Create a chat message for conversational applications.',
     inputStructure: 'detailed',
@@ -432,14 +552,14 @@ export const post4 = oc
   })
 
 export const chatMessages = {
-  post: post4,
+  post: post8,
   byTaskId,
 }
 
 /**
  * Stop a running completion message task.
  */
-export const post5 = oc
+export const post9 = oc
   .route({
     description: 'Stop a running completion message task.',
     inputStructure: 'detailed',
@@ -453,7 +573,7 @@ export const post5 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const stop2 = {
-  post: post5,
+  post: post9,
 }
 
 export const byTaskId2 = {
@@ -463,7 +583,7 @@ export const byTaskId2 = {
 /**
  * Create a completion message for text generation applications.
  */
-export const post6 = oc
+export const post10 = oc
   .route({
     description: 'Create a completion message for text generation applications.',
     inputStructure: 'detailed',
@@ -484,7 +604,7 @@ export const post6 = oc
   })
 
 export const completionMessages = {
-  post: post6,
+  post: post10,
   byTaskId: byTaskId2,
 }
 
@@ -590,7 +710,7 @@ export const credentialSchema = {
   get: get4,
 }
 
-export const post7 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -617,14 +737,14 @@ export const post7 = oc
   })
 
 export const authorizationUrl = {
-  post: post7,
+  post: post11,
 }
 
 export const oauth = {
   authorizationUrl,
 }
 
-export const post8 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -651,7 +771,7 @@ export const post8 = oc
   })
 
 export const preflight = {
-  post: post8,
+  post: post12,
 }
 
 /**
@@ -677,7 +797,7 @@ export const readme = {
   get: get5,
 }
 
-export const post9 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -710,7 +830,7 @@ export const post9 = oc
   })
 
 export const reauthorize = {
-  post: post9,
+  post: post13,
 }
 
 /**
@@ -830,7 +950,7 @@ export const get8 = oc
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   })
 
-export const post10 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -855,7 +975,7 @@ export const post10 = oc
 
 export const connections = {
   get: get8,
-  post: post10,
+  post: post14,
   asset,
   configuration,
   credentialSchema,
@@ -868,7 +988,7 @@ export const connections = {
 /**
  * Rename a specific conversation with a custom name or auto-generate one.
  */
-export const post11 = oc
+export const post15 = oc
   .route({
     description: 'Rename a specific conversation with a custom name or auto-generate one.',
     inputStructure: 'detailed',
@@ -895,7 +1015,7 @@ export const post11 = oc
   })
 
 export const name = {
-  post: post11,
+  post: post15,
 }
 
 /**
@@ -1000,7 +1120,7 @@ export const conversations = {
 /**
  * Verify email code and complete login
  */
-export const post12 = oc
+export const post16 = oc
   .route({
     description: 'Verify email code and complete login',
     inputStructure: 'detailed',
@@ -1018,14 +1138,14 @@ export const post12 = oc
     invalid_email: { status: 400, data: zInvalidEmailError },
   })
 
-export const validity = {
-  post: post12,
+export const validity2 = {
+  post: post16,
 }
 
 /**
  * Send email verification code for login
  */
-export const post13 = oc
+export const post17 = oc
   .route({
     description: 'Send email verification code for login',
     inputStructure: 'detailed',
@@ -1039,8 +1159,8 @@ export const post13 = oc
   .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
-  post: post13,
-  validity,
+  post: post17,
+  validity: validity2,
 }
 
 /**
@@ -1070,7 +1190,7 @@ export const emailCodeLogin = {
  * UnsupportedFileTypeError: File type not supported
  * BlockedFileExtensionError: File extension is blocked
  */
-export const post14 = oc
+export const post18 = oc
   .route({
     description:
       'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n    BlockedFileExtensionError: File extension is blocked',
@@ -1093,7 +1213,7 @@ export const post14 = oc
   })
 
 export const upload = {
-  post: post14,
+  post: post18,
 }
 
 export const files = {
@@ -1103,7 +1223,7 @@ export const files = {
 /**
  * Reset user password with verification token
  */
-export const post15 = oc
+export const post19 = oc
   .route({
     description: 'Reset user password with verification token',
     inputStructure: 'detailed',
@@ -1121,13 +1241,13 @@ export const post15 = oc
   })
 
 export const resets = {
-  post: post15,
+  post: post19,
 }
 
 /**
  * Verify password reset token validity
  */
-export const post16 = oc
+export const post20 = oc
   .route({
     description: 'Verify password reset token validity',
     inputStructure: 'detailed',
@@ -1145,14 +1265,14 @@ export const post16 = oc
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
   })
 
-export const validity2 = {
-  post: post16,
+export const validity3 = {
+  post: post20,
 }
 
 /**
  * Send password reset email
  */
-export const post17 = oc
+export const post21 = oc
   .route({
     description: 'Send password reset email',
     inputStructure: 'detailed',
@@ -1170,12 +1290,12 @@ export const post17 = oc
   })
 
 export const forgotPassword = {
-  post: post17,
+  post: post21,
   resets,
-  validity: validity2,
+  validity: validity3,
 }
 
-export const post18 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1198,10 +1318,10 @@ export const post18 = oc
   })
 
 export const accessRequest = {
-  post: post18,
+  post: post22,
 }
 
-export const post19 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1219,7 +1339,7 @@ export const post19 = oc
   })
 
 export const uploadToken = {
-  post: post19,
+  post: post23,
 }
 
 /**
@@ -1246,7 +1366,7 @@ export const get10 = oc
 /**
  * Submit a form with inputs, an action, and email verification proof.
  */
-export const post20 = oc
+export const post24 = oc
   .route({
     description: 'Submit a form with inputs, an action, and email verification proof.',
     inputStructure: 'detailed',
@@ -1276,7 +1396,7 @@ export const post20 = oc
 
 export const byFormToken = {
   get: get10,
-  post: post20,
+  post: post24,
   accessRequest,
   uploadToken,
 }
@@ -1307,7 +1427,7 @@ export const get11 = oc
 /**
  * Submit a v2 form using the original EndUser's Web App passport.
  */
-export const post21 = oc
+export const post25 = oc
   .route({
     description: "Submit a v2 form using the original EndUser's Web App passport.",
     inputStructure: 'detailed',
@@ -1332,7 +1452,7 @@ export const post21 = oc
 
 export const byFormToken2 = {
   get: get11,
-  post: post21,
+  post: post25,
 }
 
 export const v2 = {
@@ -1346,7 +1466,7 @@ export const v2 = {
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post22 = oc
+export const post26 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -1366,7 +1486,7 @@ export const post22 = oc
   })
 
 export const uploadToken2 = {
-  post: post22,
+  post: post26,
 }
 
 /**
@@ -1408,7 +1528,7 @@ export const get12 = oc
  * "action": "Approve"
  * }
  */
-export const post23 = oc
+export const post27 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -1435,7 +1555,7 @@ export const post23 = oc
 
 export const byFormToken3 = {
   get: get12,
-  post: post23,
+  post: post27,
   uploadToken: uploadToken2,
 }
 
@@ -1451,7 +1571,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post24 = oc
+export const post28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1483,7 +1603,7 @@ export const post24 = oc
   })
 
 export const files2 = {
-  post: post24,
+  post: post28,
 }
 
 export const humanInputForms = {
@@ -1493,7 +1613,7 @@ export const humanInputForms = {
 /**
  * Fetch a remote file using a v2 upload grant.
  */
-export const post25 = oc
+export const post29 = oc
   .route({
     description: 'Fetch a remote file using a v2 upload grant.',
     inputStructure: 'detailed',
@@ -1532,13 +1652,13 @@ export const post25 = oc
   })
 
 export const remote = {
-  post: post25,
+  post: post29,
 }
 
 /**
  * Upload a file or a remote URL using a v2 upload grant.
  */
-export const post26 = oc
+export const post30 = oc
   .route({
     description: 'Upload a file or a remote URL using a v2 upload grant.',
     inputStructure: 'detailed',
@@ -1577,7 +1697,7 @@ export const post26 = oc
   })
 
 export const files3 = {
-  post: post26,
+  post: post30,
   remote,
 }
 
@@ -1613,7 +1733,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post27 = oc
+export const post31 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -1631,14 +1751,14 @@ export const post27 = oc
   })
 
 export const login = {
-  post: post27,
+  post: post31,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post28 = oc
+export const post32 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -1650,7 +1770,7 @@ export const post28 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post28,
+  post: post32,
 }
 
 export const delete3 = oc
@@ -1840,7 +1960,7 @@ export const me = {
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post29 = oc
+export const post33 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -1863,7 +1983,7 @@ export const post29 = oc
   })
 
 export const feedbacks = {
-  post: post29,
+  post: post33,
 }
 
 /**
@@ -1987,7 +2107,7 @@ export const meta = {
 /**
  * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Ordinary Chatbot Apps transfer committed history without stopping or waiting for generation. In-flight Chatbot requests may fail after transfer; uncommitted answers may be lost. Their history reads and writes recheck the original caller's current conversation ownership. Existing model calls or streams are not guaranteed to stop immediately. Legacy agent configurations and non-Chatbot Guest history remain unsupported for Chatbot Claim. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
  */
-export const post30 = oc
+export const post34 = oc
   .route({
     description:
       "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Ordinary Chatbot Apps transfer committed history without stopping or waiting for generation. In-flight Chatbot requests may fail after transfer; uncommitted answers may be lost. Their history reads and writes recheck the original caller's current conversation ownership. Existing model calls or streams are not guaranteed to stop immediately. Legacy agent configurations and non-Chatbot Guest history remain unsupported for Chatbot Claim. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.",
@@ -2006,13 +2126,13 @@ export const post30 = oc
   })
 
 export const claim = {
-  post: post30,
+  post: post34,
 }
 
 /**
  * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow, Chatflow and ordinary Chatbot Apps; other App modes are omitted. Chatbot Apps with legacy agent configurations or non-Chatbot Guest history are omitted. conversation_count counts Chatflow/Chatbot history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
  */
-export const post31 = oc
+export const post35 = oc
   .route({
     description:
       'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow, Chatflow and ordinary Chatbot Apps; other App modes are omitted. Chatbot Apps with legacy agent configurations or non-Chatbot Guest history are omitted. conversation_count counts Chatflow/Chatbot history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
@@ -2026,7 +2146,7 @@ export const post31 = oc
   .output(zPostMigrationClaimablePassportsResponse)
 
 export const claimablePassports = {
-  post: post31,
+  post: post35,
 }
 
 export const migration = {
@@ -2078,7 +2198,7 @@ export const get23 = oc
 /**
  * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.
  */
-export const post32 = oc
+export const post36 = oc
   .route({
     description:
       'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.',
@@ -2097,7 +2217,7 @@ export const post32 = oc
 
 export const passport = {
   get: get23,
-  post: post32,
+  post: post36,
 }
 
 /**
@@ -2128,7 +2248,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post33 = oc
+export const post37 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -2155,7 +2275,7 @@ export const post33 = oc
   })
 
 export const upload2 = {
-  post: post33,
+  post: post37,
 }
 
 /**
@@ -2247,7 +2367,7 @@ export const get25 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post34 = oc
+export const post38 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -2262,7 +2382,7 @@ export const post34 = oc
 
 export const savedMessages = {
   get: get25,
-  post: post34,
+  post: post38,
   byMessageId: byMessageId2,
 }
 
@@ -2322,7 +2442,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post35 = oc
+export const post39 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -2343,7 +2463,7 @@ export const post35 = oc
   })
 
 export const textToAudio = {
-  post: post35,
+  post: post39,
 }
 
 /**
@@ -2428,7 +2548,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
  */
-export const post36 = oc
+export const post40 = oc
   .route({
     description:
       'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.',
@@ -2473,7 +2593,7 @@ export const post36 = oc
   })
 
 export const run = {
-  post: post36,
+  post: post40,
 }
 
 /**
@@ -2481,7 +2601,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post37 = oc
+export const post41 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -2496,7 +2616,7 @@ export const post37 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post37,
+  post: post41,
 }
 
 export const byTaskId4 = {

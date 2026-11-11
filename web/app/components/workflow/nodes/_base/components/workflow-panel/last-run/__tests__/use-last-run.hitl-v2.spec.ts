@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { TabType } from '../../types'
@@ -82,7 +82,7 @@ describe('useLastRun', () => {
   it.each([undefined, '2'])(
     'shows persisted variables after V2 form submission and preserves V1 last-run behavior (%s)',
     async (version) => {
-      const { result, store } = renderWorkflowHook(
+      const { result, store } = renderWorkflowCanvasHook(
         () =>
           useLastRun({
             id: 'human-input-node',
@@ -136,7 +136,7 @@ describe('useLastRun', () => {
           resolveRefresh = resolve
         }),
     )
-    const { result, store } = renderWorkflowHook(
+    const { result, store } = renderWorkflowCanvasHook(
       () =>
         useLastRun({
           id: 'human-input-node',
@@ -175,7 +175,7 @@ describe('useLastRun', () => {
 
   it('keeps the V2 form open when refreshing persisted results fails', async () => {
     mockFetchInspectVars.mockRejectedValueOnce(new Error('Variables unavailable'))
-    const { result, store } = renderWorkflowHook(
+    const { result, store } = renderWorkflowCanvasHook(
       () =>
         useLastRun({
           id: 'human-input-node',

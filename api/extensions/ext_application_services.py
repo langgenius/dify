@@ -50,6 +50,7 @@ from extensions.application_services.rbac import RBACServices, build_rbac_servic
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
+from extensions.application_services.trigger import TriggerServices, build_trigger_services
 from extensions.application_services.workspace import (
     WorkspaceServices,
     build_workspace_membership_services,
@@ -101,6 +102,7 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
+from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_migration_repository import WebMigrationRepository
 from repositories.web_passport_repository import WebPassportRepository
@@ -397,6 +399,7 @@ class ApplicationServices:
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
+    triggers: TriggerServices
     workflow_app_logs: WorkflowAppLogQueryService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
@@ -643,6 +646,18 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     credential_queries = CredentialQueryRepository(session_factory=database_client)
+    trigger_subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
+    triggers = build_trigger_services(
+        database_client=database_client,
+        redis=redis,
+        credentials=credential_queries,
+        subscriptions=trigger_subscriptions,
+        workflow_queries=app_definition_repository,
+        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
+        trigger_end_users=AppScopedTriggerEndUsers(
+            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
+        ),
+    )
     workspace_services = build_workspace_services(
         database_client=database_client,
         workspaces=workspace_repository,
@@ -654,11 +669,8 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
         credentials=credential_queries,
-        workflow_queries=app_definition_repository,
-        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
-        trigger_end_users=AppScopedTriggerEndUsers(
-            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
-        ),
+        trigger_subscriptions=trigger_subscriptions,
+        trigger_builders=triggers.builders,
     )
     end_user_connections = build_end_user_connections(database_client=database_client)
     end_user_connection_oauth = build_end_user_connection_oauth(database_client=database_client)
@@ -954,6 +966,7 @@ def build_application_services(
             session_factory=database_client,
         ),
         workspaces=workspace_services,
+        triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
