@@ -61,6 +61,8 @@ overrides:
   fflate@>=0.7.0 <0.7.5: 0.7.5
   # Keep Vitest's optional DOM peer aligned with Web so browser matcher types augment one Vitest instance.
   happy-dom: 'catalog:'
+  # The ESM SVG importer uses the unchanged synchronous APIs; tools v5 removes extract-zip.
+  iconify-import-svg>@iconify/tools: 5.0.14
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.3.1: ^4.3.2
   # micromark math still declares vulnerable KaTeX 0.16; verify its HTML compiler separately.
