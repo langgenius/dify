@@ -60,6 +60,7 @@ const environment = {
   status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
 }
 const deployment: EnvironmentDeployment = {
+  deployment_id: 'deployment-canary',
   environment,
   access: { enable_api: true, enable_site: true },
   deployment: {
