@@ -368,10 +368,7 @@ class ExcelExtractor(BaseExtractor):
                 0-based column indices, sorted by start column.
         """
         spans: dict[int, list[tuple[int, int, str]]] = {}
-        merged = getattr(sheet, "merged_cells", None)
-        if merged is None:
-            return spans
-        for cell_range in merged.ranges:
+        for cell_range in sheet.merged_cells.ranges:
             if cell_range.min_row != cell_range.max_row:
                 continue
             value = sheet.cell(row=cell_range.min_row, column=cell_range.min_col).value

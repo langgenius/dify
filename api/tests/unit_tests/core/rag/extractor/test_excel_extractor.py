@@ -29,11 +29,17 @@ class _FakeCell:
         self.column = 0
 
 
+class _FakeMergedCells:
+    def __init__(self, ranges=None):
+        self.ranges = ranges or []
+
+
 class _FakeSheet:
     def __init__(self, header_rows, data_rows, images=None):
         self._header_rows = header_rows
         self._data_rows = data_rows
         self._images = images or []
+        self.merged_cells = _FakeMergedCells()
 
     def iter_rows(self, min_row=1, max_row=None, max_col=None, values_only=False):
         if values_only:
