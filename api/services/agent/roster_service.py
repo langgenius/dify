@@ -33,6 +33,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, InvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
+from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -930,15 +931,7 @@ class AgentRosterService:
 
     def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
         """Return the roster Agent that backs the given Agent App, if any."""
-        return self._session.scalar(
-            select(Agent).where(
-                Agent.tenant_id == tenant_id,
-                Agent.app_id == app_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        )
+        return get_app_backing_agent(self._session, tenant_id=tenant_id, app_id=app_id)
 
     def get_published_agent_soul_for_app(self, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
         """Return the active Agent Soul used by a published Agent App runtime."""
@@ -960,31 +953,7 @@ class AgentRosterService:
         are accepted here; workflow-only Agents and historical standalone roster
         Agents are not Agent App resources.
         """
-        agent = self._session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == tenant_id,
-                Agent.id == agent_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                Agent.app_id.is_not(None),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-            .limit(1)
-        )
-        if agent is None or agent.app_id is None:
-            raise AgentNotFoundError()
-
-        app = self._session.scalar(
-            select(App)
-            .where(
-                App.tenant_id == tenant_id,
-                App.id == agent.app_id,
-                App.mode == AppMode.AGENT,
-                App.status == AppStatus.NORMAL,
-            )
-            .limit(1)
-        )
+        app = get_roster_agent_app(self._session, tenant_id=tenant_id, agent_id=agent_id)
         if app is None:
             raise AgentNotFoundError()
         return app
