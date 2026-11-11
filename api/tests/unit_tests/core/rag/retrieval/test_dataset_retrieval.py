@@ -5131,6 +5131,63 @@ class TestDatasetRetrievalCases:
             mock_end.assert_called_once()
             assert retrieval.llm_usage.total_tokens == 2
 
+        def test_single_retrieve_external_path_with_null_retrieval_model(self, retrieval: DatasetRetrieval) -> None:
+            dataset_id = str(uuid4())
+            tenant_id = str(uuid4())
+            dataset = _dataset(
+                id=dataset_id,
+                name="External DS with null retrieval model",
+                description=None,
+                provider="external",
+                tenant_id=tenant_id,
+                created_by=str(uuid4()),
+                retrieval_model=None,
+                indexing_technique="high_quality",
+            )
+            app = Flask(__name__)
+            usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
+            self.orm_session.add(dataset)
+            self.orm_session.commit()
+            with app.app_context():
+                with (
+                    patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+                    patch(
+                        "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
+                    ) as mock_external,
+                    patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+                    patch.object(retrieval, "_on_retrieval_end") as mock_end,
+                    patch.object(retrieval, "_on_query"),
+                ):
+                    mock_router_cls.return_value.invoke.return_value = (dataset_id, usage)
+                    mock_external.return_value = [
+                        {"content": "ext result", "metadata": {"k": "v"}, "score": 0.9, "title": "Ext Doc"}
+                    ]
+                    result = retrieval.single_retrieve(
+                        self.orm_session,
+                        app_id="app-1",
+                        tenant_id=tenant_id,
+                        user_id="user-1",
+                        user_from="workflow",
+                        query="python",
+                        available_datasets=[dataset],
+                        model_instance=Mock(),
+                        model_config=Mock(),
+                        planning_strategy=PlanningStrategy.REACT_ROUTER,
+                        message_id="m1",
+                    )
+
+            assert len(result) == 1
+            assert result[0].provider == "external"
+            mock_external.assert_called_once_with(
+                session=self.orm_session,
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                query="python",
+                external_retrieval_parameters={"top_k": 2, "score_threshold": 0.0},
+                metadata_condition=None,
+            )
+            mock_end.assert_called_once()
+
         def test_single_retrieve_dify_path_and_filters(self, retrieval: DatasetRetrieval) -> None:
             dataset_id = str(uuid4())
             tenant_id = str(uuid4())

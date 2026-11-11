@@ -1761,6 +1761,34 @@ class TestExternalDatasetServiceFetchRetrieval:
         assert result[1]["score"] == 0.8
         assert mock_process.call_args[0][0].url == "http://ragflow.example.com/api/v1/dify/retrieval"
 
+    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
+    def test_fetch_external_knowledge_retrieval_none_parameters_uses_defaults(
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
+    ):
+        """Test external retrieval with None retrieval parameters falls back to defaults."""
+        # Arrange
+        tenant_id = "tenant-123"
+        dataset_id = "dataset-123"
+        query = "test query"
+
+        _seed_external_retrieval_dependencies(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"records": [{"content": "fallback result", "score": 0.85}]}
+        mock_process.return_value = mock_response
+
+        # Act
+        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            tenant_id, dataset_id, query, external_retrieval_parameters=None, session=sqlite_session
+        )
+
+        # Assert
+        assert len(result) == 1
+        assert result[0]["content"] == "fallback result"
+        request = mock_process.call_args[0][0]
+        assert request.params["retrieval_setting"] == {"top_k": 2, "score_threshold": 0.0}
+
     def test_fetch_external_knowledge_retrieval_binding_not_found_error(
         self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
