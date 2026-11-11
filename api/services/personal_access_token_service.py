@@ -173,7 +173,9 @@ class PersonalAccessTokenDeploymentSnapshot:
 
 
 class PersonalAccessTokenDeploymentCatalog(Protocol):
-    def snapshot(self, account_id: str) -> PersonalAccessTokenDeploymentSnapshot: ...
+    def snapshot(
+        self, account_id: str, *, app_ids: frozenset[str] | None = None
+    ) -> PersonalAccessTokenDeploymentSnapshot: ...
 
 
 class PersonalAccessTokenCatalogUnavailableError(Exception):
@@ -617,7 +619,7 @@ class PersonalAccessTokenService:
         app_ids = {resource.resource_id for resource in page if resource.resource_type == "app"}
         if app_ids:
             runners_by_app: dict[str, list[PersonalAccessTokenResourceView]] = {}
-            for runner in self._deployments.snapshot(context.account_id).resources:
+            for runner in self._deployments.snapshot(context.account_id, app_ids=frozenset(app_ids)).resources:
                 if runner.parent_app_id in app_ids:
                     runners_by_app.setdefault(runner.parent_app_id, []).append(runner)
             page = tuple(
