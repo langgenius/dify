@@ -1,10 +1,10 @@
-"""Tests for core.trigger.utils.encryption — masking logic and cache key generation."""
+"""Tests for services.trigger.credential_encryption — masking logic and cache key generation."""
 
 from __future__ import annotations
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.common_entities import I18nObject
-from core.trigger.utils.encryption import (
+from services.trigger.credential_encryption import (
     TriggerProviderCredentialsCache,
     TriggerProviderPropertiesCache,
     masked_credentials,
