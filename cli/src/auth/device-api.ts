@@ -1,4 +1,5 @@
 import type { Dispatcher } from 'undici'
+import { fetch } from 'undici'
 import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { buildFetchInit } from '@/net/fetch-init'
@@ -152,7 +153,7 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(body),
       },
-      { insecure: opts.insecure, dispatcher },
+      { dispatcher },
     )
     try {
       return { url, res: await fetch(url, init) }

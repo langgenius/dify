@@ -1,6 +1,8 @@
+import type { FormData, RequestInit } from 'undici'
 import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
+import { fetch, Headers } from 'undici'
 import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
@@ -179,10 +181,7 @@ export const http = definePlugin({
         req.signal === undefined ? [deadline.signal] : [deadline.signal, req.signal],
       )
 
-      const init = buildFetchInit(
-        { method: req.method, headers, body, signal },
-        { insecure: login.insecure, dispatcher },
-      )
+      const init = buildFetchInit({ method: req.method, headers, body, signal }, { dispatcher })
 
       let res: Response
       try {

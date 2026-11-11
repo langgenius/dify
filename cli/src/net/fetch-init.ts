@@ -1,20 +1,15 @@
-import type { Dispatcher } from 'undici'
+import type { Dispatcher, RequestInit } from 'undici'
 
-export type FetchInit = RequestInit & {
-  dispatcher?: Dispatcher
-  tls?: { rejectUnauthorized: boolean }
-}
+export type FetchInit = RequestInit
 
 export type FetchInitOptions = Readonly<{
-  insecure: boolean
   dispatcher?: Dispatcher
 }>
 
-// Shared by src/plugins/http.ts and src/auth/device-api.ts: both send requests
-// that may need TLS verification skipped and/or routed through a proxy dispatcher.
+// Keep request options on the same undici version as our proxy/TLS dispatcher.
+// Node 24 global fetch uses an older, incompatible dispatcher protocol.
 export function buildFetchInit(base: RequestInit, opts: FetchInitOptions): FetchInit {
   const init: FetchInit = { ...base }
-  if (opts.insecure) init.tls = { rejectUnauthorized: false }
   if (opts.dispatcher !== undefined) init.dispatcher = opts.dispatcher
   return init
 }
