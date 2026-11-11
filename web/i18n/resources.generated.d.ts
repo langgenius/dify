@@ -2052,6 +2052,7 @@ export default interface Resources {
     'unit.char': 'chars'
     'userProfile.about': 'About'
     'userProfile.compliance': 'Compliance'
+    'userProfile.contactSupport': 'Contact support'
     'userProfile.contactUs': 'Contact Us'
     'userProfile.discord': 'Discord'
     'userProfile.emailSupport': 'Email Support'
