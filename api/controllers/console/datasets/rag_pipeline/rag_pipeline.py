@@ -225,9 +225,9 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     @knowledge_pipeline_publish_enabled
     @with_current_user
+    @with_session
     @get_rag_pipeline
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_RELEASE, DatasetByPipeline()))
-    @with_session
     @model_validate(CustomizedPipelineTemplatePayload)
     def post(
         self,
