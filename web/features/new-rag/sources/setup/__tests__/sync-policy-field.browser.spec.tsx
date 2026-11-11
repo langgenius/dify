@@ -7,6 +7,7 @@ import { SyncPolicyField } from '../sync-policy-field'
 
 const i18nLanguage = vi.hoisted(() => ({ current: 'en-US' }))
 
+// boundary: Browser setup cannot switch the i18n language while preserving these interval labels.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const mock = createReactI18nextMock({
