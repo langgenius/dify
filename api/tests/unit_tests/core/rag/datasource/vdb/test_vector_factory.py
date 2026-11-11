@@ -473,7 +473,101 @@ def test_create_multimodal_filters_missing_uploads(
     vector._vector_processor.create.reset_mock()
     vector.create_multimodal(file_documents=None)
     vector._embeddings.embed_multimodal_documents.assert_not_called()
-    vector._vector_processor.create.assert_not_called()
+
+
+class _RecordingEmbeddings:
+    """Embeddings stand-in that returns a fixed vector list of any length."""
+
+    def __init__(self, vectors: list[list[float]]) -> None:
+        self._vectors = vectors
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return self._vectors
+
+    def embed_multimodal_documents(self, documents: list[dict]) -> list[list[float]]:
+        return self._vectors
+
+
+class _CreateRecorder:
+    """Vector processor stand-in that records whether create was reached."""
+
+    def __init__(self) -> None:
+        self.create_calls: list[dict] = []
+
+    def create(self, **kwargs) -> None:
+        self.create_calls.append(kwargs)
+
+
+class _FakeVectorFactory:
+    """Factory stand-in returning the supplied processor from init_vector."""
+
+    processor: _CreateRecorder | None = None
+
+    def init_vector(self, dataset, attributes, embeddings, *, session):
+        return _FakeVectorFactory.processor
+
+
+def _build_vector(vector_factory_module, monkeypatch: pytest.MonkeyPatch, embeddings, processor):
+    """Construct Vector through its real __init__ with a harmless backend.
+
+    Going through the constructor keeps the initialisation contract that the
+    guard script protects; only the backend and the embedding model are replaced.
+    """
+    _FakeVectorFactory.processor = processor
+    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(lambda _t: _FakeVectorFactory))
+    monkeypatch.setattr(vector_factory_module, "_LazyEmbeddings", lambda _dataset: embeddings)
+    return vector_factory_module.Vector(_dataset(), session=None, vector_type="WEAVIATE")
+
+
+def test_create_multimodal_rejects_embeddings_count_mismatch(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    upload_file = UploadFile(
+        tenant_id=str(uuid4()),
+        storage_type=StorageType.LOCAL,
+        key="k-1",
+        name="image.png",
+        size=3,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    sqlite_session.add(upload_file)
+    sqlite_session.commit()
+    processor = _CreateRecorder()
+    vector = _build_vector(vector_factory_module, monkeypatch, _RecordingEmbeddings([[0.1, 0.2]]), processor)
+    vector._session = sqlite_session
+    vector._dataset = Dataset(tenant_id=upload_file.tenant_id, name="dataset", created_by=upload_file.created_by)
+    monkeypatch.setattr(vector_factory_module.storage, "load_once", lambda _key: b"abc")
+
+    second_upload = UploadFile(
+        tenant_id=upload_file.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="k-2",
+        name="image2.png",
+        size=3,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=upload_file.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    sqlite_session.add(second_upload)
+    sqlite_session.commit()
+
+    docs = [
+        Document(page_content="file-1", metadata={"doc_id": upload_file.id, "doc_type": "image"}),
+        Document(page_content="file-2", metadata={"doc_id": second_upload.id, "doc_type": "image"}),
+    ]
+
+    with pytest.raises(ValueError, match="one embedding per document"):
+        vector.create_multimodal(file_documents=docs, request_id="r-1")
+
+    assert processor.create_calls == []
 
 
 def test_add_texts_with_optional_duplicate_check(vector_factory_module):
@@ -675,3 +769,28 @@ def test_filter_duplicate_texts_and_getattr(vector_factory_module):
     vector._vector_processor = None
     with pytest.raises(AttributeError, match="vector_processor"):
         _ = vector.another_missing
+
+
+def test_add_texts_rejects_embeddings_count_mismatch(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+    processor = _CreateRecorder()
+    vector = _build_vector(vector_factory_module, monkeypatch, _RecordingEmbeddings([[0.1]]), processor)
+    docs = [
+        Document(page_content="a", metadata={"doc_id": "id-1"}),
+        Document(page_content="b", metadata={"doc_id": "id-2"}),
+    ]
+
+    with pytest.raises(ValueError, match="one embedding per document"):
+        vector.add_texts(docs)
+
+    assert processor.create_calls == []
+
+
+def test_add_texts_rejects_extra_embeddings(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+    processor = _CreateRecorder()
+    vector = _build_vector(vector_factory_module, monkeypatch, _RecordingEmbeddings([[0.1], [0.2]]), processor)
+    docs = [Document(page_content="a", metadata={"doc_id": "id-1"})]
+
+    with pytest.raises(ValueError, match="one embedding per document"):
+        vector.add_texts(docs)
+
+    assert processor.create_calls == []
