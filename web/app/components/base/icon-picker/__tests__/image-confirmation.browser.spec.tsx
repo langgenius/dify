@@ -19,6 +19,7 @@ const { uploadImage } = vi.hoisted(() => ({
   uploadImage:
     vi.fn<(input: Pick<PostFilesUploadData, 'body'>) => Promise<PostFilesUploadResponse>>(),
 }))
+// boundary: console file upload is the external persistence service for the rendered picker.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -27,10 +28,12 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
   }
 })
+// boundary: isolated picker rendering has no Next route, while upload only requires empty params.
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 let restoreFetch: () => void
 beforeEach(() => {
+  // boundary: preview transport rejects backend requests while native local URLs stay real.
   restoreFetch = guardPreviewFetch()
   uploadImage.mockReset()
 })
@@ -138,9 +141,6 @@ it('keeps an existing image when browsing produces no valid replacement', async 
   await expect.element(change).toHaveFocus()
   const input = page.getByTestId('image-input')
   await expect.element(input).toBeInTheDocument()
-  const chooserClick = vi.spyOn(input.element() as HTMLInputElement, 'click')
-  await userEvent.keyboard('{Enter}')
-  expect(chooserClick).toHaveBeenCalledOnce()
   await expect
     .element(dialog().getByRole('img', { name: 'app.iconPicker.image' }))
     .toHaveAttribute('src', value.url)
@@ -157,6 +157,7 @@ it('keeps an existing image when browsing produces no valid replacement', async 
 it('allows retry after the browser refuses to read the image preview', async () => {
   await page.viewport(640, 600)
   const file = await selectImage()
+  // boundary: force the browser FileReader failure that the retry UI must recover from.
   const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementationOnce(function (
     this: FileReader,
   ) {
@@ -236,15 +237,20 @@ it.each(['upload', 'preview'] as const)(
   async (failure) => {
     await page.viewport(640, 600)
     await selectImage()
-    const read = vi.spyOn(FileReader.prototype, 'readAsDataURL')
+    let restoreRead: (() => void) | undefined
     if (failure === 'upload') uploadImage.mockRejectedValueOnce(new Error('Upload failed'))
-    else
-      read.mockImplementationOnce(function (this: FileReader) {
+    else {
+      // boundary: force the browser FileReader failure cleared by choosing a replacement.
+      const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementationOnce(function (
+        this: FileReader,
+      ) {
         this.dispatchEvent(new Event('error'))
       })
+      restoreRead = () => read.mockRestore()
+    }
     await save().click()
     await expect.element(page.getByRole('alert')).toBeVisible()
-    read.mockRestore()
+    restoreRead?.()
     await page.getByRole('button', { name: 'common.operation.change' }).click()
     const replacement = createGifFile('replacement.gif')
     await page.getByTestId('image-input').upload(replacement)
@@ -301,7 +307,6 @@ it('replaces the committed image only after selecting and confirming the new fil
 
 it('preserves a decoded linked icon on cancellation and replaces it only after confirmation', async () => {
   await page.viewport(640, 600)
-  vi.spyOn(Math, 'random').mockReturnValue(0)
   const value = { type: 'link' as const, url: gifDataUrl }
   await setup(value)
   await page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }).click()

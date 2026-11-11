@@ -386,7 +386,7 @@ const StepTwo: FC<StepTwoProps> = ({
         />
       </div>
       <PreviewPanel
-        isMobile={isBelowSm}
+        isBelowSm={isBelowSm}
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         finalFocus={previewTriggerRef}

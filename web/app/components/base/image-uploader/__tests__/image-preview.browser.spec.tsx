@@ -69,7 +69,7 @@ it('zooms and pans without exposing blank edges, then recenters when zoomed out'
   await page.viewport(480, 320)
   const largeImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="teal" /></svg>')}`
   const screen = await render(
-    <ImagePreview url={largeImage} title="Pan preview" onCancel={vi.fn()} />,
+    <ImagePreview url={largeImage} title="Pan preview" onCancel={() => {}} />,
   )
   const dialog = screen.getByRole('dialog', { name: 'Pan preview' })
   const image = dialog.getByRole('img', { name: 'Pan preview' })

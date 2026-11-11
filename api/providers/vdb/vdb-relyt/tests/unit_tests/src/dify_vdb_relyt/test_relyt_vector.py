@@ -249,11 +249,36 @@ def test_text_exists_false(relyt_module, monkeypatch: pytest.MonkeyPatch):
 
 
 # 6. similarity_search_with_score_by_vector returns Documents and scores
-def test_similarity_search_with_score_by_vector(relyt_module):
-    vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
-    vector._collection_name = "collection_1"
-    vector.client = MagicMock()
-    vector.embedding_dimension = 3
+@pytest.mark.parametrize(
+    ("metadata_filter", "expected_condition"),
+    [
+        pytest.param(
+            {"document_id": ["doc-1"], "group_id": ["g-1"]},
+            "metadata->>'document_id' = 'doc-1' AND metadata->>'group_id' = 'g-1'",
+            id="single-value",
+        ),
+        pytest.param(
+            {"document_id": ["doc-1", "doc-2"], "group_id": ["g-1", "g-2"]},
+            "metadata->>'document_id' in ('doc-1', 'doc-2') AND metadata->>'group_id' in ('g-1', 'g-2')",
+            id="multiple-values",
+        ),
+        pytest.param(
+            {"document_id": ["doc-1", "doc-2"], "group_id": ["g-1"]},
+            "metadata->>'document_id' in ('doc-1', 'doc-2') AND metadata->>'group_id' = 'g-1'",
+            id="mixed-value-counts",
+        ),
+    ],
+)
+def test_similarity_search_with_score_by_vector(
+    relyt_module: types.ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    metadata_filter: dict[str, list[str]],
+    expected_condition: str,
+) -> None:
+    """Given nonempty ID filters, emit correctly quoted predicates and return documents with scores."""
+    engine = MagicMock()
+    monkeypatch.setattr(relyt_module, "create_engine", lambda *_args, **_kwargs: engine)
+    vector = relyt_module.RelytVector("collection_1", _config(relyt_module), group_id="group-1")
     result_rows = [
         SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}, distance=0.1),
         SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}, distance=0.8),
@@ -263,9 +288,13 @@ def test_similarity_search_with_score_by_vector(relyt_module):
     conn.__exit__.return_value = None
     conn.execute.return_value.fetchall.return_value = result_rows
     vector.client.connect.return_value = conn
-    similarities = vector.similarity_search_with_score_by_vector([0.1, 0.2], k=2, filter={"document_id": ["d-1"]})
+    similarities = vector.similarity_search_with_score_by_vector([0.1, 0.2], k=2, filter=metadata_filter)
     assert len(similarities) == 2
     assert similarities[0][0].page_content == "doc-a"
+    executed_sql = str(conn.execute.call_args.args[0])
+    assert f"WHERE {expected_condition}" in executed_sql
+    assert "''document_id''" not in executed_sql
+    assert "''group_id''" not in executed_sql
 
 
 # 7. search_by_vector filters by score and ids

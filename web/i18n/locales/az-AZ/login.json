@@ -25,6 +25,7 @@
   "enterYourName": "İstifadəçi adınızı daxil edin",
   "error.emailEmpty": "E-poçt ünvanı tələb olunur",
   "error.emailInValid": "Etibarlı e-poçt ünvanı daxil edin",
+  "error.initPasswordIncorrect": "İlkin quraşdırma parolu yanlışdır.",
   "error.invalidEmailOrPassword": "Etibarsız e-poçt və ya parol.",
   "error.invalidSSOProtocol": "Etibarsız SSO protokolu",
   "error.nameEmpty": "Ad tələb olunur",

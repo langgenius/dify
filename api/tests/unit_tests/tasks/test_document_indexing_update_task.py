@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
 
 import tasks.document_indexing_update_task as task_module
@@ -19,6 +20,7 @@ from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -49,7 +51,7 @@ def _persist_rows(
     session: Session,
     *,
     indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
-    summary_index_setting: dict | None = None,
+    summary_index_setting: dict[str, object] | None = None,
     doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     need_summary: bool = True,
     with_segment: bool = False,
@@ -101,10 +103,12 @@ def _persist_rows(
     return dataset, document
 
 
-def _complete_indexing(refs, *, bind) -> None:
+def _complete_indexing(refs: list[DocumentRef], *, bind: Engine | Connection) -> None:
     with Session(bind) as writer, writer.begin():
         for ref in refs:
-            writer.get(Document, ref.document_id).indexing_status = IndexingStatus.COMPLETED
+            document = writer.get(Document, ref.document_id)
+            assert document is not None
+            document.indexing_status = IndexingStatus.COMPLETED
 
 
 def _persist_attachment(
@@ -175,8 +179,8 @@ def test_skips_summary_when_persisted_eligibility_does_not_match(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
     monkeypatch: pytest.MonkeyPatch,
-    dataset_changes: dict,
-    document_changes: dict,
+    dataset_changes: dict[str, object],
+    document_changes: dict[str, object],
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(
@@ -240,8 +244,8 @@ def test_skips_summary_when_dataset_is_removed_after_indexing(
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
 
-    def complete_and_remove(documents: list[Document], session: Session) -> None:
-        _complete_indexing(documents, session)
+    def complete_and_remove(documents: list[DocumentRef], session: Session) -> None:
+        _complete_indexing(documents, bind=session.get_bind())
         persisted_dataset = session.get(Dataset, dataset.id)
         assert persisted_dataset is not None
         session.delete(persisted_dataset)

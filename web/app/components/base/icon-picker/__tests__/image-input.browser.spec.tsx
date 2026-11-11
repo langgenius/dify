@@ -17,6 +17,7 @@ const { uploadImage } = vi.hoisted(() => ({
       ) => Promise<{ id: string; name: string; size: number }>
     >(),
 }))
+// boundary: console file upload is the external persistence service for the rendered picker.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -25,10 +26,12 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
   }
 })
+// boundary: isolated picker rendering has no Next route, while upload only requires empty params.
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 let restoreFetch: () => void
 beforeEach(() => {
+  // boundary: preview transport rejects backend requests while native local URLs stay real.
   restoreFetch = guardPreviewFetch()
   uploadImage.mockImplementation(async ({ body: { file } }) => ({
     id: 'saved-image',
@@ -96,6 +99,7 @@ it('preserves a GIF as the original decodable file without cropping', async () =
 
 it('releases the selected resource on Cancel and opens a fresh image session', async () => {
   await page.viewport(640, 600)
+  // boundary: object URL release is a browser-owned image resource effect.
   const revoke = vi.spyOn(URL, 'revokeObjectURL')
   await openPicker()
   await page.getByTestId('image-input').upload(createGifFile())

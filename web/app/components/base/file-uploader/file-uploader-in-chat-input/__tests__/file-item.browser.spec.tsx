@@ -34,6 +34,7 @@ beforeEach(async () => {
     reader.onload = () => resolve(String(reader.result))
     reader.readAsDataURL(audioFile)
   })
+  // boundary: preview transport rejects backend requests while native local URLs stay real.
   restoreFetch = guardPreviewFetch()
 })
 afterEach(() => {
@@ -109,6 +110,7 @@ it('retries the failed file through its caller and removes the retry action', as
 it('downloads the file through the real anchor without opening its preview', async () => {
   await page.viewport(640, 480)
   const downloads: { href: string; name: string; target: string }[] = []
+  // boundary: the browser download handoff is observable only through the activated anchor.
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
     this: HTMLAnchorElement,
   ) {
@@ -234,6 +236,7 @@ it('renders the actual PDF worker output and returns focus after closing', async
 
 it('keeps a loaded Blob through upload completion and uses the remote source next time', async () => {
   await page.viewport(640, 480)
+  // boundary: object URL allocation and release are browser-owned media resource effects.
   const createObjectURL = vi.spyOn(URL, 'createObjectURL')
   const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
   const file = createFile({ name: 'audio.mp3', type: 'audio/mpeg', originalFile: audioFile })
@@ -273,6 +276,7 @@ it.each(['remote', 'inline'])(
   'borrows the preferred %s source without allocating or revoking it',
   async (source) => {
     await page.viewport(640, 480)
+    // boundary: object URL allocation and release are browser-owned media resource effects.
     const createObjectURL = vi.spyOn(URL, 'createObjectURL')
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
     await render(
@@ -305,6 +309,7 @@ it.each(['remote', 'inline'])(
 
 it('ends the live media session when preview permission is removed', async () => {
   await page.viewport(640, 480)
+  // boundary: object URL release is a browser-owned media resource effect.
   const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
   const file = createFile({ name: 'audio.mp3', type: 'audio/mpeg', originalFile: audioFile })
   const view = await render(<FileItem file={file} canPreview />)

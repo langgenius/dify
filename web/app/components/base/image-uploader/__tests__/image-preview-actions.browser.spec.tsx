@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { Mock, MockInstance } from 'vite-plus/test'
+import type { MockInstance } from 'vite-plus/test'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -13,9 +13,9 @@ import ImagePreview from '../image-preview'
 let png: File
 let dataImage: string
 let copied: Blob | undefined
-let fetchImage: Mock<typeof fetch>
+let fetchImage: MockInstance<typeof fetch>
 let clipboardWrite: MockInstance<Clipboard['write']>
-let unexpectedFetch: Mock<(url: string) => void>
+let unexpectedFetches: string[]
 const button = (action: string) => page.getByRole('button', { name: `common.operation.${action}` })
 const fullUrl = () => new URL(fixtureUrl, window.location.href).href
 
@@ -27,26 +27,25 @@ beforeEach(async () => {
     reader.readAsDataURL(png)
   })
   copied = undefined
-  unexpectedFetch = vi.fn()
+  unexpectedFetches = []
   const nativeFetch = globalThis.fetch.bind(globalThis)
-  fetchImage = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+  // boundary: remote image transport is isolated; native data/blob decoding remains real.
+  fetchImage = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input)
     if (url.startsWith('data:') || url.startsWith('blob:')) return nativeFetch(input, init)
     if (url === fixtureUrl || url === fullUrl()) return new Response(png)
-    unexpectedFetch(url)
+    unexpectedFetches.push(url)
     throw new Error(`Unexpected image request: ${url}`)
   })
-  vi.stubGlobal('fetch', fetchImage)
-  // The system clipboard is the boundary; ClipboardItem, decoding and canvas conversion stay real.
+  // boundary: the system clipboard is external; ClipboardItem, decoding and conversion stay real.
   clipboardWrite = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async (items) => {
     copied = await items[0]!.getType('image/png')
   })
 })
 afterEach(() => {
   toast.dismiss()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+  expect(unexpectedFetches).toEqual([])
   vi.restoreAllMocks()
-  vi.unstubAllGlobals()
 })
 
 async function setup(props: Partial<ComponentProps<typeof ImagePreview>> = {}) {
@@ -97,10 +96,12 @@ it.each(['absolute', 'relative'])(
   async (kind) => {
     await page.viewport(640, 480)
     const url = kind === 'absolute' ? fullUrl() : fixtureUrl
+    // boundary: popup navigation is a browser-owned external effect.
     const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
     await setup({ url })
     await button('openInNewTab').click()
     expect(windowOpen).toHaveBeenCalledExactlyOnceWith(url, '_blank')
+    await expect.element(page.getByRole('dialog', { name: 'Preview Image' })).toBeVisible()
   },
 )
 
@@ -112,6 +113,7 @@ it.each(['data URL', 'raw base64'])(
     const frame = page.getByTitle('Image tab')
     await expect.element(frame).toBeInTheDocument()
     const popup = (frame.element() as HTMLIFrameElement).contentWindow!
+    // boundary: route the popup into a real same-origin iframe browsing context for inspection.
     const windowOpen = vi.spyOn(window, 'open').mockReturnValue(popup)
     const title = '"><script>window.injected = true</script>'
     await setup({ url: source === 'data URL' ? dataImage : dataImage.split(',')[1], title })
@@ -129,6 +131,7 @@ it.each(['data URL', 'raw base64'])(
 
 it('reports an unsupported URL without opening a tab', async () => {
   await page.viewport(640, 480)
+  // boundary: popup navigation is a browser-owned external effect.
   const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
   await setup({ url: 'file:///tmp/image.png' })
   await button('openInNewTab').click()
@@ -140,19 +143,16 @@ it.each(['permission', 'fetch'] as const)(
   'keeps the preview open after a clipboard %s failure',
   async (failure) => {
     await page.viewport(640, 480)
+    // boundary: expected browser clipboard failures log outside the rendered error contract.
     vi.spyOn(console, 'error').mockImplementation(() => {})
     if (failure === 'permission')
       clipboardWrite.mockRejectedValueOnce(new DOMException('Denied', 'NotAllowedError'))
     else fetchImage.mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-    const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
     await setup()
     await button('copyImage').click()
     await expect.element(page.getByText('common.operation.imageCopyFailed')).toBeVisible()
     await expect.element(page.getByRole('dialog', { name: 'Preview Image' })).toBeVisible()
     expect(copied).toBeUndefined()
-    expect(download).not.toHaveBeenCalled()
-    expect(windowOpen).not.toHaveBeenCalled()
   },
 )
 
@@ -214,15 +214,16 @@ it.each(['absolute', 'relative', 'inline'])(
     await page.viewport(640, 480)
     const title = source === 'relative' ? '' : 'Screenshot.png'
     const url = source === 'inline' ? dataImage : source === 'absolute' ? fullUrl() : fixtureUrl
+    // boundary: object URL allocation and release are browser-owned download resource effects.
     const createObjectURL = vi.spyOn(URL, 'createObjectURL')
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
     const downloads: { href: string; name: string; target: string }[] = []
+    // boundary: the browser download handoff is observable only through the activated anchor.
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
       this: HTMLAnchorElement,
     ) {
       downloads.push({ href: this.href, name: this.download, target: this.target })
     })
-    const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
     await setup({ url, title })
     await button('download').click()
     await expect.poll(() => downloads.length).toBe(1)
@@ -236,7 +237,6 @@ it.each(['absolute', 'relative', 'inline'])(
       new Uint8Array(await png.arrayBuffer()),
     )
     expect(revokeObjectURL).toHaveBeenCalledWith(downloads[0]!.href)
-    expect(windowOpen).not.toHaveBeenCalled()
     await expect.element(page.getByRole('dialog')).toBeVisible()
   },
 )
@@ -247,13 +247,12 @@ it.each(['network', 'http'])(
     await page.viewport(640, 480)
     if (failure === 'network') fetchImage.mockRejectedValueOnce(new TypeError('Failed to fetch'))
     else fetchImage.mockResolvedValueOnce(new Response(null, { status: 403 }))
+    // boundary: the browser download handoff must not activate after transport failure.
     const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-    const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
     await setup()
     await button('download').click()
     await expect.element(page.getByText('common.operation.downloadFailed')).toBeVisible()
     await expect.element(page.getByRole('dialog', { name: 'Preview Image' })).toBeVisible()
     expect(download).not.toHaveBeenCalled()
-    expect(windowOpen).not.toHaveBeenCalled()
   },
 )

@@ -1,20 +1,20 @@
+import { generateMetadata as generateInitMetadata } from '../(auth)/init/page'
+import { generateMetadata as generateInstallMetadata } from '../(auth)/install/layout'
+import { generateMetadata as generateCheckCodeMetadata } from '../(auth)/reset-password/check-code/layout'
+import { generateMetadata as generateResetPasswordMetadata } from '../(auth)/reset-password/layout'
+import { generateMetadata as generateSetPasswordMetadata } from '../(auth)/reset-password/set-password/layout'
+import { generateMetadata as generateSignInCheckCodeMetadata } from '../(auth)/signin/check-code/layout'
+import { generateMetadata as generateSignInMetadata } from '../(auth)/signin/page'
+import { generateMetadata as generateSignupCheckCodeMetadata } from '../(auth)/signup/check-code/layout'
+import { generateMetadata as generateSignupMetadata } from '../(auth)/signup/layout'
+import { generateMetadata as generateSignupSetPasswordMetadata } from '../(auth)/signup/set-password/layout'
 import { generateMetadata as generateAgentsMetadata } from '../(commonLayout)/agents/page'
 import { generateMetadata as generateAppsMetadata } from '../(commonLayout)/apps/page'
 import { generateMetadata as generateHomeMetadata } from '../(commonLayout)/page'
 import { generateMetadata as generateWebappCheckCodeMetadata } from '../(shareLayout)/webapp-reset-password/check-code/layout'
 import { generateMetadata as generateWebappResetPasswordMetadata } from '../(shareLayout)/webapp-reset-password/layout'
 import { generateMetadata as generateWebappSetPasswordMetadata } from '../(shareLayout)/webapp-reset-password/set-password/layout'
-import { generateMetadata as generateInitMetadata } from '../init/page'
-import { generateMetadata as generateInstallMetadata } from '../install/layout'
 import { generateMetadata as generateOAuthCallbackMetadata } from '../oauth-callback/layout'
-import { generateMetadata as generateCheckCodeMetadata } from '../reset-password/check-code/layout'
-import { generateMetadata as generateResetPasswordMetadata } from '../reset-password/layout'
-import { generateMetadata as generateSetPasswordMetadata } from '../reset-password/set-password/layout'
-import { generateMetadata as generateSignInCheckCodeMetadata } from '../signin/check-code/layout'
-import { generateMetadata as generateSignInMetadata } from '../signin/page'
-import { generateMetadata as generateSignupCheckCodeMetadata } from '../signup/check-code/layout'
-import { generateMetadata as generateSignupMetadata } from '../signup/layout'
-import { generateMetadata as generateSignupSetPasswordMetadata } from '../signup/set-password/layout'
 
 vi.mock('server-only', () => ({}))
 
@@ -23,13 +23,10 @@ vi.mock('@/i18n/server', async (importOriginal) => ({
   getLocaleOnServer: async () => 'en-US',
 }))
 
-vi.mock('../reset-password/reset-password-layout', () => ({ default: () => null }))
-vi.mock('../signin/sign-in-page', () => ({ default: () => null }))
-vi.mock('../signup/signup-layout', () => ({ default: () => null }))
-vi.mock('../(shareLayout)/webapp-reset-password/reset-password-layout', () => ({
-  default: () => null,
-}))
-vi.mock('../init/InitPasswordPopup', () => ({ default: () => null }))
+vi.mock('@/service/console/server', () => ({ resolveServerConsoleApiUrl: () => null }))
+vi.mock('@/features/account-profile/server', () => ({ serverUserProfileQueryOptions: vi.fn() }))
+vi.mock('../(auth)/signin/sign-in-page', () => ({ default: () => null }))
+vi.mock('../(auth)/init/InitPasswordPopup', () => ({ default: () => null }))
 vi.mock('@/app/components/apps', () => ({ Apps: () => null }))
 vi.mock('@/features/agent-v2/roster/page', () => ({ default: () => null }))
 vi.mock('@/features/home/page', () => ({ HomePage: () => null }))

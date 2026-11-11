@@ -6,9 +6,8 @@ import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { ModelSelectorProvider } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { renderI18nObject } from '@/i18n/metadata'
-import { Theme } from '@/types/app'
 import { useLanguage } from '../hooks'
 
 type ModelIconProps = {
@@ -29,13 +28,13 @@ const ModelIcon: FC<ModelIconProps> = ({
   iconClassName,
   isDeprecated = false,
 }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const language = useLanguage()
   const lightIconUrl = provider?.icon_small ? renderI18nObject(provider.icon_small, language) : ''
   const darkIconUrl = provider?.icon_small_dark
     ? renderI18nObject(provider.icon_small_dark, language)
     : ''
-  const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
+  const iconUrl = theme === 'dark' ? darkIconUrl || lightIconUrl : lightIconUrl
 
   if (
     provider?.provider &&

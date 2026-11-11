@@ -23,7 +23,7 @@ const api = vi.hoisted(() => ({
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   delete: vi.fn<typeof consoleClient.apps.byAppId.delete>(),
 }))
-vi.mock('react-i18next', async (importOriginal) => importOriginal())
+vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -86,7 +86,6 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
     systemFeatures: {
       rbac_enabled: true,
       enable_learn_app: false,
-      enable_collaboration_mode: false,
     },
   })
   const screen = await render(
