@@ -202,9 +202,10 @@ class ApiTool(Tool):
         Send an HTTP request using the API bundle and supplied parameters.
 
         For application/x-www-form-urlencoded, list/tuple values become repeated
-        fields; other values keep their existing string representation. Query,
-        cookie and header parameters whose value is unset (``None`` or ``""``) are
-        omitted; header and cookie booleans are sent as ``true``/``false``. Invalid
+        fields; other values keep their existing string representation. Optional
+        query, cookie and header parameters whose value is unset (``None`` or ``""``)
+        are omitted; required ones raise ``ToolParameterValidationError`` before
+        dispatch. Header and cookie booleans are sent as ``true``/``false``. Invalid
         required parameters raise before dispatch.
         """
         method = method.lower()
@@ -232,9 +233,11 @@ class ApiTool(Tool):
                 path_params[parameter["name"]] = value
 
             elif _is_unset_parameter_value(value):
-                # An optional query, cookie or header parameter without a value is
-                # left out of the request instead of being sent empty or as "None".
-                pass
+                # A required query, cookie or header parameter must carry a value; an
+                # optional one without a value is left out of the request instead of
+                # being sent empty or as "None".
+                if parameter.get("required", False):
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
 
             elif parameter["in"] == "query":
                 params[parameter["name"]] = value

@@ -453,6 +453,24 @@ class TestCustomToolCases:
         assert captured["cookies"] == {}
 
     @staticmethod
+    @pytest.mark.parametrize("location", ["query", "header", "cookie"])
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_do_http_request_rejects_unset_required_parameters(
+        monkeypatch: pytest.MonkeyPatch, location: str, value: str | None
+    ) -> None:
+        openapi = {
+            "parameters": [{"name": "X-Request-Id", "in": location, "required": True, "schema": {"type": "string"}}]
+        }
+        tool = _build_tool(openapi=openapi)
+        fake_get = Mock(return_value=httpx.Response(200, text="ok"))
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", fake_get)
+
+        with pytest.raises(ToolParameterValidationError, match="Missing required parameter X-Request-Id"):
+            tool.do_http_request("https://api.example.com/items", "GET", headers={}, parameters={"X-Request-Id": value})
+
+        fake_get.assert_not_called()
+
+    @staticmethod
     def test_do_http_request_serializes_header_and_cookie_values(monkeypatch: pytest.MonkeyPatch) -> None:
         openapi = {
             "parameters": [
