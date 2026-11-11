@@ -149,6 +149,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               '@base-ui/react/number-field',
               '@base-ui/react/popover',
               '@base-ui/react/slider',
+              '@lexical/react/LexicalExtensionComposer',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
               'dayjs/plugin/timezone',
