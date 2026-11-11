@@ -489,8 +489,8 @@ catalogs:
       specifier: 8.6.0
       version: 8.6.0
     es-module-lexer:
-      specifier: 2.3.2
-      version: 2.3.2
+      specifier: 3.0.4
+      version: 3.0.4
     es-toolkit:
       specifier: 1.53.2
       version: 1.53.2
@@ -1347,7 +1347,7 @@ importers:
         version: 1.16.2(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)
       es-module-lexer:
         specifier: 'catalog:'
-        version: 2.3.2
+        version: 3.0.4
       import-meta-resolve:
         specifier: 'catalog:'
         version: 4.2.0
@@ -16930,7 +16930,7 @@ time:
   embla-carousel-autoplay@8.6.0: '2025-04-04T17:37:46.303Z'
   embla-carousel-fade@8.6.0: '2025-04-04T17:37:50.278Z'
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
-  es-module-lexer@2.3.2: '2026-08-17T01:57:36.160Z'
+  es-module-lexer@3.0.4: '2026-10-15T04:35:33.820Z'
   es-toolkit@1.53.2: '2026-11-06T09:29:34.259Z'
   eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
   eslint-markdown@0.20.0: '2026-10-24T02:15:47.330Z'

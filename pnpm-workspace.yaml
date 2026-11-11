@@ -179,7 +179,7 @@ catalog:
   embla-carousel-autoplay: 8.6.0
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
-  es-module-lexer: 2.3.2
+  es-module-lexer: 3.0.4
   es-toolkit: 1.53.2
   eslint: 10.14.0
   eslint-config-flat-gitignore: 2.4.0
