@@ -18,10 +18,11 @@ from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppMode
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 def test_access_only_lists_current_published_workflow_references(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     sqlite_session.add_all(
         [
@@ -62,7 +63,9 @@ def test_access_only_lists_current_published_workflow_references(
             )
         )
     sqlite_session.commit()
-    service = build_agent_app_services(database_client=sqlite_session_factory).access
+    service = build_agent_app_services(
+        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+    ).access
     context = RequestContext("request", None, "account", "tenant-1")
     [reference] = service.list_referencing_workflows(context, "agent")
     assert reference["app_id"] == "workflow-app"
@@ -74,7 +77,7 @@ def test_access_only_lists_current_published_workflow_references(
 
 @pytest.mark.parametrize("invalid", ["archived", "standalone", "workflow-only", "missing-app"])
 def test_access_requires_public_agent_app(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], invalid: str
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain, invalid: str
 ) -> None:
     agent = Agent(
         id="agent",
@@ -97,6 +100,8 @@ def test_access_requires_public_agent_app(
         agent.app_id = "missing"
     sqlite_session.add_all([make_app(app_id="agent-app", mode=AppMode.AGENT), agent])
     sqlite_session.commit()
-    service = build_agent_app_services(database_client=sqlite_session_factory).access
+    service = build_agent_app_services(
+        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+    ).access
     with pytest.raises(AgentAppNotFoundError):
         service.list_referencing_workflows(RequestContext("request", None, "account", "tenant-1"), "agent")
