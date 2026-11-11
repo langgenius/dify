@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { KnowledgeSpaceCard } from '../knowledge-space-card'
 
+// boundary: seed workspace authorization without bootstrapping an authenticated application session.
 vi.mock('@/context/permission-state', async () => {
   const { atom } = await import('jotai')
   return { workspacePermissionKeysAtom: atom([]) }
