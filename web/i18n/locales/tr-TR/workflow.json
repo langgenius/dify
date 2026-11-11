@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "Bu İnsan Girdisi adımına kimlerin yanıt verebileceğini seçin.",
   "nodes.humanInputV2.recipients.initiator": "Bu çalıştırmayı Web App veya CLI üzerinden başlatan kullanıcı onaylayabilir",
   "nodes.humanInputV2.recipients.initiatorDescription": "Bu iş akışını başlatan kişi yanıt verebilir.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Tetikleyiciyle başlatılan çalıştırmalarda onay isteklerini alabilecek bir başlatan yoktur. Bir kişi seçin veya e-posta adresini bir değişkenle belirtin.",
   "nodes.humanInputV2.recipients.inputHelp": "Virgülle ayrılmış birden fazla e-posta adresi yazın veya yapıştırın. Değişken eklemek için / tuşuna basın.",
   "nodes.humanInputV2.recipients.insertVariable": "Değişken ekle",
   "nodes.humanInputV2.recipients.loadError": "Kişiler yüklenemedi. Saklanan kişi kimlikleri korunuyor.",

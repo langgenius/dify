@@ -193,6 +193,44 @@ const notionDatasourcePluginWithParameters: DataSourceItem = {
   },
 }
 
+const githubProvider: KnowledgeFsSourceProviderResponse = {
+  ...notionProvider,
+  display_name: 'GitHub Repository',
+  id: 'github-provider',
+}
+
+const githubCredential: DatasourceCredentialResponse = {
+  ...notionCredential,
+  id: 'github-credential-1',
+  name: 'GitHub token',
+}
+
+const githubDatasourcePlugin: DataSourceItem = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources![0]!,
+        identity: {
+          ...notionDatasourcePlugin.declaration.datasources![0]!.identity,
+          label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+          name: 'github',
+          provider: 'github_datasource',
+        },
+      },
+    ],
+    identity: {
+      ...notionDatasourcePlugin.declaration.identity,
+      label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+      name: 'github_datasource',
+    },
+  },
+  plugin_id: 'langgenius/github_datasource',
+  plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+  provider: 'github_datasource',
+}
+
 const s3Provider: KnowledgeFsSourceProviderResponse = {
   auth_kinds: ['endpoint'],
   available: true,
@@ -304,6 +342,17 @@ function notionDatasourceAuth(
     plugin_id: 'langgenius/notion_datasource',
     plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
     provider: 'notion',
+  }
+}
+
+function githubDatasourceAuth(): DatasourceProviderAuthResponse {
+  return {
+    ...notionDatasourceAuth([githubCredential]),
+    label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+    name: 'github_datasource',
+    plugin_id: 'langgenius/github_datasource',
+    plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+    provider: 'github_datasource',
   }
 }
 
@@ -851,6 +900,179 @@ describe('ConnectedSourceWorkflow', () => {
 
     view.unmount()
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('selects only loaded GitHub pages through repository and folder checkboxes', async () => {
+    const user = userEvent.setup()
+    const connection = connectionResponse({
+      configuration: {
+        credentialId: githubCredential.id,
+        datasource: 'github',
+        pluginId: 'langgenius/github_datasource',
+        provider: 'github_datasource',
+        providerKind: 'online-document',
+      },
+      name: 'GitHub token',
+      provider_id: githubProvider.id,
+    })
+    clientMock.listProviders.mockResolvedValue({ data: [githubProvider] })
+    clientMock.listDatasourcePlugins.mockResolvedValue([githubDatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({ result: [githubDatasourceAuth()] })
+    clientMock.listConnections.mockResolvedValue({ data: [connection], next_cursor: null })
+    clientMock.getPages.mockImplementation(
+      ({ query }: { query: { cursor?: string; parentId?: string } }) => {
+        const node = (
+          page_id: string,
+          page_name: string,
+          parent_id: string | null,
+          type: string,
+          has_children = false,
+        ) => ({
+          has_children,
+          page_id,
+          page_name,
+          parent_id,
+          type,
+        })
+        const pages = !query.parentId
+          ? query.cursor
+            ? [node('repo:FFXN/checkin', 'checkin', null, 'repository', true)]
+            : [node('repo:FFXN/dify', 'dify', null, 'repository', true)]
+          : query.parentId === 'repo:FFXN/dify'
+            ? [
+                node('contents:FFXN/dify', 'Contents', query.parentId, 'github_collection', true),
+                node('issues:FFXN/dify', 'Issues', query.parentId, 'github_collection', true),
+                node('prs:FFXN/dify', 'Pull requests', query.parentId, 'github_collection', true),
+              ]
+            : query.parentId === 'contents:FFXN/dify'
+              ? [
+                  node('dir:FFXN/dify:src', 'src', query.parentId, 'github_directory', true),
+                  node('file:FFXN/dify:README.md', 'README.md', query.parentId, 'file'),
+                ]
+              : query.parentId === 'dir:FFXN/dify:src'
+                ? [node('file:FFXN/dify:src/main.py', 'main.py', query.parentId, 'file')]
+                : query.parentId === 'prs:FFXN/dify'
+                  ? [
+                      node(
+                        `pr:FFXN/dify:${query.cursor ? '2' : '1'}`,
+                        `PR #${query.cursor ? '2' : '1'}`,
+                        query.parentId,
+                        'pull_request',
+                      ),
+                    ]
+                  : []
+        return Promise.resolve({
+          next_cursor: !query.cursor
+            ? query.parentId === 'prs:FFXN/dify'
+              ? 'pr-next'
+              : !query.parentId
+                ? 'root-next'
+                : null
+            : null,
+          workspaces: [
+            {
+              pages,
+              total: pages.length,
+              workspace_id: 'FFXN',
+              workspace_name: "FFXN's GitHub",
+            },
+          ],
+        })
+      },
+    )
+
+    const view = await renderSetup({
+      ...defaultDraft,
+      provider: 'GitHub Repository',
+      sourceName: 'GitHub docs',
+    })
+    const repository = await screen.findByRole('checkbox', { name: 'dify' })
+    expect(clientMock.getPages).toHaveBeenCalledExactlyOnceWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 10, view: 'tree' },
+    })
+    expect(screen.queryByRole('button', { name: 'Contents' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(await screen.findByRole('checkbox', { name: 'checkin' })).not.toBeChecked()
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { cursor: 'root-next', limit: 10, view: 'tree' },
+    })
+
+    await user.click(repository)
+    await user.click(screen.getByRole('button', { name: 'dify' }))
+    const contents = await screen.findByRole('button', { name: 'Contents' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 30, parentId: 'repo:FFXN/dify', view: 'tree' },
+    })
+    const contentsCheckbox = screen.getByRole('checkbox', { name: 'Contents' })
+    const pullRequestsCheckbox = screen.getByRole('checkbox', { name: 'Pull requests' })
+    expect(contentsCheckbox).toHaveAttribute('aria-disabled', 'true')
+    expect(pullRequestsCheckbox).toHaveAttribute('aria-disabled', 'true')
+    expect(repository).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: 'Pull requests' }))
+    const firstPr = await screen.findByRole('checkbox', { name: 'PR #1' })
+    expect(firstPr).not.toBeChecked()
+    expect(repository).toBePartiallyChecked()
+    expect(pullRequestsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(pullRequestsCheckbox)
+    expect(firstPr).toBeChecked()
+    const branchLoadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
+    expect(firstPr.closest('li')?.nextElementSibling).toBe(branchLoadMore.closest('li'))
+    await user.click(branchLoadMore)
+    const secondPr = await screen.findByRole('checkbox', { name: 'PR #2' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { cursor: 'pr-next', limit: 30, parentId: 'prs:FFXN/dify', view: 'tree' },
+    })
+    expect(secondPr).not.toBeChecked()
+    expect(pullRequestsCheckbox).toBePartiallyChecked()
+    await user.click(pullRequestsCheckbox)
+    expect(firstPr).toBeChecked()
+    expect(secondPr).toBeChecked()
+
+    await user.click(contents)
+    expect(await screen.findByRole('button', { name: 'src' })).toBeInTheDocument()
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 100, parentId: 'contents:FFXN/dify', view: 'tree' },
+    })
+    const srcCheckbox = screen.getByRole('checkbox', { name: 'src' })
+    expect(contentsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    expect(srcCheckbox).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: 'src' }))
+    const codeFile = await screen.findByRole('checkbox', { name: 'main.py' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 100, parentId: 'dir:FFXN/dify:src', view: 'tree' },
+    })
+    expect(codeFile).not.toBeChecked()
+    expect(srcCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(srcCheckbox)
+    expect(codeFile).toBeChecked()
+    await user.click(repository)
+    expect(screen.getByRole('checkbox', { name: 'README.md' })).toBeChecked()
+    await user.click(repository)
+    expect(firstPr).not.toBeChecked()
+    expect(secondPr).not.toBeChecked()
+    expect(codeFile).not.toBeChecked()
+    await user.click(secondPr)
+    await user.click(codeFile)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          items: [
+            expect.objectContaining({ pageId: 'pr:FFXN/dify:2' }),
+            expect.objectContaining({ pageId: 'file:FFXN/dify:src/main.py' }),
+          ],
+        }),
+      }),
+    )
   })
 
   it('stops the import and cleans up the renamed source when canceled while the rename is pending', async () => {
