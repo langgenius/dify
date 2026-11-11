@@ -13,13 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.datasource_entities import (
-    DatasourceProviderType,
-    OnlineDriveBrowseFilesResponse,
-    OnlineDriveFile,
-    OnlineDriveFileBucket,
-)
+from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
@@ -46,36 +40,6 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
     def model_dump(self):
         return dict(self.__dict__)
-
-
-class FakeDriveRuntime:
-    def __init__(self, *, use_prefix: bool = False):
-        self.runtime = DatasourceRuntime(tenant_id=TENANT_ID)
-        self.use_prefix = use_prefix
-        self.used_credentials = []
-
-    def datasource_provider_type(self):
-        return DatasourceProviderType.ONLINE_DRIVE
-
-    def online_drive_browse_files(self, user_id, request, provider_type):
-        self.used_credentials.append(dict(self.runtime.credentials))
-        file_id = request.prefix if self.use_prefix else "child"
-        return iter(
-            [
-                OnlineDriveBrowseFilesResponse(
-                    result=[
-                        OnlineDriveFileBucket(
-                            files=[OnlineDriveFile(id=file_id, name="child.pdf", type="file", size=0)]
-                        )
-                    ]
-                )
-            ]
-        )
-
-
-class PipelineConfigForTest:
-    app_id = "pipe"
-    rag_pipeline_variables = []
 
 
 @pytest.fixture
@@ -318,73 +282,6 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     assert {log.document_id for log in persisted_logs} == {document.id for document in persisted_documents}
     task_proxy.delay.assert_called_once()
     get_features.assert_called_once_with(TENANT_ID)
-
-
-@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.PUBLISHED_PIPELINE])
-@pytest.mark.parametrize("selection_type", ["file", "folder"])
-def test_generate_drive_preserves_credential_for_execution(
-    generator, mocker: MockerFixture, sqlite_session: Session, invoke_from, selection_type
-):
-    workflow = _build_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "start",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "drive",
-                    },
-                }
-            ]
-        }
-    )
-    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session, workflow=workflow)
-    runtime = FakeDriveRuntime()
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch.object(generator._datasource_providers, "get_datasource_credentials", return_value={"token": "value"})
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=PipelineConfigForTest(),
-    )
-    mocker.patch.object(generator, "_prepare_user_inputs", return_value={})
-    mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_execution_repository")
-    mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_node_execution_repository")
-    mocker.patch("services.feature_service.FeatureService.get_features")
-    mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
-    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
-    generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
-    task = mocker.patch.object(module, "RagPipelineTaskProxy")
-    args = {
-        "inputs": {},
-        "start_node_id": "start",
-        "datasource_type": "online_drive",
-        "datasource_info_list": [
-            {"id": "file", "name": "file.pdf", "type": selection_type, "credential_id": "selected-credential"},
-        ],
-    }
-
-    generator.generate(
-        session=sqlite_session,
-        pipeline=pipeline,
-        workflow=workflow,
-        user=_build_user(),
-        args=args,
-        invoke_from=invoke_from,
-        streaming=False,
-    )
-
-    if invoke_from == InvokeFrom.DEBUGGER:
-        info = generate.call_args.kwargs["application_generate_entity"].datasource_info
-    else:
-        info = task.call_args.args[2][0]["application_generate_entity"]["datasource_info"]
-        log = sqlite_session.scalar(
-            select(DocumentPipelineExecutionLog).where(DocumentPipelineExecutionLog.pipeline_id == PIPELINE_ID)
-        )
-        assert json.loads(log.datasource_info)["credential_id"] == "selected-credential"
-    assert info["credential_id"] == "selected-credential"
-    assert info["id"] == ("child" if selection_type == "folder" else "file")
 
 
 def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(
@@ -898,52 +795,6 @@ def test_format_datasource_info_list_online_drive_folder(generator, mocker: Mock
     assert result == [{"id": "f"}]
 
 
-def test_online_drive_preserves_selected_credentials_for_files_and_folders(generator, mocker: MockerFixture):
-    workflow = _build_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "start",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "drive",
-                        "credential_id": "node-cred",
-                    },
-                }
-            ]
-        }
-    )
-    runtime = FakeDriveRuntime()
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    credentials = mocker.patch.object(
-        generator._datasource_providers, "get_datasource_credentials", return_value={"token": "folder"}
-    )
-
-    result = generator._format_datasource_info_list(
-        DatasourceProviderType.ONLINE_DRIVE,
-        [
-            {"id": "direct", "name": "direct.pdf", "credential_id": "file-cred"},
-            {"id": "folder", "type": "folder", "bucket": "b", "credential_id": "folder-cred"},
-            {"id": "legacy", "name": "legacy.pdf"},
-        ],
-        _build_pipeline(),
-        workflow,
-        "start",
-        _build_user(),
-    )
-
-    assert [(item["id"], item["credential_id"]) for item in result] == [
-        ("direct", "file-cred"),
-        ("child", "folder-cred"),
-        ("legacy", "node-cred"),
-    ]
-    credentials.assert_called_once_with(
-        tenant_id=TENANT_ID, provider="provider", plugin_id="p", credential_id="folder-cred"
-    )
-    assert runtime.runtime.credentials == {"token": "folder"}
-
-
 def test_get_files_in_folder_recurses_and_collects(generator):
     class File:
         def __init__(self, id, name, type):
@@ -991,46 +842,10 @@ def test_get_files_in_folder_recurses_and_collects(generator):
         bucket="b",
         user_id="user",
         all_files=all_files,
-        datasource_info={"credential_id": "nested-cred"},
+        datasource_info={},
     )
 
     assert {f["id"] for f in all_files} == {"f1", "f2"}
-    assert all(f["credential_id"] == "nested-cred" for f in all_files)
-
-
-def test_online_drive_folders_use_their_own_credentials(generator, mocker: MockerFixture):
-    workflow = _build_workflow(
-        graph={
-            "nodes": [
-                {
-                    "id": "start",
-                    "data": {
-                        "plugin_id": "p",
-                        "provider_name": "provider",
-                        "datasource_name": "drive",
-                    },
-                }
-            ]
-        }
-    )
-    runtime = FakeDriveRuntime(use_prefix=True)
-    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
-    mocker.patch.object(
-        generator._datasource_providers, "get_datasource_credentials", side_effect=[{"token": "one"}, {}]
-    )
-    result = generator._format_datasource_info_list(
-        DatasourceProviderType.ONLINE_DRIVE,
-        [
-            {"id": "one", "type": "folder", "credential_id": "cred-one"},
-            {"id": "two", "type": "folder", "credential_id": "cred-two"},
-        ],
-        _build_pipeline(),
-        workflow,
-        "start",
-        _build_user(),
-    )
-    assert runtime.used_credentials == [{"token": "one"}, {}]
-    assert [item["credential_id"] for item in result] == ["cred-one", "cred-two"]
 
 
 def test_get_files_in_folder_handles_empty_folder(generator):

@@ -109,7 +109,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
                             bucket=datasource_info.get("bucket", ""),
                         )
 
-                    credential_id = datasource_info.get("credential_id") or None
+                    credential_id = datasource_info.get("credential_id", "")
 
                     yield from self.datasource_manager.stream_node_events(
                         node_id=self._node_id,
