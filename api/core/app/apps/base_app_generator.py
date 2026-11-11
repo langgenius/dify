@@ -36,6 +36,10 @@ logger = logging.getLogger(__name__)
 _WORKER_THREAD_JOIN_TIMEOUT_SECONDS = 300
 
 
+def noop_restore_file_access() -> None:
+    """Leave the current file-access scope unchanged when no restoration is needed."""
+
+
 @final
 class _DebuggerDraftVariableSaver:
     """Adapter that binds SQLAlchemy session setup outside the saver port."""

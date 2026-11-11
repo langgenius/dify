@@ -2,6 +2,7 @@
 
 import contextvars
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager, nullcontext, suppress
 from typing import Any
 from unittest.mock import MagicMock
@@ -23,7 +24,7 @@ from context.execution_context import (
 class TestNullAppContext:
     """Test NullAppContext implementation."""
 
-    def test_null_app_context_get_config(self):
+    def test_null_app_context_get_config(self) -> None:
         """Test get_config returns value from config dict."""
         config = {"key1": "value1", "key2": "value2"}
         ctx = NullAppContext(config=config)
@@ -31,14 +32,14 @@ class TestNullAppContext:
         assert ctx.get_config("key1") == "value1"
         assert ctx.get_config("key2") == "value2"
 
-    def test_null_app_context_get_config_default(self):
+    def test_null_app_context_get_config_default(self) -> None:
         """Test get_config returns default when key not found."""
         ctx = NullAppContext()
 
         assert ctx.get_config("nonexistent", "default") == "default"
         assert ctx.get_config("nonexistent") is None
 
-    def test_null_app_context_get_extension(self):
+    def test_null_app_context_get_extension(self) -> None:
         """Test get_extension returns stored extension."""
         ctx = NullAppContext()
         extension = MagicMock()
@@ -46,13 +47,13 @@ class TestNullAppContext:
 
         assert ctx.get_extension("db") == extension
 
-    def test_null_app_context_get_extension_not_found(self):
+    def test_null_app_context_get_extension_not_found(self) -> None:
         """Test get_extension returns None when extension not found."""
         ctx = NullAppContext()
 
         assert ctx.get_extension("nonexistent") is None
 
-    def test_null_app_context_enter_yield(self):
+    def test_null_app_context_enter_yield(self) -> None:
         """Test enter method yields without any side effects."""
         ctx = NullAppContext()
 
@@ -64,7 +65,7 @@ class TestNullAppContext:
 class TestExecutionContext:
     """Test ExecutionContext class."""
 
-    def test_initialization_with_all_params(self):
+    def test_initialization_with_all_params(self) -> None:
         """Test ExecutionContext initialization with all parameters."""
         app_ctx = NullAppContext()
         context_vars = contextvars.copy_context()
@@ -80,7 +81,7 @@ class TestExecutionContext:
         assert ctx.context_vars == context_vars
         assert ctx.user == user
 
-    def test_initialization_with_minimal_params(self):
+    def test_initialization_with_minimal_params(self) -> None:
         """Test ExecutionContext initialization with minimal parameters."""
         ctx = ExecutionContext()
 
@@ -91,7 +92,7 @@ class TestExecutionContext:
     @pytest.mark.parametrize("use_enter", [False, True])
     @pytest.mark.parametrize("caller_value", [None, "caller"])
     @pytest.mark.parametrize("raise_error", [False, True])
-    def test_enter_with_context_vars(self, use_enter, caller_value, raise_error):
+    def test_enter_with_context_vars(self, use_enter: bool, caller_value: str | None, raise_error: bool) -> None:
         """Restore the caller's binding, including an unset variable, on every exit."""
         test_var = contextvars.ContextVar("test_var")
         context_vars = contextvars.Context()
@@ -114,7 +115,7 @@ class TestExecutionContext:
                 test_var.reset(token)
 
     @pytest.mark.parametrize(("outer_enter", "inner_enter"), [(False, False), (False, True), (True, False)])
-    def test_nested_context_restores_each_scope(self, outer_enter, inner_enter):
+    def test_nested_context_restores_each_scope(self, outer_enter: bool, inner_enter: bool) -> None:
         test_var = contextvars.ContextVar("nested_var")
         captured = contextvars.Context()
         captured.run(test_var.set, "captured")
@@ -130,7 +131,7 @@ class TestExecutionContext:
 
         assert test_var not in contextvars.copy_context()
 
-    def test_enter_with_app_context(self):
+    def test_enter_with_app_context(self) -> None:
         """Test enter enters app context if available."""
         app_ctx = NullAppContext()
         ctx = ExecutionContext(app_context=app_ctx)
@@ -139,7 +140,7 @@ class TestExecutionContext:
         with ctx.enter():
             pass
 
-    def test_enter_without_app_context(self):
+    def test_enter_without_app_context(self) -> None:
         """Test enter works without app context."""
         ctx = ExecutionContext(app_context=None)
 
@@ -147,7 +148,7 @@ class TestExecutionContext:
         with ctx.enter():
             pass
 
-    def test_context_manager_protocol(self):
+    def test_context_manager_protocol(self) -> None:
         """Test ExecutionContext supports context manager protocol."""
         ctx = ExecutionContext()
 
@@ -155,14 +156,14 @@ class TestExecutionContext:
             # Should not raise any exception
             pass
 
-    def test_user_property(self):
+    def test_user_property(self) -> None:
         """Test user property returns set user."""
         user = MagicMock()
         ctx = ExecutionContext(user=user)
 
         assert ctx.user == user
 
-    def test_thread_safe_context_manager(self):
+    def test_thread_safe_context_manager(self) -> None:
         """Test shared ExecutionContext works across threads without token mismatch."""
         test_var = contextvars.ContextVar("thread_safe_test_var")
 
@@ -174,7 +175,7 @@ class TestExecutionContext:
                 return None
 
             @contextmanager
-            def enter(self):
+            def enter(self) -> Generator[None]:
                 token = test_var.set(threading.get_ident())
                 try:
                     yield
@@ -185,7 +186,7 @@ class TestExecutionContext:
         errors: list[Exception] = []
         barrier = threading.Barrier(2)
 
-        def worker():
+        def worker() -> None:
             try:
                 for _ in range(20):
                     with ctx:
@@ -212,7 +213,7 @@ class TestExecutionContext:
 class TestIExecutionContextProtocol:
     """Test IExecutionContext protocol."""
 
-    def test_execution_context_implements_protocol(self):
+    def test_execution_context_implements_protocol(self) -> None:
         """Test that ExecutionContext implements IExecutionContext protocol."""
         ctx = ExecutionContext()
 
@@ -221,7 +222,7 @@ class TestIExecutionContextProtocol:
         assert hasattr(ctx, "__exit__")
         assert hasattr(ctx, "user")
 
-    def test_protocol_compatibility(self):
+    def test_protocol_compatibility(self) -> None:
         """Test that ExecutionContext can be used where IExecutionContext is expected."""
 
         def accept_context(context: IExecutionContext) -> Any:
@@ -237,7 +238,7 @@ class TestIExecutionContextProtocol:
 
         assert result == "test_user"
 
-    def test_protocol_with_flask_execution_context(self):
+    def test_protocol_with_flask_execution_context(self) -> None:
         """Test that IExecutionContext protocol is compatible with different implementations."""
         # Verify the protocol works with ExecutionContext
         ctx = ExecutionContext(user="test_user")
@@ -256,7 +257,7 @@ class TestIExecutionContextProtocol:
 class TestExecutionContextBuilder:
     """Test ExecutionContextBuilder class."""
 
-    def test_builder_with_all_params(self):
+    def test_builder_with_all_params(self) -> None:
         """Test builder with all parameters set."""
         app_ctx = NullAppContext()
         context_vars = contextvars.copy_context()
@@ -270,7 +271,7 @@ class TestExecutionContextBuilder:
         assert ctx.context_vars == context_vars
         assert ctx.user == user
 
-    def test_builder_with_partial_params(self):
+    def test_builder_with_partial_params(self) -> None:
         """Test builder with only some parameters set."""
         app_ctx = NullAppContext()
 
@@ -280,7 +281,7 @@ class TestExecutionContextBuilder:
         assert ctx.context_vars is None
         assert ctx.user is None
 
-    def test_builder_fluent_interface(self):
+    def test_builder_fluent_interface(self) -> None:
         """Test builder provides fluent interface."""
         builder = ExecutionContextBuilder()
 
@@ -293,7 +294,7 @@ class TestExecutionContextBuilder:
 class TestCaptureCurrentContext:
     """Test capture_current_context function."""
 
-    def test_capture_current_context_returns_context(self):
+    def test_capture_current_context_returns_context(self) -> None:
         """Test that capture_current_context returns a valid context."""
         from context.execution_context import capture_current_context
 
@@ -304,7 +305,7 @@ class TestCaptureCurrentContext:
         assert hasattr(result, "__exit__")
         assert hasattr(result, "user")
 
-    def test_capture_current_context_captures_contextvars(self):
+    def test_capture_current_context_captures_contextvars(self) -> None:
         """Test that capture_current_context captures context variables."""
         # Set a context variable before capturing
         import contextvars
@@ -315,33 +316,39 @@ class TestCaptureCurrentContext:
         from context.execution_context import capture_current_context
 
         result = capture_current_context()
+        assert isinstance(result, ExecutionContext)
 
         # Context variables should be captured
         assert result.context_vars is not None
 
 
 class TestTenantScopedContextRegistry:
-    def setup_method(self):
+    def setup_method(self) -> None:
         from context import reset_context_provider
 
         reset_context_provider()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         from context import reset_context_provider
 
         reset_context_provider()
 
-    def test_tenant_provider_read_ok(self):
+    def test_tenant_provider_read_ok(self) -> None:
         class SandboxContext(BaseModel):
             base_url: str | None = None
 
         register_context("workflow.sandbox", "t1", lambda: SandboxContext(base_url="http://t1"))
         register_context("workflow.sandbox", "t2", lambda: SandboxContext(base_url="http://t2"))
 
-        assert read_context("workflow.sandbox", tenant_id="t1").base_url == "http://t1"
-        assert read_context("workflow.sandbox", tenant_id="t2").base_url == "http://t2"
+        t1_context = read_context("workflow.sandbox", tenant_id="t1")
+        assert isinstance(t1_context, SandboxContext)
+        assert t1_context.base_url == "http://t1"
 
-    def test_missing_provider_raises_keyerror(self):
+        t2_context = read_context("workflow.sandbox", tenant_id="t2")
+        assert isinstance(t2_context, SandboxContext)
+        assert t2_context.base_url == "http://t2"
+
+    def test_missing_provider_raises_keyerror(self) -> None:
         from context import ContextProviderNotFoundError
 
         with pytest.raises(ContextProviderNotFoundError):

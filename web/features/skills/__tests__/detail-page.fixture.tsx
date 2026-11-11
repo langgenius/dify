@@ -572,7 +572,7 @@ export function placeCaretAtEnd(element: HTMLElement) {
 export function getFileTreeItem(path: string) {
   const fileButton = document.querySelector(`[title="${path}"]`)
   const treeItem = fileButton?.closest('[data-skill-file-tree-item]')
-  if (!(treeItem instanceof HTMLElement)) throw new Error(`file tree item not found: ${path}`)
+  if (!(treeItem instanceof HTMLElement)) throw new TypeError(`file tree item not found: ${path}`)
 
   return treeItem
 }
@@ -615,14 +615,15 @@ export function preserveDraftFilesOnSave() {
 
 export function getFileTreeButton(path: string) {
   const fileButton = document.querySelector(`[title="${path}"]`)
-  if (!(fileButton instanceof HTMLButtonElement)) throw new Error(`file button not found: ${path}`)
+  if (!(fileButton instanceof HTMLButtonElement))
+    throw new TypeError(`file button not found: ${path}`)
 
   return fileButton
 }
 
 export function getFileTreeContextRegion() {
   const region = document.querySelector('[data-skill-file-tree-context-region]')
-  if (!(region instanceof HTMLElement)) throw new Error('file tree context region not found')
+  if (!(region instanceof HTMLElement)) throw new TypeError('file tree context region not found')
 
   return region
 }
@@ -680,7 +681,8 @@ export async function openVersionRowActions(
 ) {
   const versionText = await screen.findByText(versionName)
   const versionRow = versionText.closest('li')
-  if (!(versionRow instanceof HTMLElement)) throw new Error(`version row not found: ${versionName}`)
+  if (!(versionRow instanceof HTMLElement))
+    throw new TypeError(`version row not found: ${versionName}`)
   const buttons = within(versionRow).getAllByRole('button')
   const actionButton = buttons.at(-1)
   if (!actionButton) throw new Error(`version row action not found: ${versionName}`)

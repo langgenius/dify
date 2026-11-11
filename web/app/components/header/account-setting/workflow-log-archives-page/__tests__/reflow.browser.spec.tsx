@@ -1,15 +1,23 @@
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import appLog from '@/i18n/locales/en-US/app-log.json'
+import common from '@/i18n/locales/en-US/common.json'
+import navigation from '@/i18n/locales/en-US/navigation.json'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
+vi.unmock('react-i18next')
+
 const archiveListRequest = vi.hoisted(() => vi.fn())
 
+// boundary: workflow-archive reads stop at the generated console transport.
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (path: readonly string[], input: unknown) => {
@@ -19,24 +27,14 @@ vi.mock('@/service/console/browser', () => ({
   },
 }))
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const namespaces = {
-    appLog: (await import('@/i18n/locales/en-US/app-log.json')).default,
-    common: (await import('@/i18n/locales/en-US/common.json')).default,
-    navigation: (await import('@/i18n/locales/en-US/navigation.json')).default,
-  }
-  const translations = Object.fromEntries(
-    Object.entries(namespaces).flatMap(([namespace, messages]) =>
-      Object.entries(messages).map(([key, value]) => [`${namespace}.${key}`, value]),
-    ),
-  )
-  return { ...actual, ...createReactI18nextMock(translations) }
-})
-
 async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
   await page.viewport(320, 800)
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { appLog, common, navigation } },
+  })
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
     features: { billing: { subscription: { plan: 'team' } } },
@@ -45,13 +43,15 @@ async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
   queryClient.setQueryData(consoleQuery.workflowRunArchives.get.queryKey(), archives)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter>
-        <AccountSetting
-          activeTab={ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES}
-          onCancelAction={vi.fn()}
-          onTabChangeAction={vi.fn()}
-        />
-      </NuqsTestingAdapter>
+      <I18nextProvider i18n={i18n}>
+        <NuqsTestingAdapter>
+          <AccountSetting
+            activeTab={ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES}
+            onCancelAction={vi.fn()}
+            onTabChangeAction={vi.fn()}
+          />
+        </NuqsTestingAdapter>
+      </I18nextProvider>
     </QueryClientTestProvider>,
   )
   return { dialog: screen.getByRole('dialog', { name: 'Settings' }), queryClient }

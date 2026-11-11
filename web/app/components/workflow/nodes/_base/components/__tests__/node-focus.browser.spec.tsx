@@ -16,26 +16,6 @@ beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
 })
 
-// Plugin installation is outside node trigger and popup focus ownership.
-vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: () => null,
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateCheckInstalled: () => vi.fn(),
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-  useInvalidateAllTriggerPlugins: () => vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: () => ({ data: undefined }),
-}))
-
 function FocusNode({ id, data }: NodeProps<CommonNodeType>) {
   return (
     <div className="group relative h-24 w-60 bg-components-panel-bg">

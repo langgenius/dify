@@ -144,12 +144,18 @@ it('uses cached files, selects them independently and clears selection when open
   expect(ssePost.mock.lastCall![1].body.inputs.prefix).toBe('folder-1')
 })
 
-it('keeps a single selected file when a second file is clicked in single-upload mode', async () => {
+it('shows the selected file and switches selection in single-upload mode', async () => {
   const user = userEvent.setup()
-  const store = setup({ single: true })
+  setup({ single: true })
   await user.click(screen.getByText('Report.pdf'))
+  expect(screen.getByRole('radio', { name: 'Report.pdf' })).toBeChecked()
   await user.click(screen.getByText('Other.txt'))
-  expect(store.getState().selectedFileIds).toEqual(['file-1'])
+  expect(screen.getByRole('radio', { name: 'Other.txt' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'Report.pdf' })).not.toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'Report.pdf' }))
+  expect(screen.getByRole('radio', { name: 'Report.pdf' })).toBeChecked()
+  await user.click(screen.getByText('Report.pdf'))
+  expect(screen.getByRole('radio', { name: 'Report.pdf' })).toBeChecked()
 })
 
 it('reports a failed stream and opens datasource configuration', async () => {
