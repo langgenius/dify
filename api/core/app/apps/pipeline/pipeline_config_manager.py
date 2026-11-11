@@ -29,7 +29,9 @@ class PipelineConfigManager(BaseAppConfigManager):
             app_mode=AppMode.RAG_PIPELINE,
             workflow_id=workflow.id,
             rag_pipeline_variables=WorkflowVariablesConfigManager.convert_rag_pipeline_variable(
-                workflow=workflow, start_node_id=start_node_id
+                workflow=workflow,
+                start_node_id=start_node_id,
+                rag_pipeline_variables=workflow.rag_pipeline_variables,
             ),
         )
 
