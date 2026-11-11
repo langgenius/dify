@@ -631,7 +631,7 @@ export const datasource = {
 }
 
 /**
- * Get draft workflow
+ * Get environment variables
  */
 export const get12 = oc
   .route({
@@ -639,7 +639,7 @@ export const get12 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariables',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft/environment-variables',
-    summary: 'Get draft workflow',
+    summary: 'Get environment variables',
     tags: ['console'],
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
@@ -995,7 +995,7 @@ export const delete4 = oc
   .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
- * Get draft workflow
+ * List draft pipeline variables without loading their values
  */
 export const get19 = oc
   .route({
@@ -1003,7 +1003,7 @@ export const get19 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariables',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
-    summary: 'Get draft workflow',
+    summary: 'List draft pipeline variables without loading their values',
     tags: ['console'],
   })
   .input(

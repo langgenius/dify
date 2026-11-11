@@ -4792,7 +4792,7 @@ Update conversation variables for workflow draft
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/environment-variables
-**Get draft workflow**
+**Get environment variables**
 
 Get environment variables for workflow
 
@@ -5446,7 +5446,7 @@ Delete all draft workflow variables
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables
-**Get draft workflow**
+**List draft workflow variables without loading their values**
 
 Get draft workflow variables
 
@@ -12058,7 +12058,7 @@ Update account-level Step-by-step Tour state
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
-**Get draft workflow**
+**Get environment variables**
 
 #### Parameters
 
@@ -12285,7 +12285,7 @@ Update account-level Step-by-step Tour state
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
-**Get draft workflow**
+**List draft pipeline variables without loading their values**
 
 #### Parameters
 
