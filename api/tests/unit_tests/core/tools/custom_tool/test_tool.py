@@ -462,13 +462,18 @@ class TestCustomToolCases:
             "parameters": [{"name": "X-Request-Id", "in": location, "required": True, "schema": {"type": "string"}}]
         }
         tool = _build_tool(openapi=openapi)
-        fake_get = Mock(return_value=httpx.Response(200, text="ok"))
-        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", fake_get)
+        dispatched: list[str] = []
+
+        def _fake_get(url: str, **kwargs: object) -> Response:
+            dispatched.append(url)
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
 
         with pytest.raises(ToolParameterValidationError, match="Missing required parameter X-Request-Id"):
             tool.do_http_request("https://api.example.com/items", "GET", headers={}, parameters={"X-Request-Id": value})
 
-        fake_get.assert_not_called()
+        assert dispatched == []
 
     @staticmethod
     def test_do_http_request_serializes_header_and_cookie_values(monkeypatch: pytest.MonkeyPatch) -> None:
