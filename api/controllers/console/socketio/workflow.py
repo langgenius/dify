@@ -10,7 +10,7 @@ from extensions.ext_socketio import sio
 from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
 from services.errors.billing import BillingUpstreamError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
 

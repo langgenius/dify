@@ -3,7 +3,7 @@ Typed payloads for workflow generation.
 
 These TypedDicts describe the planner payload and the runtime graph assembled
 from builder LLM responses after ``json_repair`` parsing. The graph types mirror
-the shape consumed by ``WorkflowService.sync_draft_workflow`` so the output can
+the shape consumed by ``WorkflowDraftService.sync`` so the output can
 be written straight into a draft workflow.
 """
 
@@ -145,7 +145,7 @@ class GraphViewportDict(TypedDict):
 
 
 class GraphDict(TypedDict):
-    """Full graph payload — matches ``WorkflowService.sync_draft_workflow``."""
+    """Full graph payload — matches ``WorkflowDraftService.sync``."""
 
     nodes: list[GraphNodeDict]
     edges: list[GraphEdgeDict]
