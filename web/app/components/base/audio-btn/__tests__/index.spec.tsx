@@ -44,7 +44,7 @@ describe('AudioBtn', () => {
     const callback = lastCall?.[5]
 
     if (typeof callback !== 'function')
-      throw new Error('Audio callback not found in latest getAudioPlayer call')
+      throw new TypeError('Audio callback not found in latest getAudioPlayer call')
 
     return callback as (event: string) => void
   }
