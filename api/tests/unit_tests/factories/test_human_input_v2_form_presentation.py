@@ -14,8 +14,7 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
 )
 from core.tools.signature import sign_tool_file
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.human_input import ValueSourceType
 from factories.human_input_v2_form_presentation import (
     build_form_presentation,
     refresh_form_file_urls,
@@ -23,6 +22,7 @@ from factories.human_input_v2_form_presentation import (
 )
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, NoneSegment, Segment, StringSegment
+from models.human_input_entities import ParagraphInputConfig
 
 
 @pytest.fixture

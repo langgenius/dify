@@ -50,45 +50,24 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepository,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    EmailRecipientType,
-    ExternalRecipient,
-    MemberRecipient,
-    WebAppDeliveryMethod,
-    _WebAppDeliveryConfig,
-)
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input._exc import ExtensionsNotSetErrorValueError
 from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
-)
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormDefinition,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    StringSource,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import (
-    ButtonStyle,
-    FormInputType,
-    HumanInputFormStatus,
-    TimeoutUnit,
-    ValueSourceType,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from enums.human_input import (
+    ButtonStyle,
+    DeliveryMethodType,
+    EmailRecipientType,
+    FormInputType,
+    HumanInputFormStatus,
+    TimeoutUnit,
+    ValueSourceType,
+)
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine.filter import EngineEventFilterContext, filter_engine_events
@@ -117,9 +96,30 @@ from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
+from models._human_input_exc import ExtensionsNotSetErrorValueError
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, MessageStatus
 from models.human_input import HumanInputForm
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    MemberRecipient,
+)
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormDefinition,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    StringSource,
+    UserActionConfig,
+)
 from models.model import AppMode
 from tests.helpers.unit.model_factories import make_account, make_message, make_tenant
 

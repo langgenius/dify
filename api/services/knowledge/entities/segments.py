@@ -19,6 +19,7 @@ class SegmentAttachmentRecord(BaseModel):
     extension: str
     mime_type: str | None
     source_url: str
+    storage_key: str | None = Field(default=None, validation_alias="key", exclude=True)
 
 
 class ChildChunkRecord(BaseModel):

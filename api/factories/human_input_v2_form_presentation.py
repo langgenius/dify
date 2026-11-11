@@ -12,7 +12,10 @@ from core.human_input_v2.resolved_form import (
     ResolvedForm,
     SelectInput,
 )
-from core.workflow.nodes.human_input.entities import (
+from enums.human_input import ValueSourceType
+from factories.file_url_factory import re_sign_file_urls
+from graphon.variables.segments import ArrayFileSegment, Segment
+from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -22,9 +25,6 @@ from core.workflow.nodes.human_input.entities import (
     StringSource,
     UserActionConfig,
 )
-from core.workflow.nodes.human_input.enums import ValueSourceType
-from factories.file_url_factory import re_sign_file_urls
-from graphon.variables.segments import ArrayFileSegment, Segment
 
 
 def refresh_form_file_urls(form: ResolvedForm) -> ResolvedForm:

@@ -24,7 +24,6 @@ from controllers.console.human_input_v2.providers import (
     FeishuCredentialsInput as FeishuCredentialRequest,
 )
 from controllers.console.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
-from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -59,6 +58,7 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
     _SynchronousEventChannel,
 )
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
+from enums.human_input import ButtonStyle
 
 
 @dataclass(slots=True)

@@ -13,10 +13,10 @@ from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from enums import DeploymentEdition
+from enums.human_input import HumanInputFormStatus
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunSucceededEvent

@@ -22,27 +22,13 @@ from core.repositories.human_input_repository import (
     _InvalidTimeoutStatusError,
     _WorkspaceMemberInfo,
 )
-from core.workflow.human_input_adapter import (
+from enums.human_input import (
     DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-    InstantMessageChannelRecipient,
-    InstantMessageDeliveryConfig,
-    InstantMessageDeliveryMethod,
+    HumanInputFormKind,
+    HumanInputFormStatus,
     InstantMessageProvider,
-    InstantMessageRecipients,
-    InstantMessageUserRecipient,
-    MemberRecipient,
-    WebAppDeliveryMethod,
+    RecipientType,
 )
-from core.workflow.nodes.human_input.entities import (
-    FormDefinition,
-    HumanInputNodeData,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account as _human_input_form_repository_impl_Account
 from models import TenantAccountJoin as _human_input_form_repository_impl_TenantAccountJoin
@@ -57,9 +43,22 @@ from models.human_input import (
     HumanInputForm,
     HumanInputFormRecipient,
     InstantMessageRecipientPayload,
-    RecipientType,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    InstantMessageChannelRecipient,
+    InstantMessageDeliveryConfig,
+    InstantMessageDeliveryMethod,
+    InstantMessageRecipients,
+    InstantMessageUserRecipient,
+    MemberRecipient,
+)
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_entities import FormDefinition, HumanInputNodeData, UserActionConfig
 from repositories.human_input_errors import FormAlreadyHandledError
 
 """Unit tests for HumanInputFormRepositoryImpl private helpers."""

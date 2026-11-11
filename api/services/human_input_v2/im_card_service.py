@@ -11,7 +11,7 @@ from core.human_input_v2.im_integration.adapters import factory as im_adapter_fa
 from core.human_input_v2.im_integration.adapters.entities import ReplacementErrorKind, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared.values import TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from extensions.ext_key_provider import key_provider_manager
 from factories.human_input_v2_form_presentation import render_filled_content
 from repositories.human_input_v2.delivery_repository import IMMessageType, IMUserTargetSnapshot

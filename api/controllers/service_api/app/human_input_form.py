@@ -24,12 +24,12 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from factories.human_input_v2_form_presentation import build_form_presentation
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import extract_remote_ip, to_timestamp
+from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import App, EndUser
 from repositories.human_input_v2.form_repository import Form as V2Form
 from services.human_input_service import (
