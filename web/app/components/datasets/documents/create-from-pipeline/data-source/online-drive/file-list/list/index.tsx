@@ -58,7 +58,9 @@ const List = ({
   const isPartialLoading = isLoading && fileList.length > 0
   const isEmptyFolder = !isLoading && fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
-  const selectedFileId = selectedFileIds[0]
+  // Seed with '' so RadioGroup is always controlled: starting from undefined mounts it
+  // uncontrolled and later controlled value updates are silently ignored (#46055).
+  const selectedFileId = selectedFileIds[0] ?? ''
   const handleRadioChange = (fileId: string) => {
     const selectedFile = fileList.find((file) => file.id === fileId)
     if (selectedFile) handleSelectFile(selectedFile)
