@@ -39,6 +39,7 @@ from core.human_input_v2.im_integration import (
 )
 from core.human_input_v2.im_integration.adapters import IMProviderAdapter
 from core.human_input_v2.im_integration.adapters.entities import DirectoryEntry, DirectoryReadFailure, ProviderUserId
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -236,7 +237,7 @@ class IMChannelReconciliationService:
         # tenant only for Workspace Channels.
         if self._tenant_id is None or not any(entry.avatar is not None for entry in entries):
             return {}
-        created_by = run.started_by_account_id
+        created_by = run.started_by.account_id if isinstance(run.started_by, AccountIMSyncInitiator) else None
         if created_by is None:
             with self._session_factory() as session:
                 owner_id = session.scalar(

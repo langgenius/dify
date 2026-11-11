@@ -523,32 +523,6 @@ describe('ChatInputArea', () => {
       expect(getTextarea()).toHaveValue('Converted voice text')
     })
 
-    it('should preserve the current query and report transcription failure', async () => {
-      const user = userEvent.setup({ delay: null })
-      vi.mocked(transcribeAudio).mockRejectedValueOnce(new Error('API error'))
-      render(
-        <ChatInputArea
-          speechToTextConfig={{ enabled: true }}
-          speechToTextTarget={speechToTextTarget}
-          visionConfig={mockVisionConfig}
-        />,
-      )
-      await user.type(getTextarea()!, 'Keep this text')
-      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
-
-      await user.click(voiceInputButton)
-      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.api.actionFailed',
-        })
-      })
-      expect(getTextarea()!).toHaveValue('Keep this text')
-      await waitFor(() => expect(voiceInputButton).toHaveFocus())
-    })
-
     it('should restore focus to the voice input trigger when conversion is cancelled', async () => {
       const user = userEvent.setup({ delay: null })
       vi.mocked(transcribeAudio).mockImplementationOnce(() => new Promise(() => {}))

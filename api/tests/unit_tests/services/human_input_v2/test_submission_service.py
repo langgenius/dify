@@ -1,17 +1,31 @@
 """Accepted submissions retain the exact authenticated delivery across all surfaces."""
 
 from collections.abc import Callable
+from contextlib import nullcontext
+from datetime import timedelta
 from hashlib import sha256
+from uuid import uuid4
 
 import pytest
 from flask.testing import FlaskClient
 from sqlalchemy import event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access.controller import DatabaseFileAccessController
+from core.app.file_access.scope import FileAccessScope, bind_file_access_scope
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.resolved_form import ResolvedForm
+from core.human_input_v2.shared.values import RecipientId, TenantId
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
+from libs.datetime_utils import naive_utc_now
 from models.human_input_v2 import HumanInputForm
 from repositories.human_input_v2.delivery_repository import DeliveryCreateParams
+from repositories.human_input_v2.form_repository import Form, FormCreateParams
 from repositories.human_input_v2.im_channel_repository import IMChannelId
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
@@ -24,12 +38,119 @@ from services.human_input_v2.submission_service import (
     ServiceAPIFormActor,
     WebAppFormActor,
 )
+from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.services.human_input_v2.test_form_delivery_runtime import Context, PublicFormApproval
 
 pytest_plugins = (
     "tests.unit_tests.services.human_input_v2.test_form_delivery_runtime",
     "tests.unit_tests.services.human_input_v2.test_im_webhook_runtime",
 )
+
+
+@pytest.mark.parametrize("transfer_method", [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL])
+@pytest.mark.parametrize(
+    ("form_tenant", "form_app", "form_run", "status", "accessible"),
+    [
+        ("tenant", "app", "run", HumanInputFormStatus.SUBMITTED, True),
+        ("other-tenant", "app", "run", HumanInputFormStatus.SUBMITTED, False),
+        ("tenant", "other-app", "run", HumanInputFormStatus.SUBMITTED, False),
+        ("tenant", "app", "other-run", HumanInputFormStatus.SUBMITTED, False),
+        ("tenant", "app", "run", HumanInputFormStatus.WAITING, False),
+        ("tenant", "app", "run", HumanInputFormStatus.TIMEOUT, False),
+        ("tenant", "app", "run", HumanInputFormStatus.EXPIRED, False),
+    ],
+)
+def test_restored_file_access_requires_an_accepted_submission_in_the_current_run(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    transfer_method: FileTransferMethod,
+    form_tenant: str,
+    form_app: str,
+    form_run: str,
+    status: HumanInputFormStatus,
+    accessible: bool,
+) -> None:
+    uploaded = make_upload_file(tenant_id="tenant", created_by="approver")
+    list_uploaded = make_upload_file(tenant_id="tenant", created_by="approver")
+    unrelated = make_upload_file(tenant_id="tenant", created_by="approver")
+    files = [
+        File(
+            file_type=FileType.DOCUMENT,
+            transfer_method=transfer_method,
+            reference=build_file_reference(record_id=record.id),
+            remote_url="https://example.com/document.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None,
+            filename=record.name,
+            extension=".txt",
+            mime_type=record.mime_type,
+            size=record.size,
+        )
+        for record in (uploaded, list_uploaded)
+    ]
+    now = naive_utc_now()
+    with sqlite_session_factory.begin() as session:
+        session.add_all([uploaded, list_uploaded, unrelated])
+        repository = SQLAlchemyFormRepository(session, TenantId(form_tenant), form_app)
+        form = repository.create_form(
+            FormCreateParams(
+                workflow_run_id=form_run,
+                node_execution_id=str(uuid4()),
+                resolved_form=ResolvedForm(title="Approval", parts=(), actions=(), legacy_form_content=""),
+                expiration_time=now + timedelta(hours=1),
+                global_timeout_deadline=now + timedelta(days=1),
+            )
+        )
+        if status == HumanInputFormStatus.SUBMITTED:
+            accepted = repository.submit_form(
+                form.id,
+                submitted_by_recipient_id=RecipientId("recipient"),
+                submitted_by_delivery_id="delivery",
+                selected_action_id="approve",
+                raw_submission_inputs={"untrusted_file": unrelated.id},
+                normalized_submission_data={
+                    "single": FileSegment(value=files[0]),
+                    "multiple": ArrayFileSegment(value=[files[1]]),
+                    "empty": ArrayFileSegment(value=[]),
+                    "text": StringSegment(value=unrelated.id),
+                },
+            )
+            assert isinstance(accepted, Form)
+        else:
+            session.get_one(HumanInputForm, form.id).status = status
+
+    runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+    monkeypatch.setattr(runtime, "_secret_key", lambda: b"test-key")
+    scope = FileAccessScope(
+        tenant_id="tenant", user_id="end-user", user_from=UserFrom.END_USER, invoke_from=InvokeFrom.WEB_APP
+    )
+    service = HumanInputSubmissionService(session_factory=sqlite_session_factory)
+    with bind_file_access_scope(scope):
+        service.grant_submitted_file_access(app_id="app", workflow_run_id="run")
+        for record in (uploaded, list_uploaded):
+            if accessible:
+                assert runtime.resolve_upload_file_uri(upload_file_id=record.id).startswith(
+                    f"/files/{record.id}/file-preview?"
+                )
+            else:
+                with pytest.raises(ValueError, match="not found"):
+                    runtime.resolve_upload_file_uri(upload_file_id=record.id)
+        with pytest.raises(ValueError, match="not found"):
+            runtime.resolve_upload_file_uri(upload_file_id=unrelated.id)
+
+    with bind_file_access_scope(scope), pytest.raises(ValueError, match="not found"):
+        runtime.resolve_upload_file_uri(upload_file_id=uploaded.id)
+
+
+@pytest.mark.parametrize("account_scope", [False, True], ids=["no-scope", "account"])
+def test_restoring_file_access_outside_end_user_scope_does_not_read_storage(
+    unbound_session_factory: sessionmaker[Session], account_scope: bool
+) -> None:
+    scope = FileAccessScope(
+        tenant_id="tenant", user_id="account", user_from=UserFrom.ACCOUNT, invoke_from=InvokeFrom.DEBUGGER
+    )
+    with bind_file_access_scope(scope) if account_scope else nullcontext():
+        HumanInputSubmissionService(session_factory=unbound_session_factory).grant_submitted_file_access(
+            app_id="app", workflow_run_id="run"
+        )
 
 
 @pytest.fixture(params=[False, True], ids=["commit", "rollback-then-retry"])

@@ -31,6 +31,7 @@ from dify_agent.layers.runtime import DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.user_prompt import (
     DifyUserPromptFileConfig,
+    DifyUserPromptImageConfig,
     DifyUserPromptLayerConfig,
 )
 from dify_agent.protocol import (
@@ -195,6 +196,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
     workflow_node_job_prompt: str
     user_prompt: str
+    user_images: list[DifyUserPromptImageConfig] = Field(default_factory=list)
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
@@ -428,8 +430,14 @@ class AgentBackendRunRequestBuilder:
                     config=(PromptConfig(user=run_input.workflow_node_job_prompt)).model_dump(mode="json"),
                 ),
                 RunLayerSpec(
-                    name=WORKFLOW_USER_PROMPT_LAYER_ID,
-                    config=(PromptConfig(user=run_input.user_prompt)).model_dump(mode="json"),
+                    name="user_prompt" if run_input.user_images else WORKFLOW_USER_PROMPT_LAYER_ID,
+                    config=(
+                        DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_images).model_dump(
+                            mode="json"
+                        )
+                        if run_input.user_images
+                        else PromptConfig(user=run_input.user_prompt).model_dump(mode="json")
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,

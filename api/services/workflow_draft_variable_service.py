@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.file_access import DatabaseFileAccessController
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,

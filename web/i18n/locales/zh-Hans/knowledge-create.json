@@ -20,7 +20,6 @@
   "selectedFiles": "已选文件（{{total}} 个中 {{valid}} 个有效）",
   "startWith": "创建方式",
   "startWithHelp": "你可以随时添加更多数据源或文档。",
-  "uploadCharactersUnavailable": "字符数：—",
   "uploadCompleted": "已添加",
   "uploadDocuments": "上传文档",
   "uploadDropZoneTitle": "拖放文件，或点击选择文件",
