@@ -47,6 +47,8 @@ packages:
   - cli
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
+  # Inspector terminals are unused; click-to-source does not need a native PTY.
+  '@code-inspector/core@2.0.9>node-pty:optional': '-'
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
@@ -165,7 +167,7 @@ catalog:
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
   cn: 0.5.2
-  code-inspector-plugin: 1.6.6
+  code-inspector-plugin: 2.0.9
   concurrently: 10.0.7
   copy-to-clipboard: 4.0.2
   cron-parser: 5.10.4
