@@ -37,7 +37,7 @@ export default function Sidebar() {
     <div className="flex shrink-0 flex-col gap-4 border-b border-divider-subtle p-3 md:w-60 md:gap-0 md:border-0 md:p-0">
       <div className="flex h-8 items-center px-3 md:h-auto md:ps-4 md:pe-2 md:pt-3 md:pb-2">
         <Link
-          href="/"
+          href="/my-apps"
           className="flex h-8 shrink-0 items-center rounded-md focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           <DifyLogo alt="Dify" size="medium" className="md:h-[21.335px]" />
