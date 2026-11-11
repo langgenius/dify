@@ -78,8 +78,8 @@ from services.app.generation.adapters.message_cycle import MessageCycleManager
 from services.app.generation.input_adapter import noop_restore_file_access
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.errors.conversation import ConversationNotExistsError
-from services.workflow.execution.adapters import node_factory as node_factory_module
 from services.human_input_v2.submission_service import HumanInputSubmissionService
+from services.workflow.execution.adapters import node_factory as node_factory_module
 from services.workflow.execution.adapters.chatflow import app_generator as adv_app_gen_module
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
 from services.workflow.execution.adapters.chatflow.record_preparation import prepare_chat_records
