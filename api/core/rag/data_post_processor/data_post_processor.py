@@ -1,9 +1,9 @@
+from collections.abc import Callable
 from typing import TypedDict
-
-from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.data_post_processor.reorder import ReorderRunner
+from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
@@ -46,10 +46,10 @@ class DataPostProcessor:
         weights: WeightsDict | None = None,
         reorder_enabled: bool = False,
         *,
-        session: Session,
+        load_upload: Callable[[str], UploadFileExtractionInput | None],
     ):
         self.rerank_runner = self._get_rerank_runner(
-            reranking_mode, tenant_id, reranking_model, weights, session=session
+            reranking_mode, tenant_id, reranking_model, weights, load_upload=load_upload
         )
         self.reorder_runner = self._get_reorder_runner(reorder_enabled)
 
@@ -77,7 +77,7 @@ class DataPostProcessor:
         reranking_model: RerankingModelDict | None = None,
         weights: WeightsDict | None = None,
         *,
-        session: Session,
+        load_upload: Callable[[str], UploadFileExtractionInput | None],
     ) -> BaseRerankRunner | None:
         if reranking_mode == RerankMode.WEIGHTED_SCORE and weights:
             runner = RerankRunnerFactory.create_rerank_runner(
@@ -102,7 +102,7 @@ class DataPostProcessor:
             runner = RerankRunnerFactory.create_rerank_runner(
                 runner_type=reranking_mode,
                 rerank_model_instance=rerank_model_instance,
-                session=session,
+                load_upload=load_upload,
             )
             return runner
         return None

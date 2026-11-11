@@ -112,7 +112,7 @@ def _check_estimate(
         patch.object(service, "_get_plan", return_value=plan),
         patch.object(service, "_get_embedding_dimension", return_value=3072),
         patch(
-            "services.vector_space_admission_service.Vector.resolve_vector_type",
+            "services.vector_space_admission_service.resolve_vector_type",
             return_value=VectorType.TIDB_ON_QDRANT,
         ),
         patch(
@@ -246,7 +246,7 @@ def test_admission_is_cloud_only(sqlite_session: Session, config_overrides: Call
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     service = VectorSpaceAdmissionService()
     with (
-        patch("services.vector_space_admission_service.Vector.resolve_vector_type") as resolve_vector_type,
+        patch("services.vector_space_admission_service.resolve_vector_type") as resolve_vector_type,
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):
         service._ensure_can_write(
@@ -263,7 +263,7 @@ def test_admission_is_cloud_only(sqlite_session: Session, config_overrides: Call
 def test_admission_skips_non_tidb_vector_backends(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     with (
-        patch("services.vector_space_admission_service.Vector.resolve_vector_type", return_value=VectorType.QDRANT),
+        patch("services.vector_space_admission_service.resolve_vector_type", return_value=VectorType.QDRANT),
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):
         service._ensure_can_write(
@@ -368,7 +368,7 @@ def test_usage_lookup_is_refreshed_for_each_document(sqlite_session: Session) ->
         patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
         patch.object(service, "_get_embedding_dimension", return_value=3072),
         patch(
-            "services.vector_space_admission_service.Vector.resolve_vector_type",
+            "services.vector_space_admission_service.resolve_vector_type",
             return_value=VectorType.TIDB_ON_QDRANT,
         ),
         patch(
@@ -676,7 +676,7 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
     with (
         patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
         patch(
-            "services.vector_space_admission_service.Vector.resolve_vector_type",
+            "services.vector_space_admission_service.resolve_vector_type",
             return_value=VectorType.TIDB_ON_QDRANT,
         ),
         patch(

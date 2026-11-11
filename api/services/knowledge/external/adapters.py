@@ -15,6 +15,7 @@ from repositories.knowledge.dataset_read_repository import (
     get_external_api_bindings_batch,
     get_external_api_dataset_bindings,
 )
+from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.hit_testing_service import HitTestingService
 from services.knowledge.dataset_read_service import load_dataset_detail
@@ -129,7 +130,7 @@ class SQLAlchemyExternalKnowledgeOperations:
             dataset = require_dataset(session, ref)
             if dataset.provider != "external":
                 return {"query": {"content": query}, "records": []}
-            request = ExternalDatasetService.prepare_external_knowledge_retrieval(
+            request = prepare_external_retrieval(
                 tenant_id=ref.tenant_id,
                 dataset_id=ref.dataset_id,
                 query=HitTestingService.escape_query_for_search(query),
