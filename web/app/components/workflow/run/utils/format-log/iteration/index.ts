@@ -41,10 +41,8 @@ export const getIterationDurationMap = (nodeInfo: NodeTracing) => {
 const getIterationExecutions = (
   key: string,
   nodeInfo: NodeTracing,
-  allExecutions: NodeTracing[] | undefined,
+  allExecutions: NodeTracing[],
 ) => {
-  if (!allExecutions) return []
-
   const parallelExecutions = allExecutions.filter(
     (execution) => execution.execution_metadata?.parallel_mode_run_id === key,
   )
@@ -63,13 +61,13 @@ const getIterationExecutions = (
 export const getIterationResultList = (nodeInfo: NodeTracing, allExecutions?: NodeTracing[]) => {
   const iterationMetadata = nodeInfo.execution_metadata
 
-  if (!iterationMetadata?.iteration_duration_map) return nodeInfo.details || []
+  if (!iterationMetadata?.iteration_duration_map || !allExecutions) return nodeInfo.details || []
 
   const iterations = Object.keys(iterationMetadata.iteration_duration_map)
     .map((key) => getIterationExecutions(key, nodeInfo, allExecutions))
     .filter((branchNodes) => branchNodes.length > 0)
 
-  if (!allExecutions || !nodeInfo.details?.length) return iterations
+  if (!nodeInfo.details?.length) return iterations
 
   const listedIterationIndexes = new Set<number>()
   iterations.forEach((iteration) => {

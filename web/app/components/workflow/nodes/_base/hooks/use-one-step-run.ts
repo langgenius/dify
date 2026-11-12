@@ -849,17 +849,18 @@ const useOneStepRun = <T>({
                 return _iterationResult.length >= iterationTimes!
             },
             onIterationFinish: (params) => {
-              _runResult = params.data
+              const completedTrace = params.data
+              _runResult = completedTrace
               setRunResult(_runResult)
               const iterationRunResult = _iterationResult
               const currentIndex = iterationRunResult.findIndex(
-                (trace) => trace.id === params.data.id,
+                (trace) => trace.id === completedTrace.id,
               )
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
                     ...draft[currentIndex]!,
-                    ...data,
+                    ...completedTrace,
                   }
                 }
               })
@@ -950,16 +951,19 @@ const useOneStepRun = <T>({
               if (_loopResult.length >= loopTimes!) return _loopResult.length >= loopTimes!
             },
             onLoopFinish: (params) => {
-              _runResult = params.data
+              const completedTrace = params.data
+              _runResult = completedTrace
               setRunResult(_runResult)
 
               const loopRunResult = _loopResult
-              const currentIndex = loopRunResult.findIndex((trace) => trace.id === params.data.id)
+              const currentIndex = loopRunResult.findIndex(
+                (trace) => trace.id === completedTrace.id,
+              )
               const newLoopRunResult = produce(loopRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
                     ...draft[currentIndex]!,
-                    ...data,
+                    ...completedTrace,
                   }
                 }
               })
