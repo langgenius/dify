@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import override
 from unittest.mock import ANY, MagicMock, Mock
 
@@ -77,11 +77,13 @@ class _DummyRateLimit:
     def exit(self, request_id: str) -> None:
         return None
 
-    def generate(self, generator, request_id: str):
+    def generate(self, generator: object, request_id: str) -> object:
         return generator
 
 
-def _hitl_service_api_mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_engine: Engine):
+def _hitl_service_api_mock_repo_for_run(
+    monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None, sqlite_engine: Engine
+) -> ModuleType:
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
@@ -270,7 +272,6 @@ class _FakePauseEntity(WorkflowPauseEntity):
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
-    @override
     def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
         return self.pause_reasons
 
@@ -282,7 +283,7 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         app_id="app-1",
         workflow_id="workflow-1",
         type=ModelWorkflowType.WORKFLOW,
-        triggered_from="app-run",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="v1",
         graph=None,
         inputs=json.dumps({"input": "value"}),
@@ -529,24 +530,24 @@ class TestHitlServiceApi:
         pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             workflow=WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={}),
-            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
+            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),  # pyrefly: ignore[bad-argument-type]
             conversation=ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT),
             message=MessageSnapshot(
                 id="message-id",
                 query="hello",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
                 status=MessageStatus.NORMAL,
                 answer="",
             ),
             user=_hitl_service_api_end_user(user_id="user", app_id="app", tenant_id="tenant"),
             stream=False,
             dialogue_count=1,
-            draft_var_saver_factory=lambda **kwargs: None,
+            draft_var_saver_factory=lambda **kwargs: None,  # pyrefly: ignore[bad-argument-type]
         )
         pipeline._task_state.answer = "partial answer"
         pipeline._workflow_run_id = "run-id"
 
-        def _gen():
+        def _gen() -> Generator[HumanInputRequiredResponse | WorkflowPauseStreamResponse]:
             yield HumanInputRequiredResponse(
                 task_id="task",
                 workflow_run_id="run-id",
@@ -605,7 +606,7 @@ class TestHitlServiceApi:
             variables=[],
             workflow_id="workflow-id",
         )
-        application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+        application_generate_entity = WorkflowAppGenerateEntity.model_construct(  # pyrefly: ignore[missing-argument]
             task_id="task",
             app_config=app_config,
             inputs={},
@@ -621,13 +622,13 @@ class TestHitlServiceApi:
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             workflow=_workflow(workflow_id="workflow-id", app_id="app", tenant_id="tenant"),
-            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
+            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),  # pyrefly: ignore[bad-argument-type]
             user=_hitl_service_api_end_user(user_id="user", app_id="app", tenant_id="tenant"),
             stream=False,
-            draft_var_saver_factory=lambda **kwargs: None,
+            draft_var_saver_factory=lambda **kwargs: None,  # pyrefly: ignore[bad-argument-type]
         )
 
-        def _gen():
+        def _gen() -> Generator[HumanInputRequiredResponse | WorkflowPauseStreamResponse]:
             yield HumanInputRequiredResponse(
                 task_id="task",
                 workflow_run_id="run",
@@ -714,7 +715,7 @@ class TestHitlServiceApi:
         responses = converter.workflow_pause_to_stream_response(
             event=queue_event,
             task_id="task",
-            graph_runtime_state=runtime_state,
+            graph_runtime_state=runtime_state,  # pyrefly: ignore[bad-argument-type]
         )
 
         assert isinstance(responses[-1], WorkflowPauseStreamResponse)
@@ -871,7 +872,9 @@ def _workflow_run(*, created_by_role: CreatorUserRole = CreatorUserRole.END_USER
     return run
 
 
-def _workflow_events_mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_engine: Engine):
+def _workflow_events_mock_repo_for_run(
+    monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None, sqlite_engine: Engine
+) -> ModuleType:
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
