@@ -34,6 +34,20 @@ TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 CONVERSATION_ID = "44444444-4444-4444-4444-444444444444"
+
+
+@pytest.fixture(autouse=True)
+def _external_cleanup_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Isolate the registered BYOA lifecycle dependency in these legacy unit cases."""
+
+    def ignore_external_cleanup(tenant_id: str, kind: str, owner_id: str) -> None:
+        del tenant_id, kind, owner_id
+
+    monkeypatch.setattr(
+        "extensions.application_services.external_agent_lifecycle.fence_external_parent", ignore_external_cleanup
+    )
+
+
 OTHER_APP_ID = "77777777-7777-7777-7777-777777777777"
 OTHER_CONVERSATION_ID = "88888888-8888-8888-8888-888888888888"
 

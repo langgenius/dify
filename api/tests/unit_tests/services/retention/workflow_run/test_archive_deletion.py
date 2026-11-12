@@ -94,6 +94,7 @@ def _put_bundle(storage: MemoryStorage, bundle: WorkflowRunArchiveBundle) -> str
             "shard": bundle.shard,
             "bundle_id": bundle.bundle_id,
             "object_prefix": prefix.rstrip("/"),
+            "run_ids": [],
         }
     ).encode()
     storage.objects[f"{prefix}workflow_runs.parquet"] = b"runs"

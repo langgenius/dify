@@ -81,6 +81,10 @@ def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_
 
 def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
     events: list[str] = []
+    monkeypatch.setattr(
+        "extensions.application_services.external_agent_lifecycle.fence_external_parent",
+        lambda *_args: events.append("external_fence"),
+    )
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     other_cleanup_names = (
         "cleanup_app_storage",
@@ -124,7 +128,7 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
-    assert events == ["bindings", "workflows", "executions", "runs"]
+    assert events == ["external_fence", "bindings", "workflows", "executions", "runs"]
     delete_bindings.assert_called_once_with("tenant-1", "app-1")
     delete_workflows.assert_called_once_with("tenant-1", "app-1")
 
@@ -220,6 +224,7 @@ def test_parent_local_cleanup_failure_happens_after_binding_cleanup_is_scheduled
 ) -> None:
     local_error = RuntimeError("local cleanup failed")
     retry_error = RuntimeError("parent retry scheduled")
+    fence = mocker.patch("extensions.application_services.external_agent_lifecycle.fence_external_parent")
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     apply_async = mocker.patch.object(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
@@ -237,6 +242,7 @@ def test_parent_local_cleanup_failure_happens_after_binding_cleanup_is_scheduled
         kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
         countdown=10,
     )
+    fence.assert_called_once_with("tenant-1", "app", "app-1")
     retry.assert_called_once_with(exc=local_error, countdown=60)
 
 
@@ -245,6 +251,7 @@ def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(
 ) -> None:
     broker_error = RuntimeError("broker unavailable")
     retry_error = RuntimeError("parent retry scheduled")
+    fence = mocker.patch("extensions.application_services.external_agent_lifecycle.fence_external_parent")
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     mocker.patch.object(
         remove_app_task_module.cleanup_app_network_access_group_binding_task,
@@ -259,8 +266,31 @@ def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(
     with pytest.raises(RuntimeError, match="parent retry scheduled"):
         remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
+    fence.assert_called_once_with("tenant-1", "app", "app-1")
     retry.assert_called_once_with(exc=broker_error, countdown=60)
     first_local_cleanup.assert_not_called()
+
+
+def test_parent_retries_without_cleanup_when_external_fence_fails(mocker: MockerFixture) -> None:
+    """A failed deletion fence leaves every downstream destructive effect unstarted."""
+    fence_error = RuntimeError("external fence unavailable")
+    retry_error = RuntimeError("parent retry scheduled")
+    mocker.patch(
+        "extensions.application_services.external_agent_lifecycle.fence_external_parent",
+        side_effect=fence_error,
+    )
+    schedule = mocker.patch.object(remove_app_task_module, "_schedule_app_network_access_group_binding_cleanup")
+    storage = mocker.patch.object(remove_app_task_module, "cleanup_app_storage")
+    retry = mocker.patch.object(
+        remove_app_task_module.remove_app_and_related_data_task, "retry", side_effect=retry_error
+    )
+
+    with pytest.raises(RuntimeError, match="parent retry scheduled"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    retry.assert_called_once_with(exc=fence_error, countdown=60)
+    schedule.assert_not_called()
+    storage.assert_not_called()
 
 
 class TestDeleteDraftVariablesBatch:

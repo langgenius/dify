@@ -33,6 +33,19 @@ from services.retention.conversation.messages_clean_policy import (
 )
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 
+
+@pytest.fixture(autouse=True)
+def _external_cleanup_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The separate BYOA repository tests exercise this registered lifecycle port."""
+
+    def ignore_external_cleanup(tenant_id: str, kind: str, owner_id: str) -> None:
+        del tenant_id, kind, owner_id
+
+    monkeypatch.setattr(
+        "extensions.application_services.external_agent_lifecycle.fence_external_parent", ignore_external_cleanup
+    )
+
+
 """SQLite-backed coverage for message retention cleanup."""
 
 

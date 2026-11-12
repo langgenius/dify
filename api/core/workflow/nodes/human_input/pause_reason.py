@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import ExternalWaitReason, PauseReasonType, SchedulingPause
 
 from .entities import FormInputConfig, UserActionConfig
 
@@ -46,4 +46,4 @@ class HumanInputRequired(BaseModel):
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
 
 
-type PauseReason = HumanInputRequired | SchedulingPause
+type PauseReason = HumanInputRequired | SchedulingPause | ExternalWaitReason

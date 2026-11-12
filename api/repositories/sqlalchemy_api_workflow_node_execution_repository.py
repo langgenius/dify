@@ -9,7 +9,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, cast, override
 
-from sqlalchemy import String, asc, delete, desc, func, or_, select
+from sqlalchemy import JSON, String, Text, asc, delete, desc, func, or_, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -83,6 +84,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
             The returned WorkflowNodeExecutionModel will have `offload_data` preloaded.
         """
+        metadata = sql_cast(
+            func.nullif(WorkflowNodeExecutionModel.execution_metadata, ""), JSON().with_variant(Text(), "sqlite")
+        )
+        external_preview_wait = (
+            WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+        ) & metadata["agent_log"]["external_wait"].as_boolean().is_(True)
         stmt = select(WorkflowNodeExecutionModel)
         stmt = WorkflowNodeExecutionModel.preload_offload_data(stmt)
         stmt = (
@@ -92,7 +99,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                 WorkflowNodeExecutionModel.workflow_id == workflow_id,
                 WorkflowNodeExecutionModel.node_id == node_id,
                 WorkflowNodeExecutionModel.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
-                WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
+                or_(WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED, external_preview_wait),
             )
             .order_by(desc(WorkflowNodeExecutionModel.created_at))
             .limit(1)

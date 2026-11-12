@@ -2,6 +2,7 @@
 name = "dify-trace-tencent"
 version = "0.0.1"
 dependencies = [
+    "dify-trace-sdk",
     # versions inherited from parent
     "opentelemetry-api",
     "opentelemetry-exporter-otlp-proto-grpc",
@@ -9,6 +10,9 @@ dependencies = [
     "opentelemetry-semantic-conventions",
 ]
 description = "Dify ops tracing provider (Tencent APM)."
+
+[project.entry-points."dify.trace_providers"]
+tencent = "dify_trace_tencent.provider:TencentProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

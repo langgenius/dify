@@ -1,4 +1,5 @@
 import datetime
+import json
 import sqlite3
 import time
 from collections.abc import Generator
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from aliyun.log import GetLogsRequest, GetLogsResponse
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
@@ -15,7 +17,25 @@ from extensions.logstore.repositories.logstore_api_workflow_node_execution_repos
     LogstoreAPIWorkflowNodeExecutionRepository,
     _dict_to_workflow_node_execution_model,
 )
+from graphon.enums import WorkflowNodeExecutionStatus
+from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.factory import DifyAPIRepositoryFactory
+from tests.helpers.unit.config_override import config_overrides_context
+
+
+def logstore_repository() -> LogstoreAPIWorkflowNodeExecutionRepository:
+    """Construct through the configured production owner, retaining the concrete transport API."""
+    with config_overrides_context(
+        API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
+            "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
+            "LogstoreAPIWorkflowNodeExecutionRepository"
+        )
+    ):
+        repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessionmaker())
+    assert isinstance(repository, LogstoreAPIWorkflowNodeExecutionRepository)
+    repository._session_maker = None  # These transport-only cases deliberately omit SQL history.
+    return repository
 
 
 @pytest.fixture(params=["pg", "sdk"])
@@ -46,7 +66,7 @@ def sql_repository(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPat
 
         mocker.patch.object(store._pg_client, "execute_sql", side_effect=execute)
         mocker.patch.object(store.client, "get_logs", side_effect=get_logs)
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+        repository = logstore_repository()
         yield repository, database
 
 
@@ -110,9 +130,53 @@ def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(
     assert repository.get_node_last_execution("tenant", "app", "workflow", "same-node").id == "null-status"
 
 
+def test_external_preview_last_run_merges_live_sql_caller_before_logstore_append(
+    sql_repository, sqlite_session_factory
+):
+    repository, database = sql_repository
+    repository._session_maker = sqlite_session_factory
+    database.execute(
+        "CREATE TABLE workflow_node_execution (id TEXT, tenant_id TEXT, app_id TEXT, workflow_id TEXT, "
+        "node_id TEXT, status TEXT, triggered_from TEXT, created_at INTEGER, log_version INTEGER, __time__ INTEGER)"
+    )
+    database.execute(
+        "INSERT INTO workflow_node_execution (id,tenant_id,app_id,workflow_id,node_id,status,"
+        "triggered_from,created_at,log_version,__time__) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ("old-full-run", "tenant", "app", "workflow", "external", "succeeded", "workflow-run", 1, 1, 1),
+    )
+    row = WorkflowNodeExecutionModel(
+        id="new-debug-pk",
+        node_execution_id="new-debug-logical",
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        node_id="external",
+        node_type="agent",
+        title="External",
+        index=1,
+        status=WorkflowNodeExecutionStatus.PAUSED,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account",
+        execution_metadata=json.dumps({"agent_log": {"external_wait": True, "invocation_id": "inv"}}),
+    )
+    row.created_at = datetime.datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(row)
+    pending = repository.get_node_last_execution("tenant", "app", "workflow", "external")
+    assert pending.id == "new-debug-pk"
+    assert pending.node_execution_id == "new-debug-logical"
+    with sqlite_session_factory.begin() as session:
+        current = session.get(WorkflowNodeExecutionModel, "new-debug-pk")
+        current.status = WorkflowNodeExecutionStatus.SUCCEEDED
+        current.execution_metadata = json.dumps({"agent_log": {"invocation_id": "inv"}})
+    assert repository.get_node_last_execution("tenant", "app", "workflow", "external").id == "new-debug-pk"
+
+
 def test_sdk_history_searches_use_owner_scope() -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+        repository = logstore_repository()
     repository.logstore_client = MagicMock(supports_pg_protocol=False)
     repository.logstore_client.execute_sql.return_value = []
 
@@ -127,8 +191,10 @@ def test_sdk_history_searches_use_owner_scope() -> None:
 
 
 def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope() -> None:
-    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+    with patch(
+        "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"
+    ) as logstore_factory:
+        repository = logstore_repository()
     with closing(sqlite3.connect(":memory:")) as database:
         database.row_factory = sqlite3.Row
         database.execute(
@@ -177,7 +243,9 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope() -> None:
             assert all(row.keys().isdisjoint({"inputs", "process_data", "outputs"}) for row in result)
             return result
 
-        repository.logstore_client.execute_sql.side_effect = execute_query
+        assert isinstance(logstore_factory, MagicMock)
+        query_mock = logstore_factory.return_value.execute_sql
+        query_mock.side_effect = execute_query
         snapshots = repository.get_execution_snapshots_by_workflow_run(
             tenant_id="tenant",
             app_id="app",
@@ -199,8 +267,8 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope() -> None:
     assert snapshots[-1].index == 1002
     assert snapshots[-1].iteration_id is None
     assert snapshots[-1].elapsed_time == 4
-    assert repository.logstore_client.execute_sql.call_count == 2
-    query = repository.logstore_client.execute_sql.call_args.kwargs
+    assert query_mock.call_count == 2
+    query = query_mock.call_args.kwargs
     assert (
         query["query"] == 'tenant_id: "tenant" and app_id: "app" and workflow_run_id: "run" and workflow_id: "workflow"'
     )
@@ -328,7 +396,7 @@ def test_workflow_tool_children_only_fetch_matching_latest_payloads(
 
 def test_load_full_process_data_returns_logstore_mapping() -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+        repository = logstore_repository()
     execution = WorkflowNodeExecutionModel()
     execution.process_data = '{"__dify_retry_history": [{"retry_index": 1}]}'
 

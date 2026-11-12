@@ -1554,7 +1554,7 @@ export type AppJsonObjectFormResponse = {
 
 export type CustomizeTokenStrategy = 'allow' | 'must' | 'not_allow' | 'uuid'
 
-export type AgentKind = 'dify_agent'
+export type AgentKind = 'dify_agent' | 'external_a2a'
 
 export type AgentPublishedReferenceResponse = {
   app_icon?: string | null

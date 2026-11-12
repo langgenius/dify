@@ -26,6 +26,14 @@ class AppTracingConfigRecord:
     updated_at: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class PresentedTracingConfig:
+    """Write-only presentation used by the SDK-based External Agent adapter."""
+
+    values: dict[str, Any]
+    configured_secrets: tuple[str, ...]
+
+
 class AppTracingConfigStore(Protocol):
     def get(
         self,

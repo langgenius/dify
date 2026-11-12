@@ -634,6 +634,25 @@ class _EnumConflictError(BaseHTTPException):
     details_model = _EnumConflictDetails
 
 
+class _StringEnumConflictDetails(BaseModel):
+    state: Literal["retry", "configure"]
+
+
+class _StringEnumConflictError(BaseHTTPException):
+    error_code = "string_enum_conflict"
+    code = 409
+    details_model = _StringEnumConflictDetails
+
+
+def test_details_added_by_document_finisher_have_deterministic_enum_order() -> None:
+    """Finalized typed error details expose the same stable enum order as exported specs."""
+    document = _documented_operation(ExternalApi(Blueprint("enum_details", __name__)), _StringEnumConflictError)
+
+    details = document["components"]["schemas"]["_StringEnumConflictDetails"]
+    assert details["properties"]["state"]["enum"] == ["configure", "retry"]
+    assert _error_options(document, "409") == ["StringEnumConflictError"]
+
+
 def test_details_model_reuses_registered_schema_with_reordered_enum_values() -> None:
     # Response schema registration sorts enums; their order does not change the contract.
     schema = _EnumConflictDetails.model_json_schema(mode="serialization")

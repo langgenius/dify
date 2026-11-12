@@ -32,6 +32,7 @@ from extensions.application_services.data_sources import (
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.external_agents import ExternalAgentServices, build_external_agent_services
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -384,6 +385,7 @@ class ApplicationServices:
     web_passport: WebPassportService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
+    external_agents: ExternalAgentServices
 
 
 def _build_oauth_server_service(
@@ -616,6 +618,9 @@ def build_application_services(
     )
 
     model_billing_dependencies = build_model_billing_dependencies(database_client=database_client)
+    external_agents = build_external_agent_services(
+        sessions=database_client, workspaces=workspace_repository, rbac=rbac, files=file_service
+    )
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -818,6 +823,7 @@ def build_application_services(
         upload_file_delivery=UploadFileDeliveryService(
             files=UploadFileDeliveryQueryRepository(session_factory=database_client),
             storage=storage,
+            access=external_agents.test_file_access,
         ),
         oauth_server=oauth_server,
         oauth_device=_build_oauth_device_service(
@@ -904,6 +910,7 @@ def build_application_services(
                 session_maker=database_client,
             ),
         ),
+        external_agents=external_agents,
     )
 
 

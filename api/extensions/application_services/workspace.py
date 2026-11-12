@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services.external_agent_lifecycle import (
+    fence_external_workspace as _fence_external_workspace,
+)
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -114,5 +117,6 @@ def build_workspace_services(
             apps=ConsoleAppRepository(session_factory=database_client),
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
+            external_cleanup=_fence_external_workspace,
         ),
     )

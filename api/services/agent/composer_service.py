@@ -2338,7 +2338,9 @@ class AgentComposerService:
     ) -> Agent:
         if not agent_id:
             raise AgentNotFoundError()
-        stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+        stmt = select(Agent).where(
+            Agent.tenant_id == tenant_id, Agent.id == agent_id, Agent.agent_kind == AgentKind.DIFY_AGENT
+        )
         if for_update:
             stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
         agent = session.scalar(stmt.limit(1))

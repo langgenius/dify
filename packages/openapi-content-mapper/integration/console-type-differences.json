@@ -112,6 +112,7 @@
   "console GET /enterprise/sso/oauth2/login": ["no-input-schema", "compatible"],
   "console GET /enterprise/sso/oidc/login": ["no-input-schema", "compatible"],
   "console GET /enterprise/sso/saml/login": ["no-input-schema", "compatible"],
+  "console GET /external-agents/capabilities": ["no-input-schema", "compatible"],
   "console GET /features": ["no-input-schema", "compatible"],
   "console GET /features/vector-space": ["no-input-schema", "parsed-vs-wire-output"],
   "console GET /files/support-type": ["no-input-schema", "compatible"],

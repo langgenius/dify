@@ -23,6 +23,25 @@ from services.app_tracing_config_service import (
 _trace_settings = TypeAdapter(AppTraceSettings)
 
 
+def trace_settings_from_column(raw: str | None) -> AppTraceSettings:
+    """Read a frozen source-App policy; malformed or missing policy disables tracing."""
+    if not raw:
+        return AppTraceSettings()
+    try:
+        stored = json.loads(raw)
+    except ValueError:
+        return AppTraceSettings()
+    if not isinstance(stored, dict):
+        return AppTraceSettings()
+    provider = stored.get("tracing_provider")
+    return AppTraceSettings(
+        enabled=stored.get("enabled") is True,
+        tracing_provider=provider if isinstance(provider, str) else None,
+        capture_content=stored.get("capture_content") is True,
+        capture_agent=stored.get("capture_agent") is not False,
+    )
+
+
 class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory

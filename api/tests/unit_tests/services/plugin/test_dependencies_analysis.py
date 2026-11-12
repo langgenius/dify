@@ -164,6 +164,16 @@ class TestGetLeakedDependencies:
 
 
 class TestGenerateDependencies:
+    @patch("services.plugin.dependencies_analysis.PluginInstaller")
+    def test_empty_declared_set_does_not_construct_plugin_daemon_client(self, mock_installer_cls: MagicMock) -> None:
+        assert DependenciesAnalysisService.generate_dependencies("t1", []) == []
+        mock_installer_cls.assert_not_called()
+
+    @patch("services.plugin.dependencies_analysis.PluginInstaller")
+    def test_empty_missing_set_does_not_construct_plugin_daemon_client(self, mock_installer_cls: MagicMock) -> None:
+        assert DependenciesAnalysisService.get_leaked_dependencies("t1", []) == []
+        mock_installer_cls.assert_not_called()
+
     def _make_installation(
         self, source: PluginInstallationSource, identifier: str, meta: dict[str, object] | None = None
     ) -> MagicMock:
@@ -226,6 +236,14 @@ class TestGenerateDependencies:
 
 
 class TestGenerateLatestDependencies:
+    @patch("services.plugin.dependencies_analysis.marketplace")
+    def test_empty_declared_set_does_not_call_enabled_marketplace(
+        self, mock_marketplace: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(MARKETPLACE_ENABLED=True)
+        assert DependenciesAnalysisService.generate_latest_dependencies([]) == []
+        mock_marketplace.batch_fetch_plugin_manifests.assert_not_called()
+
     def test_returns_empty_when_marketplace_disabled(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(MARKETPLACE_ENABLED=False)
 

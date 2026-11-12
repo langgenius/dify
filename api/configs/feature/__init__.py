@@ -17,6 +17,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings
 
+from .external_agents import ExternalAgentsConfig
 from .hosted_service import HostedServiceConfig
 
 logger = logging.getLogger(__name__)
@@ -1502,6 +1503,12 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_QUEUE: str = Field(
+        default="ops_trace",
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Existing shared Agent dev tracing queue; Native routing remains unchanged.",
+    )
+
     OPS_AGENT_TRACE_ENABLED: bool = Field(
         default=False, description="Enable application-scoped Agent tracing collection and delivery."
     )
@@ -1866,6 +1873,7 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 
 
 class FeatureConfig(
+    ExternalAgentsConfig,
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig

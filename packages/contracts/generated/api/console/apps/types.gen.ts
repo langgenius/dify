@@ -1309,6 +1309,21 @@ export type EnvironmentVariableUpdatePayload = {
   patch?: boolean
 }
 
+export type ExternalWorkflowRebindPayload = {
+  expected_hash: string
+  include_matching?: boolean
+  target_agent_id: string
+}
+
+export type ExternalWorkflowRebindResponse = {
+  binding_epochs: {
+    [key: string]: string | null
+  }
+  hash: string
+  node_ids: Array<string>
+  workflow_id: string
+}
+
 export type WorkflowFeaturesPayload = {
   features: WorkflowFeaturesConfigPayload
 }
@@ -8433,6 +8448,30 @@ export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
 
 export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse =
   PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses[keyof PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses]
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindData = {
+  body: ExternalWorkflowRebindPayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/external-agent-bindings/{node_id}/rebind'
+}
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindError =
+  PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindErrors[keyof PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindErrors]
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponses = {
+  200: ExternalWorkflowRebindResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponse =
+  PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponses[keyof PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponses]
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
   body: WorkflowFeaturesPayload

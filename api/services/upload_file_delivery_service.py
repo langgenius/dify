@@ -1,7 +1,7 @@
 """Application service for delivering uploaded files through public file endpoints."""
 
 from collections.abc import Iterator
-from typing import NamedTuple, Protocol
+from typing import Literal, NamedTuple, Protocol
 
 from constants import IMAGE_EXTENSIONS
 from graphon.file import helpers as file_helpers
@@ -10,6 +10,15 @@ from services.errors.file import UnsupportedFileTypeError
 
 class UploadFileDeliveryNotFoundError(LookupError):
     pass
+
+
+def is_scoped_upload_preview_nonce(nonce: str) -> bool:
+    """Recognize the reserved scoped-preview namespace without trusting its claims.
+
+    Ordinary historical random nonces need no application context. Reserved
+    versions require the live scoped-access service after signature validation.
+    """
+    return nonce.startswith("byoa.")
 
 
 class UploadFileDeliveryRecord(NamedTuple):
@@ -32,6 +41,28 @@ class UploadFileStorage(Protocol):
     def load_once(self, filename: str) -> bytes: ...
 
 
+class SignedUploadFileAccess(Protocol):
+    def verify_signature(
+        self,
+        *,
+        file_id: str,
+        timestamp: str,
+        nonce: str,
+        sign: str,
+        preview_kind: Literal["file-preview", "image-preview"],
+    ) -> bool:
+        """Validate the isolated scoped MAC and TTL without trusting nonce claims."""
+        ...
+
+    def authorize(self, *, file_id: str, nonce: str) -> None:
+        """Revalidate supported scoped nonces only after isolated scoped HMAC/TTL verification.
+
+        Ordinary signed nonces retain existing semantics. Denials must raise
+        UploadFileDeliveryNotFoundError before any storage content is read.
+        """
+        ...
+
+
 class UploadFileDelivery(NamedTuple):
     content: bytes | Iterator[bytes]
     file: UploadFileDeliveryRecord
@@ -43,9 +74,43 @@ class UploadFileDeliveryService:
         *,
         files: UploadFileDeliveryQuery,
         storage: UploadFileStorage,
+        access: SignedUploadFileAccess,
     ) -> None:
         self._files = files
         self._storage = storage
+        self._access = access
+
+    def verify_and_authorize_preview(
+        self,
+        *,
+        file_id: str,
+        timestamp: str,
+        nonce: str,
+        sign: str,
+        preview_kind: Literal["file-preview", "image-preview"],
+    ) -> None:
+        """Validate the selected MAC scheme before rechecking live scope or reading storage.
+
+        Scoped signatures use an isolated key/domain so historical upload, tool
+        and datasource readers cannot accept them. This delivery owner verifies
+        and re-admits scoped requests, including normal HTTPS file retrieval.
+        Ordinary signed URLs retain their existing verifier and authority.
+        """
+        if is_scoped_upload_preview_nonce(nonce):
+            valid = self._access.verify_signature(
+                file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind=preview_kind
+            )
+        elif preview_kind == "image-preview":
+            valid = file_helpers.verify_image_signature(
+                upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
+            )
+        else:
+            valid = file_helpers.verify_file_signature(
+                upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
+            )
+        if not valid:
+            raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
+        self._access.authorize(file_id=file_id, nonce=nonce)
 
     def get_signed_image_preview(
         self,
@@ -55,14 +120,9 @@ class UploadFileDeliveryService:
         nonce: str,
         sign: str,
     ) -> UploadFileDelivery:
-        if not file_helpers.verify_image_signature(
-            upload_file_id=file_id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        ):
-            raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
-
+        self.verify_and_authorize_preview(
+            file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind="image-preview"
+        )
         file = self._get_file(file_id=file_id)
         self._ensure_image(file=file)
         return UploadFileDelivery(
@@ -78,14 +138,9 @@ class UploadFileDeliveryService:
         nonce: str,
         sign: str,
     ) -> UploadFileDelivery:
-        if not file_helpers.verify_file_signature(
-            upload_file_id=file_id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        ):
-            raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
-
+        self.verify_and_authorize_preview(
+            file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign, preview_kind="file-preview"
+        )
         file = self._get_file(file_id=file_id)
         return UploadFileDelivery(
             content=self._storage.load_stream(file.key),
