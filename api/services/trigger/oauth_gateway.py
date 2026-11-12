@@ -7,12 +7,11 @@ from pydantic import TypeAdapter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
-from core.trigger.entities.entities import SubscriptionBuilderUpdater
-from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.plugin.oauth_service import OAuthProxyService
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
+from services.trigger.builder_entities import SubscriptionBuilderUpdater
 from services.trigger.oauth_client_service import TriggerOAuthProviderMetadata
 from services.trigger.oauth_service import (
     TriggerOAuthCallbackRequest,
@@ -21,17 +20,19 @@ from services.trigger.oauth_service import (
     TriggerOAuthCredentials,
     TriggerOAuthProviderError,
 )
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
 _context_adapter = TypeAdapter(TriggerOAuthContext)
 
 
 class PluginTriggerOAuthGateway:
-    def __init__(self, *, oauth: OAuthHandler) -> None:
+    def __init__(self, *, oauth: OAuthHandler, providers: PluginTriggerProviderLoader) -> None:
         self._oauth = oauth
+        self._providers = providers
 
     def get_metadata(self, *, tenant_id: str, provider_id: TriggerProviderID) -> TriggerOAuthProviderMetadata:
-        provider = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        provider = self._providers.get_trigger_provider(tenant_id, provider_id)
         return TriggerOAuthProviderMetadata(
             schema=provider.get_oauth_client_schema(),
             plugin_unique_identifier=provider.plugin_unique_identifier,

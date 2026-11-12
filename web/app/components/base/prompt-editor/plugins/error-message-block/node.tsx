@@ -41,8 +41,8 @@ export class ErrorMessageBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedLexicalNode {
     return {
+      ...super.exportJSON(),
       type: 'error-message-block',
-      version: 1,
     }
   }
 

@@ -43,6 +43,7 @@ const renderPageRow = (overrides: Partial<ComponentProps<typeof PageRow>> = {}) 
   }
 }
 
+// TODO: migrate expansion/preview after native named keyboard actions are available: https://github.com/langgenius/dify/issues/46100
 describe('PageRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()

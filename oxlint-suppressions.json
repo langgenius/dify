@@ -991,9 +991,6 @@
     }
   },
   "web/app/components/base/chat/chat/hooks.ts": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -1044,7 +1041,7 @@
   },
   "web/app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "dify/require-disable-directive-description": {
-      "count": 3
+      "count": 2
     },
     "eslint-react/set-state-in-effect": {
       "count": 3
@@ -2223,7 +2220,7 @@
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 5
+      "count": 1
     },
     "no-restricted-imports": {
       "count": 1
@@ -2458,9 +2455,6 @@
   "web/app/components/datasets/documents/detail/completed/segment-list.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    },
-    "eslint-react/static-components": {
-      "count": 2
     }
   },
   "web/app/components/datasets/documents/detail/completed/skeleton/full-doc-list-skeleton.tsx": {
@@ -4302,7 +4296,7 @@
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 7
+      "count": 4
     },
     "typescript/no-explicit-any": {
       "count": 4
@@ -4420,7 +4414,7 @@
   },
   "web/app/components/workflow/nodes/code/use-config.ts": {
     "eslint-react/set-state-in-effect": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-explicit-any": {
       "count": 6
@@ -4908,11 +4902,6 @@
   },
   "web/app/components/workflow/nodes/llm/components/resolution-picker.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/llm/use-config.ts": {
-    "eslint-react/set-state-in-effect": {
       "count": 1
     }
   },
