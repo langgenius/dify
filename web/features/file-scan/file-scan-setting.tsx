@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -18,15 +18,11 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useQueryState } from 'nuqs'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import {
-  settingsQueryParamName,
-  settingsQueryParser,
-} from '@/app/components/header/account-setting/query-params'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useFileScanEnabled, useFileScanProviderTypeLabel } from './provider-types'
@@ -181,7 +177,6 @@ function FileScanPolicyEditor({ className, product, readonly, resourceId }: File
   const titleId = useId()
   const enableDescriptionId = useId()
   const canManageScanners = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { isError, isPending, isSaving, policy, refetch, resetSaveError, save, saveError } =
     useFileScanPolicy(product, resourceId)
   const providersQuery = useQuery(consoleQuery.fileScan.providers.get.queryOptions())
@@ -274,13 +269,12 @@ function FileScanPolicyEditor({ className, product, readonly, resourceId }: File
                   )}
                 </p>
                 {canManageScanners && (
-                  <Button
-                    size="small"
-                    type="button"
-                    onClick={() => void setSettingsDestination(ACCOUNT_SETTING_TAB.FILE_SCAN)}
+                  <Link
+                    className={buttonVariants({ size: 'small' })}
+                    href={buildIntegrationPath('file-scan')}
                   >
                     {t(($) => $['policy.openSettings'])}
-                  </Button>
+                  </Link>
                 )}
               </div>,
             )

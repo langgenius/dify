@@ -2,6 +2,7 @@
 
 import type { FileScanProviderResponse } from '@dify/contracts/api/console/file-scan/types.gen'
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -187,7 +188,12 @@ function ScannerItem({
   )
 }
 
-export function FileScanProvidersPage() {
+type FileScanProvidersPageProps = {
+  /** The host page places the toolbar in its own header, as the other Integrations sections do. */
+  layout: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
+}
+
+export function FileScanProvidersPage({ layout }: FileScanProvidersPageProps) {
   const { t } = useTranslation(['fileScan'])
   const { t: tCommon } = useTranslation(['common'])
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -199,20 +205,23 @@ export function FileScanProvidersPage() {
   const providers = providersQuery.data?.data ?? []
   const closeDialog = () => setDialogState(null)
 
-  return (
+  // Only owners and admins get an action; everyone else sees the read-only notice in the body.
+  const toolbar = canManage ? (
+    <div className="flex w-full justify-end">
+      <Button
+        variant="secondary"
+        disabled={!providerTypes}
+        onClick={() => setDialogState({ mode: 'create' })}
+      >
+        <span aria-hidden className="i-ri-add-line size-4" />
+        {t(($) => $['scanner.add'])}
+      </Button>
+    </div>
+  ) : null
+
+  const body = (
     <div className="flex flex-col gap-3">
-      {canManage ? (
-        <div className="flex justify-end">
-          <Button
-            variant="secondary"
-            disabled={!providerTypes}
-            onClick={() => setDialogState({ mode: 'create' })}
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-            {t(($) => $['scanner.add'])}
-          </Button>
-        </div>
-      ) : (
+      {!canManage && (
         <p className="flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
           <span aria-hidden className="i-ri-lock-2-line size-4 shrink-0" />
           {t(($) => $['scanner.readOnly'])}
@@ -265,4 +274,6 @@ export function FileScanProvidersPage() {
       )}
     </div>
   )
+
+  return layout({ body, toolbar })
 }

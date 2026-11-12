@@ -1,6 +1,5 @@
 import type { FileScanProviderResponse } from '@dify/contracts/api/console/file-scan/types.gen'
 import { ORPCError } from '@orpc/client'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -63,19 +62,15 @@ async function renderSetting({
   api.getPolicy.mockResolvedValue(disabledPolicy)
   api.listProviders.mockResolvedValue({ data: providers })
   api.putPolicy.mockImplementation(async ({ body }: { body: typeof disabledPolicy }) => body)
-  const onUrlUpdate = vi.fn()
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role },
     features: { enable_file_scan: enabled },
   })
   await render(
     <ConsoleProvider>
-      <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
-        <FileScanSetting product="dataset" resourceId="dataset-1" readonly={readonly} />
-      </NuqsTestingAdapter>
+      <FileScanSetting product="dataset" resourceId="dataset-1" readonly={readonly} />
     </ConsoleProvider>,
   )
-  return { onUrlUpdate }
 }
 
 const enableSwitch = () => page.getByRole('switch', { name: 'fileScan.policy.enable' })
@@ -164,23 +159,21 @@ it('tells a member without admin rights to ask an admin when no scanner exists',
 
   await expect.element(page.getByText('fileScan.policy.noScanners')).toBeVisible()
   await expect
-    .element(page.getByRole('button', { name: 'fileScan.policy.openSettings' }))
+    .element(page.getByRole('link', { name: 'fileScan.policy.openSettings' }))
     .not.toBeInTheDocument()
   await expect
     .element(page.getByRole('combobox', { name: 'fileScan.policy.scanner' }))
     .not.toBeInTheDocument()
 })
 
-it('lets an owner open the scanner settings when no scanner exists', async () => {
-  const { onUrlUpdate } = await renderSetting({ providers: [] })
+it('links an owner to the scanners in Integrations when no scanner exists', async () => {
+  await renderSetting({ providers: [] })
   await enableSwitch().click()
 
   await expect.element(page.getByText('fileScan.policy.noScannersAdmin')).toBeVisible()
-  await page.getByRole('button', { name: 'fileScan.policy.openSettings' }).click()
-
   await expect
-    .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('settings'))
-    .toBe('file-scan')
+    .element(page.getByRole('link', { name: 'fileScan.policy.openSettings' }))
+    .toHaveAttribute('href', '/integrations/file-scan')
 })
 
 it('cannot be changed by a member who may only view the settings', async () => {
