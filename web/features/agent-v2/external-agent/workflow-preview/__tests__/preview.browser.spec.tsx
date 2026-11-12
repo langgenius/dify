@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
@@ -13,17 +14,28 @@ vi.mock('react-i18next', async (importOriginal) => importOriginal())
 const draftApi = vi.hoisted(() => ({
   save: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
   read: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.get>(),
+  rebind:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post
+    >(),
 }))
 
 // boundary: keep draft serialization and hydration real, replacing only backend storage.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const { createWorkflowExternalResponses } = await import('./workflow-api-fixtures')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      ...createWorkflowExternalResponses(),
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': draftApi.save,
       'apps.byAppId.workflows.draft.get': draftApi.read,
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
     }),
   }
 })
@@ -48,7 +60,7 @@ async function closeAndReopen(
     .getByRole('region', { name: 'Agent canvas', exact: true })
     .getByText(name, { exact: true })
     .click()
-  const reopened = page.getByRole('region', { name, exact: true })
+  const reopened = page.getByRole('region', { name: /Node configuration panel$/ })
   await expect.element(reopened).toBeVisible()
   return reopened
 }
@@ -58,6 +70,7 @@ beforeEach(({ onTestFinished }) => {
   const storage = createSerializedWorkflowDraftStorage()
   draftApi.save.mockImplementation(storage.save)
   draftApi.read.mockImplementation(storage.read)
+  draftApi.rebind.mockImplementation(storage.rebind)
 })
 
 it('shows the external badge and updates the canvas agent through the change picker without Dify APIs', async () => {
@@ -65,23 +78,69 @@ it('shows the external badge and updates the canvas agent through the change pic
   await expect.element(panel.getByText('External', { exact: true })).toBeVisible()
   await expect.element(canvas.getByText('External', { exact: true })).toBeVisible()
   await expect
-    .element(panel.getByRole('tab', { name: 'Settings', exact: true }))
+    .element(panel.getByRole('tab', { name: 'SETTINGS', exact: true }))
     .toHaveAttribute('aria-selected', 'true')
-  await expect
-    .element(panel.getByRole('button', { name: /Run this step/i }))
-    .toHaveAttribute('aria-disabled', 'true')
+  await expect.element(panel.getByRole('button', { name: /Run this step/i })).toBeEnabled()
   await panel.getByRole('button', { name: 'Change', exact: true }).click()
   await page.getByRole('button', { name: /Document Review Agent/ }).click()
-  const changedPanel = page.getByRole('region', { name: 'Document Review Agent', exact: true })
+  const changedPanel = page.getByRole('region', {
+    name: 'Contract Review Agent Node configuration panel',
+    exact: true,
+  })
   await expect.element(changedPanel).toBeVisible()
   await expect
     .element(changedPanel.getByRole('textbox', { name: 'Agent task', exact: true }))
     .toHaveTextContent('')
   await expect.element(canvas.getByText('Document Review Agent', { exact: true })).toBeVisible()
+  expect(draftApi.rebind).toHaveBeenCalledWith({
+    params: { app_id: 'external-preview-app', node_id: 'external-agent' },
+    body: {
+      target_agent_id: '44444444-4444-4444-8444-444444444444',
+      expected_hash: 'saved-1',
+      include_matching: true,
+    },
+  })
+  expect(draftApi.save.mock.invocationCallOrder[0]).toBeLessThan(
+    draftApi.rebind.mock.invocationCallOrder[0]!,
+  )
+  expect(draftApi.rebind.mock.invocationCallOrder[0]).toBeLessThan(
+    draftApi.read.mock.invocationCallOrder.at(-1)!,
+  )
   await expect
     .element(canvas.getByText('Contract Review Agent', { exact: true }))
     .not.toBeInTheDocument()
   await closeAndReopen(changedPanel, 'Document Review Agent')
+})
+
+it('keeps the current binding and author edits when rebind conflicts after saving the latest draft', async () => {
+  const { panel, canvas } = await setup()
+  const task = panel.getByRole('textbox', { name: 'Agent task', exact: true })
+  await task.fill('Keep these instructions when the binding conflicts.')
+  draftApi.rebind.mockRejectedValueOnce(new ORPCError('CONFLICT', { status: 409 }))
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  await page.getByRole('button', { name: /^Document Review Agent/ }).click()
+  await expect
+    .element(panel.getByRole('alert'))
+    .toHaveTextContent('Could not change the agent. Your task and settings have been kept.')
+  await userEvent.keyboard('{Escape}')
+  await expect
+    .element(task)
+    .toHaveTextContent('Keep these instructions when the binding conflicts.')
+  await expect.element(canvas.getByText('Contract Review Agent', { exact: true })).toBeVisible()
+  expect(draftApi.rebind).toHaveBeenCalledTimes(1)
+  expect(draftApi.save.mock.calls.at(-1)?.[0].body.graph).toMatchObject({
+    nodes: expect.arrayContaining([
+      expect.objectContaining({
+        id: 'external-agent',
+        data: expect.objectContaining({
+          agent_task: 'Keep these instructions when the binding conflicts.',
+          agent_binding: expect.objectContaining({
+            agent_id: '22222222-2222-4222-8222-222222222222',
+          }),
+        }),
+      }),
+    ]),
+  })
 })
 
 it('starts with an empty task and retains edits when closing and reopening the node', async () => {
@@ -198,15 +257,15 @@ it('retains retry parameters when changing timeout modes, toggling the wait limi
     .toBeVisible()
   const retries = panel.getByRole('textbox', { name: 'Max retries', exact: true })
   const interval = panel.getByRole('textbox', { name: 'Retry interval', exact: true })
-  await expect.element(retries).toHaveValue('2')
-  await expect.element(interval).toHaveValue('30')
-  await retries.fill('3')
+  await expect.element(retries).toHaveValue('1')
+  await expect.element(interval).toHaveValue('5')
+  await retries.fill('2')
   await userEvent.tab()
   await interval.fill('45')
   await userEvent.tab()
   await expect
     .element(panel.getByRole('slider', { name: 'Max retries', exact: true }))
-    .toHaveAttribute('aria-valuenow', '3')
+    .toHaveAttribute('aria-valuenow', '2')
   await expect
     .element(panel.getByRole('slider', { name: 'Retry interval', exact: true }))
     .toHaveAttribute('aria-valuenow', '45')
@@ -217,7 +276,7 @@ it('retains retry parameters when changing timeout modes, toggling the wait limi
   await expect.element(interval).not.toBeInTheDocument()
   await timeout.click()
   await page.getByRole('option', { name: 'Cancel and retry', exact: true }).click()
-  await expect.element(retries).toHaveValue('3')
+  await expect.element(retries).toHaveValue('2')
   await expect.element(interval).toHaveValue('45')
 
   const enabled = panel.getByRole('switch', { name: 'External agent wait limit', exact: true })
@@ -225,7 +284,7 @@ it('retains retry parameters when changing timeout modes, toggling the wait limi
   await expect.element(timeout).not.toBeInTheDocument()
   await enabled.click()
   await expect.element(timeout).toHaveTextContent('Cancel and retry')
-  await expect.element(retries).toHaveValue('3')
+  await expect.element(retries).toHaveValue('2')
   await expect.element(interval).toHaveValue('45')
   const reopened = await closeAndReopen(panel)
   await expect
@@ -233,7 +292,7 @@ it('retains retry parameters when changing timeout modes, toggling the wait limi
     .toHaveTextContent('Cancel and retry')
   await expect
     .element(reopened.getByRole('textbox', { name: 'Max retries', exact: true }))
-    .toHaveValue('3')
+    .toHaveValue('2')
   await expect
     .element(reopened.getByRole('textbox', { name: 'Retry interval', exact: true }))
     .toHaveValue('45')
@@ -266,7 +325,7 @@ it('creates an output token from the task editor and retains its output definiti
 
 it('allows the default text output to be edited and deleted while retaining a newly added output', async () => {
   const { panel } = await setup()
-  await expect.element(panel.getByText('Text returned by the agent', { exact: true })).toBeVisible()
+  await expect.element(panel.getByText('text', { exact: true })).toBeVisible()
   await panel.getByText('text', { exact: true }).last().hover()
   await panel.getByRole('button', { name: 'Edit text', exact: true }).click()
   await panel
@@ -292,13 +351,13 @@ it('allows the default text output to be edited and deleted while retaining a ne
   await expect.element(reopened.getByText('text', { exact: true })).not.toBeInTheDocument()
 })
 
-it('shows the empty Last Run tab without requesting an execution record', async () => {
+it('shows the empty Last Run tab using the existing execution record API', async () => {
   const { panel } = await setup()
-  await panel.getByRole('tab', { name: 'Last Run', exact: true }).click()
+  await panel.getByRole('tab', { name: 'LAST RUN', exact: true }).click()
   await expect
     .element(panel.getByText('The results of the last run will be displayed here', { exact: true }))
     .toBeVisible()
-  await panel.getByRole('tab', { name: 'Settings', exact: true }).click()
+  await panel.getByRole('tab', { name: 'SETTINGS', exact: true }).click()
   await expect
     .element(panel.getByRole('textbox', { name: 'Agent task', exact: true }))
     .toBeVisible()

@@ -13,10 +13,10 @@ import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/wo
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { createHttpError } from '@/service/http-error'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -443,9 +443,14 @@ describe('useNodesSyncDraft', () => {
     })
 
     it('saves external agent configuration and its connected edges in the workflow draft', async () => {
-      const agent = createExternalRosterPreview()[1]!
+      const agent = createExternalAgentAsset()
       const externalAgentData = {
         ...createExternalAgentWorkflowPreviewData(agent),
+        agent_binding: {
+          binding_type: 'roster_agent' as const,
+          agent_id: agent.id,
+          binding_epoch: 'server-epoch',
+        },
         agent_task: 'Review {{#n1.contract#}} and identify compliance risks.',
         agent_declared_outputs: [
           {
@@ -455,12 +460,12 @@ describe('useNodesSyncDraft', () => {
             description: 'Contract risks and suggested revisions',
           },
         ],
-        external_agent_wait_limit: {
+        external_wait: {
           enabled: true,
-          minutes: 15,
-          onTimeout: 'cancel-and-retry' as const,
-          maxRetries: 3,
-          retryIntervalSeconds: 45,
+          wait_seconds: 900,
+          on_timeout: 'cancel_and_retry' as const,
+          additional_retries: 2,
+          retry_interval_seconds: 45,
         },
       }
       const externalAgent = createNode({
@@ -493,16 +498,16 @@ describe('useNodesSyncDraft', () => {
                   id: externalAgent.id,
                   data: expect.objectContaining({
                     type: BlockEnum.Agent,
-                    agent_node_kind: 'external_agent',
+                    agent_node_kind: 'external_a2a',
                     version: '2',
-                    external_agent: expect.objectContaining({
-                      key: agent.key,
-                      name: agent.name,
-                      enabled: true,
-                    }),
+                    agent_binding: {
+                      binding_type: 'roster_agent',
+                      agent_id: agent.id,
+                      binding_epoch: 'server-epoch',
+                    },
                     agent_task: externalAgentData.agent_task,
                     agent_declared_outputs: externalAgentData.agent_declared_outputs,
-                    external_agent_wait_limit: externalAgentData.external_agent_wait_limit,
+                    external_wait: externalAgentData.external_wait,
                     error_strategy: ErrorHandleTypeEnum.failBranch,
                   }),
                 }),

@@ -7,8 +7,8 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStoreApi } from 'reactflow'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { createExternalAgentAsset, createExternalAgentDetail } from '@/test/console/external-agents'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
@@ -40,6 +40,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflows.triggers.webhook.get': webhook,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': createBinding,
       'agent.byAgentId.get': async () => createAgentFixture({ id: 'agent-1' }),
+      'externalAgents.byAgentId.get': async () => createExternalAgentDetail(),
     }),
   }
 })
@@ -197,9 +198,7 @@ it('keeps a roster binding when placing an agent without creating an inline agen
 })
 
 it('saves a placed external agent without creating an inline agent binding', async () => {
-  const externalAgentData = createExternalAgentWorkflowPreviewData(
-    createExternalRosterPreview()[1]!,
-  )
+  const externalAgentData = createExternalAgentWorkflowPreviewData(createExternalAgentAsset())
   const { store, place, nodes, sync } = setup(
     createNode({
       id: 'external-agent',

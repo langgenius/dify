@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts'
-import type { MonitoringMetric, MonitoringRow } from './preview'
+import type { MonitoringMetric, MonitoringRow } from './data'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react/esm/core'
@@ -52,14 +52,15 @@ export function MonitoringChart({
   // ECharts needs resolved color values for its renderer and gradient calculation.
   const dark = theme === 'dark'
   const color = dark ? '#3072ff' : '#0033ff'
-  const yMax = Math.max(minimumMax[metric], ...rows.map((row) => row[metric]))
+  const yMax = Math.max(minimumMax[metric], ...rows.map((row) => row[metric] ?? 0))
   const options: EChartsOption = {
     animation: false,
     grid: { top: 28, right: 12, bottom: 24, left: 0, containLabel: true },
     tooltip: {
       trigger: 'axis',
       confine: true,
-      valueFormatter: (value) => formatValue(Number(value)),
+      valueFormatter: (value) =>
+        value === null || value === undefined ? '—' : formatValue(Number(value)),
     },
     xAxis: {
       type: 'category',
@@ -169,7 +170,7 @@ export function MonitoringChart({
                     {formatToLocalTime(dayjs(row.date), locale, 'MMM D, YYYY')}
                   </time>
                 </th>
-                <td>{formatValue(row[metric])}</td>
+                <td>{row[metric] === null ? '—' : formatValue(row[metric])}</td>
               </tr>
             ))}
           </tbody>

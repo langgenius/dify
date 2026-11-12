@@ -17,9 +17,13 @@ import ReactFlow, { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { consoleQuery } from '@/service/console'
+import {
+  createExternalAgentAsset,
+  createExternalAgentCapabilities,
+  createExternalAgentDetail,
+} from '@/test/console/external-agents'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -82,6 +86,27 @@ function createChecklistQueryClient(builtInTools: ToolProviderListResponse = [])
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(
+    consoleQuery.externalAgents.capabilities.get.queryKey(),
+    createExternalAgentCapabilities({ input_file_modes: ['application/pdf'] }),
+  )
+  for (const asset of [
+    createExternalAgentAsset(),
+    createExternalAgentAsset({
+      id: '44444444-4444-4444-8444-444444444444',
+      name: 'Document Review Agent',
+    }),
+  ]) {
+    const detail = createExternalAgentDetail({ asset })
+    if (asset.id === createExternalAgentAsset().id)
+      detail.connection = { ...detail.connection, card: { defaultInputModes: ['text/plain'] } }
+    queryClient.setQueryData(
+      consoleQuery.externalAgents.byAgentId.get.queryKey({
+        input: { params: { agent_id: asset.id } },
+      }),
+      detail,
+    )
+  }
   return queryClient
 }
 
@@ -180,10 +205,10 @@ function createCodeNode() {
 }
 
 function buildExternalAgentTaskGraph({
-  agent = createExternalRosterPreview()[1]!,
+  agent = createExternalAgentAsset(),
   outputType,
 }: {
-  agent?: ReturnType<typeof createExternalRosterPreview>[number]
+  agent?: ReturnType<typeof createExternalAgentAsset>
   outputType?: VarType
 } = {}) {
   const startNode = createInputNode()
@@ -206,6 +231,11 @@ function buildExternalAgentTaskGraph({
       title: agent.name,
       desc: '',
       ...createExternalAgentWorkflowPreviewData(agent),
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: agent.id,
+        binding_epoch: 'server-epoch',
+      },
       agent_task: 'Review {{#source.attachment#}}',
     },
   })
@@ -398,7 +428,10 @@ describe('useChecklist', () => {
   it('updates external agent task warnings when the agent or upstream outputs change', async () => {
     const graph = buildExternalAgentTaskGraph({ outputType: VarType.file })
     const { wrapper: Wrapper } = createChecklistWrapper(graph)
-    const documentReview = { ...createExternalRosterPreview()[1]!, key: 'document-review' }
+    const documentReview = createExternalAgentAsset({
+      id: '44444444-4444-4444-8444-444444444444',
+      name: 'Document Review Agent',
+    })
 
     function ChecklistOutput() {
       const nodes = useNodes<CommonNodeType>()
@@ -421,7 +454,6 @@ describe('useChecklist', () => {
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
         JSON.stringify([
-          'agentRoster.external.workflow.runUnavailable',
           'agentRoster.external.workflow.task.unsupportedType:{"variable":"attachment","type":"file"}',
         ]),
       ),
@@ -437,7 +469,7 @@ describe('useChecklist', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
-        JSON.stringify(['agentRoster.external.workflow.runUnavailable']),
+        '',
       ),
     )
 
@@ -452,7 +484,6 @@ describe('useChecklist', () => {
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
         JSON.stringify([
-          'agentRoster.external.workflow.runUnavailable',
           'agentRoster.external.workflow.task.unsupportedType:{"variable":"attachment","type":"number"}',
         ]),
       ),
@@ -466,7 +497,7 @@ describe('useChecklist', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
-        JSON.stringify(['agentRoster.external.workflow.runUnavailable']),
+        JSON.stringify(['workflow.errorMsg.invalidVariable']),
       ),
     )
   })
@@ -811,14 +842,14 @@ describe('useChecklistBeforePublish', () => {
 })
 
 describe('useWorkflowRunValidation', () => {
-  it('blocks running and publishing a graph containing a local external agent preview', async () => {
+  it('blocks an unconnected external agent with an empty task before running and publishing', async () => {
     const graph = buildConnectedGraph()
     const preview = createNode({
       id: 'external-preview',
       data: {
         type: BlockEnum.Agent,
         title: 'External Agent',
-        ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+        ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
       },
     })
     const { wrapper } = createChecklistWrapper({
@@ -841,7 +872,10 @@ describe('useWorkflowRunValidation', () => {
     expect(result.current.run.warningNodes).toContainEqual(
       expect.objectContaining({
         id: preview.id,
-        errorMessages: ['agentRoster.external.workflow.runUnavailable'],
+        errorMessages: expect.arrayContaining([
+          'agentRoster.external.workflow.unconnected',
+          'workflow.errorMsg.fieldRequired:{"field":"workflowAgent.nodes.agent.task.label"}',
+        ]),
         canNavigate: true,
       }),
     )

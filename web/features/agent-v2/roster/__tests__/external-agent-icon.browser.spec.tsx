@@ -1,7 +1,9 @@
+import type { ExternalAgentAssetResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import type {
   PostFilesUploadData,
   PostFilesUploadResponse,
 } from '@dify/contracts/api/console/files/types.gen'
+import type { ConsoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -11,16 +13,23 @@ import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-dat
 import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
 import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
+import {
+  createExternalAgentAsset,
+  createExternalAgentCapabilities,
+  createExternalAgentDetail,
+} from '@/test/console/external-agents'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createGifFile } from '@/test/fixtures/image-files'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { ExternalRoster } from '../external-roster'
-import { createExternalRosterPreview } from '../external-roster-preview'
 
 // boundary: use real translations and the fixture's I18nextProvider instead of the global translator double.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 
-const { uploadImage } = vi.hoisted(() => ({
+const { uploadImage, list, detail, info } = vi.hoisted(() => ({
+  list: vi.fn(),
+  detail: vi.fn(),
+  info: vi.fn(),
   uploadImage:
     vi.fn<(input: Pick<PostFilesUploadData, 'body'>) => Promise<PostFilesUploadResponse>>(),
 }))
@@ -31,9 +40,20 @@ vi.mock('@/service/console', async (importOriginal) => {
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.post': uploadImage,
+      'externalAgents.capabilities.get': async () => createExternalAgentCapabilities(),
+      'externalAgents.get': list,
+      'externalAgents.byAgentId.get': detail,
+      'externalAgents.byAgentId.info.patch': info,
+    }),
   }
 })
+
+// boundary: navigation belongs to the application router, outside the icon editing journey.
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+
+let asset: ExternalAgentAssetResponse
 
 const card = () =>
   page.getByRole('listitem', { name: 'Contract Review Agent', exact: true, includeHidden: true })
@@ -64,19 +84,11 @@ async function setup() {
     },
   ])
   onTestFinished(() => queryClient.clear())
-  const agent = createExternalRosterPreview().find((agent) => agent.key === 'contract-review')!
   await render(
     <QueryProvider>
       <NuqsTestingAdapter hasMemory>
         <I18nextProvider i18n={i18n}>
-          <ExternalRoster
-            initialAgents={[
-              {
-                ...agent,
-                icon: { icon_type: 'emoji', icon: '😀', icon_background: '#FEF3F2' },
-              },
-            ]}
-          />
+          <ExternalRoster />
         </I18nextProvider>
       </NuqsTestingAdapter>
     </QueryProvider>,
@@ -101,6 +113,27 @@ async function chooseCoolGreen() {
 
 beforeEach(({ onTestFinished }) => {
   onTestFinished(guardUnexpectedFetch())
+  asset = createExternalAgentAsset({ icon_type: 'emoji', icon: '😀', icon_background: '#FEF3F2' })
+  list
+    .mockReset()
+    .mockImplementation((input: Parameters<ConsoleClient['externalAgents']['get']>[0]) => {
+      const items = input?.query?.enabled === false ? [] : [asset]
+      return {
+        items,
+        page: input?.query?.page ?? 1,
+        limit: input?.query?.limit ?? 20,
+        total: items.length,
+      }
+    })
+  detail.mockReset().mockImplementation(() => createExternalAgentDetail({ asset }))
+  info
+    .mockReset()
+    .mockImplementation(
+      ({ body }: Parameters<ConsoleClient['externalAgents']['byAgentId']['info']['patch']>[0]) => {
+        asset = { ...asset, ...body.changes, metadata_revision: asset.metadata_revision + 1 }
+        return asset
+      },
+    )
   uploadImage.mockImplementation(async ({ body: { file } }) => {
     if (!(file instanceof File)) throw new TypeError('Expected a native icon File upload')
     return { id: 'external-agent-icon', name: file.name, size: file.size }
@@ -138,9 +171,11 @@ it('keeps nested emoji drafts local, discards both cancellation scopes, and comm
   await expect.element(picker()).not.toBeInTheDocument()
   await edit().getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(edit()).not.toBeInTheDocument()
-  const savedEmoji = card().getByText('😎', { exact: true })
-  await expect.element(savedEmoji).toBeVisible()
-  expect(getComputedStyle(savedEmoji.element()).backgroundColor).toBe('rgb(243, 254, 231)')
+  await expect.element(card().getByText('😎', { exact: true })).toBeVisible()
+  expect(info).toHaveBeenCalledExactlyOnceWith({
+    params: { agent_id: asset.id },
+    body: { expected_revision: 1, changes: { icon: '😎', icon_background: '#F3FEE7' } },
+  })
   await openEdit()
   await avatar().click()
   await expect.element(picker().getByRole('radio', { name: 'Green', exact: true })).toBeChecked()
@@ -150,7 +185,7 @@ it('keeps nested emoji drafts local, discards both cancellation scopes, and comm
   expect(uploadImage).not.toHaveBeenCalled()
 })
 
-it('uploads through the generic files service and updates the roster image only after the outer Save', async () => {
+it('uploads a native image for the draft and saves its file ID without inventing a persisted image URL', async () => {
   await setup()
   await openEdit()
   await avatar().click()
@@ -166,7 +201,6 @@ it('uploads through the generic files service and updates the roster image only 
   await expect.element(edit()).toBeVisible()
   await expect.element(avatar()).toHaveFocus()
   await expect.poll(() => avatar().element().querySelector('img')?.naturalWidth).toBe(1)
-  const draftSrc = avatar().element().querySelector('img')!.src
   await expect.element(card().getByText('😀', { exact: true })).toBeVisible()
   expect(card().element().querySelector('img')).toBeNull()
   expect(uploadImage).toHaveBeenCalledTimes(1)
@@ -179,10 +213,16 @@ it('uploads through the generic files service and updates the roster image only 
   )
   await edit().getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(edit()).not.toBeInTheDocument()
-  await expect.poll(() => card().element().querySelector('img')?.naturalWidth).toBe(1)
-  expect(card().element().querySelector('img')!.src).toBe(draftSrc)
+  expect(info).toHaveBeenCalledExactlyOnceWith({
+    params: { agent_id: asset.id },
+    body: {
+      expected_revision: 1,
+      changes: { icon_type: 'image', icon: 'external-agent-icon', icon_background: null },
+    },
+  })
+  // The current asset protocol returns the file ID but no authorized image URL.
+  expect(card().element().querySelector('img')).toBeNull()
   await openEdit()
-  await expect.poll(() => avatar().element().querySelector('img')?.naturalWidth).toBe(1)
-  expect(avatar().element().querySelector('img')!.src).toBe(draftSrc)
+  expect(avatar().element().querySelector('img')).toBeNull()
   await edit().getByRole('button', { name: 'Cancel', exact: true }).click()
 })

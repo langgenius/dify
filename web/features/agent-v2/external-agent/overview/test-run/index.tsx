@@ -1,9 +1,8 @@
 'use client'
 
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
-import type { ExternalAgentOverviewPreview } from '../../preview'
-import type { TestAgentAttachment } from './attachments'
-import type { TestAgentRunOutcome } from './use-test-run'
+import type { ExternalAgentOverview } from '../../model'
+import type { TestFileRules } from './file-limits'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -24,37 +23,43 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { TestAgentAttachments } from './attachments'
+import { getTestFileRules } from './file-limits'
 import { TestAgentResults } from './results'
-import { useTestAgentRun } from './use-test-run'
+import { useTestAgentFiles } from './use-test-files'
+import { useTestAgentPageSession, useTestAgentRun } from './use-test-run'
 
-type TestAgentProps = Pick<
-  ExternalAgentOverviewPreview,
-  'skills' | 'sampleResponse' | 'sampleTraceSteps' | 'tracing'
-> & {
-  sampleOutcome?: TestAgentRunOutcome
-}
+type TestAgentProps = { overview: ExternalAgentOverview }
 
 const VISIBLE_EXAMPLE_COUNT = 5
 const RUN_TEST_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 function TestAgentSession({
-  skills,
-  run,
-  tab,
-  setTab,
-  startRun,
-  stopRun,
-  resetRun,
-}: Pick<TestAgentProps, 'skills'> & ReturnType<typeof useTestAgentRun>) {
+  overview,
+  task,
+  onTaskChange,
+  files,
+  rules,
+  executionEnabled,
+  testRun,
+}: TestAgentProps & {
+  task: string
+  onTaskChange: (task: string) => void
+  files: ReturnType<typeof useTestAgentFiles>
+  rules: TestFileRules | null
+  executionEnabled: boolean
+  testRun: ReturnType<typeof useTestAgentRun>
+}) {
+  const { run, tab, setTab, startRun, stopRun, resetRun } = testRun
+  const skills = overview.skills
   const { t } = useTranslation(['agentRoster', 'common'])
   const [expanded, setExpanded] = useState(false)
   const [showAllExamples, setShowAllExamples] = useState(false)
-  const [task, setTask] = useState(run?.task ?? '')
-  const [attachments, setAttachments] = useState<TestAgentAttachment[]>(run?.attachments ?? [])
   const taskRef = useRef<HTMLTextAreaElement>(null)
   const formId = useId()
   const actionLabelId = useId()
@@ -70,10 +75,12 @@ function TestAgentSession({
   const isRunning = run?.status === 'running'
   const isStopping = run?.status === 'stopping'
   const isInProgress = isRunning || isStopping
-  const canRun = !isInProgress && task.trim().length > 0
+  const unknownRequest = testRun.requestUnknown
+  const canRun =
+    executionEnabled && !isInProgress && !unknownRequest && files.ready && task.trim().length > 0
 
   function updateTask(value: string) {
-    setTask(value)
+    onTaskChange(value)
     resetRun()
   }
 
@@ -142,7 +149,9 @@ function TestAgentSession({
             if (!event.repeat) event.currentTarget.requestSubmit()
           }}
           onFormSubmit={(values) => {
-            if (canRun) startRun(values.task, attachments)
+            if (!canRun) return
+            const leases = files.selectedLeaseIds()
+            if (leases !== null) startRun(values.task, leases)
           }}
         >
           <Field
@@ -163,7 +172,7 @@ function TestAgentSession({
                   ? 'field-sizing-content h-auto min-h-0 resize-none bg-components-input-bg-disabled text-text-secondary'
                   : 'h-30 min-h-30 resize-y',
               )}
-              readOnly={isInProgress}
+              readOnly={isInProgress || unknownRequest}
               value={task}
               onValueChange={updateTask}
               placeholder={t(($) => $['external.overview.testRequestPlaceholder'])}
@@ -215,9 +224,17 @@ function TestAgentSession({
         </Form>
         {!isInProgress && (
           <TestAgentAttachments
-            attachments={attachments}
-            onChange={(value) => {
-              setAttachments(value)
+            attachments={files.attachments}
+            rules={rules}
+            failure={files.failure}
+            disabled={!executionEnabled || unknownRequest}
+            onPaste={(...values) => {
+              const accepted = files.pasteLink(...values)
+              if (accepted) resetRun()
+              return accepted
+            }}
+            onRemove={(id) => {
+              files.remove(id)
               resetRun()
             }}
           />
@@ -228,8 +245,8 @@ function TestAgentSession({
           variant={isInProgress ? 'secondary' : 'primary'}
           size={isInProgress ? 'medium' : 'large'}
           className={cn('w-full shrink-0 rounded-lg', isStopping && 'h-9 flex-row-reverse')}
-          loading={isStopping}
-          disabled={!isInProgress && !canRun}
+          loading={isStopping || testRun.isSubmitting}
+          disabled={isRunning ? !run.currentInvocationId : !isInProgress && !canRun}
           aria-labelledby={actionLabelId}
           onClick={
             isRunning
@@ -261,6 +278,24 @@ function TestAgentSession({
             </KbdGroup>
           )}
         </Button>
+        {!executionEnabled && (
+          <p className="system-xs-regular text-text-tertiary">
+            {t(($) => $['external.overview.testRun.executionUnavailable'])}
+          </p>
+        )}
+        {unknownRequest && (
+          <div className="space-y-2 system-xs-regular text-text-warning">
+            <p>{t(($) => $['external.overview.testRun.requestUnknown'])}</p>
+            <Button loading={testRun.isSubmitting} onClick={testRun.recoverRequest}>
+              {t(($) => $['external.overview.testRun.recoverRequest'])}
+            </Button>
+          </div>
+        )}
+        {testRun.failure && (
+          <div role="alert" className="space-y-2 system-xs-regular text-text-destructive">
+            <p>{testRun.failure}</p>
+          </div>
+        )}
         {run && (
           <div className="mt-5 shrink-0">
             <TestAgentResults run={run} tab={tab} onTabChange={setTab} />
@@ -271,9 +306,13 @@ function TestAgentSession({
   )
 }
 
-export function ExternalAgentTestPanel(props: TestAgentProps) {
+function ExternalAgentTestPage({ overview }: TestAgentProps) {
   const { t } = useTranslation(['agentRoster'])
   const [open, setOpen] = useState(false)
+  const [task, setTask] = useState('')
+  const pageSessionId = useTestAgentPageSession(overview)
+  const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
+  const rules = capabilities.data ? getTestFileRules(capabilities.data, overview.inputModes) : null
   const notificationRef = useRef<string | null>(null)
   const triggerLabelId = useId()
 
@@ -289,8 +328,11 @@ export function ExternalAgentTestPanel(props: TestAgentProps) {
     setOpen(nextOpen)
   }
 
+  const files = useTestAgentFiles({ agentId: overview.asset.id, pageSessionId, rules })
   const testRun = useTestAgentRun({
-    ...props,
+    overview,
+    pageSessionId,
+    onAccepted: (ids) => files.markSubmitted(ids),
     onCompleted(outcome) {
       // The open panel already presents the result at the action's owner.
       if (open) return
@@ -343,9 +385,26 @@ export function ExternalAgentTestPanel(props: TestAgentProps) {
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <TestAgentSession skills={props.skills} {...testRun} />
+          <TestAgentSession
+            overview={overview}
+            task={task}
+            onTaskChange={setTask}
+            files={files}
+            rules={rules}
+            executionEnabled={capabilities.data?.enabled === true}
+            testRun={testRun}
+          />
         </DrawerViewport>
       </DrawerPortal>
     </Drawer>
+  )
+}
+
+export function ExternalAgentTestPanel({ overview }: TestAgentProps) {
+  return (
+    <ExternalAgentTestPage
+      key={`${overview.asset.tenant_id}:${overview.asset.id}`}
+      overview={overview}
+    />
   )
 }

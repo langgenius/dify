@@ -1,3 +1,4 @@
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   ExternalAgentWorkflowPreviewAgent,
   ExternalAgentWorkflowPreviewDefaultValue,
@@ -7,35 +8,27 @@ import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/compo
 
 export const externalAgentDefaultWaitLimit: Readonly<ExternalAgentWorkflowWaitLimit> = {
   enabled: true,
-  minutes: 10,
-  onTimeout: 'end-waiting',
-  maxRetries: 2,
-  retryIntervalSeconds: 30,
+  wait_seconds: 600,
+  on_timeout: 'end_waiting',
+  additional_retries: 1,
+  retry_interval_seconds: 5,
 }
 
-export const externalAgentDefaultOutputs = [
-  {
-    name: 'text',
-    type: 'string' as const,
-    required: false,
-    description: 'Text returned by the agent',
-  },
+export const externalAgentDefaultOutputs: DeclaredOutputConfig[] = [
+  { name: 'text', type: 'string', required: true },
 ]
 
-// These UI settings belong to the workflow draft. External-agent execution will use its
-// own contract once available; this summary contains no endpoint or credentials.
 export function createExternalAgentWorkflowPreviewData(
   agent: ExternalAgentWorkflowPreviewAgent,
 ): ExternalAgentWorkflowPreviewDefaultValue {
   return {
     title: agent.name,
-    agent_node_kind: 'external_agent',
+    agent_node_kind: 'external_a2a',
     version: '2',
-    agent_binding: undefined,
-    external_agent: { ...agent },
+    agent_binding: { binding_type: 'roster_agent', agent_id: agent.id },
     agent_task: '',
     agent_declared_outputs: externalAgentDefaultOutputs.map((output) => ({ ...output })),
-    external_agent_wait_limit: { ...externalAgentDefaultWaitLimit },
+    external_wait: { ...externalAgentDefaultWaitLimit },
     error_strategy: ErrorHandleTypeEnum.failBranch,
   }
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ExternalTracingConfigurationResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import type {
   ConfigurableTracingProvider,
   TracingProviderField,
@@ -34,21 +35,21 @@ import {
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { tracingProviders } from '@/app/components/app/tracing/providers'
-
-export type LocalProviderConfig = {
-  values: Record<string, string>
-  configuredSecrets: readonly string[]
-}
+import { stringValue } from '../model'
 
 type ProviderConfigurationDialogProps = {
-  config: LocalProviderConfig | undefined
+  config: ExternalTracingConfigurationResponse | undefined
   inUse: boolean
   provider: ConfigurableTracingProvider
   onRemove: () => void
-  onSave: (config: LocalProviderConfig) => void
+  onSave: (config: Record<string, string>, captureContent: boolean) => void
+  pending: boolean
+  error?: string
+  onRefresh: () => void
 }
 
 export function ProviderConfigurationDialog({
@@ -57,28 +58,19 @@ export function ProviderConfigurationDialog({
   provider,
   onRemove,
   onSave,
+  pending,
+  error,
+  onRefresh,
 }: ProviderConfigurationDialogProps) {
-  const { t } = useTranslation(['app', 'common'])
+  const { t } = useTranslation(['app', 'common', 'agentRoster'])
   const [confirmingRemoval, setConfirmingRemoval] = useState(false)
+  const [captureContent, setCaptureContent] = useState(config?.capture_content ?? false)
   const fields: readonly TracingProviderField[] = tracingProviders[provider].fields
   const isEdit = !!config
   const providerTitle = t(($) => $[`tracing.${provider}.title`], { ns: 'app' })
 
   const handleSave = (values: Record<string, string>) => {
-    const configuredSecrets = fields
-      .filter((field) => field.secret)
-      .filter((field) => {
-        const value = values[field.name]?.trim()
-        return Boolean(value) || config?.configuredSecrets.includes(field.name)
-      })
-      .map((field) => field.name)
-    const storedValues = Object.fromEntries(
-      fields
-        .filter((field) => !field.secret)
-        .map((field) => [field.name, values[field.name]?.trim() ?? '']),
-    )
-
-    onSave({ values: storedValues, configuredSecrets })
+    onSave(values, captureContent)
   }
 
   return (
@@ -102,7 +94,7 @@ export function ProviderConfigurationDialog({
               const labelText =
                 typeof label === 'string' ? label : t(($) => $[label.key], { ns: 'app' })
               const keepsSavedSecret =
-                field.secret && config?.configuredSecrets.includes(field.name)
+                field.secret && config?.configured_secrets.includes(field.name)
               const required = field.required && !keepsSavedSecret
 
               return (
@@ -128,7 +120,7 @@ export function ProviderConfigurationDialog({
                   </FieldLabel>
                   <Input
                     autoComplete={field.secret ? 'off' : undefined}
-                    defaultValue={field.secret ? '' : (config?.values[field.name] ?? '')}
+                    defaultValue={field.secret ? '' : stringValue(config?.values[field.name])}
                     inputMode={field.inputMode}
                     maxLength={field.maxLength}
                     pattern={field.pattern}
@@ -164,6 +156,28 @@ export function ProviderConfigurationDialog({
                 </Field>
               )
             })}
+            <Field>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel>{t(($) => $['tracing.captureContent'], { ns: 'app' })}</FieldLabel>
+                <Switch
+                  aria-label={t(($) => $['tracing.captureContent'], { ns: 'app' })}
+                  checked={captureContent}
+                  onCheckedChange={setCaptureContent}
+                  disabled={pending}
+                />
+              </div>
+              <FieldDescription>
+                {t(($) => $['tracing.captureContentDescription'], { ns: 'app' })}
+              </FieldDescription>
+            </Field>
+            {error && (
+              <div role="alert" className="space-y-2 system-sm-regular text-text-destructive">
+                <p>{error}</p>
+                <Button size="small" disabled={pending} onClick={onRefresh}>
+                  {t(($) => $['external.api.loadLatest'], { ns: 'agentRoster' })}
+                </Button>
+              </div>
+            )}
           </div>
         </DialogBody>
         <DialogFooter>
@@ -184,7 +198,7 @@ export function ProviderConfigurationDialog({
           {isEdit && (
             <>
               <AlertDialog open={confirmingRemoval} onOpenChange={setConfirmingRemoval}>
-                <AlertDialogTrigger render={<Button tone="destructive" />}>
+                <AlertDialogTrigger render={<Button tone="destructive" disabled={pending} />}>
                   {t(($) => $['operation.remove'], { ns: 'common' })}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -226,7 +240,7 @@ export function ProviderConfigurationDialog({
           <DialogClose render={<Button variant="secondary" />}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </DialogClose>
-          <Button type="submit" variant="primary">
+          <Button type="submit" variant="primary" loading={pending}>
             {t(($) => $[`operation.${isEdit ? 'save' : 'saveAndEnable'}`], { ns: 'common' })}
           </Button>
         </DialogFooter>

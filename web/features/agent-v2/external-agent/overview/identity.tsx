@@ -1,4 +1,4 @@
-import type { ExternalAgentOverviewPreview } from '../preview'
+import type { ExternalAgentOverview } from '../model'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -7,7 +7,7 @@ export function ExternalAgentIdentity({
   agent,
   heading: Heading = 'h1',
 }: {
-  agent: ExternalAgentOverviewPreview['agent']
+  agent: ExternalAgentOverview['agent']
   heading?: 'h1' | 'h2'
 }) {
   const { t } = useTranslation(['agentRoster'])

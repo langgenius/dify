@@ -16,11 +16,7 @@ export const externalRosterQueryParsers = {
   external_keyword: parseAsString.withDefault(''),
   external_status: parseAsStringLiteral(['all', 'enabled', 'disabled']).withDefault('all'),
   external_connected_by_me: parseAsBoolean.withDefault(false),
-  external_sort_by: parseAsStringLiteral([
-    'last_modified',
-    'recently_created',
-    'earliest_created',
-  ]).withDefault('last_modified'),
+  external_sort_by: parseAsStringLiteral(['last_modified']).withDefault('last_modified'),
 }
 
 export const rosterKeywordQueryParser = parseAsString.withDefault('').withOptions({

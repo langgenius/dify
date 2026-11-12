@@ -2,7 +2,9 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
@@ -26,10 +28,12 @@ import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/hoo
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
+import { getExternalAgentSingleRunFormParams } from '@/features/agent-v2/external-agent/workflow-preview/single-run-form-params'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { useInvalidateLastRun } from '@/service/use-workflow'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
@@ -151,6 +155,37 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
 
   const { id, resource, data } = oneStepRunParams
+  const flowStore = useStoreApi()
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const externalSubmissionRef = useRef<string | undefined>(undefined)
+  const externalScope = isExternalAgentWorkflowPreviewData(data)
+    ? `${id}:${data.agent_binding?.agent_id ?? ''}:${data.agent_binding?.binding_epoch ?? ''}`
+    : undefined
+  const scopeIsCurrent = () => {
+    if (!externalScope) return true
+    const current = flowStore
+      .getState()
+      .getNodes()
+      .find((node) => node.id === id)?.data
+    return (
+      current &&
+      isExternalAgentWorkflowPreviewData(current) &&
+      `${id}:${current.agent_binding?.agent_id ?? ''}:${current.agent_binding?.binding_epoch ?? ''}` ===
+        externalScope
+    )
+  }
+  const externalIsBusy = () => {
+    if (!externalScope) return false
+    const current = flowStore
+      .getState()
+      .getNodes()
+      .find((node) => node.id === id)?.data._singleRunningStatus
+    return (
+      externalSubmissionRef.current === externalScope ||
+      current === NodeRunningStatus.Running ||
+      current === NodeRunningStatus.Paused
+    )
+  }
   const oneStepRunRes = useOneStepRun({
     ...oneStepRunParams,
     iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
@@ -188,7 +223,9 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   } = oneStepRunRes
 
   const nodeInfo = runResult
-  const useSingleRunFormParams = createSingleRunFormParamsHook(blockType)
+  const useSingleRunFormParams = isExternalAgentWorkflowPreviewData(data)
+    ? getExternalAgentSingleRunFormParams
+    : createSingleRunFormParamsHook(blockType)
   const { ...singleRunParams } = useSingleRunFormParams({
     id,
     payload: data,
@@ -223,10 +260,25 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   )
 
   const callRunApi = (data: Record<string, any>, cb?: () => void) => {
+    if (externalScope && externalSubmissionRef.current === externalScope) return
+    if (externalScope) externalSubmissionRef.current = externalScope
+    const release = () => {
+      if (externalSubmissionRef.current === externalScope) externalSubmissionRef.current = undefined
+    }
     handleSyncWorkflowDraft(true, true, {
       onSuccess() {
-        doCallRunApi(toSubmitData(data))
+        if (!scopeIsCurrent()) {
+          release()
+          return
+        }
+        const execution = doCallRunApi(toSubmitData(data))
+        if (externalScope) void execution.then(release, release)
         cb?.()
+      },
+      onError() {
+        release()
+        if (externalScope && scopeIsCurrent())
+          handleNodeDataUpdate({ id, data: { _singleRunningStatus: NodeRunningStatus.Failed } })
       },
     })
   }
@@ -245,6 +297,13 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const invalidLastRun = useInvalidateLastRun(resource, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
+    if (externalIsBusy()) return
+    if (
+      isExternalAgentWorkflowPreviewData(oneStepRunParams.data) &&
+      (oneStepRunRes.runningStatus === NodeRunningStatus.Running ||
+        oneStepRunRes.runningStatus === NodeRunningStatus.Paused)
+    )
+      return
     if (blockIfChecklistFailed()) return
     const { isValid } = checkValid()
     if (!isValid) return
@@ -353,6 +412,13 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   }
 
   const handleSingleRun = () => {
+    if (externalIsBusy()) return
+    if (
+      isExternalAgentWorkflowPreviewData(oneStepRunParams.data) &&
+      (oneStepRunRes.runningStatus === NodeRunningStatus.Running ||
+        oneStepRunRes.runningStatus === NodeRunningStatus.Paused)
+    )
+      return
     if (blockIfChecklistFailed()) return
     const { isValid } = checkValid()
     if (!isValid) return

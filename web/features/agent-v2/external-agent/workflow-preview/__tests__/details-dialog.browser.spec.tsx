@@ -15,17 +15,28 @@ vi.mock('react-i18next', async (importOriginal) => importOriginal())
 const draftApi = vi.hoisted(() => ({
   save: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
   read: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.get>(),
+  rebind:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post
+    >(),
 }))
 
 // boundary: replace backend draft storage while keeping canvas edits and serialization real.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const { createWorkflowExternalResponses } = await import('./workflow-api-fixtures')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      ...createWorkflowExternalResponses(),
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': draftApi.save,
       'apps.byAppId.workflows.draft.get': draftApi.read,
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
     }),
   }
 })
@@ -60,6 +71,7 @@ beforeEach(({ onTestFinished }) => {
   const storage = createSerializedWorkflowDraftStorage()
   draftApi.save.mockImplementation(storage.save)
   draftApi.read.mockImplementation(storage.read)
+  draftApi.rebind.mockImplementation(storage.rebind)
 })
 
 it('opens read-only Contract Review details and returns focus without changing the saved draft', async () => {
@@ -87,10 +99,7 @@ it('opens read-only Contract Review details and returns focus without changing t
   await expect.element(details.getByRole('button', { name: /^Edit/ })).not.toBeInTheDocument()
   await expect.element(details.getByRole('switch')).not.toBeInTheDocument()
   await expect.element(details.getByText('Tracing on', { exact: true })).toBeVisible()
-  const description = details.getByText(
-    'Reads a contract clause by clause and flags terms that conflict with your policies.',
-    { exact: true },
-  )
+  const description = details.getByText('Find risky terms in a contract.', { exact: true })
   const skill = details.getByRole('button', { name: 'Contract review', exact: true })
   await expect.element(description).toBeVisible()
   await skill.click()
@@ -101,13 +110,13 @@ it('opens read-only Contract Review details and returns focus without changing t
   await details.getByRole('button', { name: 'Example requests', exact: true }).first().click()
   await expect
     .element(
-      details.getByText('Review this payment clause and suggest a safer alternative.', {
+      details.getByText('Review this contract and identify clauses that may expose us to risk.', {
         exact: true,
       }),
     )
     .toBeVisible()
   const connection = details.getByRole('button', { name: 'Connection', exact: true })
-  const endpoint = details.getByText('https://agents.acme.example/contract-review', { exact: true })
+  const endpoint = details.getByText('https://agents.example.test/contract', { exact: true })
   await connection.click()
   await expect.element(connection).toHaveAttribute('aria-expanded', 'false')
   await connection.click()
@@ -125,9 +134,14 @@ it('keeps Change as an agent picker and opens the selected Document Review ident
   const { panel } = await setup()
   await panel.getByRole('button', { name: 'Change', exact: true }).click()
   await page.getByRole('button', { name: /^Document Review Agent/ }).click()
-  const changed = page.getByRole('region', { name: 'Document Review Agent', exact: true })
+  const changed = page.getByRole('region', {
+    name: 'Contract Review Agent Node configuration panel',
+    exact: true,
+  })
   await expect.element(changed).toBeVisible()
-  const before = await saveDraft({ title: 'Document Review Agent' })
+  const before = await saveDraft({
+    agent_binding: expect.objectContaining({ agent_id: '44444444-4444-4444-8444-444444444444' }),
+  })
   const savesBefore = draftApi.save.mock.calls.length
   const trigger = changed.getByRole('button', { name: /^Document Review Agent/ })
   await trigger.click()
@@ -139,7 +153,7 @@ it('keeps Change as an agent picker and opens the selected Document Review ident
     .element(details.getByRole('button', { name: 'Document review', exact: true }))
     .toBeVisible()
   await expect
-    .element(details.getByText('https://agents.acme.example/document-review', { exact: true }))
+    .element(details.getByText('https://agents.example.test/document', { exact: true }))
     .toBeVisible()
   await expect
     .element(details.getByRole('button', { name: 'Contract review', exact: true }))

@@ -1,3 +1,7 @@
+import type {
+  WorkflowRunDetailResponse,
+  WorkflowRunNodeExecutionResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FetchOptionType } from './fetch'
 import type { RequestGuard } from './request-guard'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
@@ -301,6 +305,11 @@ export type IOtherOptions = {
   onHumanInputFormFilled?: IOnHumanInputFormFilled
   onHumanInputFormTimeout?: IOnHumanInputFormTimeout
   onWorkflowPaused?: IOWorkflowPaused
+  /** Read-model updates for a workflow that is waiting for an asynchronous external invocation. */
+  onExternalWorkflowSnapshot?: (
+    run: WorkflowRunDetailResponse,
+    executions: WorkflowRunNodeExecutionResponse[],
+  ) => void
 
   // Pipeline data source node run
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing

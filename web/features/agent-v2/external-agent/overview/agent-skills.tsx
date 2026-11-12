@@ -1,9 +1,9 @@
-import type { ExternalAgentOverviewPreview, ExternalAgentSkillPreview } from '../preview'
+import type { ExternalAgentOverview, ExternalAgentSkill } from '../model'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-function AgentSkill({ skill }: { skill: ExternalAgentSkillPreview }) {
+function AgentSkill({ skill }: { skill: ExternalAgentSkill }) {
   const { t } = useTranslation(['agentRoster'])
   const startRef = useRef<HTMLSpanElement>(null)
   const [isStuck, setIsStuck] = useState(false)
@@ -99,11 +99,7 @@ function AgentSkill({ skill }: { skill: ExternalAgentSkillPreview }) {
   )
 }
 
-export function ExternalAgentSkills({
-  skills,
-}: {
-  skills: ExternalAgentOverviewPreview['skills']
-}) {
+export function ExternalAgentSkills({ skills }: { skills: ExternalAgentOverview['skills'] }) {
   const { t } = useTranslation(['agentRoster'])
   return (
     <section>

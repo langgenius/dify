@@ -12,6 +12,7 @@ import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
+import { ExternalAgentInvocationTraceDetails } from '@/features/agent-v2/external-agent/invocation-trace'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { ExternalTraceRow } from './external-trace-row'
 import MetaData from './meta'
@@ -42,6 +43,9 @@ export type ResultPanelProps = {
   isListening?: boolean
   workflowRunId?: string
   externalTrace?: ExternalTraceSource
+  externalInvocationId?: string
+  external_wait?: boolean
+  human_input_wait?: boolean
   onOpenTracingTab?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
@@ -71,6 +75,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
   isListening = false,
   workflowRunId,
   externalTrace,
+  externalInvocationId,
+  external_wait,
+  human_input_wait,
   onOpenTracingTab,
   handleShowIterationResultList,
   handleShowLoopResultList,
@@ -96,6 +103,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
           isListening={isListening}
           workflowRunId={workflowRunId}
           onOpenTracingTab={onOpenTracingTab}
+          external_wait={external_wait || (Boolean(externalInvocationId) && status === 'paused')}
+          human_input_wait={human_input_wait}
+          preserveUnknownTokens={Boolean(externalInvocationId)}
         />
       </div>
       <div className="px-4">
@@ -116,6 +126,12 @@ const ResultPanel: FC<ResultPanelProps> = ({
         )}
       </div>
       <div className="flex flex-col gap-2 px-4 py-2">
+        {externalInvocationId && (
+          <ExternalAgentInvocationTraceDetails
+            key={externalInvocationId}
+            invocationId={externalInvocationId}
+          />
+        )}
         <CodeEditor
           readOnly
           title={<div>{t(($) => $['common.input'], { ns: 'workflow' }).toLocaleUpperCase()}</div>}
@@ -176,6 +192,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           tokens={total_tokens}
           steps={steps}
           showSteps={showSteps}
+          preserveUnknownTokens={Boolean(externalInvocationId)}
         >
           {externalTrace && <ExternalTraceRow source={externalTrace} />}
         </MetaData>

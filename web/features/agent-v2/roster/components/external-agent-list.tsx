@@ -13,14 +13,19 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useId, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
-import { getExternalAgentOverviewPath } from '@/features/agent-v2/external-agent/routes'
+import {
+  getExternalAgentMonitoringPath,
+  getExternalAgentOverviewPath,
+} from '@/features/agent-v2/external-agent/routes'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { ExternalAgentEmptySearch } from './external-agent-empty-search'
 
@@ -34,7 +39,7 @@ export type ExternalAgentListItem = {
   connectedByMe: boolean
   createdAt: number
   updatedAt: number
-  apps: readonly { id?: string; name: string; kind: 'workflow' | 'chatflow' }[]
+  apps?: readonly { id?: string; name: string; kind: 'workflow' | 'chatflow' }[]
 }
 
 type ExternalAgentListProps = {
@@ -42,14 +47,17 @@ type ExternalAgentListProps = {
   filtered: boolean
   onClearFilters: () => void
   onAction?: (request: ExternalAgentActionRequest) => void
+  canReadDetails?: boolean
 }
 
 function ExternalAgentCard({
   agent,
   onAction,
+  canReadDetails,
 }: {
   agent: ExternalAgentListItem
   onAction: ExternalAgentListProps['onAction']
+  canReadDetails: boolean
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -79,7 +87,11 @@ function ExternalAgentCard({
       )}
     >
       <Link
-        href={getExternalAgentOverviewPath(agent.key)}
+        href={
+          canReadDetails
+            ? getExternalAgentOverviewPath(agent.key)
+            : getExternalAgentMonitoringPath(agent.key)
+        }
         aria-labelledby={nameId}
         aria-describedby={`${descriptionId}${agent.enabled ? '' : ` ${statusId}`}`}
         className="flex min-h-0 flex-1 flex-col rounded-t-xl text-start outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
@@ -156,37 +168,7 @@ function ExternalAgentCard({
         </div>
       )}
       <div className="flex h-9 min-w-0 shrink-0 items-center gap-1.5 ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
-        <Popover>
-          <PopoverTrigger className="-m-1 flex h-6 shrink-0 items-center gap-1 rounded-md p-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
-            <span className="sr-only">
-              {t(($) => $['external.references'], { name: agent.name })}:{' '}
-            </span>
-            <span aria-hidden className="i-custom-vender-agent-v2-plan size-3" />
-            <span>{t(($) => $['external.appsCount'], { count: agent.apps.length })}</span>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-66 max-w-[calc(100vw-2rem)] p-1">
-            <PopoverTitle className="px-3 pt-2 pb-1.5 system-xs-medium text-text-tertiary">
-              {t(($) => $['external.references'], { name: agent.name })}
-            </PopoverTitle>
-            <ul>
-              {agent.apps.map((app) => (
-                <li
-                  key={app.id ?? app.name}
-                  className="flex min-w-0 items-center gap-2 px-3 py-2 system-sm-regular text-text-secondary"
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'size-4 shrink-0 text-text-tertiary',
-                      app.kind === 'workflow' ? 'i-ri-flow-chart' : 'i-ri-chat-3-line',
-                    )}
-                  />
-                  <span className="min-w-0 wrap-break-word">{app.name}</span>
-                </li>
-              ))}
-            </ul>
-          </PopoverContent>
-        </Popover>
+        {canReadDetails && <ExternalAgentReferences agent={agent} />}
         <span aria-hidden className="text-text-quaternary">
           ·
         </span>
@@ -198,11 +180,77 @@ function ExternalAgentCard({
   )
 }
 
+function ExternalAgentReferences({ agent }: { agent: ExternalAgentListItem }) {
+  const { t } = useTranslation(['agentRoster', 'common'])
+  const [open, setOpen] = useState(false)
+  const references = useQuery(
+    consoleQuery.externalAgents.byAgentId.references.get.queryOptions({
+      input: { params: { agent_id: agent.key } },
+      enabled: open,
+    }),
+  )
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        aria-label={t(($) => $['external.references'], { name: agent.name })}
+        className="-m-1 flex h-6 shrink-0 items-center gap-1 rounded-md p-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
+      >
+        <span aria-hidden className="i-custom-vender-agent-v2-plan size-3" />
+        <span>
+          {references.data
+            ? t(($) => $['external.appsCount'], { count: references.data.apps.length })
+            : t(($) => $['external.api.apps'])}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-66 max-w-[calc(100vw-2rem)] p-1">
+        <PopoverTitle className="px-3 pt-2 pb-1.5 system-xs-medium text-text-tertiary">
+          {t(($) => $['external.references'], { name: agent.name })}
+        </PopoverTitle>
+        {references.isPending ? (
+          <p role="status" className="px-3 py-2 system-xs-regular text-text-tertiary">
+            {t(($) => $.loading, { ns: 'common' })}
+          </p>
+        ) : references.isError ? null : (
+          references.data &&
+          (references.data.apps.length ? (
+            <ul>
+              {references.data.apps.map((app) => (
+                <li key={app.app_id}>
+                  <Link
+                    href={`/app/${encodeURIComponent(app.app_id)}/workflow`}
+                    className="flex min-w-0 items-center gap-2 rounded-md px-3 py-2 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'size-4 shrink-0 text-text-tertiary',
+                        app.mode === 'advanced-chat' || app.mode === 'chatflow'
+                          ? 'i-ri-chat-3-line'
+                          : 'i-ri-flow-chart',
+                      )}
+                    />
+                    <span className="min-w-0 wrap-break-word">{app.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-3 py-2 system-xs-regular text-text-tertiary">
+              {t(($) => $['external.overview.emptyApps'])}
+            </p>
+          ))
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function ExternalAgentList({
   agents,
   filtered,
   onClearFilters,
   onAction,
+  canReadDetails = true,
 }: ExternalAgentListProps) {
   const { t } = useTranslation(['agentRoster'])
 
@@ -220,7 +268,12 @@ export function ExternalAgentList({
               className={cn(MAIN_NAV_APP_CARD_GRID_CLASS_NAME, 'gap-2.5')}
             >
               {agents.map((agent) => (
-                <ExternalAgentCard key={agent.key} agent={agent} onAction={onAction} />
+                <ExternalAgentCard
+                  key={agent.key}
+                  agent={agent}
+                  onAction={onAction}
+                  canReadDetails={canReadDetails}
+                />
               ))}
             </ul>
           ) : (

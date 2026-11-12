@@ -14,6 +14,8 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
@@ -21,11 +23,14 @@ import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { ExternalAgentManageMenu } from './manage-menu'
+import { toExternalAgentListItem } from './model'
+import { ExternalAgentRequestState } from './request-state'
 import { getExternalAgentMonitoringPath, getExternalAgentOverviewPath } from './routes'
-import { useExternalAgentPreview } from './state'
 
 function ExternalAgentTop({ expand, onToggle }: { expand: boolean; onToggle: () => void }) {
   const { t } = useTranslation(['agentRoster', 'navigation', 'app'])
@@ -99,36 +104,47 @@ function ExternalAgentTop({ expand, onToggle }: { expand: boolean; onToggle: () 
 
 function ExternalAgentSection({ agentId, expand }: { agentId: string; expand: boolean }) {
   const { t } = useTranslation(['agentRoster'])
-  const { preview, updatePreview } = useExternalAgentPreview(agentId)
+  const workspace = useAtomValue(currentWorkspaceAtom)
+  const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
+  const canRead = !workspaceLoading && ['owner', 'admin', 'editor'].includes(workspace.role)
+  const detail = useQuery(
+    consoleQuery.externalAgents.byAgentId.get.queryOptions({
+      input: canRead ? { params: { agent_id: agentId } } : skipToken,
+    }),
+  )
   const pathname = usePathname()
-  const { agent } = preview
+  const agent =
+    canRead && !detail.isError && detail.data
+      ? toExternalAgentListItem(detail.data.asset)
+      : undefined
 
   return (
     <div className="flex min-h-0 flex-1 flex-col pb-2">
-      <div className={cn('flex items-center gap-2 px-3 py-3', !expand && 'justify-center px-2')}>
-        <AppIcon
-          size="medium"
-          shape="circle"
-          icon={agent.icon}
-          fallback={{
-            content: <span className="i-ri-robot-2-line size-5 text-text-tertiary" />,
-            background: 'var(--color-components-icon-bg-midnight-soft)',
-          }}
-        />
-        <div className={cn('relative min-w-0 flex-1 pe-6', !expand && 'hidden')}>
-          <div className="truncate system-md-semibold text-text-secondary">{agent.name}</div>
-          <div className="mt-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['external.overview.type'])}
-          </div>
-          <div className="absolute inset-e-0 -top-1">
-            <ExternalAgentManageMenu
-              agent={agent}
-              onUpdate={(agent) => updatePreview({ agent })}
-              compact
-            />
+      {agent && (
+        <div className={cn('flex items-center gap-2 px-3 py-3', !expand && 'justify-center px-2')}>
+          <AppIcon
+            size="medium"
+            shape="circle"
+            icon={agent.icon}
+            fallback={{
+              content: <span className="i-ri-robot-2-line size-5 text-text-tertiary" />,
+              background: 'var(--color-components-icon-bg-midnight-soft)',
+            }}
+          />
+          <div className={cn('relative min-w-0 flex-1 pe-6', !expand && 'hidden')}>
+            <div className="truncate system-md-semibold text-text-secondary">{agent.name}</div>
+            <div className="mt-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['external.overview.type'])}
+            </div>
+            <div className="absolute inset-e-0 -top-1">
+              <ExternalAgentManageMenu agent={agent} compact />
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      {canRead && !agent && expand && (
+        <ExternalAgentRequestState pending={detail.isPending} error={detail.error} />
+      )}
       <div className={cn('py-0.5', expand ? 'px-5' : 'px-3')}>
         <Separator
           decorative
@@ -141,13 +157,15 @@ function ExternalAgentSection({ agentId, expand }: { agentId: string; expand: bo
         aria-label={t(($) => $['roster.tabs.external'])}
         className="flex flex-col gap-y-0.5 px-3 py-2"
       >
-        <NavLink
-          name={t(($) => $['external.overview.title'])}
-          href={getExternalAgentOverviewPath(agentId)}
-          pathname={pathname}
-          mode={expand ? 'expand' : 'collapse'}
-          iconMap={{ selected: 'i-ri-function-line', normal: 'i-ri-function-line' }}
-        />
+        {canRead && (
+          <NavLink
+            name={t(($) => $['external.overview.title'])}
+            href={getExternalAgentOverviewPath(agentId)}
+            pathname={pathname}
+            mode={expand ? 'expand' : 'collapse'}
+            iconMap={{ selected: 'i-ri-function-line', normal: 'i-ri-function-line' }}
+          />
+        )}
         <NavLink
           name={t(($) => $['external.overview.monitoring'])}
           href={getExternalAgentMonitoringPath(agentId)}

@@ -1,4 +1,4 @@
-import type { ExternalAgentOverviewPreview } from '../preview'
+import type { MonitoringApps } from './data'
 import {
   Select,
   SelectContent,
@@ -9,25 +9,30 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { getMonitoringAppId } from './preview'
 
 export function MonitoringAppsFilter({
   apps,
   value,
   onChange,
 }: {
-  apps: ExternalAgentOverviewPreview['agent']['apps']
+  apps: MonitoringApps
   value: string
   onChange: (value: string) => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const items = [
     { value: 'all', label: t(($) => $['external.monitoring.allApps']), emoji: '' },
-    ...apps.map((app) => ({
-      value: getMonitoringAppId(app),
-      label: app.name,
-      emoji: app.kind === 'workflow' ? '🔄' : '💬',
-    })),
+    ...apps.flatMap((app) =>
+      app.id && app.name
+        ? [
+            {
+              value: app.id,
+              label: app.name,
+              emoji: app.type === 'workflow' ? '🔄' : '💬',
+            },
+          ]
+        : [],
+    ),
   ]
 
   return (

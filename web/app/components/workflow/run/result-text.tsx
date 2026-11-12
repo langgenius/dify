@@ -10,6 +10,7 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 type ResultTextProps = {
   isRunning?: boolean
   isPaused?: boolean
+  isExternalWaiting?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
@@ -19,16 +20,22 @@ type ResultTextProps = {
 const ResultText: FC<ResultTextProps> = ({
   isRunning,
   isPaused,
+  isExternalWaiting,
   outputs,
   error,
   onClick,
   allFiles,
 }) => {
-  const { t } = useTranslation(['runLog'])
+  const { t } = useTranslation(['runLog', 'agentRoster'])
   return (
     <div className="bg-background-section-burn">
+      {isExternalWaiting && (
+        <p role="status" className="px-4 py-3 system-sm-regular text-text-tertiary">
+          {t(($) => $['external.workflow.waiting'], { ns: 'agentRoster' })}
+        </p>
+      )}
       {isRunning && !outputs && (
-        <div className="pt-4 pl-6.5">
+        <div className="ps-6.5 pt-4">
           <LoadingAnim type="text" />
         </div>
       )}
@@ -37,19 +44,19 @@ const ResultText: FC<ResultTextProps> = ({
           <StatusContainer status="failed">{error}</StatusContainer>
         </div>
       )}
-      {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
+      {!isPaused && !isExternalWaiting && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-30 flex flex-col items-center px-4 py-2 text-[13px] leading-4.5 text-gray-500">
           <span
             aria-hidden
             className="i-custom-vender-line-editor-image-indent-left size-6 text-gray-400"
           />
-          <div className="mr-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
+          <div className="me-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
           <div>
             {t(($) => $['resultEmpty.tipLeft'], { ns: 'runLog' })}
             <button
               type="button"
               onClick={onClick}
-              className="inline cursor-pointer border-none bg-transparent p-0 text-left text-primary-600"
+              className="inline cursor-pointer border-none bg-transparent p-0 text-start text-primary-600"
             >
               {t(($) => $['resultEmpty.link'], { ns: 'runLog' })}
             </button>

@@ -196,7 +196,7 @@ export type WorkflowPausedResponse = {
   data: {
     outputs: any // todo: remove any
     paused_nodes: string[]
-    reasons: any[] // todo: remove any
+    reasons: unknown[]
     workflow_run_id: string
   }
 }

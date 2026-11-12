@@ -4276,9 +4276,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 14
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -5562,9 +5559,6 @@
     }
   },
   "web/app/components/workflow/run/node.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 13
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     }
@@ -5583,9 +5577,6 @@
     }
   },
   "web/app/components/workflow/run/result-text.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -6644,7 +6635,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/utils/clipboard.ts": {

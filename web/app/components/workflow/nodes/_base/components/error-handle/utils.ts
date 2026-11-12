@@ -3,8 +3,9 @@ import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { getDeclaredOutputVarType } from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
+import { containsExternalFileOutput } from '@/features/agent-v2/external-agent/workflow-preview/validation'
 
 const getDefaultValueByType = (type: VarType) => {
   if (type === VarType.string) return ''
@@ -32,7 +33,12 @@ export const getDefaultValue = (data: CommonNodeType) => {
   const { type } = data
 
   if (isExternalAgentWorkflowPreviewData(data)) {
-    return (data.agent_declared_outputs ?? externalAgentDefaultOutputs)
+    return (
+      data.agent_declared_outputs?.length
+        ? data.agent_declared_outputs
+        : externalAgentDefaultOutputs
+    )
+      .filter((output) => !containsExternalFileOutput(output))
       .map((output) => {
         const type = getDeclaredOutputVarType(output)
         return {

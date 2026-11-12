@@ -18,7 +18,11 @@ const Panel = memo((props: PanelProps) => {
   if (nodeClass !== CUSTOM_NODE) return null
 
   if (isExternalAgentWorkflowPreviewData(nodeData))
-    return <ExternalAgentWorkflowPreviewPanel id={props.id} data={nodeData} />
+    return (
+      <BasePanel key={`${props.id}-external`} id={props.id} data={nodeData}>
+        <ExternalAgentWorkflowPreviewPanel id={props.id} data={nodeData} />
+      </BasePanel>
+    )
 
   const PanelComponent = PanelComponentMap[nodeData.type]!
 

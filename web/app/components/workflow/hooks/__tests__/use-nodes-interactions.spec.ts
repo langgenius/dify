@@ -7,9 +7,9 @@ import { act, waitFor } from '@testing-library/react'
 import { use, useLayoutEffect } from 'react'
 import { useEdges, useNodes } from 'reactflow'
 import { onTestFinished } from 'vite-plus/test'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -550,9 +550,7 @@ it.each(['add', 'replace'] as const)(
 it.each(['insert', 'replace'] as const)(
   '%s an external agent in the workflow graph and syncs its configuration and connections',
   async (command) => {
-    const externalAgentData = createExternalAgentWorkflowPreviewData(
-      createExternalRosterPreview()[1]!,
-    )
+    const externalAgentData = createExternalAgentWorkflowPreviewData(createExternalAgentAsset())
     const { result, sync } = setup({
       nodes:
         command === 'insert'

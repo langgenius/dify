@@ -1,4 +1,3 @@
-import type { ExternalAgentWorkflowPreviewAgent } from './types'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import {
@@ -7,16 +6,28 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { VarType } from '@/app/components/workflow/types'
-import { getExternalAgentDefaultInputFormats } from '../preview'
 
 export function isExternalAgentTaskVariableSupported(
-  agent: ExternalAgentWorkflowPreviewAgent,
+  inputModes: readonly string[],
   variable: Pick<Var, 'type'>,
+  fileModes: readonly string[],
 ) {
-  const formats = getExternalAgentDefaultInputFormats(agent.key)
-  if (variable.type === VarType.string) return formats.includes('Text')
+  const normalize = (mode: string) => {
+    const mime = mode.toLowerCase().split(';')[0]?.trim() ?? ''
+    if (mime === 'application/x-pdf') return 'application/pdf'
+    if (mime === 'image/jpg') return 'image/jpeg'
+    if (mime === 'text/x-markdown') return 'text/markdown'
+    return mime
+  }
+  const supports = (value: string) =>
+    inputModes.some((mode) => {
+      const normalized = normalize(mode)
+      const mime = normalize(value)
+      return normalized === mime || normalized === `${mime.split('/')[0]}/*` || normalized === '*/*'
+    })
+  if (variable.type === VarType.string) return supports('text/plain')
   if (variable.type === VarType.file || variable.type === VarType.arrayFile)
-    return formats.includes('PDF')
+    return fileModes.some(supports)
   return false
 }
 
@@ -98,14 +109,16 @@ export function resolveExternalAgentTaskVariable(
 }
 
 export function getExternalAgentTaskVariableIssues(
-  agent: ExternalAgentWorkflowPreviewAgent,
+  inputModes: readonly string[],
   task: string,
   availableVars: NodeOutPutVar[],
+  fileModes: readonly string[],
 ) {
   return matchNotSystemVars([task]).flatMap((selector) => {
     const variable = resolveExternalAgentTaskVariable(selector, availableVars)
     // Missing references keep the existing invalid-reference diagnostic, rather than guessing a type.
-    if (!variable || isExternalAgentTaskVariableSupported(agent, variable)) return []
+    if (!variable || isExternalAgentTaskVariableSupported(inputModes, variable, fileModes))
+      return []
     return [{ selector, variable: selector.slice(1).join('.'), type: variable.type }]
   })
 }

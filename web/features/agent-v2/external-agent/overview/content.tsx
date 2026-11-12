@@ -31,7 +31,7 @@ function DefaultFormats({
 }
 
 export function ExternalAgentOverviewContent(props: ExternalAgentConnectionProps) {
-  const { preview } = props
+  const { overview } = props
   const { t } = useTranslation(['agentRoster'])
   return (
     <div
@@ -46,23 +46,23 @@ export function ExternalAgentOverviewContent(props: ExternalAgentConnectionProps
             {t(($) => $['external.overview.about'])}
           </h2>
           <p className="body-md-regular wrap-break-word text-text-secondary">
-            {preview.agent.description}
+            {overview.agent.description}
           </p>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
             <DefaultFormats
               label={t(($) => $['external.overview.defaultInputFormats'])}
               hint={t(($) => $['external.overview.defaultInputFormatsHint'])}
-              formats={preview.defaultInputFormats}
+              formats={overview.defaultInputFormats}
             />
             <DefaultFormats
               label={t(($) => $['external.overview.defaultOutputFormats'])}
               hint={t(($) => $['external.overview.defaultOutputFormatsHint'])}
-              formats={preview.defaultOutputFormats}
+              formats={overview.defaultOutputFormats}
             />
           </div>
         </section>
-        <ExternalAgentSkills skills={preview.skills} />
-        <ExternalAgentUsedInApps apps={preview.agent.apps} />
+        <ExternalAgentSkills skills={overview.skills} />
+        <ExternalAgentUsedInApps agentId={overview.asset.id} />
       </div>
       <div
         className={cn(
@@ -72,9 +72,9 @@ export function ExternalAgentOverviewContent(props: ExternalAgentConnectionProps
       >
         <ExternalAgentConnection {...props} />
         <ExternalAgentServiceDetails
-          provider={preview.provider}
-          version={preview.version}
-          documentationUrl={preview.documentationUrl}
+          provider={overview.provider}
+          version={overview.version}
+          documentationUrl={overview.documentationUrl}
         />
       </div>
     </div>

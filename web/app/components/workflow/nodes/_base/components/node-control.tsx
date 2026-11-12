@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { NodeRunningStatus } from '../../../types'
@@ -41,42 +40,39 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        {canRun &&
-          !nodesReadOnly &&
-          !isExternalAgentWorkflowPreviewData(data) &&
-          canRunBySingle(data.type, isChildNode) && (
-            <button
-              type="button"
-              aria-label={
-                isSingleRunning
-                  ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
-                  : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
-              }
-              className={`flex size-6 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
-              onClick={() => {
-                const action = isSingleRunning ? 'stop' : 'run'
+        {canRun && !nodesReadOnly && canRunBySingle(data.type, isChildNode) && (
+          <button
+            type="button"
+            aria-label={
+              isSingleRunning
+                ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
+                : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
+            }
+            className={`flex size-6 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
+            onClick={() => {
+              const action = isSingleRunning ? 'stop' : 'run'
 
-                const store = workflowStore.getState()
-                store.setInitShowLastRunTab(true)
-                store.setPendingSingleRun({
-                  nodeId: id,
-                  action,
-                })
-                handleNodeSelect(id)
-              }}
-            >
-              {isSingleRunning ? (
-                <span aria-hidden className="i-custom-vender-line-mediaanddevices-stop size-3" />
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger render={<span className="i-ri-play-large-line size-3" />} />
-                  <TooltipContent>
-                    {t(($) => $['panel.runThisStep'], { ns: 'workflow' })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </button>
-          )}
+              const store = workflowStore.getState()
+              store.setInitShowLastRunTab(true)
+              store.setPendingSingleRun({
+                nodeId: id,
+                action,
+              })
+              handleNodeSelect(id)
+            }}
+          >
+            {isSingleRunning ? (
+              <span aria-hidden className="i-custom-vender-line-mediaanddevices-stop size-3" />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger render={<span className="i-ri-play-large-line size-3" />} />
+                <TooltipContent>
+                  {t(($) => $['panel.runThisStep'], { ns: 'workflow' })}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </button>
+        )}
         <NodeActionsMenu id={id} data={data} />
       </div>
     </div>

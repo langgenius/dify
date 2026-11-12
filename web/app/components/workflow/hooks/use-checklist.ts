@@ -43,8 +43,9 @@ import {
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
-import { getExternalAgentTaskVariableIssues } from '@/features/agent-v2/external-agent/workflow-preview/task-variables'
+import { toExternalAgentOverview } from '@/features/agent-v2/external-agent/model'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
+import { getExternalAgentNodeIssues } from '@/features/agent-v2/external-agent/workflow-preview/validation'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
@@ -138,6 +139,7 @@ const resolveNodeValidator = (
   const validator = nodesExtraData?.[getNodeCatalogType(data)]?.checkValid
   if (validator) return validator
 
+  if (isExternalAgentWorkflowPreviewData(data)) return undefined
   if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data)) return AgentDefault.checkValid
 }
 
@@ -183,7 +185,14 @@ const getDuplicateEndOutputMessages = (
 }
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider', 'agentRoster'])
+  const { t } = useTranslation([
+    'agentV2',
+    'common',
+    'workflow',
+    'modelProvider',
+    'agentRoster',
+    'workflowAgent',
+  ])
   const language = useGetLanguage()
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const contactIds = useMemo(() => getHumanInputContactIds(nodes), [nodes])
@@ -238,6 +247,33 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const resource = useAtomValue(editorResourceAtom)
 
   const map = useNodesAvailableVarList(nodes)
+  const externalAgentIds = useMemo(
+    () => [
+      ...new Set(
+        nodes.flatMap((node) =>
+          isExternalAgentWorkflowPreviewData(node.data) && node.data.agent_binding?.agent_id
+            ? [node.data.agent_binding.agent_id]
+            : [],
+        ),
+      ),
+    ],
+    [nodes],
+  )
+  const externalAgents = useQueries({
+    queries: externalAgentIds.map((agent_id) =>
+      consoleQuery.externalAgents.byAgentId.get.queryOptions({
+        input: { params: { agent_id } },
+        select: toExternalAgentOverview,
+      }),
+    ),
+    combine: (queries) =>
+      Object.fromEntries(queries.map((query, index) => [externalAgentIds[index]!, query.data])),
+  })
+  const externalCapabilities = useQuery(
+    consoleQuery.externalAgents.capabilities.get.queryOptions({
+      enabled: nodes.some((node) => isExternalAgentWorkflowPreviewData(node.data)),
+    }),
+  )
   const inlineAgentNodes = useMemo(
     () =>
       nodes.filter(
@@ -413,27 +449,43 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
       if (node && isExternalAgentWorkflowPreviewData(node.data)) {
-        const taskIssues = getExternalAgentTaskVariableIssues(
-          node.data.external_agent,
-          node.data.agent_task ?? '',
+        const overview = externalAgents[node.data.agent_binding?.agent_id ?? '']
+        const { issues, variableIssues } = getExternalAgentNodeIssues(
+          node.data,
+          overview,
+          externalCapabilities.data?.enabled,
           map[node.id]!.availableVars,
+          externalCapabilities.data?.input_file_modes ?? [],
         )
-        list.push({
-          id: node.id,
-          type: BlockEnum.AgentV2,
-          title: node.data.title,
-          errorMessages: [
-            t(($) => $['external.workflow.runUnavailable'], { ns: 'agentRoster' }),
-            ...taskIssues.map((issue) =>
-              t(($) => $['external.workflow.task.unsupportedType'], {
-                ns: 'agentRoster',
-                variable: issue.variable,
-                type: issue.type,
-              }),
-            ),
-          ],
-          canNavigate: true,
-        })
+        const errorMessages: string[] = issues.map((issue) =>
+          issue === 'invalidVariable'
+            ? t(($) => $['errorMsg.invalidVariable'], { ns: 'workflow' })
+            : issue === 'taskRequired'
+              ? t(($) => $['errorMsg.fieldRequired'], {
+                  ns: 'workflow',
+                  field: t(($) => $['nodes.agent.task.label'], { ns: 'workflowAgent' }),
+                })
+              : t(($) => $[`external.workflow.${issue}`], { ns: 'agentRoster' }),
+        )
+        errorMessages.push(
+          ...variableIssues.map((issue) =>
+            t(($) => $['external.workflow.task.unsupportedType'], {
+              ns: 'agentRoster',
+              variable: issue.variable,
+              type: issue.type,
+            }),
+          ),
+        )
+        const unConnected = shouldCheckStartNode && !validNodes.some((item) => item.id === node.id)
+        if (errorMessages.length || unConnected)
+          list.push({
+            id: node.id,
+            type: BlockEnum.AgentV2,
+            title: node.data.title,
+            errorMessages,
+            unConnected,
+            canNavigate: true,
+          })
         continue
       }
       let moreDataForCheckValid: CheckValidExtraData
@@ -463,7 +515,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         )
 
       const toolIcon = getToolIcon(node!.data)
-      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
+      if (
+        node!.data.type === BlockEnum.Agent &&
+        !isAgentV2NodeData(node!.data) &&
+        !isExternalAgentWorkflowPreviewData(node!.data)
+      ) {
         const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(
@@ -672,6 +728,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     map,
     modelProviders,
     inlineAgentConfigurationIssues,
+    externalAgents,
+    externalCapabilities.data,
     inlineAgentToolPresentation.toolDisplayNameById,
     resourceKind,
     contactLookup,
@@ -688,7 +746,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 }
 
 export const useChecklistBeforePublish = () => {
-  const { t } = useTranslation(['common', 'workflow', 'modelProvider'])
+  const { t } = useTranslation([
+    'common',
+    'workflow',
+    'modelProvider',
+    'agentRoster',
+    'workflowAgent',
+  ])
   const language = useGetLanguage()
   const queryClient = useQueryClient()
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
@@ -782,19 +846,6 @@ export const useChecklistBeforePublish = () => {
     const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
-    const externalAgentPreview = filteredNodes.find((node) =>
-      isExternalAgentWorkflowPreviewData(node.data),
-    )
-    if (externalAgentPreview) {
-      store.getState().setNodes(
-        nodes.map((node) => ({
-          ...node,
-          selected: node.id === externalAgentPreview.id,
-          data: { ...node.data, selected: node.id === externalAgentPreview.id },
-        })),
-      )
-      return false
-    }
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
@@ -882,6 +933,42 @@ export const useChecklistBeforePublish = () => {
     const map = getNodesAvailableVarList(nodes)
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
+      if (node && isExternalAgentWorkflowPreviewData(node.data)) {
+        let overview
+        let capabilities
+        try {
+          capabilities = await queryClient.query(
+            consoleQuery.externalAgents.capabilities.get.queryOptions(),
+          )
+          const agentId = node.data.agent_binding?.agent_id
+          if (agentId)
+            overview = await queryClient.query(
+              consoleQuery.externalAgents.byAgentId.get.queryOptions({
+                input: { params: { agent_id: agentId } },
+                select: toExternalAgentOverview,
+              }),
+            )
+        } catch {
+          return false
+        }
+        const { issues, variableIssues } = getExternalAgentNodeIssues(
+          node.data,
+          overview,
+          capabilities.enabled,
+          map[node.id]!.availableVars,
+          capabilities.input_file_modes,
+        )
+        if (issues.length || variableIssues.length) {
+          store.getState().setNodes(
+            nodes.map((item) => ({
+              ...item,
+              selected: item.id === node.id,
+              data: { ...item.data, selected: item.id === node.id },
+            })),
+          )
+          return false
+        }
+      }
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
       if (node!.data.type === BlockEnum.Tool)
@@ -900,7 +987,11 @@ export const useChecklistBeforePublish = () => {
           language,
         )
 
-      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
+      if (
+        node!.data.type === BlockEnum.Agent &&
+        !isAgentV2NodeData(node!.data) &&
+        !isExternalAgentWorkflowPreviewData(node!.data)
+      ) {
         const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(

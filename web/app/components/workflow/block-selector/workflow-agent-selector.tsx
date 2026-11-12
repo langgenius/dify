@@ -11,9 +11,9 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SearchInput } from '@/app/components/base/search-input'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import { ExternalAgentOptions } from '@/features/agent-v2/external-agent/workflow-preview/agent-options'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { externalWorkflowAgentExamples } from './workflow-agent-selector-preview'
 
 type AgentSource = 'all' | 'dify' | 'external'
 
@@ -51,18 +51,13 @@ export function WorkflowAgentSelectorContent({
     placeholderData: keepPreviousData,
   })
   const difyAgents = source === 'external' ? [] : (agentsQuery.data?.data ?? [])
-  const externalAgents =
-    source === 'dify' || !onSelectExternal
-      ? []
-      : externalWorkflowAgentExamples.filter((agent) =>
-          `${agent.name} ${agent.role} ${agent.description}`
-            .toLocaleLowerCase()
-            .includes(search.trim().toLocaleLowerCase()),
-        )
   const isLoading = source !== 'external' && agentsQuery.isPending
   const hasDifyError = source !== 'external' && agentsQuery.isError
   const isEmpty =
-    !isLoading && !hasDifyError && difyAgents.length === 0 && externalAgents.length === 0
+    !isLoading &&
+    !hasDifyError &&
+    difyAgents.length === 0 &&
+    (source === 'dify' || !onSelectExternal)
   const sources: AgentSource[] = onSelectExternal ? ['all', 'dify', 'external'] : ['all', 'dify']
 
   const selectDifyAgent = (agent: AgentInviteOptionResponse) => {
@@ -174,41 +169,15 @@ export function WorkflowAgentSelectorContent({
                       </span>
                     </Button>
                   ))}
-                {externalAgents.map((agent) => (
-                  <Button
-                    key={agent.key}
-                    variant="ghost"
-                    disabled={!agent.enabled}
-                    className="h-8 w-full shrink-0 justify-start gap-2 rounded-lg ps-3 pe-2 disabled:opacity-50"
-                    onClick={() => {
+                {source !== 'dify' && onSelectExternal && (
+                  <ExternalAgentOptions
+                    keyword={keyword}
+                    onSelect={(agent) => {
                       onRequestClose()
-                      onSelectExternal?.(agent)
+                      onSelectExternal(agent)
                     }}
-                  >
-                    <AppIcon
-                      size="tiny"
-                      icon={agent.icon}
-                      className="rounded-[7px] border-0"
-                      fallback={{
-                        content: (
-                          <span
-                            aria-hidden
-                            className="i-ri-robot-2-line size-3.5 text-text-accent"
-                          />
-                        ),
-                        background: 'var(--color-components-icon-bg-indigo-soft)',
-                      }}
-                    />
-                    <span className="truncate system-sm-medium text-text-secondary">
-                      {agent.name}
-                    </span>
-                    <span className="shrink-0 system-xs-regular text-text-quaternary">
-                      {agent.enabled
-                        ? t(($) => $['roster.nodeSelector.source.external'])
-                        : t(($) => $['external.filters.disabled'])}
-                    </span>
-                  </Button>
-                ))}
+                  />
+                )}
                 {isEmpty && (
                   <p role="status" className="px-3 py-2 system-sm-regular text-text-tertiary">
                     {search.trim()

@@ -14,11 +14,9 @@ import { ExternalAgentActions } from '../roster/components/external-agent-action
 
 export function ExternalAgentManageMenu({
   agent,
-  onUpdate,
   compact = false,
 }: {
   agent: ExternalAgentListItem
-  onUpdate: (agent: ExternalAgentListItem) => void
   compact?: boolean
 }) {
   const { t } = useTranslation(['agentRoster'])
@@ -73,18 +71,7 @@ export function ExternalAgentManageMenu({
         onOpenChange={setOpen}
         onRequest={setRequest}
         fallbackFocus={triggerRef}
-        onEdit={(_, fields) => {
-          onUpdate({ ...agent, ...fields, updatedAt: Date.now() })
-          setOpen(false)
-        }}
-        onToggle={() => {
-          onUpdate({ ...agent, enabled: !agent.enabled, updatedAt: Date.now() })
-          setOpen(false)
-        }}
-        onDelete={() => {
-          setOpen(false)
-          router.push('/agents?agent_type=external')
-        }}
+        onDeleted={() => router.push('/agents?agent_type=external')}
       />
     </>
   )

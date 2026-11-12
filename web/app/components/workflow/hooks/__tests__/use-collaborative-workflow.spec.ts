@@ -1,6 +1,6 @@
 import { act, waitFor } from '@testing-library/react'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -89,7 +89,7 @@ it('broadcasts external agent configuration and its connections through edits', 
     id: 'external-agent',
     data: {
       type: BlockEnum.Agent,
-      ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+      ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
       agent_task: 'Review {{#old-node.contract#}}.',
     },
   })
@@ -121,12 +121,12 @@ it('broadcasts external agent configuration and its connections through edits', 
     data: {
       ...externalAgent.data,
       agent_task: 'Summarize the contract risks.',
-      external_agent_wait_limit: {
+      external_wait: {
         enabled: true,
-        minutes: 20,
-        onTimeout: 'request-cancellation',
-        maxRetries: 2,
-        retryIntervalSeconds: 30,
+        wait_seconds: 1200,
+        on_timeout: 'request_cancellation',
+        additional_retries: 2,
+        retry_interval_seconds: 30,
       },
     },
   }

@@ -14,6 +14,8 @@ export function seedExternalAgentWorkflowQueries(queryClient: QueryClient, appId
     mcpTools: [],
   })
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   seedAppDetail(queryClient, createAppDetailFixture({ id: appId, mode: 'workflow' }))
   seedAppDslVersion(queryClient)
   const input = { params: { app_id: appId } }

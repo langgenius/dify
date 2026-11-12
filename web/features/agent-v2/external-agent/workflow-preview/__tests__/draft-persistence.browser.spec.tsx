@@ -1,6 +1,8 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
   createExternalAgentWorkflowGraph,
@@ -15,17 +17,28 @@ vi.mock('react-i18next', async (importOriginal) => importOriginal())
 const draftApi = vi.hoisted(() => ({
   save: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
   read: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.get>(),
+  rebind:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post
+    >(),
 }))
 
 // boundary: keep draft serialization and hydration real, replacing only backend storage.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const { createWorkflowExternalResponses } = await import('./workflow-api-fixtures')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      ...createWorkflowExternalResponses(),
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': draftApi.save,
       'apps.byAppId.workflows.draft.get': draftApi.read,
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
     }),
   }
 })
@@ -48,13 +61,17 @@ beforeEach(({ onTestFinished }) => {
   const storage = createSerializedWorkflowDraftStorage()
   draftApi.save.mockImplementation(storage.save)
   draftApi.read.mockImplementation(storage.read)
+  draftApi.rebind.mockImplementation(storage.rebind)
 })
 
 it('restores the external agent and its settings from a serialized draft after remounting the graph', async () => {
   const { panel, unmount } = await setup()
   await panel.getByRole('button', { name: 'Change', exact: true }).click()
   await page.getByRole('button', { name: /Document Review Agent/ }).click()
-  const changed = page.getByRole('region', { name: 'Document Review Agent', exact: true })
+  const changed = page.getByRole('region', {
+    name: 'Contract Review Agent Node configuration panel',
+    exact: true,
+  })
   await expect.element(changed).toBeVisible()
   await changed
     .getByRole('textbox', { name: 'Agent task', exact: true })
@@ -63,7 +80,7 @@ it('restores the external agent and its settings from a serialized draft after r
   await userEvent.tab()
   await changed.getByRole('combobox', { name: 'On timeout', exact: true }).click()
   await page.getByRole('option', { name: 'Cancel and retry', exact: true }).click()
-  await changed.getByRole('textbox', { name: 'Max retries', exact: true }).fill('3')
+  await changed.getByRole('textbox', { name: 'Max retries', exact: true }).fill('2')
   await userEvent.tab()
   await changed.getByRole('textbox', { name: 'Retry interval', exact: true }).fill('45')
   await userEvent.tab()
@@ -78,18 +95,21 @@ it('restores the external agent and its settings from a serialized draft after r
       expect.objectContaining({
         id: 'external-agent',
         data: expect.objectContaining({
-          agent_node_kind: 'external_agent',
-          external_agent: expect.objectContaining({ name: 'Document Review Agent' }),
+          agent_node_kind: 'external_a2a',
+          agent_binding: expect.objectContaining({
+            agent_id: '44444444-4444-4444-8444-444444444444',
+            binding_epoch: expect.any(String),
+          }),
           agent_task: 'Review the saved contract.',
           agent_declared_outputs: expect.arrayContaining([
             expect.objectContaining({ name: 'review_notes' }),
           ]),
-          external_agent_wait_limit: {
+          external_wait: {
             enabled: true,
-            minutes: 25,
-            onTimeout: 'cancel-and-retry',
-            maxRetries: 3,
-            retryIntervalSeconds: 45,
+            wait_seconds: 1500,
+            on_timeout: 'cancel_and_retry',
+            additional_retries: 2,
+            retry_interval_seconds: 45,
           },
         }),
       }),
@@ -133,11 +153,28 @@ it('restores the external agent and its settings from a serialized draft after r
     .toHaveTextContent('Cancel and retry')
   await expect
     .element(restored.getByRole('textbox', { name: 'Max retries', exact: true }))
-    .toHaveValue('3')
+    .toHaveValue('2')
   await expect
     .element(restored.getByRole('textbox', { name: 'Retry interval', exact: true }))
     .toHaveValue('45')
   await expect.element(restored.getByRole('button', { name: 'None', exact: true })).toBeVisible()
+})
+
+it('allows running the newly selected agent after rebinding a node that was waiting', async () => {
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: {
+        _singleRunningStatus: NodeRunningStatus.Paused,
+        _isSingleRun: false,
+      },
+    }),
+  })
+  const run = panel.getByRole('button', { name: /Run this step/i })
+  await expect.element(run).toBeDisabled()
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  await page.getByRole('button', { name: /Document Review Agent/ }).click()
+  await expect.element(run).toBeEnabled()
+  await expect.element(panel.getByRole('button', { name: /Document Review Agent/ })).toBeVisible()
 })
 
 it('saves an edited default output, removes only the failure connection, and restores both from the draft', async () => {
@@ -249,4 +286,61 @@ it('edits a boolean output fallback through its switch and saves the boolean val
         ?.data.default_value
     })
     .toEqual([{ key: 'approved', type: 'boolean', value: true }])
+})
+
+it('hydrates the server binding epoch after first save without overwriting Task edits made during GET', async () => {
+  const storage = createSerializedWorkflowDraftStorage()
+  const gate = createDeferred<void>()
+  draftApi.save.mockImplementation(storage.save)
+  draftApi.read.mockImplementation(async (...args) => {
+    const response = await storage.read(...args)
+    await gate.promise
+    return response
+  })
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: {
+        agent_binding: {
+          binding_type: 'roster_agent',
+          agent_id: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    }),
+  })
+  const task = panel.getByRole('textbox', { name: 'Agent task', exact: true })
+  await task.fill('First saved instructions.')
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  await expect.poll(() => draftApi.read.mock.calls.length).toBe(1)
+  await task.fill('New instructions typed while the binding is being read.')
+  gate.resolve()
+  await expect
+    .element(task)
+    .toHaveTextContent('New instructions typed while the binding is being read.')
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  await expect
+    .poll(() => draftApi.save.mock.calls.at(-1)?.[0].body.graph)
+    .toMatchObject({
+      nodes: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'external-agent',
+          data: expect.objectContaining({
+            agent_task: 'New instructions typed while the binding is being read.',
+            agent_binding: expect.objectContaining({ binding_epoch: 'server-epoch-1' }),
+          }),
+        }),
+      ]),
+    })
+  expect(draftApi.save.mock.calls[0]?.[0].body.graph).toMatchObject({
+    nodes: expect.arrayContaining([
+      expect.objectContaining({
+        id: 'external-agent',
+        data: expect.objectContaining({
+          agent_binding: {
+            binding_type: 'roster_agent',
+            agent_id: '22222222-2222-4222-8222-222222222222',
+          },
+        }),
+      }),
+    ]),
+  })
 })

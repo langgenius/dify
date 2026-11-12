@@ -2,15 +2,15 @@ import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/type
 import { describe, expect, it } from 'vite-plus/test'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { getDefaultValue, mergeDefaultValue } from '../utils'
 
 const externalAgentNode = (outputs?: DeclaredOutputConfig[]) =>
   createNode({
     data: {
       type: BlockEnum.Agent,
-      ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+      ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
       agent_declared_outputs: outputs,
     },
   }).data
@@ -58,11 +58,14 @@ describe('external agent error defaults', () => {
     ])
   })
 
-  it('uses the external output fallback when the node has no configured outputs', () => {
-    expect(getDefaultValue(externalAgentNode())).toEqual([
-      { key: 'text', type: VarType.string, value: '' },
-    ])
-  })
+  it.each([undefined, []])(
+    'uses the external output fallback when no outputs are declared: %j',
+    (outputs) => {
+      expect(getDefaultValue(externalAgentNode(outputs))).toEqual([
+        { key: 'text', type: VarType.string, value: '' },
+      ])
+    },
+  )
 
   it('retains compatible defaults through external output additions, removals, renames, and type changes', () => {
     const previous = [

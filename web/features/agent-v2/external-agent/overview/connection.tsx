@@ -1,35 +1,43 @@
-import type { ExternalAgentOverviewPreview } from '../preview'
+import type { ExternalAgentOverview } from '../model'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { consoleQuery } from '@/service/console'
 import { EditExternalAgentConnection } from './edit-connection'
 
 export type ExternalAgentConnectionProps = {
-  preview: ExternalAgentOverviewPreview
-} & (
-  | { readOnly: true; onUpdate?: never }
-  | {
-      readOnly?: false
-      onUpdate: (updates: Partial<ExternalAgentOverviewPreview>) => void
-    }
-)
+  overview: ExternalAgentOverview
+  readOnly?: boolean
+}
 
 export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
-  const { preview } = props
+  const { overview } = props
   const { t, i18n } = useTranslation(['agentRoster'])
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
   const verificationId = useId()
   const tracingId = useId()
-  const verifiedDate = new Intl.DateTimeFormat(i18n.language, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(preview.verifiedAt))
+  const members = useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }))
+  const connectedBy =
+    members.data?.accounts.find((member) => member.id === overview.connectedBy)?.name ??
+    overview.connectedBy
+  const tracing = useMutation(
+    consoleQuery.externalAgents.byAgentId.tracing.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const verifiedDate = overview.verifiedAt
+    ? new Intl.DateTimeFormat(i18n.language, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }).format(new Date(overview.verifiedAt))
+    : null
 
   return (
     <div className="rounded-xl bg-background-section p-4">
@@ -41,9 +49,7 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
           </h2>
           <span aria-hidden className="i-ri-book-open-line size-3.5 text-text-tertiary" />
           <div className="ms-auto">
-            {!props.readOnly && canManage && (
-              <EditExternalAgentConnection preview={preview} onUpdate={props.onUpdate} />
-            )}
+            {!props.readOnly && canManage && <EditExternalAgentConnection overview={overview} />}
           </div>
           <CollapsibleTrigger
             className="group flex items-center justify-center rounded-sm"
@@ -62,7 +68,7 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
                 {t(($) => $['external.connection.endpoint'])}
               </dt>
               <dd className="font-mono leading-4.5 break-all text-text-secondary">
-                {preview.endpoint}
+                {overview.endpoint}
               </dd>
             </div>
             <div className="grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] gap-3 py-0.5">
@@ -70,14 +76,14 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
                 {t(($) => $['external.connection.authentication'])}
               </dt>
               <dd className="text-text-secondary">
-                {preview.authentication === 'bearer'
+                {overview.authentication === 'bearer'
                   ? t(($) => $['external.connection.bearerToken'])
                   : t(($) => $['external.connection.none'])}
               </dd>
             </div>
             <div className="grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] gap-3 py-0.5">
               <dt className="text-text-tertiary">{t(($) => $['external.overview.protocol'])}</dt>
-              <dd className="text-text-secondary">{preview.protocol}</dd>
+              <dd className="text-text-secondary">{overview.protocol || '—'}</dd>
             </div>
             <div className="grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] gap-3 py-0.5">
               <dt className="flex items-center gap-1 text-text-tertiary">
@@ -90,7 +96,9 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
                 </Infotip>
               </dt>
               <dd className="text-text-secondary">
-                {t(($) => $['external.overview.verifiedAt'], { date: verifiedDate })}
+                {verifiedDate
+                  ? t(($) => $['external.overview.verifiedAt'], { date: verifiedDate })
+                  : '—'}
               </dd>
             </div>
             <div className="grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] gap-3 py-0.5">
@@ -100,9 +108,9 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
                   aria-hidden
                   className="flex size-4 shrink-0 items-center justify-center rounded-full border border-divider-regular bg-components-icon-bg-indigo-soft text-[10px] text-util-colors-indigo-indigo-600"
                 >
-                  {preview.connectedBy.charAt(0)}
+                  {connectedBy.charAt(0)}
                 </span>
-                {preview.connectedBy}
+                {connectedBy}
               </dd>
             </div>
           </dl>
@@ -122,23 +130,34 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
           </Infotip>
           {props.readOnly ? (
             <span className="ms-auto system-xs-regular text-text-tertiary">
-              {preview.tracing
+              {overview.tracing
                 ? t(($) => $['external.overview.tracingOn'])
                 : t(($) => $['external.overview.tracingOff'])}
             </span>
           ) : (
             <Switch
               className="ms-auto"
-              checked={preview.tracing}
-              onCheckedChange={(tracing) => props.onUpdate({ tracing })}
+              checked={overview.tracing}
+              onCheckedChange={(enabled) =>
+                tracing.mutate({ params: { agent_id: overview.asset.id }, body: { enabled } })
+              }
               aria-labelledby={tracingId}
-              disabled={!canManage}
+              disabled={
+                !canManage ||
+                tracing.isPending ||
+                (!overview.tracing && !overview.traceabilitySupported)
+              }
             />
           )}
         </div>
         <p className="system-xs-regular text-text-tertiary">
           {t(($) => $['external.overview.tracingDescription'])}
         </p>
+        {tracing.isError && (
+          <p role="alert" className="system-xs-regular text-text-destructive">
+            {t(($) => $['external.api.saveFailed'])}
+          </p>
+        )}
       </div>
     </div>
   )

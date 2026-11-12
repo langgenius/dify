@@ -1,6 +1,6 @@
 'use client'
 
-import type { LocalProviderConfig } from './tracing-provider-dialog'
+import type { ExternalTracingConfigurationResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ConfigurableTracingProvider } from '@/app/components/app/tracing/providers'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -12,16 +12,20 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { skipToken, useMutation, useQueries } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { configurableProviders, tracingProviders } from '@/app/components/app/tracing/providers'
 import { TracingIcon } from '@/app/components/app/tracing/tracing-icon'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { consoleQuery } from '@/service/console'
 import { ProviderConfigurationDialog } from './tracing-provider-dialog'
 
-type LocalTracingConfiguration = {
+type ProviderConfiguration = {
   enabled: boolean
   provider: ConfigurableTracingProvider | null
-  configs: Partial<Record<ConfigurableTracingProvider, LocalProviderConfig>>
+  configs: Partial<Record<ConfigurableTracingProvider, ExternalTracingConfigurationResponse>>
 }
 
 type ProviderPanelProps = {
@@ -29,17 +33,6 @@ type ProviderPanelProps = {
   inUse: boolean
   provider: ConfigurableTracingProvider
   onConfigure: () => void
-}
-
-const initialConfiguration: LocalTracingConfiguration = {
-  enabled: true,
-  provider: 'langsmith',
-  configs: {
-    langsmith: {
-      values: { project: 'Contract Review', endpoint: 'https://api.smith.langchain.com' },
-      configuredSecrets: ['api_key'],
-    },
-  },
 }
 
 function providerTranslationKey(
@@ -96,69 +89,140 @@ function ProviderPanel({ configured, inUse, provider, onConfigure }: ProviderPan
   )
 }
 
-function ExternalAgentTracingConfigurationSession() {
-  const { t } = useTranslation(['app'])
-  const [configuration, setConfiguration] = useState(initialConfiguration)
+function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string }) {
+  const { t } = useTranslation(['app', 'common', 'agentRoster'])
+  const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const queries = useQueries({
+    queries: configurableProviders.map((provider) =>
+      consoleQuery.externalAgents.byAgentId.tracingConfig.byProvider.get.queryOptions({
+        input: canManage ? { params: { agent_id: agentId, provider } } : skipToken,
+        retry: false,
+      }),
+    ),
+  })
+  const save = useMutation(
+    consoleQuery.externalAgents.byAgentId.tracingConfig.byProvider.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const remove = useMutation(
+    consoleQuery.externalAgents.byAgentId.tracingConfig.byProvider.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const [editor, setEditor] = useState<{
-    config: LocalProviderConfig | undefined
+    config: ExternalTracingConfigurationResponse | undefined
     inUse: boolean
     provider: ConfigurableTracingProvider
     open: boolean
   } | null>(null)
+  const titleId = useId()
+  const configs: ProviderConfiguration['configs'] = {}
+  configurableProviders.forEach((provider, index) => {
+    const config = queries[index]?.data?.configuration
+    if (config) configs[provider] = config
+  })
+  const configuredProviders = configurableProviders.filter((provider) => configs[provider])
+  const selectedProvider =
+    configuredProviders.find((provider) => configs[provider]?.enabled) ??
+    configuredProviders[0] ??
+    null
+  const configuration = {
+    provider: selectedProvider,
+    enabled: selectedProvider ? configs[selectedProvider]?.enabled === true : false,
+    configs,
+  }
   const configuringProvider = editor?.provider ?? null
   const closeEditor = () => setEditor((current) => current && { ...current, open: false })
-  const titleId = useId()
-  const selectedProvider = configuration.provider
-  const selectedProviderConfig = selectedProvider
-    ? configuration.configs[selectedProvider]
-    : undefined
-  const cannotEnable = !configuration.enabled && (!selectedProvider || !selectedProviderConfig)
-  const configuredProviders = configurableProviders.filter(
-    (provider) => configuration.configs[provider],
-  )
-  const availableProviders = configurableProviders.filter(
-    (provider) => !configuration.configs[provider],
-  )
+  const selectedProviderConfig = selectedProvider ? configs[selectedProvider] : undefined
+  const isWriting = save.isPending || remove.isPending
+  const cannotEnable = isWriting || (!configuration.enabled && !selectedProviderConfig)
+  const availableProviders = configurableProviders.filter((provider) => !configs[provider])
+  const failure = save.error ?? remove.error
+  const failureMessage =
+    failure instanceof Error
+      ? failure.message
+      : failure
+        ? t(($) => $['external.api.saveFailed'], { ns: 'agentRoster' })
+        : undefined
 
-  const updateConfiguration = (changes: Partial<LocalTracingConfiguration>) => {
-    setConfiguration((current) => ({ ...current, ...changes }))
+  function updateConfiguration(changes: {
+    enabled?: boolean
+    provider?: ConfigurableTracingProvider
+  }) {
+    const provider = changes.provider ?? selectedProvider
+    const config = provider ? configs[provider] : undefined
+    if (!provider || !config || isWriting) return
+    const values = Object.fromEntries(
+      tracingProviders[provider].fields
+        .filter((field) => !field.secret && config.values[field.name] !== undefined)
+        .map((field) => [field.name, config.values[field.name]]),
+    )
+    save.mutate({
+      params: { agent_id: agentId, provider },
+      body: {
+        config: values,
+        enabled: changes.enabled ?? configuration.enabled,
+        capture_content: config.capture_content,
+        expected_revision: config.revision,
+      },
+    })
   }
-
-  const openEditor = (provider: ConfigurableTracingProvider) => {
+  function openEditor(provider: ConfigurableTracingProvider) {
+    if (isWriting) return
+    save.reset()
+    remove.reset()
     setEditor({
-      config: configuration.configs[provider],
-      inUse: configuration.enabled && configuration.provider === provider,
+      config: configs[provider],
+      inUse: configuration.enabled && provider === selectedProvider,
       provider,
       open: true,
     })
   }
-
-  const saveProviderConfig = (
+  function saveProviderConfig(
     provider: ConfigurableTracingProvider,
-    config: LocalProviderConfig,
-  ) => {
-    setConfiguration((current) => ({
-      ...current,
-      enabled: current.configs[provider] ? current.enabled : true,
-      provider: current.configs[provider] ? current.provider : provider,
-      configs: { ...current.configs, [provider]: config },
-    }))
-    closeEditor()
+    values: Record<string, string>,
+    captureContent: boolean,
+  ) {
+    if (isWriting) return
+    save.mutate(
+      {
+        params: { agent_id: agentId, provider },
+        body: {
+          config: values,
+          enabled: editor?.config?.enabled ?? true,
+          capture_content: captureContent,
+          expected_revision: editor?.config?.revision ?? 0,
+        },
+      },
+      { onSuccess: closeEditor },
+    )
   }
-
-  const removeProviderConfig = (provider: ConfigurableTracingProvider) => {
-    setConfiguration((current) => {
-      const configs = { ...current.configs }
-      delete configs[provider]
-      const removingInUseProvider = current.provider === provider
-      return {
-        enabled: removingInUseProvider ? false : current.enabled,
-        provider: removingInUseProvider ? null : current.provider,
-        configs,
-      }
-    })
-    closeEditor()
+  function removeProviderConfig(provider: ConfigurableTracingProvider) {
+    if (!editor?.config || isWriting) return
+    remove.mutate(
+      {
+        params: { agent_id: agentId, provider },
+        query: { expected_revision: editor.config.revision },
+      },
+      { onSuccess: closeEditor },
+    )
   }
+  async function refreshEditor() {
+    if (!editor) return
+    const provider = editor.provider
+    const response = await queries[configurableProviders.indexOf(provider)]?.refetch()
+    if (response?.isSuccess)
+      setEditor((current) =>
+        current?.provider === provider
+          ? { ...current, config: response.data.configuration ?? undefined }
+          : current,
+      )
+  }
+  if (!canManage) return null
+  if (queries.some((query) => query.isError)) return null
+  if (queries.some((query) => query.isPending))
+    return <Button loading>{t(($) => $['tracing.title'], { ns: 'app' })}</Button>
 
   const providerIconClassName = selectedProvider
     ? tracingProviders[selectedProvider].icon
@@ -275,11 +339,17 @@ function ExternalAgentTracingConfigurationSession() {
               </div>
             </div>
           </Field>
+          {failureMessage && !editor?.open && (
+            <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
+              {failureMessage}
+            </p>
+          )}
           <Separator className="my-3 bg-divider-subtle" />
           <RadioGroup<ConfigurableTracingProvider | null>
             aria-label={t(($) => $['tracing.configProviderTitle.configured'], { ns: 'app' })}
             className="block space-y-2"
             value={selectedProvider}
+            disabled={isWriting}
             onValueChange={(provider) => {
               if (provider && configuration.configs[provider])
                 updateConfiguration({ enabled: true, provider })
@@ -294,7 +364,7 @@ function ExternalAgentTracingConfigurationSession() {
                   <ProviderPanel
                     key={provider}
                     configured
-                    inUse={provider === selectedProvider}
+                    inUse={configuration.enabled && provider === selectedProvider}
                     provider={provider}
                     onConfigure={() => openEditor(provider)}
                   />
@@ -345,7 +415,12 @@ function ExternalAgentTracingConfigurationSession() {
               inUse={editor?.inUse ?? false}
               provider={configuringProvider}
               onRemove={() => removeProviderConfig(configuringProvider)}
-              onSave={(config) => saveProviderConfig(configuringProvider, config)}
+              onSave={(config, captureContent) =>
+                saveProviderConfig(configuringProvider, config, captureContent)
+              }
+              pending={isWriting}
+              error={failureMessage}
+              onRefresh={() => void refreshEditor()}
             />
           )}
         </DialogContent>
@@ -354,10 +429,6 @@ function ExternalAgentTracingConfigurationSession() {
   )
 }
 
-/**
- * Feature-local, session-only tracing controls for an external Agent preview.
- * `key` resets every configuration draft when the route identity changes.
- */
 export function ExternalAgentTracingConfiguration({ agentId }: { agentId: string }) {
-  return <ExternalAgentTracingConfigurationSession key={agentId} />
+  return <ExternalAgentTracingConfigurationSession key={agentId} agentId={agentId} />
 }

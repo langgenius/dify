@@ -1,10 +1,10 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { ExternalAgentWorkflowPreviewAgent } from './types'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useQuery } from '@tanstack/react-query'
 import { $insertNodes } from 'lexical'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks/use-workflow-variables'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { consoleQuery } from '@/service/console'
 import {
   getExternalAgentTaskVariableIssues,
   isExternalAgentTaskVariableSupported,
@@ -51,14 +52,16 @@ function TaskToolbar({ value, focused }: { value: string; focused: boolean }) {
 
 export function ExternalAgentTaskField({
   id,
-  agent,
+  inputModes,
+  readOnly,
   value,
   outputs,
   onChange,
   onOutputsChange,
 }: {
   id: string
-  agent: ExternalAgentWorkflowPreviewAgent
+  inputModes: readonly string[]
+  readOnly: boolean
   value: string
   outputs: DeclaredOutputConfig[]
   onChange: (value: string) => void
@@ -68,14 +71,25 @@ export function ExternalAgentTaskField({
   const labelId = useId()
   const warningId = useId()
   const [focused, setFocused] = useState(false)
+  const { data: capabilities } = useQuery(
+    consoleQuery.externalAgents.capabilities.get.queryOptions(),
+  )
+  const fileModes = capabilities?.input_file_modes ?? []
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)
   const { availableVars: selectableVariables } = useAvailableVarList(id, {
-    filterVar: (variable) => isExternalAgentTaskVariableSupported(agent, variable),
+    filterVar: (variable) => isExternalAgentTaskVariableSupported(inputModes, variable, fileModes),
   })
-  const issues = getExternalAgentTaskVariableIssues(agent, value, availableVars)
+  const issues = capabilities
+    ? getExternalAgentTaskVariableIssues(inputModes, value, availableVars, fileModes)
+    : []
   const getWarning = (selector: string[]) => {
     const variable = resolveExternalAgentTaskVariable(selector, availableVars)
-    if (!variable || isExternalAgentTaskVariableSupported(agent, variable)) return undefined
+    if (
+      !capabilities ||
+      !variable ||
+      isExternalAgentTaskVariableSupported(inputModes, variable, fileModes)
+    )
+      return undefined
     return t(($) => $['external.workflow.task.unsupportedType'], {
       ns: 'agentRoster',
       variable: selector.slice(1).join('.'),
@@ -130,7 +144,7 @@ export function ExternalAgentTaskField({
             value={value}
             onChange={onChange}
             compact
-            editable
+            editable={!readOnly}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             workflowVariableBlock={{
@@ -139,7 +153,10 @@ export function ExternalAgentTaskField({
               selectableVariables,
               filterVar: (_variable, selector) => {
                 const variable = resolveExternalAgentTaskVariable(selector, availableVars)
-                return !!variable && isExternalAgentTaskVariableSupported(agent, variable)
+                return (
+                  !!variable &&
+                  isExternalAgentTaskVariableSupported(inputModes, variable, fileModes)
+                )
               },
               getWarning,
               workflowNodesMap,

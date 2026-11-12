@@ -2,10 +2,12 @@ import type { ComponentType } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { ExternalAgentWorkflowPreviewNodeData } from '../types'
 import type { CommonNodeType, WorkflowDataUpdater } from '@/app/components/workflow/types'
-import ReactFlow, { Handle, Position, useStore as useReactflow } from 'reactflow'
+import ReactFlow, { Handle, Position, useStore as useReactflow, useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useNodesSyncDraftByCanEdit } from '@/app/components/workflow-app/hooks/use-nodes-sync-draft'
 import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas'
+import { useWorkflowRefreshDraft } from '@/app/components/workflow-app/hooks/use-workflow-refresh-draft'
+import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store/provider'
 import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { NodeComponentMap } from '@/app/components/workflow/nodes/components'
@@ -13,6 +15,8 @@ import Panel from '@/app/components/workflow/nodes/panel'
 import { useWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { asRecord } from '../../model'
 import { isExternalAgentWorkflowPreviewData } from '../types'
 
 // The Agent catalog entry routes external preview data before mounting Dify API owners.
@@ -53,10 +57,11 @@ function SelectedPanel() {
 export function ExternalAgentWorkflowCanvas({ graph }: { graph: WorkflowDataUpdater }) {
   const draft = useNodesSyncDraftByCanEdit(true)
   const workflowStore = useWorkflowStore()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas('workflow')
   const hydrated = getWorkflowDraftGraphForCanvas(graph)
   return (
-    <HooksStoreContextProvider {...draft}>
+    <HooksStoreContextProvider {...draft} handleRefreshWorkflowDraft={handleRefreshWorkflowDraft}>
       <button type="button" onClick={() => workflowStore.getState().flushPendingSync()}>
         Save workflow draft
       </button>
@@ -67,6 +72,15 @@ export function ExternalAgentWorkflowCanvas({ graph }: { graph: WorkflowDataUpda
 
 function WorkflowCanvas({ graph }: { graph: WorkflowDataUpdater }) {
   const { handleNodeClick } = useNodesInteractions()
+  const store = useStoreApi()
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((event) => {
+    if (typeof event !== 'string' && event.type === WORKFLOW_DATA_UPDATE) {
+      const payload = asRecord(event.payload)
+      if (Array.isArray(payload.nodes)) store.getState().setNodes(payload.nodes)
+      if (Array.isArray(payload.edges)) store.getState().setEdges(payload.edges)
+    }
+  })
   return (
     <div className="isolate flex gap-4" style={{ height: 960 }}>
       <section aria-label="Agent canvas" style={{ width: 480, height: 960 }}>

@@ -1,7 +1,6 @@
 'use client'
 
-import type { ExternalAgentListItem } from '../../roster/components/external-agent-list'
-import type { ExternalAgentOverviewPreview } from '../preview'
+import type { ExternalAgentOverview } from '../model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Menu, MenuContent, MenuLinkItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValue } from 'jotai'
@@ -11,27 +10,15 @@ import Link from '@/next/link'
 import { ExternalAgentManageMenu } from '../manage-menu'
 import { ExternalAgentTestPanel } from './test-run'
 
-export function ExternalAgentOverviewActions({
-  preview,
-  onUpdate,
-}: {
-  preview: ExternalAgentOverviewPreview
-  onUpdate: (agent: ExternalAgentListItem) => void
-}) {
+export function ExternalAgentOverviewActions({ overview }: { overview: ExternalAgentOverview }) {
   const { t } = useTranslation(['agentRoster', 'common', 'app'])
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { agent, skills, sampleResponse, sampleTraceSteps, tracing } = preview
+  const { agent } = overview
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <ExternalAgentManageMenu agent={agent} onUpdate={onUpdate} />
-      <ExternalAgentTestPanel
-        key={agent.key}
-        skills={skills}
-        sampleResponse={sampleResponse}
-        sampleTraceSteps={sampleTraceSteps}
-        tracing={tracing}
-      />
+      <ExternalAgentManageMenu agent={agent} />
+      <ExternalAgentTestPanel overview={overview} />
       {canManage && (
         <Menu>
           <MenuTrigger render={<Button variant="primary" disabled={!agent.enabled} />}>

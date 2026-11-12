@@ -1,17 +1,14 @@
-import type { ExternalAgentWorkflowPreviewAgent } from './types'
 import { DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
+import { toExternalAgentOverview } from '../model'
 import { ExternalAgentOverviewContent } from '../overview/content'
 import { ExternalAgentIdentity } from '../overview/identity'
-import { useExternalAgentPreview } from '../state'
 
-export function ExternalAgentDetailsDialogContent({
-  agent,
-}: {
-  agent: ExternalAgentWorkflowPreviewAgent
-}) {
+export function ExternalAgentDetailsDialogContent({ agentId }: { agentId: string }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const titleId = useId()
   return (
@@ -31,23 +28,38 @@ export function ExternalAgentDetailsDialogContent({
           }
         />
       </div>
-      <ExternalAgentDetails agent={agent} />
+      <ExternalAgentDetails agentId={agentId} />
     </DialogContent>
   )
 }
 
-function ExternalAgentDetails({ agent }: { agent: ExternalAgentWorkflowPreviewAgent }) {
-  const { preview } = useExternalAgentPreview(agent.key, agent)
+function ExternalAgentDetails({ agentId }: { agentId: string }) {
+  const { t } = useTranslation(['agentRoster'])
+  const query = useQuery(
+    consoleQuery.externalAgents.byAgentId.get.queryOptions({
+      input: { params: { agent_id: agentId } },
+      select: toExternalAgentOverview,
+    }),
+  )
+  if (query.isPending)
+    return <div aria-hidden className="m-6 h-60 animate-pulse rounded-xl bg-state-base-hover-alt" />
+  if (query.isError)
+    return (
+      <p role="status" className="p-6 system-sm-regular text-text-tertiary">
+        {t(($) => $['external.workflow.detailUnavailable'])}
+      </p>
+    )
+  const overview = query.data
   return (
     <>
       <div className="flex shrink-0 items-center gap-4 p-6">
-        <ExternalAgentIdentity agent={preview.agent} heading="h2" />
+        <ExternalAgentIdentity agent={overview.agent} heading="h2" />
       </div>
       <div
         data-external-agent-overview-scroll
         className="@container/external-agent isolate min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
-        <ExternalAgentOverviewContent preview={preview} readOnly />
+        <ExternalAgentOverviewContent overview={overview} readOnly />
       </div>
     </>
   )

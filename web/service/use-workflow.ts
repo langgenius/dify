@@ -14,7 +14,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { getExternalAgentInvocationId } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 // oxlint-disable-next-line no-restricted-imports -- run and version history hooks take prebuilt flow URLs
 import { get } from './base'
 import { legacyWorkflowVersionHistoryKey } from './console/workflow-version-cache'
@@ -195,7 +197,12 @@ export const useRestoreWorkflow = (resource: EditorResource) => {
   })
 }
 
-function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: boolean) {
+function lastRunQueryOptions(
+  resource: EditorResource,
+  nodeId: string,
+  enabled: boolean,
+  expectedExecutionId?: string,
+) {
   switch (resource.kind) {
     case 'app':
       return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
@@ -203,6 +210,24 @@ function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: 
         enabled,
         retry: 0,
         context: { silent: true },
+        select: (execution) =>
+          expectedExecutionId && execution.id !== expectedExecutionId ? undefined : execution,
+        refetchInterval: (query) => {
+          const execution = query.state.data
+          if (query.state.error) {
+            if ([401, 403, 404, 410].includes(getHttpErrorStatus(query.state.error) ?? 0))
+              return false
+            return expectedExecutionId || (execution && getExternalAgentInvocationId(execution))
+              ? 1_500
+              : false
+          }
+          if (expectedExecutionId && execution && execution.id !== expectedExecutionId) return 1_500
+          return execution &&
+            getExternalAgentInvocationId(execution) &&
+            ['paused', 'running'].includes(execution.status ?? '')
+            ? 1_500
+            : false
+        },
       })
     case 'knowledge-pipeline':
       return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
@@ -249,8 +274,12 @@ function lastRunQueryKey(resource: EditorResource, nodeId?: string) {
       })
   }
 }
-export const useLastRun = (resource: EditorResource, nodeId: string, enabled: boolean) =>
-  useQuery(lastRunQueryOptions(resource, nodeId, enabled))
+export const useLastRun = (
+  resource: EditorResource,
+  nodeId: string,
+  enabled: boolean,
+  expectedExecutionId?: string,
+) => useQuery(lastRunQueryOptions(resource, nodeId, enabled, expectedExecutionId))
 
 export const useInvalidateLastRun = (resource: EditorResource, nodeId: string) => {
   const queryClient = useQueryClient()

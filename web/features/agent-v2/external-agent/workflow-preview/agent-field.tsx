@@ -1,25 +1,41 @@
-import type { ExternalAgentWorkflowPreviewAgent } from './types'
+import type { ExternalAgentOverview } from '../model'
+import type { ExternalAgentWorkflowBinding, ExternalAgentWorkflowPreviewAgent } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useDebounce } from 'ahooks'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SearchInput } from '@/app/components/base/search-input'
-import { externalWorkflowAgentExamples } from '@/app/components/workflow/block-selector/workflow-agent-selector-preview'
+import { ExternalAgentOptions } from './agent-options'
 import { ExternalAgentDetailsDialogContent } from './details-dialog'
 import { ExternalAgentBadge } from './external-badge'
 
 export function ExternalAgentField({
-  agent,
+  binding,
+  overview,
+  isChanging,
+  hasError,
+  readOnly,
   onChange,
 }: {
-  agent: ExternalAgentWorkflowPreviewAgent
-  onChange: (agent: ExternalAgentWorkflowPreviewAgent) => void
+  binding?: ExternalAgentWorkflowBinding
+  overview?: ExternalAgentOverview
+  isChanging: boolean
+  hasError: boolean
+  readOnly: boolean
+  onChange: (agent: ExternalAgentWorkflowPreviewAgent) => Promise<boolean>
 }) {
   const { t } = useTranslation(['workflow', 'workflowAgent', 'agentRoster'])
   const labelId = useId()
   const [open, setOpen] = useState(false)
+  const originalName = binding?.original_reference?.display_name
+  const name =
+    overview?.agent.name ??
+    (typeof originalName === 'string'
+      ? originalName
+      : t(($) => $['external.workflow.unconnected'], { ns: 'agentRoster' }))
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div role="group" aria-labelledby={labelId} className="px-4 pt-4 pb-2">
@@ -28,13 +44,21 @@ export function ExternalAgentField({
             {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
           </span>
           <PopoverTrigger
-            render={<Button variant="ghost" size="small" className="text-text-tertiary" />}
+            render={
+              <Button
+                variant="ghost"
+                size="small"
+                disabled={isChanging || readOnly}
+                className="text-text-tertiary"
+              />
+            }
           >
             {t(($) => $['nodes.agent.roster.change'], { ns: 'workflowAgent' })}
           </PopoverTrigger>
         </div>
         <Dialog>
           <DialogTrigger
+            disabled={!binding?.agent_id}
             render={
               <Button
                 variant="ghost"
@@ -46,7 +70,7 @@ export function ExternalAgentField({
               <AppIcon
                 size="tiny"
                 className="size-5 rounded-md"
-                icon={agent.icon}
+                icon={overview?.agent.icon}
                 fallback={{
                   content: (
                     <span aria-hidden className="i-ri-robot-2-line size-3.5 text-text-accent" />
@@ -55,8 +79,9 @@ export function ExternalAgentField({
                 }}
               />
             </span>
+            {/* oxlint-disable-next-line dify/require-title-for-truncated-text -- This trigger opens the agent details dialog with its full identity. */}
             <span className="truncate system-sm-regular text-components-input-text-filled">
-              {agent.name}
+              {name}
             </span>
             <ExternalAgentBadge />
             <span
@@ -64,17 +89,21 @@ export function ExternalAgentField({
               className="ms-auto me-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
             />
           </DialogTrigger>
-          <ExternalAgentDetailsDialogContent agent={agent} />
+          {binding?.agent_id && <ExternalAgentDetailsDialogContent agentId={binding.agent_id} />}
         </Dialog>
+        {hasError && (
+          <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
+            {t(($) => $['external.workflow.rebindError'], { ns: 'agentRoster' })}
+          </p>
+        )}
       </div>
       <PopoverContent align="start" className="w-100 max-w-[calc(100vw-2rem)] p-1">
         <PopoverTitle className="sr-only">
           {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
         </PopoverTitle>
-        <ExternalAgentOptions
-          onSelect={(next) => {
-            onChange(next)
-            setOpen(false)
+        <ExternalAgentChangeOptions
+          onSelect={async (next) => {
+            if (await onChange(next)) setOpen(false)
           }}
         />
       </PopoverContent>
@@ -82,16 +111,14 @@ export function ExternalAgentField({
   )
 }
 
-function ExternalAgentOptions({
+function ExternalAgentChangeOptions({
   onSelect,
 }: {
-  onSelect: (agent: ExternalAgentWorkflowPreviewAgent) => void
+  onSelect: (agent: ExternalAgentWorkflowPreviewAgent) => Promise<void>
 }) {
   const { t } = useTranslation(['agentRoster'])
   const [search, setSearch] = useState('')
-  const agents = externalWorkflowAgentExamples.filter((agent) =>
-    agent.name.toLowerCase().includes(search.trim().toLowerCase()),
-  )
+  const keyword = useDebounce(search.trim(), { wait: 300 })
   return (
     <div>
       <div className="p-1">
@@ -103,28 +130,7 @@ function ExternalAgentOptions({
         />
       </div>
       <div className="flex max-h-60 flex-col overflow-y-auto p-1">
-        {agents.map((agent) => (
-          <Button
-            key={agent.key}
-            variant="ghost"
-            disabled={!agent.enabled}
-            className="h-8 w-full shrink-0 justify-start gap-2"
-            onClick={() => onSelect(agent)}
-          >
-            <AppIcon size="tiny" icon={agent.icon} />
-            <span className="truncate system-sm-medium">{agent.name}</span>
-            <span className="system-xs-regular text-text-quaternary">
-              {agent.enabled
-                ? t(($) => $['roster.nodeSelector.source.external'])
-                : t(($) => $['external.filters.disabled'])}
-            </span>
-          </Button>
-        ))}
-        {agents.length === 0 && (
-          <p role="status" className="p-3 system-sm-regular text-text-tertiary">
-            {t(($) => $['roster.emptySearch'])}
-          </p>
-        )}
+        <ExternalAgentOptions keyword={keyword} allowDisabled onSelect={onSelect} />
       </div>
     </div>
   )

@@ -21,6 +21,9 @@ type ResultProps = {
   isListening?: boolean
   workflowRunId?: string
   onOpenTracingTab?: () => void
+  external_wait?: boolean
+  human_input_wait?: boolean
+  preserveUnknownTokens?: boolean
 }
 
 const StatusPanel: FC<ResultProps> = ({
@@ -32,13 +35,23 @@ const StatusPanel: FC<ResultProps> = ({
   isListening = false,
   workflowRunId,
   onOpenTracingTab,
+  external_wait = false,
+  human_input_wait = false,
+  preserveUnknownTokens = false,
 }) => {
-  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput', 'share'])
+  const { t } = useTranslation([
+    'runLog',
+    'workflow',
+    'appLog',
+    'workflowHumanInput',
+    'share',
+    'agentRoster',
+  ])
   const docLink = useDocLink()
   const { data: pausedDetails } = useQuery(
     consoleQuery.workflow.byWorkflowRunId.pauseDetails.get.queryOptions({
       input:
-        status === 'paused' && workflowRunId
+        status === 'paused' && workflowRunId && (!external_wait || human_input_wait)
           ? { params: { workflow_run_id: workflowRunId } }
           : skipToken,
     }),
@@ -198,7 +211,13 @@ const StatusPanel: FC<ResultProps> = ({
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
             )}
-            {status !== 'running' && status !== 'paused' && <span>{`${tokens || 0} Tokens`}</span>}
+            {status !== 'running' && status !== 'paused' && (
+              <span>
+                {preserveUnknownTokens && tokens == null
+                  ? t(($) => $['external.overview.testRun.notProvided'], { ns: 'agentRoster' })
+                  : `${tokens ?? 0} Tokens`}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -236,7 +255,12 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </>
       )}
-      {status === 'paused' && (
+      {status === 'paused' && external_wait && (
+        <p className="relative mt-2 border-t border-divider-subtle pt-2 system-xs-regular text-text-tertiary">
+          {t(($) => $['external.workflow.waiting'], { ns: 'agentRoster' })}
+        </p>
+      )}
+      {status === 'paused' && (!external_wait || human_input_wait) && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
           <div className="flex flex-col gap-y-2 system-xs-medium">

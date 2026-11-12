@@ -2,11 +2,13 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { VarType } from '@/app/components/workflow/types'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
-import { getExternalAgentTaskVariableIssues } from '../task-variables'
+import {
+  getExternalAgentTaskVariableIssues,
+  isExternalAgentTaskVariableSupported,
+} from '../task-variables'
 
-const contractReview = createExternalRosterPreview()[1]!
-const documentReview = { ...contractReview, key: 'document-review' }
+const contractReview = ['text/plain']
+const documentReview = ['text/plain', 'application/pdf']
 
 const availableVars: NodeOutPutVar[] = [
   {
@@ -59,6 +61,26 @@ const availableVars: NodeOutPutVar[] = [
 ]
 
 describe('getExternalAgentTaskVariableIssues', () => {
+  it('allows plain text files only when Card and deployment modes intersect, including protocol MIME aliases', () => {
+    expect(
+      isExternalAgentTaskVariableSupported(['text/plain'], { type: VarType.file }, ['text/plain']),
+    ).toBe(true)
+    expect(
+      isExternalAgentTaskVariableSupported(['text/plain'], { type: VarType.file }, [
+        'application/pdf',
+      ]),
+    ).toBe(false)
+    expect(
+      isExternalAgentTaskVariableSupported(
+        ['application/x-pdf; version=1'],
+        { type: VarType.arrayFile },
+        ['application/pdf'],
+      ),
+    ).toBe(true)
+    expect(
+      isExternalAgentTaskVariableSupported(['image/*'], { type: VarType.file }, ['image/jpeg']),
+    ).toBe(true)
+  })
   it('reports each unique unsupported variable using its resolved nested type', () => {
     const issues = getExternalAgentTaskVariableIssues(
       contractReview,
@@ -70,6 +92,7 @@ describe('getExternalAgentTaskVariableIssues', () => {
         '{{#source.attachment#}}',
       ].join(' '),
       availableVars,
+      ['application/pdf'],
     )
 
     expect(issues).toEqual([
@@ -109,6 +132,7 @@ describe('getExternalAgentTaskVariableIssues', () => {
         '{{#rag.shared.context#}}',
       ].join(' '),
       availableVars,
+      ['application/pdf'],
     )
 
     expect(issues).toEqual([])
@@ -119,6 +143,7 @@ describe('getExternalAgentTaskVariableIssues', () => {
       contractReview,
       '{{#removed.output#}}',
       availableVars,
+      ['application/pdf'],
     )
 
     expect(issues).toEqual([])

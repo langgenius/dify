@@ -3,7 +3,7 @@ import type {
   ExternalConnectionSettings,
   ExternalConnectionVerificationState,
 } from './external-connection-verification'
-import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialog'
 import {
@@ -38,6 +38,8 @@ type ExternalConnectionFormProps = {
   onVerify: (settings: ExternalConnectionSettings) => void
   onContinue: () => void
   onInvalidate: () => void
+  executionEnabled?: boolean
+  hasCredential?: boolean
 }
 
 function focusEndpoint(input: HTMLInputElement | null) {
@@ -51,6 +53,8 @@ export function ExternalConnectionForm({
   onVerify,
   onContinue,
   onInvalidate,
+  executionEnabled = true,
+  hasCredential = false,
 }: ExternalConnectionFormProps) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const inputRef = useMergedRefs(endpointRef, focusEndpoint)
@@ -58,18 +62,14 @@ export function ExternalConnectionForm({
   const submitLabelId = useId()
   const pending = verification.status === 'verifying'
   const verified = verification.status === 'verified'
-  const error = verification.status === 'failed' ? verification.reason : null
   const options = [
     { value: 'none', label: t(($) => $['external.connection.none']) },
     { value: 'bearer', label: t(($) => $['external.connection.bearerToken']) },
   ]
-  const errors = {
-    unreachable: t(($) => $['external.connection.errors.unreachable']),
-    authentication: t(($) => $['external.connection.errors.authentication']),
-    unsupported: t(($) => $['external.connection.errors.unsupported']),
-    'invalid-agent-card': t(($) => $['external.connection.errors.invalidAgentCard']),
-    unknown: t(($) => $['external.connection.errors.unknown']),
-  }
+  const verifiedLabel =
+    verified && verification.evidence.auth_check === 'passed_for_read_endpoint'
+      ? t(($) => $['external.connection.authReadPassed'])
+      : t(($) => $['external.connection.authNotExercised'])
 
   function updateSetting<K extends keyof ExternalConnectionSettings>(
     name: K,
@@ -89,10 +89,11 @@ export function ExternalConnectionForm({
           onContinue()
           return
         }
+        if (!executionEnabled) return
         onVerify({
           endpoint: values.endpoint.trim(),
           authentication: draft.authentication,
-          token: draft.authentication === 'bearer' ? values.token.trim() : '',
+          token: draft.authentication === 'bearer' ? (values.token ?? '') : '',
         })
       }}
     >
@@ -120,6 +121,7 @@ export function ExternalConnectionForm({
             placeholder="https://"
             type="url"
             autoComplete="url"
+            maxLength={4096}
             required
           />
           <FieldValidity>
@@ -163,60 +165,73 @@ export function ExternalConnectionForm({
             name="token"
             disabled={pending}
             className="flex flex-col gap-1.5"
-            validate={(value) =>
-              typeof value === 'string' && value.trim()
+            validate={(value) => {
+              if (!value && (hasCredential || verified)) return null
+              if (typeof value !== 'string' || !value)
+                return t(($) => $['external.connection.tokenRequired'])
+              return value.length <= 8192 && /^[\w.~+/-]+=*$/.test(value)
                 ? null
-                : t(($) => $['external.connection.tokenRequired'])
-            }
+                : t(($) => $['external.connection.tokenInvalid'])
+            }}
           >
             <FieldLabel>{t(($) => $['external.connection.token'])}</FieldLabel>
-            <InputGroup className="relative">
+            <InputGroup>
               <InputGroupInput
                 type="password"
                 autoComplete="off"
                 placeholder={t(($) => $['external.connection.tokenPlaceholder'])}
                 value={draft.token}
                 onValueChange={(value) => updateSetting('token', value)}
-                required
+                required={!hasCredential && !verified}
+                maxLength={8192}
               />
-              {verified && (
-                <FieldDescription
-                  role="status"
-                  className="pointer-events-none absolute start-0 -top-1 flex items-center gap-1 py-0 system-xs-medium text-text-success"
-                >
-                  <span aria-hidden className="i-ri-check-line size-3.5" />
-                  {t(($) => $['external.connection.statusVerified'])}
-                </FieldDescription>
-              )}
             </InputGroup>
-            <FieldError>{t(($) => $['external.connection.tokenRequired'])}</FieldError>
+            {hasCredential && (
+              <FieldDescription>{t(($) => $['external.connection.keepToken'])}</FieldDescription>
+            )}
+            <FieldValidity>
+              {({ validity, error }) => (
+                <FieldError>
+                  {validity.valueMissing ? t(($) => $['external.connection.tokenRequired']) : error}
+                </FieldError>
+              )}
+            </FieldValidity>
           </Field>
         )}
-        {error && (
+        {verified && (
+          <p role="status" className="system-xs-regular text-text-success">
+            {verifiedLabel}
+          </p>
+        )}
+        {verification.status === 'failed' && (
           <Alert type="error">
-            <AlertTitle>{errors[error]}</AlertTitle>
-            {error === 'invalid-agent-card' && (
-              <AlertDescription>
-                {t(($) => $['external.connection.invalidAgentCardDetail'])}
-              </AlertDescription>
-            )}
+            <AlertTitle>
+              {verification.message || t(($) => $['external.connection.errors.unknown'])}
+            </AlertTitle>
+          </Alert>
+        )}
+        {verification.status === 'expired' && (
+          <Alert type="warning">
+            <AlertTitle>{t(($) => $['external.connection.proofExpired'])}</AlertTitle>
+          </Alert>
+        )}
+        {!executionEnabled && !verified && (
+          <Alert type="warning">
+            <AlertTitle>{t(($) => $['external.api.executionDisabled'])}</AlertTitle>
           </Alert>
         )}
       </DialogBody>
       <DialogFooter>
-        {verified && draft.authentication === 'none' && (
-          <span
-            role="status"
-            className="me-auto flex items-center gap-1 system-xs-medium text-text-success"
-          >
-            <span aria-hidden className="i-ri-check-line size-3.5" />
-            {t(($) => $['external.connection.statusVerified'])}
-          </span>
-        )}
         <DialogClose disabled={pending} render={<Button variant="secondary" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" variant="primary" loading={pending} aria-labelledby={submitLabelId}>
+        <Button
+          type="submit"
+          variant="primary"
+          loading={pending}
+          disabled={!verified && !executionEnabled}
+          aria-labelledby={submitLabelId}
+        >
           <span id={submitLabelId}>
             {pending
               ? t(($) => $['external.connection.verifying'])

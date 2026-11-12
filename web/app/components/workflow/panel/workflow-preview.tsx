@@ -237,7 +237,14 @@ const WorkflowPreview = () => {
                   workflowRunningData?.result?.status === WorkflowRunningStatus.Running ||
                   !workflowRunningData?.result
                 }
-                isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
+                isPaused={
+                  workflowRunningData?.result?.status === WorkflowRunningStatus.Paused &&
+                  !workflowRunningData?.result?.external_wait
+                }
+                isExternalWaiting={
+                  workflowRunningData?.result?.status === WorkflowRunningStatus.Paused &&
+                  workflowRunningData?.result?.external_wait
+                }
                 outputs={workflowRunningData?.resultText}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
@@ -272,6 +279,8 @@ const WorkflowPreview = () => {
               outputs_full_content={workflowRunningData?.result?.outputs_full_content}
               status={workflowRunningData?.result?.status || ''}
               workflowRunId={workflowRunningData?.result?.id}
+              external_wait={workflowRunningData?.result?.external_wait}
+              human_input_wait={workflowRunningData?.result?.human_input_wait}
               error={workflowRunningData?.result?.error}
               elapsed_time={workflowRunningData?.result?.elapsed_time}
               total_tokens={workflowRunningData?.result?.total_tokens}

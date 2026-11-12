@@ -9,6 +9,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
+import { getExternalAgentInvocationId } from '../nodes/agent-v2/execution'
 import { useStore } from '../store'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
@@ -83,6 +84,13 @@ function RunSession({
   const [loading, setLoading] = useState(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
+  const externalWait = list.some(
+    (execution) =>
+      execution.status === 'paused' && Boolean(getExternalAgentInvocationId(execution)),
+  )
+  const humanInputWait = list.some(
+    (execution) => execution.status === 'paused' && execution.node_type === 'human-input',
+  )
   const requestLifetimeRef = useRef<RequestLifetime | null>(null)
 
   const executor = useMemo(() => {
@@ -242,6 +250,8 @@ function RunSession({
               exceptionCounts={runDetail.exceptions_count}
               isListening={isListening}
               workflowRunId={runDetail.id}
+              external_wait={externalWait}
+              human_input_wait={humanInputWait}
               externalTrace={
                 appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
               }

@@ -73,7 +73,7 @@ import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-sche
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
-import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
@@ -316,7 +316,10 @@ const findExceptVarInObject = (
 const getExternalAgentOutputVars = (data: {
   agent_declared_outputs?: ExternalAgentWorkflowPreviewNodeData['agent_declared_outputs']
 }): Var[] =>
-  (data.agent_declared_outputs ?? externalAgentDefaultOutputs).map((output) => ({
+  (data.agent_declared_outputs?.length
+    ? data.agent_declared_outputs
+    : externalAgentDefaultOutputs
+  ).map((output) => ({
     variable: output.name,
     type: getDeclaredOutputVarType(output),
   }))

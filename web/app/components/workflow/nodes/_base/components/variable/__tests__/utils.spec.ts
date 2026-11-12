@@ -23,8 +23,8 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
-import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
-import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import {
   findUsedVarNodes,
   getNodeUsedVarPassToServerKey,
@@ -271,6 +271,26 @@ describe('variable utils', () => {
       )
     })
 
+    it('exposes the default text selector when an external agent has an empty declaration', () => {
+      const node = createNode<ExternalAgentWorkflowPreviewNodeData>({
+        type: BlockEnum.AgentV2,
+        title: 'External Agent',
+        desc: '',
+        ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
+        agent_declared_outputs: [],
+      })
+      const available = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatflow: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+      expect(available.find((item) => item.nodeId === node.id)?.vars).toContainEqual({
+        variable: 'text',
+        type: VarType.string,
+      })
+    })
+
     it.each([BlockEnum.Agent, BlockEnum.AgentV2])(
       'uses external agent declared outputs without Dify system output: %s',
       (type) => {
@@ -278,7 +298,7 @@ describe('variable utils', () => {
           type,
           title: 'External Agent',
           desc: '',
-          ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+          ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
           agent_declared_outputs: [
             {
               name: 'attachments',
@@ -512,7 +532,7 @@ describe('variable utils', () => {
         type: BlockEnum.Agent,
         title: 'External Agent',
         desc: '',
-        ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+        ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
         agent_task: 'Review {{#start.contract#}}',
       })
 
@@ -637,7 +657,7 @@ describe('variable utils', () => {
         type: BlockEnum.Agent,
         title: 'External Agent',
         desc: '',
-        ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+        ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
         agent_task: 'Review {{#start.contract#}}',
       })
 

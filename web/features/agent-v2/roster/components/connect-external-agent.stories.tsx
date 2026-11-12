@@ -1,94 +1,70 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type {
-  ExternalConnectionFailureReason,
-  ExternalConnectionVerificationResult,
-  VerifyExternalConnection,
-} from './external-connection-verification'
-import { fn, userEvent, within } from 'storybook/test'
-import { externalConnectionPreview } from '../external-roster-preview'
-import { ConnectExternalAgent } from './connect-external-agent'
-
-const previewEndpoint = 'https://agents.acme.example/contract-review'
-
-function failedVerification(reason: ExternalConnectionFailureReason): VerifyExternalConnection {
-  return () => Promise.resolve({ status: 'failed', reason })
-}
-
-async function submitConnection(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement)
-  await userEvent.click(await canvas.findByRole('button', { name: 'Connect external agent' }))
-
-  // Dialogs and Select options are portalled outside the Storybook canvas.
-  const body = within(canvasElement.ownerDocument.body)
-  const dialog = await body.findByRole('dialog', { name: 'Connect external agent' })
-  const fields = within(dialog)
-  await userEvent.type(fields.getByRole('textbox', { name: 'A2A endpoint' }), previewEndpoint)
-  await userEvent.click(fields.getByRole('combobox', { name: 'Authentication' }))
-  await userEvent.click(await body.findByRole('option', { name: 'Bearer token' }))
-  await userEvent.type(fields.getByLabelText('Token'), 'preview-only-token')
-  await userEvent.click(fields.getByRole('button', { name: 'Verify connection' }))
-  return fields
-}
+import type { ExternalConnectionVerificationState } from './external-connection-verification'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { createRef } from 'react'
+import { fn } from 'storybook/test'
+import { createExternalVerification } from '../__tests__/external-connection-fixture'
+import { ExternalConnectionForm } from './external-connection-form'
 
 const meta = {
   title: 'Agents/External Agents/Connect',
-  component: ConnectExternalAgent,
+  component: ExternalConnectionForm,
   parameters: { layout: 'fullscreen' },
-  decorators: [
-    (Story) => (
-      <div className="isolate min-h-screen bg-background-default p-8">
-        <Story />
-      </div>
-    ),
-  ],
-  args: { onConnect: fn() },
-  play: async ({ canvasElement }) => {
-    const fields = await submitConnection(canvasElement)
-    await fields.findByRole('alert')
+  render: (args) => (
+    <Dialog open>
+      <DialogContent className="w-150">
+        <DialogHeader>
+          <DialogTitle>Connect external agent</DialogTitle>
+          <DialogDescription>Connect an existing agent to use in your apps.</DialogDescription>
+        </DialogHeader>
+        <ExternalConnectionForm {...args} />
+      </DialogContent>
+    </Dialog>
+  ),
+  args: {
+    initialSettings: {
+      endpoint: 'https://agents.example.test/contract',
+      authentication: 'none',
+      token: '',
+    },
+    verification: { status: 'unverified' } satisfies ExternalConnectionVerificationState,
+    endpointRef: createRef<HTMLInputElement>(),
+    executionEnabled: true,
+    onVerify: fn(),
+    onContinue: fn(),
+    onInvalidate: fn(),
   },
-} satisfies Meta<typeof ConnectExternalAgent>
+} satisfies Meta<typeof ExternalConnectionForm>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Unreachable: Story = {
-  args: { verifyConnection: failedVerification('unreachable') },
-}
-
-export const AuthenticationFailed: Story = {
-  args: { verifyConnection: failedVerification('authentication') },
-}
-
-export const UnsupportedEndpoint: Story = {
-  args: { verifyConnection: failedVerification('unsupported') },
-}
-
-export const InvalidAgentCard: Story = {
-  args: { verifyConnection: failedVerification('invalid-agent-card') },
-}
-
-export const UnknownFailure: Story = {
-  args: { verifyConnection: failedVerification('unknown') },
-}
-
-export const Verifying: Story = {
+export const Connection: Story = {}
+export const Verifying: Story = { args: { verification: { status: 'verifying' } } }
+export const VerificationFailed: Story = {
   args: {
-    verifyConnection: () => new Promise<ExternalConnectionVerificationResult>(() => {}),
-  },
-  play: async ({ canvasElement }) => {
-    const fields = await submitConnection(canvasElement)
-    await fields.findByRole('button', { name: 'Verifying…' })
+    verification: {
+      status: 'failed',
+      message: 'Could not verify this connection. Check the endpoint and authentication.',
+    },
   },
 }
-
-export const VerifiedAfterBack: Story = {
+export const VerificationExpired: Story = { args: { verification: { status: 'expired' } } }
+export const ExecutionDisabled: Story = { args: { executionEnabled: false } }
+export const AuthenticationNotExercised: Story = {
+  args: { verification: { status: 'verified', evidence: createExternalVerification() } },
+}
+export const AuthenticationPassedForReadEndpoint: Story = {
   args: {
-    verifyConnection: () =>
-      Promise.resolve({ status: 'verified', agent: externalConnectionPreview }),
-  },
-  play: async ({ canvasElement }) => {
-    const fields = await submitConnection(canvasElement)
-    await userEvent.click(await fields.findByRole('button', { name: 'Back' }))
-    await fields.findByRole('button', { name: 'Continue' })
+    verification: {
+      status: 'verified',
+      evidence: createExternalVerification({ auth_check: 'passed_for_read_endpoint' }),
+    },
   },
 }

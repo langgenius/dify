@@ -1,11 +1,11 @@
 'use client'
 
-import type { ExternalAgentConnectionDetails } from './external-agent-details-form'
 import type {
-  ExternalConnectionSettings,
-  ExternalConnectionVerificationState,
-  VerifyExternalConnection,
-} from './external-connection-verification'
+  ExternalAgentCreatePayload,
+  ExternalAgentVerificationResponse,
+} from '@dify/contracts/api/console/external-agents/types.gen'
+import type { ExternalAgentConnectionDetails } from './external-agent-details-form'
+import type { ExternalConnectionSettings } from './external-connection-verification'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -16,89 +16,136 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { useRef, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { externalConnectionPreview } from '../external-roster-preview'
+import { stringValue } from '@/features/agent-v2/external-agent/model'
+import { getExternalAgentOverviewPath } from '@/features/agent-v2/external-agent/routes'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { ExternalAgentDetailsForm } from './external-agent-details-form'
 import { ExternalConnectionForm } from './external-connection-form'
+import {
+  externalAgentErrorMessage,
+  isUnknownExternalSaveResult,
+  useExternalConnectionVerification,
+} from './external-connection-verification'
 
-type ConnectionSession = {
-  step: 'connection' | 'details'
-  settings: ExternalConnectionSettings
-  verification: ExternalConnectionVerificationState
-  details: ExternalAgentConnectionDetails
+const emptySettings: ExternalConnectionSettings = {
+  endpoint: '',
+  authentication: 'none',
+  token: '',
 }
+const emptyDetails: ExternalAgentConnectionDetails = { name: '', role: '', description: '' }
 
-function createConnectionSession(): ConnectionSession {
-  return {
-    step: 'connection',
-    settings: { endpoint: '', authentication: 'none', token: '' },
-    verification: { status: 'unverified' },
-    details: {
-      name: externalConnectionPreview.name,
-      role: '',
-      description: externalConnectionPreview.description,
-    },
-  }
-}
-
-// Local design preview only. The API contract is not connected yet.
-const verifyConnectionPreview: VerifyExternalConnection = () =>
-  Promise.resolve({ status: 'verified', agent: externalConnectionPreview })
-
-type ConnectExternalAgentProps = {
-  onConnect: (details: ExternalAgentConnectionDetails) => void
-  verifyConnection?: VerifyExternalConnection
-}
-
-export function ConnectExternalAgent({
-  onConnect,
-  verifyConnection = verifyConnectionPreview,
-}: ConnectExternalAgentProps) {
+export function ConnectExternalAgent() {
   const { t } = useTranslation(['agentRoster', 'common'])
+  const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [session, setSession] = useState(createConnectionSession)
+  const [step, setStep] = useState<'connection' | 'details'>('connection')
+  const [settings, setSettings] = useState(emptySettings)
+  const [details, setDetails] = useState(emptyDetails)
+  const [review, setReview] = useState<ExternalAgentVerificationResponse>()
+  const [submitted, setSubmitted] = useState<ExternalAgentCreatePayload>()
+  const [saveUnknown, setSaveUnknown] = useState(false)
+  const [error, setError] = useState<string>()
   const endpointRef = useRef<HTMLInputElement>(null)
-  const pending = session.verification.status === 'verifying'
+  const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
+  const verification = useExternalConnectionVerification()
+  const create = useMutation(
+    consoleQuery.externalAgents.post.mutationOptions({ context: { silent: true }, retry: false }),
+  )
+  const pending = verification.pending || create.isPending
+  const executionEnabled = capabilities.data?.enabled === true
+  const previousScopeRef = useRef(verification.scope)
+  const currentScopeRef = useRef(verification.scope)
+  currentScopeRef.current = verification.scope
 
-  async function verify(settings: ExternalConnectionSettings) {
-    if (pending) return
-    setSession((current) => ({ ...current, settings, verification: { status: 'verifying' } }))
-    try {
-      const result = await verifyConnection(settings)
-      setSession((current) =>
-        result.status === 'verified'
-          ? {
-              ...current,
-              verification: result,
-              step: 'details',
-              details: { name: result.agent.name, role: '', description: result.agent.description },
-            }
-          : { ...current, verification: result },
-      )
-    } catch {
-      setSession((current) => ({
-        ...current,
-        verification: { status: 'failed', reason: 'unknown' },
-      }))
+  const { invalidate: invalidateVerification } = verification
+  const { reset: resetCreate } = create
+  const reset = useCallback(() => {
+    setStep('connection')
+    setSettings(emptySettings)
+    setDetails(emptyDetails)
+    setReview(undefined)
+    setSubmitted(undefined)
+    setSaveUnknown(false)
+    setError(undefined)
+    invalidateVerification()
+    resetCreate()
+  }, [invalidateVerification, resetCreate])
+  useEffect(() => {
+    if (previousScopeRef.current !== verification.scope) {
+      previousScopeRef.current = verification.scope
+      setOpen(false)
+      reset()
     }
+  }, [verification.scope, reset])
+
+  function save(fields: ExternalAgentConnectionDetails) {
+    if (create.isPending) return
+    let body: ExternalAgentCreatePayload
+    if (saveUnknown && submitted) body = submitted
+    else {
+      const evidence = verification.evidence
+      if (!executionEnabled || !evidence || Date.parse(evidence.expires_at) <= Date.now()) {
+        setError(t(($) => $['external.connection.proofExpired']))
+        verification.invalidate()
+        return
+      }
+      body = {
+        verification_id: evidence.verification_id,
+        metadata: { name: fields.name, role: fields.role, description: fields.description },
+        idempotency_key: crypto.randomUUID(),
+      }
+    }
+    setSubmitted(body)
+    setError(undefined)
+    const requestScope = verification.scope
+    create.mutate(
+      { body },
+      {
+        onSuccess: (operation) => {
+          if (currentScopeRef.current !== requestScope) return
+          setSaveUnknown(false)
+          setSubmitted(undefined)
+          setOpen(false)
+          router.push(getExternalAgentOverviewPath(operation.resource_id))
+        },
+        onError: (failure) => {
+          if (currentScopeRef.current !== requestScope) return
+          const unknown = isUnknownExternalSaveResult(failure)
+          setSaveUnknown(unknown)
+          setError(
+            unknown
+              ? t(($) => $['external.api.saveUnknown'])
+              : externalAgentErrorMessage(
+                  failure,
+                  t(($) => $['external.api.saveFailed']),
+                ),
+          )
+          if (!unknown) {
+            setSubmitted(undefined)
+            if (getHttpErrorStatus(failure) === 400) verification.invalidate()
+          }
+        },
+      },
+    )
   }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next, eventDetails) => {
-        if (pending) {
-          eventDetails.cancel()
-          return
-        }
-        setOpen(next)
+        if (pending) eventDetails.cancel()
+        else setOpen(next)
       }}
       onOpenChangeComplete={(next) => {
-        if (!next) setSession(createConnectionSession())
+        if (!next && !saveUnknown) reset()
       }}
     >
-      <DialogTrigger render={<Button variant="primary" />}>
+      <DialogTrigger render={<Button variant="primary" disabled={!executionEnabled} />}>
         <span aria-hidden className="i-ri-add-line size-4" />
         {t(($) => $['external.connect'])}
       </DialogTrigger>
@@ -111,34 +158,49 @@ export function ConnectExternalAgent({
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           />
         </DialogHeader>
-        {session.step === 'details' && session.verification.status === 'verified' ? (
+        {step === 'details' && review ? (
           <ExternalAgentDetailsForm
-            agent={session.verification.agent}
-            initialDetails={session.details}
-            onBack={(details) =>
-              setSession((current) => ({ ...current, details, step: 'connection' }))
+            verification={review}
+            initialDetails={details}
+            pending={create.isPending}
+            locked={create.isPending || saveUnknown}
+            canSave={
+              Boolean(saveUnknown && submitted) ||
+              Boolean(executionEnabled && verification.evidence && !create.isPending)
             }
-            onSave={(details) => {
-              onConnect(details)
-              setOpen(false)
+            error={
+              error ??
+              (verification.state.status === 'expired'
+                ? t(($) => $['external.connection.proofExpired'])
+                : undefined)
+            }
+            onBack={(fields) => {
+              setDetails(fields)
+              setStep('connection')
             }}
+            onSave={save}
           />
         ) : (
           <ExternalConnectionForm
             endpointRef={endpointRef}
-            initialSettings={session.settings}
-            verification={session.verification}
-            onVerify={(settings) => {
-              void verify(settings)
+            initialSettings={settings}
+            verification={verification.state}
+            executionEnabled={executionEnabled}
+            onVerify={(values) => {
+              setSettings({ ...values, token: '' })
+              setError(undefined)
+              verification.verify(values, (result) => {
+                setReview(result)
+                setDetails({
+                  name: stringValue(result.card.name),
+                  role: '',
+                  description: stringValue(result.card.description),
+                })
+                setStep('details')
+              })
             }}
-            onContinue={() => setSession((current) => ({ ...current, step: 'details' }))}
-            onInvalidate={() =>
-              setSession((current) =>
-                current.verification.status === 'unverified'
-                  ? current
-                  : { ...current, verification: { status: 'unverified' } },
-              )
-            }
+            onContinue={() => setStep('details')}
+            onInvalidate={verification.invalidate}
           />
         )}
       </DialogContent>

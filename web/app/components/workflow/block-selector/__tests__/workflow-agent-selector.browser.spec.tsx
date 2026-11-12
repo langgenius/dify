@@ -2,7 +2,6 @@ import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agen
 import type { ComponentProps } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { NodeDefault } from '@/app/components/workflow/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -13,6 +12,8 @@ import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
 import common from '@/i18n/locales/en-US/common.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
 import workflow from '@/i18n/locales/en-US/workflow.json'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { AgentBlockItem } from '../agent-selector'
 import { BlockClassification } from '../types'
@@ -32,16 +33,22 @@ const difyAgent: AgentInviteOptionResponse = {
   status: 'active',
 }
 
-const mocks = vi.hoisted(() => ({ fetchAgents: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  fetchAgents: vi.fn(),
+  fetchExternal: vi.fn<typeof import('@/service/console').consoleClient.externalAgents.get>(),
+}))
 // boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 // boundary: Dify invite options are server data; source filtering and selection remain real.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { createExternalAgentCapabilities } = await import('@/test/console/external-agents')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'externalAgents.get': mocks.fetchExternal,
+      'externalAgents.capabilities.get': () => createExternalAgentCapabilities(),
       'agent.inviteOptions.get': (
         input: Parameters<typeof actual.consoleClient.agent.inviteOptions.get>[0],
       ) => {
@@ -85,13 +92,15 @@ async function setup(
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
+    currentWorkspace: { role: 'owner' },
+  })
   onTestFinished(() => queryClient.clear())
   const onSelect = vi.fn<AgentBlockProps['onSelect']>()
   const onSelectExternal = vi.fn<NonNullable<AgentBlockProps['onSelectExternal']>>()
   const onStartFromScratch = vi.fn()
   await render(
-    <QueryClientProvider client={queryClient}>
+    <QueryProvider>
       <EditorResourceScope resource={resource}>
         <I18nextProvider i18n={i18n}>
           <div className="isolate w-60 p-4">
@@ -104,7 +113,7 @@ async function setup(
           </div>
         </I18nextProvider>
       </EditorResourceScope>
-    </QueryClientProvider>,
+    </QueryProvider>,
   )
   const trigger = page.getByRole('button', { name: /^Agent/ })
   await trigger.click()
@@ -115,6 +124,30 @@ async function setup(
 
 beforeEach(({ onTestFinished }) => {
   mocks.fetchAgents.mockClear()
+  mocks.fetchExternal.mockReset().mockImplementation(async (input) => {
+    const items = [
+      createExternalAgentAsset(),
+      createExternalAgentAsset({
+        id: '44444444-4444-4444-8444-444444444444',
+        name: 'Document Review Agent',
+      }),
+      createExternalAgentAsset({
+        id: '55555555-5555-4555-8555-555555555555',
+        name: 'Invoice Audit Agent',
+        enabled: false,
+      }),
+    ].filter(
+      (agent) =>
+        !input?.query?.keyword ||
+        agent.name.toLowerCase().includes(input.query.keyword.toLowerCase()),
+    )
+    return {
+      items,
+      total: items.length,
+      limit: input?.query?.limit ?? 20,
+      page: input?.query?.page ?? 1,
+    }
+  })
   onTestFinished(guardUnexpectedFetch())
 })
 
@@ -181,7 +214,14 @@ it('skips disabled external agents during keyboard selection and closes with the
   await userEvent.keyboard('{Enter}')
   await expect
     .poll(() => onSelectExternal.mock.calls)
-    .toEqual([[expect.objectContaining({ key: 'document-review', name: 'Document Review Agent' })]])
+    .toEqual([
+      [
+        expect.objectContaining({
+          id: '44444444-4444-4444-8444-444444444444',
+          name: 'Document Review Agent',
+        }),
+      ],
+    ])
   expect(onSelect).not.toHaveBeenCalled()
   await expect.element(picker).not.toBeInTheDocument()
 })
@@ -248,4 +288,24 @@ it('keeps external previews out of snippet selection and omits the workflow app 
   await expect
     .poll(() => mocks.fetchAgents.mock.calls.at(-1))
     .toEqual([{ query: { limit: 8, page: 1 } }])
+})
+
+it('loads another server page before selecting an external agent outside the first page', async () => {
+  const later = createExternalAgentAsset({
+    id: '77777777-7777-4777-8777-777777777777',
+    name: 'Later page Agent',
+  })
+  mocks.fetchExternal.mockImplementation(async (input) => ({
+    items: input?.query?.page === 2 ? [later] : [createExternalAgentAsset()],
+    total: 2,
+    page: input?.query?.page ?? 1,
+    limit: 1,
+  }))
+  const { picker, onSelectExternal } = await setup()
+  await picker.getByRole('tab', { name: 'External', exact: true }).click()
+  await picker.getByRole('button', { name: 'Load more agents', exact: true }).click()
+  await expect.element(picker.getByRole('button', { name: /Later page Agent/ })).toBeVisible()
+  expect(mocks.fetchExternal).toHaveBeenLastCalledWith({ query: { page: 2, limit: 20 } })
+  await picker.getByRole('button', { name: /Later page Agent/ }).click()
+  expect(onSelectExternal).toHaveBeenCalledWith(later)
 })

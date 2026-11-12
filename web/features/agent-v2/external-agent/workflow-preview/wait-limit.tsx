@@ -39,21 +39,21 @@ export function ExternalAgentWaitLimit({
   const { t } = useTranslation(['agentRoster'])
   const titleId = useId()
   const helpId = useId()
-  const isRetry = value.onTimeout === 'cancel-and-retry'
+  const isRetry = value.on_timeout === 'cancel_and_retry'
   const hint = t(($) => $['external.workflow.waitLimit.tip'])
   const options = [
-    { value: 'end-waiting' as const, label: t(($) => $['external.workflow.waitLimit.endWaiting']) },
+    { value: 'end_waiting' as const, label: t(($) => $['external.workflow.waitLimit.endWaiting']) },
     {
-      value: 'request-cancellation' as const,
+      value: 'request_cancellation' as const,
       label: t(($) => $['external.workflow.waitLimit.requestCancellation']),
     },
     {
-      value: 'cancel-and-retry' as const,
+      value: 'cancel_and_retry' as const,
       label: t(($) => $['external.workflow.waitLimit.cancelAndRetry']),
     },
   ]
   const help =
-    value.onTimeout === 'request-cancellation'
+    value.on_timeout === 'request_cancellation'
       ? t(($) => $['external.workflow.waitLimit.cancellationHelp'])
       : isRetry
         ? t(($) => $['external.workflow.waitLimit.retryHelp'])
@@ -87,17 +87,17 @@ export function ExternalAgentWaitLimit({
             name="external_agent_wait_limit_minutes"
             label={t(($) => $['external.workflow.waitLimit.label'])}
             unit={t(($) => $['external.workflow.waitLimit.unit'])}
-            value={value.minutes}
-            sliderMax={30}
+            value={value.wait_seconds / 60}
+            sliderMax={60}
             min={1}
             hint={isRetry ? hint : undefined}
-            onValueChange={(minutes) => onChange({ minutes })}
+            onValueChange={(minutes) => onChange({ wait_seconds: minutes * 60 })}
           />
           <Select<ExternalAgentTimeoutAction>
             items={options}
-            value={value.onTimeout}
+            value={value.on_timeout}
             onValueChange={(onTimeout) => {
-              if (onTimeout !== null) onChange({ onTimeout })
+              if (onTimeout !== null) onChange({ on_timeout: onTimeout })
             }}
           >
             <div className="flex min-h-8 items-center justify-between gap-2">
@@ -123,20 +123,20 @@ export function ExternalAgentWaitLimit({
                 name="external_agent_max_retries"
                 label={t(($) => $['external.workflow.waitLimit.maxRetries'])}
                 unit={t(($) => $['external.workflow.waitLimit.times'])}
-                value={value.maxRetries}
-                sliderMax={5}
+                value={value.additional_retries}
+                sliderMax={2}
                 min={0}
-                onValueChange={(maxRetries) => onChange({ maxRetries })}
+                onValueChange={(additional_retries) => onChange({ additional_retries })}
               />
               <WaitLimitNumberField
                 name="external_agent_retry_interval_seconds"
                 label={t(($) => $['external.workflow.waitLimit.retryInterval'])}
                 unit={t(($) => $['external.workflow.waitLimit.seconds'])}
-                value={value.retryIntervalSeconds}
+                value={value.retry_interval_seconds}
                 sliderMax={60}
-                min={0}
+                min={1}
                 hint={t(($) => $['external.workflow.waitLimit.retryIntervalTip'])}
-                onValueChange={(retryIntervalSeconds) => onChange({ retryIntervalSeconds })}
+                onValueChange={(retry_interval_seconds) => onChange({ retry_interval_seconds })}
               />
             </>
           )}
@@ -170,7 +170,8 @@ function WaitLimitNumberField({
 }) {
   const labelId = useId()
   const changeValue = (next: number | null) => {
-    if (next !== null && Number.isFinite(next) && next >= min) onValueChange(next)
+    if (next !== null && Number.isInteger(next) && next >= min && next <= sliderMax)
+      onValueChange(next)
   }
   return (
     <div className="flex min-h-8 items-center justify-between gap-2">
@@ -189,7 +190,7 @@ function WaitLimitNumberField({
         <Slider<number>
           value={value}
           min={min}
-          max={Math.max(sliderMax, value)}
+          max={sliderMax}
           step={1}
           onValueChange={changeValue}
           className="min-w-0 flex-1"
@@ -207,6 +208,7 @@ function WaitLimitNumberField({
           <NumberField
             value={value}
             min={min}
+            max={sliderMax}
             step={1}
             format={{ useGrouping: false }}
             onValueChange={changeValue}
