@@ -154,17 +154,19 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
   const planButton = (
     <Button
       data-plan={plan}
-      variant="tertiary"
+      variant={null}
       size={null}
       disabled={isPlanDisabled}
       loading={!confirmationOpen && (isPlanActionPending || isEducationDiscountLoading)}
       className={cn(
-        'h-auto min-h-15 w-full rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default',
+        'h-auto min-h-15 w-full gap-1.5 rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default',
         isPrimaryAction
-          ? 'border-saas-dify-blue-static bg-saas-dify-blue-static text-white enabled:hover:bg-saas-dify-blue-static-hover'
+          ? 'border-saas-dify-blue-static bg-saas-dify-blue-static text-white not-data-disabled:hover:bg-saas-dify-blue-static-hover'
           : canManageBilling
-            ? 'border-text-accent bg-transparent text-text-accent enabled:hover:bg-state-accent-hover-alt'
-            : 'border-(--pricing-button-border) bg-(--pricing-button-bg) text-(--pricing-muted) enabled:hover:bg-components-button-secondary-bg-hover',
+            ? 'border-text-accent bg-transparent text-text-accent not-data-disabled:hover:bg-state-accent-hover-alt'
+            : 'border-(--pricing-button-border) bg-(--pricing-button-bg) text-(--pricing-muted) not-data-disabled:hover:bg-components-button-secondary-bg-hover',
+        isPlanDisabled &&
+          'data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-components-button-tertiary-text-disabled',
       )}
       onClick={needsEducationNotice || needsCycleNotice ? undefined : runPlanAction}
     >
