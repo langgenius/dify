@@ -147,12 +147,29 @@ class AgentAppCollectionStore(Protocol):
         """Return tenant-scoped detached results, preserving publication counts and Build conversations."""
         ...
 
+    def list_invite_options(
+        self,
+        context: RequestContext,
+        *,
+        page: int,
+        limit: int,
+        keyword: str | None,
+        app_id: str | None,
+        accessible_agent_ids: set[str] | None,
+    ) -> dict[str, object]:
+        """Return a detached page of Workflow-callable Agents in the admitted workspace."""
+        ...
+
 
 class AgentAppCollectionAccess(Protocol):
     """Resolve list visibility before starting the database work."""
 
     def permissions(self, context: RequestContext) -> tuple[set[str] | None, ResourcePermissionSnapshot]:
         """Return the visible Agent ids and the admitted caller's Agent permissions."""
+        ...
+
+    def visible_ids(self, context: RequestContext) -> set[str] | None:
+        """Return the Agent visibility filter, or None for unrestricted access."""
         ...
 
 
@@ -199,6 +216,15 @@ class AgentAppCollectionService:
                 replace(item, permission_keys=keys.get(item.agent_id, [])) if item.agent_id else item
                 for item in page.data
             ],
+        )
+
+    def list_invite_options(
+        self, context: RequestContext, *, page: int, limit: int, keyword: str | None, app_id: str | None
+    ) -> dict[str, object]:
+        """Resolve visibility before querying the workspace's Workflow-callable Agents."""
+        accessible_agent_ids = self._access.visible_ids(context)
+        return self._store.list_invite_options(
+            context, page=page, limit=limit, keyword=keyword, app_id=app_id, accessible_agent_ids=accessible_agent_ids
         )
 
     def create(self, context: RequestContext, params: CreateAppParams) -> AgentAppDetail:

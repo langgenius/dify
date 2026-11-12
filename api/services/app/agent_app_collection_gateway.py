@@ -33,6 +33,10 @@ class AgentAppCollectionAccessGateway:
         )
         return visible_agent_ids(permissions, whitelist), permissions.agent
 
+    def visible_ids(self, context: RequestContext) -> set[str] | None:
+        """Resolve visibility for invite options; skip permission queries when RBAC is disabled."""
+        return self.permissions(context)[0] if dify_config.RBAC_ENABLED else None
+
 
 class AgentAppCollectionGateway:
     """Reuse legacy session-bound queries while returning detached Agent App pages.
@@ -43,6 +47,27 @@ class AgentAppCollectionGateway:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def list_invite_options(
+        self,
+        context: RequestContext,
+        *,
+        page: int,
+        limit: int,
+        keyword: str | None,
+        app_id: str | None,
+        accessible_agent_ids: set[str] | None,
+    ) -> dict[str, object]:
+        """Return serialized invite options after the tenant-scoped read session closes."""
+        with self._session_factory() as session:
+            return AgentRosterService(session).list_invite_options(
+                tenant_id=context.active_workspace_id,
+                page=page,
+                limit=limit,
+                keyword=keyword,
+                app_id=app_id,
+                accessible_agent_ids=sorted(accessible_agent_ids) if accessible_agent_ids is not None else None,
+            )
 
     def list_apps(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None

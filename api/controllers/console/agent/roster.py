@@ -8,8 +8,6 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
-from controllers.common.agent_access import resolve_agent_access_filter
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -962,44 +960,23 @@ class AgentApiKeyApi(Resource):
 @console_ns.route("/agent/invite-options")
 class AgentInviteOptionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
-    @console_ns.response(200, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_ns.response(HTTPStatus.OK, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
+    @console_account_admission()
     @model_validate(AgentInviteOptionsQuery)
     def get(
         self,
         req_data: AgentInviteOptionsQuery,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-    ):
-        accessible_agent_ids = None
-        if dify_config.RBAC_ENABLED:
-            permissions = application_services().rbac.members.permissions(
-                tenant_id,
-                current_user.id,
-            )
-            access_filter = resolve_agent_access_filter(
-                tenant_id,
-                current_user.id,
-                permissions=permissions,
-            )
-            if access_filter.accessible_agent_ids is not None:
-                accessible_agent_ids = sorted(access_filter.accessible_agent_ids)
-
+        context: RequestContext,
+    ) -> dict[str, object]:
+        """Return visible Workflow-callable Agents and their current workflow usage."""
         return dump_response(
             AgentInviteOptionsResponse,
-            _agent_roster_service(session).list_invite_options(
-                tenant_id=tenant_id,
+            application_services().agent_apps.collection.list_invite_options(
+                context,
                 page=req_data.page,
                 limit=req_data.limit,
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
-                accessible_agent_ids=accessible_agent_ids,
             ),
         )
 

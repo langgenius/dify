@@ -11,8 +11,14 @@ from sqlalchemy import select
 
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
-from models.agent import Agent, AgentDebugConversation, WorkflowAgentBindingType, WorkflowAgentNodeBinding
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentDebugConversation,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import TagType
 from models.model import App, AppMode, AppModelConfig, Tag, TagBinding
 from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
@@ -89,17 +95,31 @@ def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Ha
 
 
 def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harness) -> None:
-    first_id, first_app = harness.create_agent()
+    first_id, first_app = harness.create_agent(published=True)
     with harness.sessions.begin() as session:
         first = session.get(Agent, first_id)
         assert first is not None
         first.name = "First Agent"
-    second_id, second_app = harness.create_agent()
+    second_id, second_app = harness.create_agent(published=True)
     with harness.sessions.begin() as session:
         for app_id in (first_app, second_app):
             app = session.get(App, app_id)
             assert app is not None
             app.maintainer = str(uuid4())
+        for agent_id in (first_id, second_id):
+            agent = session.get(Agent, agent_id)
+            assert agent is not None
+            assert agent.active_config_snapshot_id is not None
+            agent.active_config_has_model = True
+            session.add(
+                AgentConfigSnapshot(
+                    id=agent.active_config_snapshot_id,
+                    tenant_id=harness.tenant_id,
+                    agent_id=agent_id,
+                    version=1,
+                    config_snapshot=AgentSoulConfig(),
+                )
+            )
 
     whitelist: dict[str, object] = {"unrestricted": True, "resource_ids": []}
     requests: list[tuple[str, str | None, str | None]] = []
@@ -135,21 +155,30 @@ def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harne
         response = harness.client.get("/console/api/agent", headers=harness.headers)
         assert response.status_code == HTTPStatus.OK
         assert {item["id"] for item in response.get_json()["data"]} == {first_id, second_id}
+        invite = harness.client.get("/console/api/agent/invite-options", headers=harness.headers)
+        assert invite.status_code == HTTPStatus.OK
+        assert {item["id"] for item in invite.get_json()["data"]} == {first_id, second_id}
         assert requests == []
 
         with config_overrides_context(RBAC_ENABLED=True):
             response = harness.client.get("/console/api/agent", headers=harness.headers)
             assert response.status_code == HTTPStatus.OK
             assert [item["id"] for item in response.get_json()["data"]] == [first_id]
+            invite = harness.client.get("/console/api/agent/invite-options", headers=harness.headers)
+            assert invite.status_code == HTTPStatus.OK
+            assert [item["id"] for item in invite.get_json()["data"]] == [first_id]
 
             whitelist.update(unrestricted=False, resource_ids=[second_id])
             response = harness.client.get("/console/api/agent", headers=harness.headers)
             assert response.status_code == HTTPStatus.OK
             assert [item["id"] for item in response.get_json()["data"]] == [second_id]
+            invite = harness.client.get("/console/api/agent/invite-options", headers=harness.headers)
+            assert invite.status_code == HTTPStatus.OK
+            assert [item["id"] for item in invite.get_json()["data"]] == [second_id]
 
         assert requests == [
             (path, harness.tenant_id, harness.account_id)
-            for _ in range(2)
+            for _ in range(4)
             for path in ("/rbac/my-permissions", "/rbac/agents/whitelist/resources")
         ]
     finally:
@@ -166,6 +195,66 @@ def test_list_excludes_agents_from_another_workspace(harness: Harness) -> None:
     assert response.status_code == HTTPStatus.OK
     assert [item["id"] for item in response.get_json()["data"]] == [own_id]
     assert foreign_id != own_id
+
+
+def test_invite_options_filters_callable_agents_and_reports_workflow_usage(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent(published=True)
+    workflow_app_id, workflow_id = str(uuid4()), str(uuid4())
+    with harness.sessions.begin() as session:
+        agent = session.get(Agent, agent_id)
+        assert agent is not None
+        assert agent.active_config_snapshot_id is not None
+        agent.name = "Published Agent"
+        agent.active_config_has_model = True
+        session.add(
+            AgentConfigSnapshot(
+                id=agent.active_config_snapshot_id,
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                version=1,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+        session.add(
+            make_workflow(
+                workflow_id=workflow_id,
+                tenant_id=harness.tenant_id,
+                app_id=workflow_app_id,
+                version="draft",
+                created_by=harness.account_id,
+            )
+        )
+        session.add(
+            WorkflowAgentNodeBinding(
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                app_id=workflow_app_id,
+                workflow_id=workflow_id,
+                workflow_version="draft",
+                node_id="node-1",
+                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                current_snapshot_id=agent.active_config_snapshot_id,
+                node_job_config=WorkflowNodeJobConfig(),
+            )
+        )
+    draft_id, _ = harness.create_agent()
+    response = harness.client.get(
+        f"/console/api/agent/invite-options?page=1&limit=1&app_id={workflow_app_id}", headers=harness.headers
+    )
+    assert response.status_code == HTTPStatus.OK
+    body = response.get_json()
+    assert body["total"] == 1
+    assert body["has_more"] is False
+    [item] = body["data"]
+    assert item["id"] == agent_id
+    assert item["id"] != draft_id
+    assert item["is_in_current_workflow"] is True
+    assert item["in_current_workflow_count"] == 1
+    assert item["existing_node_ids"] == ["node-1"]
+    assert (
+        harness.client.get("/console/api/agent/invite-options?limit=0", headers=harness.headers).status_code
+        == HTTPStatus.UNPROCESSABLE_ENTITY
+    )
 
 
 def test_list_empty_tag_match_returns_empty_page_and_counts(harness: Harness) -> None:

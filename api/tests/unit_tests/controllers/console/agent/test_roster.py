@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
 from inspect import getsource, unwrap
-from types import SimpleNamespace
 from typing import Any, Self, cast
 from unittest.mock import MagicMock
 
@@ -33,7 +32,6 @@ from controllers.console.agent.roster import (
     AgentBuildDraftCheckoutPayload,
     AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
-    AgentInviteOptionsQuery,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
@@ -49,7 +47,6 @@ from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import App, AppMode, IconType
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
-from services.enterprise.rbac_service import RBACService
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -57,8 +54,6 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
-from services.rbac import contracts as rbac_contracts
-from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -484,71 +479,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     assert discarded == {"result": "success"}
     captured["discard"].pop("session", None)
     assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
-
-
-def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
-
-    def list_invite_options(_self: object, **kwargs: object) -> dict[str, object]:
-        captured.update(kwargs)
-        return {"data": [], "page": kwargs["page"], "limit": kwargs["limit"], "total": 0, "has_more": False}
-
-    monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
-    with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10&app_id=app-1"):
-        result = unwrap(AgentInviteOptionsApi.get)(
-            AgentInviteOptionsApi(),
-            AgentInviteOptionsQuery(page=1, limit=10, app_id="app-1"),
-            MagicMock(),
-            "tenant-1",
-            _account(),
-        )
-    assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
-    assert captured == {
-        "tenant_id": "tenant-1",
-        "page": 1,
-        "limit": 10,
-        "keyword": None,
-        "app_id": "app-1",
-        "accessible_agent_ids": None,
-    }
-
-
-def test_invite_options_get_applies_resource_visibility(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured: dict[str, object] = {}
-    permissions = rbac_contracts.MyPermissionsResponse()
-
-    monkeypatch.setattr(
-        RBACService.MyPermissions,
-        "get",
-        lambda *_args, **_kwargs: permissions,
-    )
-    monkeypatch.setattr(
-        roster_controller,
-        "resolve_agent_access_filter",
-        lambda *_args, **_kwargs: SimpleNamespace(accessible_agent_ids={"agent-2", "agent-1"}),
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "list_invite_options",
-        lambda _self, **kwargs: (
-            captured.update(kwargs) or {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
-        ),
-    )
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-
-    with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10"):
-        unwrap(AgentInviteOptionsApi.get)(
-            AgentInviteOptionsApi(),
-            AgentInviteOptionsQuery(page=1, limit=10),
-            MagicMock(),
-            "tenant-1",
-            _account(),
-        )
-
-    assert captured["accessible_agent_ids"] == ["agent-1", "agent-2"]
 
 
 def test_agent_observability_routes_resolve_app_from_agent_id(
