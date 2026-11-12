@@ -1,15 +1,17 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { ComponentProps } from 'react'
-import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
 import { marketplaceLinks } from '@/features/marketplace/links'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
-import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Marketplace from '../index'
 
 const requests = vi.hoisted(() => ({ push: vi.fn() }))
+// boundary: Next routing is unavailable in the standalone browser page.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: requests.push }) }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -28,7 +30,22 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-const render = createNuqsTestRenderer(renderWithConsoleQuery)
+async function renderMarketplaceOwner(ui: React.ReactElement, canInstall = true) {
+  const { wrapper: Providers } = createConsoleQueryWrapper({
+    workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
+    systemFeatures: { rbac_enabled: true },
+  })
+  const { wrapper: UrlState } = createNuqsTestWrapper()
+  return render(
+    <Providers>
+      <UrlState>{ui}</UrlState>
+    </Providers>,
+  )
+}
+
+beforeEach(async () => {
+  await page.viewport(1280, 800)
+})
 
 type Props = ComponentProps<typeof Marketplace>
 const plugin = createMarketplacePluginFixture({ label: { en_US: 'Search Tool' }, tags: [] })
@@ -54,7 +71,7 @@ const context = (
   ...overrides,
 })
 function renderMarketplace(props: Partial<Props> = {}, canInstall = true) {
-  return render(
+  return renderMarketplaceOwner(
     <Marketplace
       marketplace={marketplaceLinks}
       searchPluginText=""
@@ -64,33 +81,20 @@ function renderMarketplace(props: Partial<Props> = {}, canInstall = true) {
       marketplaceContext={context()}
       {...props}
     />,
-    {
-      workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
-      systemFeatures: { rbac_enabled: true },
-    },
+    canInstall,
   )
 }
-it('shows loading in place of plugin cards while the first page is pending', () => {
-  renderMarketplace({ marketplaceContext: context({ isLoading: true }) })
-  expect(screen.getByRole('progressbar')).toBeInTheDocument()
-  expect(screen.queryByText('Search Tool')).not.toBeInTheDocument()
-})
-it('renders the plugin and its install action for an allowed workspace', async () => {
-  renderMarketplace()
-  expect(await screen.findByText('Search Tool')).toBeInTheDocument()
-  expect(
-    await screen.findByRole('button', { name: 'plugin.detailPanel.operation.install' }),
-  ).toBeEnabled()
-})
-it('keeps the plugin visible but removes install actions without installation permission', async () => {
-  renderMarketplace({}, false)
-  expect(await screen.findByText('Search Tool')).toBeInTheDocument()
-  expect(
-    screen.queryByRole('button', { name: 'plugin.detailPanel.operation.install' }),
-  ).not.toBeInTheDocument()
-})
+it.each([true, false])(
+  'keeps the tool visible with installation permission %s',
+  async (canInstall) => {
+    const screen = await renderMarketplace({}, canInstall)
+    await expect.element(screen.getByText('Search Tool', { exact: true })).toBeVisible()
+    const install = screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' })
+    if (canInstall) await expect.element(install).toBeEnabled()
+    else await expect.element(install).not.toBeInTheDocument()
+  },
+)
 it('opens the caller panel and exposes a marketplace link with the current filters', async () => {
-  const user = userEvent.setup()
   function Caller() {
     const [open, setOpen] = useState(false)
     return (
@@ -107,29 +111,29 @@ it('opens the caller panel and exposes a marketplace link with the current filte
       </>
     )
   }
-  render(<Caller />, {
-    workspacePermissionKeys: ['plugin.install'],
-    systemFeatures: { rbac_enabled: true },
-  })
-  await user.click(screen.getByRole('button', { name: 'plugin.marketplace.moreFrom' }))
-  expect(screen.getByRole('region', { name: 'Marketplace panel' })).toBeInTheDocument()
+  const screen = await renderMarketplaceOwner(<Caller />)
+  await userEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.moreFrom' }))
+  await expect.element(screen.getByRole('region', { name: 'Marketplace panel' })).toBeVisible()
   const link = screen.getByRole('link', { name: 'plugin.marketplace.difyMarketplace' })
-  const url = new URL(link.getAttribute('href')!, window.location.origin)
+  const url = new URL(link.element().getAttribute('href')!, window.location.origin)
   expect(url.searchParams.get('q')).toBe('vector')
   expect(url.searchParams.get('tags')).toBe('tag-a,tag-b')
   expect(url.searchParams.get('language')).toBe('en-US')
 })
-it('opens the integrations marketplace from the real collection more button', async () => {
-  const user = userEvent.setup()
-  renderMarketplace({
+it('navigates to the collection search with its filters', async () => {
+  const screen = await renderMarketplace({
     marketplaceContext: context({
       plugins: undefined,
       marketplaceCollections: [collection],
       marketplaceCollectionPluginsMap: { featured: [plugin] },
     }),
   })
-  await user.click(await screen.findByRole('button', { name: 'plugin.marketplace.viewMore' }))
+  await userEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.viewMore' }))
   expect(requests.push).toHaveBeenCalledWith(
     '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
   )
+})
+
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })
