@@ -130,7 +130,7 @@ jobs:
 
       - name: Verify retained browser traces
         if: matrix.shardIndex == 1
-        run: node test/verify-browser-traces.mjs
+        run: vp run test:browser-traces
 
       - name: Report browser coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

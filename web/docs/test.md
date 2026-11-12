@@ -27,7 +27,7 @@ Run the full `unit` project before using coverage to identify untested modules. 
 
 Browser CI sets `DIFY_TEST_COVERAGE_ONLY_EXECUTED=true` so its report includes loaded source files without generating zero-coverage entries for every other Web module. The unit uploads retain the complete authored-source denominator, and Codecov combines both reports. Leave this variable unset when collecting the full unit diagnostic report.
 
-The pinned Vitest packages have Browser Mode patches for run-only source caching, deferred export of failure traces, and opt-in reuse of Chromium's precise-coverage session. Web Browser CI enables the coverage patch with `VITEST_EXP_V8_PERSISTENT=true`; watch mode retains the per-file coverage lifecycle. Revalidate the dependency patches together when upgrading Vitest, including retained failure artifacts, coverage maps, and run and watch behavior. Run `node test/verify-browser-traces.mjs` from `web/` to verify trace retention and ZIP integrity with Chromium and `unzip` installed; CI runs this check in the first browser shard.
+The pinned Vitest packages have Browser Mode patches for run-only source caching, deferred export of failure traces, and opt-in reuse of Chromium's precise-coverage session. Web Browser CI enables the coverage patch with `VITEST_EXP_V8_PERSISTENT=true`; watch mode retains the per-file coverage lifecycle. Revalidate the dependency patches together when upgrading Vitest, including retained failure artifacts, coverage maps, and run and watch behavior. Run `vp run test:browser-traces` from `web/` to verify trace retention and ZIP integrity with Chromium and `unzip` installed; CI runs this check in the first browser shard.
 
 ## Choose the Right Boundary
 
