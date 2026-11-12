@@ -152,6 +152,30 @@ describe('ExportImage', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  it('declares design tokens once on the image root instead of copying them per element', async () => {
+    const user = userEvent.setup()
+    renderExport()
+    const viewport = document.querySelector<HTMLElement>('.react-flow__viewport')!
+    viewport.style.setProperty('--export-token', '#123456')
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'workflow.common.currentView' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportSVG' },
+      ),
+    )
+
+    await waitFor(() => expect(mockToSvg).toHaveBeenCalledTimes(1))
+    const options = mockToSvg.mock.calls[0]![1] as {
+      includeStyleProperties: string[]
+      fontEmbedCSS: string
+    }
+    expect(options.fontEmbedCSS).toContain('--export-token:#123456;')
+    expect(options.includeStyleProperties.length).toBeGreaterThan(0)
+    expect(options.includeStyleProperties.some((name) => name.startsWith('--'))).toBe(false)
+  })
+
   it('shows a preview when exporting the whole workflow', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
