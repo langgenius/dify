@@ -129,9 +129,13 @@ class FileScanProviderService:
         with self._session_maker() as session:
             row = _row(session, tenant_id, provider_id)
             resolved_type = ScanProviderType(row.provider_type)
+            supplied_credentials = _credentials(resolved_type, credentials or {})
             merged_credentials = _decrypt(tenant_id, row.encrypted_credentials)
-            merged_credentials.update(_credentials(resolved_type, credentials or {}))
+            merged_credentials.update(supplied_credentials)
             merged_config = dict(config) if config is not None else dict(row.config or {})
+            _require_credentials_for_new_destination(
+                resolved_type, stored_config=dict(row.config or {}), config=merged_config, supplied=supplied_credentials
+            )
             self._verify(session, tenant_id, resolved_type, merged_config, merged_credentials)
             if name is not None:
                 row.name = _name(name)
@@ -253,6 +257,24 @@ def _type_available(provider_type: ScanProviderType) -> bool:
     if provider_type is ScanProviderType.CLAMAV:
         return bool(dify_config.FILE_SCAN_CLAMAV_HOST)
     return True
+
+
+def _require_credentials_for_new_destination(
+    provider_type: ScanProviderType,
+    *,
+    stored_config: Mapping[str, Any],
+    config: Mapping[str, Any],
+    supplied: Mapping[str, str],
+) -> None:
+    """Refuse to send stored credentials to a destination they were not entered for.
+
+    The console never returns a stored key. Without this rule, an administrator could change the
+    scanner's address to a server they control and receive the key through the connectivity check.
+    """
+    cls = scanner_class(provider_type)
+    changed = any((stored_config.get(name) or "") != (config.get(name) or "") for name in cls.destination_fields)
+    if changed and any(name not in supplied for name in cls.credential_fields):
+        raise FileScanValidationError("Enter the credentials again to change where this scanner sends them.")
 
 
 def _provider_type(value: str) -> ScanProviderType:
