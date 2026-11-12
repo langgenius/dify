@@ -8,16 +8,25 @@ export type ExternalAgentWorkflowPreviewAgent = Pick<
   'key' | 'name' | 'role' | 'description' | 'icon' | 'enabled'
 >
 
+export type ExternalAgentTimeoutAction = 'end-waiting' | 'request-cancellation' | 'cancel-and-retry'
+
+export type ExternalAgentWorkflowWaitLimit = {
+  enabled: boolean
+  minutes: number
+  onTimeout: ExternalAgentTimeoutAction
+  maxRetries: number
+  retryIntervalSeconds: number
+}
+
 export type ExternalAgentWorkflowPreviewDefaultValue = {
   title?: string
   agent_node_kind: 'external_agent'
   version: '2'
   agent_binding: undefined
-  _isTempNode: true
-  _externalAgentPreview: ExternalAgentWorkflowPreviewAgent
+  external_agent: ExternalAgentWorkflowPreviewAgent
   agent_task?: string
   agent_declared_outputs?: DeclaredOutputConfig[]
-  _externalAgentWaitLimit?: { enabled: boolean; minutes: number }
+  external_agent_wait_limit?: ExternalAgentWorkflowWaitLimit
   error_strategy?: CommonNodeType['error_strategy']
 }
 
@@ -32,7 +41,6 @@ export function isExternalAgentWorkflowPreviewData(
     (data.type === BlockEnum.Agent || data.type === BlockEnum.AgentV2) &&
     preview.agent_node_kind === 'external_agent' &&
     preview.version === '2' &&
-    preview._isTempNode === true &&
-    !!preview._externalAgentPreview
+    !!preview.external_agent
   )
 }

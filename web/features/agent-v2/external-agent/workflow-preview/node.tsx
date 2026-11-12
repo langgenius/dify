@@ -9,7 +9,7 @@ export function ExternalAgentWorkflowPreviewNode({
   data: ExternalAgentWorkflowPreviewNodeData
 }) {
   const { t } = useTranslation(['workflow'])
-  const agent = data._externalAgentPreview
+  const agent = data.external_agent
 
   return (
     <div className="flex flex-col gap-0.5 px-2.5 py-1">

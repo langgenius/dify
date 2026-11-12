@@ -1,13 +1,14 @@
 import type { ExternalAgentWorkflowPreviewNodeData } from './types'
-import type { CommonNodeType } from '@/app/components/workflow/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow } from 'reactflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { TitleInput } from '@/app/components/workflow/nodes/_base/components/title-description-input'
 import NoLastRunData from '@/app/components/workflow/nodes/_base/components/workflow-panel/last-run/no-data'
@@ -15,7 +16,7 @@ import { AgentOutputVariables } from '@/app/components/workflow/nodes/agent-v2/c
 import { BlockEnum } from '@/app/components/workflow/types'
 import { ExternalAgentField } from './agent-field'
 import { ExternalAgentWorkflowSettings } from './external-settings'
-import { externalAgentDefaultOutputs, externalAgentExampleTask } from './preview'
+import { externalAgentDefaultOutputs, externalAgentDefaultWaitLimit } from './preview'
 import { ExternalAgentTaskField } from './task-field'
 import { isExternalAgentWorkflowPreviewData } from './types'
 
@@ -35,39 +36,31 @@ export function ExternalAgentWorkflowPreviewPanel({
   data: ExternalAgentWorkflowPreviewNodeData
 }) {
   const { t } = useTranslation(['agentRoster', 'common', 'workflow', 'workflowDebug'])
-  const { setNodes, setEdges } = useReactFlow<CommonNodeType>()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { handleNodeDelete, handleNodeSelect } = useNodesInteractions()
   const [tab, setTab] = useState<'settings' | 'lastRun'>('settings')
   const [outputsCollapsed, setOutputsCollapsed] = useState(false)
   const titleContainerRef = useRef<HTMLDivElement>(null)
   const renameRequestedRef = useRef(false)
   const descriptionId = useId()
-  const agent = data._externalAgentPreview
-  const task = data.agent_task ?? externalAgentExampleTask
+  const agent = data.external_agent
+  const task = data.agent_task ?? ''
   const outputs = data.agent_declared_outputs ?? externalAgentDefaultOutputs
-  const waitLimit = data._externalAgentWaitLimit ?? { enabled: true, minutes: 10 }
+  const waitLimit = { ...externalAgentDefaultWaitLimit, ...data.external_agent_wait_limit }
   const update = useCallback(
     (patch: PreviewUpdate) => {
-      // Preview configuration belongs to this local canvas node. It does not enter draft sync
-      // or the collaboration writer; those boundaries also exclude temporary external nodes.
-      setNodes((nodes) =>
-        nodes.map((node) => {
-          if (node.id !== id || !isExternalAgentWorkflowPreviewData(node.data)) return node
-          const changes = typeof patch === 'function' ? patch(node.data) : patch
-          return {
-            ...node,
-            ...(typeof changes.selected === 'boolean' ? { selected: changes.selected } : {}),
-            data: { ...node.data, ...changes },
-          }
-        }),
-      )
+      const current = collaborativeWorkflow.getState().nodes.find((node) => node.id === id)
+      if (!current || !isExternalAgentWorkflowPreviewData(current.data)) return
+      handleNodeDataUpdateWithSyncDraft({
+        id,
+        data: typeof patch === 'function' ? patch(current.data) : patch,
+      })
     },
-    [id, setNodes],
+    [id, collaborativeWorkflow, handleNodeDataUpdateWithSyncDraft],
   )
-  const close = () => update({ selected: false })
-  const remove = () => {
-    setNodes((nodes) => nodes.filter((node) => node.id !== id))
-    setEdges((edges) => edges.filter((edge) => edge.source !== id && edge.target !== id))
-  }
+  const close = () => handleNodeSelect(id, true)
+  const remove = () => handleNodeDelete(id)
   const runLabel = t(($) => $['panel.runThisStep'], { ns: 'workflow' })
 
   return (
@@ -167,9 +160,8 @@ export function ExternalAgentWorkflowPreviewPanel({
             agent={agent}
             onChange={(next) =>
               update((current) => ({
-                _externalAgentPreview: next,
-                title:
-                  current.title === current._externalAgentPreview.name ? next.name : current.title,
+                external_agent: next,
+                title: current.title === current.external_agent.name ? next.name : current.title,
               }))
             }
           />
@@ -196,21 +188,13 @@ export function ExternalAgentWorkflowPreviewPanel({
             />
           </div>
           <ExternalAgentWorkflowSettings
-            waitLimitEnabled={waitLimit.enabled}
-            waitLimitMinutes={waitLimit.minutes}
-            onWaitLimitEnabledChange={(enabled) =>
+            waitLimit={waitLimit}
+            onWaitLimitChange={(changes) =>
               update((current) => ({
-                _externalAgentWaitLimit: {
-                  ...(current._externalAgentWaitLimit ?? waitLimit),
-                  enabled,
-                },
-              }))
-            }
-            onWaitLimitMinutesChange={(minutes) =>
-              update((current) => ({
-                _externalAgentWaitLimit: {
-                  ...(current._externalAgentWaitLimit ?? waitLimit),
-                  minutes,
+                external_agent_wait_limit: {
+                  ...externalAgentDefaultWaitLimit,
+                  ...current.external_agent_wait_limit,
+                  ...changes,
                 },
               }))
             }

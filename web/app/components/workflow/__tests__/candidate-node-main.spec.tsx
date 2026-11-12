@@ -7,6 +7,8 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStoreApi } from 'reactflow'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
@@ -190,6 +192,35 @@ it('keeps a roster binding when placing an agent without creating an inline agen
     agent_binding: { binding_type: 'roster_agent', agent_id: 'agent-1' },
     _isCandidate: false,
   })
+  expect(sync).toHaveBeenCalledOnce()
+  expect(createBinding).not.toHaveBeenCalled()
+})
+
+it('saves a placed external agent without creating an inline agent binding', async () => {
+  const externalAgentData = createExternalAgentWorkflowPreviewData(
+    createExternalRosterPreview()[1]!,
+  )
+  const { store, place, nodes, sync } = setup(
+    createNode({
+      id: 'external-agent',
+      data: {
+        ...externalAgentData,
+        type: BlockEnum.Agent,
+        _isCandidate: true,
+      },
+    }),
+  )
+
+  await place()
+
+  expect(store.getState().candidateNode).toBeUndefined()
+  expect(nodes().map((node) => node.id)).toEqual(['existing-node', 'external-agent'])
+  const placedNode = nodes().find((node) => node.id === 'external-agent')!
+  expect(placedNode.data).toMatchObject({
+    ...externalAgentData,
+    _isCandidate: false,
+  })
+  expect(placedNode.data._isTempNode).toBeUndefined()
   expect(sync).toHaveBeenCalledOnce()
   expect(createBinding).not.toHaveBeenCalled()
 })

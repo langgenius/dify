@@ -6,13 +6,13 @@ import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps
 import { act, waitFor } from '@testing-library/react'
 import { use, useLayoutEffect } from 'react'
 import { useEdges, useNodes } from 'reactflow'
+import { onTestFinished } from 'vite-plus/test'
 import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { WORKFLOW_COMMON_NODES } from '../../constants/node'
@@ -547,55 +547,67 @@ it.each(['add', 'replace'] as const)(
   },
 )
 
-it('adds an external agent preview beside an existing connection without changing or syncing the workflow graph', async ({
-  onTestFinished,
-}) => {
-  onTestFinished(guardUnexpectedFetch())
-  const originalNodes = [codeNode('a'), codeNode('b')]
-  const originalEdge = createEdge({ id: 'original-connection', source: 'a', target: 'b' })
-  const { result, sync } = setup({ nodes: originalNodes, edges: [originalEdge] })
-  const originalConfiguration = structuredClone(
-    result.current.nodes.map((node) => ({
-      id: node.id,
-      position: node.position,
-      data: { ...node.data, selected: false },
-    })),
-  )
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  onTestFinished(() => {
-    vi.useRealTimers()
-  })
+it.each(['insert', 'replace'] as const)(
+  '%s an external agent in the workflow graph and syncs its configuration and connections',
+  async (command) => {
+    const externalAgentData = createExternalAgentWorkflowPreviewData(
+      createExternalRosterPreview()[1]!,
+    )
+    const { result, sync } = setup({
+      nodes:
+        command === 'insert'
+          ? [codeNode('a'), codeNode('b')]
+          : [codeNode('a'), codeNode('target', { data: { selected: true } }), codeNode('b')],
+      edges:
+        command === 'insert'
+          ? [createEdge({ source: 'a', target: 'b' })]
+          : [
+              createEdge({ source: 'a', target: 'target' }),
+              createEdge({ source: 'target', target: 'b' }),
+            ],
+    })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
 
-  act(() =>
-    result.current.handleNodeAdd(
-      {
-        nodeType: BlockEnum.AgentV2,
-        pluginDefaultValue: createExternalAgentWorkflowPreviewData(
-          createExternalRosterPreview()[1]!,
-        ),
-      },
-      { prevNodeId: 'a', nextNodeId: 'b' },
-    ),
-  )
-  await act(async () => vi.advanceTimersByTimeAsync(2000))
+    act(() => {
+      if (command === 'insert') {
+        result.current.handleNodeAdd(
+          { nodeType: BlockEnum.AgentV2, pluginDefaultValue: externalAgentData },
+          { prevNodeId: 'a', nextNodeId: 'b' },
+        )
+      } else {
+        result.current.handleNodeChange('target', BlockEnum.AgentV2, 'source', externalAgentData)
+      }
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(sync).toHaveBeenCalledOnce()
 
-  const previews = result.current.nodes.filter((node) =>
-    isExternalAgentWorkflowPreviewData(node.data),
-  )
-  expect(previews).toHaveLength(1)
-  expect(result.current.edges).toEqual([originalEdge])
-  expect(
-    result.current.nodes
-      .filter((node) => !isExternalAgentWorkflowPreviewData(node.data))
-      .map((node) => ({
-        id: node.id,
-        position: node.position,
-        data: { ...node.data, selected: false },
-      })),
-  ).toEqual(originalConfiguration)
-  expect(sync).not.toHaveBeenCalled()
-  expect(createAgent).not.toHaveBeenCalled()
-})
+    const externalAgents = result.current.nodes.filter((node) =>
+      isExternalAgentWorkflowPreviewData(node.data),
+    )
+    expect(externalAgents).toHaveLength(1)
+    const externalAgent = externalAgents[0]!
+    expect(externalAgent.data).toMatchObject({
+      ...externalAgentData,
+      type: BlockEnum.Agent,
+      selected: true,
+    })
+    expect(externalAgent.data).not.toHaveProperty('_isTempNode')
+    expect(result.current.nodes.map((node) => node.id).sort()).toEqual(
+      ['a', 'b', externalAgent.id].sort(),
+    )
+    expect(result.current.edges).toHaveLength(2)
+    expect(result.current.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'a', target: externalAgent.id }),
+        expect.objectContaining({ source: externalAgent.id, target: 'b' }),
+      ]),
+    )
+    expect(createAgent).not.toHaveBeenCalled()
+  },
+)
 
 it('creates an inline Agent through the service boundary and resolves the pending graph node', async () => {
   const request = createDeferred<Awaited<ReturnType<typeof createAgent>>>()

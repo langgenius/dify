@@ -1,6 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
-import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -12,25 +11,6 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks/use-workflow-variables'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-
-const exampleVariables: NodeOutPutVar[] = [
-  {
-    nodeId: 'policy',
-    title: 'Knowledge Retrieval',
-    vars: [{ variable: 'result', type: VarType.string }],
-  },
-  {
-    nodeId: 'input',
-    title: 'User Input',
-    vars: [{ variable: 'contract_text', type: VarType.string }],
-  },
-]
-const exampleNodes: WorkflowNodesMap = {
-  policy: { title: 'Knowledge Retrieval', type: BlockEnum.KnowledgeRetrieval },
-  input: { title: 'User Input', type: BlockEnum.Start },
-}
 
 function TaskToolbar({ value, focused }: { value: string; focused: boolean }) {
   const { t } = useTranslation(['workflowAgent', 'agentRoster'])
@@ -81,11 +61,7 @@ export function ExternalAgentTaskField({
   const [focused, setFocused] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)
   const getWorkflowVarType = useWorkflowVariableType()
-  const missingExamples = exampleVariables.filter(
-    (example) => !availableVars.some((item) => item.nodeId === example.nodeId),
-  )
-  const variables = [...availableVars, ...missingExamples]
-  const workflowNodesMap = { ...exampleNodes }
+  const workflowNodesMap: WorkflowNodesMap = {}
   for (const node of availableNodesWithParent)
     workflowNodesMap[node.id] = {
       title: node.data.title,
@@ -135,12 +111,9 @@ export function ExternalAgentTaskField({
             onBlur={() => setFocused(false)}
             workflowVariableBlock={{
               show: true,
-              variables,
+              variables: availableVars,
               workflowNodesMap,
-              getVarType: (payload) =>
-                missingExamples.some((example) => example.nodeId === payload.nodeId)
-                  ? Type.string
-                  : getWorkflowVarType(payload),
+              getVarType: getWorkflowVarType,
             }}
             isSupportFileVar
             agentOutputBlock={{ show: true, outputs, onChange: onOutputsChange }}

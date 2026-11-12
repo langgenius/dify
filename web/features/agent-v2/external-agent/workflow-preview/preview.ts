@@ -1,11 +1,17 @@
 import type {
   ExternalAgentWorkflowPreviewAgent,
   ExternalAgentWorkflowPreviewDefaultValue,
+  ExternalAgentWorkflowWaitLimit,
 } from './types'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
-export const externalAgentExampleTask =
-  'Review this contract against the company’s payment policy. Identify risks and suggest safer wording.\nPolicy: {{#policy.result#}}\nContract: {{#input.contract_text#}}'
+export const externalAgentDefaultWaitLimit: Readonly<ExternalAgentWorkflowWaitLimit> = {
+  enabled: true,
+  minutes: 10,
+  onTimeout: 'end-waiting',
+  maxRetries: 2,
+  retryIntervalSeconds: 30,
+}
 
 export const externalAgentDefaultOutputs = [
   {
@@ -16,8 +22,8 @@ export const externalAgentDefaultOutputs = [
   },
 ]
 
-// The external-agent workflow contract is not available yet. Keep this selection on the
-// current canvas only; draft serialization excludes temporary nodes and their edges.
+// These UI settings belong to the workflow draft. External-agent execution will use its
+// own contract once available; this summary contains no endpoint or credentials.
 export function createExternalAgentWorkflowPreviewData(
   agent: ExternalAgentWorkflowPreviewAgent,
 ): ExternalAgentWorkflowPreviewDefaultValue {
@@ -26,11 +32,10 @@ export function createExternalAgentWorkflowPreviewData(
     agent_node_kind: 'external_agent',
     version: '2',
     agent_binding: undefined,
-    _isTempNode: true,
-    _externalAgentPreview: { ...agent },
-    agent_task: externalAgentExampleTask,
+    external_agent: { ...agent },
+    agent_task: '',
     agent_declared_outputs: externalAgentDefaultOutputs.map((output) => ({ ...output })),
-    _externalAgentWaitLimit: { enabled: true, minutes: 10 },
+    external_agent_wait_limit: { ...externalAgentDefaultWaitLimit },
     error_strategy: ErrorHandleTypeEnum.failBranch,
   }
 }

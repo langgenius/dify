@@ -10,6 +10,7 @@ import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
@@ -441,14 +442,41 @@ describe('useNodesSyncDraft', () => {
       )
     })
 
-    it('excludes external agent previews and their connected edges from backend draft payloads', async () => {
-      const previewData = createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!)
-      const { result } = renderUseNodesSyncDraft({
-        nodes: [
-          startNode,
-          createNode({ id: 'external-preview', data: { type: BlockEnum.Agent, ...previewData } }),
+    it('saves external agent configuration and its connected edges in the workflow draft', async () => {
+      const agent = createExternalRosterPreview()[1]!
+      const externalAgentData = {
+        ...createExternalAgentWorkflowPreviewData(agent),
+        agent_task: 'Review {{#n1.contract#}} and identify compliance risks.',
+        agent_declared_outputs: [
+          {
+            name: 'risk_summary',
+            type: 'string' as const,
+            required: true,
+            description: 'Contract risks and suggested revisions',
+          },
         ],
-        edges: [createEdge({ source: startNode.id, target: 'external-preview' })],
+        external_agent_wait_limit: {
+          enabled: true,
+          minutes: 15,
+          onTimeout: 'cancel-and-retry' as const,
+          maxRetries: 3,
+          retryIntervalSeconds: 45,
+        },
+      }
+      const externalAgent = createNode({
+        id: 'external-agent',
+        data: { type: BlockEnum.Agent, ...externalAgentData },
+      })
+      const connection = createEdge({
+        source: startNode.id,
+        sourceHandle: 'source',
+        target: externalAgent.id,
+        targetHandle: 'target',
+        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+      })
+      const { result } = renderUseNodesSyncDraft({
+        nodes: [startNode, externalAgent],
+        edges: [connection],
       })
 
       await act(async () => {
@@ -458,10 +486,34 @@ describe('useNodesSyncDraft', () => {
       expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           params: expect.objectContaining({
-            graph: expect.objectContaining({ nodes: [savedStartNode], edges: [] }),
+            graph: expect.objectContaining({
+              nodes: [
+                savedStartNode,
+                expect.objectContaining({
+                  id: externalAgent.id,
+                  data: expect.objectContaining({
+                    type: BlockEnum.Agent,
+                    agent_node_kind: 'external_agent',
+                    version: '2',
+                    external_agent: expect.objectContaining({
+                      key: agent.key,
+                      name: agent.name,
+                      enabled: true,
+                    }),
+                    agent_task: externalAgentData.agent_task,
+                    agent_declared_outputs: externalAgentData.agent_declared_outputs,
+                    external_agent_wait_limit: externalAgentData.external_agent_wait_limit,
+                    error_strategy: ErrorHandleTypeEnum.failBranch,
+                  }),
+                }),
+              ],
+              edges: [expect.objectContaining(connection)],
+            }),
           }),
         }),
       )
+      const savedNode = mockSyncWorkflowDraft.mock.lastCall![0].params.graph.nodes[1]
+      expect(savedNode.data).not.toHaveProperty('_isTempNode')
     })
 
     it('keeps pending inline Agent v2 nodes in draft without incomplete bindings', async () => {

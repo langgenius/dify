@@ -4,6 +4,7 @@ import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
 import { memo } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { CUSTOM_NODE } from './constants'
 import { useAutoGenerateWebhookUrl } from './hooks/use-auto-generate-webhook-url'
 import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
@@ -107,7 +108,11 @@ const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
       return
     }
 
-    if (isAgentV2NodeData(candidateNode.data)) handleSyncWorkflowDraft(true, true)
+    if (
+      isAgentV2NodeData(candidateNode.data) ||
+      isExternalAgentWorkflowPreviewData(candidateNode.data)
+    )
+      handleSyncWorkflowDraft(true, true)
   })
 
   useEventListener('contextmenu', (e) => {

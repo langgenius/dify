@@ -1,8 +1,6 @@
 import type { Edge, Node } from '../types'
-import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 const sanitizeNodeForBroadcast = (node: Node): Node => {
@@ -35,7 +33,6 @@ const sanitizeEdgeForBroadcast = (edge: Edge): Edge => {
 
 export const useCollaborativeWorkflow = () => {
   const store = useStoreApi()
-  const previewNodeIds = useRefWithInit(() => new Set<string>()).current
   const { setNodes: collabSetNodes, setEdges: collabSetEdges } = collaborationManager
 
   const setNodes = useCallback(
@@ -46,47 +43,32 @@ export const useCollaborativeWorkflow = () => {
     ) => {
       const { getNodes, setNodes: reactFlowSetNodes } = store.getState()
       const oldNodes = getNodes()
-      for (const node of [...oldNodes, ...newNodes]) {
-        if (isExternalAgentWorkflowPreviewData(node.data)) previewNodeIds.add(node.id)
-      }
       if (shouldBroadcast) {
         if (!collaborationManager.canApplyLocalGraphMutation()) return
 
         collabSetNodes(
-          oldNodes
-            .filter((node) => !isExternalAgentWorkflowPreviewData(node.data))
-            .map(sanitizeNodeForBroadcast),
-          newNodes
-            .filter((node) => !isExternalAgentWorkflowPreviewData(node.data))
-            .map(sanitizeNodeForBroadcast),
+          oldNodes.map(sanitizeNodeForBroadcast),
+          newNodes.map(sanitizeNodeForBroadcast),
           source,
         )
       }
       reactFlowSetNodes(newNodes)
     },
-    [store, collabSetNodes, previewNodeIds],
+    [store, collabSetNodes],
   )
 
   const setEdges = useCallback(
     (newEdges: Edge[], shouldBroadcast: boolean = true) => {
-      const { edges, getNodes, setEdges: reactFlowSetEdges } = store.getState()
-      for (const node of getNodes()) {
-        if (isExternalAgentWorkflowPreviewData(node.data)) previewNodeIds.add(node.id)
-      }
+      const { edges, setEdges: reactFlowSetEdges } = store.getState()
       if (shouldBroadcast) {
         if (!collaborationManager.canApplyLocalGraphMutation()) return
 
-        const canBroadcastEdge = (edge: Edge) =>
-          !previewNodeIds.has(edge.source) && !previewNodeIds.has(edge.target)
-        collabSetEdges(
-          edges.filter(canBroadcastEdge).map(sanitizeEdgeForBroadcast),
-          newEdges.filter(canBroadcastEdge).map(sanitizeEdgeForBroadcast),
-        )
+        collabSetEdges(edges.map(sanitizeEdgeForBroadcast), newEdges.map(sanitizeEdgeForBroadcast))
       }
 
       reactFlowSetEdges(newEdges)
     },
-    [store, collabSetEdges, previewNodeIds],
+    [store, collabSetEdges],
   )
 
   const collaborativeStore = useCallback(() => {

@@ -80,46 +80,62 @@ it('updates the local graph while stripping selection state from broadcasts', as
   expect(nextEdges[0].data).not.toHaveProperty('_connectedNodeIsSelected')
 })
 
-it('keeps external agent previews and their edges local through edits and deletion', async () => {
+it('broadcasts external agent configuration and its connections through edits', async () => {
   mocks.canApplyLocalGraphMutation.mockReturnValue(true)
   const { result } = setup()
   await waitFor(() => expect(result.current.getState().nodes).toHaveLength(2))
   const originalNodes = result.current.getState().nodes
-  const preview = createNode({
-    id: 'external-preview',
+  const externalAgent = createNode({
+    id: 'external-agent',
     data: {
       type: BlockEnum.Agent,
       ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+      agent_task: 'Review {{#old-node.contract#}}.',
     },
   })
-  const previewEdge = createEdge({ id: 'preview-edge', source: oldNode.id, target: preview.id })
-  act(() => {
-    result.current.setNodes([...originalNodes, preview], false)
-    result.current.setEdges([oldEdge, previewEdge], false)
+  const connection = createEdge({
+    id: 'external-agent-connection',
+    source: oldNode.id,
+    target: externalAgent.id,
   })
-  expect(mocks.setNodes).not.toHaveBeenCalled()
-  expect(mocks.setEdges).not.toHaveBeenCalled()
-
   act(() => {
-    result.current.setNodes([newNode, originalNodes[1]!, preview])
-    result.current.setEdges([newEdge, previewEdge])
+    result.current.setNodes([...originalNodes, externalAgent])
+    result.current.setEdges([oldEdge, connection])
   })
-  expect(result.current.getState().nodes).toHaveLength(3)
-  expect(result.current.getState().edges).toHaveLength(2)
-  const [oldBroadcastNodes, newBroadcastNodes] = mocks.setNodes.mock.lastCall!
-  expect(oldBroadcastNodes.map((node: { id: string }) => node.id)).toEqual(['old-node', 'target'])
-  expect(newBroadcastNodes.map((node: { id: string }) => node.id)).toEqual(['new-node', 'target'])
+  expect(mocks.setNodes).toHaveBeenLastCalledWith(
+    [expect.objectContaining({ id: oldNode.id }), expect.objectContaining({ id: 'target' })],
+    [
+      expect.objectContaining({ id: oldNode.id }),
+      expect.objectContaining({ id: 'target' }),
+      expect.objectContaining(externalAgent),
+    ],
+    expect.any(String),
+  )
   expect(mocks.setEdges).toHaveBeenLastCalledWith(
     [expect.objectContaining({ id: oldEdge.id })],
-    [expect.objectContaining({ id: newEdge.id })],
+    [expect.objectContaining({ id: oldEdge.id }), expect.objectContaining(connection)],
   )
 
+  const editedAgent = {
+    ...externalAgent,
+    data: {
+      ...externalAgent.data,
+      agent_task: 'Summarize the contract risks.',
+      external_agent_wait_limit: {
+        enabled: true,
+        minutes: 20,
+        onTimeout: 'request-cancellation',
+        maxRetries: 2,
+        retryIntervalSeconds: 30,
+      },
+    },
+  }
   act(() => {
-    result.current.setNodes([newNode, originalNodes[1]!])
-    result.current.setEdges([newEdge])
+    result.current.setNodes([...originalNodes, editedAgent])
   })
-  expect(mocks.setEdges).toHaveBeenLastCalledWith(
-    [expect.objectContaining({ id: newEdge.id })],
-    [expect.objectContaining({ id: newEdge.id })],
+  expect(mocks.setNodes).toHaveBeenLastCalledWith(
+    expect.arrayContaining([expect.objectContaining(externalAgent)]),
+    expect.arrayContaining([expect.objectContaining(editedAgent)]),
+    expect.any(String),
   )
 })
