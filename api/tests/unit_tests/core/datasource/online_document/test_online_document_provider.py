@@ -159,12 +159,11 @@ def _extraction_input(document: DocumentModel) -> StoredDocumentExtractionInput:
 class TestNotionProviderCases:
     @staticmethod
     @pytest.fixture
-    def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-        """Bind a real session for Notion document metadata persistence."""
+    def database(sqlite_engine: Engine) -> Iterator[Session]:
+        """Open a session on the SQLite database the extractor's session factory writes to."""
 
         TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
         with Session(sqlite_engine, expire_on_commit=False) as session:
-            monkeypatch.setattr(notion_extractor_module.db, "session", session)
             yield session
 
     @staticmethod
