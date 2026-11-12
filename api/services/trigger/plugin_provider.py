@@ -274,7 +274,6 @@ class PluginTriggerProvider:
         """
         Dispatch a trigger through plugin runtime
 
-        :param user_id: User ID
         :param request: Flask request object
         :param subscription: Subscription
         :param credentials: Provider credentials
@@ -307,7 +306,7 @@ class PluginTriggerProvider:
 
         :param user_id: User ID
         :param endpoint: Subscription endpoint
-        :param subscription_params: Subscription parameters
+        :param parameters: Subscription parameters
         :param credentials: Provider credentials
         :param credential_type: Credential type
         :return: Subscription result
