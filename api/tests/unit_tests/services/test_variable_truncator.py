@@ -194,6 +194,26 @@ class TestVariableTruncatorCases:
             assert result.truncated is True
             assert result.value_size == 10
 
+        def test_string_filling_the_budget_exactly_is_kept(self) -> None:
+            truncator = VariableTruncator()
+            exact_str = "abcdefgh"
+            budget = VariableTruncator.calculate_json_size(exact_str)
+
+            result = truncator._truncate_string(exact_str, budget)
+
+            assert result.value == exact_str
+            assert result.truncated is False
+            assert result.value_size == budget
+
+        def test_string_one_over_the_budget_is_truncated(self) -> None:
+            truncator = VariableTruncator()
+            budget = VariableTruncator.calculate_json_size("abcdefgh")
+
+            result = truncator._truncate_string("abcdefghi", budget)
+
+            assert result.truncated is True
+            assert result.value_size <= budget
+
     class TestArrayTruncation:
         """Test array truncation functionality."""
 
@@ -910,9 +930,20 @@ class TestVariableTruncatorAdditionalCases:
             truncator = VariableTruncator(string_length_limit=8, max_size_bytes=30)
             mapping = {"s": StringSegment(value="long-content")}
 
-            result = truncator._truncate_object(mapping, 20)
+            result = truncator._truncate_object(mapping, 15)
 
             assert result.truncated is True
+            assert isinstance(result.value["s"], StringSegment)
+
+        def test_truncate_object_should_keep_value_that_exactly_fits_budget(self) -> None:
+            truncator = VariableTruncator(string_length_limit=8, max_size_bytes=30)
+            mapping = {"s": StringSegment(value="long-content")}
+            assert VariableTruncator.calculate_json_size(mapping) == 20
+
+            result = truncator._truncate_object(mapping, 20)
+
+            assert result.truncated is False
+            assert result.value_size == 20
             assert isinstance(result.value["s"], StringSegment)
 
         def test_truncate_json_primitives_should_handle_updated_variable_input(self) -> None:
