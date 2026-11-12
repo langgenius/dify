@@ -13,12 +13,12 @@ from flask import Flask
 import contexts
 from controllers.trigger.trigger import trigger_endpoint
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from services.trigger.builder_entities import SubscriptionBuilderUpdater
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from tests.e2e_tests.containers.services import test_trigger_subscription_query
 from tests.unit_tests.controllers.console.workspace import test_trigger_subscription_builder
@@ -68,7 +68,7 @@ def runtime(harness: _Harness) -> Iterator[_Runtime]:
     contexts.plugin_trigger_providers.set({})
     contexts.plugin_trigger_providers_lock.set(Lock())
     with harness.app.app_context():
-        runtime = _Runtime(application_services().workspaces.trigger_builders)
+        runtime = _Runtime(application_services().triggers.builders)
         try:
             yield runtime
         finally:
@@ -83,7 +83,7 @@ def runtime(harness: _Harness) -> Iterator[_Runtime]:
 
 
 def _persist_subscription(
-    harness: _Harness, *, subscription_id: str, tenant_id: str, provider_id: str, credentials: dict[str, str]
+    harness: _Harness, *, subscription_id: str, tenant_id: str, provider_id: str, credentials: dict[str, object]
 ) -> None:
     with harness.session_factory.begin() as session:
         subscription = TriggerSubscription(

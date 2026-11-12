@@ -1,6 +1,5 @@
-import type { RefObject } from 'react'
 import type { Connection, NodeProps } from 'reactflow'
-import type { CommonNodeType, OnSelectBlock } from '../../../../types'
+import type { CommonNodeType } from '../../../../types'
 import type { HumanInputNodeType } from '../../../human-input/types'
 import { useRef, useState } from 'react'
 import ReactFlow, { useReactFlow, useStoreApi } from 'reactflow'
@@ -23,24 +22,6 @@ afterEach(() => {
   expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 let flow: ReturnType<typeof useStoreApi>
-
-// Search results are outside the handle's hit testing and connection contract.
-vi.mock('../../../../block-selector/tabs', () => ({
-  BlockSelectorPanels: ({
-    searchInputRef,
-    onSelect,
-  }: {
-    searchInputRef: RefObject<HTMLInputElement>
-    onSelect: OnSelectBlock
-  }) => (
-    <>
-      <input ref={searchInputRef} aria-label="Find a node" />
-      <button type="button" onClick={() => onSelect(BlockEnum.Code)}>
-        Add code node
-      </button>
-    </>
-  ),
-}))
 
 function HandleNode({ id, data }: NodeProps<CommonNodeType>) {
   return (
@@ -196,11 +177,10 @@ it.each([1, 0.25])(
           y: buttonBounds.top + 1 - handleBounds.top,
         },
       })
-      await expect.element(screen.getByRole('textbox', { name: 'Find a node' })).toHaveFocus()
+      const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' })
+      await expect.element(search).toHaveFocus()
       await userEvent.keyboard('{Escape}')
-      await expect
-        .element(screen.getByRole('textbox', { name: 'Find a node' }))
-        .not.toBeInTheDocument()
+      await expect.element(search).not.toBeInTheDocument()
     }
 
     await userEvent.dragAndDrop(source, target)
@@ -271,7 +251,7 @@ it('adds and connects the intended human input branch at 25% zoom', async () => 
       sourceNode.element().querySelector(`[data-handleid="${handleId}"]`)!,
     )
     await source.click()
-    await screen.getByRole('button', { name: 'Add code node' }).click()
+    await screen.getByRole('button', { name: 'workflow.blocks.code' }).click()
     const inserted = flow
       .getState()
       .getNodes()
@@ -281,7 +261,7 @@ it('adds and connects the intended human input branch at 25% zoom', async () => 
     expect(edge).toMatchObject({ source: 'source', targetHandle: 'target' })
     expect(inserted.find((node) => node.id === edge.target)?.data.type).toBe(BlockEnum.Code)
     await expect
-      .element(screen.getByRole('textbox', { name: 'Find a node' }))
+      .element(screen.getByRole('searchbox', { name: 'workflow.tabs.searchBlock' }))
       .not.toBeInTheDocument()
 
     await userEvent.dragAndDrop(source, target)

@@ -13,7 +13,6 @@ from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider, IMSyncResultType
 from core.human_input_v2.shared import (
-    AccountId,
     ContactId,
     DirectoryScope,
     IMIdentityId,
@@ -24,6 +23,7 @@ from repositories.human_input_v2.im_channel_repository import IMChannelId
 from .sync_reconciliation import ReconciliationReasonCode
 from .sync_records import (
     IMChannelRevision,
+    IMSyncInitiator,
     IMSyncRun,
     StaleRevision,
     SynchronizedIMIdentityPage,
@@ -103,10 +103,10 @@ class IMSyncRepository(Protocol):
         *,
         organization_scope: DirectoryScope,
         sync_run_id: IMSyncRunId,
-        started_by_account_id: AccountId | None,
+        started_by: IMSyncInitiator,
         now: NaiveDatetime,
     ) -> ActiveRunDecision:
-        """Lock Channel and return at most one active run."""
+        """Lock Channel and create or reuse a run, preserving its original initiator."""
         ...
 
     def load_sync_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:
