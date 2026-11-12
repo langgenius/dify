@@ -1,11 +1,13 @@
 import type { ExternalAgentWorkflowPreviewAgent } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SearchInput } from '@/app/components/base/search-input'
 import { externalWorkflowAgentExamples } from '@/app/components/workflow/block-selector/workflow-agent-selector-preview'
+import { ExternalAgentDetailsDialogContent } from './details-dialog'
 import { ExternalAgentBadge } from './external-badge'
 
 export function ExternalAgentField({
@@ -31,36 +33,39 @@ export function ExternalAgentField({
             {t(($) => $['nodes.agent.roster.change'], { ns: 'workflowAgent' })}
           </PopoverTrigger>
         </div>
-        <PopoverTrigger
-          render={
-            <Button
-              variant="ghost"
-              className="h-8 w-full justify-start gap-1 rounded-lg bg-components-input-bg-normal p-1 text-start hover:bg-state-base-hover-alt"
+        <Dialog>
+          <DialogTrigger
+            render={
+              <Button
+                variant="ghost"
+                className="h-8 w-full justify-start gap-1 rounded-lg bg-components-input-bg-normal p-1 text-start hover:bg-state-base-hover-alt"
+              />
+            }
+          >
+            <span className="flex size-6 shrink-0 items-center justify-center">
+              <AppIcon
+                size="tiny"
+                className="size-5 rounded-md"
+                icon={agent.icon}
+                fallback={{
+                  content: (
+                    <span aria-hidden className="i-ri-robot-2-line size-3.5 text-text-accent" />
+                  ),
+                  background: 'var(--color-background-default)',
+                }}
+              />
+            </span>
+            <span className="truncate system-sm-regular text-components-input-text-filled">
+              {agent.name}
+            </span>
+            <ExternalAgentBadge />
+            <span
+              aria-hidden
+              className="ms-auto me-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
             />
-          }
-        >
-          <span className="flex size-6 shrink-0 items-center justify-center">
-            <AppIcon
-              size="tiny"
-              className="size-5 rounded-md"
-              icon={agent.icon}
-              fallback={{
-                content: (
-                  <span aria-hidden className="i-ri-robot-2-line size-3.5 text-text-accent" />
-                ),
-                background: 'var(--color-background-default)',
-              }}
-            />
-          </span>
-          <span className="truncate system-sm-regular text-components-input-text-filled">
-            {agent.name}
-          </span>
-          <ExternalAgentBadge />
-          <span
-            aria-hidden
-            className="ms-auto me-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
-          />
-        </PopoverTrigger>
+          </DialogTrigger>
+          <ExternalAgentDetailsDialogContent agent={agent} />
+        </Dialog>
       </div>
       <PopoverContent align="start" className="w-100 max-w-[calc(100vw-2rem)] p-1">
         <PopoverTitle className="sr-only">

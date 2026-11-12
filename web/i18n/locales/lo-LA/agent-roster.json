@@ -134,6 +134,8 @@
   "external.overview.tracing": "ການຕິດຕາມຂັ້ນຕອນ",
   "external.overview.tracingDescription": "ສະແດງຂັ້ນຕອນພາຍໃນທີ່ຕົວແທນນີ້ສົ່ງກັບ.",
   "external.overview.tracingHint": "ຕ້ອງການສ່ວນຂະຫຍາຍ A2A Traceability ທີ່ປະກາດໃນ Agent Card. ການປິດການຕິດຕາມຂັ້ນຕອນຈະຢຸດການເກັບກຳສຳລັບການເອີ້ນໃຊ້ໃໝ່. ຂໍ້ມູນການຕິດຕາມທີ່ເກັບກຳໄວ້ກ່ອນໜ້ານີ້ຍັງຄົງໃຊ້ໄດ້.",
+  "external.overview.tracingOff": "ປິດການຕິດຕາມຂັ້ນຕອນ",
+  "external.overview.tracingOn": "ເປີດການຕິດຕາມຂັ້ນຕອນ",
   "external.overview.type": "ຕົວແທນພາຍນອກ",
   "external.overview.usedInApps": "ໃຊ້ໃນແອັບ",
   "external.overview.verification": "ການຢືນຢັນການເຊື່ອມຕໍ່",

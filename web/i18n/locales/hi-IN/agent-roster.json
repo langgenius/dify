@@ -134,6 +134,8 @@
   "external.overview.tracing": "ट्रेसिंग",
   "external.overview.tracingDescription": "इस एजेंट द्वारा लौटाए गए आंतरिक चरण दिखाएँ।",
   "external.overview.tracingHint": "Agent Card में घोषित A2A Traceability एक्सटेंशन आवश्यक है। ट्रेसिंग बंद करने से नए कॉल के लिए संग्रह बंद हो जाता है। पहले से एकत्र किए गए ट्रेस उपलब्ध रहते हैं।",
+  "external.overview.tracingOff": "ट्रेसिंग बंद है",
+  "external.overview.tracingOn": "ट्रेसिंग चालू है",
   "external.overview.type": "बाहरी एजेंट",
   "external.overview.usedInApps": "इन ऐप में उपयोग किया गया",
   "external.overview.verification": "कनेक्शन सत्यापन",

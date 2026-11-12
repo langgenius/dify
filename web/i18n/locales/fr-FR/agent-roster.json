@@ -136,6 +136,8 @@
   "external.overview.tracing": "Traçage",
   "external.overview.tracingDescription": "Afficher les étapes internes renvoyées par cet agent.",
   "external.overview.tracingHint": "Nécessite l’extension A2A Traceability déclarée dans la carte de l’agent. Désactiver le traçage arrête la collecte pour les nouveaux appels. Les traces déjà collectées restent disponibles.",
+  "external.overview.tracingOff": "Traçage désactivé",
+  "external.overview.tracingOn": "Traçage activé",
   "external.overview.type": "Agent externe",
   "external.overview.usedInApps": "Utilisé dans les applications",
   "external.overview.verification": "Vérification de la connexion",

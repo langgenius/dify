@@ -138,6 +138,8 @@
   "external.overview.tracing": "Sledenje",
   "external.overview.tracingDescription": "Prikaži notranje korake, ki jih vrne ta agent.",
   "external.overview.tracingHint": "Zahteva razširitev A2A Traceability, navedeno v Agent Card. Če sledenje izklopite, se zbiranje za nove klice ustavi. Predhodno zbrane sledi ostanejo na voljo.",
+  "external.overview.tracingOff": "Sledenje je izklopljeno",
+  "external.overview.tracingOn": "Sledenje je vklopljeno",
   "external.overview.type": "Zunanji agent",
   "external.overview.usedInApps": "Uporabljen v aplikacijah",
   "external.overview.verification": "Preverjanje povezave",

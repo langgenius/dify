@@ -134,6 +134,8 @@
   "external.overview.tracing": "Tracing",
   "external.overview.tracingDescription": "Vom Agenten zurückgegebene interne Schritte anzeigen.",
   "external.overview.tracingHint": "Erfordert die in der Agent Card deklarierte Erweiterung A2A Traceability. Das Deaktivieren von Tracing beendet die Erfassung für neue Aufrufe. Bereits erfasste Traces bleiben verfügbar.",
+  "external.overview.tracingOff": "Tracing deaktiviert",
+  "external.overview.tracingOn": "Tracing aktiviert",
   "external.overview.type": "Externer Agent",
   "external.overview.usedInApps": "Verwendet in Apps",
   "external.overview.verification": "Verbindungsprüfung",

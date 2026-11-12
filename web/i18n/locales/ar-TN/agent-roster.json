@@ -142,6 +142,8 @@
   "external.overview.tracing": "التتبّع",
   "external.overview.tracingDescription": "عرض الخطوات الداخلية التي يرجعها هذا الوكيل.",
   "external.overview.tracingHint": "يتطلب امتداد A2A Traceability المُعلن عنه في بطاقة الوكيل. يؤدي إيقاف التتبّع إلى إيقاف التجميع للمكالمات الجديدة. تظل عمليات التتبّع التي جُمعت سابقًا متاحة.",
+  "external.overview.tracingOff": "التتبّع معطّل",
+  "external.overview.tracingOn": "التتبّع مفعّل",
   "external.overview.type": "وكيل خارجي",
   "external.overview.usedInApps": "مُستخدَم في التطبيقات",
   "external.overview.verification": "التحقق من الاتصال",

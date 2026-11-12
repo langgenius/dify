@@ -311,6 +311,8 @@ export default interface Resources {
     'external.overview.tracing': 'Tracing'
     'external.overview.tracingDescription': 'Show internal steps returned by this agent.'
     'external.overview.tracingHint': 'Requires the A2A Traceability extension declared in the Agent Card. Turning off Tracing stops collection for new calls. Previously collected traces remain available.'
+    'external.overview.tracingOff': 'Tracing off'
+    'external.overview.tracingOn': 'Tracing on'
     'external.overview.type': 'External agent'
     'external.overview.usedInApps': 'Used in apps'
     'external.overview.verification': 'Connection verification'

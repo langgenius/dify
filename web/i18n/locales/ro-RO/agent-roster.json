@@ -136,6 +136,8 @@
   "external.overview.tracing": "Urmărire",
   "external.overview.tracingDescription": "Afișați pașii interni returnați de acest agent.",
   "external.overview.tracingHint": "Necesită extensia A2A Traceability declarată în Agent Card. Dezactivarea urmăririi oprește colectarea pentru apelurile noi. Urmele colectate anterior rămân disponibile.",
+  "external.overview.tracingOff": "Urmărirea este dezactivată",
+  "external.overview.tracingOn": "Urmărirea este activată",
   "external.overview.type": "Agent extern",
   "external.overview.usedInApps": "Utilizat în aplicații",
   "external.overview.verification": "Verificarea conexiunii",

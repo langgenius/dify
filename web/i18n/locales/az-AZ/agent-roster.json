@@ -134,6 +134,8 @@
   "external.overview.tracing": "İzləmə",
   "external.overview.tracingDescription": "Bu agentin qaytardığı daxili addımları göstərin.",
   "external.overview.tracingHint": "Agent Card-da elan edilmiş A2A Traceability genişləndirməsini tələb edir. İzləməni söndürmək yeni çağırışlar üçün məlumat toplanmasını dayandırır. Əvvəllər toplanmış izləmələr əlçatan qalır.",
+  "external.overview.tracingOff": "İzləmə deaktivdir",
+  "external.overview.tracingOn": "İzləmə aktivdir",
   "external.overview.type": "Xarici agent",
   "external.overview.usedInApps": "İstifadə olunduğu tətbiqlər",
   "external.overview.verification": "Bağlantının yoxlanması",

@@ -134,6 +134,8 @@
   "external.overview.tracing": "추적",
   "external.overview.tracingDescription": "이 에이전트가 반환한 내부 단계를 표시합니다.",
   "external.overview.tracingHint": "Agent Card에 선언된 A2A Traceability 확장 기능이 필요합니다. 추적을 끄면 새 호출의 수집이 중지됩니다. 이전에 수집된 추적은 계속 사용할 수 있습니다.",
+  "external.overview.tracingOff": "추적 꺼짐",
+  "external.overview.tracingOn": "추적 켜짐",
   "external.overview.type": "외부 에이전트",
   "external.overview.usedInApps": "사용 중인 앱",
   "external.overview.verification": "연결 검증",

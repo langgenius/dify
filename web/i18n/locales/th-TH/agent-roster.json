@@ -134,6 +134,8 @@
   "external.overview.tracing": "การติดตามขั้นตอน",
   "external.overview.tracingDescription": "แสดงขั้นตอนภายในที่ตัวแทนนี้ส่งกลับ",
   "external.overview.tracingHint": "ต้องมีส่วนขยาย A2A Traceability ที่ประกาศใน Agent Card การปิดการติดตามขั้นตอนจะหยุดการเก็บข้อมูลสำหรับการเรียกใช้ใหม่ ข้อมูลการติดตามที่เก็บไว้ก่อนหน้านี้ยังคงพร้อมใช้งาน",
+  "external.overview.tracingOff": "ปิดการติดตามขั้นตอน",
+  "external.overview.tracingOn": "เปิดการติดตามขั้นตอน",
   "external.overview.type": "ตัวแทนภายนอก",
   "external.overview.usedInApps": "ใช้ในแอป",
   "external.overview.verification": "การยืนยันการเชื่อมต่อ",

@@ -138,6 +138,8 @@
   "external.overview.tracing": "Śledzenie",
   "external.overview.tracingDescription": "Pokaż wewnętrzne kroki zwrócone przez tego agenta.",
   "external.overview.tracingHint": "Wymaga rozszerzenia A2A Traceability zadeklarowanego w Agent Card. Wyłączenie śledzenia zatrzymuje zbieranie danych dla nowych wywołań. Wcześniej zebrane ślady pozostają dostępne.",
+  "external.overview.tracingOff": "Śledzenie wyłączone",
+  "external.overview.tracingOn": "Śledzenie włączone",
   "external.overview.type": "Agent zewnętrzny",
   "external.overview.usedInApps": "Używany w aplikacjach",
   "external.overview.verification": "Weryfikacja połączenia",

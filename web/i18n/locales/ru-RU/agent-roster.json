@@ -138,6 +138,8 @@
   "external.overview.tracing": "Трассировка",
   "external.overview.tracingDescription": "Показывать внутренние шаги, возвращаемые этим агентом.",
   "external.overview.tracingHint": "Требуется расширение A2A Traceability, объявленное в Agent Card. Отключение трассировки прекращает сбор данных для новых вызовов. Ранее собранные трассировки остаются доступными.",
+  "external.overview.tracingOff": "Трассировка выключена",
+  "external.overview.tracingOn": "Трассировка включена",
   "external.overview.type": "Внешний агент",
   "external.overview.usedInApps": "Используется в приложениях",
   "external.overview.verification": "Проверка подключения",

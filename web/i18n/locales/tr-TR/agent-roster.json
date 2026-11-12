@@ -134,6 +134,8 @@
   "external.overview.tracing": "İz sürme",
   "external.overview.tracingDescription": "Bu ajanın döndürdüğü dahili adımları göster.",
   "external.overview.tracingHint": "Agent Card'da bildirilen A2A Traceability uzantısını gerektirir. İz sürmeyi kapatmak, yeni çağrılar için veri toplamayı durdurur. Daha önce toplanan izler kullanılabilir olmaya devam eder.",
+  "external.overview.tracingOff": "İz sürme kapalı",
+  "external.overview.tracingOn": "İz sürme açık",
   "external.overview.type": "Harici ajan",
   "external.overview.usedInApps": "Kullanıldığı uygulamalar",
   "external.overview.verification": "Bağlantı doğrulaması",

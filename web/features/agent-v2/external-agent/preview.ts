@@ -1,5 +1,10 @@
 import type { ExternalAgentListItem } from '../roster/components/external-agent-list'
 
+export type ExternalAgentOverviewFallbackAgent = Pick<
+  ExternalAgentListItem,
+  'key' | 'name' | 'role' | 'description' | 'icon' | 'enabled'
+>
+
 export type ExternalAgentSkillPreview = {
   id: string
   name: string
@@ -40,6 +45,9 @@ export type ExternalAgentOverviewPreview = {
 export function createExternalAgentOverviewPreview(
   agent: ExternalAgentListItem,
 ): ExternalAgentOverviewPreview {
+  if (agent.key !== 'vendor-screening' && agent.key !== 'contract-review')
+    return createOtherAgentPreview(agent)
+
   const vendor = agent.key === 'vendor-screening'
   return {
     agent,
@@ -279,5 +287,64 @@ export function createExternalAgentOverviewPreview(
           : 'Payment is due within 30 days of invoice. Late fees require a 10-day grace period agreed in writing.',
       },
     ],
+  }
+}
+
+function createOtherAgentPreview(agent: ExternalAgentListItem): ExternalAgentOverviewPreview {
+  const skills: ExternalAgentSkillPreview[] = []
+  let sampleResponse = ''
+
+  if (agent.key === 'document-review') {
+    skills.push({
+      id: 'document-review',
+      name: 'Document review',
+      description: 'Reviews a document and highlights missing or inconsistent information.',
+      tags: ['documents', 'review'],
+      inputFormats: ['Text', 'PDF'],
+      outputFormats: ['Text'],
+      examples: [
+        'Review this document and summarize the information that needs attention.',
+        'List the details we should confirm before approving this document.',
+      ],
+    })
+    sampleResponse =
+      'The document is missing an approval date. Confirm the owner and the supporting evidence before approval.'
+  }
+
+  if (agent.key === 'invoice-audit') {
+    skills.push({
+      id: 'invoice-audit',
+      name: 'Invoice audit',
+      description: 'Checks invoice amounts, line items, and payment details for discrepancies.',
+      tags: ['finance', 'invoices'],
+      inputFormats: ['Text', 'PDF'],
+      outputFormats: ['Text'],
+      examples: [
+        'Check this invoice against the purchase order and flag any discrepancies.',
+        'Identify duplicate charges and missing payment details in this invoice.',
+      ],
+    })
+    sampleResponse =
+      'One line item differs from the purchase order. Confirm the unit price and invoice total before payment.'
+  }
+
+  const hasPreview = skills.length > 0
+  return {
+    agent: { ...agent, apps: [] },
+    defaultInputFormats: hasPreview ? ['Text', 'PDF'] : [],
+    defaultOutputFormats: hasPreview ? ['Text'] : [],
+    skills,
+    endpoint: hasPreview ? `https://agents.acme.example/${agent.key}` : '',
+    authentication: hasPreview ? 'bearer' : 'none',
+    token: '',
+    protocol: hasPreview ? 'A2A 1.0' : '',
+    verifiedAt: '2026-10-14',
+    connectedBy: hasPreview ? 'Jamie Lee' : '',
+    tracing: hasPreview,
+    provider: hasPreview ? 'Acme' : '',
+    version: hasPreview ? '1.4.2' : '',
+    documentationUrl: hasPreview ? 'https://agents.acme.example/docs' : '',
+    sampleResponse,
+    sampleTraceSteps: [],
   }
 }

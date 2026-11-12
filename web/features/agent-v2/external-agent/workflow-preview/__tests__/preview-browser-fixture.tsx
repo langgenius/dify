@@ -16,6 +16,7 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
+import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import workflowAgent from '@/i18n/locales/en-US/workflow-agent.json'
 import workflowDebug from '@/i18n/locales/en-US/workflow-debug.json'
@@ -127,7 +128,7 @@ export async function renderExternalAgentWorkflow({
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
-    resources: { 'en-US': { agentRoster, common, workflowAgent, workflowDebug, workflow } },
+    resources: { 'en-US': { agentRoster, app, common, workflowAgent, workflowDebug, workflow } },
     keySeparator: false,
     interpolation: { escapeValue: false },
   })

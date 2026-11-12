@@ -136,6 +136,8 @@
   "external.overview.tracing": "Rastreamento",
   "external.overview.tracingDescription": "Mostrar as etapas internas retornadas por este agente.",
   "external.overview.tracingHint": "Requer a extensão A2A Traceability declarada no Agent Card. Desativar o rastreamento interrompe a coleta de novas chamadas. Os rastreamentos coletados anteriormente continuam disponíveis.",
+  "external.overview.tracingOff": "Rastreamento desativado",
+  "external.overview.tracingOn": "Rastreamento ativado",
   "external.overview.type": "Agente externo",
   "external.overview.usedInApps": "Usado em aplicativos",
   "external.overview.verification": "Verificação da conexão",

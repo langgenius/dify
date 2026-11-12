@@ -134,6 +134,8 @@
   "external.overview.tracing": "ردیابی",
   "external.overview.tracingDescription": "مراحل داخلی بازگردانده‌شده توسط این عامل را نمایش دهید.",
   "external.overview.tracingHint": "به افزونهٔ A2A Traceability که در Agent Card اعلام شده است نیاز دارد. خاموش کردن ردیابی، گردآوری برای فراخوانی‌های جدید را متوقف می‌کند. ردیابی‌های قبلاً گردآوری‌شده همچنان در دسترس می‌مانند.",
+  "external.overview.tracingOff": "ردیابی خاموش است",
+  "external.overview.tracingOn": "ردیابی روشن است",
   "external.overview.type": "عامل خارجی",
   "external.overview.usedInApps": "استفاده‌شده در برنامه‌ها",
   "external.overview.verification": "تأیید اتصال",

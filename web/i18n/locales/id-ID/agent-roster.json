@@ -134,6 +134,8 @@
   "external.overview.tracing": "Pelacakan",
   "external.overview.tracingDescription": "Tampilkan langkah internal yang dikembalikan oleh agen ini.",
   "external.overview.tracingHint": "Memerlukan ekstensi A2A Traceability yang dideklarasikan di Agent Card. Menonaktifkan pelacakan menghentikan pengumpulan untuk panggilan baru. Jejak yang sebelumnya dikumpulkan tetap tersedia.",
+  "external.overview.tracingOff": "Pelacakan nonaktif",
+  "external.overview.tracingOn": "Pelacakan aktif",
   "external.overview.type": "Agen eksternal",
   "external.overview.usedInApps": "Digunakan di aplikasi",
   "external.overview.verification": "Verifikasi koneksi",

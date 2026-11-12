@@ -134,6 +134,8 @@
   "external.overview.tracing": "Truy vết",
   "external.overview.tracingDescription": "Hiển thị các bước nội bộ do tác nhân này trả về.",
   "external.overview.tracingHint": "Yêu cầu tiện ích mở rộng A2A Traceability được khai báo trong Agent Card. Tắt truy vết sẽ dừng thu thập dữ liệu cho các lệnh gọi mới. Các dấu vết đã thu thập trước đó vẫn khả dụng.",
+  "external.overview.tracingOff": "Đã tắt truy vết",
+  "external.overview.tracingOn": "Đã bật truy vết",
   "external.overview.type": "Tác nhân bên ngoài",
   "external.overview.usedInApps": "Được dùng trong các ứng dụng",
   "external.overview.verification": "Xác minh kết nối",

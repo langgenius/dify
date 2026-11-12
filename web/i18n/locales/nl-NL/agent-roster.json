@@ -134,6 +134,8 @@
   "external.overview.tracing": "Tracering",
   "external.overview.tracingDescription": "Interne stappen weergeven die deze agent retourneert.",
   "external.overview.tracingHint": "Vereist de A2A Traceability-extensie die in de Agent Card is gedeclareerd. Door tracering uit te schakelen, stopt de verzameling voor nieuwe aanroepen. Eerder verzamelde traces blijven beschikbaar.",
+  "external.overview.tracingOff": "Tracering uitgeschakeld",
+  "external.overview.tracingOn": "Tracering ingeschakeld",
   "external.overview.type": "Externe agent",
   "external.overview.usedInApps": "Gebruikt in apps",
   "external.overview.verification": "Verbindingsverificatie",

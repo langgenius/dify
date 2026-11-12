@@ -8,13 +8,18 @@ import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { EditExternalAgentConnection } from './edit-connection'
 
-export function ExternalAgentConnection({
-  preview,
-  onUpdate,
-}: {
+export type ExternalAgentConnectionProps = {
   preview: ExternalAgentOverviewPreview
-  onUpdate: (updates: Partial<ExternalAgentOverviewPreview>) => void
-}) {
+} & (
+  | { readOnly: true; onUpdate?: never }
+  | {
+      readOnly?: false
+      onUpdate: (updates: Partial<ExternalAgentOverviewPreview>) => void
+    }
+)
+
+export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
+  const { preview } = props
   const { t, i18n } = useTranslation(['agentRoster'])
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
   const verificationId = useId()
@@ -36,7 +41,9 @@ export function ExternalAgentConnection({
           </h2>
           <span aria-hidden className="i-ri-book-open-line size-3.5 text-text-tertiary" />
           <div className="ms-auto">
-            {canManage && <EditExternalAgentConnection preview={preview} onUpdate={onUpdate} />}
+            {!props.readOnly && canManage && (
+              <EditExternalAgentConnection preview={preview} onUpdate={props.onUpdate} />
+            )}
           </div>
           <CollapsibleTrigger
             className="group flex items-center justify-center rounded-sm"
@@ -113,13 +120,21 @@ export function ExternalAgentConnection({
               {t(($) => $['external.overview.tracingHint'])}
             </InfotipContent>
           </Infotip>
-          <Switch
-            className="ms-auto"
-            checked={preview.tracing}
-            onCheckedChange={(tracing) => onUpdate({ tracing })}
-            aria-labelledby={tracingId}
-            disabled={!canManage}
-          />
+          {props.readOnly ? (
+            <span className="ms-auto system-xs-regular text-text-tertiary">
+              {preview.tracing
+                ? t(($) => $['external.overview.tracingOn'])
+                : t(($) => $['external.overview.tracingOff'])}
+            </span>
+          ) : (
+            <Switch
+              className="ms-auto"
+              checked={preview.tracing}
+              onCheckedChange={(tracing) => props.onUpdate({ tracing })}
+              aria-labelledby={tracingId}
+              disabled={!canManage}
+            />
+          )}
         </div>
         <p className="system-xs-regular text-text-tertiary">
           {t(($) => $['external.overview.tracingDescription'])}

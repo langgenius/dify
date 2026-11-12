@@ -136,6 +136,8 @@
   "external.overview.tracing": "Seguimiento",
   "external.overview.tracingDescription": "Mostrar los pasos internos devueltos por este agente.",
   "external.overview.tracingHint": "Requiere la extensión A2A Traceability declarada en la Agent Card. Desactivar el seguimiento detiene la recopilación de nuevas llamadas. Los seguimientos recopilados anteriormente permanecen disponibles.",
+  "external.overview.tracingOff": "Seguimiento desactivado",
+  "external.overview.tracingOn": "Seguimiento activado",
   "external.overview.type": "Agente externo",
   "external.overview.usedInApps": "Se usa en aplicaciones",
   "external.overview.verification": "Verificación de la conexión",

@@ -134,6 +134,8 @@
   "external.overview.tracing": "トレース",
   "external.overview.tracingDescription": "このエージェントが返す内部ステップを表示します。",
   "external.overview.tracingHint": "Agent Card で宣言された A2A Traceability 拡張機能が必要です。トレースをオフにすると、新しい呼び出しの収集が停止します。すでに収集されたトレースは引き続き利用できます。",
+  "external.overview.tracingOff": "トレースは無効です",
+  "external.overview.tracingOn": "トレースは有効です",
   "external.overview.type": "外部エージェント",
   "external.overview.usedInApps": "使用中のアプリ",
   "external.overview.verification": "接続の検証",

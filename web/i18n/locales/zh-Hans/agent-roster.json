@@ -134,6 +134,8 @@
   "external.overview.tracing": "追踪",
   "external.overview.tracingDescription": "显示此 Agent 返回的内部步骤。",
   "external.overview.tracingHint": "需要在 Agent Card 中声明 A2A Traceability 扩展。关闭追踪会停止收集后续调用的数据；此前收集的追踪记录仍可用。",
+  "external.overview.tracingOff": "追踪已关闭",
+  "external.overview.tracingOn": "追踪已开启",
   "external.overview.type": "外部 Agent",
   "external.overview.usedInApps": "关联应用",
   "external.overview.verification": "连接验证",
