@@ -649,3 +649,40 @@ class TestRunAdditionalBranches:
 
         results = list(runner.run(runner.session, message, "query", {}))
         assert results[-1].delta.message.content == "12345"
+
+    @pytest.mark.parametrize("action_name", ["final_answer", "final answer:", "Final Answer:", "FinalAnswer"])
+    def test_run_accepts_final_answer_variants_consistent_with_is_final(
+        self, runner: DummyRunner, mocker: MockerFixture, action_name: str
+    ) -> None:
+        """Action names containing both "final" and "answer" are final per AgentScratchpadUnit.is_final(),
+        which the runner already uses for bookkeeping; the run loop must not treat them as tool calls."""
+        message = _make_message()
+        message.id = "msg-id"
+
+        action = AgentScratchpadUnit.Action(action_name=action_name, action_input="done")
+
+        mocker.patch(
+            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            return_value=[action],
+        )
+
+        results = list(runner.run(runner.session, message, "query", {}))
+        assert results[-1].delta.message.content == "done"
+
+    def test_run_returns_final_answer_variant_at_iteration_cap(
+        self, runner: DummyRunner, mocker: MockerFixture
+    ) -> None:
+        """A final-answer variant delivered on the last iteration must not raise AgentMaxIterationError."""
+        message = _make_message()
+        message.id = "msg-id"
+
+        tool_action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
+        final_variant = AgentScratchpadUnit.Action(action_name="final_answer", action_input="done")
+
+        mocker.patch(
+            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            side_effect=[[tool_action], [final_variant]],
+        )
+
+        results = list(runner.run(runner.session, message, "query", {}))
+        assert results[-1].delta.message.content == "done"
