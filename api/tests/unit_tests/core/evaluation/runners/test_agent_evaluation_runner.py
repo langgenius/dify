@@ -1,21 +1,18 @@
-from unittest.mock import MagicMock
-
 from clients.agent_backend import WORKFLOW_NODE_JOB_PROMPT_LAYER_ID, WORKFLOW_USER_PROMPT_LAYER_ID
 from core.evaluation.entities.evaluation_entity import (
     AgentToolCall,
     DefaultMetric,
     EvaluationDatasetInput,
-    EvaluationItemResult,
     NodeInfo,
 )
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events import NodeRunResult
+from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 
 
 def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = AgentEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
 
@@ -67,7 +64,7 @@ def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
         node_info=node_info,
     )
 
-    items = evaluation_instance.evaluate_agent.call_args.args[0]
+    items = evaluation_instance.agent_items
     assert items[0].inputs == {"task": "query: What time is it in Shanghai?"}
     assert items[0].output == "It is 18:00."
     assert [call.model_dump() for call in items[0].tool_calls] == [
@@ -98,8 +95,7 @@ def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
 
 
 def test_agent_runner_deduplicates_thought_summary_and_canonical_call_log() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = AgentEvaluationRunner(evaluation_instance)
     round_id = "round-1"
 
@@ -148,7 +144,7 @@ def test_agent_runner_deduplicates_thought_summary_and_canonical_call_log() -> N
         tenant_id="tenant-1",
     )
 
-    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    item = evaluation_instance.agent_items[0]
     assert [call.model_dump() for call in item.tool_calls] == [
         {
             "name": "current_time",
@@ -163,8 +159,7 @@ def test_agent_runner_deduplicates_thought_summary_and_canonical_call_log() -> N
 
 
 def test_agent_runner_uses_dataset_input_when_node_has_no_user_task_field() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = AgentEvaluationRunner(evaluation_instance)
 
     runner.evaluate_metrics(
@@ -176,7 +171,7 @@ def test_agent_runner_uses_dataset_input_when_node_has_no_user_task_field() -> N
         dataset_items=[EvaluationDatasetInput(index=1, inputs={"city": "Paris", "units": "metric"})],
     )
 
-    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    item = evaluation_instance.agent_items[0]
     assert item.inputs == {"task": '{"city": "Paris", "units": "metric"}'}
     assert item.tool_calls == []
     assert item.trajectory is not None
@@ -184,8 +179,7 @@ def test_agent_runner_uses_dataset_input_when_node_has_no_user_task_field() -> N
 
 
 def test_agent_runner_excludes_hidden_reasoning_from_evaluation_output() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = AgentEvaluationRunner(evaluation_instance)
 
     runner.evaluate_metrics(
@@ -201,15 +195,14 @@ def test_agent_runner_excludes_hidden_reasoning_from_evaluation_output() -> None
         tenant_id="tenant-1",
     )
 
-    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    item = evaluation_instance.agent_items[0]
     assert item.output == "Dify is an AI application platform."
     assert item.trajectory is not None
     assert item.trajectory.steps[-1].content == "Dify is an AI application platform."
 
 
 def test_agent_runner_preserves_runtime_tools_and_optional_success_criteria() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = AgentEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
 
@@ -251,7 +244,7 @@ def test_agent_runner_preserves_runtime_tools_and_optional_success_criteria() ->
         node_info=node_info,
     )
 
-    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    item = evaluation_instance.agent_items[0]
     assert item.success_criteria == ["Use real weather data"]
     assert item.available_tools is not None
     assert item.available_tools[0].tool_ref == "weather/weather"
@@ -259,8 +252,7 @@ def test_agent_runner_preserves_runtime_tools_and_optional_success_criteria() ->
 
 
 def test_agent_runner_prefers_captured_agent_v2_trace_snapshot() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = AgentEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="agent-v2", type="agent", title="Research Agent")
 
@@ -339,7 +331,7 @@ def test_agent_runner_prefers_captured_agent_v2_trace_snapshot() -> None:
         node_info=node_info,
     )
 
-    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    item = evaluation_instance.agent_items[0]
     assert item.inputs == {
         "task": ("Research the product and summarize it.\n\nWorkflow context loaded for this run: user query Dify")
     }

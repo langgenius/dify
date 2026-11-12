@@ -1,18 +1,15 @@
-from unittest.mock import MagicMock
-
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationDatasetInput,
-    EvaluationItemResult,
     NodeInfo,
 )
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from graphon.node_events import NodeRunResult
+from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 
 
 def test_retrieval_runner_resolves_expected_output_by_node_title() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_retrieval.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = RetrievalEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="retrieval-1", type="knowledge-retrieval", title="Search")
 
@@ -37,13 +34,12 @@ def test_retrieval_runner_resolves_expected_output_by_node_title() -> None:
         node_info=node_info,
     )
 
-    items = evaluation_instance.evaluate_retrieval.call_args.args[0]
+    items = evaluation_instance.retrieval_items
     assert items[0].expected_output == "Dify is a platform."
 
 
 def test_retrieval_runner_accepts_knowledge_retrieval_v2_output_contract() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_retrieval.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = RetrievalEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="retrieval-v2", type="knowledge-retrieval-v2", title="Knowledge Retrieval V2")
 
@@ -71,7 +67,7 @@ def test_retrieval_runner_accepts_knowledge_retrieval_v2_output_contract() -> No
         node_info=node_info,
     )
 
-    items = evaluation_instance.evaluate_retrieval.call_args.args[0]
+    items = evaluation_instance.retrieval_items
     assert items[0].inputs == {"query": "What is Dify?"}
     assert items[0].context == ["Dify is an LLM application platform."]
     assert items[0].output == "Dify is an LLM application platform."

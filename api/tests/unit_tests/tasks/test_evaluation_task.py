@@ -1,22 +1,22 @@
 """Unit tests for evaluation task result helpers."""
 
 import io
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import timedelta
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from threading import Event
+from typing import cast
 from uuid import UUID
 
 import pytest
 from celery.exceptions import Retry
-from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol import CreateRunRequest, RunComposition
 from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from clients.agent_backend import AgentBackendRunSucceededInternalEvent
-from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
+from clients.agent_backend.fake_client import FakeAgentBackendRunClient
+from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     CustomizedMetricOutputField,
@@ -34,6 +34,8 @@ from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from models.agent import AgentConfigVersionKind, AgentWorkspaceBinding
+from models.agent_config_entities import AgentSoulConfig
 from models.evaluation import (
     EvaluationRun,
     EvaluationRunItem,
@@ -41,6 +43,7 @@ from models.evaluation import (
     EvaluationRunStatus,
     EvaluationTargetType,
 )
+from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     EvaluationRunLease,
@@ -70,6 +73,7 @@ from tasks.evaluation_task import (
     reconcile_stale_evaluation_runs,
     run_evaluation,
 )
+from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 
 _NODE_INFO = NodeInfo(node_id="llm-1", type="llm", title="Answer")
 _EXECUTION_TOKEN = "40000000-0000-0000-0000-000000000001"
@@ -77,6 +81,16 @@ _EXECUTION_TOKEN = "40000000-0000-0000-0000-000000000001"
 
 def _lease(run_id: str, token: str = _EXECUTION_TOKEN) -> EvaluationRunLease:
     return EvaluationRunLease(run_id=run_id, token=token)
+
+
+class _RecordingCeleryControl:
+    """Keep revocation calls observable at the Celery boundary."""
+
+    def __init__(self) -> None:
+        self.revocations: list[tuple[str, bool]] = []
+
+    def revoke(self, task_id: str, *, terminate: bool) -> None:
+        self.revocations.append((task_id, terminate))
 
 
 def test_merge_and_stamp_results_use_dataset_indices() -> None:
@@ -101,7 +115,7 @@ def test_merge_and_stamp_results_use_dataset_indices() -> None:
 
 
 def test_create_runner_supports_agent_category() -> None:
-    assert isinstance(_create_runner(EvaluationCategory.AGENT, MagicMock()), AgentEvaluationRunner)
+    assert isinstance(_create_runner(EvaluationCategory.AGENT, CapturingEvaluationInstance()), AgentEvaluationRunner)
 
 
 def test_customized_results_remap_positional_indices() -> None:
@@ -121,17 +135,26 @@ def test_customized_results_remap_positional_indices() -> None:
 
 
 def test_customized_evaluator_skips_rows_where_target_execution_failed(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
-    evaluation_instance = MagicMock()
-    customized_evaluator = MagicMock(
-        return_value=[EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="score", value=0.9)])]
-    )
+    evaluation_instance = CapturingEvaluationInstance()
+    evaluator_calls: list[dict[str, object]] = []
+
+    def customized_evaluator(**kwargs: object) -> list[EvaluationItemResult]:
+        evaluator_calls.append(kwargs)
+        return [EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="score", value=0.9)])]
+
     monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
-    persist_results = MagicMock()
+    persisted_results: list[list[EvaluationItemResult]] = []
+
+    def persist_results(
+        _session: Session, _lease: EvaluationRunLease, results: list[EvaluationItemResult], *_args: object
+    ) -> None:
+        persisted_results.append(results)
+
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
-    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", MagicMock())
-    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", MagicMock())
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
     successful_node_result = NodeRunResult(outputs={"text": "answer"})
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
@@ -152,7 +175,7 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     )
 
     results = _execute_evaluation_runner(
-        session=MagicMock(),
+        session=sqlite_session,
         run_data=run_data,
         evaluation_instance=evaluation_instance,
         node_run_result_mapping_list=[{}, {"llm-1": successful_node_result}],
@@ -163,29 +186,36 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     assert results[0].error == "Target execution produced no successful node results for this row."
     assert results[1].index == 20
     assert results[1].metrics[0].name == "score"
-    customized_evaluator.assert_called_once()
-    call_kwargs = customized_evaluator.call_args.kwargs
+    assert len(evaluator_calls) == 1
+    call_kwargs = evaluator_calls[0]
     assert call_kwargs["evaluation_instance"] is evaluation_instance
     assert call_kwargs["node_run_result_mapping_list"] == [{"llm-1": successful_node_result}]
     assert call_kwargs["customized_metrics"] == run_data.customized_metrics
     assert call_kwargs["tenant_id"] == "tenant-1"
     assert callable(call_kwargs["cancellation_check"])
     assert callable(call_kwargs["task_id_factory"])
-    persist_results.assert_called_once()
+    assert persisted_results == [results]
 
 
 def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_error(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
-    evaluation_instance = MagicMock()
-    customized_evaluator = MagicMock(
-        side_effect=EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted.")
-    )
+    evaluation_instance = CapturingEvaluationInstance()
+
+    def customized_evaluator(**_kwargs: object) -> list[EvaluationItemResult]:
+        raise EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted.")
+
     monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
-    persist_results = MagicMock()
+    persisted_results: list[list[EvaluationItemResult]] = []
+
+    def persist_results(
+        _session: Session, _lease: EvaluationRunLease, results: list[EvaluationItemResult], *_args: object
+    ) -> None:
+        persisted_results.append(results)
+
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
-    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", MagicMock())
-    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", MagicMock())
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
         tenant_id="tenant-1",
@@ -204,14 +234,14 @@ def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_
 
     with pytest.raises(EvaluationWorkflowVersionNotFoundError, match="was deleted"):
         _execute_evaluation_runner(
-            session=MagicMock(),
+            session=sqlite_session,
             run_data=run_data,
             evaluation_instance=evaluation_instance,
             node_run_result_mapping_list=[{"llm-1": NodeRunResult(outputs={"text": "answer"})}],
             lease=_lease(run_data.evaluation_run_id),
         )
 
-    persist_results.assert_not_called()
+    assert persisted_results == []
 
 
 def test_missing_target_rows_are_materialized_as_errors() -> None:
@@ -275,13 +305,17 @@ def test_execute_evaluation_starts_running_lease_before_work(
         )
         session.commit()
 
-    evaluation_instance = MagicMock()
-    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
-    monkeypatch.setattr(
-        "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
-        get_evaluation_instance,
-    )
-    execute_running = MagicMock()
+    executed_leases: list[EvaluationRunLease] = []
+
+    def execute_running(
+        _session: Session,
+        _run_data: EvaluationRunData,
+        _evaluation_instance: object,
+        _created_by: str,
+        execution_lease: EvaluationRunLease,
+    ) -> None:
+        executed_leases.append(execution_lease)
+
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
     maintained_leases: list[EvaluationRunLease] = []
 
@@ -314,9 +348,7 @@ def test_execute_evaluation_starts_running_lease_before_work(
         assert run.started_at is not None
     assert run.heartbeat_at is not None
     assert maintained_leases == [lease]
-    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.RAGAS)
-    execute_running.assert_called_once()
-    assert execute_running.call_args.args[-1] == lease
+    assert executed_leases == [lease]
 
 
 def test_execute_evaluation_accepts_knowledge_retrieval_v2_payload(
@@ -342,9 +374,17 @@ def test_execute_evaluation_accepts_knowledge_retrieval_v2_payload(
         )
         session.commit()
 
-    get_instance = MagicMock(return_value=MagicMock())
-    execute_running = MagicMock()
-    monkeypatch.setattr("tasks.evaluation_task.EvaluationManager.get_evaluation_instance", get_instance)
+    executed: list[EvaluationRunData] = []
+
+    def execute_running(
+        _session: Session,
+        payload: EvaluationRunData,
+        _evaluation_instance: object,
+        _created_by: str,
+        _lease: EvaluationRunLease,
+    ) -> None:
+        executed.append(payload)
+
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
 
     @contextmanager
@@ -374,8 +414,7 @@ def test_execute_evaluation_accepts_knowledge_retrieval_v2_payload(
     with sqlite_session_factory() as session:
         _execute_evaluation(session, run_data, _lease(run_id))
 
-    get_instance.assert_called_once_with(EvaluationFrameworkEnum.RAGAS)
-    execute_running.assert_called_once()
+    assert executed == [run_data]
 
 
 def test_execute_evaluation_does_not_run_duplicate_delivery(
@@ -403,10 +442,10 @@ def test_execute_evaluation_does_not_run_duplicate_delivery(
         )
         session.commit()
 
-    get_instance = MagicMock()
-    execute_running = MagicMock()
-    monkeypatch.setattr("tasks.evaluation_task.EvaluationManager.get_evaluation_instance", get_instance)
-    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
+    def fail_on_evaluation(*_args: object) -> None:
+        pytest.fail("Duplicate delivery must not begin evaluation")
+
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", fail_on_evaluation)
     run_data = EvaluationRunData(
         evaluation_run_id=run_id,
         tenant_id="30000000-0000-0000-0000-000000000002",
@@ -430,8 +469,6 @@ def test_execute_evaluation_does_not_run_duplicate_delivery(
         assert run is not None
         assert run.status == EvaluationRunStatus.RUNNING
         assert run.execution_token == current_lease.token
-    get_instance.assert_not_called()
-    execute_running.assert_not_called()
 
 
 def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
@@ -462,11 +499,11 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
 
     transient_error = RuntimeError("temporary database outage")
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
-    monkeypatch.setattr(
-        "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=MagicMock()),
-    )
-    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", MagicMock(side_effect=transient_error))
+
+    def fail_running_evaluation(*_args: object) -> None:
+        raise transient_error
+
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", fail_running_evaluation)
 
     @contextmanager
     def maintain_heartbeat(_lease: EvaluationRunLease) -> Generator[None]:
@@ -475,7 +512,12 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
     monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
     monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_MAX_RETRIES", 3)
     monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_RETRY_DELAY", 7)
-    retry = MagicMock(return_value=Retry("scheduled"))
+    retry_calls: list[tuple[BaseException, int, bool]] = []
+
+    def retry(*, exc: BaseException, countdown: int, throw: bool) -> Retry:
+        retry_calls.append((exc, countdown, throw))
+        return Retry("scheduled")
+
     monkeypatch.setattr(run_evaluation, "retry", retry)
     run_data = EvaluationRunData(
         evaluation_run_id=run_id,
@@ -494,7 +536,7 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
     finally:
         run_evaluation.pop_request()
 
-    retry.assert_called_once_with(exc=transient_error, countdown=7, throw=False)
+    assert retry_calls == [(transient_error, 7, False)]
     with sqlite_session_factory() as session:
         run = session.get(EvaluationRun, run_id)
         assert run is not None
@@ -533,22 +575,19 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
             yield session
 
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
-    monkeypatch.setattr(
-        "tasks.evaluation_task.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=MagicMock()),
-    )
-    monkeypatch.setattr(
-        "tasks.evaluation_task._execute_running_evaluation",
-        MagicMock(side_effect=EvaluationWorkflowVersionNotFoundError("Pinned workflow version was deleted.")),
-    )
+
+    def missing_workflow(*_args: object) -> None:
+        raise EvaluationWorkflowVersionNotFoundError("Pinned workflow version was deleted.")
+
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", missing_workflow)
 
     @contextmanager
     def maintain_heartbeat(_lease: EvaluationRunLease) -> Generator[None]:
         yield
 
     monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
-    retry = MagicMock()
-    monkeypatch.setattr(run_evaluation, "retry", retry)
+    retry_calls: list[object] = []
+    monkeypatch.setattr(run_evaluation, "retry", lambda **kwargs: retry_calls.append(kwargs))
     run_data = EvaluationRunData(
         evaluation_run_id=run_id,
         tenant_id="30000000-0000-0000-0000-000000000002",
@@ -566,7 +605,7 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
     finally:
         run_evaluation.pop_request()
 
-    retry.assert_not_called()
+    assert retry_calls == []
     with sqlite_session_factory() as session:
         run = session.get(EvaluationRun, run_id)
         assert run is not None
@@ -704,9 +743,26 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
         session.commit()
 
         node_results = {"llm-1": NodeRunResult(outputs={"text": "answer"})}
-        query_results = MagicMock(return_value=node_results)
-        execute_targets = MagicMock()
-        execute_runner = MagicMock()
+        queried_run_ids: list[str] = []
+
+        def query_results(
+            *, session: Session, tenant_id: str, app_id: str, workflow_run_id: str
+        ) -> dict[str, NodeRunResult]:
+            assert tenant_id == run_data.tenant_id
+            assert app_id == run_data.target_id
+            assert isinstance(session, Session)
+            queried_run_ids.append(workflow_run_id)
+            return node_results
+
+        def execute_targets(**_kwargs: object) -> None:
+            pytest.fail("Checkpointed target must not be executed again")
+
+        runner_calls: list[dict[str, object]] = []
+
+        def execute_runner(**kwargs: object) -> list[EvaluationItemResult]:
+            runner_calls.append(kwargs)
+            return []
+
         monkeypatch.setattr(EvaluationService, "_query_node_run_results", query_results)
         monkeypatch.setattr(EvaluationService, "execute_targets", execute_targets)
         monkeypatch.setattr("tasks.evaluation_task._execute_evaluation_runner", execute_runner)
@@ -721,14 +777,14 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
             input_list=[item],
         )
 
-        _resume_workflow_rows(session, run_data, MagicMock(), lease)
+        _resume_workflow_rows(session, run_data, CapturingEvaluationInstance(), lease)
 
-    execute_targets.assert_not_called()
-    query_results.assert_called_once()
-    assert execute_runner.call_args.kwargs["node_run_result_mapping_list"] == [node_results]
-    assert execute_runner.call_args.kwargs["workflow_run_id_map"] == {7: "30000000-0000-0000-0000-000000000091"}
-    assert execute_runner.call_args.kwargs["task_positions"] == [0]
-    assert execute_runner.call_args.kwargs["lease"] == lease
+    assert queried_run_ids == ["30000000-0000-0000-0000-000000000091"]
+    assert len(runner_calls) == 1
+    assert runner_calls[0]["node_run_result_mapping_list"] == [node_results]
+    assert runner_calls[0]["workflow_run_id_map"] == {7: "30000000-0000-0000-0000-000000000091"}
+    assert runner_calls[0]["task_positions"] == [0]
+    assert runner_calls[0]["lease"] == lease
 
 
 def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
@@ -759,38 +815,60 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
         )
         session.commit()
 
-    target = SimpleNamespace(agent_id=agent_id, agent_name="Research Agent")
+    target = ResolvedAgentEvaluationTarget(
+        agent_id=agent_id,
+        agent_name="Research Agent",
+        app_id="app-1",
+        config_snapshot_id=snapshot_id,
+        home_snapshot_id=None,
+        agent_soul=AgentSoulConfig(),
+    )
     monkeypatch.setattr(
         "tasks.evaluation_task.AgentEvaluationTargetService.resolve_active_snapshot",
-        MagicMock(return_value=target),
+        lambda **_kwargs: target,
+    )
+    binding = AgentWorkspaceBinding(
+        id=binding_id,
+        tenant_id=tenant_id,
+        app_id="app-1",
+        workspace_id="workspace-1",
+        agent_id=agent_id,
+        agent_config_version_id=snapshot_id,
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref="binding-ref-1",
     )
     monkeypatch.setattr(
         "tasks.evaluation_task.AgentEvaluationTargetService.ensure_row_binding",
-        MagicMock(return_value=SimpleNamespace(id=binding_id, backend_binding_ref="binding-ref-1")),
+        lambda **_kwargs: binding,
+    )
+    runtime_request = AgentAppRuntimeRequest(
+        request=CreateRunRequest(composition=RunComposition(layers=[])),
+        redacted_request={},
+        metadata={},
+        binding_id=binding_id,
     )
     monkeypatch.setattr(
         "tasks.evaluation_task.AgentEvaluationTargetService.build_runtime_request",
-        MagicMock(return_value=SimpleNamespace(request=object(), available_tools=())),
+        lambda **_kwargs: runtime_request,
     )
-    client = MagicMock()
-    client.create_run.return_value = SimpleNamespace(run_id="backend-run-1")
-    client.stream_events.return_value = [object(), object()]
-    monkeypatch.setattr("tasks.evaluation_task.create_agent_backend_run_client", MagicMock(return_value=client))
-    terminal = AgentBackendRunSucceededInternalEvent(
-        run_id="backend-run-1",
-        source_event_id="event-1",
-        output={"text": "done"},
-        session_snapshot=SessionSnapshot(layers={}),
-    )
-    adapter = MagicMock()
-    adapter.adapt.return_value = [terminal]
-    monkeypatch.setattr("tasks.evaluation_task.AgentBackendRunEventAdapter", MagicMock(return_value=adapter))
-    retire_binding = MagicMock(return_value=binding_id)
+    client = FakeAgentBackendRunClient(run_id="backend-run-1")
+    monkeypatch.setattr("tasks.evaluation_task.create_agent_backend_run_client", lambda **_kwargs: client)
+    retired_bindings: list[tuple[str, str]] = []
+
+    def retire_binding(*, session: Session, tenant_id: str, binding_id: str) -> str:
+        assert isinstance(session, Session)
+        retired_bindings.append((tenant_id, binding_id))
+        return binding_id
+
     monkeypatch.setattr(
         "tasks.evaluation_task.AgentWorkspaceService.retire_binding",
         retire_binding,
     )
-    enqueue_binding = MagicMock()
+    enqueued_bindings: list[tuple[str, str]] = []
+
+    def enqueue_binding(tenant_id: str, binding_id: str) -> None:
+        enqueued_bindings.append((tenant_id, binding_id))
+
     monkeypatch.setattr("tasks.evaluation_task._enqueue_retired_agent_binding", enqueue_binding)
     dataset_item = EvaluationDatasetInput(index=7, inputs={"query": "research this"})
     run_data = EvaluationRunData(
@@ -821,8 +899,8 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
 
     assert target_error is None
     assert agent_item is not None
-    assert agent_item.output == "done"
-    adapter.adapt.assert_called_once()
+    assert agent_item.output == "hello agent"
+    assert client.request is runtime_request.request
     with sqlite_session_factory() as session:
         checkpoint = session.scalar(
             select(EvaluationRunItem).where(
@@ -834,10 +912,9 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
         assert checkpoint.status == EvaluationRunItemStatus.TARGET_COMPLETED
         assert checkpoint.agent_backend_run_id == "backend-run-1"
         assert checkpoint.agent_workspace_binding_id == binding_id
-        assert AgentEvaluationItem.model_validate_json(checkpoint.target_result_json or "{}").output == "done"
-    assert retire_binding.call_args.kwargs["tenant_id"] == tenant_id
-    assert retire_binding.call_args.kwargs["binding_id"] == binding_id
-    enqueue_binding.assert_called_once_with(tenant_id, binding_id)
+        assert AgentEvaluationItem.model_validate_json(checkpoint.target_result_json or "{}").output == "hello agent"
+    assert retired_bindings == [(tenant_id, binding_id)]
+    assert enqueued_bindings == [(tenant_id, binding_id)]
 
 
 def test_resume_agent_rows_reuses_target_checkpoint(
@@ -878,12 +955,21 @@ def test_resume_agent_rows_reuses_target_checkpoint(
         )
         session.commit()
 
-    execute_target = MagicMock()
-    evaluate_row = MagicMock()
+    def execute_target(**_kwargs: object) -> None:
+        pytest.fail("Checkpointed Agent target must not be executed again")
+
+    evaluated_rows: list[dict[str, object]] = []
+
+    def evaluate_row(**kwargs: object) -> None:
+        evaluated_rows.append(kwargs)
+
     monkeypatch.setattr("tasks.evaluation_task._execute_agent_target", execute_target)
     monkeypatch.setattr("tasks.evaluation_task._evaluate_agent_row", evaluate_row)
-    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", MagicMock())
-    retire_binding = MagicMock()
+    retired_bindings: list[tuple[str, str]] = []
+
+    def retire_binding(tenant_id: str, binding_id: str) -> None:
+        retired_bindings.append((tenant_id, binding_id))
+
     monkeypatch.setattr("tasks.evaluation_task._retire_agent_binding", retire_binding)
     run_data = EvaluationRunData(
         evaluation_run_id=run_id,
@@ -897,28 +983,30 @@ def test_resume_agent_rows_reuses_target_checkpoint(
     )
 
     with sqlite_session_factory() as session:
-        _resume_agent_rows(session, run_data, MagicMock(), "account-1", lease)
+        _resume_agent_rows(session, run_data, CapturingEvaluationInstance(), "account-1", lease)
 
-    execute_target.assert_not_called()
-    retire_binding.assert_called_once_with(
-        tenant_id,
-        "30000000-0000-0000-0000-000000000008",
-    )
-    assert evaluate_row.call_args.kwargs["agent_item"] == checkpointed_item
-    assert evaluate_row.call_args.kwargs["target_error"] is None
+    assert retired_bindings == [(tenant_id, "30000000-0000-0000-0000-000000000008")]
+    assert evaluated_rows[0]["agent_item"] == checkpointed_item
+    assert evaluated_rows[0]["target_error"] is None
 
 
-def test_evaluate_agent_row_uses_native_agent_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_agent_row_uses_native_agent_evaluator(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
     agent_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = [
-        EvaluationItemResult(
-            index=0,
-            metrics=[EvaluationMetric(name="task_completion", value=0.9)],
-        )
-    ]
-    persist_results = MagicMock()
+    evaluation_instance = CapturingEvaluationInstance(
+        agent_result_factory=lambda _items: [
+            EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])
+        ]
+    )
+    persisted_results: list[list[EvaluationItemResult]] = []
+
+    def persist_results(
+        _session: Session, _lease: EvaluationRunLease, results: list[EvaluationItemResult], *_args: object
+    ) -> None:
+        persisted_results.append(results)
+
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
@@ -933,7 +1021,7 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(monkeypatch: pytest.Monk
     )
 
     _evaluate_agent_row(
-        session=MagicMock(),
+        session=sqlite_session,
         run_data=run_data,
         evaluation_instance=evaluation_instance,
         agent_item=agent_item,
@@ -942,23 +1030,16 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(monkeypatch: pytest.Monk
         lease=_lease("run-1"),
     )
 
-    evaluation_instance.evaluate_agent.assert_called_once_with(
-        [agent_item],
-        ["task_completion"],
-        "provider",
-        "model",
-        "tenant-1",
-    )
-    persisted_result = persist_results.call_args.args[2][0]
+    assert evaluation_instance.agent_calls == [([agent_item], ["task_completion"], "provider", "model", "tenant-1")]
+    persisted_result = persisted_results[0][0]
     assert persisted_result.index == 7
     assert persisted_result.metrics[0].node_info == node_info
     assert persisted_result.overall_score == 0.9
 
 
 def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
-    session = MagicMock()
     lease = _lease("run-1")
     agent_item = AgentEvaluationItem(
         index=7,
@@ -966,9 +1047,12 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
         output="done",
         expected_output="expected",
     )
-    evaluation_instance = MagicMock()
-    customized_evaluator = MagicMock(
-        return_value=[
+    evaluation_instance = CapturingEvaluationInstance()
+    evaluator_calls: list[dict[str, object]] = []
+
+    def customized_evaluator(**kwargs: object) -> list[EvaluationItemResult]:
+        evaluator_calls.append(kwargs)
+        return [
             EvaluationItemResult(
                 index=0,
                 metrics=[
@@ -980,10 +1064,20 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
                 ],
             )
         ]
-    )
+
     monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
-    persist_results = MagicMock()
-    clear_signals = MagicMock()
+    persisted_results: list[list[EvaluationItemResult]] = []
+
+    def persist_results(
+        _session: Session, _lease: EvaluationRunLease, results: list[EvaluationItemResult], *_args: object
+    ) -> None:
+        persisted_results.append(results)
+
+    cleared_signals: list[tuple[Session, EvaluationRunLease, str, list[int]]] = []
+
+    def clear_signals(session: Session, lease: EvaluationRunLease, phase: str, positions: list[int]) -> None:
+        cleared_signals.append((session, lease, phase, positions))
+
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
     monkeypatch.setattr("tasks.evaluation_task._clear_workflow_cancellation_signals", clear_signals)
     run_data = EvaluationRunData(
@@ -1004,7 +1098,7 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
     )
 
     _evaluate_agent_row(
-        session=session,
+        session=sqlite_session,
         run_data=run_data,
         evaluation_instance=evaluation_instance,
         agent_item=agent_item,
@@ -1013,18 +1107,20 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
         lease=lease,
     )
 
-    evaluation_instance.evaluate_agent.assert_not_called()
-    clear_signals.assert_called_once_with(session, lease, "evaluator", [4])
-    call_kwargs = customized_evaluator.call_args.kwargs
+    assert evaluation_instance.agent_calls == []
+    assert cleared_signals == [(sqlite_session, lease, "evaluator", [4])]
+    assert len(evaluator_calls) == 1
+    call_kwargs = evaluator_calls[0]
     assert call_kwargs["evaluation_instance"] is evaluation_instance
-    synthetic_result = call_kwargs["node_run_result_mapping_list"][0]["agent"]
+    synthetic_result = cast(list[dict[str, NodeRunResult]], call_kwargs["node_run_result_mapping_list"])[0]["agent"]
     assert synthetic_result.outputs["query"] == "hello"
     assert synthetic_result.outputs["output"] == "done"
     assert synthetic_result.outputs["expected_output"] == "expected"
     assert call_kwargs["customized_metrics"] == run_data.customized_metrics
     assert call_kwargs["tenant_id"] == "tenant-1"
-    assert call_kwargs["task_id_factory"](0) == _workflow_task_id("run-1", "evaluator", 4)
-    persisted_result = persist_results.call_args.args[2][0]
+    task_id_factory = cast("Callable[[int], str]", call_kwargs["task_id_factory"])
+    assert task_id_factory(0) == _workflow_task_id("run-1", "evaluator", 4)
+    persisted_result = persisted_results[0][0]
     assert persisted_result.index == 7
     assert persisted_result.actual_output == "done"
     assert persisted_result.metrics[0].name == "score"
@@ -1062,8 +1158,17 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
             ]
         )
         session.commit()
-        execute_retrieval = MagicMock(return_value=([NodeRunResult(outputs={"result": []})], [None]))
-        evaluate_retrieval = MagicMock()
+        retrieval_calls: list[dict[str, object]] = []
+
+        def execute_retrieval(**kwargs: object) -> tuple[list[NodeRunResult], list[None]]:
+            retrieval_calls.append(kwargs)
+            return [NodeRunResult(outputs={"result": []})], [None]
+
+        evaluation_calls: list[dict[str, object]] = []
+
+        def evaluate_retrieval(**kwargs: object) -> None:
+            evaluation_calls.append(kwargs)
+
         monkeypatch.setattr(EvaluationService, "execute_retrieval_test_targets", execute_retrieval)
         monkeypatch.setattr("tasks.evaluation_task._evaluate_retrieval_results", evaluate_retrieval)
         run_data = EvaluationRunData(
@@ -1079,30 +1184,31 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
             ],
         )
 
-        _resume_retrieval_rows(session, run_data, MagicMock(), "account-1", lease)
+        _resume_retrieval_rows(session, run_data, CapturingEvaluationInstance(), "account-1", lease)
 
-    execute_retrieval.assert_called_once()
-    assert execute_retrieval.call_args.kwargs["input_list"][0].index == 2
-    evaluate_retrieval.assert_called_once()
-    assert evaluate_retrieval.call_args.kwargs["run_data"].input_list[0].index == 2
-    assert evaluate_retrieval.call_args.kwargs["lease"] == lease
-    assert evaluate_retrieval.call_args.kwargs["report_progress"] is False
+    assert len(retrieval_calls) == 1
+    assert cast(list[EvaluationDatasetInput], retrieval_calls[0]["input_list"])[0].index == 2
+    assert len(evaluation_calls) == 1
+    assert cast(EvaluationRunData, evaluation_calls[0]["run_data"]).input_list[0].index == 2
+    assert evaluation_calls[0]["lease"] == lease
+    assert evaluation_calls[0]["report_progress"] is False
 
 
 def test_heartbeat_loop_renews_until_run_is_no_longer_running(monkeypatch: pytest.MonkeyPatch) -> None:
-    stop_event = MagicMock()
-    stop_event.wait.side_effect = [False, False]
-    renew_heartbeat = MagicMock(side_effect=[True, False])
+    stop_event = Event()
+    renewed_leases: list[EvaluationRunLease] = []
+
+    def renew_heartbeat(lease: EvaluationRunLease) -> bool:
+        renewed_leases.append(lease)
+        return len(renewed_leases) == 1
+
     monkeypatch.setattr("tasks.evaluation_task._renew_evaluation_run_heartbeat", renew_heartbeat)
-    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL", 17)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL", 0)
     lease = _lease("run-1")
 
     _renew_evaluation_run_heartbeat_while_running(lease, stop_event)
 
-    assert stop_event.wait.call_count == 2
-    stop_event.wait.assert_called_with(17)
-    assert renew_heartbeat.call_count == 2
-    renew_heartbeat.assert_called_with(lease)
+    assert renewed_leases == [lease, lease]
 
 
 def test_renew_evaluation_run_heartbeat_only_updates_running_run(
@@ -1235,10 +1341,16 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
 
     monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
     monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_LEASE_TIMEOUT", 60)
-    stop_tasks = MagicMock()
+    stopped_tasks: list[tuple[str, int]] = []
+
+    def stop_tasks(run_id: str, total_items: int) -> None:
+        stopped_tasks.append((run_id, total_items))
+
     monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_tasks)
-    celery_control = MagicMock()
-    monkeypatch.setattr("celery.current_app.control", celery_control)
+    from celery import current_app as celery_app
+
+    celery_control = _RecordingCeleryControl()
+    monkeypatch.setattr(celery_app, "control", celery_control)
 
     assert reconcile_stale_evaluation_runs.run() == 1
 
@@ -1256,8 +1368,8 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
         assert recently_renewed_run is not None
         assert recently_renewed_run.status == EvaluationRunStatus.RUNNING
         assert recently_renewed_run.execution_token == "40000000-0000-0000-0000-000000000021"
-    stop_tasks.assert_called_once_with("30000000-0000-0000-0000-000000000001", 2)
-    celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
+    assert stopped_tasks == [("30000000-0000-0000-0000-000000000001", 2)]
+    assert celery_control.revocations == [("celery-1", False)]
 
 
 def test_judgment_summary_ignores_errored_items() -> None:

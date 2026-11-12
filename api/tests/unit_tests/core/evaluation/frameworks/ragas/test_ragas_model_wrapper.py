@@ -1,11 +1,81 @@
 import asyncio
 import importlib
 import sys
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass
+from types import ModuleType
+from unittest.mock import patch
 
 import pytest
 from langchain_core.prompt_values import StringPromptValue
+
+from core.entities.embedding_type import EmbeddingInputType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+
+
+@dataclass
+class _TextMessage:
+    content: str
+
+    def get_text_content(self) -> str:
+        """Return the text provided by the model runtime."""
+        return self.content
+
+
+@dataclass
+class _LLMResponse:
+    message: _TextMessage
+
+
+class _LLMModel:
+    def __init__(self) -> None:
+        """Start with no invocations for the wrapper to record."""
+        self.invoke_calls: list[dict[str, object]] = []
+
+    def invoke_llm(self, **kwargs: object) -> _LLMResponse:
+        """Capture the actual prompt and parameters and return a text response."""
+        self.invoke_calls.append(kwargs)
+        return _LLMResponse(message=_TextMessage("response"))
+
+
+@dataclass
+class _EmbeddingSchema:
+    model_properties: dict[ModelPropertyKey, int]
+
+
+class _EmbeddingModelType:
+    def get_model_schema(self, _model_name: str, _credentials: dict[str, str]) -> _EmbeddingSchema:
+        """Declare a two-text batch limit for this provider model."""
+        return _EmbeddingSchema(model_properties={ModelPropertyKey.MAX_CHUNKS: 2})
+
+
+@dataclass
+class _EmbeddingResponse:
+    embeddings: list[list[float]]
+
+
+class _EmbeddingModel:
+    model_name = "embedding-model"
+    credentials = {"token": "secret"}
+
+    def __init__(self) -> None:
+        """Provide a concrete model schema and track calls to its embedding boundary."""
+        self.model_type_instance = _EmbeddingModelType()
+        self.calls: list[tuple[list[str], EmbeddingInputType]] = []
+
+    def invoke_text_embedding(self, *, texts: list[str], input_type: EmbeddingInputType) -> _EmbeddingResponse:
+        """Return deterministic vectors for every text in the requested batch."""
+        self.calls.append((texts, input_type))
+        return _EmbeddingResponse(embeddings=[[float(len(text)), 1.0] for text in texts])
+
+
+class _EmbeddingManager:
+    def __init__(self, model: _EmbeddingModel) -> None:
+        """Bind the model returned for the tenant's default embedding setting."""
+        self.model = model
+
+    def get_default_model_instance(self, **_kwargs: object) -> _EmbeddingModel:
+        """Return the default embedding model without provider I/O."""
+        return self.model
 
 
 def test_dify_model_wrapper_rounds_ragas_temperature_for_plugin(
@@ -35,15 +105,13 @@ def test_dify_model_wrapper_rounds_ragas_temperature_for_plugin(
             wrapper_module = importlib.import_module(wrapper_module_name)
             wrapper = wrapper_module.DifyModelWrapper("provider", "model", "tenant")
 
-            model_instance = MagicMock()
-            model_instance.invoke_llm.return_value = SimpleNamespace(
-                message=SimpleNamespace(get_text_content=lambda: "response")
-            )
+            model_instance = _LLMModel()
             monkeypatch.setattr(wrapper, "_get_model_instance", lambda: model_instance)
 
             wrapper.generate_text(StringPromptValue(text="judge this"))
 
-            assert model_instance.invoke_llm.call_args.kwargs["model_parameters"] == {"temperature": 0.0}
+            assert len(model_instance.invoke_calls) == 1
+            assert model_instance.invoke_calls[0]["model_parameters"] == {"temperature": 0.0}
     finally:
         sys.modules.pop(wrapper_module_name, None)
         if previous_wrapper_module is not None:
@@ -53,30 +121,19 @@ def test_dify_model_wrapper_rounds_ragas_temperature_for_plugin(
 def test_dify_embeddings_wrapper_uses_default_model_and_provider_batch_size(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from core.entities.embedding_type import EmbeddingInputType
     from core.evaluation.frameworks.ragas.ragas_embeddings_wrapper import DifyEmbeddingsWrapper
     from core.model_manager import ModelManager
-    from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
-    model_type_instance = MagicMock()
-    model_type_instance.get_model_schema.return_value = SimpleNamespace(
-        model_properties={ModelPropertyKey.MAX_CHUNKS: 2}
-    )
-    model_instance = MagicMock(
-        model_type_instance=model_type_instance,
-        model_name="embedding-model",
-        credentials={"token": "secret"},
-    )
+    model_instance = _EmbeddingModel()
+    manager = _EmbeddingManager(model_instance)
+    tenant_calls: list[tuple[str, str | None]] = []
 
-    def invoke_text_embedding(*, texts: list[str], input_type: EmbeddingInputType) -> SimpleNamespace:
-        del input_type
-        return SimpleNamespace(embeddings=[[float(len(text)), 1.0] for text in texts])
+    def for_tenant(_cls: type[ModelManager], tenant_id: str, user_id: str | None = None) -> _EmbeddingManager:
+        """Record the owner scope used to resolve the default model."""
+        tenant_calls.append((tenant_id, user_id))
+        return manager
 
-    model_instance.invoke_text_embedding.side_effect = invoke_text_embedding
-    manager = MagicMock()
-    manager.get_default_model_instance.return_value = model_instance
-    for_tenant = MagicMock(return_value=manager)
-    monkeypatch.setattr(ModelManager, "for_tenant", for_tenant)
+    monkeypatch.setattr(ModelManager, "for_tenant", classmethod(for_tenant))
     wrapper = DifyEmbeddingsWrapper("tenant-1", "user-1")
 
     assert wrapper.embed_documents(["one", "four", "five"]) == [
@@ -87,21 +144,10 @@ def test_dify_embeddings_wrapper_uses_default_model_and_provider_batch_size(
     assert wrapper.embed_query("query") == [5.0, 1.0]
     assert asyncio.run(wrapper.embed_text("semantic")) == [8.0, 1.0]
 
-    for_tenant.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
-    assert model_instance.invoke_text_embedding.call_count == 4
-    assert model_instance.invoke_text_embedding.call_args_list[0].kwargs == {
-        "texts": ["one", "four"],
-        "input_type": EmbeddingInputType.DOCUMENT,
-    }
-    assert model_instance.invoke_text_embedding.call_args_list[1].kwargs == {
-        "texts": ["five"],
-        "input_type": EmbeddingInputType.DOCUMENT,
-    }
-    assert model_instance.invoke_text_embedding.call_args_list[2].kwargs == {
-        "texts": ["query"],
-        "input_type": EmbeddingInputType.QUERY,
-    }
-    assert model_instance.invoke_text_embedding.call_args_list[3].kwargs == {
-        "texts": ["semantic"],
-        "input_type": EmbeddingInputType.DOCUMENT,
-    }
+    assert tenant_calls == [("tenant-1", "user-1")]
+    assert model_instance.calls == [
+        (["one", "four"], EmbeddingInputType.DOCUMENT),
+        (["five"], EmbeddingInputType.DOCUMENT),
+        (["query"], EmbeddingInputType.QUERY),
+        (["semantic"], EmbeddingInputType.DOCUMENT),
+    ]

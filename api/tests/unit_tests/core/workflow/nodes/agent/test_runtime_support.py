@@ -1,6 +1,5 @@
 import json
 from collections.abc import Mapping, Sequence
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -204,7 +203,7 @@ def test_build_model_visible_tool_snapshots_excludes_runtime_values() -> None:
     }
 
     snapshots = AgentRuntimeSupport.build_model_visible_tool_snapshots(
-        agent_parameters=[SimpleNamespace(name="tools", type="array[tools]")],  # type: ignore[list-item]
+        agent_parameters=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
         resolved_parameters={"tools": [serialized_tool]},
     )
 

@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationDatasetInput,
@@ -9,11 +7,11 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from graphon.node_events import NodeRunResult
+from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 
 
 def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_llm.return_value = list[EvaluationItemResult]()
+    evaluation_instance = CapturingEvaluationInstance()
     runner = LLMEvaluationRunner(evaluation_instance)
 
     runner.evaluate_metrics(
@@ -41,18 +39,16 @@ def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
         context_list=[["Dify is an LLM application development platform."]],
     )
 
-    items = evaluation_instance.evaluate_llm.call_args.args[0]
+    items = evaluation_instance.llm_items
     assert items[0].context == ["Dify is an LLM application development platform."]
     assert items[0].expected_output == "Dify is a platform."
 
 
 def test_llm_runner_strips_inline_reasoning_from_evaluation_output() -> None:
-    evaluation_instance = MagicMock()
-
     def evaluate_llm(items: list[EvaluationItemInput], *_args: object) -> list[EvaluationItemResult]:
         return [EvaluationItemResult(index=item.index, actual_output=item.output) for item in items]
 
-    evaluation_instance.evaluate_llm.side_effect = evaluate_llm
+    evaluation_instance = CapturingEvaluationInstance(llm_result_factory=evaluate_llm)
     runner = LLMEvaluationRunner(evaluation_instance)
 
     results = runner.evaluate_metrics(
@@ -76,6 +72,6 @@ def test_llm_runner_strips_inline_reasoning_from_evaluation_output() -> None:
         tenant_id="tenant-1",
     )
 
-    items = evaluation_instance.evaluate_llm.call_args.args[0]
+    items = evaluation_instance.llm_items
     assert items[0].output == "Dify is an LLM application platform."
     assert results[0].actual_output == "Dify is an LLM application platform."

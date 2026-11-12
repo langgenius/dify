@@ -2,8 +2,7 @@
 
 import io
 import json
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from typing import cast
 
 import pytest
 from openpyxl import load_workbook
@@ -29,8 +28,9 @@ from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentScope, AgentSource
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.evaluation import (
     EvaluationConfiguration,
@@ -47,23 +47,28 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
-    WorkflowType,
 )
+from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
 from services.variable_truncator import VariableTruncator
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.helpers.unit.model_factories import make_upload_file
+from services.workflow_service import WorkflowService
+from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
+from tests.helpers.unit.model_factories import (
+    make_account,
+    make_app,
+    make_dataset,
+    make_tenant,
+    make_upload_file,
+    make_workflow,
+)
 
 
 @pytest.fixture(autouse=True)
 def stub_evaluation_model_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(EvaluationService, "_validate_evaluation_model", MagicMock())
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.side_effect = lambda metric: metric == "context_recall"
-    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
-    evaluation_instance.metric_requires_embeddings.side_effect = lambda metric: metric == "answer_relevancy"
-    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", MagicMock(return_value=evaluation_instance))
+    """Avoid provider I/O while using the production evaluators' real metric policies."""
+    monkeypatch.setattr(EvaluationService, "_validate_evaluation_model", lambda *_args, **_kwargs: None)
 
 
 def _agent() -> Agent:
@@ -82,6 +87,101 @@ def _workflow_with_nodes(nodes: list[tuple[str, dict[str, object]]]) -> Workflow
     return Workflow(graph=json.dumps(graph))
 
 
+def _persist_app(session: Session, app_id: str = "app-1", mode: AppMode = AppMode.WORKFLOW) -> App:
+    """Persist a target app so validation runs its actual SQL query."""
+    app = make_app(app_id=app_id, mode=mode)
+    session.add(app)
+    session.flush()
+    return app
+
+
+def _persist_dataset(session: Session, provider: str = "vendor") -> None:
+    """Persist a knowledge base so validation runs its actual SQL query."""
+    session.add(make_dataset(provider=provider))
+    session.flush()
+
+
+def _persist_service_app(session: Session) -> tuple[App, Account]:
+    """Persist an app creator with tenant membership for the service account lookup."""
+    account = make_account()
+    tenant = make_tenant()
+    app = make_app(mode=AppMode.WORKFLOW, created_by=account.id)
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        role=TenantAccountRole.NORMAL,
+    )
+    session.add_all([account, tenant, membership, app])
+    session.flush()
+    return app, account
+
+
+def _agent_target() -> ResolvedAgentEvaluationTarget:
+    """Build the resolved agent value returned at the service boundary."""
+    return ResolvedAgentEvaluationTarget(
+        agent_id="agent-1",
+        agent_name="Research Agent",
+        app_id="app-1",
+        config_snapshot_id="snapshot-1",
+        home_snapshot_id=None,
+        agent_soul=AgentSoulConfig(),
+    )
+
+
+def _evaluator_workflow(required_input: bool = True) -> Workflow:
+    """Build a real published evaluator graph with an output and optional input."""
+    variables = [{"variable": "answer", "required": True}] if required_input else []
+    return make_workflow(
+        app_id="evaluator-app",
+        kind=WorkflowKind.EVALUATION,
+        graph={
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "variables": variables}},
+                {"id": "end", "data": {"type": "end", "outputs": [{"variable": "score", "value_type": "number"}]}},
+            ],
+            "edges": [],
+        },
+    )
+
+
+def _patch_evaluator_workflow(monkeypatch: pytest.MonkeyPatch, workflow: Workflow) -> None:
+    """Keep the WorkflowService provider boundary local to the evaluator fixture."""
+    monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
+    monkeypatch.setattr(WorkflowService, "get_published_workflow", lambda *_args, **_kwargs: workflow)
+
+
+def _running_run(session: Session, target_type: EvaluationTargetType, target_id: str) -> EvaluationRun:
+    """Persist a running evaluation for cancellation and checkpoint tests."""
+    run = EvaluationRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        target_type=target_type,
+        target_id=target_id,
+        evaluation_config_id="config-1",
+        config_snapshot="{}",
+        status=EvaluationRunStatus.RUNNING,
+        total_items=2,
+        celery_task_id="celery-1",
+        execution_token="40000000-0000-0000-0000-000000000001",
+        heartbeat_at=naive_utc_now(),
+        progress_rate=0.4,
+        created_by="account-1",
+    )
+    session.add(run)
+    session.commit()
+    return run
+
+
+class _RecordingCeleryControl:
+    """Record the Celery revocation request at the task-control boundary."""
+
+    def __init__(self) -> None:
+        self.revocations: list[tuple[str, bool]] = []
+
+    def revoke(self, task_id: str, *, terminate: bool) -> None:
+        self.revocations.append((task_id, terminate))
+
+
 def test_generated_template_uses_provided_column_names() -> None:
     content = EvaluationService._generate_xlsx_template(
         [
@@ -97,19 +197,14 @@ def test_generated_template_uses_provided_column_names() -> None:
 
 
 def test_generated_template_includes_reference_columns_for_selected_metrics(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
     app = App(name="Reference App", mode=AppMode.WORKFLOW)
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = True
-    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
     monkeypatch.setattr(
         EvaluationService,
         "_get_app_input_fields",
-        MagicMock(return_value=[{"variable": "input", "label": "Input label", "type": "text-input"}]),
+        lambda *_args: [{"variable": "input", "label": "Input label", "type": "text-input"}],
     )
-    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
-    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
 
     content, _ = EvaluationService.generate_dataset_template(
         app,
@@ -123,13 +218,12 @@ def test_generated_template_includes_reference_columns_for_selected_metrics(
                 )
             ],
         ),
-        MagicMock(spec=Session),
+        sqlite_session,
     )
     worksheet = load_workbook(io.BytesIO(content)).active
 
     assert worksheet is not None
     assert [cell.value for cell in worksheet[1]] == ["index", "input", "Answer : expected_output"]
-    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.DEEPEVAL)
 
 
 def test_evaluation_framework_request_defaults_to_ragas_and_rejects_none() -> None:
@@ -141,7 +235,7 @@ def test_evaluation_framework_request_defaults_to_ragas_and_rejects_none() -> No
 def test_selected_framework_is_saved_and_reused_for_file_only_runs(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(EvaluationService, "validate_evaluation_config", MagicMock())
+    monkeypatch.setattr(EvaluationService, "validate_evaluation_config", lambda *_args, **_kwargs: None)
     tenant_id = "30000000-0000-0000-0000-000000000010"
     target_id = "30000000-0000-0000-0000-000000000020"
     account_id = "30000000-0000-0000-0000-000000000030"
@@ -169,12 +263,6 @@ def test_selected_framework_is_saved_and_reused_for_file_only_runs(
 
 def test_metric_lists_follow_selected_framework(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
-    supported_metrics = MagicMock(
-        side_effect=lambda _category, framework: (
-            ["semantic_similarity"] if framework == EvaluationFrameworkEnum.RAGAS else ["answer_relevancy"]
-        )
-    )
-    monkeypatch.setattr(EvaluationManager, "get_supported_metrics", supported_metrics)
     ragas_metrics = EvaluationService.get_console_supported_metrics(
         EvaluationCategory.LLM, EvaluationFrameworkEnum.RAGAS
     )
@@ -183,10 +271,6 @@ def test_metric_lists_follow_selected_framework(monkeypatch: pytest.MonkeyPatch)
     )
     assert "semantic_similarity" in ragas_metrics
     assert "semantic_similarity" not in deepeval_metrics
-    assert [call.args for call in supported_metrics.call_args_list] == [
-        (EvaluationCategory.LLM, EvaluationFrameworkEnum.RAGAS),
-        (EvaluationCategory.LLM, EvaluationFrameworkEnum.DEEPEVAL),
-    ]
 
 
 def test_parse_csv_dataset_preserves_node_title_scoped_references() -> None:
@@ -319,8 +403,8 @@ def test_dataset_validation_allows_reference_free_metrics() -> None:
 
 
 def test_dataset_validation_resolves_references_by_node_title() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = True
+    evaluation_instance = EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.DEEPEVAL)
+    assert evaluation_instance is not None
     metrics = [
         DefaultMetric(
             metric="answer_correctness",
@@ -358,9 +442,8 @@ def test_dataset_validation_resolves_references_by_node_title() -> None:
 
 
 def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = False
-    evaluation_instance.metric_requires_expected_tool_calls.side_effect = lambda metric: metric == "tool_call_accuracy"
+    evaluation_instance = EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.RAGAS)
+    assert evaluation_instance is not None
     metrics = [
         DefaultMetric(
             metric="tool_call_accuracy",
@@ -406,8 +489,8 @@ def test_dataset_validation_requires_reference_tool_calls_for_ragas_agent_metric
 
 
 def test_hidden_reference_agent_metrics_do_not_generate_template_columns() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_tool_calls.side_effect = lambda metric: metric == "tool_call_accuracy"
+    evaluation_instance = EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.RAGAS)
+    assert evaluation_instance is not None
 
     columns = EvaluationService._get_expected_tool_call_columns(
         [
@@ -430,8 +513,8 @@ def test_hidden_reference_agent_metrics_do_not_generate_template_columns() -> No
 
 
 def test_task_completion_generates_optional_success_criteria_columns() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_accepts_success_criteria.side_effect = lambda metric: metric == "task_completion"
+    evaluation_instance = EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.RAGAS)
+    assert evaluation_instance is not None
 
     columns = EvaluationService._get_success_criteria_columns(
         [
@@ -457,15 +540,7 @@ def test_task_completion_generates_optional_success_criteria_columns() -> None:
     ]
 
 
-def test_standalone_agent_template_uses_plain_success_criteria_column(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = False
-    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
-    evaluation_instance.metric_accepts_success_criteria.side_effect = lambda metric: metric == "task_completion"
-    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", MagicMock(return_value=evaluation_instance))
-
+def test_standalone_agent_template_uses_plain_success_criteria_column(sqlite_session: Session) -> None:
     content, _ = EvaluationService.generate_dataset_template(
         _agent(),
         "agents",
@@ -477,7 +552,7 @@ def test_standalone_agent_template_uses_plain_success_criteria_column(
                 )
             ],
         ),
-        MagicMock(),
+        sqlite_session,
     )
     workbook = load_workbook(io.BytesIO(content))
     worksheet = workbook.active
@@ -493,7 +568,7 @@ def test_standalone_agent_template_uses_plain_success_criteria_column(
     assert items[0].get_success_criteria_for_node("agent-1", "Research Agent") == ["Use real weather data"]
 
 
-def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
+def test_agent_custom_evaluator_adds_referenced_dataset_columns(sqlite_session: Session) -> None:
     columns = EvaluationService.get_dataset_column_names(
         _agent(),
         "agents",
@@ -509,7 +584,7 @@ def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
                 output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
             )
         ),
-        MagicMock(),
+        sqlite_session,
     )
 
     assert columns == [
@@ -521,19 +596,7 @@ def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
     ]
 
 
-def test_agent_custom_evaluator_reuses_native_success_criteria_column(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = False
-    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
-    evaluation_instance.metric_accepts_success_criteria.side_effect = lambda metric: metric == "task_completion"
-    monkeypatch.setattr(
-        EvaluationManager,
-        "get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
-
+def test_agent_custom_evaluator_reuses_native_success_criteria_column(sqlite_session: Session) -> None:
     columns = EvaluationService.get_dataset_column_names(
         _agent(),
         "agents",
@@ -550,7 +613,7 @@ def test_agent_custom_evaluator_reuses_native_success_criteria_column(
                 output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
             ),
         ),
-        MagicMock(),
+        sqlite_session,
     )
 
     assert columns == [
@@ -564,16 +627,14 @@ def test_console_supported_metrics_hide_legacy_agent_metrics(monkeypatch: pytest
     monkeypatch.setattr(
         EvaluationService,
         "get_supported_metrics",
-        MagicMock(
-            return_value=[
+        lambda *_args, **_kwargs: [
                 "task_completion",
                 "trajectory_quality",
                 "tool_selection_correctness",
                 "tool_argument_correctness",
                 "argument_correctness",
                 "tool_call_accuracy",
-            ]
-        ),
+            ],
     )
 
     assert EvaluationService.get_console_supported_metrics(EvaluationCategory.AGENT) == [
@@ -588,22 +649,20 @@ def test_available_metrics_hide_legacy_agent_metrics(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(
         EvaluationService,
         "_union_supported_metric_names",
-        MagicMock(
-            return_value=[
+        lambda *_args, **_kwargs: [
                 "faithfulness",
                 "task_completion",
                 "argument_correctness",
                 "tool_call_accuracy",
-            ]
-        ),
+            ],
     )
 
     assert EvaluationService.get_available_metrics() == ["faithfulness", "task_completion"]
 
 
 def test_expected_output_columns_use_node_titles() -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = True
+    evaluation_instance = EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.DEEPEVAL)
+    assert evaluation_instance is not None
 
     columns = EvaluationService._get_expected_output_columns(
         [
@@ -637,16 +696,10 @@ def test_dataset_references_fall_back_to_legacy_node_ids() -> None:
     assert item.get_expected_tool_calls_for_node("agent-1", "Research Agent") == expected_tool_calls
 
 
-def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(walk_nodes=lambda: iter([("node-1", {"type": "llm"})]))
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
-    monkeypatch.setattr(
-        EvaluationService,
-        "get_supported_metrics",
-        MagicMock(return_value=["context_precision"]),
-    )
+def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -660,7 +713,7 @@ def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPa
 
     with pytest.raises(ValueError, match="type does not match"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -668,28 +721,14 @@ def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPa
         )
 
 
-def test_validate_config_accepts_native_metric_for_agent_v2_node(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter(
-            [
-                (
-                    "agent-1",
-                    {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
-                )
-            ]
-        ),
-        user_input_form=lambda: [],
+def test_validate_config_accepts_native_metric_for_agent_v2_node(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes(
+        [("agent-1", {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"})]
     )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["task_completion"]))
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_embeddings.return_value = False
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -702,7 +741,7 @@ def test_validate_config_accepts_native_metric_for_agent_v2_node(monkeypatch: py
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
@@ -711,24 +750,19 @@ def test_validate_config_accepts_native_metric_for_agent_v2_node(monkeypatch: py
 
 
 def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
-    target = SimpleNamespace(agent_name="Research Agent")
-    resolve_target = MagicMock(return_value=target)
+    resolved_agents: list[str] = []
+
+    def resolve_target(*, session: Session, tenant_id: str, agent_id: str) -> ResolvedAgentEvaluationTarget:
+        assert session is sqlite_session
+        assert tenant_id == "tenant-1"
+        resolved_agents.append(agent_id)
+        return _agent_target()
+
     monkeypatch.setattr(
         "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
         resolve_target,
-    )
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_embeddings.return_value = False
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
-    monkeypatch.setattr(
-        EvaluationService,
-        "get_supported_metrics",
-        MagicMock(return_value=["task_completion"]),
     )
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
@@ -742,14 +776,14 @@ def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
     )
 
     EvaluationService.validate_evaluation_config(
-        session=MagicMock(),
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="agents",
         target_id="agent-1",
         data=config,
     )
 
-    resolve_target.assert_called_once()
+    assert resolved_agents == ["agent-1"]
 
     unsupported = config.model_copy(
         update={
@@ -763,7 +797,7 @@ def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
     )
     with pytest.raises(ValueError, match="not supported for Agent V2"):
         EvaluationService.validate_evaluation_config(
-            session=MagicMock(),
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="agents",
             target_id="agent-1",
@@ -771,22 +805,16 @@ def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
         )
 
 
-def test_validate_agent_target_accepts_customized_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_agent_target_accepts_customized_evaluator(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     monkeypatch.setattr(
         "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
-        MagicMock(return_value=SimpleNamespace(agent_name="Research Agent")),
+        lambda **_kwargs: _agent_target(),
     )
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="evaluator-app")
-    evaluator_workflow = SimpleNamespace(
-        type=WorkflowType.WORKFLOW,
-        resolved_kind=WorkflowKind.EVALUATION,
-        user_input_form=lambda: [{"variable": "answer", "required": True}],
-        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score"}]})]),
-    )
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow.return_value = evaluator_workflow
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+    _persist_app(sqlite_session, "evaluator-app")
+    evaluator_workflow = _evaluator_workflow()
+    _patch_evaluator_workflow(monkeypatch, evaluator_workflow)
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
@@ -796,7 +824,7 @@ def test_validate_agent_target_accepts_customized_evaluator(monkeypatch: pytest.
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="agents",
         target_id="agent-1",
@@ -810,23 +838,16 @@ def test_validate_agent_target_accepts_customized_evaluator(monkeypatch: pytest.
 )
 def test_validate_agent_target_rejects_unknown_customized_output(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     selector: str,
 ) -> None:
     monkeypatch.setattr(
         "services.evaluation_service.AgentEvaluationTargetService.resolve_active_snapshot",
-        MagicMock(return_value=SimpleNamespace(agent_name="Research Agent")),
+        lambda **_kwargs: _agent_target(),
     )
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="evaluator-app")
-    evaluator_workflow = SimpleNamespace(
-        type=WorkflowType.WORKFLOW,
-        resolved_kind=WorkflowKind.EVALUATION,
-        user_input_form=lambda: [{"variable": "answer", "required": True}],
-        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score"}]})]),
-    )
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow.return_value = evaluator_workflow
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+    _persist_app(sqlite_session, "evaluator-app")
+    evaluator_workflow = _evaluator_workflow()
+    _patch_evaluator_workflow(monkeypatch, evaluator_workflow)
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
@@ -837,7 +858,7 @@ def test_validate_agent_target_rejects_unknown_customized_output(
 
     with pytest.raises(ValueError, match="must use one of"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="agents",
             target_id="agent-1",
@@ -845,25 +866,13 @@ def test_validate_agent_target_rejects_unknown_customized_output(
         )
 
 
-def test_agent_default_metrics_are_scoped_to_the_agent(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        EvaluationService,
-        "get_console_supported_metrics",
-        MagicMock(
-            return_value=[
-                "task_completion",
-                "trajectory_quality",
-                "tool_selection_correctness",
-                "tool_argument_correctness",
-            ]
-        ),
-    )
+def test_agent_default_metrics_are_scoped_to_the_agent(sqlite_session: Session) -> None:
     agent = _agent()
 
     metrics = EvaluationService.get_default_metrics_with_nodes_for_published_target(
         agent,
         "agents",
-        MagicMock(),
+        sqlite_session,
     )
 
     assert [metric.metric for metric in metrics] == [
@@ -979,11 +988,16 @@ def test_knowledge_retrieval_v2_evaluation_scores_full_offloaded_results(
         input_file.key: json.dumps({"query": full_query}),
         output_file.key: json.dumps({"result": full_items}),
     }
-    storage_load = MagicMock(side_effect=lambda key: storage_payloads[key])
+    loaded_keys: list[str] = []
+
+    def storage_load(key: str) -> str:
+        loaded_keys.append(key)
+        return storage_payloads[key]
+
     monkeypatch.setattr("extensions.ext_storage.storage.load", storage_load)
 
     node_results = EvaluationService._query_node_run_results(sqlite_session, "tenant-1", "app-1", "run-1")
-    evaluation_instance = MagicMock()
+    evaluation_instance = CapturingEvaluationInstance()
     RetrievalEvaluationRunner(evaluation_instance).evaluate_metrics(
         node_run_result_list=[node_results["retrieval-v2"]],
         default_metric=DefaultMetric(
@@ -997,26 +1011,23 @@ def test_knowledge_retrieval_v2_evaluation_scores_full_offloaded_results(
         tenant_id="tenant-1",
     )
 
-    evaluated_item = evaluation_instance.evaluate_retrieval.call_args.args[0][0]
+    evaluated_item = evaluation_instance.retrieval_items[0]
     assert evaluated_item.inputs == {"query": full_query}
     assert evaluated_item.context == [item["content"] for item in full_items]
-    assert storage_load.call_count == 2
-    storage_load.assert_any_call(input_file.key)
-    storage_load.assert_any_call(output_file.key)
+    assert loaded_keys == [input_file.key, output_file.key]
 
 
 def test_validate_config_requires_default_embedding_for_embedding_metrics(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter([("node-1", {"type": "llm"})]),
-        user_input_form=lambda: [],
-    )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["answer_relevancy"]))
-    validate_embeddings = MagicMock()
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
+    validated_tenants: list[str] = []
+
+    def validate_embeddings(*, tenant_id: str) -> None:
+        validated_tenants.append(tenant_id)
+
     monkeypatch.setattr(EvaluationService, "_validate_default_embedding_model", validate_embeddings)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
@@ -1030,33 +1041,28 @@ def test_validate_config_requires_default_embedding_for_embedding_metrics(
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
         data=config,
     )
 
-    validate_embeddings.assert_called_once_with(tenant_id="tenant-1")
+    assert validated_tenants == ["tenant-1"]
 
 
 def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
     monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter([("node-1", {"type": "llm"})]),
-        user_input_form=lambda: [],
-    )
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_embeddings.return_value = False
-    evaluation_instance.get_supported_metrics.return_value = ["answer_relevancy"]
-    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
-    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
-    validate_embeddings = MagicMock()
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
+    validated_tenants: list[str] = []
+
+    def validate_embeddings(*, tenant_id: str) -> None:
+        validated_tenants.append(tenant_id)
+
     monkeypatch.setattr(EvaluationService, "_validate_default_embedding_model", validate_embeddings)
     config = EvaluationConfigData(
         evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
@@ -1071,47 +1077,40 @@ def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
         data=config,
     )
 
-    validate_embeddings.assert_not_called()
-    get_evaluation_instance.assert_any_call(EvaluationFrameworkEnum.DEEPEVAL)
+    assert validated_tenants == []
+    assert EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.DEEPEVAL) is not None
 
 
-def test_validate_knowledge_base_config_uses_retrieval_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
-    supported_metrics = MagicMock(return_value=["context_precision"])
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", supported_metrics)
+def test_validate_knowledge_base_config_uses_retrieval_metrics(sqlite_session: Session) -> None:
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
         default_metrics=[DefaultMetric(metric="context_precision", node_info_list=[])],
     )
 
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="vendor")
+    _persist_dataset(sqlite_session)
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="knowledge_base",
         target_id="dataset-1",
         data=config,
     )
 
-    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL, EvaluationFrameworkEnum.RAGAS)
-
-
-def test_validate_knowledge_base_config_rejects_workflow_node_scope(monkeypatch: pytest.MonkeyPatch) -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_embeddings.return_value = False
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
+    assert "context_precision" in EvaluationService.get_supported_metrics(
+        EvaluationCategory.RETRIEVAL, EvaluationFrameworkEnum.RAGAS
     )
+
+
+def test_validate_knowledge_base_config_rejects_workflow_node_scope(sqlite_session: Session) -> None:
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1124,12 +1123,11 @@ def test_validate_knowledge_base_config_rejects_workflow_node_scope(monkeypatch:
             )
         ],
     )
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="vendor")
+    _persist_dataset(sqlite_session)
 
     with pytest.raises(ValueError, match="target-scoped.*must not select workflow nodes"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="knowledge_base",
             target_id="dataset-1",
@@ -1137,21 +1135,12 @@ def test_validate_knowledge_base_config_rejects_workflow_node_scope(monkeypatch:
         )
 
 
-def test_validate_workflow_retrieval_metric_preserves_node_scope(monkeypatch: pytest.MonkeyPatch) -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_embeddings.return_value = False
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["context_precision"]))
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter([("knowledge-retrieval-1", {"type": "knowledge-retrieval"})]),
-        user_input_form=lambda: [],
-    )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+def test_validate_workflow_retrieval_metric_preserves_node_scope(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes([("knowledge-retrieval-1", {"type": "knowledge-retrieval"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1175,7 +1164,7 @@ def test_validate_workflow_retrieval_metric_preserves_node_scope(monkeypatch: py
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
@@ -1184,23 +1173,11 @@ def test_validate_workflow_retrieval_metric_preserves_node_scope(monkeypatch: py
 
 
 def test_validate_workflow_accepts_knowledge_retrieval_v2(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
 ) -> None:
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_embeddings.return_value = False
-    supported_metrics = MagicMock(return_value=["context_precision"])
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", supported_metrics)
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter([("retrieval-v2", {"type": "knowledge-retrieval-v2"})]),
-        user_input_form=lambda: [],
-    )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes([("retrieval-v2", {"type": "knowledge-retrieval-v2"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1215,16 +1192,19 @@ def test_validate_workflow_accepts_knowledge_retrieval_v2(
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
         data=config,
     )
-    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL, EvaluationFrameworkEnum.RAGAS)
+    assert "context_precision" in EvaluationService.get_supported_metrics(
+        EvaluationCategory.RETRIEVAL, EvaluationFrameworkEnum.RAGAS
+    )
 
 
-def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:
+def test_validate_knowledge_base_config_rejects_customized_evaluator(sqlite_session: Session) -> None:
+    _persist_dataset(sqlite_session)
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
@@ -1235,7 +1215,7 @@ def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:
 
     with pytest.raises(ValueError, match="not supported for knowledge bases"):
         EvaluationService.validate_evaluation_config(
-            session=MagicMock(),
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="knowledge_base",
             target_id="dataset-1",
@@ -1243,21 +1223,14 @@ def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:
         )
 
 
-def test_validate_config_rejects_undeclared_customized_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    target = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    evaluator_app = SimpleNamespace(id="evaluator-app")
-    session = MagicMock()
-    session.scalar.side_effect = [target, evaluator_app]
-    target_workflow = SimpleNamespace(walk_nodes=lambda: iter([("node-1", {"type": "llm"})]))
-    evaluator_workflow = SimpleNamespace(
-        type=WorkflowType.WORKFLOW,
-        resolved_kind=WorkflowKind.EVALUATION,
-        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score", "value_type": "number"}]})]),
-    )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=target_workflow))
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow.return_value = evaluator_workflow
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+def test_validate_config_rejects_undeclared_customized_output(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    _persist_app(sqlite_session, "evaluator-app")
+    target_workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: target_workflow)
+    _patch_evaluator_workflow(monkeypatch, _evaluator_workflow(required_input=False))
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
@@ -1268,7 +1241,7 @@ def test_validate_config_rejects_undeclared_customized_output(monkeypatch: pytes
 
     with pytest.raises(ValueError, match="not declared.*missing"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -1276,14 +1249,8 @@ def test_validate_config_rejects_undeclared_customized_output(monkeypatch: pytes
         )
 
 
-def test_validate_config_rejects_non_workflow_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.scalar.return_value = App(id="app-1", mode=AppMode.ADVANCED_CHAT)
-    monkeypatch.setattr(
-        EvaluationService,
-        "get_supported_metrics",
-        MagicMock(return_value=["faithfulness"]),
-    )
+def test_validate_config_rejects_non_workflow_app(sqlite_session: Session) -> None:
+    _persist_app(sqlite_session, mode=AppMode.ADVANCED_CHAT)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1297,7 +1264,7 @@ def test_validate_config_rejects_non_workflow_app(monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(ValueError, match="Only workflow apps"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -1305,15 +1272,15 @@ def test_validate_config_rejects_non_workflow_app(monkeypatch: pytest.MonkeyPatc
         )
 
 
-def test_pin_target_workflow_returns_published_snapshot_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    target = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    session = MagicMock()
-    session.scalar.return_value = target
-    workflow = SimpleNamespace(id="workflow-version-7", user_input_form=lambda: [])
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+def test_pin_target_workflow_returns_published_snapshot_id(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    workflow = make_workflow(workflow_id="workflow-version-7")
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
 
     version_id, resolved_workflow, input_fields = EvaluationService._pin_target_workflow(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
@@ -1338,9 +1305,8 @@ def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> No
     assert EvaluationService._extract_llm_context_node_mapping(workflow) == {"llm-1": ["retrieval-1"]}
 
 
-def test_validate_knowledge_base_config_rejects_external_provider() -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="external")
+def test_validate_knowledge_base_config_rejects_external_provider(sqlite_session: Session) -> None:
+    _persist_dataset(sqlite_session, provider="external")
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1349,7 +1315,7 @@ def test_validate_knowledge_base_config_rejects_external_provider() -> None:
 
     with pytest.raises(ValueError, match="External knowledge bases"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="knowledge_base",
             target_id="dataset-1",
@@ -1358,11 +1324,9 @@ def test_validate_knowledge_base_config_rejects_external_provider() -> None:
 
 
 def test_validate_knowledge_base_judgment_uses_dataset_metric_selector(
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="vendor")
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["context_relevance"]))
+    _persist_dataset(sqlite_session)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1379,7 +1343,7 @@ def test_validate_knowledge_base_judgment_uses_dataset_metric_selector(
     )
 
     EvaluationService.validate_evaluation_config(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="knowledge_base",
         target_id="dataset-1",
@@ -1388,11 +1352,9 @@ def test_validate_knowledge_base_judgment_uses_dataset_metric_selector(
 
 
 def test_validate_knowledge_base_judgment_rejects_workflow_node_selector(
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="dataset-1", provider="vendor")
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["context_relevance"]))
+    _persist_dataset(sqlite_session)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1410,7 +1372,7 @@ def test_validate_knowledge_base_judgment_rejects_workflow_node_selector(
 
     with pytest.raises(ValueError, match="Judgment selector 'knowledge-retrieval-1.context_relevance'"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="knowledge_base",
             target_id="dataset-1",
@@ -1418,22 +1380,14 @@ def test_validate_knowledge_base_judgment_rejects_workflow_node_selector(
         )
 
 
-def test_validate_config_rejects_missing_required_customized_input(monkeypatch: pytest.MonkeyPatch) -> None:
-    target = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    evaluator_app = SimpleNamespace(id="evaluator-app")
-    session = MagicMock()
-    session.scalar.side_effect = [target, evaluator_app]
-    target_workflow = SimpleNamespace(walk_nodes=lambda: iter([("node-1", {"type": "llm"})]))
-    evaluator_workflow = SimpleNamespace(
-        type=WorkflowType.WORKFLOW,
-        resolved_kind=WorkflowKind.EVALUATION,
-        user_input_form=lambda: [{"variable": "answer", "required": True}],
-        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score"}]})]),
-    )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=target_workflow))
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow.return_value = evaluator_workflow
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+def test_validate_config_rejects_missing_required_customized_input(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    _persist_app(sqlite_session, "evaluator-app")
+    target_workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: target_workflow)
+    _patch_evaluator_workflow(monkeypatch, _evaluator_workflow())
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
@@ -1444,7 +1398,7 @@ def test_validate_config_rejects_missing_required_customized_input(monkeypatch: 
 
     with pytest.raises(ValueError, match="required inputs.*answer"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -1452,22 +1406,14 @@ def test_validate_config_rejects_missing_required_customized_input(monkeypatch: 
         )
 
 
-def test_validate_config_rejects_unknown_customized_selector_node(monkeypatch: pytest.MonkeyPatch) -> None:
-    target = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    evaluator_app = SimpleNamespace(id="evaluator-app")
-    session = MagicMock()
-    session.scalar.side_effect = [target, evaluator_app]
-    target_workflow = SimpleNamespace(walk_nodes=lambda: iter([("node-1", {"type": "llm"})]))
-    evaluator_workflow = SimpleNamespace(
-        type=WorkflowType.WORKFLOW,
-        resolved_kind=WorkflowKind.EVALUATION,
-        user_input_form=lambda: [{"variable": "answer", "required": True}],
-        walk_nodes=lambda: iter([("end", {"type": "end", "outputs": [{"variable": "score"}]})]),
-    )
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=target_workflow))
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow.return_value = evaluator_workflow
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
+def test_validate_config_rejects_unknown_customized_selector_node(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    _persist_app(sqlite_session, "evaluator-app")
+    target_workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: target_workflow)
+    _patch_evaluator_workflow(monkeypatch, _evaluator_workflow())
     config = EvaluationConfigData(
         customized_metrics=CustomizedMetrics(
             evaluation_workflow_id="evaluator-app",
@@ -1478,7 +1424,7 @@ def test_validate_config_rejects_unknown_customized_selector_node(monkeypatch: p
 
     with pytest.raises(ValueError, match="missing_node.*published target workflow"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -1486,12 +1432,12 @@ def test_validate_config_rejects_unknown_customized_selector_node(monkeypatch: p
         )
 
 
-def test_validate_config_rejects_unknown_judgment_selector(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(walk_nodes=lambda: iter([("node-1", {"type": "llm"})]))
-    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
-    monkeypatch.setattr(EvaluationService, "get_supported_metrics", MagicMock(return_value=["faithfulness"]))
+def test_validate_config_rejects_unknown_judgment_selector(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -1514,7 +1460,7 @@ def test_validate_config_rejects_unknown_judgment_selector(monkeypatch: pytest.M
 
     with pytest.raises(ValueError, match="Judgment selector"):
         EvaluationService.validate_evaluation_config(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -1522,73 +1468,64 @@ def test_validate_config_rejects_unknown_judgment_selector(monkeypatch: pytest.M
         )
 
 
-def test_cancel_run_stops_each_possible_workflow_task(monkeypatch: pytest.MonkeyPatch) -> None:
-    run = SimpleNamespace(
-        id="run-1",
-        status="running",
-        total_items=2,
-        celery_task_id="celery-1",
-        execution_token="40000000-0000-0000-0000-000000000001",
-        heartbeat_at=naive_utc_now(),
-        completed_at=None,
-        progress_rate=0.4,
-    )
-    session = MagicMock()
-    monkeypatch.setattr(EvaluationService, "get_evaluation_run_detail", MagicMock(return_value=run))
-    stop_workflow_tasks = MagicMock()
+def test_cancel_run_stops_each_possible_workflow_task(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    from celery import current_app as celery_app
+
+    run = _running_run(sqlite_session, EvaluationTargetType.APPS, "app-1")
+    stopped_workflow_tasks: list[tuple[str, int]] = []
+
+    def stop_workflow_tasks(run_id: str, total_items: int) -> None:
+        stopped_workflow_tasks.append((run_id, total_items))
+
     monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_workflow_tasks)
-    celery_control = MagicMock()
-    monkeypatch.setattr("celery.current_app.control", celery_control)
+    celery_control = _RecordingCeleryControl()
+    monkeypatch.setattr(celery_app, "control", celery_control)
 
     EvaluationService.cancel_evaluation_run(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
         run_id="run-1",
     )
 
-    stop_workflow_tasks.assert_called_once_with("run-1", 2)
-    celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
+    assert stopped_workflow_tasks == [("run-1", 2)]
+    assert celery_control.revocations == [("celery-1", False)]
     assert run.execution_token is None
     assert run.heartbeat_at is None
 
 
-def test_cancel_agent_run_stops_backend_and_customized_evaluator_tasks(monkeypatch: pytest.MonkeyPatch) -> None:
-    run = SimpleNamespace(
-        id="run-1",
-        status="running",
-        total_items=2,
-        celery_task_id="celery-1",
-        execution_token="40000000-0000-0000-0000-000000000001",
-        heartbeat_at=naive_utc_now(),
-        completed_at=None,
-        progress_rate=0.4,
-    )
-    session = MagicMock()
-    monkeypatch.setattr(EvaluationService, "get_evaluation_run_detail", MagicMock(return_value=run))
-    stop_agent_evaluation_tasks = MagicMock()
-    stop_workflow_tasks = MagicMock()
+def test_cancel_agent_run_stops_backend_and_customized_evaluator_tasks(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    from celery import current_app as celery_app
+
+    run = _running_run(sqlite_session, EvaluationTargetType.AGENTS, "agent-1")
+    stopped_agent_tasks: list[tuple[str, str, int]] = []
+    stopped_workflow_tasks: list[tuple[str, int]] = []
+
+    def stop_agent_evaluation_tasks(*, tenant_id: str, evaluation_run_id: str, total_items: int) -> None:
+        stopped_agent_tasks.append((tenant_id, evaluation_run_id, total_items))
+
+    def stop_workflow_tasks(run_id: str, total_items: int) -> None:
+        stopped_workflow_tasks.append((run_id, total_items))
+
     monkeypatch.setattr(EvaluationService, "_stop_agent_evaluation_tasks", stop_agent_evaluation_tasks)
     monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_workflow_tasks)
-    celery_control = MagicMock()
-    monkeypatch.setattr("celery.current_app.control", celery_control)
+    celery_control = _RecordingCeleryControl()
+    monkeypatch.setattr(celery_app, "control", celery_control)
 
     EvaluationService.cancel_evaluation_run(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="agents",
         target_id="agent-1",
         run_id="run-1",
     )
 
-    stop_agent_evaluation_tasks.assert_called_once_with(
-        tenant_id="tenant-1",
-        evaluation_run_id="run-1",
-        total_items=2,
-    )
-    stop_workflow_tasks.assert_not_called()
-    celery_control.revoke.assert_called_once_with("celery-1", terminate=False)
+    assert stopped_agent_tasks == [("tenant-1", "run-1", 2)]
+    assert stopped_workflow_tasks == []
+    assert celery_control.revocations == [("celery-1", False)]
     assert run.execution_token is None
     assert run.heartbeat_at is None
 
@@ -1596,8 +1533,15 @@ def test_cancel_agent_run_stops_backend_and_customized_evaluator_tasks(monkeypat
 def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    stop_flag = MagicMock(side_effect=RuntimeError("redis flag failed"))
-    send_abort = MagicMock()
+    stop_flags: list[str] = []
+    aborted_tasks: list[str] = []
+
+    def stop_flag(task_id: str) -> None:
+        stop_flags.append(task_id)
+        raise RuntimeError("redis flag failed")
+
+    def send_abort(task_id: str) -> None:
+        aborted_tasks.append(task_id)
     monkeypatch.setattr(
         "core.app.apps.base_app_queue_manager.AppQueueManager.set_stop_flag_no_user_check",
         stop_flag,
@@ -1606,8 +1550,8 @@ def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
 
     EvaluationService._stop_workflow_tasks("run-1", 1)
 
-    assert stop_flag.call_count == 2
-    assert send_abort.call_count == 2
+    assert len(stop_flags) == 2
+    assert aborted_tasks == stop_flags
 
 
 def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaults(sqlite_session: Session) -> None:
@@ -1705,7 +1649,11 @@ def test_stage_target_cleanup_deletes_result_file_after_target_deletion_commits(
     )
     sqlite_session.add_all([result_file, run])
     sqlite_session.commit()
-    storage_delete = MagicMock()
+    deleted_keys: list[str] = []
+
+    def storage_delete(key: str) -> None:
+        deleted_keys.append(key)
+
     monkeypatch.setattr("extensions.ext_storage.storage.delete", storage_delete)
 
     EvaluationService.stage_target_evaluation_cleanup(
@@ -1717,11 +1665,11 @@ def test_stage_target_cleanup_deletes_result_file_after_target_deletion_commits(
     sqlite_session.flush()
 
     assert sqlite_session.get(type(result_file), result_file.id) is None
-    storage_delete.assert_not_called()
+    assert deleted_keys == []
 
     sqlite_session.commit()
 
-    storage_delete.assert_called_once_with("evaluation_results/tenant/result.xlsx")
+    assert deleted_keys == ["evaluation_results/tenant/result.xlsx"]
 
 
 def test_stage_agent_target_cleanup_stops_backend_only_after_commit(
@@ -1753,10 +1701,16 @@ def test_stage_agent_target_cleanup_stops_backend_only_after_commit(
     )
     sqlite_session.add_all([run, item])
     sqlite_session.commit()
-    stop_agent_checkpoints = MagicMock()
+    stopped_checkpoints: list[tuple[str, list[tuple[str, str]]]] = []
+
+    def stop_agent_checkpoints(*, tenant_id: str, checkpoints: list[tuple[str, str]]) -> None:
+        stopped_checkpoints.append((tenant_id, checkpoints))
+
     monkeypatch.setattr(EvaluationService, "_stop_agent_checkpoints", stop_agent_checkpoints)
-    celery_control = MagicMock()
-    monkeypatch.setattr("celery.current_app.control", celery_control)
+    from celery import current_app as celery_app
+
+    celery_control = _RecordingCeleryControl()
+    monkeypatch.setattr(celery_app, "control", celery_control)
 
     EvaluationService.stage_target_evaluation_cleanup(
         session=sqlite_session,
@@ -1766,16 +1720,15 @@ def test_stage_agent_target_cleanup_stops_backend_only_after_commit(
     )
     sqlite_session.flush()
 
-    stop_agent_checkpoints.assert_not_called()
-    celery_control.revoke.assert_not_called()
+    assert stopped_checkpoints == []
+    assert celery_control.revocations == []
 
     sqlite_session.commit()
 
-    stop_agent_checkpoints.assert_called_once_with(
-        tenant_id=tenant_id,
-        checkpoints=[("backend-run-1", "10000000-0000-0000-0000-000000000024")],
-    )
-    celery_control.revoke.assert_called_once_with("celery-task-1", terminate=False)
+    assert stopped_checkpoints == [
+        (tenant_id, [("backend-run-1", "10000000-0000-0000-0000-000000000024")])
+    ]
+    assert celery_control.revocations == [("celery-task-1", False)]
 
 
 def test_get_run_items_hides_incomplete_target_checkpoints(sqlite_session: Session) -> None:
@@ -1849,7 +1802,11 @@ def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
     )
     sqlite_session.add_all([config, run])
     sqlite_session.commit()
-    stop_workflow_tasks = MagicMock()
+    stopped_workflow_tasks: list[tuple[str, int]] = []
+
+    def stop_workflow_tasks(run_id: str, total_items: int) -> None:
+        stopped_workflow_tasks.append((run_id, total_items))
+
     monkeypatch.setattr(EvaluationService, "_stop_workflow_tasks", stop_workflow_tasks)
 
     EvaluationService.stage_target_evaluation_cleanup(
@@ -1863,7 +1820,7 @@ def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
 
     sqlite_session.commit()
 
-    stop_workflow_tasks.assert_not_called()
+    assert stopped_workflow_tasks == []
 
 
 def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
@@ -1908,14 +1865,11 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
     )
     sqlite_session.add_all([tenant, run, checkpoint])
     sqlite_session.commit()
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = False
-    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        get_evaluation_instance,
-    )
-    apply_async = MagicMock()
+    dispatched_tasks: list[dict[str, object]] = []
+
+    def apply_async(**kwargs: object) -> None:
+        dispatched_tasks.append(kwargs)
+
     monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
 
     retried = EvaluationService.retry_evaluation_run(
@@ -1938,15 +1892,15 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
     assert retried.failed_items == 0
     assert retried.progress_rate == 0.5
     assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is not None
-    apply_async.assert_called_once()
-    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    assert len(dispatched_tasks) == 1
+    dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
     assert dispatched_payload["evaluation_run_id"] == run.id
     assert [item["inputs"] for item in dispatched_payload["input_list"]] == [
         {"query": "first"},
         {"query": "second"},
     ]
     assert dispatched_payload["evaluation_framework"] == "deepeval"
-    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.DEEPEVAL)
+    assert EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.DEEPEVAL) is not None
 
     with pytest.raises(ValueError, match="Only failed"):
         EvaluationService.retry_evaluation_run(
@@ -2010,15 +1964,17 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
     )
     sqlite_session.add_all([tenant, run, checkpoint])
     sqlite_session.commit()
-    evaluation_instance = MagicMock()
-    evaluation_instance.metric_requires_expected_output.return_value = False
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
-    stop_agent_checkpoints = MagicMock()
+    stopped_checkpoints: list[tuple[str, list[tuple[str, str]]]] = []
+
+    def stop_agent_checkpoints(*, tenant_id: str, checkpoints: list[tuple[str, str]]) -> None:
+        stopped_checkpoints.append((tenant_id, checkpoints))
+
     monkeypatch.setattr(EvaluationService, "_stop_agent_checkpoints", stop_agent_checkpoints)
-    apply_async = MagicMock()
+    dispatched_tasks: list[dict[str, object]] = []
+
+    def apply_async(**kwargs: object) -> None:
+        dispatched_tasks.append(kwargs)
+
     monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
 
     retried = EvaluationService.retry_evaluation_run(
@@ -2033,51 +1989,44 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
 
     assert retried.status == EvaluationRunStatus.PENDING
     assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is None
-    stop_agent_checkpoints.assert_called_once_with(
-        tenant_id=tenant.id,
-        checkpoints=[("backend-run-old", "30000000-0000-0000-0000-000000000170")],
-    )
-    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    assert stopped_checkpoints == [
+        (tenant.id, [("backend-run-old", "30000000-0000-0000-0000-000000000170")])
+    ]
+    dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
     assert dispatched_payload["target_agent_config_snapshot_id"] == run.target_agent_config_snapshot_id
 
 
-def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_run_persists_and_dispatches_target_workflow_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
-    session = MagicMock()
-    session.scalar.return_value = "tenant-1"
-    session.query.return_value.filter_by.return_value.filter.return_value.count.return_value = 0
-
-    def assign_run_id(model: object) -> None:
-        if isinstance(model, EvaluationRun):
-            model.id = "run-1"
-
-    session.add.side_effect = assign_run_id
-    get_evaluation_instance = MagicMock(return_value=MagicMock())
-    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
-    monkeypatch.setattr(
-        EvaluationService,
-        "save_evaluation_config",
-        MagicMock(return_value=SimpleNamespace(id="config-1")),
-    )
+    tenant = Tenant(name="Evaluation Tenant")
+    tenant.id = "tenant-1"
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    monkeypatch.setattr(EvaluationService, "validate_evaluation_config", lambda **_kwargs: None)
+    pinned_workflow = make_workflow(workflow_id="workflow-version-7")
     monkeypatch.setattr(
         EvaluationService,
         "_pin_target_workflow",
-        MagicMock(
-            return_value=(
-                "workflow-version-7",
-                SimpleNamespace(walk_nodes=lambda: iter([])),
-                [
-                    {"variable": "query", "type": "text-input"},
-                    {"variable": "enabled", "type": "checkbox"},
-                ],
-            )
+        lambda **_kwargs: (
+            "workflow-version-7",
+            pinned_workflow,
+            [
+                {"variable": "query", "type": "text-input"},
+                {"variable": "enabled", "type": "checkbox"},
+            ],
         ),
     )
-    apply_async = MagicMock()
+    dispatched_tasks: list[dict[str, object]] = []
+
+    def apply_async(**kwargs: object) -> None:
+        dispatched_tasks.append(kwargs)
+
     monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
 
     run = EvaluationService.start_evaluation_run(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
@@ -2090,44 +2039,44 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
     )
 
     assert run.target_workflow_version_id == "workflow-version-7"
-    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.DEEPEVAL)
+    assert EvaluationManager.get_evaluation_instance(EvaluationFrameworkEnum.DEEPEVAL) is not None
     assert run.config_snapshot_dict["evaluation_framework"] == "deepeval"
     assert run.config_snapshot_dict["dataset_input_types"] == {"query": "string", "enabled": "boolean"}
-    dispatch_kwargs = apply_async.call_args.kwargs
+    dispatch_kwargs = dispatched_tasks[0]
     assert set(dispatch_kwargs) == {"args", "task_id"}
-    assert dispatch_kwargs["args"][0]["evaluation_framework"] == "deepeval"
-    dispatched_payload = dispatch_kwargs["args"][0]
+    dispatched_payload = cast(tuple[dict[str, object]], dispatch_kwargs["args"])[0]
+    assert dispatched_payload["evaluation_framework"] == "deepeval"
     assert dispatched_payload["target_workflow_version_id"] == "workflow-version-7"
     assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello", "enabled": True}
 
 
-def test_start_agent_run_persists_and_dispatches_agent_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_agent_run_persists_and_dispatches_agent_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
-    session = MagicMock()
-    session.scalar.return_value = "tenant-1"
-    session.query.return_value.filter_by.return_value.filter.return_value.count.return_value = 0
+    tenant = Tenant(name="Agent Evaluation Tenant")
+    tenant.id = "tenant-1"
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    monkeypatch.setattr(EvaluationService, "validate_evaluation_config", lambda **_kwargs: None)
+    pinned_agents: list[str] = []
 
-    def assign_run_id(model: object) -> None:
-        if isinstance(model, EvaluationRun):
-            model.id = "run-1"
+    def pin_agent(*, session: Session, tenant_id: str, target_id: str) -> tuple[str, list[dict[str, str]]]:
+        assert session is sqlite_session
+        assert tenant_id == "tenant-1"
+        pinned_agents.append(target_id)
+        return "snapshot-7", [{"variable": "query", "type": "string"}]
 
-    session.add.side_effect = assign_run_id
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=MagicMock()),
-    )
-    monkeypatch.setattr(
-        EvaluationService,
-        "save_evaluation_config",
-        MagicMock(return_value=SimpleNamespace(id="config-1")),
-    )
-    pin_agent = MagicMock(return_value=("snapshot-7", [{"variable": "query", "type": "string"}]))
     monkeypatch.setattr(EvaluationService, "_pin_target_agent", pin_agent)
-    apply_async = MagicMock()
+    dispatched_tasks: list[dict[str, object]] = []
+
+    def apply_async(**kwargs: object) -> None:
+        dispatched_tasks.append(kwargs)
+
     monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", apply_async)
 
     run = EvaluationService.start_evaluation_run(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="agents",
         target_id="agent-1",
@@ -2139,35 +2088,43 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(monkeypatch: pyt
 
     assert run.target_workflow_version_id is None
     assert run.target_agent_config_snapshot_id == "snapshot-7"
-    dispatched_payload = apply_async.call_args.kwargs["args"][0]
+    assert pinned_agents == ["agent-1"]
+    dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
     assert dispatched_payload["target_workflow_version_id"] is None
     assert dispatched_payload["target_agent_config_snapshot_id"] == "snapshot-7"
     assert dispatched_payload["evaluation_framework"] == "ragas"
     assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello"}
 
 
-def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
-    workflow = SimpleNamespace(id="workflow-version-7")
-    session = MagicMock()
-    session.scalar.return_value = app
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow_by_id.return_value = workflow
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
-    monkeypatch.setattr(
-        "core.evaluation.runners.get_service_account_for_app",
-        MagicMock(return_value=SimpleNamespace(id="account-1")),
-    )
-    generator = MagicMock()
-    generator.generate.return_value = {"workflow_run_id": "workflow-run-1"}
-    generator_cls = MagicMock(return_value=generator)
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator", generator_cls)
-    execution_identity = object()
-    build_identity = MagicMock(return_value=execution_identity)
-    monkeypatch.setattr("services.workflow_execution_identity.build_workflow_execution_identity", build_identity)
+def test_run_single_app_target_loads_pinned_workflow_version(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+
+    app, account = _persist_service_app(sqlite_session)
+    workflow = make_workflow(workflow_id="workflow-version-7")
+    workflow_requests: list[tuple[App, str, Session]] = []
+
+    def get_published_workflow_by_id(
+        _self: WorkflowService, *, app_model: App, workflow_id: str, session: Session
+    ) -> Workflow:
+        workflow_requests.append((app_model, workflow_id, session))
+        return workflow
+
+    monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
+    monkeypatch.setattr(WorkflowService, "get_published_workflow_by_id", get_published_workflow_by_id)
+    generated_requests: list[dict[str, object]] = []
+    execution_drivers: list[object] = []
+
+    def generate(self: WorkflowAppGenerator, **kwargs: object) -> dict[str, str]:
+        execution_drivers.append(self._execution_driver)
+        generated_requests.append(kwargs)
+        return {"workflow_run_id": "workflow-run-1"}
+
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
 
     result = EvaluationService._run_single_target(
-        session=session,
+        session=sqlite_session,
         tenant_id="tenant-1",
         target_type="apps",
         target_id="app-1",
@@ -2177,37 +2134,34 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
     )
 
     assert result["workflow_run_id"] == "workflow-run-1"
-    workflow_service.get_published_workflow_by_id.assert_called_once_with(
-        app_model=app,
-        workflow_id="workflow-version-7",
-        session=session,
-    )
-    assert generator.generate.call_args.kwargs["workflow"] is workflow
-    assert generator.generate.call_args.kwargs["task_id"] == EvaluationService.workflow_task_id("run-1", "target", 0)
-    assert generator.generate.call_args.kwargs["capture_agent_evaluation_trace"] is True
-    generator_cls.assert_called_once_with(execution_driver=WorkflowRunAgg.run)
-    assert generator.generate.call_args.kwargs["execution_identity"] is execution_identity
+    assert workflow_requests == [(app, "workflow-version-7", sqlite_session)]
+    assert generated_requests[0]["workflow"] is workflow
+    assert generated_requests[0]["task_id"] == EvaluationService.workflow_task_id("run-1", "target", 0)
+    assert generated_requests[0]["capture_agent_evaluation_trace"] is True
+    assert execution_drivers == [WorkflowRunAgg.run]
+    assert generated_requests[0]["execution_identity"].user_id == account.id
 
 
 def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
-    session = MagicMock()
-    session.scalar.return_value = app
-    workflow_service = MagicMock()
-    workflow_service.get_published_workflow_by_id.return_value = None
-    monkeypatch.setattr("services.evaluation_service.WorkflowService", MagicMock(return_value=workflow_service))
-    monkeypatch.setattr(
-        "core.evaluation.runners.get_service_account_for_app",
-        MagicMock(return_value=SimpleNamespace(id="account-1")),
-    )
-    generator = MagicMock()
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator", MagicMock(return_value=generator))
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+
+    _persist_service_app(sqlite_session)
+    monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
+    monkeypatch.setattr(WorkflowService, "get_published_workflow_by_id", lambda *_args, **_kwargs: None)
+    generated_requests: list[dict[str, object]] = []
+
+    def generate(_self: WorkflowAppGenerator, **kwargs: object) -> dict[str, str]:
+        generated_requests.append(kwargs)
+        return {"workflow_run_id": "unexpected"}
+
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
 
     with pytest.raises(EvaluationWorkflowVersionNotFoundError, match="workflow-version-7"):
         EvaluationService._run_single_target(
-            session=session,
+            session=sqlite_session,
             tenant_id="tenant-1",
             target_type="apps",
             target_id="app-1",
@@ -2216,28 +2170,37 @@ def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
             task_id=EvaluationService.workflow_task_id("run-1", "target", 0),
         )
 
-    generator.generate.assert_not_called()
+    assert generated_requests == []
 
 
 def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    thread_session = MagicMock(spec=Session)
-    dataset = SimpleNamespace(provider="vendor")
-    account = MagicMock(spec=Account)
-    account.id = "account-1"
-    thread_session.scalar.side_effect = [dataset, object()]
-    thread_session.get.return_value = account
+    from services.hit_testing_service import HitTestingService
 
-    session_context = MagicMock()
-    session_context.__enter__.return_value = thread_session
-    session_context.__exit__.return_value = None
-    monkeypatch.setattr(
-        "services.evaluation_service.session_factory.create_session",
-        MagicMock(return_value=session_context),
+    account = make_account()
+    tenant = make_tenant()
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        role=TenantAccountRole.NORMAL,
     )
-    retrieve = MagicMock(return_value={"records": [{"segment": {"content": "matched content"}, "score": 0.9}]})
-    monkeypatch.setattr("services.hit_testing_service.HitTestingService.retrieve", retrieve)
+    dataset = make_dataset()
+    sqlite_session.add_all([account, tenant, membership, dataset])
+    sqlite_session.commit()
+    retrievals: list[tuple[Session, Account]] = []
+
+    def retrieve(**kwargs: object) -> dict[str, list[dict[str, object]]]:
+        thread_session = kwargs["session"]
+        service_account = kwargs["account"]
+        assert isinstance(thread_session, Session)
+        assert isinstance(service_account, Account)
+        retrievals.append((thread_session, service_account))
+        assert service_account.current_tenant_id == tenant.id
+        return {"records": [{"segment": {"content": "matched content"}, "score": 0.9}]}
+
+    monkeypatch.setattr(HitTestingService, "retrieve", retrieve)
 
     results, errors = EvaluationService.execute_retrieval_test_targets(
         tenant_id="tenant-1",
@@ -2250,6 +2213,6 @@ def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
     assert errors == [None]
     assert results[0] is not None
     assert results[0].outputs == {"result": [{"content": "matched content", "score": 0.9}]}
-    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=thread_session)
-    assert retrieve.call_args.kwargs["session"] is thread_session
-    assert retrieve.call_args.kwargs["account"] is account
+    assert len(retrievals) == 1
+    assert retrievals[0][0] is not sqlite_session
+    assert retrievals[0][1].id == account.id

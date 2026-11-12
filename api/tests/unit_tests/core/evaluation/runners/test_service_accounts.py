@@ -1,12 +1,13 @@
 from collections.abc import Callable
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
-from models.account import Account
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.model import AppMode
+from models.snippet import CustomizedSnippet
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
 
 @pytest.mark.parametrize(
@@ -17,15 +18,35 @@ from models.account import Account
     ],
 )
 def test_get_service_account_sets_tenant_with_caller_session(
-    get_service_account: Callable[[Session, str, str], Account], target_id: str
+    get_service_account: Callable[[Session, str, str], Account], target_id: str, sqlite_session: Session
 ) -> None:
-    session = MagicMock(spec=Session)
-    account = MagicMock(spec=Account)
-    account.id = "account-1"
-    session.scalar.side_effect = [SimpleNamespace(created_by=account.id), account]
-    session.query.return_value.filter_by.return_value.first.return_value = object()
+    """A persisted creator and membership are returned with the caller session's tenant context."""
+    account = make_account()
+    tenant = make_tenant()
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        role=TenantAccountRole.NORMAL,
+    )
+    target = (
+        make_app(app_id=target_id, tenant_id=tenant.id, mode=AppMode.WORKFLOW, created_by=account.id)
+        if target_id == "app-1"
+        else CustomizedSnippet(
+            id=target_id,
+            tenant_id=tenant.id,
+            name="Test snippet",
+            type="node",
+            is_published=True,
+            version=1,
+            use_count=0,
+            created_by=account.id,
+        )
+    )
+    sqlite_session.add_all([account, tenant, membership, target])
+    sqlite_session.flush()
 
-    result = get_service_account(session, target_id, "tenant-1")
+    result = get_service_account(sqlite_session, target_id, tenant.id)
 
     assert result is account
-    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=session)
+    assert result.current_tenant_id == tenant.id
+    assert result.current_role == TenantAccountRole.NORMAL
