@@ -554,6 +554,7 @@ export { postErrors as 'POST /api-key-auth/data-source/binding' } from './api-ke
 export { postErrors as 'POST /datasets/api-keys' } from './datasets/errors.gen.ts'
 export { postErrors as 'POST /email-code-login/validity' } from './email-code-login/errors.gen.ts'
 export { postErrors as 'POST /email-register/send-email' } from './email-register/errors.gen.ts'
+export { postErrors as 'POST /external-agents/verify' } from './external-agents/errors.gen.ts'
 export { postErrors as 'POST /files/upload' } from './files/errors.gen.ts'
 export { postErrors as 'POST /forgot-password/resets' } from './forgot-password/errors.gen.ts'
 export { postErrors as 'POST /form/human-input/v2/{form_token}' } from './form/errors.gen.ts'

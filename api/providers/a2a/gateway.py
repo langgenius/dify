@@ -234,7 +234,19 @@ class A2AGateway:
         )
         reply = self._request(connection, "GET", card_url, timeout_seconds=timeout_seconds, card=True)
         try:
-            card = AgentCardV1.model_validate(strict_json(reply.body))
+            value = strict_json(reply.body)
+        except ValueError:
+            raise GatewayError(
+                "invalid_agent_card", "The Agent Card does not match the frozen A2A 1.0 profile."
+            ) from None
+        if (
+            isinstance(value, dict)
+            and isinstance(value.get("protocolVersion"), str)
+            and value["protocolVersion"] != "1.0"
+        ):
+            raise GatewayError("profile_unsupported", "The Agent Card advertises an unsupported protocol version.")
+        try:
+            card = AgentCardV1.model_validate(value)
         except ValueError:
             raise GatewayError(
                 "invalid_agent_card", "The Agent Card does not match the frozen A2A 1.0 profile."

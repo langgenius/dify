@@ -18,10 +18,12 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.storage.storage_type import StorageType
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import WorkflowAgentNodeBinding
 from models.base import TypeBase
+from models.enums import CreatorUserRole
 from models.external_agent import (
     ExternalAgentFileLease,
     ExternalAgentHead,
@@ -29,9 +31,12 @@ from models.external_agent import (
     ExternalAgentOperation,
     ExternalAgentVerification,
 )
-from models.external_agent_trace import ExternalAgentDataTombstone
+from models.external_agent_trace import ExternalAgentDataTombstone, ExternalAgentTraceUsageSummary
+from models.model import UploadFile
 from models.workflow import Workflow
+from providers.a2a.control_adapters import DifyExternalIconURLs
 from repositories.external_agents.asset_repository import ExternalAssetRepository
+from repositories.external_agents.observability_repository import ExternalObservabilityRepository
 from repositories.external_agents.test_file_repository import ExternalTestFileRepository
 from services.external_agents.asset_service import ExternalAssetService
 from services.external_agents.contracts import (
@@ -55,8 +60,9 @@ from services.external_agents.io_contracts import (
     OutputField,
 )
 from services.external_agents.protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, VerificationResult
-from services.external_agents.runtime_contracts import CancelState, Invocation, LocalState, WaitPolicy
+from services.external_agents.runtime_contracts import CancelState, Invocation, LocalState, TimeoutPolicy, WaitPolicy
 from services.external_agents.test_service import ExternalTestService
+from services.external_agents.traceability import TraceLimits
 from tests.unit_tests.repositories.external_agents.test_runtime_repository import (
     Clock,
     Domain,
@@ -99,6 +105,15 @@ class MembershipAccess:
     def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
         assert self.role(context) in {"owner", "admin", "editor"}
         assert agent_id
+        return self.reference_ids
+
+    def reference_list_app_ids(self, context: RequestContext) -> frozenset[str] | None:
+        """Reuse this fixture's explicit App policy after reading real membership."""
+        role = self.role(context)
+        if role == "normal":
+            return None
+        if role not in {"owner", "admin", "editor"}:
+            raise ExternalAgentForbiddenError("Workspace membership is required.")
         return self.reference_ids
 
 
@@ -182,6 +197,23 @@ class OwnedUploads:
     def upload(self, context: RequestContext, blob: FileBlob, *, reserved_file_id: str) -> str:
         assert self.owners[reserved_file_id] == (context.active_workspace_id, context.account_id)
         self.blobs[reserved_file_id] = blob.data
+        plan = next(item for item in self.plans if item.file_id == reserved_file_id)
+        with self.sessions.begin() as session:
+            uploaded = UploadFile(
+                tenant_id=context.active_workspace_id,
+                storage_type=StorageType.LOCAL,
+                key=plan.storage_key,
+                name=blob.filename,
+                size=len(blob.data),
+                extension=blob.filename.rsplit(".", 1)[-1],
+                mime_type=blob.media_type,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=context.account_id,
+                created_at=datetime.now(UTC).replace(tzinfo=None),
+                used=False,
+            )
+            uploaded.id = reserved_file_id
+            session.add(uploaded)
         if self.expire_on_upload:
             with self.sessions.begin() as session:
                 lease = session.scalars(
@@ -200,14 +232,18 @@ class OwnedUploads:
         if self.fail_remove:
             raise OSError("Simulated cleanup outage.")
         self.blobs.pop(plan.file_id, None)
+        with self.sessions.begin() as session:
+            uploaded = session.get(UploadFile, plan.file_id)
+            if uploaded is not None:
+                session.delete(uploaded)
 
-    def fetch(self, context: RequestContext, *, url: str, filename: str, media_type: str) -> FileBlob:
+    def fetch(self, context: RequestContext, *, url: str, filename: str | None, media_type: str | None) -> FileBlob:
         assert context.account_id
         assert url == "https://files.example.test/allowed.txt"
         self.fetches.append(url)
         if self.fetch_failure:
             raise ExternalIOError("file_fetch_failed", "Controlled URL fetch failure.")
-        return FileBlob(filename=filename, media_type=media_type, data=b"bytes")
+        return FileBlob(filename=filename or "download.txt", media_type=media_type or "text/plain", data=b"bytes")
 
 
 @dataclass
@@ -299,7 +335,14 @@ def control(domain: Domain) -> ControlPlane:
         engine,
         tables=[
             TypeBase.metadata.tables[model.__tablename__]
-            for model in (ExternalAgentVerification, ExternalAgentOperation, Workflow, WorkflowAgentNodeBinding)
+            for model in (
+                ExternalAgentVerification,
+                UploadFile,
+                ExternalAgentOperation,
+                Workflow,
+                WorkflowAgentNodeBinding,
+                ExternalAgentTraceUsageSummary,
+            )
         ],
     )
     context = RequestContext("control", None, scope.initiator_id, scope.tenant_id)
@@ -315,6 +358,7 @@ def control(domain: Domain) -> ControlPlane:
         store=ExternalAssetRepository(session_factory=sessions),
         access=access,
         reference_access=access,
+        icons=DifyExternalIconURLs(),
         gateway=gateway,
         secrets=secrets,
         clock=clock.now,
@@ -330,6 +374,8 @@ def control(domain: Domain) -> ControlPlane:
         uploads=uploads,
         limits=limits,
         max_variable_bytes=16,
+        statistics=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        clock=clock,
     )
     return ControlPlane(
         domain,
@@ -651,10 +697,17 @@ def test_overview_run_while_disabled_is_idempotent_and_pins_exact_generation(
         control.tests.result(control.context, agent_id=agent, invocation_id=first.id).metadata["anchor_invocation_id"]
         == first.id
     )
+    before_dispatch = control.tests.result(control.context, agent_id=agent, invocation_id=first.id).statistics
+    assert before_dispatch.attempt_count == 0
+    assert before_dispatch.elapsed_time is before_dispatch.total_tokens is None
     with control.database[1]() as session:
         assert session.scalar(select(func.count()).select_from(ExternalAgentInvocation)) == 1
     command(control.database, control.runtime, control.clock, "dispatch")
     assert len(control.gateway.sent) == 1
+    dispatched = control.tests.result(control.context, agent_id=agent, invocation_id=first.id).statistics
+    assert dispatched.attempt_count == dispatched.token_reporting_denominator == 1
+    assert dispatched.token_reporting_numerator == 0
+    assert dispatched.total_tokens is None
     canceled = control.tests.cancel(control.context, agent_id=agent, invocation_id=first.id)
     assert canceled.id == first.id
     assert canceled.cancel_state == CancelState.REQUESTED
@@ -685,6 +738,49 @@ def test_test_result_url_actor_and_generation_cannot_retarget_other_work(control
     assert exact.local_state == LocalState.STOPPED
     assert control.tests.result(control.context, agent_id=agent, invocation_id=second.id).state == LocalState.WAITING
     assert control.gateway.sent == []
+
+
+def test_statistics_follows_confirmed_cancel_retry_and_freezes_terminal_duration(control: ControlPlane) -> None:
+    """Actual commands create the retry; statistics neither dispatch nor sum Trace steps."""
+    agent = control.database[3]
+    first = control.tests.start(
+        control.context,
+        agent_id=agent,
+        page_session_id="page",
+        expected_generation=1,
+        idempotency_key="retry-statistics",
+        task_text="Task",
+        input_lease_ids=(),
+        outputs=(OutputField(name="text", kind="string"),),
+        policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.CANCEL_AND_RETRY),
+    )
+    command(control.database, control.runtime, control.clock, "dispatch")
+    control.clock.value += timedelta(seconds=60)
+    command(control.database, control.runtime, control.clock, "deadline")
+    command(control.database, control.runtime, control.clock, "cancel")
+    assert len(control.gateway.sent) == 1
+    control.gateway.state = "canceled"
+    control.clock.value += timedelta(seconds=6)
+    command(control.database, control.runtime, control.clock, "poll")
+    pending = control.tests.result(control.context, agent_id=agent, invocation_id=first.id)
+    assert pending.state == LocalState.RETRY_PENDING
+    assert pending.statistics.attempt_count == 1
+    assert pending.statistics.elapsed_time == 66
+    control.clock.value += timedelta(seconds=5)
+    command(control.database, control.runtime, control.clock, "retry")
+    control.gateway.direct = True
+    command(control.database, control.runtime, control.clock, "dispatch")
+    result = control.tests.result(control.context, agent_id=agent, invocation_id=first.id)
+    assert result.invocation_id != first.id
+    assert result.metadata["anchor_invocation_id"] == first.id
+    assert result.state == LocalState.SUCCEEDED
+    assert result.statistics.attempt_count == result.statistics.token_reporting_denominator == 2
+    assert result.statistics.elapsed_time == 71
+    assert result.statistics.total_tokens is None
+    assert len(control.gateway.sent) == 2
+    control.clock.value += timedelta(seconds=60)
+    assert control.tests.result(control.context, agent_id=agent, invocation_id=first.id).statistics == result.statistics
+    assert len(control.gateway.sent) == 2
 
 
 @pytest.mark.parametrize("role", [TenantAccountRole.NORMAL, None])

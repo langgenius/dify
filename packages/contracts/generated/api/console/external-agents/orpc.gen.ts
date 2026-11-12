@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zVerificationFailedError } from './zod.gen.ts'
 import {
   zDeleteExternalAgentsByAgentIdPath,
   zDeleteExternalAgentsByAgentIdResponse,
@@ -17,10 +18,18 @@ import {
   zGetExternalAgentsByAgentIdReferencesPath,
   zGetExternalAgentsByAgentIdReferencesResponse,
   zGetExternalAgentsByAgentIdResponse,
+  zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessPath,
+  zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessQuery,
+  zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponse,
+  zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessPath,
+  zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessQuery,
+  zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponse,
   zGetExternalAgentsByAgentIdTestsByInvocationIdPath,
   zGetExternalAgentsByAgentIdTestsByInvocationIdResponse,
   zGetExternalAgentsByAgentIdTracingConfigByProviderPath,
   zGetExternalAgentsByAgentIdTracingConfigByProviderResponse,
+  zGetExternalAgentsByAgentIdTracingConfigPath,
+  zGetExternalAgentsByAgentIdTracingConfigResponse,
   zGetExternalAgentsCapabilitiesResponse,
   zGetExternalAgentsQuery,
   zGetExternalAgentsResponse,
@@ -28,6 +37,7 @@ import {
   zPatchExternalAgentsByAgentIdInfoPath,
   zPatchExternalAgentsByAgentIdInfoResponse,
   zPostExternalAgentsBody,
+  zPostExternalAgentsByAgentIdTestFilesBody,
   zPostExternalAgentsByAgentIdTestFilesPasteLinkBody,
   zPostExternalAgentsByAgentIdTestFilesPasteLinkPath,
   zPostExternalAgentsByAgentIdTestFilesPasteLinkResponse,
@@ -79,6 +89,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostExternalAgentsVerifyBody }))
   .output(zPostExternalAgentsVerifyResponse)
+  .errors({ verification_failed: { status: 400, data: zVerificationFailedError } })
 
 export const verify = {
   post,
@@ -204,6 +215,30 @@ export const pasteLink = {
   post: post2,
 }
 
+/**
+ * Refresh from the exact input lease and current page/generation, never just file ID
+ */
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExternalAgentsByAgentIdTestFilesByLeaseIdAccess',
+    path: '/external-agents/{agent_id}/test-files/{lease_id}/access',
+    summary: 'Refresh from the exact input lease and current page/generation, never just file ID',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessPath,
+      query: zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessQuery,
+    }),
+  )
+  .output(zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponse)
+
+export const access = {
+  get: get4,
+}
+
 export const delete_ = oc
   .route({
     inputStructure: 'detailed',
@@ -218,6 +253,7 @@ export const delete_ = oc
 
 export const byLeaseId = {
   delete: delete_,
+  access,
 }
 
 export const post3 = oc
@@ -229,7 +265,12 @@ export const post3 = oc
     successStatus: 201,
     tags: ['console'],
   })
-  .input(z.object({ params: zPostExternalAgentsByAgentIdTestFilesPath }))
+  .input(
+    z.object({
+      body: zPostExternalAgentsByAgentIdTestFilesBody,
+      params: zPostExternalAgentsByAgentIdTestFilesPath,
+    }),
+  )
   .output(zPostExternalAgentsByAgentIdTestFilesResponse)
 
 export const testFiles = {
@@ -254,7 +295,39 @@ export const cancel = {
   post: post4,
 }
 
-export const get4 = oc
+/**
+ * Refresh only an owned current result's live committed published file
+ */
+export const get5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccess',
+    path: '/external-agents/{agent_id}/tests/{invocation_id}/files/{file_id}/access',
+    summary: "Refresh only an owned current result's live committed published file",
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessPath,
+      query: zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessQuery,
+    }),
+  )
+  .output(zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponse)
+
+export const access2 = {
+  get: get5,
+}
+
+export const byFileId = {
+  access: access2,
+}
+
+export const files = {
+  byFileId,
+}
+
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -266,8 +339,9 @@ export const get4 = oc
   .output(zGetExternalAgentsByAgentIdTestsByInvocationIdResponse)
 
 export const byInvocationId = {
-  get: get4,
+  get: get6,
   cancel,
+  files,
 }
 
 export const post5 = oc
@@ -329,7 +403,7 @@ export const delete2 = oc
   )
   .output(zDeleteExternalAgentsByAgentIdTracingConfigByProviderResponse)
 
-export const get5 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -358,11 +432,23 @@ export const put4 = oc
 
 export const byProvider = {
   delete: delete2,
-  get: get5,
+  get: get7,
   put: put4,
 }
 
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExternalAgentsByAgentIdTracingConfig',
+    path: '/external-agents/{agent_id}/tracing-config',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetExternalAgentsByAgentIdTracingConfigPath }))
+  .output(zGetExternalAgentsByAgentIdTracingConfigResponse)
+
 export const tracingConfig = {
+  get: get8,
   byProvider,
 }
 
@@ -378,7 +464,7 @@ export const delete3 = oc
   .input(z.object({ params: zDeleteExternalAgentsByAgentIdPath }))
   .output(zDeleteExternalAgentsByAgentIdResponse)
 
-export const get6 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -391,7 +477,7 @@ export const get6 = oc
 
 export const byAgentId = {
   delete: delete3,
-  get: get6,
+  get: get9,
   connection,
   enabled,
   info,
@@ -403,7 +489,7 @@ export const byAgentId = {
   tracingConfig,
 }
 
-export const get7 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -427,7 +513,7 @@ export const post6 = oc
   .output(zPostExternalAgentsResponse)
 
 export const externalAgents = {
-  get: get7,
+  get: get10,
   post: post6,
   capabilities,
   verify,
