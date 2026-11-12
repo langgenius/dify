@@ -26,7 +26,6 @@ from controllers.console.agent.composer import (
 from controllers.console.agent.roster import (
     AgentAppCopyApi,
     AgentAppCopyPayload,
-    AgentAppCreatePayload,
     AgentAppListApi,
     AgentBuildDraftApi,
     AgentBuildDraftApplyApi,
@@ -48,8 +47,7 @@ from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentC
 from controllers.console.app.error import CompletionRequestError
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
-from models.enums import CustomizeTokenStrategy, TagType
-from models.model import App, AppMode, IconType, Site, Tag, TagBinding
+from models.model import App, AppMode, IconType
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
 from services.enterprise.rbac_service import RBACService
 from services.entities.agent_entities import (
@@ -59,7 +57,7 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
-from services.entities.app_entities import AgentAppPublicationCounts, AppListParams, CreateAppParams
+from services.rbac import contracts as rbac_contracts
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 from tests.helpers.unit.rbac_fakes import RBACDomain
@@ -254,244 +252,6 @@ def account_id() -> str:
     return "account-1"
 
 
-def test_agent_app_list_and_create_use_agent_route(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
-) -> None:
-    captured: dict[str, object] = {}
-    listed_app = _app_detail_obj(id="app-list")
-    created_app = _app_detail_obj(id="app-created", enable_site=True)
-    tag = Tag(tenant_id="tenant-1", type=TagType.APP, name="Agent tag", created_by=account_id)
-    sqlite_session.add_all([listed_app, created_app, tag])
-    sqlite_session.flush()
-    sqlite_session.add_all(
-        [
-            Site(
-                app_id=created_app.id,
-                code="agent-site-code",
-                title="Agent web app",
-                default_language="en-US",
-                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-            ),
-            TagBinding(tenant_id="tenant-1", tag_id=tag.id, target_id=listed_app.id, created_by=account_id),
-        ]
-    )
-    sqlite_session.flush()
-    permissions = roster_controller.rbac_contracts.MyPermissionsResponse(
-        agent=roster_controller.rbac_contracts.ResourcePermissionSnapshot(
-            overrides=[
-                roster_controller.rbac_contracts.ResourcePermissionKeys(
-                    resource_id="agent-list",
-                    permission_keys=["agent.acl.preview"],
-                )
-            ]
-        )
-    )
-
-    class FakeAgentAccessFilter:
-        def apply_to_app_params(self, params: AppListParams, *, tenant_id: str, session: object) -> None:
-            captured["access_filter"] = {"tenant_id": tenant_id, "session": session}
-            params.accessible_app_ids = ["app-list"]
-
-    monkeypatch.setattr(
-        RBACService.MyPermissions,
-        "get",
-        lambda *_args, **_kwargs: permissions,
-    )
-    monkeypatch.setattr(
-        roster_controller,
-        "resolve_agent_access_filter",
-        lambda *_args, **_kwargs: FakeAgentAccessFilter(),
-    )
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-
-    class FakeAppService:
-        def get_paginate_apps(
-            self, user_id: str, tenant_id: str, params: AppListParams, session: Session
-        ) -> SimpleNamespace:
-            captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
-            return SimpleNamespace(
-                page=1,
-                per_page=10,
-                total=1,
-                has_next=False,
-                items=[listed_app],
-            )
-
-        def get_agent_publication_counts(
-            self, user_id: str, tenant_id: str, params: AppListParams, session: Session
-        ) -> AgentAppPublicationCounts:
-            del session
-            captured["counts"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
-            return roster_controller.AgentAppPublicationCounts(published=1, drafts=0)
-
-        def create_app(self, tenant_id: str, params: CreateAppParams, current_user: object, *, session: object) -> App:
-            captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
-            return created_app
-
-    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "load_app_backing_agents_by_app_id",
-        lambda _self, **kwargs: {
-            "app-list": Agent(
-                tenant_id="tenant-1",
-                name="Agent",
-                scope=AgentScope.ROSTER,
-                source=AgentSource.AGENT_APP,
-                id="agent-list",
-                app_id="app-list",
-                backing_app_id=None,
-                role="List role",
-                active_config_snapshot_id=None,
-            )
-        },
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_app_backing_agent",
-        lambda _self, **kwargs: Agent(
-            tenant_id="tenant-1",
-            name="Agent",
-            scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
-            id="agent-created",
-            app_id="app-created",
-            backing_app_id=None,
-            role="Created role",
-            active_config_snapshot_id=None,
-        ),
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_or_create_build_conversation",
-        lambda _self, **kwargs: "debug-conversation-detail",
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "load_published_references_by_agent_id",
-        lambda _self, **kwargs: {
-            "agent-list": [
-                {
-                    "app_id": "workflow-app-id",
-                    "app_name": "RFP Review Flow",
-                    "app_icon_type": "emoji",
-                    "app_icon": "A",
-                    "app_icon_background": "#fff",
-                    "app_mode": "workflow",
-                    "app_updated_at": 1781660000,
-                    "workflow_id": "workflow-1",
-                    "workflow_version": "v1",
-                    "node_ids": ["node-1", "node-2"],
-                }
-            ]
-        },
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "load_reference_counts_by_agent_id",
-        lambda _self, **kwargs: {"agent-list": 2},
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "load_or_create_build_conversation_ids_by_agent_id",
-        lambda _self, **kwargs: {"agent-list": "debug-conversation-list"},
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
-    )
-
-    def get_or_create_debug_conversation(_self: object, **kwargs: object) -> str:
-        captured["get_or_create_debug_conversation"] = kwargs
-        return "debug-conversation-created"
-
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_or_create_build_conversation",
-        get_or_create_debug_conversation,
-    )
-    monkeypatch.setattr(
-        roster_controller.SystemFeatureService,
-        "is_webapp_auth_enabled",
-        lambda: False,
-    )
-    with app.test_request_context(
-        "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
-        "&is_created_by_me=true&publication_status=published"
-    ):
-        listed = unwrap(AgentAppListApi.get)(
-            AgentAppListApi(), sqlite_session, "tenant-1", _account(account_id=account_id)
-        )
-    assert listed["page"] == 1
-    assert listed["limit"] == 10
-    assert listed["total"] == 1
-    assert listed["publication_counts"] == {"published": 1, "drafts": 0}
-    assert listed["data"][0]["id"] == "agent-list"
-    assert listed["data"][0]["app_id"] == "app-list"
-    assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
-    assert listed["data"][0]["permission_keys"] == ["agent.acl.preview"]
-    assert listed["data"][0]["role"] == "List role"
-    assert listed["data"][0]["tags"] == [{"id": tag.id, "name": "Agent tag", "type": "app"}]
-    assert listed["data"][0]["active_config_is_published"] is False
-    assert listed["data"][0]["reference_count"] == 2
-    assert listed["data"][0]["published_reference_count"] == 1
-    assert listed["data"][0]["published_references"] == [
-        {
-            "app_id": "workflow-app-id",
-            "app_name": "RFP Review Flow",
-            "app_icon_type": "emoji",
-            "app_icon": "A",
-            "app_icon_background": "#fff",
-        }
-    ]
-    assert "bound_agent_id" not in listed["data"][0]
-    list_call = cast(dict[str, object], captured["list"])
-    list_params = cast(Any, list_call["params"])
-    assert list_params.mode == "agent"
-    assert list_params.sort_by == "recently_created"
-    assert list_params.is_created_by_me is True
-    assert list_params.agent_is_published is True
-    assert list_params.status == "normal"
-    assert list_params.accessible_app_ids == ["app-list"]
-    assert captured["access_filter"] == {"tenant_id": "tenant-1", "session": sqlite_session}
-    count_call = cast(dict[str, object], captured["counts"])
-    count_params = cast(Any, count_call["params"])
-    assert count_params.agent_is_published is True
-    with app.test_request_context(
-        "/console/api/agent",
-        json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
-    ):
-        created, status = unwrap(AgentAppListApi.post)(
-            AgentAppListApi(),
-            AgentAppCreatePayload(
-                name="Iris", description="Agent app", role="Coordinator", icon_type="emoji", icon="robot"
-            ),
-            sqlite_session,
-            "tenant-1",
-            _account(account_id=account_id),
-        )
-    assert status == 201
-    assert created["id"] == "agent-created"
-    assert created["app_id"] == "app-created"
-    assert created["debug_conversation_id"] == "debug-conversation-created"
-    assert created["role"] == "Created role"
-    assert created["enable_site"] is True
-    assert created["site"]["code"] == "agent-site-code"
-    assert created["site"]["access_token"] == "agent-site-code"
-    assert created["site"]["title"] == "Agent web app"
-    assert "active_config_is_published" not in created
-    assert "bound_agent_id" not in created
-    create_call = cast(dict[str, object], captured["create"])
-    create_params = cast(Any, create_call["params"])
-    assert create_params.mode == "agent"
-    assert create_params.agent_role == "Coordinator"
-    assert captured["get_or_create_debug_conversation"] == {
-        "tenant_id": "tenant-1",
-        "agent_id": "agent-created",
-        "account_id": account_id,
-        "commit": False,
-    }
-
-
 def test_agent_app_create_payload_allows_optional_role() -> None:
     omitted = roster_controller.AgentAppCreatePayload.model_validate(
         {"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"}
@@ -501,44 +261,6 @@ def test_agent_app_create_payload_allows_optional_role() -> None:
     )
     assert omitted.role is None
     assert blank.role == ""
-
-
-def test_agent_app_create_omits_optional_role_as_empty_string(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    captured: dict[str, object] = {}
-
-    class FakeAppService:
-        def create_app(self, tenant_id: str, params: object, account: object, *, session: object) -> object:
-            del session
-            captured["create"] = {"tenant_id": tenant_id, "params": params, "account": account}
-            return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
-
-    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
-    monkeypatch.setattr(
-        roster_controller,
-        "_serialize_agent_app_detail",
-        lambda _session, app_model, **_kwargs: {"id": "agent-created", "app_id": app_model.id},
-    )
-    current_user = _account(account_id=account_id)
-    with app.test_request_context(
-        "/console/api/agent",
-        json={"name": "No-role Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
-    ):
-        created, status = unwrap(AgentAppListApi.post)(
-            AgentAppListApi(),
-            AgentAppCreatePayload(name="No-role Iris", description="Agent app", icon_type="emoji", icon="robot"),
-            MagicMock(),
-            "tenant-1",
-            current_user,
-        )
-    assert status == 201
-    assert created == {"id": "agent-created", "app_id": "app-created"}
-    create_call = cast(dict[str, object], captured["create"])
-    create_params = cast(Any, create_call["params"])
-    assert create_call["tenant_id"] == "tenant-1"
-    assert create_call["account"] is current_user
-    assert create_params.agent_role == ""
 
 
 def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
@@ -796,7 +518,7 @@ def test_invite_options_get_applies_resource_visibility(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, object] = {}
-    permissions = roster_controller.rbac_contracts.MyPermissionsResponse()
+    permissions = rbac_contracts.MyPermissionsResponse()
 
     monkeypatch.setattr(
         RBACService.MyPermissions,

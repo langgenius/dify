@@ -5,14 +5,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session
 
-from controllers.common.agent_access import (
-    AGENT_LIST_PERMISSION_KEYS,
-    AgentAccessFilter,
-    has_agent_list_permission,
-    resolve_agent_access_filter,
-)
+from controllers.common.agent_access import AgentAccessFilter, resolve_agent_access_filter
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from services.app_service import AppListParams
+from services.rbac.agent_list_visibility import AGENT_LIST_PERMISSION_KEYS, has_agent_list_permission, visible_agent_ids
 from services.rbac.contracts import (
     MyPermissionsResponse,
     ResourcePermissionKeys,
@@ -70,6 +66,21 @@ class TestHasAgentListPermission:
     def test_rejects_non_preview_permissions(self) -> None:
         assert not has_agent_list_permission(["agent.acl.edit", "agent.acl.delete"])
         assert not has_agent_list_permission([])
+
+
+def test_visible_agent_ids_preserves_preview_and_whitelist_rules() -> None:
+    default_preview = _permissions(agent_default_keys=["agent.acl.preview"])
+    unrestricted = ResourceWhitelistResources(unrestricted=True)
+    assert visible_agent_ids(default_preview, unrestricted) is None
+    overrides = _permissions(
+        agent_overrides=[
+            ResourcePermissionKeys(resource_id="visible", permission_keys=["agent.acl.preview"]),
+            ResourcePermissionKeys(resource_id="hidden", permission_keys=["agent.acl.edit"]),
+        ]
+    )
+    assert visible_agent_ids(overrides, unrestricted) == {"visible"}
+    restricted = ResourceWhitelistResources(unrestricted=False, resource_ids=["whitelisted"])
+    assert visible_agent_ids(overrides, restricted) == {"whitelisted"}
 
 
 class TestAgentAccessFilter:

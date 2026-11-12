@@ -11,11 +11,13 @@ from repositories.agent_version_repository import SQLAlchemyAgentVersionReposito
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.version_service import AgentVersionService
+from services.app.agent_app_collection_gateway import AgentAppCollectionAccessGateway, AgentAppCollectionGateway
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
     AgentApiAccessService,
     AgentAppAccessService,
+    AgentAppCollectionService,
     AgentAppDeletionService,
     AgentAppDetailService,
     AgentAppFeatureConfigService,
@@ -37,6 +39,7 @@ class AgentAppServices:
     api_access: AgentApiAccessService
     lifecycle: AgentAppDeletionService
     detail: AgentAppDetailService
+    collection: AgentAppCollectionService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
 
@@ -51,12 +54,19 @@ def build_agent_app_services(
 ) -> AgentAppServices:
     apps = AgentAppRepository(session_factory=database_client)
     lifecycle = AppLifecycleGateway(session_factory=database_client)
+    detail = AgentAppDetailService(
+        runtime=lifecycle, presentation=AgentAppDetailPresentationGateway(members=rbac_members)
+    )
     return AgentAppServices(
         access=AgentAppAccessService(references=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
         lifecycle=AgentAppDeletionService(lifecycle=lifecycle),
-        detail=AgentAppDetailService(
-            runtime=lifecycle, presentation=AgentAppDetailPresentationGateway(members=rbac_members)
+        detail=detail,
+        collection=AgentAppCollectionService(
+            store=AgentAppCollectionGateway(session_factory=database_client),
+            access=AgentAppCollectionAccessGateway(members=rbac_members),
+            creator=lifecycle,
+            detail=detail,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
         sandbox=AgentAppSandboxService(

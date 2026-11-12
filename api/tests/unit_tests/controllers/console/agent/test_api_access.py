@@ -17,6 +17,7 @@ from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
 from controllers.console.agent.roster import (
     AgentAppApi,
+    AgentAppListApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
@@ -132,6 +133,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api = ExternalApi(blueprint)
         api.add_resource(AgentApiAccessApi, "/agent/<uuid:agent_id>/api-access")
         api.add_resource(AgentApiStatusApi, "/agent/<uuid:agent_id>/api-enable")
+        api.add_resource(AgentAppListApi, "/agent")
         api.add_resource(AgentAppApi, "/agent/<uuid:agent_id>")
         api.add_resource(AgentRosterVersionsApi, "/agent/<uuid:agent_id>/versions")
         api.add_resource(AgentRosterVersionDetailApi, "/agent/<uuid:agent_id>/versions/<uuid:version_id>")

@@ -1,0 +1,239 @@
+"""Exercise Agent App creation and listing through real Console HTTP and SQLite."""
+
+import json
+from http import HTTPStatus
+from uuid import uuid4
+
+from sqlalchemy import select
+
+from machinery.context import RequestContext
+from models.account import TenantAccountJoin, TenantAccountRole
+from models.agent import Agent, AgentDebugConversation, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent_config_entities import WorkflowNodeJobConfig
+from models.enums import TagType
+from models.model import App, AppMode, AppModelConfig, Tag, TagBinding
+from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
+from services.entities.app_entities import AppListParams
+from tests.helpers.unit.model_factories import make_workflow
+from tests.unit_tests.controllers.console.agent.test_api_access import Harness
+
+pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
+
+
+def test_list_paginates_agents_and_counts_published_and_draft_apps(harness: Harness) -> None:
+    first_id, first_app = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        first = session.get(Agent, first_id)
+        assert first is not None
+        first.name = "Published Agent"
+        first.active_config_is_published = True
+    second_id, second_app = harness.create_agent()
+    response = harness.client.get("/console/api/agent?limit=10", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    body = response.get_json()
+    assert body["total"] == 2
+    assert body["has_more"] is False
+    assert body["publication_counts"] == {"published": 1, "drafts": 1}
+    by_id = {item["id"]: item for item in body["data"]}
+    assert set(by_id) == {first_id, second_id}
+    assert by_id[first_id]["app_id"] == first_app
+    assert by_id[second_id]["app_id"] == second_app
+    assert by_id[first_id]["active_config_is_published"] is True
+    assert by_id[second_id]["active_config_is_published"] is False
+    assert by_id[first_id]["debug_conversation_id"]
+    assert by_id[second_id]["debug_conversation_id"]
+    assert "bound_agent_id" not in by_id[first_id]
+    assert isinstance(by_id[first_id]["permission_keys"], list)
+    with harness.sessions() as session:
+        mappings = session.scalars(
+            select(AgentDebugConversation).where(AgentDebugConversation.agent_id.in_([first_id, second_id]))
+        ).all()
+        assert len(mappings) == 2
+        assert {mapping.account_id for mapping in mappings} == {harness.account_id}
+    published = harness.client.get("/console/api/agent?publication_status=published", headers=harness.headers)
+    assert published.status_code == HTTPStatus.OK
+    assert [item["id"] for item in published.get_json()["data"]] == [first_id]
+    assert published.get_json()["publication_counts"] == {"published": 1, "drafts": 1}
+    repeated = harness.client.get("/console/api/agent?limit=10", headers=harness.headers)
+    repeated_by_id = {item["id"]: item for item in repeated.get_json()["data"]}
+    assert repeated_by_id[first_id]["debug_conversation_id"] == by_id[first_id]["debug_conversation_id"]
+    assert repeated_by_id[second_id]["debug_conversation_id"] == by_id[second_id]["debug_conversation_id"]
+
+
+def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Harness) -> None:
+    first_id, first_app = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        first = session.get(Agent, first_id)
+        assert first is not None
+        first.name = "Published Agent"
+        first.active_config_is_published = True
+    _, second_app = harness.create_agent()
+    with harness.sessions.begin() as session:
+        for app_id in (first_app, second_app):
+            app = session.get(App, app_id)
+            assert app is not None
+            app.maintainer = str(uuid4())
+    gateway = AgentAppCollectionGateway(session_factory=harness.sessions)
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    result = gateway.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids={first_id})
+    assert result.total == 1
+    assert [item.agent_id for item in result.data] == [first_id]
+    assert result.publication_counts.published == 1
+    assert result.publication_counts.drafts == 0
+
+
+def test_list_excludes_agents_from_another_workspace(harness: Harness) -> None:
+    own_id, _ = harness.create_agent()
+    foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
+    response = harness.client.get("/console/api/agent", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    assert [item["id"] for item in response.get_json()["data"]] == [own_id]
+    assert foreign_id != own_id
+
+
+def test_list_empty_tag_match_returns_empty_page_and_counts(harness: Harness) -> None:
+    harness.create_agent()
+    response = harness.client.get(f"/console/api/agent?tag_ids={uuid4()}", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {
+        "page": 1,
+        "limit": 20,
+        "total": 0,
+        "has_more": False,
+        "publication_counts": {"published": 0, "drafts": 0},
+        "data": [],
+    }
+
+
+def test_list_preserves_tag_filter_and_model_projection(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    with harness.sessions.begin() as session:
+        app = session.get(App, app_id)
+        assert app is not None
+        config = AppModelConfig(
+            app_id=app_id,
+            pre_prompt="Example prompt",
+            model=json.dumps({"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}),
+        )
+        tag = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Team", created_by=harness.account_id)
+        session.add_all([config, tag])
+        session.flush()
+        app.app_model_config_id = config.id
+        session.add(
+            TagBinding(tenant_id=harness.tenant_id, tag_id=tag.id, target_id=app_id, created_by=harness.account_id)
+        )
+        tag_id = tag.id
+    response = harness.client.get(f"/console/api/agent?tag_ids={tag_id}", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    [item] = response.get_json()["data"]
+    assert item["id"] == agent_id
+    assert item["model_config"]["model"]["name"] == "gpt-4o"
+    assert item["model_config"]["pre_prompt"] == "Example prompt"
+    assert item["tags"] == [{"id": tag_id, "name": "Team", "type": "app"}]
+
+
+def test_list_includes_distinct_published_workflow_references(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent(published=True)
+    workflow_app_id, workflow_id = str(uuid4()), str(uuid4())
+    with harness.sessions.begin() as session:
+        workflow_app = App(
+            id=workflow_app_id,
+            tenant_id=harness.tenant_id,
+            name="Example Flow",
+            mode=AppMode.WORKFLOW,
+            workflow_id=workflow_id,
+            enable_site=False,
+            enable_api=False,
+            created_by=harness.account_id,
+            maintainer=harness.account_id,
+        )
+        workflow = make_workflow(
+            workflow_id=workflow_id,
+            tenant_id=harness.tenant_id,
+            app_id=workflow_app_id,
+            version="v1",
+            created_by=harness.account_id,
+        )
+        session.add_all([workflow_app, workflow])
+        for node_id in ("node-a", "node-b"):
+            session.add(
+                WorkflowAgentNodeBinding(
+                    tenant_id=harness.tenant_id,
+                    agent_id=agent_id,
+                    app_id=workflow_app_id,
+                    workflow_id=workflow_id,
+                    workflow_version="v1",
+                    node_id=node_id,
+                    binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                    current_snapshot_id=str(uuid4()),
+                    node_job_config=WorkflowNodeJobConfig(),
+                )
+            )
+    response = harness.client.get("/console/api/agent", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    [item] = response.get_json()["data"]
+    assert item["reference_count"] == 1
+    assert item["published_reference_count"] == 1
+    assert len(item["published_references"]) == 1
+    assert item["published_references"][0]["app_id"] == workflow_app_id
+    assert item["published_references"][0]["app_name"] == "Example Flow"
+
+
+def test_create_returns_agent_detail_and_commits_app_and_agent(harness: Harness) -> None:
+    response = harness.client.post(
+        "/console/api/agent",
+        headers=harness.headers,
+        json={"name": "New Agent", "description": "Example", "role": "Helper"},
+    )
+    assert response.status_code == HTTPStatus.CREATED
+    body = response.get_json()
+    assert body["name"] == "New Agent"
+    assert body["role"] == "Helper"
+    assert body["debug_conversation_id"]
+    assert body["enable_site"] is False
+    assert body["enable_api"] is False
+    assert body["site"]["title"] == "New Agent"
+    with harness.sessions() as session:
+        agent = session.get(Agent, body["id"])
+        app = session.get(App, body["app_id"])
+        assert agent is not None
+        assert app is not None
+        assert agent.app_id == app.id
+        assert agent.tenant_id == app.tenant_id == harness.tenant_id
+        assert app.mode == AppMode.AGENT
+        assert agent.role == "Helper"
+
+
+def test_create_omitted_role_and_duplicate_name(harness: Harness) -> None:
+    first = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
+    assert first.status_code == HTTPStatus.CREATED
+    assert first.get_json()["role"] == ""
+    duplicate = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
+    assert duplicate.status_code == HTTPStatus.CONFLICT
+    assert duplicate.get_json()["code"] == "agent_name_conflict_error"
+    with harness.sessions() as session:
+        agents = session.scalars(
+            select(Agent).where(Agent.tenant_id == harness.tenant_id, Agent.name == "Unique")
+        ).all()
+        assert len(agents) == 1
+
+
+def test_member_can_list_but_cannot_create(harness: Harness) -> None:
+    with harness.sessions.begin() as session:
+        membership = session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == harness.tenant_id, TenantAccountJoin.account_id == harness.account_id
+            )
+        )
+        assert membership is not None
+        membership.role = TenantAccountRole.NORMAL
+    assert harness.client.get("/console/api/agent", headers=harness.headers).status_code == HTTPStatus.OK
+    assert (
+        harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Forbidden"}).status_code
+        == HTTPStatus.FORBIDDEN
+    )
+    with harness.sessions() as session:
+        assert (
+            session.scalar(select(Agent.id).where(Agent.tenant_id == harness.tenant_id, Agent.name == "Forbidden"))
+            is None
+        )

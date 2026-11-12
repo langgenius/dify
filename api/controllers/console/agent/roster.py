@@ -107,12 +107,16 @@ from services.agent.version_store import (
     AgentVersionUnavailableError,
     VersionAgentNotFoundError,
 )
-from services.app.agent_app_contracts import AgentAppDetail, AgentAppNameConflictError, AgentAppNotFoundError
-from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
+from services.app.agent_app_contracts import (
+    AgentAppDetail,
+    AgentAppListPage,
+    AgentAppNameConflictError,
+    AgentAppNotFoundError,
+)
+from services.app_service import AppListParams, AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import UpdateAppParams
-from services.rbac import contracts as rbac_contracts
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -473,91 +477,45 @@ def _agent_app_detail_response(detail: AgentAppDetail) -> dict[str, object]:
     return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
 
-def _serialize_agent_app_pagination(
-    session: Session,
-    app_pagination,
-    *,
-    tenant_id: str,
-    current_user: Account,
-    publication_counts: AgentAppPublicationCounts,
-    agent_permissions: rbac_contracts.ResourcePermissionSnapshot,
-) -> dict:
-    """Serialize Agent App lists with roster-shaped items.
-
-    Each item starts from the shared App list shape, then drops
-    `bound_agent_id`, rewrites `id` to the backing roster Agent id, stores the
-    original App id in `app_id`, and injects roster-only `role` when a backing
-    Agent is present.
-    """
-
-    app_ids = [str(app.id) for app in app_pagination.items]
-    roster_service = _agent_roster_service(session)
-    agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
-        tenant_id=tenant_id,
-        app_ids=app_ids,
-    )
-    active_config_is_published_by_agent_id = roster_service.load_active_config_is_published_by_agent_id(
-        tenant_id=tenant_id,
-        agents=list(agents_by_app_id.values()),
-    )
-    published_references_by_agent_id = roster_service.load_published_references_by_agent_id(
-        tenant_id=tenant_id,
-        agent_ids=[agent.id for agent in agents_by_app_id.values()],
-    )
-    reference_counts_by_agent_id = roster_service.load_reference_counts_by_agent_id(
-        tenant_id=tenant_id,
-        agent_ids=[agent.id for agent in agents_by_app_id.values()],
-    )
-    debug_conversation_ids_by_agent_id = roster_service.load_or_create_build_conversation_ids_by_agent_id(
-        tenant_id=tenant_id,
-        agents=list(agents_by_app_id.values()),
-        account_id=current_user.id,
-    )
-    permission_keys_by_agent_id = agent_permissions.permission_keys_by_resource_ids(
-        [agent.id for agent in agents_by_app_id.values()]
-    )
+def _agent_app_list_response(page: AgentAppListPage) -> dict[str, object]:
+    """Render detached App records with their Agent-specific list fields."""
     payload = GenericAppPagination.model_validate(
         {
-            "page": app_pagination.page,
-            "limit": app_pagination.per_page,
-            "total": app_pagination.total,
-            "has_more": app_pagination.has_next,
-            "data": [AppResponseView(app, session=session) for app in app_pagination.items],
-        },
+            "page": page.page,
+            "limit": page.limit,
+            "total": page.total,
+            "has_more": page.has_more,
+            "data": [item.app for item in page.data],
+        }
     ).model_dump(mode="json")
     payload["publication_counts"] = {
-        "published": publication_counts.published,
-        "drafts": publication_counts.drafts,
+        "published": page.publication_counts.published,
+        "drafts": page.publication_counts.drafts,
     }
-    for item in payload["data"]:
-        app_id = item["id"]
+    for item, record in zip(payload["data"], page.data, strict=True):
         item.pop("bound_agent_id", None)
-        agent = agents_by_app_id.get(app_id)
-        if agent:
-            item["app_id"] = app_id
-            item["backing_app_id"] = agent.backing_app_id or app_id
-            item["hidden_app_backed"] = False
-            item["id"] = agent.id
-            item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
-            item["permission_keys"] = permission_keys_by_agent_id.get(str(agent.id), [])
-            item["role"] = agent.role or ""
-            item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
-            item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
-            published_references = published_references_by_agent_id.get(agent.id, [])
-            item["published_reference_count"] = len(published_references)
-            item["published_references"] = [
-                {
-                    "app_id": reference["app_id"],
-                    "app_name": reference["app_name"],
-                    "app_icon_type": reference["app_icon_type"],
-                    "app_icon": reference["app_icon"],
-                    "app_icon_background": reference["app_icon_background"],
-                }
-                for reference in published_references
-            ]
+        if record.agent_id:
+            item.update(
+                app_id=record.app.id,
+                backing_app_id=record.backing_app_id,
+                hidden_app_backed=False,
+                id=record.agent_id,
+                debug_conversation_id=record.debug_conversation_id,
+                permission_keys=record.permission_keys,
+                role=record.role,
+                active_config_is_published=record.active_config_is_published,
+                reference_count=record.reference_count,
+                published_reference_count=len(record.published_references),
+                published_references=[
+                    {
+                        key: reference[key]
+                        for key in ("app_id", "app_name", "app_icon_type", "app_icon", "app_icon_background")
+                    }
+                    for reference in record.published_references
+                ],
+            )
     return AgentAppPagination.model_validate(payload).model_dump(
-        mode="json",
-        exclude={"data": {"__all__": {"bound_agent_id"}}},
+        mode="json", exclude={"data": {"__all__": {"bound_agent_id"}}}
     )
 
 
@@ -606,17 +564,10 @@ def _query_values(name: str, alias_name: str | None = None) -> list[str]:
 class AgentAppListApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentAppListQuery))
-    @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, current_user: Account):
+    @console_ns.response(HTTPStatus.OK, "Agent app list", console_ns.models[AgentAppPagination.__name__])
+    @console_account_admission()
+    def get(self, context: RequestContext) -> dict[str, object]:
         args = query_params_from_request(AgentAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
-        agent_is_published = None if args.publication_status is None else args.publication_status == "published"
-
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -627,68 +578,24 @@ class AgentAppListApi(Resource):
             creator_ids=args.creator_ids,
             is_created_by_me=args.is_created_by_me,
             status="normal",
-            agent_is_published=agent_is_published,
+            agent_is_published=None if args.publication_status is None else args.publication_status == "published",
         )
-
-        permissions = application_services().rbac.members.permissions(
-            current_tenant_id,
-            current_user.id,
-        )
-        if dify_config.RBAC_ENABLED:
-            access_filter = resolve_agent_access_filter(
-                current_tenant_id,
-                current_user.id,
-                permissions=permissions,
-            )
-            access_filter.apply_to_app_params(params, tenant_id=current_tenant_id, session=session)
-
-        app_service = AppService()
-        publication_counts = app_service.get_agent_publication_counts(
-            current_user.id,
-            current_tenant_id,
-            params,
-            session,
-        )
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params, session)
-        if app_pagination is None:
-            empty = AgentAppPagination(
-                page=args.page,
-                limit=args.limit,
-                total=0,
-                has_more=False,
-                publication_counts=AgentPublicationCountsResponse(
-                    published=publication_counts.published,
-                    drafts=publication_counts.drafts,
-                ),
-                data=[],
-            )
-            return empty.model_dump(mode="json")
-
-        return _serialize_agent_app_pagination(
-            session,
-            app_pagination,
-            tenant_id=current_tenant_id,
-            current_user=current_user,
-            publication_counts=publication_counts,
-            agent_permissions=permissions.agent,
-        )
+        return _agent_app_list_response(application_services().agent_apps.collection.list_apps(context, params))
 
     @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
-    @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
-    @console_ns.response(409, "Agent name already exists")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.CREATED, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__]
+    )
+    @console_ns.response(HTTPStatus.CONFLICT, "Agent name already exists")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_CREATE, Workspace())],
+    )
     @model_validate(AgentAppCreatePayload)
-    def post(self, req_data: AgentAppCreatePayload, session: Session, current_tenant_id: str, current_user: Account):
+    def post(self, req_data: AgentAppCreatePayload, context: RequestContext) -> tuple[dict[str, object], int]:
         params = CreateAppParams(
             name=req_data.name,
             description=req_data.description,
@@ -698,9 +605,11 @@ class AgentAppListApi(Resource):
             icon=req_data.icon,
             icon_background=req_data.icon_background,
         )
-
-        app = AppService().create_app(current_tenant_id, params, current_user, session=session)
-        return _serialize_agent_app_detail(session, app, current_user=current_user), 201
+        try:
+            detail = application_services().agent_apps.collection.create(context, params)
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return _agent_app_detail_response(detail), HTTPStatus.CREATED
 
 
 @console_ns.route("/agent/<uuid:agent_id>")
