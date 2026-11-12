@@ -173,7 +173,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               headless: true,
               screenshotFailures: true,
               trace: {
-                mode: 'retain-on-failure',
+                mode: isCI ? 'retain-on-failure' : 'off',
                 tracesDir: './.vitest-browser/traces',
               },
             },
