@@ -2892,11 +2892,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/marketplace/description/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 20
-    }
-  },
   "web/app/components/plugins/marketplace/empty/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4

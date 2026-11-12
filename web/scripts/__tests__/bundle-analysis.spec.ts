@@ -90,6 +90,31 @@ it('fails on missing emitted files instead of reporting false savings', async ()
   await rm(join(root, 'dist/client/lazy.js'))
   await expect(collect(root, sha)).rejects.toThrow('ENOENT')
 })
+it('measures feature client references using source paths instead of generated wrapper hashes', async () => {
+  const analysis = graph()
+  const featureModule = {
+    path: 'features/new-rag/quality/page.tsx',
+    size: 6,
+    importers: [1],
+  }
+  analysis.modules = [
+    analysis.modules[0]!,
+    { path: '\\0virtual:vinext-client-reference-module/abcd/page', size: 4 },
+    featureModule,
+  ]
+  const result = await collect(await fixture(analysis), sha)
+  expect(result.entries['dynamic-entry: features/new-rag/quality/page.tsx']).toEqual({
+    raw: 15,
+    gzip: gzipSync('lazy').length + gzipSync('shared').length + gzipSync('entry').length,
+  })
+  expect(Object.keys(result.entries).some((key) => key.includes('abcd'))).toBe(false)
+})
+it('rejects dangling module importer references', () => {
+  const analysis = graph()
+  const invalid = { path: 'features/view.tsx', size: 6, importers: [99] }
+  analysis.modules = [analysis.modules[0]!, analysis.modules[1]!, invalid]
+  expect(() => parseAnalysis(JSON.stringify(analysis))).toThrow('Invalid Rolldown module graph')
+})
 it('rejects incompatible graph data and dangling references', () => {
   const invalid = graph()
   invalid.chunks[0]!.imports![0]!.targetChunkIndex = 99

@@ -12,7 +12,7 @@ type Analysis = {
     entryModule?: number
     imports?: { targetChunkIndex: number; type: string }[]
   }[]
-  modules: { path: string; size: number }[]
+  modules: { path: string; size: number; importers?: number[] }[]
 }
 type Snapshot = {
   version: 1
@@ -45,6 +45,15 @@ export function parseAnalysis(text: string): Analysis {
     throw new Error('Invalid Rolldown analysis.')
   const moduleCount = v.modules.length
   const chunkCount = v.chunks.length
+  for (const module of v.modules as unknown[]) {
+    if (
+      !record(module) ||
+      (module.importers !== undefined &&
+        (!Array.isArray(module.importers) ||
+          !module.importers.every((index) => bytes(index) && index < moduleCount)))
+    )
+      throw new Error('Invalid Rolldown module graph.')
+  }
   for (const c of v.chunks as unknown[]) {
     if (
       !record(c) ||
@@ -114,9 +123,23 @@ export async function collect(appDirectory: string, commit: string): Promise<Sna
   const entries: Record<string, Size> = Object.create(null)
   for (const [index, chunk] of analysis.chunks.entries()) {
     if (chunk.entryModule === undefined || chunk.type === 'common') continue
-    const source = analysis.modules[chunk.entryModule]!.path
+    const entryModule = chunk.entryModule
+    let source = analysis.modules[entryModule]!.path
+    if (source.includes('virtual:vinext-client-reference-module/')) {
+      source =
+        analysis.modules.find(
+          (module) =>
+            module.importers?.includes(entryModule) &&
+            (module.path.startsWith('app/') || module.path.startsWith('features/')),
+        )?.path ?? source
+    }
     // Application and virtual browser entries are stable across chunk hash changes.
-    if (!source.startsWith('app/') && !source.includes('virtual:vinext-app-browser-entry')) continue
+    if (
+      !source.startsWith('app/') &&
+      !source.startsWith('features/') &&
+      !source.includes('virtual:vinext-app-browser-entry')
+    )
+      continue
     const key = `${chunk.type}: ${source}`
     if (Object.hasOwn(entries, key)) throw new Error(`Duplicate entry: ${key}`)
     entries[key] = await sumFiles(
