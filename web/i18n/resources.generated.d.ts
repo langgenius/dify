@@ -2048,7 +2048,7 @@ export default interface Resources {
     'unit.char': 'chars'
     'userProfile.about': 'About'
     'userProfile.compliance': 'Compliance'
-    'userProfile.contactUs': 'Contact Us'
+    'userProfile.contactSupport': 'Contact support'
     'userProfile.discord': 'Discord'
     'userProfile.emailSupport': 'Email Support'
     'userProfile.github': 'GitHub'
