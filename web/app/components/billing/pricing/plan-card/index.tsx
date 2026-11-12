@@ -21,13 +21,13 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
-import { billingErrorMessageKey } from '../../../billing-error'
-import { ALL_PLANS } from '../../../config'
-import { useEducationDiscount } from '../../../hooks/use-education-discount'
-import { CloudPlanFeatures } from './list'
+import { billingErrorMessageKey } from '../../billing-error'
+import { ALL_PLANS } from '../../config'
+import { useEducationDiscount } from '../../hooks/use-education-discount'
+import { CloudPlanFeatures } from './features'
 import { RollingPrice } from './rolling-price'
 
-type CloudPlanItemProps = {
+type CloudPlanCardProps = {
   plan: CloudPlan
   billingInterval: GetBillingSubscriptionData['query']['interval']
   billing:
@@ -39,7 +39,7 @@ type CloudPlanItemProps = {
     | undefined
 }
 
-export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemProps) {
+export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardProps) {
   const currentPlan = billing?.currentPlan
   const isEducationDiscountEligible = billing?.isEducationDiscountEligible
   const { t } = useTranslation(['billing', 'common', 'education'])

@@ -1,7 +1,57 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactNode } from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ALL_PLANS } from '../../../../config'
-import { CloudPlanFeature } from './item'
+import { ALL_PLANS } from '../../config'
+
+type PlanFeatureExplanation = {
+  labelId: string
+  description: string
+}
+
+export function PlanFeatureInfotip({ children }: { children: ReactNode }) {
+  return (
+    <Infotip<PlanFeatureExplanation>>
+      {({ payload }) => (
+        <>
+          {children}
+          <InfotipContent
+            aria-labelledby={payload?.labelId}
+            className="max-w-80 whitespace-pre-wrap"
+          >
+            {payload?.description}
+          </InfotipContent>
+        </>
+      )}
+    </Infotip>
+  )
+}
+
+function CloudPlanFeature({ label, description }: { label: string; description?: string }) {
+  const labelId = useId()
+
+  return (
+    <li className="flex min-h-5 items-center gap-1.5 border-b border-(--pricing-feature-border) pb-0.5 text-sm leading-[17px]">
+      <span
+        aria-hidden
+        className="h-[7px] w-1 flex-none pt-[3px] after:block after:size-1 after:rounded-full after:bg-text-accent"
+      />
+      <span id={labelId} className="min-w-0 flex-1 wrap-anywhere">
+        {label}
+      </span>
+      {description && (
+        <InfotipTrigger<PlanFeatureExplanation>
+          aria-labelledby={labelId}
+          payload={{ labelId, description }}
+          iconVariant="information"
+          iconSize="small"
+          className="relative -m-1 size-[18px] text-(--pricing-info)"
+        />
+      )}
+    </li>
+  )
+}
 
 export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
   const { t } = useTranslation(['billing'])
