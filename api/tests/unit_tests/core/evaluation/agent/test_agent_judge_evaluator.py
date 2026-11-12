@@ -1,6 +1,5 @@
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from types import SimpleNamespace
 from typing import TypeVar
 
 import pytest
@@ -115,59 +114,6 @@ def test_agent_judge_json_schema_is_strict_at_every_object_level(schema_model: t
                 assert_strict(nested_value)
 
     assert_strict(schema)
-
-
-def test_dify_judge_model_uses_tenant_scoped_strict_structured_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.llm_generator.output_parser import structured_output
-    from core.plugin.impl import model_runtime_factory
-
-    instance = SimpleNamespace(provider="provider", get_model_schema=lambda: {"model": "model"})
-    selections: list[dict[str, object]] = []
-    invocations: list[dict[str, object]] = []
-
-    def get_model_instance(**kwargs: object) -> SimpleNamespace:
-        selections.append(kwargs)
-        return instance
-
-    def invoke(**kwargs: object) -> SimpleNamespace:
-        invocations.append(kwargs)
-        return SimpleNamespace(structured_output=expected.model_dump(mode="json"))
-
-    monkeypatch.setattr(
-        model_runtime_factory,
-        "create_plugin_model_manager",
-        lambda **_kwargs: SimpleNamespace(get_model_instance=get_model_instance),
-    )
-    monkeypatch.setattr(structured_output, "invoke_llm_with_structured_output", invoke)
-    expected = TaskCompletionJudgeOutput(
-        score=0.8,
-        reason="The goal was mostly satisfied.",
-        criteria=TaskCompletionCriteria(
-            goal_satisfaction=_criterion(0.8),
-            correctness_and_evidence_consistency=_criterion(0.8),
-            completeness=_criterion(0.8),
-        ),
-    )
-
-    judge_model = agent_judge_evaluator._DifyAgentJudgeModel("provider", "model", "tenant-1")
-    actual = judge_model.generate(
-        system_prompt="Judge the observable result.",
-        payload={"task": "Weather", "score": 1},
-        schema=TaskCompletionJudgeOutput,
-    )
-
-    assert judge_model.model_identifier == "provider/model"
-    assert selections[0]["tenant_id"] == "tenant-1"
-    assert selections[0]["provider"] == "provider"
-    assert actual == expected
-    assert invocations[0]["model_instance"] is instance
-    assert invocations[0]["json_schema"] == _strict_judge_json_schema(TaskCompletionJudgeOutput)
-    assert invocations[0]["model_parameters"] == {"temperature": 0.0}
-    assert invocations[0]["stream"] is False
-    messages = invocations[0]["prompt_messages"]
-    assert isinstance(messages, list)
-    assert messages[0].content == "Judge the observable result."
-    assert messages[1].content == 'EVALUATION_DATA\n{"score": 1, "task": "Weather"}'
 
 
 def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(

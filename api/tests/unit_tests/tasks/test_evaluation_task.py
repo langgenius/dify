@@ -837,6 +837,80 @@ def test_execute_evaluation_does_not_run_duplicate_delivery(
 
 
 @pytest.mark.parametrize(
+    ("case", "expected_error"),
+    [
+        ("wrong_lease", "lease does not match"),
+        ("missing_run", None),
+        ("cancelled", None),
+        ("mismatched_payload", "payload does not match"),
+        ("missing_workflow_version", "missing target_workflow_version_id"),
+        ("missing_agent_snapshot", "missing target_agent_config_snapshot_id"),
+        ("framework_unconfigured", "framework not configured"),
+    ],
+)
+def test_execute_evaluation_rejects_invalid_or_terminal_task_deliveries(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    expected_error: str | None,
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000055"
+    target_type = (
+        EvaluationTargetType.APPS
+        if case == "missing_workflow_version"
+        else EvaluationTargetType.AGENTS
+        if case == "missing_agent_snapshot"
+        else EvaluationTargetType.KNOWLEDGE_BASE
+    )
+    persisted_target_id = "30000000-0000-0000-0000-000000000003"
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type=target_type.value,
+        target_id="other-target" if case == "mismatched_payload" else persisted_target_id,
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[],
+    )
+    if case not in {"wrong_lease", "missing_run"}:
+        with sqlite_session_factory() as session:
+            session.add(
+                EvaluationRun(
+                    id=run_id,
+                    tenant_id=run_data.tenant_id,
+                    target_type=target_type,
+                    target_id=persisted_target_id,
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.CANCELLED if case == "cancelled" else EvaluationRunStatus.PENDING,
+                    total_items=0,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                )
+            )
+            session.commit()
+    if case == "framework_unconfigured":
+        monkeypatch.setattr("tasks.evaluation_task.EvaluationManager.get_evaluation_instance", lambda _framework: None)
+    monkeypatch.setattr(
+        "tasks.evaluation_task._execute_running_evaluation",
+        lambda *_args: pytest.fail("An invalid or terminal task must not execute rows"),
+    )
+    lease = _lease("other-run") if case == "wrong_lease" else _lease(run_id)
+
+    with sqlite_session_factory() as session:
+        if expected_error:
+            with pytest.raises(ValueError, match=expected_error):
+                _execute_evaluation(session, run_data, lease)
+        else:
+            _execute_evaluation(session, run_data, lease)
+
+    if case == "cancelled":
+        with sqlite_session_factory() as session:
+            run = session.get(EvaluationRun, run_id)
+            assert run is not None
+            assert run.status == EvaluationRunStatus.CANCELLED
+
+
+@pytest.mark.parametrize(
     ("failure", "expected_failure"),
     [
         (EvaluationRunCancelledError(), None),
