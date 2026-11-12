@@ -286,7 +286,7 @@ def test_factory_honors_the_inverted_index_toggle(
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
 
     with patch.object(clickzetta_module, "ClickzettaVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
+        factory.init_vector(dataset, attributes=[], embeddings=None, session=None)  # type: ignore[arg-type]
 
     config = vector_cls.call_args.kwargs["config"]
     assert config.enable_inverted_index is expected
