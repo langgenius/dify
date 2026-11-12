@@ -14,8 +14,22 @@ import { CustomTextNode } from '../custom-text/node'
 import { UPDATE_WORKFLOW_NODES_MAP as WORKFLOW_UPDATE_WORKFLOW_NODES_MAP } from '../workflow-variable-block'
 import { $createHITLInputNode, HITLInputNode } from './node'
 
-export const INSERT_HITL_INPUT_BLOCK_COMMAND = createCommand('INSERT_HITL_INPUT_BLOCK_COMMAND')
-export const DELETE_HITL_INPUT_BLOCK_COMMAND = createCommand('DELETE_HITL_INPUT_BLOCK_COMMAND')
+type InsertHITLInputBlockPayload = Pick<
+  HITLNodeProps,
+  | 'variableName'
+  | 'nodeId'
+  | 'formInputs'
+  | 'onFormInputsChange'
+  | 'onFormInputItemRename'
+  | 'onFormInputItemRemove'
+>
+
+export const INSERT_HITL_INPUT_BLOCK_COMMAND = createCommand<InsertHITLInputBlockPayload>(
+  'INSERT_HITL_INPUT_BLOCK_COMMAND',
+)
+export const DELETE_HITL_INPUT_BLOCK_COMMAND = createCommand<void>(
+  'DELETE_HITL_INPUT_BLOCK_COMMAND',
+)
 export const UPDATE_WORKFLOW_NODES_MAP = WORKFLOW_UPDATE_WORKFLOW_NODES_MAP
 
 const HITLInputBlock = memo(
@@ -56,7 +70,7 @@ const HITLInputBlock = memo(
       return mergeRegister(
         editor.registerCommand(
           INSERT_HITL_INPUT_BLOCK_COMMAND,
-          (nodeProps: HITLNodeProps) => {
+          (nodeProps) => {
             const {
               variableName,
               nodeId,

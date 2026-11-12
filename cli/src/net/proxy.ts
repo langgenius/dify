@@ -16,21 +16,22 @@ export type ProxyDispatcherOptions = {
 let resolvedKey: string | undefined
 let agent: Dispatcher | undefined
 
-// Node's global fetch ignores HTTP_PROXY / HTTPS_PROXY / NO_PROXY. When a proxy
+// Requests do not automatically read HTTP_PROXY / HTTPS_PROXY / NO_PROXY. When a proxy
 // var is set, route requests through an EnvHttpProxyAgent (it also reads the
 // lowercase variants and honours NO_PROXY); when none is set and TLS verification
-// isn't being skipped, return undefined so fetch keeps Node's default global
-// dispatcher untouched. Resolved once per (proxy env, insecure) combination —
-// both are fixed for a single CLI invocation.
+// isn't being skipped, return undefined so undici uses its default dispatcher.
+// Resolve once per (proxy env, insecure) combination, fixed for a CLI invocation.
 export function proxyDispatcher(opts: ProxyDispatcherOptions = {}): Dispatcher | undefined {
   const insecure = opts.insecure ?? false
   const key = `${hasProxyEnv()}:${insecure}`
   if (resolvedKey !== key) {
     const tls = insecure ? { rejectUnauthorized: false } : undefined
     agent = hasProxyEnv()
-      ? new EnvHttpProxyAgent(
-          tls !== undefined ? { connect: tls, requestTls: tls, proxyTls: tls } : undefined,
-        )
+      ? new EnvHttpProxyAgent({
+          // Preserve the CONNECT behavior used before the undici v8 migration.
+          proxyTunnel: true,
+          ...(tls !== undefined ? { connect: tls, requestTls: tls, proxyTls: tls } : {}),
+        })
       : tls !== undefined
         ? new Agent({ connect: tls })
         : undefined

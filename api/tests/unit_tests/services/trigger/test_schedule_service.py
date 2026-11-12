@@ -3,12 +3,11 @@ import re
 import unittest
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock
 from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from graphon.entities.graph_config import NodeConfigDict
@@ -368,7 +367,7 @@ class TestExtractScheduleConfig(unittest.TestCase):
             ),
         )
 
-        config = ScheduleService.extract_schedule_config(workflow)
+        config = ScheduleService.extract_schedule_config(workflow.graph_dict)
 
         assert config is not None
         assert config.node_id == "schedule-node"
@@ -396,7 +395,7 @@ class TestExtractScheduleConfig(unittest.TestCase):
             ),
         )
 
-        config = ScheduleService.extract_schedule_config(workflow)
+        config = ScheduleService.extract_schedule_config(workflow.graph_dict)
 
         assert config is not None
         assert config.node_id == "schedule-node"
@@ -418,7 +417,7 @@ class TestExtractScheduleConfig(unittest.TestCase):
             ),
         )
 
-        config = ScheduleService.extract_schedule_config(workflow)
+        config = ScheduleService.extract_schedule_config(workflow.graph_dict)
         assert config is None
 
     def test_extract_schedule_config_invalid_graph(self) -> None:
@@ -428,7 +427,7 @@ class TestExtractScheduleConfig(unittest.TestCase):
         )
 
         with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
-            ScheduleService.extract_schedule_config(workflow)
+            ScheduleService.extract_schedule_config(workflow.graph_dict)
 
 
 class TestScheduleWithTimezone(unittest.TestCase):
@@ -569,7 +568,7 @@ def test_to_schedule_config_should_raise_for_cron_mode_without_expression() -> N
         ScheduleService.to_schedule_config(node_config=node_config)
 
 
-def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_to_schedule_config_should_build_from_visual_mode() -> None:
     # Arrange
     node_config = NodeConfigDict(
         id="node-1",
@@ -582,7 +581,6 @@ def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.Mo
             }
         ),
     )
-    monkeypatch.setattr(ScheduleService, "visual_to_cron", MagicMock(return_value="30 9 * * *"))
 
     # Act
     result = ScheduleService.to_schedule_config(node_config=node_config)
@@ -609,7 +607,7 @@ def test_extract_schedule_config_should_raise_when_graph_is_empty() -> None:
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
-        ScheduleService.extract_schedule_config(workflow=workflow)
+        ScheduleService.extract_schedule_config(graph_data=workflow.graph_dict)
 
 
 def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
@@ -630,7 +628,7 @@ def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: invalid"):
-        ScheduleService.extract_schedule_config(workflow=workflow)
+        ScheduleService.extract_schedule_config(graph_data=workflow.graph_dict)
 
 
 if __name__ == "__main__":

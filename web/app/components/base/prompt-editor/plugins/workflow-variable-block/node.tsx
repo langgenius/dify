@@ -87,8 +87,8 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
 
   override exportJSON(): SerializedNode {
     const json: SerializedNode = {
+      ...super.exportJSON(),
       type: 'workflow-variable-block',
-      version: 1,
       variables: this.getVariables(),
       workflowNodesMap: this.getWorkflowNodesMap(),
       getVarType: this.getVarType(),

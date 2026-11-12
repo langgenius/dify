@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
 from graphon.variables.types import SegmentType

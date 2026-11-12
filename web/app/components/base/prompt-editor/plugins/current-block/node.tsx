@@ -52,8 +52,8 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedNode {
     return {
+      ...super.exportJSON(),
       type: 'current-block',
-      version: 1,
       generatorType: this.getGeneratorType(),
     }
   }
