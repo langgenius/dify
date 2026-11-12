@@ -1,10 +1,11 @@
 import type { ComponentProps } from 'react'
+import type { CarouselPage } from '../carousel'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import Carousel from '../carousel'
 
-const pages = Array.from({ length: 5 }, (_, index) => ({
+const pages: CarouselPage[] = Array.from({ length: 5 }, (_, index) => ({
   id: `page-${index + 1}`,
   content: (
     <label>
