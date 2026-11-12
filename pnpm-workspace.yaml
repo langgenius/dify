@@ -2,7 +2,6 @@ allowBuilds:
   '@parcel/watcher': false
   # i18next-resources-for-ts uses the published SWC native binaries.
   '@swc/core': false
-  canvas: false
   esbuild: false
   sharp: false
 autoDedupe: true
@@ -58,7 +57,6 @@ overrides:
   '@tsslint/config>minimatch': 11.0.7
   '@tsslint/core>minimatch': 11.0.7
   '@typescript-eslint/typescript-estree>minimatch': 11.0.7
-  canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   eslint-plugin-no-barrel-files>minimatch: 11.0.7
   eslint>minimatch: 11.0.7
@@ -71,6 +69,8 @@ overrides:
   js-yaml@<=4.3.1: ^4.3.2
   # micromark math still declares vulnerable KaTeX 0.16; verify its HTML compiler separately.
   micromark-extension-math>katex: 0.18.10
+  # PDF previews render in the browser and do not need PDF.js's native Node canvas.
+  'pdfjs-dist@4.4.168>canvas:optional': '-'
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
   'rehype-katex@7.0.1>katex': 0.19.1
