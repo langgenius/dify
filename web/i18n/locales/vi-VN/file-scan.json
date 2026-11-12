@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL điểm cuối",
   "dialog.endpointUrlDescription": "Dify gửi từng tệp đến địa chỉ này và chờ kết quả đánh giá. Xem tài liệu trợ giúp để biết định dạng yêu cầu.",
   "dialog.endpointUrlInvalid": "Nhập địa chỉ hợp lệ bắt đầu bằng http:// hoặc https://.",
+  "dialog.getApiKey": "Lấy API key từ {{vendor}}",
   "dialog.name": "Tên",
   "dialog.namePlaceholder": "Ví dụ: Trình quét môi trường production",
   "dialog.privateProcessing": "Dùng chế độ quét riêng tư",

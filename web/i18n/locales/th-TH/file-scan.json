@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL ปลายทาง",
   "dialog.endpointUrlDescription": "Dify จะส่งแต่ละไฟล์ไปยังที่อยู่นี้และรอผลการตรวจสอบ ดูรูปแบบคำขอได้ในเอกสารช่วยเหลือ",
   "dialog.endpointUrlInvalid": "กรอกที่อยู่ที่ถูกต้องซึ่งขึ้นต้นด้วย http:// หรือ https://",
+  "dialog.getApiKey": "รับ API key จาก {{vendor}}",
   "dialog.name": "ชื่อ",
   "dialog.namePlaceholder": "เช่น ตัวสแกนสำหรับระบบใช้งานจริง",
   "dialog.privateProcessing": "ใช้การสแกนแบบส่วนตัว",

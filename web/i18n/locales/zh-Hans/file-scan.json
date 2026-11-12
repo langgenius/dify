@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "端点 URL",
   "dialog.endpointUrlDescription": "Dify 会把每个文件发送到这个地址并等待判定结果。请求格式见帮助文档。",
   "dialog.endpointUrlInvalid": "请输入以 http:// 或 https:// 开头的有效地址。",
+  "dialog.getApiKey": "从 {{vendor}} 获取 API Key",
   "dialog.name": "名称",
   "dialog.namePlaceholder": "例如：生产环境扫描服务",
   "dialog.privateProcessing": "使用私有扫描",

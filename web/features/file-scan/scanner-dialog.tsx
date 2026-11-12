@@ -38,6 +38,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { ProviderTypeIcon } from './provider-type-icon'
 import {
   FILE_SCAN_PROVIDER_TYPES,
+  fileScanProviderApiKeyUrl,
   fileScanProviderSendsFileContents,
   isFileScanProviderType,
   isScaniiRegion,
@@ -112,6 +113,8 @@ export function FileScanProviderDialog({
     provider !== undefined &&
     (type === 'cloudmersive' || type === 'api') &&
     endpoint.trim() !== stringSetting(provider.config.endpoint)
+
+  const apiKeyUrl = type ? fileScanProviderApiKeyUrl(type) : undefined
 
   const resetSaveError = () => {
     createMutation.reset()
@@ -367,6 +370,20 @@ export function FileScanProviderDialog({
             )}
           </DialogBody>
           <DialogFooter>
+            {type && apiKeyUrl && (
+              <a
+                href={apiKeyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="me-auto inline-block align-middle system-xs-regular text-text-accent"
+              >
+                {t(($) => $['dialog.getApiKey'], { vendor: typeLabel(type) })}
+                <span
+                  aria-hidden
+                  className="ms-1 -mt-0.5 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle rtl:-scale-x-100"
+                />
+              </a>
+            )}
             <Button type="button" onClick={() => onOpenChange(false)}>
               {tCommon(($) => $['operation.cancel'])}
             </Button>

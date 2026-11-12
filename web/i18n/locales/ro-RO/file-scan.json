@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL endpoint",
   "dialog.endpointUrlDescription": "Dify trimite fiecare fișier la această adresă și așteaptă un verdict. Consultați documentația de ajutor pentru formatul cererii.",
   "dialog.endpointUrlInvalid": "Introduceți o adresă validă care începe cu http:// sau https://.",
+  "dialog.getApiKey": "Obțineți cheia API de la {{vendor}}",
   "dialog.name": "Nume",
   "dialog.namePlaceholder": "De exemplu, Scaner de producție",
   "dialog.privateProcessing": "Folosiți scanarea privată",

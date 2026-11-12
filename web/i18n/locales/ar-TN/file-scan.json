@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "عنوان URL لنقطة النهاية",
   "dialog.endpointUrlDescription": "يرسل Dify كل ملف إلى هذا العنوان وينتظر نتيجة الفحص. راجع وثائق المساعدة لمعرفة صيغة الطلب.",
   "dialog.endpointUrlInvalid": "أدخل عنوانًا صالحًا يبدأ بـ http:// أو https://.",
+  "dialog.getApiKey": "احصل على مفتاح API من {{vendor}}",
   "dialog.name": "الاسم",
   "dialog.namePlaceholder": "مثلاً: أداة فحص بيئة الإنتاج",
   "dialog.privateProcessing": "استخدام الفحص الخاص",

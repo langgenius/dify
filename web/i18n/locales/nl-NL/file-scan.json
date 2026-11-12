@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "Eindpunt-URL",
   "dialog.endpointUrlDescription": "Dify stuurt elk bestand naar dit adres en verwacht een oordeel. Raadpleeg de helpdocumentatie voor het aanvraagformaat.",
   "dialog.endpointUrlInvalid": "Voer een geldig adres in dat begint met http:// of https://.",
+  "dialog.getApiKey": "API-sleutel ophalen bij {{vendor}}",
   "dialog.name": "Naam",
   "dialog.namePlaceholder": "Bijvoorbeeld: Productiescanner",
   "dialog.privateProcessing": "Privéscannen gebruiken",

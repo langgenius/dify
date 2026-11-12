@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "Adres URL punktu końcowego",
   "dialog.endpointUrlDescription": "Dify wysyła każdy plik pod ten adres i oczekuje na wynik skanowania. Format żądania opisano w dokumentacji pomocy.",
   "dialog.endpointUrlInvalid": "Wprowadź prawidłowy adres zaczynający się od http:// lub https://.",
+  "dialog.getApiKey": "Uzyskaj klucz API od {{vendor}}",
   "dialog.name": "Nazwa",
   "dialog.namePlaceholder": "Na przykład: Skaner produkcyjny",
   "dialog.privateProcessing": "Użyj skanowania prywatnego",

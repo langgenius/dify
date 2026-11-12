@@ -3432,6 +3432,7 @@ export default interface Resources {
     'dialog.endpointUrl': 'Endpoint URL'
     'dialog.endpointUrlDescription': 'Dify sends each file to this address and expects a verdict. See the help documentation for the request format.'
     'dialog.endpointUrlInvalid': 'Enter a valid address that starts with http:// or https://.'
+    'dialog.getApiKey': 'Get API key from {{vendor}}'
     'dialog.name': 'Name'
     'dialog.namePlaceholder': 'For example, Production scanner'
     'dialog.privateProcessing': 'Use private scanning'

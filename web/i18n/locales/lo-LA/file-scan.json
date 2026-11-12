@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL ຂອງຈຸດເຊື່ອມຕໍ່",
   "dialog.endpointUrlDescription": "Dify ຈະສົ່ງແຕ່ລະໄຟລ໌ໄປຍັງທີ່ຢູ່ນີ້ ແລະ ລໍຖ້າຜົນການກວດສອບ. ເບິ່ງຮູບແບບຄຳຮ້ອງຂໍໄດ້ໃນເອກະສານຊ່ວຍເຫຼືອ.",
   "dialog.endpointUrlInvalid": "ປ້ອນທີ່ຢູ່ທີ່ຖືກຕ້ອງ ເຊິ່ງຂຶ້ນຕົ້ນດ້ວຍ http:// ຫຼື https://.",
+  "dialog.getApiKey": "ຮັບ API key ຈາກ {{vendor}}",
   "dialog.name": "ຊື່",
   "dialog.namePlaceholder": "ຕົວຢ່າງ: ຕົວສະແກນສຳລັບລະບົບໃຊ້ງານຈິງ",
   "dialog.privateProcessing": "ໃຊ້ການສະແກນແບບສ່ວນຕົວ",

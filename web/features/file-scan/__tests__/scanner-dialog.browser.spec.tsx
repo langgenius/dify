@@ -114,6 +114,43 @@ it('offers only the available services and swaps the fields with the selected on
   await expect.element(page.getByText('fileScan.dialog.dataNotice')).toBeVisible()
 })
 
+it('links to the page where the selected cloud vendor issues API keys', async () => {
+  await renderDialog()
+  const keyLink = (vendor: string) =>
+    page.getByRole('link', { name: `fileScan.dialog.getApiKey:{"vendor":"${vendor}"}` })
+  const anyKeyLink = () => page.getByRole('link', { name: /fileScan\.dialog\.getApiKey/ })
+
+  await expect
+    .element(keyLink('Cloudmersive'))
+    .toHaveAttribute('href', 'https://portal.cloudmersive.com/keys')
+  await expect.element(keyLink('Cloudmersive')).toHaveAttribute('target', '_blank')
+
+  await typeCard('Scanii').click()
+  await expect.element(keyLink('Scanii')).toHaveAttribute('href', 'https://www.scanii.com/accounts')
+  await expect.element(keyLink('Cloudmersive')).not.toBeInTheDocument()
+
+  await typeCard('MetaDefender Cloud').click()
+  await expect
+    .element(keyLink('MetaDefender Cloud'))
+    .toHaveAttribute('href', 'https://metadefender.opswat.com/account')
+
+  // A custom endpoint has no vendor to get a key from.
+  await typeCard('fileScan.type.customEndpoint').click()
+  await expect.element(anyKeyLink()).not.toBeInTheDocument()
+})
+
+it.each([
+  ['clamav', false],
+  ['scanii', true],
+])('shows the key link when editing a %s scanner: %s', async (type, shown) => {
+  await renderDialog(scanner({ provider_type: type }))
+  const link = page.getByRole('link', { name: /fileScan\.dialog\.getApiKey/ })
+
+  await expect.element(saveButton()).toBeVisible()
+  if (shown) await expect.element(link).toHaveAttribute('href', 'https://www.scanii.com/accounts')
+  else await expect.element(link).not.toBeInTheDocument()
+})
+
 it('saves a custom endpoint only once its address is an http or https URL', async () => {
   api.createProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
   const { onSaved } = await renderDialog()
