@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
+import { HUMAN_INPUT_TIMEOUT_HANDLE } from '@/app/components/workflow/nodes/human-input/shared/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
@@ -46,8 +47,13 @@ export const useWorkflowNodeFinished = () => {
             data.status === NodeRunningStatus.Succeeded
           )
             currentNode.data._runningBranchId = data.outputs?.switch
-          if (data.node_type === BlockEnum.HumanInput)
-            currentNode.data._runningBranchId = data?.outputs?.__action_id
+          if (data.node_type === BlockEnum.HumanInput) {
+            const actionId = data.outputs?.__action_id
+            currentNode.data._runningBranchId =
+              actionId === '' && data.status === NodeRunningStatus.Succeeded
+                ? HUMAN_INPUT_TIMEOUT_HANDLE
+                : actionId
+          }
         }
       })
       setNodes(newNodes)
