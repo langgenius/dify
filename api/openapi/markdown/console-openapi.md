@@ -7703,6 +7703,8 @@ Delete an API key for a dataset
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| sort_by | query |  | No | string, <br>**Available values:** "created_at", "updated_at", <br>**Default:** updated_at |
+| sort_order | query |  | No | string, <br>**Available values:** "asc", "desc", <br>**Default:** desc |
 
 #### Responses
 
@@ -7745,6 +7747,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Read-only verification scope | **application/json**: [ExternalAgentVerificationResponse](#externalagentverificationresponse)<br> |
+| 400 | Bad Request | **application/json**: [VerificationFailedError](#verificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /external-agents/{agent_id}
@@ -7876,6 +7879,12 @@ Delete an API key for a dataset
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary, **"page_session_id"**: string }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -7916,6 +7925,25 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Owned unsubmitted input cleared; admitted input remains intact |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/test-files/{lease_id}/access
+**Refresh from the exact input lease and current page/generation, never just file ID**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_generation | query |  | Yes | integer |
+| page_session_id | query |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+| lease_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Fresh scoped URL for a live owned Test input | **application/json**: [ExternalTestFileAccessResponse](#externaltestfileaccessresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /external-agents/{agent_id}/tests
@@ -7968,6 +7996,26 @@ Delete an API key for a dataset
 | 202 | Cancellation requested | **application/json**: [ExternalTestCancelResponse](#externaltestcancelresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /external-agents/{agent_id}/tests/{invocation_id}/files/{file_id}/access
+**Refresh only an owned current result's live committed published file**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_generation | query |  | Yes | integer |
+| page_session_id | query |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Fresh scoped URL for this exact published Test output | **application/json**: [ExternalTestFileAccessResponse](#externaltestfileaccessresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [PUT] /external-agents/{agent_id}/tracing
 #### Parameters
 
@@ -7986,6 +8034,20 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Saved collection preference | **application/json**: [ExternalAgentAssetResponse](#externalagentassetresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/tracing-config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Owner-only configured provider states without configuration values or secrets | **application/json**: [ExternalTracingProviderOverviewResponse](#externaltracingprovideroverviewresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /external-agents/{agent_id}/tracing-config/{provider}
@@ -26665,10 +26727,12 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | icon | string |  | Yes |
 | icon_background | string |  | Yes |
 | icon_type | string |  | Yes |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | metadata_revision | integer |  | Yes |
 | name | string |  | Yes |
 | overrides | [ string ] |  | Yes |
+| reference_count | integer | Distinct readable current App references on list rows; null withholds details. | Yes |
 | role | string |  | Yes |
 | row_version | integer |  | Yes |
 | tenant_id | string |  | Yes |
@@ -26739,11 +26803,15 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| sort_by | string, <br>**Available values:** "created_at", "updated_at", <br>**Default:** updated_at | *Enum:* `"created_at"`, `"updated_at"` | No |
+| sort_order | string, <br>**Available values:** "asc", "desc", <br>**Default:** desc | *Enum:* `"asc"`, `"desc"` | No |
 
 #### ExternalAgentListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| disabled_count | integer |  | Yes |
+| enabled_count | integer |  | Yes |
 | items | [ [ExternalAgentAssetResponse](#externalagentassetresponse) ] |  | Yes |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
@@ -26776,6 +26844,12 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ExternalAgentTimeoutPolicy | string |  |  |
+
+#### ExternalAgentVerificationFailureDetailsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | [VerificationFailureReason](#verificationfailurereason) |  | Yes |
 
 #### ExternalAgentVerificationResponse
 
@@ -26970,8 +27044,8 @@ Flask blueprint initialization.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| filename | string |  | Yes |
-| media_type | string |  | Yes |
+| filename | string |  | No |
+| media_type | string |  | No |
 | page_session_id | string |  | Yes |
 | url | string |  | Yes |
 
@@ -26988,6 +27062,21 @@ Flask blueprint initialization.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
+#### ExternalTestFileAccessQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_generation | integer |  | Yes |
+| page_session_id | string |  | Yes |
+
+#### ExternalTestFileAccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | Yes |
+| url | string |  | Yes |
+| url_expires_at | dateTime |  | Yes |
+
 #### ExternalTestFileResponse
 
 | Name | Type | Description | Required |
@@ -26998,6 +27087,8 @@ Flask blueprint initialization.
 | lease_id | string |  | Yes |
 | media_type | string |  | Yes |
 | size | integer |  | Yes |
+| url | string |  | Yes |
+| url_expires_at | dateTime |  | Yes |
 
 #### ExternalTestLeaveResponse
 
@@ -27037,6 +27128,16 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | policy | [ExternalAgentWaitPolicy](#externalagentwaitpolicy) |  | No |
 | task_text | string |  | Yes |
 
+#### ExternalTestStatisticsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attempt_count | integer | Number of actually dispatched attempts in this logical test | Yes |
+| elapsed_time | number | Seconds from first dispatch through local end or current read time | Yes |
+| token_reporting_denominator | integer |  | Yes |
+| token_reporting_numerator | integer |  | Yes |
+| total_tokens | integer | Trusted call-total sum only when every dispatched attempt reports usage | Yes |
+
 #### ExternalTestStatusResponse
 
 | Name | Type | Description | Required |
@@ -27047,6 +27148,7 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | metadata | object |  | Yes |
 | outputs | object |  | Yes |
 | state | string |  | Yes |
+| statistics | [ExternalTestStatisticsResponse](#externalteststatisticsresponse) |  | Yes |
 
 #### ExternalTraceDeliveryListResponse
 
@@ -27137,6 +27239,22 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | provider | string |  | Yes |
 | revision | integer |  | Yes |
 | values | object |  | Yes |
+
+#### ExternalTracingProviderOverviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled_provider | string |  | Yes |
+| providers | [ [ExternalTracingProviderStateResponse](#externaltracingproviderstateresponse) ] |  | Yes |
+
+#### ExternalTracingProviderStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| capture_content | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| provider | string |  | Yes |
+| revision | integer |  | Yes |
 
 #### ExternalTracingRevisionQuery
 
@@ -37785,6 +37903,20 @@ in form definition, or a variable while the workflow is running.
 | limit | integer |  | Yes |
 | size | integer |  | Yes |
 | usage_unknown | boolean |  | No |
+
+#### VerificationFailedError
+
+External Agent verification failed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| VerificationFailedError |  | External Agent verification failed. |  |
+
+#### VerificationFailureReason
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| VerificationFailureReason | string |  |  |
 
 #### VerificationTokenResponse
 

@@ -107,6 +107,18 @@ class ExternalTracingConfigEnvelopeResponse(ResponseModel):
     configuration: ExternalTracingConfigurationResponse | None
 
 
+class ExternalTracingProviderStateResponse(ResponseModel):
+    provider: str
+    revision: int
+    enabled: bool
+    capture_content: bool
+
+
+class ExternalTracingProviderOverviewResponse(ResponseModel):
+    enabled_provider: str | None
+    providers: tuple[ExternalTracingProviderStateResponse, ...]
+
+
 class ExternalTraceDeliveryStatusResponse(ResponseModel):
     id: str
     target_kind: str
@@ -145,6 +157,7 @@ register_response_schema_models(
     ExternalMonitoringResponse,
     ExternalTracingConfigurationResponse,
     ExternalTracingConfigEnvelopeResponse,
+    ExternalTracingProviderOverviewResponse,
     ExternalTraceDeliveryListResponse,
 )
 
@@ -212,6 +225,20 @@ class ExternalAgentInvocationTraceRawApi(Resource):
             )
         )
         return dump_response(ExternalTraceRawResponse, {"data": result})
+
+
+@console_ns.route("/external-agents/<uuid:agent_id>/tracing-config")
+class ExternalAgentTracingProviderOverviewApi(Resource):
+    @console_ns.doc("external_agent_tracing_provider_overview")
+    @console_ns.response(
+        200,
+        "Owner-only configured provider states without configuration values or secrets",
+        console_ns.models[ExternalTracingProviderOverviewResponse.__name__],
+    )
+    @console_account_admission()
+    def get(self, context: RequestContext, agent_id: UUID):
+        result = _call(lambda: application_services().external_agents.tracing_configs.overview(context, str(agent_id)))
+        return dump_response(ExternalTracingProviderOverviewResponse, result)
 
 
 @console_ns.route("/external-agents/<uuid:agent_id>/tracing-config/<string:provider>")

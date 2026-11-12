@@ -1,10 +1,13 @@
 """Tenant-scoped External asset transactions and immutable connection revisions."""
 
+from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from itertools import starmap
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,13 +20,14 @@ from models.enums import AppStatus
 from models.external_agent import (
     ExternalAgentConnectionRevision,
     ExternalAgentContextSlot,
+    ExternalAgentFileLease,
     ExternalAgentHead,
     ExternalAgentInvocation,
     ExternalAgentOperation,
     ExternalAgentVerification,
 )
 from models.external_agent_trace import ExternalAgentDataTombstone
-from models.model import App
+from models.model import App, UploadFile
 from models.workflow import Workflow
 from services.external_agents.contracts import (
     AssetPage,
@@ -149,24 +153,155 @@ class ExternalAssetRepository:
         enabled: bool | None,
         created_by: str | None,
         visible_ids: frozenset[str] | None,
+        reference_app_ids: frozenset[str] | None,
+        sort_by: Literal["created_at", "updated_at"],
+        sort_order: Literal["asc", "desc"],
     ) -> AssetPage:
+        """Read one authorized cohort; tabs do not alter availability counts.
+
+        Search, creator and asset visibility constrain both counters. A single
+        grouped query counts readable current App references for all page rows;
+        None withholds this detail, while an empty readable set yields zero.
+        """
         stmt = self._statement(tenant_id).where(
             Agent.status == AgentStatus.ACTIVE, ExternalAgentHead.deleted_at.is_(None)
         )
         if keyword:
             stmt = stmt.where(Agent.name.ilike("%" + escape_like_pattern(keyword) + "%", escape="\\"))
-        if enabled is not None:
-            stmt = stmt.where(ExternalAgentHead.enabled == enabled)
         if created_by is not None:
             stmt = stmt.where(Agent.created_by == created_by)
         if visible_ids is not None:
             stmt = stmt.where(Agent.id.in_(visible_ids))
         with self._sessions() as session:
-            total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-            rows = session.execute(
-                stmt.order_by(Agent.updated_at.desc(), Agent.id).offset((page - 1) * limit).limit(limit)
-            ).all()
-            return AssetPage(items=tuple(starmap(self._asset, rows)), total=total, page=page, limit=limit)
+            cohort = stmt.with_only_columns(ExternalAgentHead.enabled).subquery()
+            enabled_count, disabled_count = session.execute(
+                select(
+                    func.coalesce(func.sum(case((cohort.c.enabled.is_(True), 1), else_=0)), 0),
+                    func.coalesce(func.sum(case((cohort.c.enabled.is_(False), 1), else_=0)), 0),
+                )
+            ).one()
+            enabled_count, disabled_count = int(enabled_count), int(disabled_count)
+            total = (
+                enabled_count
+                if enabled is True
+                else disabled_count
+                if enabled is False
+                else enabled_count + disabled_count
+            )
+            if enabled is not None:
+                stmt = stmt.where(ExternalAgentHead.enabled == enabled)
+            column = Agent.created_at if sort_by == "created_at" else Agent.updated_at
+            order = column.asc() if sort_order == "asc" else column.desc()
+            rows = session.execute(stmt.order_by(order, Agent.id).offset((page - 1) * limit).limit(limit)).all()
+            assets = tuple(starmap(self._asset, rows))
+            counts = (
+                self._reference_counts(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_ids=tuple(asset.id for asset in assets),
+                    app_ids=reference_app_ids,
+                )
+                if reference_app_ids is not None
+                else {}
+            )
+            return AssetPage(
+                items=tuple(
+                    replace(asset, reference_count=counts.get(asset.id, 0) if reference_app_ids is not None else None)
+                    for asset in assets
+                ),
+                total=total,
+                page=page,
+                limit=limit,
+                enabled_count=enabled_count,
+                disabled_count=disabled_count,
+            )
+
+    @staticmethod
+    def _reference_statement(tenant_id: str, agent_ids: Sequence[str]):
+        """Keep counts and deletion preflight on the same current binding cohort."""
+        return (
+            select(WorkflowAgentNodeBinding.agent_id, App.id, App.name, App.mode, WorkflowAgentNodeBinding.node_id)
+            .select_from(WorkflowAgentNodeBinding)
+            .join(
+                App, (WorkflowAgentNodeBinding.app_id == App.id) & (WorkflowAgentNodeBinding.tenant_id == App.tenant_id)
+            )
+            .join(
+                Workflow,
+                (Workflow.id == WorkflowAgentNodeBinding.workflow_id)
+                & (Workflow.tenant_id == App.tenant_id)
+                & (Workflow.app_id == App.id),
+            )
+            .where(
+                App.tenant_id == tenant_id,
+                App.status == AppStatus.NORMAL,
+                WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
+                WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                (
+                    (WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT)
+                    & (Workflow.version == Workflow.VERSION_DRAFT)
+                )
+                | (App.workflow_id == WorkflowAgentNodeBinding.workflow_id),
+            )
+        )
+
+    @classmethod
+    def _reference_counts(
+        cls, session: Session, *, tenant_id: str, agent_ids: Sequence[str], app_ids: frozenset[str]
+    ) -> Mapping[str, int]:
+        if not agent_ids or not app_ids:
+            return {}
+        stmt = (
+            cls._reference_statement(tenant_id, agent_ids)
+            .with_only_columns(WorkflowAgentNodeBinding.agent_id, func.count(func.distinct(App.id)))
+            .where(App.id.in_(app_ids))
+            .group_by(WorkflowAgentNodeBinding.agent_id)
+        )
+        return {str(agent_id): int(count) for agent_id, count in session.execute(stmt)}
+
+    @staticmethod
+    def _icon_file_ids(session: Session, tenant_id: str, file_ids: Sequence[str]) -> frozenset[str]:
+        def is_id(value: str) -> bool:
+            try:
+                UUID(value)
+            except ValueError:
+                return False
+            return True
+
+        ids = tuple(identifier for identifier in dict.fromkeys(file_ids) if is_id(identifier))
+        if not ids:
+            return frozenset()
+        temporary_origin = (
+            select(ExternalAgentFileLease.id)
+            .where(
+                ExternalAgentFileLease.file_id == UploadFile.id,
+                or_(ExternalAgentFileLease.temporary_copy.is_(True), ExternalAgentFileLease.purpose == "output"),
+            )
+            .exists()
+        )
+        return frozenset(
+            session.scalars(
+                select(UploadFile.id).where(
+                    UploadFile.tenant_id == tenant_id,
+                    UploadFile.id.in_(ids),
+                    UploadFile.mime_type.like("image/%"),
+                    ~temporary_origin,
+                )
+            )
+        )
+
+    def owned_icon_file_ids(self, *, tenant_id: str, file_ids: Sequence[str]) -> frozenset[str]:
+        """Admit ordinary image uploads in one query; never renew a temporary BYOA file."""
+        with self._sessions() as session:
+            return self._icon_file_ids(session, tenant_id, file_ids)
+
+    @classmethod
+    def _validate_icon(cls, session: Session, tenant_id: str, icon_type: object, icon: object) -> None:
+        if icon_type == "image" and (
+            not isinstance(icon, str) or icon not in cls._icon_file_ids(session, tenant_id, (icon,))
+        ):
+            raise ExternalAgentInvalidInputError(
+                "Image icon must reference an available image uploaded in this workspace."
+            )
 
     def get_asset(self, *, tenant_id: str, agent_id: str) -> ExternalAsset:
         with self._sessions() as session:
@@ -357,6 +492,9 @@ class ExternalAssetRepository:
                 agent_id = str(uuidv7())
                 revision = self._revision(proof, agent_id, context.account_id)
                 name = metadata.get("name", proof.agent_card["name"])
+                self._validate_icon(
+                    session, context.active_workspace_id, metadata.get("icon_type"), metadata.get("icon")
+                )
                 agent = Agent(
                     id=agent_id,
                     tenant_id=context.active_workspace_id,
@@ -485,6 +623,12 @@ class ExternalAssetRepository:
                     "icon": agent.icon,
                     "icon_background": agent.icon_background,
                 }
+                self._validate_icon(
+                    session,
+                    context.active_workspace_id,
+                    changes.get("icon_type", current_info["icon_type"]),
+                    changes.get("icon", current_info["icon"]),
+                )
                 for key, value in changes.items():
                     if key in {"description", "role"} and value is None:
                         value = ""
@@ -578,29 +722,8 @@ class ExternalAssetRepository:
         """
         with self._sessions() as session:
             self._rows(session, tenant_id, agent_id)
-            stmt = (
-                select(App.id, App.name, App.mode, WorkflowAgentNodeBinding.node_id)
-                .join(
-                    WorkflowAgentNodeBinding,
-                    (WorkflowAgentNodeBinding.app_id == App.id) & (WorkflowAgentNodeBinding.tenant_id == App.tenant_id),
-                )
-                .join(
-                    Workflow,
-                    (Workflow.id == WorkflowAgentNodeBinding.workflow_id)
-                    & (Workflow.tenant_id == App.tenant_id)
-                    & (Workflow.app_id == App.id),
-                )
-                .where(
-                    App.tenant_id == tenant_id,
-                    App.status == AppStatus.NORMAL,
-                    WorkflowAgentNodeBinding.agent_id == agent_id,
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    (
-                        (WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT)
-                        & (Workflow.version == Workflow.VERSION_DRAFT)
-                    )
-                    | (App.workflow_id == WorkflowAgentNodeBinding.workflow_id),
-                )
+            stmt = self._reference_statement(tenant_id, (agent_id,)).with_only_columns(
+                App.id, App.name, App.mode, WorkflowAgentNodeBinding.node_id
             )
             if app_ids is not None:
                 stmt = stmt.where(App.id.in_(app_ids))

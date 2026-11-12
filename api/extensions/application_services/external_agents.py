@@ -12,10 +12,15 @@ from extensions.application_services.rbac import RBACServices
 from extensions.application_services.tracing import TracingServices
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
-from providers.a2a.control_adapters import WorkspaceExternalAssetAccess, WorkspaceExternalSecretCodec
+from providers.a2a.control_adapters import (
+    DifyExternalIconURLs,
+    WorkspaceExternalAssetAccess,
+    WorkspaceExternalSecretCodec,
+)
 from providers.a2a.files import DifyFileAdapter, RemoteFileRequester
 from providers.a2a.gateway import A2AGateway
 from providers.a2a.runtime_io import ExternalOutputNormalizer, ExternalRequestPartsBuilder
+from providers.a2a.test_file_urls import DifyTestFileURLSigner
 from providers.a2a.test_files import ExternalTestFileUpload
 from providers.a2a.transport import BoundedTransport, SSRFRequester
 from providers.a2a.workflow_access import ExternalWorkflowBindingAccess
@@ -30,6 +35,7 @@ from repositories.external_agents.observability_repository import (
     ExternalObservabilityRepository,
 )
 from repositories.external_agents.runtime_repository import ExternalRuntimeRepository
+from repositories.external_agents.test_file_access_repository import ExternalTestFileAccessRepository
 from repositories.external_agents.test_file_repository import ExternalTestFileRepository
 from repositories.external_agents.workflow_bindings import ExternalWorkflowBindingRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -40,6 +46,7 @@ from services.external_agents.invocation_service import ExternalInvocationServic
 from services.external_agents.observability import ExternalObservabilityService
 from services.external_agents.retention import ExternalRetentionService
 from services.external_agents.runtime_contracts import RuntimeSettings
+from services.external_agents.test_file_access import ExternalTestFileAccessService
 from services.external_agents.test_service import ExternalTestService
 from services.external_agents.traceability import TraceabilityNormalizer, TraceLimits
 from services.external_agents.tracing_config import ExternalTraceDeliveryService, ExternalTracingConfigService
@@ -74,6 +81,7 @@ class ExternalAgentServices:
     enabled: bool
     assets: ExternalAssetService
     tests: ExternalTestService
+    test_file_access: ExternalTestFileAccessService
     bindings: ExternalWorkflowBindingService
     runtime: ExternalInvocationService
     repository: ExternalRuntimeRepository
@@ -220,6 +228,16 @@ def build_external_agent_services(
     )
     return ExternalAgentServices(
         enabled=dify_config.EXTERNAL_AGENTS_ENABLED,
+        test_file_access=ExternalTestFileAccessService(
+            store=ExternalTestFileAccessRepository(sessions=sessions, clock=clock.now),
+            access=access,
+            signer=DifyTestFileURLSigner(
+                secret_key=dify_config.SECRET_KEY,
+                base_url=dify_config.FILES_URL,
+                signature_ttl_seconds=dify_config.FILES_ACCESS_TIMEOUT,
+                clock=clock.now,
+            ),
+        ),
         bindings=ExternalWorkflowBindingService(
             store=ExternalWorkflowBindingRepository(sessions=sessions),
             access=access,
@@ -229,6 +247,7 @@ def build_external_agent_services(
             store=assets,
             access=access,
             reference_access=observation_access,
+            icons=DifyExternalIconURLs(),
             gateway=gateway,
             secrets=codec,
             clock=clock.now,
@@ -239,6 +258,8 @@ def build_external_agent_services(
             assets=assets,
             access=access,
             runtime=runtime,
+            statistics=observations,
+            clock=clock,
             files=ExternalTestFileRepository(sessions=sessions, limits=file_limits),
             uploads=ExternalTestFileUpload(files=files, remote=remote, limits=file_limits),
             limits=file_limits,

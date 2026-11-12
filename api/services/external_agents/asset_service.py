@@ -4,9 +4,9 @@ import hashlib
 import json
 import re
 from collections.abc import Callable, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 from machinery.context import RequestContext
 
@@ -21,10 +21,12 @@ from .contracts import (
     ExternalAssetAccess,
     ExternalAssetReferences,
     ExternalAssetStore,
+    ExternalIconURLs,
     ExternalReferenceAccess,
     ExternalSecretCodec,
     OperationResult,
     VerificationEvidence,
+    VerificationFailureReason,
 )
 from .file_profile import normalize_media_type
 from .protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, GatewayPort, NoAuth, SealedBearerAuth
@@ -97,6 +99,7 @@ class ExternalAssetService:
         store: ExternalAssetStore,
         access: ExternalAssetAccess,
         reference_access: ExternalReferenceAccess,
+        icons: ExternalIconURLs,
         gateway: GatewayPort,
         secrets: ExternalSecretCodec,
         clock: Callable[[], datetime],
@@ -106,6 +109,7 @@ class ExternalAssetService:
         self._store = store
         self._access = access
         self._reference_access = reference_access
+        self._icons = icons
         self._gateway = gateway
         self._secrets = secrets
         self._clock = clock
@@ -133,12 +137,16 @@ class ExternalAssetService:
         keyword: str | None,
         enabled: bool | None,
         connected_by_me: bool,
+        sort_by: Literal["created_at", "updated_at"] = "updated_at",
+        sort_order: Literal["asc", "desc"] = "desc",
     ) -> AssetPage:
         if self._access.role(context) not in {"owner", "admin", "editor", "normal"}:
             raise ExternalAgentForbiddenError("Workspace membership is required.")
         if page < 1 or not 1 <= limit <= 100:
             raise ExternalAgentInvalidInputError("Invalid pagination.")
-        return self._store.list_assets(
+        if sort_by not in {"created_at", "updated_at"} or sort_order not in {"asc", "desc"}:
+            raise ExternalAgentInvalidInputError("Invalid asset sorting.")
+        result = self._store.list_assets(
             tenant_id=context.active_workspace_id,
             page=page,
             limit=limit,
@@ -146,6 +154,22 @@ class ExternalAssetService:
             enabled=enabled,
             created_by=context.account_id if connected_by_me else None,
             visible_ids=self._access.visible_agent_ids(context),
+            reference_app_ids=self._reference_access.reference_list_app_ids(context),
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+        return replace(result, items=self._present(context, result.items))
+
+    def _present(self, context: RequestContext, assets: Sequence[ExternalAsset]) -> tuple[ExternalAsset, ...]:
+        """Refresh signed icons only after one tenant-owned file admission query."""
+        image_ids = tuple(asset.icon for asset in assets if asset.icon_type == "image" and asset.icon is not None)
+        owned = self._store.owned_icon_file_ids(tenant_id=context.active_workspace_id, file_ids=image_ids)
+        urls = self._icons.image_urls(tuple(owned))
+        return tuple(
+            replace(
+                asset, icon_url=urls.get(asset.icon) if asset.icon_type == "image" and asset.icon is not None else None
+            )
+            for asset in assets
         )
 
     def detail(self, context: RequestContext, agent_id: str) -> dict[str, Any]:
@@ -171,7 +195,7 @@ class ExternalAssetService:
             "iconUrl",
         )
         return {
-            "asset": asdict(asset),
+            "asset": asdict(self._present(context, (asset,))[0]),
             "connection": {
                 "revision_id": connection.id,
                 "endpoint": connection.endpoint,
@@ -248,7 +272,32 @@ class ExternalAssetService:
                 timeout_seconds=self._limits.request_timeout_seconds,
             )
         except GatewayError as error:
-            raise ExternalAgentVerificationFailedError(str(error)) from error
+            reason: VerificationFailureReason
+            if error.code in {
+                "authentication_failed",
+                "permission_denied",
+                "authentication_incompatible",
+                "invalid_credential",
+                "credential_unavailable",
+            }:
+                reason = "authentication_failed"
+                message = "The external Agent rejected the authentication configuration."
+            elif error.code in {"profile_unsupported", "required_extension_unsupported", "extension_unsupported"}:
+                reason = "unsupported_protocol"
+                message = "The external Agent does not support the required A2A 1.0 HTTP+JSON profile."
+            elif error.code in {
+                "invalid_agent_card",
+                "invalid_content_type",
+                "response_too_large",
+                "unsupported_content_encoding",
+                "credential_reflection",
+            }:
+                reason = "invalid_agent_card"
+                message = "The external Agent Card is invalid."
+            else:
+                reason = "connection_failed"
+                message = "Could not connect to the external Agent."
+            raise ExternalAgentVerificationFailedError(message, reason=reason) from error
         declaration = result.card.get("capabilities")
         declared_extensions = declaration.get("extensions", []) if isinstance(declaration, dict) else []
         extensions = declared_extensions if isinstance(declared_extensions, list) else []
@@ -334,13 +383,15 @@ class ExternalAssetService:
     ) -> ExternalAsset:
         self._require(context, manage=True)
         self._validate_info(changes, creation=False)
-        return self._store.update_info(
+        asset = self._store.update_info(
             context=context, agent_id=agent_id, expected_revision=expected_revision, changes=changes
         )
+        return self._present(context, (asset,))[0]
 
     def set_enabled(self, context: RequestContext, agent_id: str, enabled: bool) -> ExternalAsset:
         self._require(context, manage=True)
-        return self._store.set_enabled(context=context, agent_id=agent_id, enabled=enabled)
+        asset = self._store.set_enabled(context=context, agent_id=agent_id, enabled=enabled)
+        return self._present(context, (asset,))[0]
 
     def set_tracing(self, context: RequestContext, agent_id: str, enabled: bool) -> ExternalAsset:
         self._require(context, manage=True)
@@ -350,7 +401,8 @@ class ExternalAssetService:
         )
         if enabled and not connection.capabilities.get("traceability_supported"):
             raise ExternalAgentInvalidInputError("This Agent does not declare the supported Traceability profile.")
-        return self._store.set_tracing(context=context, agent_id=agent_id, enabled=enabled)
+        asset = self._store.set_tracing(context=context, agent_id=agent_id, enabled=enabled)
+        return self._present(context, (asset,))[0]
 
     def delete(self, context: RequestContext, agent_id: str) -> None:
         self._require(context, manage=True)

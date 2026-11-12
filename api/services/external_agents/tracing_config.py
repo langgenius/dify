@@ -51,6 +51,22 @@ class ExternalTracingConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
+class ExternalTracingProviderState:
+    """Configured destination state, deliberately excluding all provider values."""
+
+    provider: str
+    revision: int
+    enabled: bool
+    capture_content: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalTracingProviderOverview:
+    enabled_provider: str | None
+    providers: tuple[ExternalTracingProviderState, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class FrozenExternalTraceTarget:
     tenant_id: str
     invocation_id: str
@@ -88,6 +104,16 @@ class ExternalTraceDeliveryStatus:
 
 
 class ExternalTracingStore(Protocol):
+    def configured_provider_states(
+        self, context: RequestContext, *, agent_id: str
+    ) -> Sequence[ExternalTracingProviderState]:
+        """Read all configured summaries in one owner-scoped query, never config values.
+
+        Recheck owner/admin membership and live asset ownership. Return stable
+        provider ordering; no decrypted/encrypted secrets cross this port.
+        """
+        ...
+
     def config(self, *, tenant_id: str, agent_id: str, provider: str) -> StoredExternalTracingConfig | None: ...
 
     def save_config(
@@ -191,6 +217,20 @@ class ExternalTracingConfigService:
         self, *, store: ExternalTracingStore, access: ExternalObservationAccess, provider: TracingConfigProviderGateway
     ) -> None:
         self._store, self._access, self._provider = store, access, provider
+
+    def overview(self, context: RequestContext, agent_id: str) -> ExternalTracingProviderOverview:
+        """Read configured destinations and the enabled provider without config I/O.
+
+        Only a live asset's owner/admin may read. No provider discovery,
+        verification or secret presentation is performed; corrupt multiple-active
+        state fails explicitly instead of inventing a selected destination.
+        """
+        self._access.manage(context, agent_id)
+        providers = tuple(self._store.configured_provider_states(context, agent_id=agent_id))
+        enabled = tuple(value.provider for value in providers if value.enabled)
+        if len(enabled) > 1:
+            raise ObservationConflictError("tracing_provider_state_conflict")
+        return ExternalTracingProviderOverview(enabled[0] if enabled else None, providers)
 
     def get(self, context: RequestContext, agent_id: str, provider: str) -> ExternalTracingConfiguration | None:
         """Present a live asset target without decrypting or returning secret values."""

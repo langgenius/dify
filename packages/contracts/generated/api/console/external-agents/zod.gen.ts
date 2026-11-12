@@ -90,10 +90,12 @@ export const zExternalAgentAssetResponse = z.object({
   icon: z.string().nullable(),
   icon_background: z.string().nullable(),
   icon_type: z.string().nullable(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   metadata_revision: z.int(),
   name: z.string(),
   overrides: z.array(z.string()),
+  reference_count: z.int().nullable(),
   role: z.string(),
   row_version: z.int(),
   tenant_id: z.string(),
@@ -106,6 +108,8 @@ export const zExternalAgentAssetResponse = z.object({
  * ExternalAgentListResponse
  */
 export const zExternalAgentListResponse = z.object({
+  disabled_count: z.int(),
+  enabled_count: z.int(),
   items: z.array(zExternalAgentAssetResponse),
   limit: z.int(),
   page: z.int(),
@@ -138,28 +142,27 @@ export const zExternalTestFileResponse = z.object({
   lease_id: z.string(),
   media_type: z.string(),
   size: z.int(),
+  url: z.string(),
+  url_expires_at: z.iso.datetime(),
 })
 
 /**
  * ExternalPasteLinkPayload
  */
 export const zExternalPasteLinkPayload = z.object({
-  filename: z.string().min(1).max(255),
-  media_type: z.string().min(1).max(255),
+  filename: z.string().min(1).max(255).nullish(),
+  media_type: z.string().min(1).max(255).nullish(),
   page_session_id: z.string().min(1).max(128),
   url: z.string().min(1).max(8192),
 })
 
 /**
- * ExternalTestStatusResponse
+ * ExternalTestFileAccessResponse
  */
-export const zExternalTestStatusResponse = z.object({
-  error_code: z.string().nullable(),
-  error_message: z.string().nullable(),
-  invocation_id: z.string(),
-  metadata: z.record(z.string(), z.unknown()),
-  outputs: z.record(z.string(), z.unknown()).nullable(),
-  state: z.string(),
+export const zExternalTestFileAccessResponse = z.object({
+  file_id: z.string(),
+  url: z.string(),
+  url_expires_at: z.iso.datetime(),
 })
 
 /**
@@ -266,6 +269,75 @@ export const zExternalAgentReferencesResponse = z.object({
   may_have_in_flight: z.boolean(),
 })
 
+/**
+ * ExternalTestStatisticsResponse
+ */
+export const zExternalTestStatisticsResponse = z.object({
+  attempt_count: z.int().gte(0),
+  elapsed_time: z.number().nullable(),
+  token_reporting_denominator: z.int().gte(0),
+  token_reporting_numerator: z.int().gte(0),
+  total_tokens: z.int().nullable(),
+})
+
+/**
+ * ExternalTestStatusResponse
+ */
+export const zExternalTestStatusResponse = z.object({
+  error_code: z.string().nullable(),
+  error_message: z.string().nullable(),
+  invocation_id: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+  outputs: z.record(z.string(), z.unknown()).nullable(),
+  state: z.string(),
+  statistics: zExternalTestStatisticsResponse,
+})
+
+/**
+ * ExternalTracingProviderStateResponse
+ */
+export const zExternalTracingProviderStateResponse = z.object({
+  capture_content: z.boolean(),
+  enabled: z.boolean(),
+  provider: z.string(),
+  revision: z.int(),
+})
+
+/**
+ * ExternalTracingProviderOverviewResponse
+ */
+export const zExternalTracingProviderOverviewResponse = z.object({
+  enabled_provider: z.string().nullable(),
+  providers: z.array(zExternalTracingProviderStateResponse),
+})
+
+export const zVerificationFailureReason = z.enum([
+  'authentication_failed',
+  'connection_failed',
+  'invalid_agent_card',
+  'unsupported_protocol',
+])
+
+/**
+ * ExternalAgentVerificationFailureDetailsResponse
+ */
+export const zExternalAgentVerificationFailureDetailsResponse = z.object({
+  reason: zVerificationFailureReason,
+})
+
+/**
+ * VerificationFailedError
+ *
+ * External Agent verification failed.
+ */
+export const zVerificationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('verification_failed'),
+    details: zExternalAgentVerificationFailureDetailsResponse.optional(),
+    status: z.literal(400),
+  }),
+)
+
 export const zExternalAgentJsonValue = z
   .union([
     z.boolean(),
@@ -354,6 +426,8 @@ export const zGetExternalAgentsQuery = z.object({
   keyword: z.string().max(255).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  sort_by: z.enum(['created_at', 'updated_at']).optional().default('updated_at'),
+  sort_order: z.enum(['asc', 'desc']).optional().default('desc'),
 })
 
 /**
@@ -456,6 +530,11 @@ export const zGetExternalAgentsByAgentIdReferencesPath = z.object({
  */
 export const zGetExternalAgentsByAgentIdReferencesResponse = zExternalAgentReferencesResponse
 
+export const zPostExternalAgentsByAgentIdTestFilesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  page_session_id: z.string().min(1).max(128),
+})
+
 export const zPostExternalAgentsByAgentIdTestFilesPath = z.object({
   agent_id: z.uuid(),
 })
@@ -485,6 +564,22 @@ export const zDeleteExternalAgentsByAgentIdTestFilesByLeaseIdPath = z.object({
  * Owned unsubmitted input cleared; admitted input remains intact
  */
 export const zDeleteExternalAgentsByAgentIdTestFilesByLeaseIdResponse = z.void()
+
+export const zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessPath = z.object({
+  agent_id: z.uuid(),
+  lease_id: z.uuid(),
+})
+
+export const zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessQuery = z.object({
+  expected_generation: z.int().gte(1),
+  page_session_id: z.string().min(1).max(128),
+})
+
+/**
+ * Fresh scoped URL for a live owned Test input
+ */
+export const zGetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponse =
+  zExternalTestFileAccessResponse
 
 export const zPostExternalAgentsByAgentIdTestsBody = zExternalTestPayload
 
@@ -518,6 +613,23 @@ export const zPostExternalAgentsByAgentIdTestsByInvocationIdCancelPath = z.objec
 export const zPostExternalAgentsByAgentIdTestsByInvocationIdCancelResponse =
   zExternalTestCancelResponse
 
+export const zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessPath = z.object({
+  agent_id: z.uuid(),
+  file_id: z.uuid(),
+  invocation_id: z.uuid(),
+})
+
+export const zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessQuery = z.object({
+  expected_generation: z.int().gte(1),
+  page_session_id: z.string().min(1).max(128),
+})
+
+/**
+ * Fresh scoped URL for this exact published Test output
+ */
+export const zGetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponse =
+  zExternalTestFileAccessResponse
+
 export const zPutExternalAgentsByAgentIdTracingBody = zExternalAgentSwitchPayload
 
 export const zPutExternalAgentsByAgentIdTracingPath = z.object({
@@ -528,6 +640,16 @@ export const zPutExternalAgentsByAgentIdTracingPath = z.object({
  * Saved collection preference
  */
 export const zPutExternalAgentsByAgentIdTracingResponse = zExternalAgentAssetResponse
+
+export const zGetExternalAgentsByAgentIdTracingConfigPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Owner-only configured provider states without configuration values or secrets
+ */
+export const zGetExternalAgentsByAgentIdTracingConfigResponse =
+  zExternalTracingProviderOverviewResponse
 
 export const zDeleteExternalAgentsByAgentIdTracingConfigByProviderPath = z.object({
   agent_id: z.uuid(),

@@ -268,8 +268,8 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
 class DocumentFinisher(Protocol):
     """An Api that rewrites its finished OpenAPI document to say what Flask-RESTX cannot.
 
-    Runs last in ``Swagger.as_dict``, so the live ``openapi.json``, the spec generator
-    and every test that reads the document see the same result.
+    Runs after schema registration and before deterministic finalization, so the live
+    ``openapi.json``, the spec generator and every test see the same complete document.
     """
 
     def finish_document(self, document: dict[str, object]) -> dict[str, object]: ...
@@ -442,7 +442,8 @@ def install_swagger_compatibility() -> None:
             payload = finalize_openapi_payload(original_as_dict(self), registered_models=self.api.models)
             if isinstance(self.api, DocumentFinisher):
                 payload = self.api.finish_document(payload)
-            return payload
+            # Finishers can add typed error details with order-insensitive arrays.
+            return finalize_openapi_payload(payload)
         finally:
             current_app.config["RESTX_INCLUDE_ALL_MODELS"] = include_all_models
 

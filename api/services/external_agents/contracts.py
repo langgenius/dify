@@ -4,10 +4,11 @@ Credentials in records are encrypted opaque values. Only an injected secret code
 and the bounded outbound adapter may materialize plaintext for a single request.
 """
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from machinery.context import RequestContext
 
@@ -32,8 +33,18 @@ class ExternalAgentInvalidInputError(ExternalAgentError):
     code = "invalid_external_agent_configuration"
 
 
+type VerificationFailureReason = Literal[
+    "connection_failed", "authentication_failed", "unsupported_protocol", "invalid_agent_card"
+]
+
+
 class ExternalAgentVerificationFailedError(ExternalAgentError):
     code = "verification_failed"
+
+    def __init__(self, message: str, *, reason: VerificationFailureReason) -> None:
+        """Carry a stable failure category and a safe message, never peer content."""
+        super().__init__(message)
+        self.reason = reason
 
 
 class ExternalAgentIdempotencyConflictError(ExternalAgentConflictError):
@@ -116,6 +127,10 @@ class ExternalAsset:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    # Derived for this admitted read; never persisted as an asset setting.
+    icon_url: str | None = None
+    # Computed on list rows; None withholds App reference details, including for Normal members.
+    reference_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -143,6 +158,8 @@ class AssetPage:
     total: int
     page: int
     limit: int
+    enabled_count: int
+    disabled_count: int
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -193,12 +210,22 @@ class ExternalAssetAccess(Protocol):
 
 
 class ExternalReferenceAccess(Protocol):
+    def reference_list_app_ids(self, context: RequestContext) -> frozenset[str] | None:
+        """Return Monitoring's readable App set once for a list; None withholds details."""
+        ...
+
     def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
         """Return the same trusted readable-App scope used by asset Monitoring.
 
         Reject Normal and inaccessible/foreign assets; an empty set admits no
         App details. Implementations translate denials to ExternalAgentError.
         """
+        ...
+
+
+class ExternalIconURLs(Protocol):
+    def image_urls(self, file_ids: Sequence[str]) -> Mapping[str, str]:
+        """Sign only the server-admitted tenant-owned image references, without file I/O."""
         ...
 
 
@@ -221,7 +248,14 @@ class ExternalAssetStore(Protocol):
         enabled: bool | None,
         created_by: str | None,
         visible_ids: frozenset[str] | None,
+        reference_app_ids: frozenset[str] | None,
+        sort_by: Literal["created_at", "updated_at"],
+        sort_order: Literal["asc", "desc"],
     ) -> AssetPage: ...
+
+    def owned_icon_file_ids(self, *, tenant_id: str, file_ids: Sequence[str]) -> frozenset[str]:
+        """Admit ordinary tenant-owned image uploads; temporary BYOA files cannot become icons."""
+        ...
 
     def get_asset(self, *, tenant_id: str, agent_id: str) -> ExternalAsset: ...
 

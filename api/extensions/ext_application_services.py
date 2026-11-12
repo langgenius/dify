@@ -610,6 +610,9 @@ def build_application_services(
         repository=messages,
     )
 
+    external_agents = build_external_agent_services(
+        sessions=database_client, workspaces=workspace_repository, rbac=rbac, tracing=tracing, files=file_service
+    )
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -789,6 +792,7 @@ def build_application_services(
         upload_file_delivery=UploadFileDeliveryService(
             files=UploadFileDeliveryQueryRepository(session_factory=database_client),
             storage=storage,
+            access=external_agents.test_file_access,
         ),
         oauth_server=oauth_server,
         oauth_device=_build_oauth_device_service(
@@ -873,9 +877,7 @@ def build_application_services(
             ),
         ),
         tracing=tracing,
-        external_agents=build_external_agent_services(
-            sessions=database_client, workspaces=workspace_repository, rbac=rbac, tracing=tracing, files=file_service
-        ),
+        external_agents=external_agents,
     )
 
 

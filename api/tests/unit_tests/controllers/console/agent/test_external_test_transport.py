@@ -36,14 +36,17 @@ from extensions.application_services.external_agents import build_external_agent
 from machinery.context import RequestContext
 from models.external_agent import ExternalAgentFileLease, ExternalAgentInvocation
 from repositories.external_agents.asset_repository import ExternalAssetRepository
+from repositories.external_agents.observability_repository import ExternalObservabilityRepository
 from repositories.external_agents.test_file_repository import ExternalTestFileRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.external_agents.file_profile import FileLimits
 from services.external_agents.io_contracts import ExternalIOError
 from services.external_agents.runtime_contracts import RuntimeError as ExternalRuntimeError
 from services.external_agents.test_service import ExternalTestService
+from services.external_agents.traceability import TraceLimits
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.agent.test_external_endpoint_contracts import EndpointDomain, endpoint_domain
+from tests.unit_tests.repositories.external_agents.test_runtime_repository import Clock
 from tests.unit_tests.services.external_agents.test_control_plane_applications import MembershipAccess, OwnedUploads
 
 __all__ = ["endpoint_domain"]
@@ -125,6 +128,8 @@ def test_transport(endpoint_domain: EndpointDomain) -> Iterator[TestTransport]:
                 uploads=uploads,
                 limits=limits,
                 max_variable_bytes=16,
+                statistics=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+                clock=Clock(),
             ),
         )
         services = replace(base, external_agents=external)
@@ -196,6 +201,13 @@ def test_capabilities_start_result_and_cancel_are_real_serialized_transitions(te
     )
     assert queried["invocation_id"] == str(identifier)
     assert queried["outputs"] is None
+    assert mapping(queried["statistics"]) == {
+        "elapsed_time": None,
+        "total_tokens": None,
+        "attempt_count": 0,
+        "token_reporting_numerator": 0,
+        "token_reporting_denominator": 0,
+    }
     canceled = invoke_test(
         domain, ExternalAgentTestCancelApi, "post", agent_id=UUID(domain[2]), invocation_id=identifier
     )
