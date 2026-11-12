@@ -333,6 +333,55 @@ class TestParagraphIndexProcessor:
 
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"], session)
 
+    def test_clean_with_an_empty_batch_deletes_nothing(
+        self, processor: ParagraphIndexProcessor, dataset: Dataset
+    ) -> None:
+        """An empty batch means "nothing to remove", not "the whole dataset".
+
+        Callers build the list from the document's segments, so a document
+        without segments yet hands over `[]`. Routing that to the dataset-wide
+        branch wiped every vector in the knowledge base — and, on the economy
+        technique, the dataset's whole keyword table with it.
+        """
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
+        session = self.session
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
+            ) as mock_summary,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
+        ):
+            processor.clean(dataset, [], with_keywords=True, delete_summaries=True, session=session)
+
+        mock_vector_cls.return_value.delete.assert_not_called()
+        mock_vector_cls.return_value.delete_by_ids.assert_not_called()
+        mock_keyword_cls.return_value.delete.assert_not_called()
+        mock_keyword_cls.return_value.delete_by_ids.assert_not_called()
+        mock_summary.assert_not_called()
+
+        mock_vector_cls.return_value.delete.assert_not_called()
+        mock_vector_cls.return_value.delete_by_ids.assert_not_called()
+        mock_summary.assert_not_called()
+
+    def test_clean_with_none_still_deletes_the_whole_dataset(
+        self, processor: ParagraphIndexProcessor, dataset: Dataset
+    ) -> None:
+        """``None`` keeps its meaning: remove the dataset's whole index."""
+        session = self.session
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
+            ) as mock_summary,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
+        ):
+            processor.clean(dataset, None, delete_summaries=True, session=session)
+
+        mock_vector_cls.return_value.delete.assert_called_once()
+        mock_summary.assert_called_once_with(dataset, None, session=session)
+
     def test_index_list_chunks_high_quality(
         self, processor: ParagraphIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:

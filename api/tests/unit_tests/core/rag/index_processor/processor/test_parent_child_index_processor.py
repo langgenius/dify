@@ -362,6 +362,33 @@ class TestParentChildIndexProcessor:
 
         mock_summary.assert_called_once_with(dataset, None, session=session)
 
+    def test_clean_with_an_empty_batch_deletes_nothing(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
+        """An empty batch means "nothing to remove", not "the whole dataset".
+
+        The dataset-wide branch also drops every child chunk row, so routing
+        an empty list there wiped the whole knowledge base.
+        """
+        session = self.session
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
+            ) as mock_summary,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.delete") as mock_delete,
+            patch.object(session, "execute") as mock_execute,
+        ):
+            processor.clean(dataset, [], delete_summaries=True, delete_child_chunks=True, session=session)
+
+        mock_vector_cls.return_value.delete.assert_not_called()
+        mock_vector_cls.return_value.delete_by_ids.assert_not_called()
+        mock_summary.assert_not_called()
+        mock_delete.assert_not_called()
+        # The child-chunk rows are removed through the session, so patching
+        # the SQL expression alone would not catch that side effect.
+        mock_execute.assert_not_called()
+
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=None)
 
