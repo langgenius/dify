@@ -246,6 +246,52 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module: ModuleType, mo
     assert vector_cls.call_args.kwargs["collection_name"] == "collection"
 
 
+@pytest.mark.parametrize(
+    ("config_value", "expected"),
+    [
+        (True, True),
+        (False, False),
+        (None, True),
+    ],
+)
+def test_factory_honors_the_inverted_index_toggle(
+    clickzetta_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    config_value: bool | None,
+    expected: bool,
+) -> None:
+    """The factory must forward the configured toggle instead of falling back to ``True``.
+
+    ``CLICKZETTA_ENABLE_INVERTED_INDEX`` is nullable on the config source, while the
+    provider-side ``ClickzettaConfig.enable_inverted_index`` is a non-optional ``bool``.
+    Preconditions: a configured dataset and the required Clickzetta credentials.
+    Postconditions: the value handed to ``ClickzettaVector`` equals the configured
+    value, and ``None`` resolves to the provider default ``True``.
+    """
+    factory = clickzetta_module.ClickzettaVectorFactory()
+    dataset = Dataset(id="dataset-1")
+
+    monkeypatch.setattr(clickzetta_module.Dataset, "gen_collection_name_by_id", lambda _id: "COLLECTION")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_USERNAME", "username")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_PASSWORD", "password")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_INSTANCE", "instance")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_SERVICE", "service")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_WORKSPACE", "workspace")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VCLUSTER", "cluster")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_SCHEMA", "dify")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_BATCH_SIZE", 10)
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ENABLE_INVERTED_INDEX", config_value)
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_TYPE", "chinese")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_MODE", "smart")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
+
+    with patch.object(clickzetta_module, "ClickzettaVector", return_value="vector") as vector_cls:
+        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
+
+    config = vector_cls.call_args.kwargs["config"]
+    assert config.enable_inverted_index is expected
+
+
 def test_connection_pool_singleton_and_config_key(
     clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
