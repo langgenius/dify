@@ -34,7 +34,13 @@ from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
-from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunItemStatus, EvaluationRunStatus
+from models.evaluation import (
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunItemStatus,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     EvaluationRunLease,
@@ -248,7 +254,7 @@ def test_workflow_task_ids_are_deterministic_per_run_phase_and_position() -> Non
 
 def test_execute_evaluation_starts_running_lease_before_work(
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_session_factory,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     run_id = "30000000-0000-0000-0000-000000000051"
     workflow_version_id = "30000000-0000-0000-0000-000000000004"
@@ -257,7 +263,7 @@ def test_execute_evaluation_starts_running_lease_before_work(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="apps",
+                target_type=EvaluationTargetType.APPS,
                 target_id="30000000-0000-0000-0000-000000000003",
                 target_workflow_version_id=workflow_version_id,
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -280,7 +286,7 @@ def test_execute_evaluation_starts_running_lease_before_work(
     maintained_leases: list[EvaluationRunLease] = []
 
     @contextmanager
-    def maintain_heartbeat(lease: EvaluationRunLease):
+    def maintain_heartbeat(lease: EvaluationRunLease) -> Generator[None]:
         maintained_leases.append(lease)
         yield
 
@@ -324,7 +330,7 @@ def test_execute_evaluation_accepts_knowledge_retrieval_v2_payload(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="apps",
+                target_type=EvaluationTargetType.APPS,
                 target_id="30000000-0000-0000-0000-000000000003",
                 target_workflow_version_id=workflow_version_id,
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -342,7 +348,7 @@ def test_execute_evaluation_accepts_knowledge_retrieval_v2_payload(
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
 
     @contextmanager
-    def maintain_heartbeat(_lease: EvaluationRunLease):
+    def maintain_heartbeat(_lease: EvaluationRunLease) -> Generator[None]:
         yield
 
     monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
@@ -384,7 +390,7 @@ def test_execute_evaluation_does_not_run_duplicate_delivery(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="apps",
+                target_type=EvaluationTargetType.APPS,
                 target_id="30000000-0000-0000-0000-000000000003",
                 target_workflow_version_id=workflow_version_id,
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -438,7 +444,7 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="knowledge_base",
+                target_type=EvaluationTargetType.KNOWLEDGE_BASE,
                 target_id="30000000-0000-0000-0000-000000000003",
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
                 config_snapshot="{}",
@@ -463,7 +469,7 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", MagicMock(side_effect=transient_error))
 
     @contextmanager
-    def maintain_heartbeat(_lease: EvaluationRunLease):
+    def maintain_heartbeat(_lease: EvaluationRunLease) -> Generator[None]:
         yield
 
     monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
@@ -509,7 +515,7 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="apps",
+                target_type=EvaluationTargetType.APPS,
                 target_id="30000000-0000-0000-0000-000000000003",
                 target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -537,7 +543,7 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
     )
 
     @contextmanager
-    def maintain_heartbeat(_lease: EvaluationRunLease):
+    def maintain_heartbeat(_lease: EvaluationRunLease) -> Generator[None]:
         yield
 
     monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
@@ -580,7 +586,7 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="apps",
+                target_type=EvaluationTargetType.APPS,
                 target_id="30000000-0000-0000-0000-000000000003",
                 target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -628,7 +634,7 @@ def test_stale_execution_lease_cannot_write_progress_or_row_checkpoint(
             EvaluationRun(
                 id=run_id,
                 tenant_id="30000000-0000-0000-0000-000000000002",
-                target_type="apps",
+                target_type=EvaluationTargetType.APPS,
                 target_id="30000000-0000-0000-0000-000000000003",
                 target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -676,7 +682,7 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
                 EvaluationRun(
                     id=run_id,
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="apps",
+                    target_type=EvaluationTargetType.APPS,
                     target_id="30000000-0000-0000-0000-000000000003",
                     target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -740,7 +746,7 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
             EvaluationRun(
                 id=run_id,
                 tenant_id=tenant_id,
-                target_type="agents",
+                target_type=EvaluationTargetType.AGENTS,
                 target_id=agent_id,
                 target_agent_config_snapshot_id=snapshot_id,
                 evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -850,7 +856,7 @@ def test_resume_agent_rows_reuses_target_checkpoint(
                 EvaluationRun(
                     id=run_id,
                     tenant_id=tenant_id,
-                    target_type="agents",
+                    target_type=EvaluationTargetType.AGENTS,
                     target_id=agent_id,
                     target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -1037,7 +1043,7 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
                 EvaluationRun(
                     id=run_id,
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="knowledge_base",
+                    target_type=EvaluationTargetType.KNOWLEDGE_BASE,
                     target_id="30000000-0000-0000-0000-000000000003",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
                     config_snapshot="{}",
@@ -1101,7 +1107,7 @@ def test_heartbeat_loop_renews_until_run_is_no_longer_running(monkeypatch: pytes
 
 def test_renew_evaluation_run_heartbeat_only_updates_running_run(
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_session_factory,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     now = naive_utc_now()
     running_run_id = "30000000-0000-0000-0000-000000000031"
@@ -1113,7 +1119,7 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
                 EvaluationRun(
                     id=running_run_id,
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="apps",
+                    target_type=EvaluationTargetType.APPS,
                     target_id="30000000-0000-0000-0000-000000000003",
                     target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -1127,7 +1133,7 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
                 EvaluationRun(
                     id=completed_run_id,
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="apps",
+                    target_type=EvaluationTargetType.APPS,
                     target_id="30000000-0000-0000-0000-000000000003",
                     target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -1141,7 +1147,7 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
         session.commit()
 
     @contextmanager
-    def create_session():
+    def create_session() -> Generator[Session]:
         with sqlite_session_factory() as session:
             yield session
 
@@ -1163,7 +1169,7 @@ def test_renew_evaluation_run_heartbeat_only_updates_running_run(
 
 def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_session_factory,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     now = naive_utc_now()
     with sqlite_session_factory() as session:
@@ -1172,7 +1178,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
                 EvaluationRun(
                     id="30000000-0000-0000-0000-000000000001",
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="apps",
+                    target_type=EvaluationTargetType.APPS,
                     target_id="30000000-0000-0000-0000-000000000003",
                     target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -1189,7 +1195,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
                 EvaluationRun(
                     id="30000000-0000-0000-0000-000000000011",
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="apps",
+                    target_type=EvaluationTargetType.APPS,
                     target_id="30000000-0000-0000-0000-000000000003",
                     target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -1204,7 +1210,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
                 EvaluationRun(
                     id="30000000-0000-0000-0000-000000000021",
                     tenant_id="30000000-0000-0000-0000-000000000002",
-                    target_type="apps",
+                    target_type=EvaluationTargetType.APPS,
                     target_id="30000000-0000-0000-0000-000000000003",
                     target_workflow_version_id="30000000-0000-0000-0000-000000000004",
                     evaluation_config_id="30000000-0000-0000-0000-000000000005",
@@ -1223,7 +1229,7 @@ def test_reconcile_stale_evaluation_runs_uses_running_heartbeat_lease(
         session.commit()
 
     @contextmanager
-    def create_session():
+    def create_session() -> Generator[Session]:
         with sqlite_session_factory() as session:
             yield session
 

@@ -1,10 +1,10 @@
-from models.evaluation import EvaluationRun
+from models.evaluation import EvaluationRun, EvaluationTargetType
 
 
 def test_evaluation_run_progress_uses_persisted_phase_progress() -> None:
     run = EvaluationRun(
         tenant_id="tenant-1",
-        target_type="apps",
+        target_type=EvaluationTargetType.APPS,
         target_id="app-1",
         target_workflow_version_id="workflow-1",
         evaluation_config_id="config-1",

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationDatasetInput,
+    EvaluationItemInput,
     EvaluationItemResult,
     NodeInfo,
 )
@@ -12,7 +13,7 @@ from graphon.node_events import NodeRunResult
 
 def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_llm.return_value = []
+    evaluation_instance.evaluate_llm.return_value = list[EvaluationItemResult]()
     runner = LLMEvaluationRunner(evaluation_instance)
 
     runner.evaluate_metrics(
@@ -48,7 +49,7 @@ def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
 def test_llm_runner_strips_inline_reasoning_from_evaluation_output() -> None:
     evaluation_instance = MagicMock()
 
-    def evaluate_llm(items, *_args):
+    def evaluate_llm(items: list[EvaluationItemInput], *_args: object) -> list[EvaluationItemResult]:
         return [EvaluationItemResult(index=item.index, actual_output=item.output) for item in items]
 
     evaluation_instance.evaluate_llm.side_effect = evaluate_llm

@@ -27,6 +27,8 @@ class _FakeParam:
 
 
 class _FakeTestCase:
+    actual_output: str
+
     def __init__(self, **kwargs: object) -> None:
         self.__dict__.update(kwargs)
 

@@ -38,9 +38,11 @@ from models.evaluation import (
     EvaluationRunItem,
     EvaluationRunItemStatus,
     EvaluationRunStatus,
+    EvaluationTargetType,
 )
 from models.model import App, AppMode
 from models.workflow import (
+    Workflow,
     WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
@@ -74,6 +76,12 @@ def _agent() -> Agent:
     )
 
 
+def _workflow_with_nodes(nodes: list[tuple[str, dict[str, object]]]) -> Workflow:
+    edges: list[object] = []
+    graph = {"nodes": [{"id": node_id, "data": data} for node_id, data in nodes], "edges": edges}
+    return Workflow(graph=json.dumps(graph))
+
+
 def test_generated_template_uses_provided_column_names() -> None:
     content = EvaluationService._generate_xlsx_template(
         [
@@ -91,7 +99,7 @@ def test_generated_template_uses_provided_column_names() -> None:
 def test_generated_template_includes_reference_columns_for_selected_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = App(name="Reference App", mode=AppMode.WORKFLOW.value)
+    app = App(name="Reference App", mode=AppMode.WORKFLOW)
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_expected_output.return_value = True
     evaluation_instance.metric_requires_expected_tool_calls.return_value = False
@@ -147,9 +155,9 @@ def test_selected_framework_is_saved_and_reused_for_file_only_runs(
     )
     sqlite_session.commit()
 
-    assert (
-        sqlite_session.get(EvaluationConfiguration, config.id).evaluation_framework == EvaluationFrameworkEnum.DEEPEVAL
-    )
+    saved_config = sqlite_session.get(EvaluationConfiguration, config.id)
+    assert saved_config is not None
+    assert saved_config.evaluation_framework == EvaluationFrameworkEnum.DEEPEVAL
     file_only = EvaluationRunRequest(file_id="file-1")
     resolved = EvaluationService.resolve_run_request_config(sqlite_session, tenant_id, "apps", target_id, file_only)
     assert resolved.evaluation_framework == EvaluationFrameworkEnum.DEEPEVAL
@@ -869,21 +877,14 @@ def test_agent_default_metrics_are_scoped_to_the_agent(monkeypatch: pytest.Monke
 
 
 def test_agent_node_discovery_scopes_agent_v2_to_native_metrics() -> None:
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter(
-            [
-                ("legacy-agent", {"type": "agent", "version": "2", "title": "Legacy Agent"}),
-                (
-                    "agent-v2",
-                    {
-                        "type": "agent",
-                        "version": "2",
-                        "agent_node_kind": "dify_agent",
-                        "title": "Agent V2",
-                    },
-                ),
-            ]
-        )
+    workflow = _workflow_with_nodes(
+        [
+            ("legacy-agent", {"type": "agent", "version": "2", "title": "Legacy Agent"}),
+            (
+                "agent-v2",
+                {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent V2"},
+            ),
+        ]
     )
 
     nodes = EvaluationService._nodes_for_metrics_from_workflow(
@@ -901,13 +902,11 @@ def test_agent_node_discovery_scopes_agent_v2_to_native_metrics() -> None:
 
 
 def test_knowledge_retrieval_v2_node_discovery_uses_retrieval_metrics() -> None:
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter(
-            [
-                ("retrieval-v1", {"type": "knowledge-retrieval", "title": "Legacy Retrieval"}),
-                ("retrieval-v2", {"type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"}),
-            ]
-        )
+    workflow = _workflow_with_nodes(
+        [
+            ("retrieval-v1", {"type": "knowledge-retrieval", "title": "Legacy Retrieval"}),
+            ("retrieval-v2", {"type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"}),
+        ]
     )
 
     nodes = EvaluationService._nodes_for_metrics_from_workflow(workflow, ["context_precision"])
@@ -1279,7 +1278,7 @@ def test_validate_config_rejects_undeclared_customized_output(monkeypatch: pytes
 
 def test_validate_config_rejects_non_workflow_app(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
-    session.scalar.return_value = App(id="app-1", mode=AppMode.ADVANCED_CHAT.value)
+    session.scalar.return_value = App(id="app-1", mode=AppMode.ADVANCED_CHAT)
     monkeypatch.setattr(
         EvaluationService,
         "get_supported_metrics",
@@ -1326,19 +1325,14 @@ def test_pin_target_workflow_returns_published_snapshot_id(monkeypatch: pytest.M
 
 
 def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> None:
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter(
-            [
-                ("retrieval-1", {"type": "knowledge-retrieval"}),
-                (
-                    "llm-1",
-                    {
-                        "type": "llm",
-                        "context": {"enabled": True, "variable_selector": ["retrieval-1", "result"]},
-                    },
-                ),
-            ]
-        )
+    workflow = _workflow_with_nodes(
+        [
+            ("retrieval-1", {"type": "knowledge-retrieval"}),
+            (
+                "llm-1",
+                {"type": "llm", "context": {"enabled": True, "variable_selector": ["retrieval-1", "result"]}},
+            ),
+        ]
     )
 
     assert EvaluationService._extract_llm_context_node_mapping(workflow) == {"llm-1": ["retrieval-1"]}
@@ -1616,11 +1610,11 @@ def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
     assert send_abort.call_count == 2
 
 
-def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaults(sqlite_session) -> None:
+def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaults(sqlite_session: Session) -> None:
     target_config = EvaluationConfiguration(
         id="10000000-0000-0000-0000-000000000001",
         tenant_id="10000000-0000-0000-0000-000000000010",
-        target_type="apps",
+        target_type=EvaluationTargetType.APPS,
         target_id="10000000-0000-0000-0000-000000000100",
         metrics_config=json.dumps({"default_metrics": [], "customized_metrics": None}),
         created_by="10000000-0000-0000-0000-000000001000",
@@ -1629,7 +1623,7 @@ def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaul
     referencing_config = EvaluationConfiguration(
         id="20000000-0000-0000-0000-000000000001",
         tenant_id=target_config.tenant_id,
-        target_type="apps",
+        target_type=EvaluationTargetType.APPS,
         target_id="20000000-0000-0000-0000-000000000100",
         metrics_config=json.dumps(
             {
@@ -1644,7 +1638,7 @@ def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaul
     run = EvaluationRun(
         id="10000000-0000-0000-0000-000000000002",
         tenant_id=target_config.tenant_id,
-        target_type="apps",
+        target_type=EvaluationTargetType.APPS,
         target_id=target_config.target_id,
         target_workflow_version_id="10000000-0000-0000-0000-000000000003",
         evaluation_config_id=target_config.id,
@@ -1700,7 +1694,7 @@ def test_stage_target_cleanup_deletes_result_file_after_target_deletion_commits(
     run = EvaluationRun(
         id="10000000-0000-0000-0000-000000000021",
         tenant_id=tenant_id,
-        target_type=target_type,
+        target_type=EvaluationTargetType(target_type),
         target_id=target_id,
         evaluation_config_id="10000000-0000-0000-0000-000000000001",
         config_snapshot="{}",
@@ -1739,7 +1733,7 @@ def test_stage_agent_target_cleanup_stops_backend_only_after_commit(
     run = EvaluationRun(
         id="10000000-0000-0000-0000-000000000021",
         tenant_id=tenant_id,
-        target_type="agents",
+        target_type=EvaluationTargetType.AGENTS,
         target_id=target_id,
         target_agent_config_snapshot_id="10000000-0000-0000-0000-000000000022",
         evaluation_config_id="10000000-0000-0000-0000-000000000001",
@@ -1788,7 +1782,7 @@ def test_get_run_items_hides_incomplete_target_checkpoints(sqlite_session: Sessi
     run = EvaluationRun(
         id="10000000-0000-0000-0000-000000000012",
         tenant_id="10000000-0000-0000-0000-000000000010",
-        target_type="apps",
+        target_type=EvaluationTargetType.APPS,
         target_id="10000000-0000-0000-0000-000000000100",
         target_workflow_version_id="10000000-0000-0000-0000-000000000003",
         evaluation_config_id="10000000-0000-0000-0000-000000000001",
@@ -1827,13 +1821,13 @@ def test_get_run_items_hides_incomplete_target_checkpoints(sqlite_session: Sessi
 
 
 def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
-    sqlite_session,
+    sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = EvaluationConfiguration(
         id="30000000-0000-0000-0000-000000000001",
         tenant_id="30000000-0000-0000-0000-000000000010",
-        target_type="snippets",
+        target_type=EvaluationTargetType.SNIPPETS,
         target_id="30000000-0000-0000-0000-000000000100",
         metrics_config=json.dumps({"default_metrics": [], "customized_metrics": None}),
         created_by="30000000-0000-0000-0000-000000001000",
@@ -1842,7 +1836,7 @@ def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
     run = EvaluationRun(
         id="30000000-0000-0000-0000-000000000002",
         tenant_id=config.tenant_id,
-        target_type="snippets",
+        target_type=EvaluationTargetType.SNIPPETS,
         target_id=config.target_id,
         target_workflow_version_id="30000000-0000-0000-0000-000000000003",
         evaluation_config_id=config.id,
@@ -1889,7 +1883,7 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
     run = EvaluationRun(
         id="30000000-0000-0000-0000-000000000021",
         tenant_id=tenant.id,
-        target_type="knowledge_base",
+        target_type=EvaluationTargetType.KNOWLEDGE_BASE,
         target_id="30000000-0000-0000-0000-000000000030",
         evaluation_config_id="30000000-0000-0000-0000-000000000040",
         config_snapshot=run_request.model_dump_json(),
@@ -1994,7 +1988,7 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
     run = EvaluationRun(
         id="30000000-0000-0000-0000-000000000121",
         tenant_id=tenant.id,
-        target_type="agents",
+        target_type=EvaluationTargetType.AGENTS,
         target_id="30000000-0000-0000-0000-000000000130",
         target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000140",
         evaluation_config_id="30000000-0000-0000-0000-000000000150",

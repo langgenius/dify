@@ -5,6 +5,7 @@ from core.evaluation.entities.evaluation_entity import (
     AgentToolCall,
     DefaultMetric,
     EvaluationDatasetInput,
+    EvaluationItemResult,
     NodeInfo,
 )
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
@@ -14,7 +15,7 @@ from graphon.node_events import NodeRunResult
 
 def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = []
+    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
     runner = AgentEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
 
@@ -98,7 +99,7 @@ def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
 
 def test_agent_runner_deduplicates_thought_summary_and_canonical_call_log() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = []
+    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
     runner = AgentEvaluationRunner(evaluation_instance)
     round_id = "round-1"
 
@@ -163,7 +164,7 @@ def test_agent_runner_deduplicates_thought_summary_and_canonical_call_log() -> N
 
 def test_agent_runner_uses_dataset_input_when_node_has_no_user_task_field() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = []
+    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
     runner = AgentEvaluationRunner(evaluation_instance)
 
     runner.evaluate_metrics(
@@ -184,7 +185,7 @@ def test_agent_runner_uses_dataset_input_when_node_has_no_user_task_field() -> N
 
 def test_agent_runner_excludes_hidden_reasoning_from_evaluation_output() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = []
+    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
     runner = AgentEvaluationRunner(evaluation_instance)
 
     runner.evaluate_metrics(
@@ -208,7 +209,7 @@ def test_agent_runner_excludes_hidden_reasoning_from_evaluation_output() -> None
 
 def test_agent_runner_preserves_runtime_tools_and_optional_success_criteria() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = []
+    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
     runner = AgentEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
 
@@ -259,7 +260,7 @@ def test_agent_runner_preserves_runtime_tools_and_optional_success_criteria() ->
 
 def test_agent_runner_prefers_captured_agent_v2_trace_snapshot() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_agent.return_value = []
+    evaluation_instance.evaluate_agent.return_value = list[EvaluationItemResult]()
     runner = AgentEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="agent-v2", type="agent", title="Research Agent")
 

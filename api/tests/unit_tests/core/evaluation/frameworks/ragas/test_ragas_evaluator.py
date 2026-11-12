@@ -161,7 +161,7 @@ def test_evaluate_with_ragas_uses_bounded_transient_retry_config(monkeypatch: py
     results = evaluator._evaluate_with_ragas(
         [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer")],
         ["answer_relevancy"],
-        object(),
+        object(),  # pyrefly: ignore[bad-argument-type] -- the stubbed RAGAS evaluator only forwards this value
         object(),
         EvaluationCategory.LLM,
     )

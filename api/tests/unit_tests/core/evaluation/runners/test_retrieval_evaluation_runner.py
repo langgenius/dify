@@ -1,13 +1,18 @@
 from unittest.mock import MagicMock
 
-from core.evaluation.entities.evaluation_entity import DefaultMetric, EvaluationDatasetInput, NodeInfo
+from core.evaluation.entities.evaluation_entity import (
+    DefaultMetric,
+    EvaluationDatasetInput,
+    EvaluationItemResult,
+    NodeInfo,
+)
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from graphon.node_events import NodeRunResult
 
 
 def test_retrieval_runner_resolves_expected_output_by_node_title() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_retrieval.return_value = []
+    evaluation_instance.evaluate_retrieval.return_value = list[EvaluationItemResult]()
     runner = RetrievalEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="retrieval-1", type="knowledge-retrieval", title="Search")
 
@@ -38,7 +43,7 @@ def test_retrieval_runner_resolves_expected_output_by_node_title() -> None:
 
 def test_retrieval_runner_accepts_knowledge_retrieval_v2_output_contract() -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_retrieval.return_value = []
+    evaluation_instance.evaluate_retrieval.return_value = list[EvaluationItemResult]()
     runner = RetrievalEvaluationRunner(evaluation_instance)
     node_info = NodeInfo(node_id="retrieval-v2", type="knowledge-retrieval-v2", title="Knowledge Retrieval V2")
 

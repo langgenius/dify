@@ -1,7 +1,9 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from typing import TypeVar
 
 import pytest
+from pydantic import BaseModel
 
 from core.evaluation.agent import agent_judge_evaluator
 from core.evaluation.agent.agent_judge_evaluator import (
@@ -30,6 +32,8 @@ from core.evaluation.entities.evaluation_entity import (
     AgentTrajectoryStep,
 )
 
+_JudgeOutput = TypeVar("_JudgeOutput", bound=BaseModel)
+
 
 class _FakeJudgeModel:
     model_identifier = "provider/model"
@@ -39,7 +43,9 @@ class _FakeJudgeModel:
         self.payload: dict[str, object] | None = None
         self.system_prompt = ""
 
-    def generate(self, *, system_prompt, payload, schema):
+    def generate(
+        self, *, system_prompt: str, payload: Mapping[str, object], schema: type[_JudgeOutput]
+    ) -> _JudgeOutput:
         self.system_prompt = system_prompt
         self.payload = dict(payload)
         assert isinstance(self.output, schema)
@@ -55,7 +61,9 @@ class _FakeToolArgumentJudgeModel:
         self.system_prompt = ""
         self.call_count = 0
 
-    def generate(self, *, system_prompt, payload, schema):
+    def generate(
+        self, *, system_prompt: str, payload: Mapping[str, object], schema: type[_JudgeOutput]
+    ) -> _JudgeOutput:
         self.call_count += 1
         self.system_prompt = system_prompt
         self.payload = dict(payload)
@@ -382,8 +390,12 @@ def test_tool_argument_correctness_scores_each_assessable_call(
     assert metric.details["prompt_version"] == "agent.tool_argument_correctness.v4"
     assert fake_model.call_count == 1
     assert fake_model.payload is not None
-    assert fake_model.payload["tool_calls"][0]["tool_description"] == ""
-    assert fake_model.payload["tool_calls"][0]["assessment_key"] == "call_1"
+    tool_calls = fake_model.payload["tool_calls"]
+    assert isinstance(tool_calls, list)
+    first_call = tool_calls[0]
+    assert isinstance(first_call, dict)
+    assert first_call["tool_description"] == ""
+    assert first_call["assessment_key"] == "call_1"
     assert "call_assessments" not in _strict_judge_json_schema(ToolArgumentJudgeOutput)["properties"]
 
 
@@ -426,7 +438,10 @@ def test_tool_argument_correctness_judges_multiple_calls_independently(monkeypat
     assert result.error is None
     assert fake_model.call_count == 1
     assert fake_model.payload is not None
-    assert [call["assessment_key"] for call in fake_model.payload["tool_calls"]] == ["call_1", "call_2"]
+    tool_calls = fake_model.payload["tool_calls"]
+    assert isinstance(tool_calls, list)
+    assert all(isinstance(call, dict) for call in tool_calls)
+    assert [call["assessment_key"] for call in tool_calls] == ["call_1", "call_2"]
     assert result.metrics[0].value == 0.8
     assert [assessment["tool_call_id"] for assessment in result.metrics[0].details["call_assessments"]] == [
         "call-1",
@@ -491,7 +506,7 @@ def test_tool_argument_correctness_truncates_long_explanations_without_losing_sc
 
 
 def test_tool_argument_correctness_is_not_applicable_without_calls(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail_if_model_is_loaded(*_args):
+    def fail_if_model_is_loaded(*_args: object) -> None:
         raise AssertionError("The judge model must not be loaded for a non-applicable row.")
 
     monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", fail_if_model_is_loaded)
