@@ -16,6 +16,18 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
+    # Keep Host and X-Forwarded-Port consistent so ProxyFix preserves the external port.
+    map $http_host $dify_request_host {
+        default $http_host;
+        ""      $host;
+    }
+
+    map $http_host $dify_request_port {
+        default "";
+        ""      $server_port;
+        ~^(?:\[[^]]+\]|[^:]+):(?<dify_host_port>[0-9]+)$ $dify_host_port;
+    }
+
     log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
                       '$status $body_bytes_sent "$http_referer" '
                       '"$http_user_agent" "$http_x_forwarded_for"';

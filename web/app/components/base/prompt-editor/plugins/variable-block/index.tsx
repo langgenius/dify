@@ -4,8 +4,8 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { useEffect } from 'react'
 import { CustomTextNode } from '../custom-text/node'
 
-export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_VARIABLE_BLOCK_COMMAND')
-export const INSERT_VARIABLE_VALUE_BLOCK_COMMAND = createCommand(
+export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand<void>('INSERT_VARIABLE_BLOCK_COMMAND')
+export const INSERT_VARIABLE_VALUE_BLOCK_COMMAND = createCommand<string>(
   'INSERT_VARIABLE_VALUE_BLOCK_COMMAND',
 )
 

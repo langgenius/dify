@@ -3,10 +3,10 @@
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { LinkNode } from '@lexical/link'
 import { ListItemNode, ListNode } from '@lexical/list'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { $getRoot } from 'lexical'
-import { createContext, memo, useEffect, useRef } from 'react'
+import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
+import { $getRoot, defineExtension } from 'lexical'
+import { createContext, memo, useEffect, useRef, useState } from 'react'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
 
@@ -73,23 +73,28 @@ export const NoteEditorContextProvider = memo(
       if (value) initialValue = JSON.parse(value)
     } catch {}
 
-    const initialConfig = {
-      namespace: 'note-editor',
-      nodes: [LinkNode, ListNode, ListItemNode],
-      editorState: !initialValue?.root.children.length ? null : JSON.stringify(initialValue),
-      onError: (error: Error) => {
-        throw error
-      },
-      theme,
-      editable,
-    }
+    const [extension] = useState(() =>
+      defineExtension({
+        name: 'note-editor',
+        namespace: 'note-editor',
+        nodes: [LinkNode, ListNode, ListItemNode],
+        $initialEditorState: !initialValue?.root.children.length
+          ? null
+          : JSON.stringify(initialValue),
+        onError: (error: Error) => {
+          throw error
+        },
+        theme,
+        editable,
+      }),
+    )
 
     return (
       <NoteEditorContext.Provider value={storeRef.current}>
-        <LexicalComposer initialConfig={{ ...initialConfig }}>
+        <LexicalExtensionComposer extension={extension} contentEditable={null}>
           <NoteEditorContentSynchronizer value={value} />
           {children}
-        </LexicalComposer>
+        </LexicalExtensionComposer>
       </NoteEditorContext.Provider>
     )
   },

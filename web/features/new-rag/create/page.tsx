@@ -24,6 +24,13 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -445,189 +452,202 @@ function CreateKnowledgeSession() {
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 flex-1 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
-                <div className="flex flex-col gap-4">
-                  <Field
-                    name="name"
-                    className="gap-1.5"
-                    validate={(value) => {
-                      const trimmed = String(value).trim()
-                      if (value !== '' && !trimmed)
-                        return t(($) => $.nameRequired, { ns: 'knowledgeCreate' })
-                      if (Array.from(trimmed).length > NAME_MAX_LENGTH)
-                        return tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])
+              <ScrollArea className="min-h-0 flex-1">
+                <ScrollAreaViewport className="overscroll-contain">
+                  <ScrollAreaContent className="flex flex-col gap-7 px-6 pb-7 sm:px-10">
+                    <div className="flex flex-col gap-4">
+                      <Field
+                        name="name"
+                        className="gap-1.5"
+                        validate={(value) => {
+                          const trimmed = String(value).trim()
+                          if (value !== '' && !trimmed)
+                            return t(($) => $.nameRequired, { ns: 'knowledgeCreate' })
+                          if (Array.from(trimmed).length > NAME_MAX_LENGTH)
+                            return tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])
 
-                      return null
-                    }}
-                  >
-                    <FieldLabel>
-                      {t(($) => $.name)}
-                      <span aria-hidden className="ms-0.5 text-text-destructive">
-                        *
-                      </span>
-                    </FieldLabel>
-                    <Input
-                      autoComplete="off"
-                      disabled={submissionLocked}
-                      placeholder={t(($) => $.namePlaceholder, { ns: 'knowledgeCreate' })}
-                      required
-                      value={name}
-                      onValueChange={(value) => {
-                        setName(value)
-                        resetUnsubmittedError()
-                      }}
-                    />
-                    <FieldError match="valueMissing">
-                      {t(($) => $.nameRequired, { ns: 'knowledgeCreate' })}
-                    </FieldError>
-                    <FieldError match="customError" />
-                  </Field>
-                  <Field
-                    name="description"
-                    className="gap-1.5"
-                    validate={(value) => {
-                      if (Array.from(String(value).trim()).length > DESCRIPTION_MAX_LENGTH)
-                        return tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
-                          maxLength: DESCRIPTION_MAX_LENGTH,
-                        })
-                      return null
-                    }}
-                  >
-                    <FieldLabel>{t(($) => $.description, { ns: 'knowledgeCreate' })}</FieldLabel>
-                    <Textarea
-                      autoComplete="off"
-                      className="min-h-20"
-                      disabled={submissionLocked}
-                      name="description"
-                      placeholder={t(($) => $.descriptionPlaceholder, { ns: 'knowledgeCreate' })}
-                      value={description}
-                      onValueChange={(value) => {
-                        setDescription(value)
-                        resetUnsubmittedError()
-                      }}
-                    />
-                    <FieldDescription>
-                      {t(($) => $.descriptionHelp, { ns: 'knowledgeCreate' })}
-                    </FieldDescription>
-                    <FieldError />
-                  </Field>
-                  <KnowledgeCreationPermissions
-                    canConfigureAccess={canConfigureAccess}
-                    disabled={submissionLocked}
-                    selectedMemberIds={selectedMemberIds}
-                    visibility={visibility}
-                    onSelectedMemberIdsChange={(memberIds) => {
-                      setSelectedMemberIds(memberIds)
-                      resetUnsubmittedError()
-                    }}
-                    onVisibilityChange={(value) => {
-                      setVisibility(value)
-                      resetUnsubmittedError()
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <Fieldset>
-                    <FieldsetLegend className="py-0 system-md-semibold">
-                      {t(($) => $.startWith, { ns: 'knowledgeCreate' })}
-                    </FieldsetLegend>
-                    <p className="pb-1.5 body-xs-regular text-text-tertiary">
-                      {t(($) => $.startWithHelp, { ns: 'knowledgeCreate' })}
-                    </p>
-                    <RadioGroup<NewKnowledgeStartMode>
-                      value={startMode}
-                      aria-label={t(($) => $.startWith, { ns: 'knowledgeCreate' })}
-                      className="mt-2 flex-col items-stretch gap-2"
-                      disabled={submissionLocked}
-                      onValueChange={(value) => {
-                        setSourceSelection(undefined)
-                        setStartMode(value)
-                        resetUnsubmittedError()
-                      }}
-                    >
-                      <StartMode
-                        value="empty"
-                        icon="i-ri-folder-6-line"
-                        selected={startMode === 'empty'}
-                        title={t(($) => $.startEmpty)}
-                        description={t(($) => $.startEmptyDescription)}
-                      />
-                      <StartMode
-                        value="source"
-                        icon="i-custom-public-new-rag-connect-source"
-                        selected={startMode === 'source'}
-                        title={t(($) => $.connectSource)}
-                        description={t(($) => $.connectSourceDescription)}
-                        endAdornment={
-                          <span
-                            aria-hidden
-                            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
-                          />
-                        }
+                          return null
+                        }}
                       >
-                        <CreateSourceSetup
+                        <FieldLabel>
+                          {t(($) => $.name)}
+                          <span aria-hidden className="ms-0.5 text-text-destructive">
+                            *
+                          </span>
+                        </FieldLabel>
+                        <Input
+                          autoComplete="off"
                           disabled={submissionLocked}
-                          draft={sourceDraft}
-                          onDraftChange={(value) => {
-                            setSourceDraft(value)
-                            resetUnsubmittedError()
-                          }}
-                          shouldPreservePreviewOnUnmount={shouldPreservePreviewOnUnmount}
-                          onSourceTypeChange={(value) => {
-                            setSourceDraft(createNewKnowledgeSourceDraft(value))
-                            setSourceSelection(undefined)
+                          placeholder={t(($) => $.namePlaceholder, { ns: 'knowledgeCreate' })}
+                          required
+                          value={name}
+                          onValueChange={(value) => {
+                            setName(value)
                             resetUnsubmittedError()
                           }}
                         />
-                      </StartMode>
-                      <StartMode
-                        value="upload"
-                        icon="i-ri-file-text-line"
-                        selected={startMode === 'upload'}
-                        disabled={!uploadAvailable}
-                        title={t(($) => $.uploadFiles)}
-                        description={t(($) => $.uploadFilesDescription, { ns: 'knowledgeCreate' })}
+                        <FieldError match="valueMissing">
+                          {t(($) => $.nameRequired, { ns: 'knowledgeCreate' })}
+                        </FieldError>
+                        <FieldError match="customError" />
+                      </Field>
+                      <Field
+                        name="description"
+                        className="gap-1.5"
+                        validate={(value) => {
+                          if (Array.from(String(value).trim()).length > DESCRIPTION_MAX_LENGTH)
+                            return tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
+                              maxLength: DESCRIPTION_MAX_LENGTH,
+                            })
+                          return null
+                        }}
                       >
-                        <CreateUploadQueue
-                          supportBatchUpload={supportBatchUpload}
-                          disabled={submissionPending}
-                          fileSizeLimitMb={fileSizeLimitMb}
-                          uploads={uploads}
-                          uploadPhases={uploadPhases}
-                          uploading={uploading || stagingCount > 0}
-                          onChange={handleUploadsChange}
+                        <FieldLabel>
+                          {t(($) => $.description, { ns: 'knowledgeCreate' })}
+                        </FieldLabel>
+                        <Textarea
+                          autoComplete="off"
+                          className="min-h-20"
+                          disabled={submissionLocked}
+                          name="description"
+                          placeholder={t(($) => $.descriptionPlaceholder, {
+                            ns: 'knowledgeCreate',
+                          })}
+                          value={description}
+                          onValueChange={(value) => {
+                            setDescription(value)
+                            resetUnsubmittedError()
+                          }}
                         />
-                      </StartMode>
-                    </RadioGroup>
-                  </Fieldset>
+                        <FieldDescription>
+                          {t(($) => $.descriptionHelp, { ns: 'knowledgeCreate' })}
+                        </FieldDescription>
+                        <FieldError />
+                      </Field>
+                      <KnowledgeCreationPermissions
+                        canConfigureAccess={canConfigureAccess}
+                        disabled={submissionLocked}
+                        selectedMemberIds={selectedMemberIds}
+                        visibility={visibility}
+                        onSelectedMemberIdsChange={(memberIds) => {
+                          setSelectedMemberIds(memberIds)
+                          resetUnsubmittedError()
+                        }}
+                        onVisibilityChange={(value) => {
+                          setVisibility(value)
+                          resetUnsubmittedError()
+                        }}
+                      />
+                    </div>
 
-                  {createMutation.isError && (
-                    <div
-                      className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
-                      role="alert"
-                    >
-                      {createErrorMessage}
+                    <div className="flex flex-col gap-3">
+                      <Fieldset>
+                        <FieldsetLegend className="py-0 system-md-semibold">
+                          {t(($) => $.startWith, { ns: 'knowledgeCreate' })}
+                        </FieldsetLegend>
+                        <p className="pb-1.5 body-xs-regular text-text-tertiary">
+                          {t(($) => $.startWithHelp, { ns: 'knowledgeCreate' })}
+                        </p>
+                        <RadioGroup<NewKnowledgeStartMode>
+                          value={startMode}
+                          aria-label={t(($) => $.startWith, { ns: 'knowledgeCreate' })}
+                          className="mt-2 flex-col items-stretch gap-2"
+                          disabled={submissionLocked}
+                          onValueChange={(value) => {
+                            setSourceSelection(undefined)
+                            setStartMode(value)
+                            resetUnsubmittedError()
+                          }}
+                        >
+                          <StartMode
+                            value="empty"
+                            icon="i-ri-folder-6-line"
+                            selected={startMode === 'empty'}
+                            title={t(($) => $.startEmpty)}
+                            description={t(($) => $.startEmptyDescription)}
+                          />
+                          <StartMode
+                            value="source"
+                            icon="i-custom-public-new-rag-connect-source"
+                            selected={startMode === 'source'}
+                            title={t(($) => $.connectSource)}
+                            description={t(($) => $.connectSourceDescription)}
+                            endAdornment={
+                              <span
+                                aria-hidden
+                                className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+                              />
+                            }
+                          >
+                            <CreateSourceSetup
+                              disabled={submissionLocked}
+                              draft={sourceDraft}
+                              onDraftChange={(value) => {
+                                setSourceDraft(value)
+                                resetUnsubmittedError()
+                              }}
+                              shouldPreservePreviewOnUnmount={shouldPreservePreviewOnUnmount}
+                              onSourceTypeChange={(value) => {
+                                setSourceDraft(createNewKnowledgeSourceDraft(value))
+                                setSourceSelection(undefined)
+                                resetUnsubmittedError()
+                              }}
+                            />
+                          </StartMode>
+                          <StartMode
+                            value="upload"
+                            icon="i-ri-file-text-line"
+                            selected={startMode === 'upload'}
+                            disabled={!uploadAvailable}
+                            title={t(($) => $.uploadFiles)}
+                            description={t(($) => $.uploadFilesDescription, {
+                              ns: 'knowledgeCreate',
+                            })}
+                          >
+                            <CreateUploadQueue
+                              supportBatchUpload={supportBatchUpload}
+                              disabled={submissionPending}
+                              fileSizeLimitMb={fileSizeLimitMb}
+                              uploads={uploads}
+                              uploadPhases={uploadPhases}
+                              uploading={uploading || stagingCount > 0}
+                              onChange={handleUploadsChange}
+                            />
+                          </StartMode>
+                        </RadioGroup>
+                      </Fieldset>
+
+                      {createMutation.isError && (
+                        <div
+                          className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
+                          role="alert"
+                        >
+                          {createErrorMessage}
+                        </div>
+                      )}
+                      {uploadError && (
+                        <div
+                          className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
+                          role="alert"
+                        >
+                          {uploadError}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {uploadError && (
-                    <div
-                      className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
-                      role="alert"
-                    >
-                      {uploadError}
-                    </div>
-                  )}
-                </div>
-                <CreateModelSettings
-                  models={models}
-                  open={modelSettingsOpen}
-                  onOpenChange={setModelSettingsOpen}
-                  disabled={submissionLocked}
-                  onChange={resetUnsubmittedError}
-                  validationAttempt={modelValidationAttempt}
-                />
-              </div>
+                    <CreateModelSettings
+                      models={models}
+                      open={modelSettingsOpen}
+                      onOpenChange={setModelSettingsOpen}
+                      disabled={submissionLocked}
+                      onChange={resetUnsubmittedError}
+                      validationAttempt={modelValidationAttempt}
+                    />
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollArea>
 
               <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10 [@media(max-height:600px)]:py-3">
                 {startMode === 'upload' && (

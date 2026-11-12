@@ -533,6 +533,11 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return self._agent_packages.export(tenant_id=workspace_id, agent_id=agent_id, version_id=version_id)
 
 
+def notify_agent_app_updated(tenant_id: str, app_id: str) -> None:
+    """Notify existing listeners after an Agent App change has committed."""
+    app_was_updated.send(AppEvent(app_id, tenant_id, str(AppMode.AGENT)))
+
+
 class AppLifecycleGateway(AppLifecycle):
     """Integrate App persistence with existing Agent transaction participants.
 

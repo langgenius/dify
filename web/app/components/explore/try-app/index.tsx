@@ -102,14 +102,14 @@ function TryAppContent({
       <IconButton
         size="lg"
         variant="tertiary"
-        className="absolute top-2 right-2"
+        className="absolute inset-e-2 top-2"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         onClick={onClose}
       >
         <span aria-hidden className="i-ri-close-line size-5" />
       </IconButton>
       <Tabs defaultValue={TypeEnum.DETAIL} className="flex h-full flex-col">
-        <div className="flex shrink-0 pr-10 pl-4">
+        <div className="flex shrink-0 ps-4 pe-10">
           <TabsList>
             <TabsTab
               ref={detailTabRef}
@@ -253,7 +253,7 @@ function TryApp(props: Props) {
       <DialogContent
         initialFocus={detailTabRef}
         // oxlint-disable-next-line shadcn/no-restyle -- Full-page Try App surface keeps its 8px inset.
-        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] overflow-hidden p-2"
+        className="h-dvh max-h-[calc(100dvh-1rem)] w-full max-w-[calc(100vw-1rem)] overflow-hidden p-2"
       >
         <TrialAppAccessBoundary key={props.appId} appId={props.appId} onClose={props.onClose}>
           <TryAppContent {...props} detailTabRef={detailTabRef} />

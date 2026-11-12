@@ -305,6 +305,57 @@ def _workflow_run(*, run_id: str, tenant_id: str, status: WorkflowExecutionStatu
     )
 
 
+@pytest.mark.parametrize(
+    ("tenant_id", "app_id", "workflow_run_id", "should_bind"),
+    [
+        ("tenant-1", "app-1", "run-1", True),
+        ("tenant-2", "app-1", "run-1", False),
+        ("tenant-1", "app-2", "run-1", False),
+        ("tenant-1", "app-1", "missing-run", False),
+    ],
+)
+def test_bind_workflow_task_only_binds_the_matching_run(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    tenant_id: str,
+    app_id: str,
+    workflow_run_id: str,
+    should_bind: bool,
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.RUNNING)
+    other_run = _workflow_run(run_id="run-2", tenant_id="tenant-1", status=WorkflowExecutionStatus.RUNNING)
+    sqlite_session.add_all([run, other_run])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    repository.bind_workflow_task(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_run_id=workflow_run_id,
+        task_id="task-1",
+    )
+
+    sqlite_session.expire_all()
+    assert run.task_id == ("task-1" if should_bind else None)
+    assert other_run.task_id is None
+
+
+def test_bind_workflow_task_preserves_the_first_binding(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.RUNNING)
+    sqlite_session.add(run)
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    repository.bind_workflow_task(tenant_id="tenant-1", app_id="app-1", workflow_run_id="run-1", task_id="first-task")
+    repository.bind_workflow_task(tenant_id="tenant-1", app_id="app-1", workflow_run_id="run-1", task_id="second-task")
+
+    sqlite_session.expire_all()
+    assert run.task_id == "first-task"
+
+
 def test_get_message_refs_filters_by_app_and_returns_lightweight_records(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],

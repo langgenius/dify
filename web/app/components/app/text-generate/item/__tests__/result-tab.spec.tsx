@@ -5,8 +5,7 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import ResultTab from '../result-tab'
 
-// TODO: ResultTab stringifies already serialized content again; parse once must recover the output object.
-it.fails('switches between readable workflow output with attachments and read-only raw output', async () => {
+it('switches between readable workflow output with attachments and read-only raw output', async () => {
   const file: FileEntity = {
     id: 'file-1',
     name: 'report.txt',

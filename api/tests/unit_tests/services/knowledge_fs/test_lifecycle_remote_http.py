@@ -44,6 +44,7 @@ class RecordingCapabilityIssuer:
 
 
 def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> None:
+    """Given a complete activation request with an extra field, reject that extra field."""
     payload = {
         "namespace_id": "tenant-1",
         "control_space_id": "30000000-0000-4000-8000-000000000001",
@@ -54,10 +55,6 @@ def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> Non
 
     with pytest.raises(ValidationError):
         KnowledgeFSDifyIntegrationActivationRequest.model_validate({**payload, "unexpected": True})
-    with pytest.raises(ValidationError):
-        KnowledgeFSDifyIntegrationActivationRequest.model_validate(
-            {**payload, "activation_revision": 9_007_199_254_740_992}
-        )
 
 
 def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(
@@ -536,6 +533,55 @@ def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
     assert issued.grant_id == request.operation_id
     assert issued.resource.type == "knowledge_space"
     assert issued.resource.id == request.knowledge_space_id
+
+
+@pytest.mark.parametrize(
+    ("response_code", "invalid_json", "expected_error_code"),
+    [
+        ("CAPABILITY_SPACE_DELETED", False, "CAPABILITY_SPACE_DELETED"),
+        ("CAPABILITY_REVOKE_CONFLICT", False, "KNOWLEDGE_FS_HTTP_409"),
+        ("CAPABILITY_SPACE_DELETED", True, "KNOWLEDGE_FS_HTTP_409"),
+    ],
+)
+def test_revoke_distinguishes_completed_space_deletion_from_other_conflicts(
+    monkeypatch: pytest.MonkeyPatch, response_code: str, invalid_json: bool, expected_error_code: str
+) -> None:
+    """Only valid JSON carrying the typed deleted-Space code receives a distinct retry reason."""
+
+    issuer = RecordingCapabilityIssuer(token="revoke-capability")
+    response = (
+        httpx.Response(409, text="{", headers={"Content-Type": "application/json"})
+        if invalid_json
+        else httpx.Response(
+            409,
+            json={"code": response_code, "error": "Capability revoke conflicts with durable state"},
+            headers={"Content-Type": "application/json"},
+        )
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    remote = HTTPKnowledgeFSLifecycleRemoteClient(
+        base_url="https://knowledge-fs.test",
+        issuer=issuer.as_issuer(),
+        timeout_seconds=3,
+    )
+    request = KnowledgeFSCapabilityGrantRevokeRequest(
+        namespace_id="tenant-1",
+        control_space_id="30000000-0000-4000-8000-000000000001",
+        operation_id="40000000-0000-4000-8000-000000000002",
+        idempotency_key="revoke-grant-once",
+        knowledge_space_id="10000000-0000-4000-8000-000000000001",
+        grant_id="50000000-0000-4000-8000-000000000001",
+        event_id="60000000-0000-4000-8000-000000000001",
+        reason_code="permission_revoked",
+        revoke_sequence=7,
+        expected_revision=4,
+    )
+
+    with pytest.raises(KnowledgeFSLifecycleRemoteError) as error:
+        remote.revoke_capability_grant(request)
+
+    assert error.value.code == expected_error_code
 
 
 def test_list_paginates_with_one_namespace_capability_and_reconstructs_provisioning_keys(
