@@ -23,6 +23,7 @@ from typing_extensions import override
 
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.providers import Provider
+from pydantic_ai.settings import Timeout
 
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.plugin_daemon_transport import (
@@ -47,6 +48,8 @@ class DifyLLMClient(Protocol):
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
+        timeout: int | float | Timeout | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> AsyncIterator[LLMResultChunk]: ...
 
 
@@ -81,6 +84,8 @@ class DifyApiLLMClient:
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
+        timeout: int | float | Timeout | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> AsyncIterator[LLMResultChunk]:
         call_index = next(self._call_counter)
         invocation_id = str(uuid5(NAMESPACE_URL, f"dify-agent:{self.agent_run_id}:llm:{call_index}"))
@@ -124,12 +129,19 @@ class DifyApiLLMClient:
         )
         url = f"{self.inner_api_url}/inner/api/agent/llm/invoke"
         headers = {
+            **(extra_headers or {}),
             "X-Inner-Api-Key": self.inner_api_key,
             "Content-Type": "application/json",
         }
 
         try:
-            async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
+            async with self.http_client.stream(
+                "POST",
+                url,
+                headers=headers,
+                json=payload,
+                timeout=timeout if timeout is not None else httpx.USE_CLIENT_DEFAULT,
+            ) as response:
                 if response.is_error:
                     body = (await response.aread()).decode("utf-8", errors="replace")
                     _raise_agent_gateway_http_error(
