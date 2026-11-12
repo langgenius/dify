@@ -8,6 +8,7 @@
   "apps.fullTip2": "Plan limitinə çatılıb",
   "apps.fullTip2des": "İstifadə limitini boşaltmaq üçün qeyri-aktiv tətbiqləri silmək və ya bizimlə əlaqə saxlamaq tövsiyə olunur.",
   "buyPermissionDeniedTip": "Abunə olmaq üçün müəssisənizin inzibatçısı ilə əlaqə saxlayın",
+  "errors.annualDiscountActive": "Cari endiriminiz bitdikdən sonra illik ödənişə keçə bilərsiniz.",
   "errors.operationFailed": "Bu sorğunu tamamlaya bilmədik. Zəhmət olmasa, sonra yenidən cəhd edin. Problem davam edərsə, dəstək xidməti ilə əlaqə saxlayın.",
   "errors.requestInProgress": "Əvvəlki sorğunuz hələ də emal olunur. Zəhmət olmasa, bir azdan yenidən cəhd edin.",
   "errors.unavailable": "Bu xidmət müvəqqəti olaraq əlçatan deyil. Zəhmət olmasa, sonra yenidən cəhd edin.",

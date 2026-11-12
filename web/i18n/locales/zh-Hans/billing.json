@@ -8,6 +8,7 @@
   "apps.fullTip2": "计划限制已达到",
   "apps.fullTip2des": "推荐您清理不活跃的应用或者联系我们",
   "buyPermissionDeniedTip": "请联系企业管理员订阅",
+  "errors.annualDiscountActive": "当前折扣结束后，你就可以切换为年付。",
   "errors.operationFailed": "无法完成此请求，请稍后重试。如果问题持续存在，请联系支持团队。",
   "errors.requestInProgress": "上一个请求仍在处理中，请稍后再试。",
   "errors.unavailable": "服务暂时不可用，请稍后再试。",

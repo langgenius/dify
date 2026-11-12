@@ -8,6 +8,7 @@
   "apps.fullTip2": "プラン制限に達しました。",
   "apps.fullTip2des": "非アクティブなアプリを削除するか、アップグレードプランをご検討ください。",
   "buyPermissionDeniedTip": "サブスクリプションするには、エンタープライズ管理者に連絡してください",
+  "errors.annualDiscountActive": "現在の割引が終了すると、年払いに変更できます。",
   "errors.operationFailed": "このリクエストを完了できませんでした。しばらくしてからもう一度お試しください。問題が解決しない場合は、サポートにお問い合わせください。",
   "errors.requestInProgress": "前回のリクエストはまだ処理中です。少し待ってからもう一度お試しください。",
   "errors.unavailable": "このサービスは一時的に利用できません。しばらくしてからもう一度お試しください。",

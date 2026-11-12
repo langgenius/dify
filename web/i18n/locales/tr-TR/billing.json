@@ -8,6 +8,7 @@
   "apps.fullTip2": "Plan limiti aşıldı",
   "apps.fullTip2des": "Kullanımı serbest bırakmak için etkisiz uygulamaların temizlenmesi önerilir veya bizimle iletişime geçin.",
   "buyPermissionDeniedTip": "Abone olmak için lütfen işletme yöneticinize başvurun",
+  "errors.annualDiscountActive": "Mevcut indiriminiz sona erdiğinde yıllık faturalandırmaya geçebilirsiniz.",
   "errors.operationFailed": "Bu istek tamamlanamadı. Lütfen daha sonra tekrar deneyin. Sorun devam ederse destekle iletişime geçin.",
   "errors.requestInProgress": "Önceki isteğiniz hâlâ işleniyor. Lütfen birazdan tekrar deneyin.",
   "errors.unavailable": "Bu hizmet geçici olarak kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
