@@ -2,6 +2,8 @@
 
 The [contract matrix](ACCEPTANCE_MATRIX.md) maps the reviewed PRD/Figma baseline to these suites.
 The [2026-11-10 result summary](ACCEPTANCE_RESULTS_2026-11-10.md) records tested candidates, run IDs and limits.
+The [2026-11-12 result summary](ACCEPTANCE_RESULTS_2026-11-12.md) records the frontend-feedback contracts,
+final queue/default follow-up, and incremental shared-dev origin acceptance with their separate evidence scopes.
 
 Run these tools against an isolated deployment with the feature enabled, migrated PostgreSQL, Redis, beat, a dedicated
 `external_agent_worker` and the normal platform worker. The tools create clearly named fixture assets and Apps.
@@ -33,6 +35,7 @@ From the repository root, set `PYTHONPATH=api` and run a module through `uv run 
 | Module under `tests.e2e_tests.external_agents` | Coverage |
 | --- | --- |
 | `acceptance` | Verify/Save, Message/Task/SSE/GetTask, cancellation, strict outputs, files, Trace, unknown submission and SSRF rejection. |
+| `frontend_feedback_acceptance` | Stable Verify failure reasons, Roster sorting/cohort counts/readable App references, permanent icons, real multipart and URL-only Paste, scoped input/output URL refresh, retry statistics and provider overview. |
 | `workflow_acceptance` | Workflow pause/resume, Node Test/LastRun, Native regression, published Chatflow context reuse, rebinding and Busy. |
 | `access_acceptance` | Owner/Admin/Editor/Normal, foreign tenant, display generation, credential scope and page-leave fences. |
 | `export_acceptance` | Real Phoenix OTLP asset/App targets, isolated destination failure and export-only retries. |
@@ -76,6 +79,23 @@ API, platform worker and database throughout these phases.
 
 Individual modules document their output-file variables. The timeout runner can take several minutes while honoring
 the real node/cancellation/background-query windows; it does not shorten the logical execution budget.
+
+## Frontend-feedback contracts
+
+`frontend_feedback_acceptance` runs sequentially against the isolated HTTPS fixture with real Console login/CSRF.
+It creates synthetic owned assets, two Apps and actual icon/input/output files; it does not write database rows to
+manufacture Task receipts or call-total token proof. Configure the Normal role in `BYOA_TEST_ACTORS_JSON` for the
+aggregate-only reference-count check, and use `BYOA_FRONTEND_FEEDBACK_OUTPUT` for its safe result receipt.
+
+```bash
+PYTHONPATH=api uv run --frozen --project api python \
+  -m tests.e2e_tests.external_agents.frontend_feedback_acceptance
+```
+
+The receipt separates contract checks, business message counts, byte hashes and elapsed time. It does not establish
+visual/browser UI acceptance. Deployment-specific upload-origin checks must keep TLS verification and an explicit
+trusted origin policy; do not forward Console/CSRF, Cloudflare or Agent credentials to a different file origin.
+A trusted-origin backend byte check remains separate from public browser/CDN delivery.
 
 ## MySQL runtime and gateway validation
 
