@@ -325,6 +325,24 @@ def test_import_snippet_returns_failed_for_invalid_version_type(service: Snippet
     assert "Invalid version type" in result.error
 
 
+def test_import_snippet_returns_failed_without_persisting_for_unparsable_version(
+    service: SnippetDslService, sqlite_session: Session
+) -> None:
+    result = service.import_snippet(
+        account=_account(),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content='version: "not-a-version"\nkind: snippet\nsnippet:\n  name: Unparsable Version\n',
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "Invalid DSL version" in result.error
+
+    persisted = sqlite_session.scalars(
+        select(CustomizedSnippet).where(CustomizedSnippet.name == "Unparsable Version")
+    ).all()
+    assert persisted == []
+
+
 def test_import_snippet_returns_failed_for_invalid_yaml_syntax(service: SnippetDslService) -> None:
     result = service.import_snippet(
         account=_account(),
