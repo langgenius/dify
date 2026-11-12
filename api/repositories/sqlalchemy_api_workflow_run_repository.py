@@ -1127,6 +1127,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         before its database reference is committed, and the superseded
         snapshot object is deleted after that commit, on a best-effort basis.
 
+        The workflow run row is locked with ``SELECT ... FOR UPDATE`` for the
+        duration of the transaction, so concurrent pause, stop, and resume
+        calls serialize. A second pause replaces the first and makes the
+        previous pause entity unusable.
+
         The execution state parameters are optional: passing ``None`` leaves
         the corresponding run column unchanged, while an explicit value
         (including ``0``) overwrites it.
