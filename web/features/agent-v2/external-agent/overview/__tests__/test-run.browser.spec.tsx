@@ -17,6 +17,7 @@ import { ExternalAgentOverviewPage } from '../page'
 import { ExternalAgentTestPanel } from '../test-run'
 
 const router = vi.hoisted(() => ({ push: vi.fn() }))
+// boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 // boundary: Browser Mode has no application router; the overview only reads its current route.
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -60,8 +61,10 @@ async function setup() {
     .toBeVisible()
 }
 
-function mockRunClock() {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+function mockRunClock(mockDate = true) {
+  vi.useFakeTimers({
+    toFake: mockDate ? ['setTimeout', 'clearTimeout', 'Date'] : ['setTimeout', 'clearTimeout'],
+  })
   onTestFinished(() => {
     vi.useRealTimers()
   })
@@ -252,12 +255,14 @@ it('retains a stopped test and its trace across reopening, then allows a fresh r
   const draft =
     'Review this payment clause against our 30-day payment policy and suggest a safer alternative that preserves the original intent.'
   await task.fill(draft)
-  mockRunClock()
-  const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+  mockRunClock(false)
+  const now = vi.spyOn(Date, 'now').mockReturnValue(1000)
   onTestFinished(() => now.mockRestore())
   await panel.getByRole('button', { name: 'Run test', exact: true }).click()
   await vi.advanceTimersByTimeAsync(2000)
   await panel.getByRole('button', { name: 'Stop test', exact: true }).click()
+  // Browser locator actions also tick fake timers; keep elapsed wall time deterministic.
+  now.mockReturnValue(5000)
   const stopping = panel.getByRole('button', { name: 'Stopping…', exact: true })
   const status = panel.getByRole('status')
   await expect.element(stopping).toHaveAttribute('aria-disabled', 'true')
@@ -283,7 +288,6 @@ it('retains a stopped test and its trace across reopening, then allows a fresh r
   await expect.element(task).toHaveAttribute('readonly')
   await vi.advanceTimersByTimeAsync(1699)
   await expect.element(status.getByText('Stopping', { exact: true })).toBeVisible()
-  now.mockReturnValue(4000)
   await vi.advanceTimersByTimeAsync(1)
   await expect.element(task).not.toHaveAttribute('readonly')
   await expect.element(task).toHaveValue(draft)

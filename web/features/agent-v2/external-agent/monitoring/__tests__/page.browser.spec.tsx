@@ -12,6 +12,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { ExternalAgentMonitoringPage } from '../page'
 
+// boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 // boundary: Browser Mode has no application router; this page only reads its current route.
 vi.mock('@/next/navigation', async (importOriginal) => ({

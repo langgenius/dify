@@ -33,6 +33,7 @@ const difyAgent: AgentInviteOptionResponse = {
 }
 
 const mocks = vi.hoisted(() => ({ fetchAgents: vi.fn() }))
+// boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 // boundary: Dify invite options are server data; source filtering and selection remain real.
 vi.mock('@/service/console', async (importOriginal) => {

@@ -16,6 +16,7 @@ import { ConnectExternalAgent } from '../components/connect-external-agent'
 import { ExternalRoster } from '../external-roster'
 import { externalConnectionPreview } from '../external-roster-preview'
 
+// boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 
 const defaultDescription =

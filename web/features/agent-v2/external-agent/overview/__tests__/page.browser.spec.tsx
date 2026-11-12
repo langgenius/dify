@@ -14,7 +14,9 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { ExternalAgentOverviewPage } from '../page'
 
 const router = vi.hoisted(() => ({ push: vi.fn() }))
+// boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
+// boundary: Browser Mode has no application router; capture navigation and supply the current route.
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => router,
