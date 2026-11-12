@@ -69,8 +69,8 @@ it('keeps the final message above a growing composer and aligns it after a real 
     expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
     expect(lastBounds.bottom).toBeLessThanOrEqual(footerBounds.top + 1)
     expect(lastBounds.top).toBeGreaterThanOrEqual(contentBounds.top)
-    expect(footerBounds.width).toBeCloseTo(contentBounds.width, 0)
-    expect(inputElement.getBoundingClientRect().width).toBeGreaterThan(contentBounds.width / 2)
+    expect(footerBounds.width).toBeCloseTo(viewport.clientWidth, 0)
+    expect(inputElement.getBoundingClientRect().width).toBeGreaterThan(viewport.clientWidth / 2)
     return true
   }
   await expect.poll(assertUnobstructed).toBe(true)
@@ -78,9 +78,11 @@ it('keeps the final message above a growing composer and aligns it after a real 
   await expect.poll(() => footerElement.getBoundingClientRect().height).toBeGreaterThan(100)
   await expect.poll(assertUnobstructed).toBe(true)
   await page.viewport(700, 800)
-  await screen.rerender(shell(history, true))
+  await screen.rerender(shell(history, false))
   await expect.poll(() => viewport.getBoundingClientRect().width).toBeCloseTo(490, 0)
-  await expect.poll(() => footerElement.getBoundingClientRect().width).toBeCloseTo(490, 0)
+  await expect
+    .poll(() => footerElement.getBoundingClientRect().width)
+    .toBeCloseTo(viewport.clientWidth, 0)
   await expect
     .poll(() => footerElement.getBoundingClientRect().bottom)
     .toBeLessThanOrEqual(viewport.getBoundingClientRect().bottom + 1)
