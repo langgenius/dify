@@ -26,29 +26,13 @@ import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response
 import { createExternalAgentWorkflowPreviewData } from '../preview'
 import { ExternalAgentWorkflowCanvas } from './preview-browser-canvas'
 
-export async function renderExternalAgentWorkflow({
-  graph,
-  name = 'Contract Review Agent',
-  initialStoreState = {},
+export function createExternalAgentWorkflowGraph({
+  nodeData = {},
+  withErrorBranches = false,
 }: {
-  graph?: WorkflowDataUpdater
-  name?: string
-  initialStoreState?: Partial<WorkflowStoreShape>
-} = {}) {
-  await page.viewport(1280, 1000)
-  const i18n = createInstance()
-  await i18n.init({
-    lng: 'en-US',
-    resources: { 'en-US': { agentRoster, common, workflowAgent, workflowDebug, workflow } },
-    keySeparator: false,
-    interpolation: { escapeValue: false },
-  })
-  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
-    currentWorkspace: { role: 'owner' },
-  })
-  seedExternalAgentWorkflowQueries(queryClient, 'external-preview-app')
-  const store = createWorkflowStore({})
-  store.setState({ isWorkflowDataLoaded: true, ...initialStoreState })
+  nodeData?: Partial<ExternalAgentWorkflowPreviewNodeData>
+  withErrorBranches?: boolean
+} = {}): WorkflowDataUpdater {
   const agent = createExternalRosterPreview()[1]!
   const data: ExternalAgentWorkflowPreviewNodeData = {
     type: BlockEnum.Agent,
@@ -56,6 +40,7 @@ export async function renderExternalAgentWorkflow({
     desc: '',
     selected: true,
     ...createExternalAgentWorkflowPreviewData(agent),
+    ...nodeData,
   }
   const nodes = [
     createNode({
@@ -89,6 +74,69 @@ export async function renderExternalAgentWorkflow({
     createEdge({ source: 'input', target: 'policy' }),
     createEdge({ source: 'policy', target: 'external-agent' }),
   ]
+  if (withErrorBranches) {
+    nodes.push(
+      createNode({
+        id: 'success-handler',
+        position: { x: 480, y: 0 },
+        data: { title: 'Success handler', outputs: {} },
+      }),
+      createNode({
+        id: 'failure-handler',
+        position: { x: 480, y: 160 },
+        data: { title: 'Failure handler', outputs: {} },
+      }),
+    )
+    edges.push(
+      createEdge({
+        id: 'failure-connection',
+        source: 'external-agent',
+        target: 'failure-handler',
+        sourceHandle: 'fail-branch',
+        ariaLabel: 'Failure connection',
+      }),
+      createEdge({
+        id: 'normal-connection',
+        source: 'external-agent',
+        target: 'success-handler',
+        sourceHandle: 'source',
+        ariaLabel: 'Normal connection',
+      }),
+      createEdge({
+        id: 'unrelated-connection',
+        source: 'success-handler',
+        target: 'failure-handler',
+        sourceHandle: 'source',
+        ariaLabel: 'Unrelated connection',
+      }),
+    )
+  }
+  return { nodes, edges, viewport: { x: 0, y: 0, zoom: 1 } }
+}
+
+export async function renderExternalAgentWorkflow({
+  graph,
+  name = 'Contract Review Agent',
+  initialStoreState = {},
+}: {
+  graph?: WorkflowDataUpdater
+  name?: string
+  initialStoreState?: Partial<WorkflowStoreShape>
+} = {}) {
+  await page.viewport(1280, 1000)
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { agentRoster, common, workflowAgent, workflowDebug, workflow } },
+    keySeparator: false,
+    interpolation: { escapeValue: false },
+  })
+  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
+    currentWorkspace: { role: 'owner' },
+  })
+  seedExternalAgentWorkflowQueries(queryClient, 'external-preview-app')
+  const store = createWorkflowStore({})
+  store.setState({ isWorkflowDataLoaded: true, ...initialStoreState })
   const rendered = await render(
     <QueryProvider>
       <EditorResourceScope
@@ -105,7 +153,7 @@ export async function renderExternalAgentWorkflow({
               <I18nextProvider i18n={i18n}>
                 <ReactFlowProvider>
                   <ExternalAgentWorkflowCanvas
-                    graph={graph ?? { nodes, edges, viewport: { x: 0, y: 0, zoom: 1 } }}
+                    graph={graph ?? createExternalAgentWorkflowGraph()}
                   />
                 </ReactFlowProvider>
               </I18nextProvider>

@@ -24,13 +24,15 @@ const AgentNode = NodeComponentMap[BlockEnum.Agent] as unknown as ComponentType<
 function CanvasNode({ id, data }: NodeProps<CommonNodeType>) {
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} id="target" />
       {isExternalAgentWorkflowPreviewData(data) ? (
         <AgentNode id={id} data={data} />
       ) : (
         <div>{data.title}</div>
       )}
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} id="source" />
+      {/* Keep the endpoint mounted so edge disappearance proves deletion from the graph. */}
+      <Handle type="source" position={Position.Right} id="fail-branch" style={{ top: '80%' }} />
     </>
   )
 }

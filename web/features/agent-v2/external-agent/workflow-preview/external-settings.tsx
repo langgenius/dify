@@ -1,7 +1,7 @@
-import type { ExternalAgentWorkflowWaitLimit } from './types'
+import type { ExternalAgentWorkflowPreviewNodeData, ExternalAgentWorkflowWaitLimit } from './types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Collapse,
@@ -12,28 +12,34 @@ import {
   CollapseTitle,
   CollapseTrigger,
 } from '@/app/components/workflow/nodes/_base/components/collapse'
+import DefaultValue from '@/app/components/workflow/nodes/_base/components/error-handle/default-value'
 import ErrorHandleTypeSelector from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector'
 import FailBranchCard from '@/app/components/workflow/nodes/_base/components/error-handle/fail-branch-card'
+import {
+  useDefaultValue,
+  useErrorHandle,
+} from '@/app/components/workflow/nodes/_base/components/error-handle/hooks'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { externalAgentDefaultWaitLimit } from './preview'
 import { ExternalAgentWaitLimit } from './wait-limit'
 
 type ExternalAgentWorkflowSettingsProps = {
-  waitLimit: ExternalAgentWorkflowWaitLimit
+  id: string
+  data: ExternalAgentWorkflowPreviewNodeData
   onWaitLimitChange: (changes: Partial<ExternalAgentWorkflowWaitLimit>) => void
-  errorStrategy: ErrorHandleTypeEnum
-  onErrorStrategyChange: (strategy: ErrorHandleTypeEnum) => void
 }
 
 export function ExternalAgentWorkflowSettings({
-  waitLimit,
+  id,
+  data,
   onWaitLimitChange,
-  errorStrategy,
-  onErrorStrategyChange,
 }: ExternalAgentWorkflowSettingsProps) {
-  const { t } = useTranslation(['agentRoster', 'workflow'])
+  const { t } = useTranslation(['workflow'])
   const errorHandlingTitleId = useId()
-  const [errorHandlingCollapsed, setErrorHandlingCollapsed] = useState(false)
-  const hasErrorStrategy = errorStrategy !== ErrorHandleTypeEnum.none
+  const { error_strategy, default_value } = data
+  const { collapsed, setCollapsed, handleErrorHandleTypeChange } = useErrorHandle(id, data)
+  const { handleFormChange } = useDefaultValue(id)
+  const waitLimit = { ...externalAgentDefaultWaitLimit, ...data.external_agent_wait_limit }
 
   return (
     <>
@@ -42,11 +48,7 @@ export function ExternalAgentWorkflowSettings({
         <Separator decorative className="my-0 bg-divider-subtle" />
       </div>
       <section className="pt-2 pb-4">
-        <Collapse
-          collapsed={errorHandlingCollapsed}
-          onCollapse={setErrorHandlingCollapsed}
-          disabled={!hasErrorStrategy}
-        >
+        <Collapse collapsed={collapsed} onCollapse={setCollapsed} disabled={!error_strategy}>
           <CollapseHeader>
             <CollapseTitle className="ms-4">
               <span id={errorHandlingTitleId}>
@@ -59,7 +61,7 @@ export function ExternalAgentWorkflowSettings({
                 {t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
               </InfotipContent>
             </Infotip>
-            {hasErrorStrategy && (
+            {!!error_strategy && (
               <CollapseTrigger
                 aria-labelledby={errorHandlingTitleId}
                 className="ms-0 size-6 justify-center"
@@ -70,24 +72,24 @@ export function ExternalAgentWorkflowSettings({
             <CollapseActions>
               <div className="pe-4">
                 <ErrorHandleTypeSelector
-                  value={errorStrategy}
-                  onSelected={(strategy) => {
-                    setErrorHandlingCollapsed(false)
-                    onErrorStrategyChange(strategy)
-                  }}
+                  value={error_strategy || ErrorHandleTypeEnum.none}
+                  onSelected={(strategy) => handleErrorHandleTypeChange(strategy, data)}
                 />
               </div>
             </CollapseActions>
           </CollapseHeader>
           <CollapseContent>
-            {errorStrategy === ErrorHandleTypeEnum.failBranch && (
+            {error_strategy === ErrorHandleTypeEnum.failBranch && !collapsed && (
               <FailBranchCard learnMorePlacement="below" />
             )}
-            {errorStrategy === ErrorHandleTypeEnum.defaultValue && (
-              <p className="px-4 pt-2 system-xs-regular text-text-tertiary">
-                {t(($) => $['nodes.common.errorHandle.defaultValue.desc'], { ns: 'workflow' })}
-              </p>
-            )}
+            {error_strategy === ErrorHandleTypeEnum.defaultValue &&
+              !collapsed &&
+              !!default_value?.length && (
+                <DefaultValue
+                  forms={default_value}
+                  onFormChange={(form) => handleFormChange(form, data)}
+                />
+              )}
           </CollapseContent>
         </Collapse>
       </section>

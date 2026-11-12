@@ -63,7 +63,7 @@ export function normalizeAgentV2DeclaredOutputs(
   return [...systemOutputs, ...getAgentV2CustomDeclaredOutputs(outputs)]
 }
 
-function getDeclaredOutputVarType(output: DeclaredOutputConfig) {
+export function getDeclaredOutputVarType(output: DeclaredOutputConfig) {
   if (output.type === 'array')
     return output.array_item ? arrayItemVarTypes[output.array_item.type] : VarType.arrayObject
 

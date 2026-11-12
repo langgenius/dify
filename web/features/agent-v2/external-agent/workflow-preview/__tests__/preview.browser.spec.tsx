@@ -1,6 +1,7 @@
 import { page, userEvent } from 'vite-plus/test/browser'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
+  createExternalAgentWorkflowGraph,
   createSerializedWorkflowDraftStorage,
   renderExternalAgentWorkflow,
 } from './preview-browser-fixture'
@@ -135,6 +136,25 @@ it('retains the wait limit and error strategy through panel reopening', async ()
   await expect
     .element(reopened.getByRole('combobox', { name: 'On timeout', exact: true }))
     .toMatchTextContent('End waiting')
+})
+
+it('removes only the failure connection when disabling error handling', async () => {
+  const { panel, canvas } = await setup({
+    graph: createExternalAgentWorkflowGraph({ withErrorBranches: true }),
+  })
+  for (const name of ['Failure connection', 'Normal connection', 'Unrelated connection']) {
+    await expect.element(canvas.getByRole('button', { name, exact: true })).toBeVisible()
+  }
+  await panel.getByRole('button', { name: 'Fail Branch', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: /^None/ }).click()
+  await expect
+    .element(canvas.getByRole('button', { name: 'Failure connection', exact: true }))
+    .not.toBeInTheDocument()
+  for (const name of ['Normal connection', 'Unrelated connection']) {
+    await expect.element(canvas.getByRole('button', { name, exact: true })).toBeVisible()
+  }
+  const reopened = await closeAndReopen(panel)
+  await expect.element(reopened.getByRole('button', { name: 'None', exact: true })).toBeVisible()
 })
 
 it('shows each timeout action and retains the cancellation choice through reopening', async () => {

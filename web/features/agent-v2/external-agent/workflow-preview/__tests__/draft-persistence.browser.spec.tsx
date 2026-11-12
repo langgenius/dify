@@ -3,6 +3,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleClient } from '@/service/console'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
+  createExternalAgentWorkflowGraph,
   createSerializedWorkflowDraftStorage,
   renderExternalAgentWorkflow,
 } from './preview-browser-fixture'
@@ -39,6 +40,9 @@ async function setup(...args: Parameters<typeof renderExternalAgentWorkflow>) {
   return rendered
 }
 
+const readDraft = () =>
+  consoleClient.apps.byAppId.workflows.draft.get({ params: { app_id: 'external-preview-app' } })
+
 beforeEach(({ onTestFinished }) => {
   onTestFinished(guardUnexpectedFetch())
   const storage = createSerializedWorkflowDraftStorage()
@@ -69,11 +73,7 @@ it('restores the external agent and its settings from a serialized draft after r
   await changed.getByRole('button', { name: 'Fail Branch', exact: true }).click()
   await page.getByRole('menuitemradio', { name: /^None/ }).click()
   await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
-  await expect.poll(() => draftApi.save.mock.calls.length).toBeGreaterThan(0)
-  const saved = await consoleClient.apps.byAppId.workflows.draft.get({
-    params: { app_id: 'external-preview-app' },
-  })
-  expect(saved.graph).toMatchObject({
+  const expectedGraph = {
     nodes: expect.arrayContaining([
       expect.objectContaining({
         id: 'external-agent',
@@ -81,7 +81,6 @@ it('restores the external agent and its settings from a serialized draft after r
           agent_node_kind: 'external_agent',
           external_agent: expect.objectContaining({ name: 'Document Review Agent' }),
           agent_task: 'Review the saved contract.',
-          error_strategy: 'none',
           agent_declared_outputs: expect.arrayContaining([
             expect.objectContaining({ name: 'review_notes' }),
           ]),
@@ -98,11 +97,25 @@ it('restores the external agent and its settings from a serialized draft after r
     edges: expect.arrayContaining([
       expect.objectContaining({ source: 'policy', target: 'external-agent' }),
     ]),
-  })
+  }
+  await expect
+    .poll(async () => {
+      const saved = await readDraft()
+      const graph = saved.graph as WorkflowDataUpdater
+      const agent = graph.nodes.find((node) => node.id === 'external-agent')
+      return { graph, strategy: agent?.data.error_strategy, defaults: agent?.data.default_value }
+    })
+    .toMatchObject({ graph: expectedGraph, strategy: undefined, defaults: undefined })
+  const saved = await readDraft()
+  expect(saved.graph).toMatchObject(expectedGraph)
+  const savedGraph = saved.graph as WorkflowDataUpdater
+  const savedAgent = savedGraph.nodes.find((node) => node.id === 'external-agent')
+  expect(savedAgent?.data).not.toHaveProperty('error_strategy')
+  expect(savedAgent?.data).not.toHaveProperty('default_value')
   await unmount()
   await expect.element(changed).not.toBeInTheDocument()
   const { panel: restored, canvas } = await setup({
-    graph: saved.graph as WorkflowDataUpdater,
+    graph: savedGraph,
     name: 'Document Review Agent',
   })
   await expect.element(canvas.getByText('Document Review Agent', { exact: true })).toBeVisible()
@@ -125,4 +138,115 @@ it('restores the external agent and its settings from a serialized draft after r
     .element(restored.getByRole('textbox', { name: 'Retry interval', exact: true }))
     .toHaveValue('45')
   await expect.element(restored.getByRole('button', { name: 'None', exact: true })).toBeVisible()
+})
+
+it('saves an edited default output, removes only the failure connection, and restores both from the draft', async () => {
+  const { panel, canvas, unmount } = await setup({
+    graph: createExternalAgentWorkflowGraph({ withErrorBranches: true }),
+  })
+  for (const name of ['Failure connection', 'Normal connection', 'Unrelated connection']) {
+    await expect.element(canvas.getByRole('button', { name, exact: true })).toBeVisible()
+  }
+  await panel.getByRole('button', { name: 'Fail Branch', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: /^Default Value/ }).click()
+  const fallback = panel.getByRole('textbox', { name: 'text', exact: true })
+  await expect.element(fallback).toHaveValue('')
+  await expect
+    .element(canvas.getByRole('button', { name: 'Failure connection', exact: true }))
+    .not.toBeInTheDocument()
+  for (const name of ['Normal connection', 'Unrelated connection']) {
+    await expect.element(canvas.getByRole('button', { name, exact: true })).toBeVisible()
+  }
+  await fallback.fill('The contract could not be reviewed. Please try again.')
+  await panel.getByText('text', { exact: true }).first().hover()
+  await panel.getByRole('button', { name: 'Edit text', exact: true }).click()
+  await panel.getByRole('textbox', { name: 'Field name', exact: true }).fill('summary')
+  await panel.getByRole('button', { name: 'Confirm', exact: true }).click()
+  await expect
+    .element(panel.getByRole('textbox', { name: 'summary', exact: true }))
+    .toHaveValue('The contract could not be reviewed. Please try again.')
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  const defaultValue = [
+    {
+      key: 'summary',
+      type: 'string',
+      value: 'The contract could not be reviewed. Please try again.',
+    },
+  ]
+  await expect
+    .poll(async () => {
+      const saved = await readDraft()
+      return (saved.graph as WorkflowDataUpdater).nodes.find((node) => node.id === 'external-agent')
+        ?.data.default_value
+    })
+    .toEqual(defaultValue)
+  const saved = await readDraft()
+  const savedGraph = saved.graph as WorkflowDataUpdater
+  expect(savedGraph.nodes.find((node) => node.id === 'external-agent')?.data).toMatchObject({
+    error_strategy: 'default-value',
+    default_value: defaultValue,
+    agent_declared_outputs: expect.arrayContaining([expect.objectContaining({ name: 'summary' })]),
+  })
+  expect(savedGraph.edges.map((edge) => edge.id)).toEqual(
+    expect.arrayContaining(['normal-connection', 'unrelated-connection']),
+  )
+  expect(savedGraph.edges.map((edge) => edge.id)).not.toContain('failure-connection')
+  await unmount()
+  await expect.element(panel).not.toBeInTheDocument()
+  const { panel: restored, canvas: restoredCanvas } = await setup({ graph: savedGraph })
+  await expect
+    .element(restored.getByRole('button', { name: 'Default Value', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(restored.getByRole('textbox', { name: 'summary', exact: true }))
+    .toHaveValue(defaultValue[0]!.value)
+  await expect
+    .element(restoredCanvas.getByRole('button', { name: 'Failure connection', exact: true }))
+    .not.toBeInTheDocument()
+  for (const name of ['Normal connection', 'Unrelated connection']) {
+    await expect.element(restoredCanvas.getByRole('button', { name, exact: true })).toBeVisible()
+  }
+  await restored.getByRole('button', { name: 'Default Value', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: /^Fail Branch/ }).click()
+  await expect
+    .element(restored.getByRole('textbox', { name: 'summary', exact: true }))
+    .not.toBeInTheDocument()
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  await expect
+    .poll(async () => {
+      const saved = await readDraft()
+      return (saved.graph as WorkflowDataUpdater).nodes.find((node) => node.id === 'external-agent')
+        ?.data
+    })
+    .toMatchObject({ error_strategy: 'fail-branch' })
+  const failBranchDraft = await readDraft()
+  expect(
+    (failBranchDraft.graph as WorkflowDataUpdater).nodes.find(
+      (node) => node.id === 'external-agent',
+    )?.data,
+  ).not.toHaveProperty('default_value')
+})
+
+it('edits a boolean output fallback through its switch and saves the boolean value', async () => {
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: {
+        agent_declared_outputs: [{ name: 'approved', type: 'boolean', required: false }],
+      },
+    }),
+  })
+  await panel.getByRole('button', { name: 'Fail Branch', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: /^Default Value/ }).click()
+  const approved = panel.getByRole('switch', { name: 'approved', exact: true })
+  await expect.element(approved).not.toBeChecked()
+  await approved.click()
+  await expect.element(approved).toBeChecked()
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  await expect
+    .poll(async () => {
+      const saved = await readDraft()
+      return (saved.graph as WorkflowDataUpdater).nodes.find((node) => node.id === 'external-agent')
+        ?.data.default_value
+    })
+    .toEqual([{ key: 'approved', type: 'boolean', value: true }])
 })

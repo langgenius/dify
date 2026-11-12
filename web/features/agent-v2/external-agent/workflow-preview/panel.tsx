@@ -10,6 +10,7 @@ import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-co
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { mergeDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
 import { TitleInput } from '@/app/components/workflow/nodes/_base/components/title-description-input'
 import NoLastRunData from '@/app/components/workflow/nodes/_base/components/workflow-panel/last-run/no-data'
 import { AgentOutputVariables } from '@/app/components/workflow/nodes/agent-v2/components/agent-output-variables'
@@ -47,14 +48,37 @@ export function ExternalAgentWorkflowPreviewPanel({
   const agent = data.external_agent
   const task = data.agent_task ?? ''
   const outputs = data.agent_declared_outputs ?? externalAgentDefaultOutputs
-  const waitLimit = { ...externalAgentDefaultWaitLimit, ...data.external_agent_wait_limit }
   const update = useCallback(
     (patch: PreviewUpdate) => {
       const current = collaborativeWorkflow.getState().nodes.find((node) => node.id === id)
       if (!current || !isExternalAgentWorkflowPreviewData(current.data)) return
+      let changes = typeof patch === 'function' ? patch(current.data) : patch
+      if (
+        changes.agent_declared_outputs !== undefined &&
+        current.data.error_strategy === ErrorHandleTypeEnum.defaultValue
+      ) {
+        const previousOutputs = current.data.agent_declared_outputs ?? externalAgentDefaultOutputs
+        const nextOutputs = changes.agent_declared_outputs
+        const renamedOutputs =
+          previousOutputs.length === nextOutputs.length
+            ? previousOutputs.flatMap((output, index) =>
+                output.name === nextOutputs[index]!.name
+                  ? []
+                  : [{ from: output.name, to: nextOutputs[index]!.name }],
+              )
+            : []
+        changes = {
+          ...changes,
+          default_value: mergeDefaultValue(
+            { ...current.data, ...changes },
+            current.data.default_value,
+            renamedOutputs.length === 1 ? renamedOutputs[0] : undefined,
+          ),
+        }
+      }
       handleNodeDataUpdateWithSyncDraft({
         id,
-        data: typeof patch === 'function' ? patch(current.data) : patch,
+        data: changes,
       })
     },
     [id, collaborativeWorkflow, handleNodeDataUpdateWithSyncDraft],
@@ -188,7 +212,9 @@ export function ExternalAgentWorkflowPreviewPanel({
             />
           </div>
           <ExternalAgentWorkflowSettings
-            waitLimit={waitLimit}
+            key={id}
+            id={id}
+            data={data}
             onWaitLimitChange={(changes) =>
               update((current) => ({
                 external_agent_wait_limit: {
@@ -198,8 +224,6 @@ export function ExternalAgentWorkflowPreviewPanel({
                 },
               }))
             }
-            errorStrategy={data.error_strategy ?? ErrorHandleTypeEnum.failBranch}
-            onErrorStrategyChange={(error_strategy) => update({ error_strategy })}
           />
         </TabsPanel>
         <TabsPanel value="lastRun" className="flex min-h-0 flex-1 flex-col">
