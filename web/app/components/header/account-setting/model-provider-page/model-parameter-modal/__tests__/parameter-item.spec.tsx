@@ -201,6 +201,70 @@ describe('ParameterItem', () => {
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   })
 
+  it('preserves an externally updated zero when toggling the parameter', async () => {
+    const user = userEvent.setup()
+    const onSwitch = vi.fn()
+    const rule = createRule({ default: 0.5 })
+    const { rerender } = render(
+      <ParameterItem parameterRule={rule} value={0.7} onSwitch={onSwitch} />,
+    )
+    rerender(<ParameterItem parameterRule={rule} value={0} onSwitch={onSwitch} />)
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    rerender(<ParameterItem parameterRule={rule} onSwitch={onSwitch} />)
+
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toHaveValue(0)
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(onSwitch).toHaveBeenLastCalledWith(true, 0)
+  })
+
+  it('preserves an externally updated false when toggling the parameter', async () => {
+    const user = userEvent.setup()
+    const onSwitch = vi.fn()
+    const rule = createRule({ type: 'boolean', default: true })
+    const { rerender } = render(
+      <ParameterItem parameterRule={rule} value={true} onSwitch={onSwitch} />,
+    )
+    rerender(<ParameterItem parameterRule={rule} value={false} onSwitch={onSwitch} />)
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    rerender(<ParameterItem parameterRule={rule} onSwitch={onSwitch} />)
+
+    expect(screen.getByRole('radio', { name: 'False' })).toBeChecked()
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(onSwitch).toHaveBeenLastCalledWith(true, false)
+  })
+
+  it('keeps edits to an inactive parameter local until it is enabled', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onSwitch = vi.fn()
+    render(
+      <ParameterItem
+        parameterRule={createRule({ default: 0.5 })}
+        onChange={onChange}
+        onSwitch={onSwitch}
+      />,
+    )
+    const input = screen.getByRole('spinbutton', { name: 'Temperature' })
+    await user.clear(input)
+    await user.type(input, '0.9')
+    await user.tab()
+
+    expect(input).toHaveValue(0.9)
+    expect(screen.getByRole('switch', { name: 'Temperature' })).not.toBeChecked()
+    expect(onChange).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(onSwitch).toHaveBeenLastCalledWith(true, 0.9)
+  })
+
+  it('uses the rule default when enabling an initially unset parameter', async () => {
+    const user = userEvent.setup()
+    const onSwitch = vi.fn()
+    render(<ParameterItem parameterRule={createRule({ default: 0.5 })} onSwitch={onSwitch} />)
+
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(onSwitch).toHaveBeenCalledWith(true, 0.5)
+  })
+
   it('should use default values if value is undefined', () => {
     const { rerender } = render(
       <ParameterItem parameterRule={createRule({ type: 'float', default: 0.5 })} />,

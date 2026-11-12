@@ -160,6 +160,8 @@ function ParameterItem({
 
   const handleSwitch = (checked: boolean) => {
     if (onSwitch) {
+      if (!checked) setLocalValue(renderValue)
+
       const assignValue: ParameterValue = localValue ?? getDefaultValue()
 
       onSwitch(checked, assignValue)
