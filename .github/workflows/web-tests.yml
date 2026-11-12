@@ -96,6 +96,10 @@ jobs:
     name: Web Browser Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
+    env:
+      VITEST_EXP_MUTATION_WAKE: 'true'
+      VITEST_EXP_STABLE_RETRY: 'true'
+      VITEST_EXP_UNBUFFERED_INPUT: 'true'
     strategy:
       fail-fast: false
       matrix:

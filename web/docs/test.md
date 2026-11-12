@@ -29,6 +29,22 @@ Browser CI sets `DIFY_TEST_COVERAGE_ONLY_EXECUTED=true` so its report includes l
 
 The pinned Vitest packages have Browser Mode patches for run-only source caching, deferred export of failure traces, and opt-in reuse of Chromium's precise-coverage session. Web Browser CI enables the coverage patch with `VITEST_EXP_V8_PERSISTENT=true`; watch mode retains the per-file coverage lifecycle. Revalidate the dependency patches together when upgrading Vitest, including retained failure artifacts, coverage maps, and run and watch behavior. Run `vp run test:browser-traces` from `web/` to verify trace retention and ZIP integrity with Chromium and `unzip` installed; CI runs this check in the first browser shard.
 
+### Experimental Browser runtime switches
+
+Three pinned dependency patches are opt-in and enabled for the Web Browser CI job, including its trace verifier:
+
+- `VITEST_EXP_MUTATION_WAKE=true` retries locator lookup after a DOM mutation without advancing the original fallback deadline. Fake timers keep their original polling behavior; watch mode ignores this switch.
+- `VITEST_EXP_STABLE_RETRY=true` removes the extra Playwright retry sleep only after an unstable bounding box. Visibility, enablement, hit testing and the original two-frame stability check remain intact.
+- `VITEST_EXP_UNBUFFERED_INPUT=true` enables Chromium's DevTools unbuffered input setting through `Overlay.enable`, without drawing an overlay. It applies only to headless Chromium run mode; interactive UI and watch mode retain normal input buffering.
+
+For a local experiment, run the same suite and worker limit with the switches on or off:
+
+```sh
+VITEST_EXP_MUTATION_WAKE=true VITEST_EXP_STABLE_RETRY=true VITEST_EXP_UNBUFFERED_INPUT=true vp test run --project browser --maxWorkers=2
+```
+
+Unset these variables or set them to `false` to use the original runtime paths. These switches do not advance browser time, reduce animation duration or force interactions. Recheck native input, coverage, retained traces and watch behavior when upgrading Vitest or Playwright. File-count experiments must hold these switches fixed and are separate from comparisons of the switches themselves.
+
 ## Choose the Right Boundary
 
 Use the smallest boundary that includes the behavior owner and proves the product contract without coupling the test to implementation:

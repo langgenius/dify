@@ -1,0 +1,27 @@
+diff --git a/lib/coreBundle.js b/lib/coreBundle.js
+index 559de664371f8abe23e261b4a1063e97727d9097..055a88f610a8992aca33ed03ef9f81f60a10ac0b 100644
+--- a/lib/coreBundle.js
++++ b/lib/coreBundle.js
+@@ -21577,11 +21577,13 @@ var init_dom = __esm({
+       }
+       async _retryAction(progress2, actionName, action, options) {
+         let retry2 = 0;
++        const fastStableRetry = process.env.VITEST_EXP_STABLE_RETRY === "true";
++        let waitingForStability = false;
+         const waitTime = [0, 20, 100, 100, 500];
+         while (true) {
+           if (retry2) {
+             progress2.log(`retrying ${actionName} action${options.trial ? " (trial run)" : ""}`);
+-            const timeout = waitTime[Math.min(retry2 - 1, waitTime.length - 1)];
++            const timeout = fastStableRetry && waitingForStability ? 0 : waitTime[Math.min(retry2 - 1, waitTime.length - 1)];
+             if (timeout) {
+               progress2.log(`  waiting ${timeout}ms`);
+               await progress2.wait(timeout);
+@@ -21593,6 +21595,7 @@ var init_dom = __esm({
+             await this._frame._page.performActionPreChecks(progress2);
+           const result2 = await action(progress2, retry2);
+           ++retry2;
++          waitingForStability = typeof result2 === "object" && result2?.missingState === "stable";
+           if (result2 === "error:notvisible") {
+             if (options.force)
+               throw new NonRecoverableDOMError("Element is not visible");
