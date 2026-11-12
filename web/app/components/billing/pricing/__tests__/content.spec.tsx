@@ -14,16 +14,6 @@ import { render } from '@/test/console/render'
 import { createDeferred } from '@/test/deferred'
 import { PricingContent } from '../content'
 
-let billingPopup: {
-  location: { href: string }
-  opener: Window | null
-  close: ReturnType<typeof vi.fn>
-}
-beforeEach(() => {
-  billingPopup = { location: { href: '' }, opener: window, close: vi.fn() }
-  vi.spyOn(window, 'open').mockImplementation(() => billingPopup as unknown as Window)
-})
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
@@ -382,15 +372,40 @@ it.each(['month', 'year'] as const)(
     seedFeatures(queryClient, {
       billing: { subscription: { plan: 'professional', interval } },
     })
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ url: 'https://billing.example.com' }), {
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const pending = createDeferred<Response>()
+    const request = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise)
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     show()
-    if (interval === 'year')
-      await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
-    await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
+    const manage = screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' })
+    await user.click(manage)
+    expect(manage).toHaveAttribute('aria-disabled', 'true')
+    await user.click(manage)
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(new URL((request.mock.calls[0]?.[0] as Request).url).pathname).toBe(
+      '/console/api/billing/invoices',
+    )
+    expect(navigate).not.toHaveBeenCalled()
+    await act(async () => pending.resolve(Response.json({ url: 'https://billing.example.com' })))
+    expect(navigate).toHaveBeenCalledWith('https://billing.example.com')
+    expect(open).not.toHaveBeenCalled()
   },
 )
+
+it('allows retrying subscription management when no portal URL is returned', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient, {
+    billing: { subscription: { plan: 'professional', interval: 'month' } },
+  })
+  const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ url: '' }))
+    .mockResolvedValueOnce(Response.json({ url: 'https://billing.example.com/retry' }))
+  show()
+  const manage = screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' })
+  await user.click(manage)
+  expect(navigate).not.toHaveBeenCalled()
+  await user.click(manage)
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://billing.example.com/retry'))
+})
