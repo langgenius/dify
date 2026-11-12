@@ -66,7 +66,6 @@ const renderPlan = ({
     { wrapper },
   )
 }
-const popup = { opener: null as unknown, location: { href: '' }, close: vi.fn() }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -75,9 +74,7 @@ beforeEach(() => {
   mockGetSubscription.mockReset().mockResolvedValue({ url: 'https://pay.example.com/checkout' })
   mockGetInvoices.mockReset().mockResolvedValue({ url: 'https://pay.example.com/invoices' })
   vi.stubGlobal('location', { href: 'https://app.example.com/billing' })
-  popup.opener = window
-  popup.location.href = ''
-  vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
+  vi.spyOn(window, 'open').mockReturnValue(null)
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -144,16 +141,15 @@ describe('Cloud plan payment flow', () => {
     mockGetInvoices.mockReturnValue(request.promise)
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
     await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
-    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
-    expect(popup.opener).toBeNull()
-    expect(popup.location.href).toBe('')
+    expect(window.location.href).toBe('https://app.example.com/billing')
     await act(async () => request.resolve({ url: 'https://pay.example.com/invoices' }))
-    await waitFor(() => expect(popup.location.href).toBe('https://pay.example.com/invoices'))
+    await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/invoices'))
+    expect(window.open).not.toHaveBeenCalled()
     expect(mockGetInvoices).toHaveBeenCalledOnce()
     expect(mockGetSubscription).not.toHaveBeenCalled()
   })
 
-  it('closes the pending portal and reports its URL request failure', async () => {
+  it('stays on the billing page and reports a portal URL request failure', async () => {
     const user = userEvent.setup()
     mockGetInvoices.mockRejectedValueOnce(
       new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
@@ -162,8 +158,8 @@ describe('Cloud plan payment flow', () => {
     await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
     expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
     expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
-    expect(popup.close).toHaveBeenCalledOnce()
-    expect(popup.location.href).toBe('')
+    expect(window.location.href).toBe('https://app.example.com/billing')
+    expect(window.open).not.toHaveBeenCalled()
   })
 
   it('prevents duplicate subscription requests while checkout is pending', async () => {
