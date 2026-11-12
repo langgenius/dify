@@ -4,6 +4,7 @@ import io
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
+from functools import partial
 from threading import Event
 from uuid import UUID
 
@@ -11,7 +12,7 @@ import pytest
 from celery.exceptions import Retry
 from dify_agent.protocol import CreateRunRequest, RunComposition
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient
@@ -23,6 +24,7 @@ from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationCategory,
     EvaluationDatasetInput,
+    EvaluationItemInput,
     EvaluationItemResult,
     EvaluationMetric,
     EvaluationRunData,
@@ -33,6 +35,7 @@ from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import AgentConfigVersionKind, AgentWorkspaceBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.evaluation import (
@@ -42,6 +45,8 @@ from models.evaluation import (
     EvaluationRunStatus,
     EvaluationTargetType,
 )
+from models.model import UploadFile
+from models.workflow import WorkflowKind
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
@@ -49,9 +54,13 @@ from tasks.evaluation_task import (
     EvaluationRunOwnershipLostError,
     _apply_judgment,
     _build_missing_result_errors,
+    _collect_retrieval_contexts,
     _compute_metrics_summary,
     _create_runner,
+    _delete_stored_result_file,
     _evaluate_agent_row,
+    _evaluate_retrieval_results,
+    _evaluate_with_customized_workflow,
     _execute_agent_target,
     _execute_evaluation,
     _execute_evaluation_runner,
@@ -67,12 +76,247 @@ from tasks.evaluation_task import (
     _resume_retrieval_rows,
     _resume_workflow_rows,
     _stamp_and_merge,
+    _store_result_file,
     _update_run_progress,
     _workflow_task_id,
     reconcile_stale_evaluation_runs,
     run_evaluation,
 )
 from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
+
+
+def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() -> None:
+    node_results = {
+        "first": NodeRunResult(outputs={"result": [{"content": "alpha"}, {"content": ""}, {"other": "x"}]}),
+        "second": NodeRunResult(outputs={"result": "invalid"}),
+        "third": NodeRunResult(outputs={"result": [{"content": 3}, None]}),
+    }
+
+    assert _collect_retrieval_contexts(node_results, []) is None
+    assert _collect_retrieval_contexts(node_results, ["missing", "first", "second", "third"]) == ["alpha", "3"]
+
+
+def test_store_result_file_persists_upload_matching_saved_bytes(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved: list[tuple[str, bytes]] = []
+    monkeypatch.setattr("tasks.evaluation_task.storage.save", lambda key, data: saved.append((key, data)))
+
+    upload = _store_result_file("tenant-1", "run-12345678", b"xlsx-bytes", sqlite_session, "account-1")
+
+    assert upload is sqlite_session.get(UploadFile, upload.id)
+    assert upload.name == "evaluation-result-run-1234.xlsx"
+    assert upload.size == len(b"xlsx-bytes")
+    assert upload.used is True
+    assert saved == [(upload.key, b"xlsx-bytes")]
+
+
+def test_store_result_file_removes_saved_bytes_when_database_flush_fails(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved_keys: list[str] = []
+    deleted_keys: list[str] = []
+    monkeypatch.setattr("tasks.evaluation_task.storage.save", lambda key, _data: saved_keys.append(key))
+    monkeypatch.setattr("tasks.evaluation_task.storage.delete", lambda key: deleted_keys.append(key))
+
+    def fail_flush(_session: Session, _flush_context: object, _instances: object) -> None:
+        raise RuntimeError("database unavailable")
+
+    event.listen(sqlite_session, "before_flush", fail_flush)
+    try:
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            _store_result_file("tenant-1", "run-12345678", b"xlsx-bytes", sqlite_session, "account-1")
+    finally:
+        event.remove(sqlite_session, "before_flush", fail_flush)
+
+    assert saved_keys == deleted_keys
+    assert len(saved_keys) == 1
+
+
+def test_delete_stored_result_file_ignores_storage_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    deleted: list[str] = []
+
+    def delete(key: str) -> None:
+        deleted.append(key)
+        raise OSError("storage unavailable")
+
+    monkeypatch.setattr("tasks.evaluation_task.storage.delete", delete)
+    _delete_stored_result_file("result-key")
+    assert deleted == ["result-key"]
+
+
+def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from models.model import AppMode
+    from services.workflow_service import WorkflowService
+
+    account = make_account()
+    tenant = make_tenant()
+    workflow = make_workflow(
+        workflow_id="workflow-1", app_id="evaluator-app-1", version="1", kind=WorkflowKind.EVALUATION
+    )
+    app = make_app(app_id="evaluator-app-1", mode=AppMode.WORKFLOW, created_by=account.id, workflow_id=workflow.id)
+    sqlite_session.add_all(
+        [
+            account,
+            tenant,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.NORMAL),
+            app,
+            workflow,
+        ]
+    )
+    sqlite_session.commit()
+
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        yield sqlite_session
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr(
+        "services.workflow_service.WorkflowService",
+        partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+    generated: list[dict[str, object]] = []
+
+    def generate(_self: WorkflowAppGenerator, **kwargs: object) -> dict[str, object]:
+        generated.append(kwargs)
+        outputs = {"score": 0.8} if kwargs["task_id"] == "task-0" else {}
+        return {"data": {"outputs": outputs}}
+
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
+    cancellation_checks: list[int] = []
+    metrics = CustomizedMetrics(
+        evaluation_workflow_id=app.id,
+        evaluation_workflow_version_id=workflow.id,
+        input_fields={"prompt": "{{#node.text#}}"},
+        output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+    )
+
+    results = _evaluate_with_customized_workflow(
+        CapturingEvaluationInstance(),
+        [
+            {"node": NodeRunResult(outputs={"text": "first"})},
+            {"node": NodeRunResult(outputs={"text": "second"})},
+        ],
+        metrics,
+        tenant.id,
+        cancellation_check=lambda: cancellation_checks.append(1),
+        task_id_factory=lambda index: f"task-{index}",
+    )
+
+    assert len(generated) == 2
+    assert generated[0]["workflow"] is workflow
+    assert generated[0]["args"] == {"inputs": {"prompt": "first"}}
+    assert generated[1]["args"] == {"inputs": {"prompt": "second"}}
+    assert results[0].metrics[0].name == "score"
+    assert results[0].metrics[0].value == 0.8
+    assert results[1].error == (
+        "Customized evaluation failed: Evaluation workflow returned none of the configured metric outputs"
+    )
+    assert len(cancellation_checks) == 4
+
+
+def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def evaluate(items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
+        return [
+            EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="answer_relevancy", value=0.9)])
+            for _item in items
+        ]
+
+    evaluation_instance = CapturingEvaluationInstance(llm_result_factory=evaluate)
+    progress: list[float] = []
+    persisted: list[list[EvaluationItemResult]] = []
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr(
+        "tasks.evaluation_task._update_run_progress", lambda _session, _lease, rate: progress.append(rate)
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task._persist_results",
+        lambda _session, _lease, results, *_args: persisted.append(results),
+    )
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="answer_relevancy", node_info_list=[_NODE_INFO])],
+        input_list=[
+            EvaluationDatasetInput(index=10, inputs={"query": "missing"}),
+            EvaluationDatasetInput(index=20, inputs={"query": "present"}, expected_output="expected"),
+        ],
+    )
+
+    results = _execute_evaluation_runner(
+        sqlite_session,
+        run_data,
+        evaluation_instance,
+        [{}, {"llm-1": NodeRunResult(outputs={"text": "answer"})}],
+        _lease(run_data.evaluation_run_id),
+    )
+
+    assert results[0].index == 10
+    assert results[0].error == "Target execution produced no successful node results for this row."
+    assert results[1].index == 20
+    assert results[1].metrics[0].name == "answer_relevancy"
+    assert results[1].metrics[0].node_info == _NODE_INFO
+    assert evaluation_instance.llm_items[0].output == "answer"
+    assert progress == [0.85]
+    assert persisted == [results]
+
+
+def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    progress: list[float] = []
+    persisted: list[list[EvaluationItemResult]] = []
+    monkeypatch.setattr(
+        "tasks.evaluation_task._update_run_progress", lambda _session, _lease, rate: progress.append(rate)
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task._persist_results",
+        lambda _session, _lease, results, *_args: persisted.append(results),
+    )
+
+    def fail_scoring(*_args: object, **_kwargs: object) -> list[EvaluationItemResult]:
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr("tasks.evaluation_task.RetrievalEvaluationRunner.evaluate_metrics", fail_scoring)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="knowledge_base",
+        target_id="dataset-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="context_precision", node_info_list=[])],
+        input_list=[
+            EvaluationDatasetInput(index=10, inputs={"query": "present"}),
+            EvaluationDatasetInput(index=20, inputs={"query": "failed"}),
+        ],
+    )
+
+    results = _evaluate_retrieval_results(
+        sqlite_session,
+        run_data,
+        CapturingEvaluationInstance(),
+        [NodeRunResult(outputs={"result": []}), None],
+        [None, "retrieval timeout"],
+        _lease(run_data.evaluation_run_id),
+    )
+
+    assert results[0].error == "Retrieval metric 'context_precision' failed: provider unavailable"
+    assert results[1].error == "Retrieval failed: retrieval timeout"
+    assert progress == [0.85]
+    assert persisted == [results]
+
 
 _NODE_INFO = NodeInfo(node_id="llm-1", type="llm", title="Answer")
 _EXECUTION_TOKEN = "40000000-0000-0000-0000-000000000001"
