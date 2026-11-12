@@ -190,7 +190,6 @@ project-excludes = [
   "../e2e_tests/contracts/core/workflow/nodes/test_start_node_json_object.py",
   "../e2e_tests/contracts/core/workflow/nodes/tool/test_tool_node.py",
   "core/workflow/test_node_runtime.py",
-  "core/workflow/nodes/trigger_webhook/test_entities.py",
   "core/workflow/nodes/trigger_webhook/test_node.py",
   "core/workflow/nodes/human_input/test_pause_reason.py",
   "core/workflow/nodes/human_input/test_callback.py",
