@@ -10,8 +10,8 @@ import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
 import { PricingFooter } from './footer'
 import Header from './header'
-import { PlanFeatureInfotip } from './plan-feature-infotip'
-import { CloudPlanItem } from './plans/cloud-plan-item'
+import { CloudPlanCard } from './plan-card'
+import { PlanFeatureInfotip } from './plan-card/features'
 import styles from './pricing.module.css'
 
 type BillingInterval = GetBillingSubscriptionData['query']['interval']
@@ -118,13 +118,13 @@ export function PricingContent() {
         )}
         <PlanFeatureInfotip>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
-            <CloudPlanItem
+            <CloudPlanCard plan="sandbox" billingInterval={billingInterval} billing={billing} />
+            <CloudPlanCard
               plan="professional"
               billingInterval={billingInterval}
               billing={billing}
             />
-            <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
+            <CloudPlanCard plan="team" billingInterval={billingInterval} billing={billing} />
           </div>
         </PlanFeatureInfotip>
       </div>

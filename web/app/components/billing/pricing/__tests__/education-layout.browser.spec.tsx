@@ -1,8 +1,8 @@
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { PlanFeatureInfotip } from '../plan-feature-infotip'
-import { CloudPlanItem } from '../plans/cloud-plan-item'
+import { CloudPlanCard } from '../plan-card'
+import { PlanFeatureInfotip } from '../plan-card/features'
 
 // boundary: The education checkout requires a workspace manager with billing access.
 vi.mock('@/context/workspace-state', async () => {
@@ -16,7 +16,7 @@ it('keeps both education checkout actions inside the dialog on a narrow phone', 
   await render(
     <Provider>
       <PlanFeatureInfotip>
-        <CloudPlanItem
+        <CloudPlanCard
           plan="team"
           billingInterval="month"
           billing={{
