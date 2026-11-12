@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { MenuItem, MenuLinkItem } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
@@ -19,12 +20,18 @@ import { consoleQuery } from '@/service/console'
 
 type ContactSupportProps = {
   placement: 'menu' | 'sidebar'
+  compact?: boolean
+  showDivider?: boolean
 }
 
 const sidebarItemClassName =
   'flex h-8 w-full items-center gap-2 rounded-[10px] bg-components-main-nav-nav-button-bg px-2 py-1.5 text-start system-md-medium text-components-main-nav-nav-button-text outline-hidden transition-colors hover:bg-components-main-nav-nav-button-bg-hover hover:text-components-main-nav-nav-button-text focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid'
 
-export default function ContactSupport({ placement }: ContactSupportProps) {
+export default function ContactSupport({
+  placement,
+  compact = false,
+  showDivider = true,
+}: ContactSupportProps) {
   const { t } = useTranslation(['billing', 'common'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const deploymentEdition = systemFeatures.deployment_edition
@@ -49,17 +56,27 @@ export default function ContactSupport({ placement }: ContactSupportProps) {
     if (!isPaidCloudPlan || !hasZendeskWidget || systemFeatures.branding.enabled) return null
 
     return (
-      <div className="flex flex-col gap-px p-2">
-        <div className="px-1 py-1.5" aria-hidden="true">
-          <div className="h-px bg-divider-subtle" />
-        </div>
-        <button type="button" className={sidebarItemClassName} onClick={openZendesk}>
+      <div className={cn('flex flex-col gap-px p-2', compact && 'items-center')}>
+        {showDivider && (
+          <div className="w-full px-1 py-1.5" aria-hidden="true">
+            <div className="h-px bg-divider-subtle" />
+          </div>
+        )}
+        <button
+          type="button"
+          className={cn(sidebarItemClassName, compact && 'size-8 justify-center p-0')}
+          aria-label={compact ? label : undefined}
+          title={compact ? label : undefined}
+          onClick={openZendesk}
+        >
           <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
             <span className="i-ri-message-3-line size-[18px]" />
           </span>
-          <span className="min-w-0 truncate" title={label}>
-            {label}
-          </span>
+          {!compact && (
+            <span className="min-w-0 truncate" title={label}>
+              {label}
+            </span>
+          )}
         </button>
       </div>
     )
