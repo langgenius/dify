@@ -59,7 +59,7 @@ Both render through the ErrorBody formatter: TooManyRequests -> code "too_many_r
 """
 
 
-def test_translate_maps_app_concurrency_to_too_many_requests():
+def test_translate_maps_app_concurrency_to_too_many_requests() -> None:
     # Regression guard: this used to fall through to a 500 (it was not caught here).
     with pytest.raises(TooManyRequests) as exc:
         with _translate_service_errors():
@@ -67,7 +67,7 @@ def test_translate_maps_app_concurrency_to_too_many_requests():
     assert exc.value.code == 429
 
 
-def test_translate_maps_workflow_quota_to_rate_limit_error():
+def test_translate_maps_workflow_quota_to_rate_limit_error() -> None:
     with pytest.raises(InvokeRateLimitHttpError) as exc:
         with _translate_service_errors():
             raise InvokeRateLimitError("workflow quota exhausted")
@@ -75,7 +75,7 @@ def test_translate_maps_workflow_quota_to_rate_limit_error():
     assert exc.value.code == 429
 
 
-def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
+def test_translate_maps_trigger_workflow_to_stable_unavailable_error() -> None:
     with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc:
         with _translate_service_errors():
             raise TriggerWorkflowServiceModeUnavailableServiceError()
@@ -83,7 +83,7 @@ def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
     assert exc.value.code == 403
 
 
-def test_translate_maps_value_error_to_a_fixed_bad_request():
+def test_translate_maps_value_error_to_a_fixed_bad_request() -> None:
     # Regression guard: an unpublished workflow used to surface as a detail-less 500.
     # The service message names internals, so the client gets a fixed text.
     with pytest.raises(BadRequest) as exc:
@@ -142,12 +142,14 @@ def _subject(token_type: TokenType = TokenType.OAUTH_ACCOUNT) -> Subject:
         pytest.param(ChatRunPayload, {"inputs": {}, "query": "hi", "conversation_id": "not-a-uuid"}, id="chat.bad_cid"),
     ],
 )
-def test_per_mode_payloads_reject_what_the_mode_does_not_take(model: type[BaseModel], payload: dict):
+def test_per_mode_payloads_reject_what_the_mode_does_not_take(
+    model: type[BaseModel], payload: dict[str, object]
+) -> None:
     with pytest.raises(ValidationError):
         model.model_validate(payload)
 
 
-def test_chat_payload_normalizes_conversation_id():
+def test_chat_payload_normalizes_conversation_id() -> None:
     assert ChatRunPayload(inputs={}, query="hi", conversation_id="   ").conversation_id is None
     cid = str(uuid.uuid4())
     assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
@@ -166,7 +168,7 @@ def test_stop_task_enforces_resolved_caller_ownership(
     token_type: TokenType,
     mode: AppMode,
     owns_task: bool,
-):
+) -> None:
     import services.app_task_service as task_module
 
     subject = _subject(token_type)
@@ -189,10 +191,14 @@ def test_stop_task_enforces_resolved_caller_ownership(
     allowed = owns_task or subject.caller_role == CreatorUserRole.ACCOUNT
     with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/{task_id}:stop", method="POST"):
         if allowed:
-            assert api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id) == TaskStopResponse(result="success")
+            assert api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+                api, ctx, app_id="app-1", task_id=task_id
+            ) == TaskStopResponse(result="success")
         else:
             with pytest.raises(NotFound, match="Task not found"):
-                api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
+                api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+                    api, ctx, app_id="app-1", task_id=task_id
+                )
     if allowed:
         assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
     else:
@@ -251,7 +257,9 @@ def test_run_reads_everything_off_the_context_before_streaming(
     api = AdvancedChatRunApi()
     body = AdvancedChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
-        response = api.post.__handler__(api, ctx, app_id=_TEST_APP_ID, body=body)
+        response = api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, ctx, app_id=_TEST_APP_ID, body=body
+        )
         ctx.seal()
         body = "".join(response.response)
 
@@ -260,19 +268,21 @@ def test_run_reads_everything_off_the_context_before_streaming(
     assert commits == []
 
 
-def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     generate_mock = _generate_stub(monkeypatch, [])
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         with pytest.raises(AppModeMismatch):
-            api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
+            api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+                api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body
+            )
     generate_mock.assert_not_called()
 
 
 def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     generate_mock = _generate_stub(monkeypatch, [])
     upload_service = Mock()
     operations: list[str] = []
@@ -299,7 +309,9 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     )
     api = CompletionRunApi()
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
-        api.post.__handler__(api, _ctx(AppMode.COMPLETION, sqlite_session), app_id=_TEST_APP_ID, body=body)
+        api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _ctx(AppMode.COMPLETION, sqlite_session), app_id=_TEST_APP_ID, body=body
+        )
 
     # The read transaction ends before the first object-storage write (api/AGENTS.md).
     assert operations == ["commit", "upload", "upload"]
@@ -314,7 +326,7 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     assert {"attachments", "auto_generate_name"}.isdisjoint(args)
 
 
-def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     message = 'data: {"event": "message", "answer": "hi"}\n\n'
     end = {"event": "message_end", "conversation_id": "c1", "message_id": "m1", "created_at": 1, "id": "m1"}
     end["task_id"] = "t1"
@@ -322,7 +334,9 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
+        response = api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body
+        )
         chunks = list(response.response)
     assert chunks[0] == message
     assert json.loads(chunks[1][len("data: ") :])["hints"] == [
@@ -334,13 +348,17 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
     ]
 
 
-def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_chat_route_passes_a_message_end_without_conversation_through(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     end = 'data: {"event": "message_end", "message_id": "m1", "created_at": 1, "id": "m1", "task_id": "t1"}\n\n'
     _generate_stub(monkeypatch, [end])
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
+        response = api.post.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body
+        )
         assert list(response.response) == [end]
 
 
