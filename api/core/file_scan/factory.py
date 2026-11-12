@@ -3,7 +3,7 @@ from typing import Any
 
 from core.file_scan.base import FileScanner
 from core.file_scan.entities import ScanProviderType
-from core.file_scan.scanners.api import ApiExtensionScanner
+from core.file_scan.scanners.api import CustomEndpointScanner
 from core.file_scan.scanners.clamav import ClamAVScanner
 from core.file_scan.scanners.cloudmersive import CloudmersiveScanner
 from core.file_scan.scanners.metadefender import MetaDefenderScanner
@@ -14,7 +14,7 @@ SCANNER_CLASSES: Mapping[ScanProviderType, type[FileScanner]] = {
     ScanProviderType.CLOUDMERSIVE: CloudmersiveScanner,
     ScanProviderType.SCANII: ScaniiScanner,
     ScanProviderType.METADEFENDER: MetaDefenderScanner,
-    ScanProviderType.API: ApiExtensionScanner,
+    ScanProviderType.API: CustomEndpointScanner,
 }
 """Every scanner, in the order the console lists them. Add a scanner by adding a class here."""
 

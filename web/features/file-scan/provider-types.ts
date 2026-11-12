@@ -36,10 +36,10 @@ export function fileScanProviderSendsFileContents(type: FileScanProviderType) {
 }
 
 export function useFileScanProviderTypeLabel() {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['fileScan'])
   return (type: string) => {
     if (!isFileScanProviderType(type)) return type
-    if (type === 'api') return t(($) => $['apiBasedExtension.selector.title'], { ns: 'common' })
+    if (type === 'api') return t(($) => $['type.customEndpoint'], { ns: 'fileScan' })
     return PROVIDER_BRAND_NAMES[type]
   }
 }

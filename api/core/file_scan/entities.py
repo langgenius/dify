@@ -54,8 +54,6 @@ class ScanTarget:
     mime_type: str
     file_hash: str
     load: Callable[[], bytes]
-    download_url: Callable[[], str] | None = None
-    """Short-lived signed URL, for scanners that fetch the file themselves (custom endpoints)."""
 
 
 @dataclass(frozen=True)

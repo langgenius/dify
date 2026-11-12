@@ -3,7 +3,6 @@ import type {
   FileScanProviderTypeResponse,
 } from '@dify/contracts/api/console/file-scan/types.gen'
 import { ORPCError } from '@orpc/client'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -33,7 +32,7 @@ const providerTypes: FileScanProviderTypeResponse[] = [
   { provider_type: 'cloudmersive', available: true, credential_fields: ['api_key'] },
   { provider_type: 'scanii', available: true, credential_fields: ['api_key', 'api_secret'] },
   { provider_type: 'metadefender', available: true, credential_fields: ['api_key'] },
-  { provider_type: 'api', available: true, credential_fields: [] },
+  { provider_type: 'api', available: true, credential_fields: ['api_key'] },
 ]
 
 function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanProviderResponse {
@@ -57,15 +56,13 @@ async function renderDialog(provider?: FileScanProviderResponse) {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   await render(
     <ConsoleProvider>
-      <NuqsTestingAdapter>
-        <FileScanProviderDialog
-          open
-          provider={provider}
-          providerTypes={providerTypes}
-          onOpenChange={vi.fn()}
-          onSaved={onSaved}
-        />
-      </NuqsTestingAdapter>
+      <FileScanProviderDialog
+        open
+        provider={provider}
+        providerTypes={providerTypes}
+        onOpenChange={vi.fn()}
+        onSaved={onSaved}
+      />
     </ConsoleProvider>,
   )
   return { onSaved }
@@ -75,6 +72,7 @@ const typeCard = (name: string) => page.getByRole('button', { name, exact: true 
 const nameField = () => page.getByRole('textbox', { name: 'fileScan.dialog.name' })
 const apiKeyField = () => page.getByLabelText('fileScan.dialog.apiKey')
 const apiSecretField = () => page.getByLabelText('fileScan.dialog.apiSecret')
+const endpointUrlField = () => page.getByLabelText('fileScan.dialog.endpointUrl')
 const saveButton = () => page.getByRole('button', { name: 'common.operation.save' })
 
 beforeEach(() => {
@@ -107,6 +105,111 @@ it('offers only the available services and swaps the fields with the selected on
   await expect
     .element(page.getByRole('combobox', { name: 'fileScan.dialog.regionLabel' }))
     .not.toBeInTheDocument()
+
+  // A custom endpoint is configured right here: its address and its key.
+  await typeCard('fileScan.type.customEndpoint').click()
+  await expect.element(endpointUrlField()).toBeVisible()
+  await expect.element(apiKeyField()).toBeVisible()
+  await expect.element(page.getByText('fileScan.dialog.endpointUrlDescription')).toBeVisible()
+  await expect.element(page.getByText('fileScan.dialog.dataNotice')).toBeVisible()
+})
+
+it('saves a custom endpoint only once its address is an http or https URL', async () => {
+  api.createProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
+  const { onSaved } = await renderDialog()
+
+  await typeCard('fileScan.type.customEndpoint').click()
+  await nameField().fill('In-house scanner')
+  await apiKeyField().fill('key-123')
+  await endpointUrlField().fill('ftp://scanner.example.com/scan')
+  await saveButton().click()
+
+  await expect.element(page.getByText('fileScan.dialog.endpointUrlInvalid')).toBeVisible()
+  expect(api.createProvider).not.toHaveBeenCalled()
+
+  await endpointUrlField().fill(' https://scanner.example.com/scan ')
+  await saveButton().click()
+
+  await expect.poll(() => onSaved.mock.calls.length).toBe(1)
+  expect(api.createProvider).toHaveBeenCalledWith({
+    body: {
+      name: 'In-house scanner',
+      provider_type: 'api',
+      config: { endpoint: 'https://scanner.example.com/scan' },
+      credentials: { api_key: 'key-123' },
+    },
+  })
+})
+
+it.each([
+  ['api', 'fileScan.dialog.endpointUrl'],
+  ['cloudmersive', 'fileScan.dialog.endpoint'],
+])('asks for the API key again when the address of a %s scanner changes', async (type, label) => {
+  api.updateProvider.mockRejectedValue(
+    new ORPCError('bad_request', {
+      status: 400,
+      message: 'The scanner at the new address rejected the API key.',
+    }),
+  )
+  await renderDialog(
+    scanner({
+      provider_type: type,
+      config: { endpoint: 'https://old.example.com/scan' },
+      credentials_set: { api_key: true },
+    }),
+  )
+  const address = page.getByLabelText(label)
+
+  await expect
+    .element(apiKeyField())
+    .toHaveAttribute('placeholder', 'fileScan.dialog.savedSecretPlaceholder')
+  await expect.element(page.getByText('fileScan.dialog.reenterApiKey')).not.toBeInTheDocument()
+
+  await address.fill('https://new.example.com/scan')
+  await expect.element(page.getByText('fileScan.dialog.reenterApiKey')).toBeVisible()
+  await expect.element(apiKeyField()).not.toHaveAttribute('placeholder')
+  await saveButton().click()
+
+  await expect.element(apiKeyField()).toHaveFocus()
+  expect(api.updateProvider).not.toHaveBeenCalled()
+
+  await apiKeyField().fill('key-for-new-address')
+  await saveButton().click()
+
+  await expect
+    .poll(() => api.updateProvider.mock.calls.at(-1)?.[0])
+    .toEqual({
+      params: { provider_id: 'scanner-1' },
+      body: {
+        name: 'Office scanner',
+        config: { endpoint: 'https://new.example.com/scan' },
+        credentials: { api_key: 'key-for-new-address' },
+      },
+    })
+  // Whatever the backend still objects to is shown where the user acted.
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('The scanner at the new address rejected the API key.')
+})
+
+it('keeps the stored key of a custom endpoint whose address is unchanged', async () => {
+  api.updateProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
+  const { onSaved } = await renderDialog(
+    scanner({
+      provider_type: 'api',
+      config: { endpoint: 'https://old.example.com/scan' },
+      credentials_set: { api_key: true },
+    }),
+  )
+
+  await nameField().fill('Renamed scanner')
+  await saveButton().click()
+
+  await expect.poll(() => onSaved.mock.calls.length).toBe(1)
+  expect(api.updateProvider).toHaveBeenCalledWith({
+    params: { provider_id: 'scanner-1' },
+    body: { name: 'Renamed scanner', config: { endpoint: 'https://old.example.com/scan' } },
+  })
 })
 
 it('keeps save busy during the live check and shows the backend reason when it fails', async () => {

@@ -2,7 +2,7 @@ import socket
 import threading
 from collections.abc import Iterator
 from types import ModuleType
-from typing import ClassVar, override
+from typing import override
 
 import httpx
 import pytest
@@ -11,12 +11,11 @@ from core.file_scan import base as base_module
 from core.file_scan.base import ScannerConfigError, ScannerError, eicar_test_content
 from core.file_scan.entities import ScanProblem, ScanStatus, ScanTarget, ScanVerdict
 from core.file_scan.scanners import api as api_module
-from core.file_scan.scanners.api import ApiExtensionScanner
+from core.file_scan.scanners.api import CustomEndpointScanner
 from core.file_scan.scanners.clamav import ClamAVScanner
 from core.file_scan.scanners.cloudmersive import CloudmersiveScanner
 from core.file_scan.scanners.metadefender import MetaDefenderScanner
 from core.file_scan.scanners.scanii import ScaniiScanner
-from models.api_based_extension import APIBasedExtensionPoint
 
 
 def _target(content: bytes = b"hello", name: str = "report.docx") -> ScanTarget:
@@ -27,7 +26,6 @@ def _target(content: bytes = b"hello", name: str = "report.docx") -> ScanTarget:
         mime_type="application/octet-stream",
         file_hash="hash",
         load=lambda: content,
-        download_url=lambda: "https://files.example/download",
     )
 
 
@@ -411,96 +409,109 @@ def test_clamav_unreachable_is_a_network_problem() -> None:
 # --- Custom endpoint
 
 
-class _Requestor:
-    result: ClassVar[object] = None
-    error: ClassVar[str | None] = None
-    calls: ClassVar[list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]]] = []
-
-    def __init__(self, api_endpoint: str, api_key: str) -> None:
-        self._endpoint, self._key = api_endpoint, api_key
-
-    def request(self, point: APIBasedExtensionPoint, params: dict[str, object]) -> object:
-        type(self).calls.append((self._endpoint, self._key, point, params))
-        if type(self).error:
-            raise ValueError(type(self).error)
-        return type(self).result
+def _custom(
+    monkeypatch: pytest.MonkeyPatch, *responses: httpx.Response | Exception
+) -> tuple[CustomEndpointScanner, _Http]:
+    http = _use_http(monkeypatch, api_module, *responses)
+    scanner = CustomEndpointScanner({"api_key": "key"}, {"endpoint": "https://scanner.example/scan", "timeout": 30})
+    return scanner, http
 
 
-@pytest.fixture
-def requestor(monkeypatch: pytest.MonkeyPatch) -> type[_Requestor]:
-    _Requestor.result = None
-    _Requestor.error = None
-    _Requestor.calls.clear()
-    monkeypatch.setattr(api_module, "APIBasedExtensionRequestor", _Requestor)
-    return _Requestor
-
-
-def _api_scanner() -> ApiExtensionScanner:
-    return ApiExtensionScanner(
-        {"api_endpoint": "https://scanner.example/hook", "api_key": "key"}, {"api_based_extension_id": "ext"}
+def test_custom_endpoint_receives_the_file_content_and_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    scanner, http = _custom(
+        monkeypatch, httpx.Response(200, json={"verdict": "infected", "threats": ["Evil.A"], "engine": "Mine 1.0"})
     )
 
-
-def test_api_scanner_sends_metadata_with_a_download_url(requestor: type[_Requestor]) -> None:
-    requestor.result = {"verdict": "infected", "threats": ["Evil.A"], "engine": "Mine 1.0"}
-
-    verdict = _api_scanner().scan(_target())
+    verdict = scanner.scan(_target(b"hello"))
 
     assert (verdict.status, verdict.threats, verdict.engine) == (ScanStatus.INFECTED, ("Evil.A",), "Mine 1.0")
-    endpoint, key, point, params = requestor.calls[0]
-    assert (endpoint, key, point.value) == ("https://scanner.example/hook", "key", "file.malware_scan")
-    assert params["scan_id"] == "scan-1"
-    assert params["file"] == {
-        "name": "report.docx",
-        "size": 5,
+    method, url, kwargs = http.calls[0]
+    assert (method, url) == ("POST", "https://scanner.example/scan")
+    assert kwargs["headers"] == {"Authorization": "Bearer key"}
+    assert kwargs["timeout"] == 30.0
+    assert kwargs["data"] == {
+        "scan_id": "scan-1",
+        "file_name": "report.docx",
+        "file_size": "5",
         "mime_type": "application/octet-stream",
-        "hash": "hash",
-        "download_url": "https://files.example/download",
+        "file_hash": "hash",
     }
+    assert kwargs["files"] == {"file": ("report.docx", b"hello", "application/octet-stream")}
 
 
 @pytest.mark.parametrize(
-    ("result", "status", "problem"),
+    ("response", "status", "problem"),
     [
-        ({"verdict": "clean"}, ScanStatus.CLEAN, None),
-        ({"verdict": "unscannable", "message": "zip bomb"}, ScanStatus.UNSCANNABLE, ScanProblem.UNSUPPORTED),
-        ({"verdict": "maybe"}, ScanStatus.UNAVAILABLE, ScanProblem.INVALID_RESPONSE),
-        (["clean"], ScanStatus.UNAVAILABLE, ScanProblem.INVALID_RESPONSE),
+        (httpx.Response(200, json={"verdict": "clean"}), ScanStatus.CLEAN, None),
+        (httpx.Response(200, json={"verdict": "infected"}), ScanStatus.INFECTED, None),
+        (
+            httpx.Response(200, json={"verdict": "unscannable", "message": "zip bomb"}),
+            ScanStatus.UNSCANNABLE,
+            ScanProblem.UNSUPPORTED,
+        ),
+        (httpx.Response(200, json={"verdict": "maybe"}), ScanStatus.UNAVAILABLE, ScanProblem.INVALID_RESPONSE),
+        (httpx.Response(200, json=["clean"]), ScanStatus.UNAVAILABLE, ScanProblem.INVALID_RESPONSE),
+        (httpx.Response(200, text="ok"), ScanStatus.UNAVAILABLE, ScanProblem.INVALID_RESPONSE),
+        (httpx.Response(401), ScanStatus.UNAVAILABLE, ScanProblem.AUTH),
+        (httpx.Response(429), ScanStatus.UNAVAILABLE, ScanProblem.QUOTA),
+        (httpx.Response(413), ScanStatus.UNSCANNABLE, ScanProblem.TOO_LARGE),
+        (httpx.Response(502), ScanStatus.UNAVAILABLE, ScanProblem.SERVER_ERROR),
+        (ScannerError(ScanProblem.TIMEOUT, "request timed out"), ScanStatus.UNAVAILABLE, ScanProblem.TIMEOUT),
     ],
 )
-def test_api_scanner_verdicts(
-    requestor: type[_Requestor], result: object, status: ScanStatus, problem: ScanProblem | None
+def test_custom_endpoint_verdicts_and_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    response: httpx.Response | Exception,
+    status: ScanStatus,
+    problem: ScanProblem | None,
 ) -> None:
-    requestor.result = result
+    scanner, _ = _custom(monkeypatch, response)
 
-    verdict = _api_scanner().scan(_target())
+    verdict = scanner.scan(_target())
 
     assert (verdict.status, verdict.problem) == (status, problem)
+    if status is ScanStatus.INFECTED:
+        assert verdict.threats == ("unknown",)
+
+
+def test_custom_endpoint_check_needs_a_well_formed_answer_but_not_a_particular_verdict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scanner, http = _custom(
+        monkeypatch,
+        httpx.Response(200, json={"verdict": "clean"}),
+        httpx.Response(200, json={"verdict": "unscannable"}),
+        httpx.Response(401),
+        httpx.Response(200, json={"result": "pong"}),
+    )
+
+    scanner.check()
+    scanner.check()
+    with pytest.raises(ScannerError) as error:
+        scanner.check()
+    assert error.value.problem is ScanProblem.AUTH
+    with pytest.raises(ScannerError) as error:
+        scanner.check()
+    assert error.value.problem is ScanProblem.INVALID_RESPONSE
+    assert all(call[2]["data"]["scan_id"] == "connectivity-check" for call in http.calls)  # type: ignore[index]
 
 
 @pytest.mark.parametrize(
-    ("message", "problem"),
+    ("credentials", "config"),
     [
-        ("request timeout", ScanProblem.TIMEOUT),
-        ("request connection error", ScanProblem.NETWORK),
-        ("request error, status_code: 401, content: no", ScanProblem.AUTH),
-        ("request error, status_code: 429, content: slow down", ScanProblem.QUOTA),
-        ("request error, status_code: 502, content: bad gateway", ScanProblem.SERVER_ERROR),
-        ("request error, status_code: 404, content: gone", ScanProblem.INVALID_RESPONSE),
+        ({"api_key": "k"}, {}),
+        ({"api_key": "k"}, {"endpoint": "scanner.example/scan"}),
+        ({"api_key": "k"}, {"endpoint": "ftp://scanner.example/scan"}),
+        ({"api_key": "k"}, {"endpoint": "https://user:pass@scanner.example/scan"}),
+        ({"api_key": "k"}, {"endpoint": "https://scanner.example/" + "a" * 600}),
+        ({}, {"endpoint": "https://scanner.example/scan"}),
     ],
 )
-def test_api_scanner_maps_requestor_failures(requestor: type[_Requestor], message: str, problem: ScanProblem) -> None:
-    requestor.error = message
-
-    assert _api_scanner().scan(_target()).problem is problem
-
-
-@pytest.mark.usefixtures("requestor")
-def test_api_scanner_without_its_extension_is_an_auth_problem() -> None:
-    scanner = ApiExtensionScanner({}, {"api_based_extension_id": "deleted"})
-
-    assert scanner.scan(_target()).problem is ScanProblem.AUTH
-    with pytest.raises(ScannerError):
-        scanner.check()
+def test_custom_endpoint_settings_validation(credentials: dict[str, str], config: dict[str, str]) -> None:
     with pytest.raises(ScannerConfigError):
-        ApiExtensionScanner.validate_settings({}, {})
+        CustomEndpointScanner.validate_settings(credentials, config)
+
+
+def test_custom_endpoint_accepts_http_and_https_addresses() -> None:
+    CustomEndpointScanner.validate_settings({"api_key": "k"}, {"endpoint": "https://scanner.example/scan"})
+    CustomEndpointScanner.validate_settings({"api_key": "k"}, {"endpoint": "http://scanner.internal:8080/scan"})

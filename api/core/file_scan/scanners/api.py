@@ -1,54 +1,76 @@
 from collections.abc import Mapping
 from typing import Any, ClassVar, override
+from urllib.parse import urlsplit
 
-from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
-from core.file_scan.base import FileScanner, ScannerConfigError, ScannerError
-from core.file_scan.entities import ScanProblem, ScanProviderType, ScanTarget, ScanVerdict
-from models.api_based_extension import APIBasedExtensionPoint
+from core.file_scan.base import (
+    CLEAN_TEST_CONTENT,
+    CLEAN_TEST_FILE_NAME,
+    FileScanner,
+    ScannerConfigError,
+    ScannerError,
+    http_request,
+    json_object,
+    raise_for_provider_status,
+)
+from core.file_scan.entities import ScanProblem, ScanProviderType, ScanStatus, ScanTarget, ScanVerdict
+
+MAX_ENDPOINT_LENGTH = 512
 
 
-class ApiExtensionScanner(FileScanner):
-    """A workspace's own scanner, reached through an API-based extension ("Custom Endpoint").
+class CustomEndpointScanner(FileScanner):
+    """A workspace's own scanning service.
 
-    The endpoint receives the ``file.malware_scan`` point with file metadata and a short-lived
-    signed download URL, and answers ``{"verdict": "clean" | "infected" | "unscannable", ...}``.
+    The endpoint receives one ``multipart/form-data`` POST per file, authenticated with
+    ``Authorization: Bearer <api key>``:
+
+    - ``file``: the file content, with its name and media type;
+    - ``scan_id``, ``file_name``, ``file_size``, ``mime_type``, ``file_hash``: text fields.
+
+    It answers HTTP 200 with JSON ``{"verdict": "clean" | "infected" | "unscannable"}`` and
+    optionally ``threats`` (list of names), ``engine`` and ``message``. 401/403 mean the key is
+    wrong, 402/429 that quota is exhausted, 413 that the file is too large, and 5xx that the
+    service is temporarily unavailable.
     """
 
     provider_type: ClassVar[ScanProviderType] = ScanProviderType.API
-    credential_fields: ClassVar[tuple[str, ...]] = ()
+    credential_fields: ClassVar[tuple[str, ...]] = ("api_key",)
+    destination_fields: ClassVar[tuple[str, ...]] = ("endpoint",)
 
     @classmethod
     @override
     def validate_settings(cls, credentials: Mapping[str, str], config: Mapping[str, Any]) -> None:
-        if not config.get("api_based_extension_id"):
-            raise ScannerConfigError("api_based_extension_id is required")
+        endpoint = config.get("endpoint")
+        if not isinstance(endpoint, str) or not endpoint or len(endpoint) > MAX_ENDPOINT_LENGTH:
+            raise ScannerConfigError("endpoint is required")
+        parts = urlsplit(endpoint)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise ScannerConfigError("endpoint must be an http or https URL")
+        if parts.username or parts.password:
+            raise ScannerConfigError("endpoint must not contain credentials; use the API key")
+        if not credentials.get("api_key"):
+            raise ScannerConfigError("api_key is required")
 
     @override
     def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
-        endpoint = self.credentials.get("api_endpoint")
-        if not endpoint:
-            raise ScannerError(ScanProblem.AUTH, "the selected API extension no longer exists")
-        if target.download_url is None:
-            raise ScannerError(ScanProblem.INVALID_RESPONSE, "this file cannot be offered for download")
-        params = {
-            "scan_id": target.scan_id,
-            "file": {
-                "name": target.file_name,
-                "size": target.size,
+        response = http_request(
+            "POST",
+            str(self.config["endpoint"]),
+            timeout=float(self.config.get("timeout") or 60.0),
+            headers={"Authorization": f"Bearer {self.credentials['api_key']}"},
+            data={
+                "scan_id": target.scan_id,
+                "file_name": target.file_name,
+                "file_size": str(target.size),
                 "mime_type": target.mime_type,
-                "hash": target.file_hash,
-                "download_url": target.download_url(),
+                "file_hash": target.file_hash,
             },
-        }
-        try:
-            body = APIBasedExtensionRequestor(endpoint, self.credentials.get("api_key", "")).request(
-                APIBasedExtensionPoint.FILE_MALWARE_SCAN, params
-            )
-        except ValueError as error:
-            raise ScannerError(_problem_from_requestor_error(str(error)), str(error)[:200]) from error
+            files={"file": (target.file_name, target.load(), target.mime_type or "application/octet-stream")},
+        )
+        if response.status_code == 413:
+            return ScanVerdict.unscannable(ScanProblem.TOO_LARGE)
+        raise_for_provider_status(response)
+        body = json_object(response)
 
-        if not isinstance(body, dict):
-            raise ScannerError(ScanProblem.INVALID_RESPONSE, "response is not a JSON object")
         verdict = body.get("verdict")
         engine = str(body["engine"]) if body.get("engine") else None
         message = str(body["message"]) if body.get("message") else None
@@ -64,21 +86,20 @@ class ApiExtensionScanner(FileScanner):
 
     @override
     def check(self) -> None:
-        # The API extension was already verified with ``ping`` when it was saved.
-        if not self.credentials.get("api_endpoint"):
-            raise ScannerError(ScanProblem.AUTH, "the selected API extension no longer exists")
+        """Send one harmless file and require a well-formed answer.
 
-
-def _problem_from_requestor_error(message: str) -> ScanProblem:
-    """``APIBasedExtensionRequestor`` reports every failure as ``ValueError`` text."""
-    if "timeout" in message:
-        return ScanProblem.TIMEOUT
-    if "connection error" in message:
-        return ScanProblem.NETWORK
-    if "status_code: 401" in message or "status_code: 403" in message:
-        return ScanProblem.AUTH
-    if "status_code: 429" in message or "status_code: 402" in message:
-        return ScanProblem.QUOTA
-    if "status_code: 5" in message:
-        return ScanProblem.SERVER_ERROR
-    return ScanProblem.INVALID_RESPONSE
+        Unlike the built-in vendors, a custom service is not required to recognise the EICAR test
+        file: it may implement any policy. The check proves the address, the key and the protocol.
+        """
+        verdict = self.scan(
+            ScanTarget(
+                scan_id="connectivity-check",
+                file_name=CLEAN_TEST_FILE_NAME,
+                size=len(CLEAN_TEST_CONTENT),
+                mime_type="text/plain",
+                file_hash="",
+                load=lambda: CLEAN_TEST_CONTENT,
+            )
+        )
+        if verdict.status is ScanStatus.UNAVAILABLE:
+            raise ScannerError(verdict.problem or ScanProblem.INVALID_RESPONSE, verdict.message or "")

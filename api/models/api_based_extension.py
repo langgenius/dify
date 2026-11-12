@@ -15,7 +15,6 @@ class APIBasedExtensionPoint(enum.StrEnum):
     PING = "ping"
     APP_MODERATION_INPUT = "app.moderation.input"
     APP_MODERATION_OUTPUT = "app.moderation.output"
-    FILE_MALWARE_SCAN = "file.malware_scan"
 
 
 class APIBasedExtension(TypeBase):

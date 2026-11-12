@@ -16,7 +16,6 @@ from core.file_scan.entities import ScanProviderType
 from core.file_scan.factory import SCANNER_CLASSES, create_scanner, scanner_class
 from core.helper.encrypter import decrypt_token, encrypt_token
 from libs.datetime_utils import naive_utc_now
-from models.api_based_extension import APIBasedExtension
 from models.file_scan import FileScanPolicy, FileScanProvider, FileScanProviderStatus
 from services.file_scan.errors import (
     FileScanProviderInUseError,
@@ -102,7 +101,7 @@ class FileScanProviderService:
         cleaned_credentials = _credentials(resolved_type, credentials)
         cleaned_config = dict(config)
         with self._session_maker() as session:
-            self._verify(session, tenant_id, resolved_type, cleaned_config, cleaned_credentials)
+            self._verify(resolved_type, cleaned_config, cleaned_credentials)
             row = FileScanProvider(
                 tenant_id=tenant_id,
                 name=cleaned_name,
@@ -136,7 +135,7 @@ class FileScanProviderService:
             _require_credentials_for_new_destination(
                 resolved_type, stored_config=dict(row.config or {}), config=merged_config, supplied=supplied_credentials
             )
-            self._verify(session, tenant_id, resolved_type, merged_config, merged_credentials)
+            self._verify(resolved_type, merged_config, merged_credentials)
             if name is not None:
                 row.name = _name(name)
             row.config = merged_config
@@ -152,7 +151,7 @@ class FileScanProviderService:
         with self._session_maker() as session:
             row = _row(session, tenant_id, provider_id)
             try:
-                build_scanner(session, tenant_id, row).check()
+                build_scanner(tenant_id, row).check()
             except (ScannerError, ScannerConfigError) as error:
                 row.status = FileScanProviderStatus.ERROR
                 row.last_error = str(error)[:255]
@@ -173,83 +172,42 @@ class FileScanProviderService:
             session.delete(row)
             session.commit()
 
-    def _verify(
-        self,
-        session: Session,
-        tenant_id: str,
-        provider_type: ScanProviderType,
-        config: dict[str, Any],
-        credentials: dict[str, str],
-    ) -> None:
+    @staticmethod
+    def _verify(provider_type: ScanProviderType, config: dict[str, Any], credentials: dict[str, str]) -> None:
         """Validate the settings and prove them with a real connectivity check before saving."""
         if not _type_available(provider_type):
             raise FileScanValidationError("This scanner is not available on this deployment.")
         try:
-            scanner_class(provider_type).validate_settings(
-                credentials, _runtime_config(session, tenant_id, provider_type, config, credentials)
-            )
-            _scanner(session, tenant_id, provider_type, config, credentials).check()
+            scanner_class(provider_type).validate_settings(credentials, _runtime_config(provider_type, config))
+            _scanner(provider_type, config, credentials).check()
         except ScannerConfigError as error:
             raise FileScanValidationError(str(error)) from error
         except ScannerError as error:
             raise FileScanValidationError(f"The scanner check failed ({error.problem.value}): {error}") from error
 
 
-def build_scanner(session: Session, tenant_id: str, row: FileScanProvider) -> FileScanner:
+def build_scanner(tenant_id: str, row: FileScanProvider) -> FileScanner:
     """Instantiate the scanner for a stored provider with decrypted credentials.
 
     Raises ``ScannerConfigError`` when the deployment no longer offers this scanner type.
     """
-    if not _type_available(ScanProviderType(row.provider_type)):
+    provider_type = ScanProviderType(row.provider_type)
+    if not _type_available(provider_type):
         raise ScannerConfigError("This scanner is not available on this deployment.")
-    return _scanner(
-        session,
-        tenant_id,
-        ScanProviderType(row.provider_type),
-        dict(row.config or {}),
-        _decrypt(tenant_id, row.encrypted_credentials),
-    )
+    return _scanner(provider_type, dict(row.config or {}), _decrypt(tenant_id, row.encrypted_credentials))
 
 
-def _scanner(
-    session: Session,
-    tenant_id: str,
-    provider_type: ScanProviderType,
-    config: dict[str, Any],
-    credentials: dict[str, str],
-) -> FileScanner:
-    runtime_credentials = dict(credentials)
-    runtime_config = _runtime_config(session, tenant_id, provider_type, config, runtime_credentials)
-    return create_scanner(provider_type, credentials=runtime_credentials, config=runtime_config)
+def _scanner(provider_type: ScanProviderType, config: dict[str, Any], credentials: dict[str, str]) -> FileScanner:
+    return create_scanner(provider_type, credentials=credentials, config=_runtime_config(provider_type, config))
 
 
-def _runtime_config(
-    session: Session,
-    tenant_id: str,
-    provider_type: ScanProviderType,
-    config: dict[str, Any],
-    credentials: dict[str, str],
-) -> dict[str, Any]:
-    """Add what is not stored on the provider: deployment settings and the API extension's endpoint."""
+def _runtime_config(provider_type: ScanProviderType, config: dict[str, Any]) -> dict[str, Any]:
+    """Add what is not stored on the provider: deployment settings."""
     runtime = dict(config)
     runtime["timeout"] = dify_config.FILE_SCAN_REQUEST_TIMEOUT_SECONDS
     if provider_type is ScanProviderType.CLAMAV:
         runtime["host"] = dify_config.FILE_SCAN_CLAMAV_HOST
         runtime["port"] = dify_config.FILE_SCAN_CLAMAV_PORT
-    if provider_type is ScanProviderType.API:
-        extension_id = str(config.get("api_based_extension_id") or "")
-        extension = (
-            session.scalar(
-                select(APIBasedExtension).where(
-                    APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == extension_id
-                )
-            )
-            if extension_id
-            else None
-        )
-        if extension is not None:
-            credentials["api_endpoint"] = extension.api_endpoint
-            credentials["api_key"] = decrypt_token(tenant_id, extension.api_key)
     return runtime
 
 
