@@ -327,15 +327,16 @@ it.each([
   ['team', 'month', 'year'],
   ['team', 'year', 'month'],
 ] as const)(
-  'confirms the %s cycle change from %s to %s before opening the portal',
+  'confirms the %s cycle change from %s to %s before requesting the selected subscription change',
   async (plan, currentInterval, selectedInterval) => {
     const user = userEvent.setup()
     const { queryClient, show } = setup()
     seedFeatures(queryClient, {
       billing: { subscription: { plan, interval: currentInterval } },
     })
-    const fetchPortal = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ url: 'https://billing.example.com/portal' }), {
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    const fetchChange = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://billing.example.com/confirm' }), {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -352,7 +353,7 @@ it.each([
         name: 'billing.plansCommon.manageSubscription',
       }),
     )
-    expect(fetchPortal).not.toHaveBeenCalled()
+    expect(fetchChange).not.toHaveBeenCalled()
     const back = screen.getByRole('button', { name: 'billing.pricing.cycleNotice.back' })
     await user.click(back)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -362,11 +363,14 @@ it.each([
       within(dialog).getByRole('button', { name: 'billing.plansCommon.manageSubscription' }),
     )
     await waitFor(() =>
-      expect(billingPopup.location.href).toBe('https://billing.example.com/portal'),
+      expect(navigate).toHaveBeenCalledWith('https://billing.example.com/confirm'),
     )
-    expect(fetchPortal).toHaveBeenCalledTimes(1)
-    const request = fetchPortal.mock.calls[0]?.[0] as Request
-    expect(new URL(request.url).pathname).toBe('/console/api/billing/invoices')
+    expect(fetchChange).toHaveBeenCalledTimes(1)
+    const request = fetchChange.mock.calls[0]?.[0] as Request
+    const url = new URL(request.url)
+    expect(url.pathname).toBe('/console/api/billing/subscription')
+    expect(url.searchParams.get('plan')).toBe(plan)
+    expect(url.searchParams.get('interval')).toBe(selectedInterval)
   },
 )
 

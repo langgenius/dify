@@ -110,7 +110,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
         toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
         return
       }
-      if (isCurrentPaidPlan) {
+      if (isCurrentPaidPlan && !needsCycleNotice) {
         await openAsyncWindow(
           async () => {
             const { url } = await consoleClient.billing.invoices.get(undefined, {
