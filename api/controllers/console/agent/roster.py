@@ -962,7 +962,7 @@ class AgentInviteOptionsApi(Resource):
 
 
 def _agent_log_query() -> AgentLogQuery:
-    """Parse the existing indexed and comma-separated log query parameters."""
+    """Parse repeated and indexed log query parameters, including singular aliases."""
     query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
     query_data["sources"] = _query_values("sources", "source")
     query_data["statuses"] = _query_values("statuses", "status")

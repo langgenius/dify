@@ -22,7 +22,15 @@ def test_statistics_aggregate_runs_in_postgres_with_account_timezone(db_session_
     tenant = Tenant(name="Agent workspace")
     session.add_all([account, tenant])
     session.flush()
-    app = App(tenant_id=tenant.id, name="Agent", mode=AppMode.AGENT, created_by=account.id, maintainer=account.id)
+    app = App(
+        tenant_id=tenant.id,
+        name="Agent",
+        mode=AppMode.AGENT,
+        enable_site=False,
+        enable_api=False,
+        created_by=account.id,
+        maintainer=account.id,
+    )
     session.add(app)
     session.flush()
     agent = Agent(
