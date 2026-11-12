@@ -1,18 +1,16 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
-    CustomizedMetrics,
     EvaluationCategory,
     EvaluationItemInput,
     EvaluationItemResult,
     EvaluationMetric,
     NodeInfo,
 )
-from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from graphon.node_events.base import NodeRunResult
 
 logger = logging.getLogger(__name__)
@@ -77,121 +75,6 @@ class BaseEvaluationInstance(ABC):
     def metric_accepts_success_criteria(self, metric_name: str) -> bool:
         """Return whether a metric accepts optional Agent success requirements."""
         return False
-
-    def evaluate_with_customized_workflow(
-        self,
-        node_run_result_mapping_list: list[dict[str, NodeRunResult]],
-        customized_metrics: CustomizedMetrics,
-        tenant_id: str,
-        cancellation_check: Callable[[], None] | None = None,
-        task_id_factory: Callable[[int], str] | None = None,
-    ) -> list[EvaluationItemResult]:
-        """Evaluate using a published workflow as the evaluator.
-
-        The evaluator workflow's output variables are treated as metrics:
-        each output variable name becomes a metric name, and its value
-        becomes the score.
-
-        Args:
-            node_run_result_mapping_list: One mapping per test-data item,
-                where each mapping is ``{node_id: NodeRunResult}`` from the
-                target execution.
-            customized_metrics: Contains ``evaluation_workflow_id`` (the
-                published evaluator workflow) and ``input_fields`` (value
-                sources for the evaluator's input variables).
-            tenant_id: Tenant scope.
-
-        Returns:
-            A list of ``EvaluationItemResult`` with metrics extracted from
-            the evaluator workflow's output variables.
-        """
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-        from core.app.entities.app_invoke_entities import InvokeFrom
-        from core.db.session_factory import session_factory
-        from core.evaluation.runners import get_service_account_for_app
-        from models.model import App
-        from services.workflow_execution_identity import build_workflow_execution_identity
-        from services.workflow_run_agg import WorkflowRunAgg
-        from services.workflow_service import WorkflowService
-
-        workflow_id = customized_metrics.evaluation_workflow_id
-        if not workflow_id:
-            raise ValueError("customized_metrics must contain 'evaluation_workflow_id' for customized evaluator")
-
-        with session_factory.create_session() as session:
-            app = session.query(App).filter_by(id=workflow_id, tenant_id=tenant_id).first()
-            if not app:
-                raise ValueError(f"Evaluation workflow app {workflow_id} not found in tenant {tenant_id}")
-            service_account = get_service_account_for_app(session, workflow_id, tenant_id)
-            workflow_service = WorkflowService()
-            if customized_metrics.evaluation_workflow_version_id:
-                published_workflow = workflow_service.get_published_workflow_by_id(
-                    app_model=app,
-                    workflow_id=customized_metrics.evaluation_workflow_version_id,
-                    session=session,
-                )
-            else:
-                published_workflow = workflow_service.get_published_workflow(app_model=app, session=session)
-        if not published_workflow and customized_metrics.evaluation_workflow_version_id:
-            raise EvaluationWorkflowVersionNotFoundError(
-                "Pinned evaluation workflow version "
-                f"{customized_metrics.evaluation_workflow_version_id} no longer exists."
-            )
-        if not published_workflow:
-            raise ValueError(f"No published workflow found for evaluation app {workflow_id}")
-
-        eval_results: list[EvaluationItemResult] = []
-        for idx, node_run_result_mapping in enumerate(node_run_result_mapping_list):
-            if cancellation_check is not None:
-                cancellation_check()
-            try:
-                workflow_inputs = self._build_workflow_inputs(
-                    customized_metrics.input_fields,
-                    node_run_result_mapping,
-                )
-
-                generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-                response: Mapping[str, Any] = generator.generate(
-                    execution_identity=build_workflow_execution_identity(service_account),
-                    app_model=app,
-                    workflow=published_workflow,
-                    user=service_account,
-                    args={"inputs": workflow_inputs},
-                    invoke_from=InvokeFrom.SERVICE_API,
-                    streaming=False,
-                    call_depth=0,
-                    task_id=task_id_factory(idx) if task_id_factory is not None else None,
-                )
-
-                metrics = self._extract_workflow_metrics(
-                    response,
-                    workflow_id,
-                    {field.variable for field in customized_metrics.output_fields},
-                )
-                if not metrics:
-                    raise ValueError("Evaluation workflow returned none of the configured metric outputs")
-                eval_results.append(
-                    EvaluationItemResult(
-                        index=idx,
-                        metrics=metrics,
-                    )
-                )
-            except Exception as exc:
-                logger.exception(
-                    "Customized evaluator failed for item %d with workflow %s",
-                    idx,
-                    workflow_id,
-                )
-                eval_results.append(
-                    EvaluationItemResult(
-                        index=idx,
-                        error=f"Customized evaluation failed: {exc}",
-                    )
-                )
-            if cancellation_check is not None:
-                cancellation_check()
-
-        return eval_results
 
     @staticmethod
     def _build_workflow_inputs(

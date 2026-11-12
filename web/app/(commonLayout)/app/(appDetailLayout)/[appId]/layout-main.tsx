@@ -71,7 +71,9 @@ const getAppDetailRedirectPath = (
     (isAccessConfigPath && (appDetail.mode === 'agent' || !appACLCapabilities.canAccessConfig)) ||
     (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
     (isEvaluationPath &&
-      (appDetail.mode !== 'workflow' || !appDetail.workflow || !appACLCapabilities.canViewLayout)) ||
+      (appDetail.mode !== 'workflow' ||
+        !appDetail.workflow ||
+        !appACLCapabilities.canViewLayout)) ||
     (isDeployPath && (!isWorkflowApp || !appACLCapabilities.canDeploy))
   )
     return getRedirectionPath(appDetail, permissionOptions)
@@ -135,7 +137,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       <div
         className={cn(
           'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
-          !isWorkflowPage && 'pt-1 pr-1 pb-1',
+          !isWorkflowPage && 'pe-1 pt-1 pb-1',
         )}
       >
         <div

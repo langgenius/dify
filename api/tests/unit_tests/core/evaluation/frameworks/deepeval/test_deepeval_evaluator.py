@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import cast
@@ -190,7 +190,7 @@ def test_evaluation_limits_metric_plugin_requests_to_180_seconds(monkeypatch: py
     observed_timeouts: list[int] = []
 
     @contextmanager
-    def record_timeout(timeout_seconds: int) -> Iterator[None]:
+    def record_timeout(timeout_seconds: int) -> Generator[None]:
         observed_timeouts.append(timeout_seconds)
         yield
 

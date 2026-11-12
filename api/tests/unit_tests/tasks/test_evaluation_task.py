@@ -118,9 +118,10 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_with_customized_workflow.return_value = [
-        EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="score", value=0.9)])
-    ]
+    customized_evaluator = MagicMock(
+        return_value=[EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="score", value=0.9)])]
+    )
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
     persist_results = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
     monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", MagicMock())
@@ -156,8 +157,9 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     assert results[0].error == "Target execution produced no successful node results for this row."
     assert results[1].index == 20
     assert results[1].metrics[0].name == "score"
-    evaluation_instance.evaluate_with_customized_workflow.assert_called_once()
-    call_kwargs = evaluation_instance.evaluate_with_customized_workflow.call_args.kwargs
+    customized_evaluator.assert_called_once()
+    call_kwargs = customized_evaluator.call_args.kwargs
+    assert call_kwargs["evaluation_instance"] is evaluation_instance
     assert call_kwargs["node_run_result_mapping_list"] == [{"llm-1": successful_node_result}]
     assert call_kwargs["customized_metrics"] == run_data.customized_metrics
     assert call_kwargs["tenant_id"] == "tenant-1"
@@ -170,9 +172,10 @@ def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_with_customized_workflow.side_effect = EvaluationWorkflowVersionNotFoundError(
-        "Pinned evaluation workflow version was deleted."
+    customized_evaluator = MagicMock(
+        side_effect=EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted.")
     )
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
     persist_results = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
     monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", MagicMock())
@@ -958,18 +961,21 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
         expected_output="expected",
     )
     evaluation_instance = MagicMock()
-    evaluation_instance.evaluate_with_customized_workflow.return_value = [
-        EvaluationItemResult(
-            index=0,
-            metrics=[
-                EvaluationMetric(
-                    name="score",
-                    value=0.8,
-                    node_info=NodeInfo(node_id="evaluator-app", type="customized", title="customized"),
-                )
-            ],
-        )
-    ]
+    customized_evaluator = MagicMock(
+        return_value=[
+            EvaluationItemResult(
+                index=0,
+                metrics=[
+                    EvaluationMetric(
+                        name="score",
+                        value=0.8,
+                        node_info=NodeInfo(node_id="evaluator-app", type="customized", title="customized"),
+                    )
+                ],
+            )
+        ]
+    )
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
     persist_results = MagicMock()
     clear_signals = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task._persist_results", persist_results)
@@ -1003,7 +1009,8 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
 
     evaluation_instance.evaluate_agent.assert_not_called()
     clear_signals.assert_called_once_with(session, lease, "evaluator", [4])
-    call_kwargs = evaluation_instance.evaluate_with_customized_workflow.call_args.kwargs
+    call_kwargs = customized_evaluator.call_args.kwargs
+    assert call_kwargs["evaluation_instance"] is evaluation_instance
     synthetic_result = call_kwargs["node_run_result_mapping_list"][0]["agent"]
     assert synthetic_result.outputs["query"] == "hello"
     assert synthetic_result.outputs["output"] == "done"

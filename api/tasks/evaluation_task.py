@@ -3,7 +3,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
@@ -38,6 +38,7 @@ from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     AgentToolDefinition,
+    CustomizedMetrics,
     EvaluationCategory,
     EvaluationDatasetInput,
     EvaluationItemResult,
@@ -96,6 +97,94 @@ class EvaluationRunLease:
 
 def _workflow_task_id(evaluation_run_id: str, phase: str, position: int) -> str:
     return EvaluationService.workflow_task_id(evaluation_run_id, phase, position)
+
+
+def _evaluate_with_customized_workflow(
+    evaluation_instance: BaseEvaluationInstance,
+    node_run_result_mapping_list: list[dict[str, NodeRunResult]],
+    customized_metrics: CustomizedMetrics,
+    tenant_id: str,
+    cancellation_check: Callable[[], None] | None = None,
+    task_id_factory: Callable[[int], str] | None = None,
+) -> list[EvaluationItemResult]:
+    """Run a published evaluator workflow for one tenant and map its outputs to metrics.
+
+    Requires a configured evaluator app and published version. A missing pinned
+    version fails the run before row execution; row failures become indexed error
+    results. Cancellation is checked before and after every row, and each result
+    retains its input position.
+    """
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.evaluation.runners import get_service_account_for_app
+    from models.model import App
+    from services.workflow_execution_identity import build_workflow_execution_identity
+    from services.workflow_run_agg import WorkflowRunAgg
+    from services.workflow_service import WorkflowService
+
+    workflow_id = customized_metrics.evaluation_workflow_id
+    if not workflow_id:
+        raise ValueError("customized_metrics must contain 'evaluation_workflow_id' for customized evaluator")
+
+    with session_factory.create_session() as session:
+        app = session.query(App).filter_by(id=workflow_id, tenant_id=tenant_id).first()
+        if not app:
+            raise ValueError(f"Evaluation workflow app {workflow_id} not found in tenant {tenant_id}")
+        service_account = get_service_account_for_app(session, workflow_id, tenant_id)
+        workflow_service = WorkflowService()
+        if customized_metrics.evaluation_workflow_version_id:
+            published_workflow = workflow_service.get_published_workflow_by_id(
+                app_model=app,
+                workflow_id=customized_metrics.evaluation_workflow_version_id,
+                session=session,
+            )
+        else:
+            published_workflow = workflow_service.get_published_workflow(app_model=app, session=session)
+    if not published_workflow and customized_metrics.evaluation_workflow_version_id:
+        raise EvaluationWorkflowVersionNotFoundError(
+            f"Pinned evaluation workflow version {customized_metrics.evaluation_workflow_version_id} no longer exists."
+        )
+    if not published_workflow:
+        raise ValueError(f"No published workflow found for evaluation app {workflow_id}")
+
+    eval_results: list[EvaluationItemResult] = []
+    for idx, node_run_result_mapping in enumerate(node_run_result_mapping_list):
+        if cancellation_check is not None:
+            cancellation_check()
+        try:
+            workflow_inputs = evaluation_instance._build_workflow_inputs(
+                customized_metrics.input_fields,
+                node_run_result_mapping,
+            )
+
+            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            response: Mapping[str, Any] = generator.generate(
+                execution_identity=build_workflow_execution_identity(service_account),
+                app_model=app,
+                workflow=published_workflow,
+                user=service_account,
+                args={"inputs": workflow_inputs},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+                call_depth=0,
+                task_id=task_id_factory(idx) if task_id_factory is not None else None,
+            )
+
+            metrics = evaluation_instance._extract_workflow_metrics(
+                response,
+                workflow_id,
+                {field.variable for field in customized_metrics.output_fields},
+            )
+            if not metrics:
+                raise ValueError("Evaluation workflow returned none of the configured metric outputs")
+            eval_results.append(EvaluationItemResult(index=idx, metrics=metrics))
+        except Exception as exc:
+            logger.exception("Customized evaluator failed for item %d with workflow %s", idx, workflow_id)
+            eval_results.append(EvaluationItemResult(index=idx, error=f"Customized evaluation failed: {exc}"))
+        if cancellation_check is not None:
+            cancellation_check()
+
+    return eval_results
 
 
 @shared_task(
@@ -919,7 +1008,8 @@ def _evaluate_agent_row(
     if target_error is None and agent_item is not None and run_data.customized_metrics is not None:
         _clear_workflow_cancellation_signals(session, lease, "evaluator", [task_position])
         try:
-            customized_results = evaluation_instance.evaluate_with_customized_workflow(
+            customized_results = _evaluate_with_customized_workflow(
+                evaluation_instance=evaluation_instance,
                 node_run_result_mapping_list=[
                     {AGENT_CUSTOM_EVALUATOR_NODE_ID: build_agent_custom_evaluator_node_result(agent_item)}
                 ],
@@ -1268,7 +1358,8 @@ def _execute_evaluation_runner(
         customized_input_items = [run_data.input_list[position] for position in successful_positions]
         try:
             if customized_node_results:
-                customized_results = evaluation_instance.evaluate_with_customized_workflow(
+                customized_results = _evaluate_with_customized_workflow(
+                    evaluation_instance=evaluation_instance,
                     node_run_result_mapping_list=customized_node_results,
                     customized_metrics=run_data.customized_metrics,
                     tenant_id=run_data.tenant_id,

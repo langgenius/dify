@@ -2,8 +2,8 @@ import type {
   DatasetCreatePayload,
   PostDatasetsResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ConsoleClient } from './console-client'
-import { assertE2EResourceName, createE2EResourceName } from '../naming'
+import type { ConsoleClient } from './console-client.ts'
+import { assertE2EResourceName, createE2EResourceName } from '../naming.ts'
 
 export async function createTestDataset(
   client: ConsoleClient,

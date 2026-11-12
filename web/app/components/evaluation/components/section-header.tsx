@@ -35,7 +35,7 @@ const SectionHeader = ({
       {/* Grow from a small basis so the description wraps beside the action instead of pushing it to a new row. */}
       <div className="min-w-0 flex-1 basis-60">
         <div className={cn('system-xl-semibold text-text-primary', titleClassName)}>{title}</div>
-        {description && (
+        {Boolean(description) && (
           <div className={cn('mt-1 system-sm-regular text-text-tertiary', descriptionClassName)}>
             {description}
           </div>
@@ -59,7 +59,7 @@ export const InlineSectionHeader = ({
         <div id={titleId} className="system-md-semibold text-text-primary">
           {title}
         </div>
-        {tooltip && (
+        {Boolean(tooltip) && (
           <Tooltip>
             <TooltipTrigger
               render={

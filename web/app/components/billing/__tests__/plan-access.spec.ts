@@ -14,7 +14,9 @@ describe('snippet and evaluation plan access', () => {
   })
 
   it('blocks sandbox and missing cloud plans', () => {
-    expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD', planType: 'sandbox' })).toBe(false)
+    expect(
+      canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD', planType: 'sandbox' }),
+    ).toBe(false)
     expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD' })).toBe(false)
   })
 })
