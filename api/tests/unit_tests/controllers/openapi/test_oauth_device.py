@@ -8,6 +8,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from werkzeug.routing import Rule
 
 from controllers.console import flask_admission, wraps
 from controllers.openapi import bp as openapi_bp
@@ -62,7 +63,7 @@ if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
-def _rule(app: Flask, path: str):
+def _rule(app: Flask, path: str) -> Rule:
     return next(r for r in app.url_map.iter_rules() if r.rule == path)
 
 
@@ -76,31 +77,31 @@ class TestDeviceApproveDenyCases:
         return app
 
     @staticmethod
-    def test_approve_route_registered(openapi_app: Flask):
+    def test_approve_route_registered(openapi_app: Flask) -> None:
         rules = {r.rule for r in openapi_app.url_map.iter_rules()}
         assert "/openapi/v1/oauth/device/approve" in rules
 
     @staticmethod
-    def test_deny_route_registered(openapi_app: Flask):
+    def test_deny_route_registered(openapi_app: Flask) -> None:
         rules = {r.rule for r in openapi_app.url_map.iter_rules()}
         assert "/openapi/v1/oauth/device/deny" in rules
 
     @staticmethod
-    def test_approve_dispatches_to_class(openapi_app: Flask):
+    def test_approve_dispatches_to_class(openapi_app: Flask) -> None:
         rule = _rule(openapi_app, "/openapi/v1/oauth/device/approve")
-        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceApproveApi
+        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceApproveApi  # pyrefly: ignore[missing-attribute]
 
     @staticmethod
-    def test_deny_dispatches_to_class(openapi_app: Flask):
+    def test_deny_dispatches_to_class(openapi_app: Flask) -> None:
         rule = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
-        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceDenyApi
+        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceDenyApi  # pyrefly: ignore[missing-attribute]
 
     @staticmethod
-    def test_approve_and_deny_methods(openapi_app: Flask):
+    def test_approve_and_deny_methods(openapi_app: Flask) -> None:
         approve = _rule(openapi_app, "/openapi/v1/oauth/device/approve")
         deny = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
-        assert "POST" in approve.methods
-        assert "POST" in deny.methods
+        assert "POST" in approve.methods  # pyrefly: ignore[not-iterable]
+        assert "POST" in deny.methods  # pyrefly: ignore[not-iterable]
 
     @staticmethod
     def test_unknown_approval_outcome_is_retryable() -> None:

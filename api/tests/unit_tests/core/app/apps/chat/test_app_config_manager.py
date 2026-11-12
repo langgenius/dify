@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -21,7 +22,7 @@ def _app_model_config() -> AppModelConfig:
 
 
 class TestChatAppConfigManager:
-    def test_get_app_config_uses_override_dict(self):
+    def test_get_app_config_uses_override_dict(self) -> None:
         app_model = _app()
         app_model_config = _app_model_config()
         override = {"model": "override"}
@@ -48,7 +49,7 @@ class TestChatAppConfigManager:
                 app_model=app_model,
                 app_model_config=app_model_config,
                 conversation=None,
-                override_config_dict=override,
+                override_config_dict=override,  # pyrefly: ignore[bad-argument-type]
                 annotation_reply=None,
             )
 
@@ -56,7 +57,7 @@ class TestChatAppConfigManager:
         assert app_config.app_model_config_dict == override
         assert app_config.app_mode == AppMode.CHAT
 
-    def test_get_app_config_uses_injected_annotation_reply(self):
+    def test_get_app_config_uses_injected_annotation_reply(self) -> None:
         app_model = _app()
         app_model_config = _app_model_config()
         annotation_reply = {"enabled": False}
@@ -83,12 +84,12 @@ class TestChatAppConfigManager:
             ChatAppConfigManager.get_app_config(
                 app_model=app_model,
                 app_model_config=app_model_config,
-                annotation_reply=annotation_reply,
+                annotation_reply=annotation_reply,  # pyrefly: ignore[bad-argument-type]
             )
 
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
-    def test_get_app_config_requires_annotation_reply_without_override(self):
+    def test_get_app_config_requires_annotation_reply_without_override(self) -> None:
         with pytest.raises(ValueError, match="Annotation reply config is required"):
             ChatAppConfigManager.get_app_config(
                 app_model=_app(),
@@ -96,14 +97,14 @@ class TestChatAppConfigManager:
                 annotation_reply=None,
             )
 
-    def test_config_validate_filters_related_keys(self, unbound_session: Session):
+    def test_config_validate_filters_related_keys(self, unbound_session: Session) -> None:
         config = {"extra": 1}
 
-        def _add_key(key, value):
-            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
+        def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
+            def _inner[**P](*args: P.args, **kwargs: P.kwargs) -> tuple[dict[str, object], list[str]]:
                 config = args[-1]
-                config = {**config, key: value}
-                return config, [key]
+                config_dict = {**config, key: value}  # pyrefly: ignore[invalid-argument]
+                return config_dict, [key]
 
             return _inner
 
