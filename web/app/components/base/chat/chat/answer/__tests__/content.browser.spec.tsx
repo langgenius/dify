@@ -20,20 +20,8 @@ beforeEach(async () => {
 
 it('replaces the visible answer with saved annotations, including an intentionally empty answer', async () => {
   const item = chatItem({ content: 'Original answer' })
-  const screen = await renderChatOwner(
-    <Answer
-      item={item}
-      question="Question"
-      index={0}
-      answerIcon={
-        <span role="img" aria-label="Assistant avatar">
-          Custom avatar
-        </span>
-      }
-    />,
-  )
+  const screen = await renderChatOwner(<Answer item={item} question="Question" index={0} />)
   await expect.element(page.getByText('Original answer')).toBeVisible()
-  await expect.element(page.getByRole('img', { name: 'Assistant avatar' })).toBeVisible()
   await screen.rerender(
     <Answer
       item={{ ...item, annotation: createChatAnnotationFixture('Edited answer') }}

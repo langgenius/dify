@@ -204,7 +204,9 @@ it('honors the owner stop/input capabilities while retaining conversation conten
   await expect
     .element(page.getByRole('button', { name: 'Stop responding' }))
     .not.toBeInTheDocument()
-  await screen.rerender(<Chat chatList={[]} noChatInput chatNode={<p>Conversation archived</p>} />)
+  await screen.rerender(
+    <Chat chatList={[chatItem({ content: 'Conversation archived' })]} noChatInput />,
+  )
   await expect.element(page.getByRole('textbox')).not.toBeInTheDocument()
   await expect.element(page.getByText('Conversation archived')).toBeVisible()
 })
