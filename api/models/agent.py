@@ -512,7 +512,9 @@ class WorkflowAgentNodeBinding(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True
     node_job_config: Mapped[Any] = mapped_column(JSONModelColumn(WorkflowNodeJobConfig), nullable=False)
     # External jobs never coerce through Native Soul/snapshot configuration.
     binding_epoch: Mapped[str | None] = mapped_column(String(64), default=None)
-    external_job_config: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON(), default_factory=dict)
+    external_job_config: Mapped[dict[str, Any]] = mapped_column(
+        AdjustedJSON(), default_factory=dict, server_default=sa.text("('{}')")
+    )
     original_reference: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON(), default=None)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)

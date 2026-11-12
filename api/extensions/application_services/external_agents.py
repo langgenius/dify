@@ -105,8 +105,16 @@ class ExternalAgentServices:
         }
 
     def enqueue(self) -> None:
+        """Wake this capability's dedicated consumer without activating legacy cleanup.
+
+        Commands are already durable before publication. Broker failure leaves
+        them available to the same queue's periodic sweep; it never authorizes a
+        second business Send or requires consuming unrelated retention work.
+        """
         try:
-            celery_app.send_task("tasks.external_agent_task.drain_external_commands", queue="retention")
+            celery_app.send_task(
+                "tasks.external_agent_task.drain_external_commands", queue=dify_config.EXTERNAL_AGENTS_QUEUE
+            )
         except Exception:
             # Durable Commands are the source of truth; beat recovers a missed wakeup.
             logger.warning("External Agent command wakeup could not reach the broker")
