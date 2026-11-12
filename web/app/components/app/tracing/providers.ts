@@ -419,6 +419,7 @@ export const tracingProviders = {
         required: false,
         secret: false,
         destination: false,
+        defaultValue: '{}',
         placeholder: '{"deployment.environment.name":"production"}',
       },
     ],

@@ -316,6 +316,9 @@ describe('ProviderConfigModal', () => {
       expect(screen.getByRole('textbox', { name: 'app.tracing.otel.serviceName' })).toHaveValue(
         'dify',
       )
+      expect(
+        screen.getByRole('textbox', { name: 'app.tracing.otel.resourceAttributes' }),
+      ).toHaveValue('{}')
       await user.type(
         screen.getByRole('textbox', { name: 'Endpoint' }),
         'http://localhost:4318/v1/traces',
@@ -329,7 +332,7 @@ describe('ProviderConfigModal', () => {
         tracing_config: {
           endpoint: 'http://localhost:4318/v1/traces',
           service_name: 'dify',
-          resource_attributes: '',
+          resource_attributes: '{}',
         },
       })
     })
@@ -357,7 +360,11 @@ describe('ProviderConfigModal', () => {
       await user.type(screen.getByRole('textbox', { name: 'Endpoint' }), validConfigs.otel.endpoint)
       await user.click(screen.getByRole('textbox', { name: 'app.tracing.otel.headers' }))
       await user.paste(validConfigs.otel.headers)
-      await user.click(screen.getByRole('textbox', { name: 'app.tracing.otel.resourceAttributes' }))
+      const resourceAttributes = screen.getByRole('textbox', {
+        name: 'app.tracing.otel.resourceAttributes',
+      })
+      await user.clear(resourceAttributes)
+      await user.click(resourceAttributes)
       await user.paste(validConfigs.otel.resource_attributes)
       await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
 
