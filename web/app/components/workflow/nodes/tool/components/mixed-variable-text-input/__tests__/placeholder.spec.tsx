@@ -1,4 +1,3 @@
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
@@ -6,11 +5,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $createParagraphNode, $getRoot } from 'lexical'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
+import { TestLexicalComposer } from '@/test/lexical'
 import Placeholder from '../placeholder'
 
 function renderPlaceholder(disableVariableInsertion = false) {
   return render(
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'tool-placeholder-test',
         nodes: [CustomTextNode],
@@ -30,7 +30,7 @@ function renderPlaceholder(disableVariableInsertion = false) {
         ErrorBoundary={LexicalErrorBoundary}
       />
       <Placeholder disableVariableInsertion={disableVariableInsertion} />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
 }
 
