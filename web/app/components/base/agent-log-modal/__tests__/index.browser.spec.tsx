@@ -2,19 +2,22 @@ import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.ge
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
+import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import AgentLogModal from '../index'
 import { renderAgentLog } from './browser-test-env'
 
-const toastMock = vi.hoisted(() => ({ error: vi.fn() }))
 const fetchAgentLogDetail = vi.hoisted(() => vi.fn())
 
+vi.unmock('react-i18next')
+// boundary: Monaco workers do not run in the Browser test bundle; readonly editor values stay real.
 vi.mock('@monaco-editor/react', async () => {
   const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
   return createMonacoEditorModuleMock()
 })
 
+// boundary: agent log records come from Console HTTP; modal race handling stays real.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
@@ -25,8 +28,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/notifications', () => ({ toast: toastMock }))
 
 const log: IChatItem = {
   id: 'msg-id',
@@ -89,6 +90,7 @@ function ControlledModal({ floating = false }: { floating?: boolean }) {
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
+  toast.dismiss()
   fetchAgentLogDetail.mockReset()
   fetchAgentLogDetail.mockResolvedValue(response('User'))
 })
@@ -96,10 +98,10 @@ beforeEach(() => {
 it('closes and reopens the portalled dialog through its real controls', async () => {
   await page.viewport(1200, 800)
   const { screen } = await renderAgentLog(<ControlledModal floating />)
-  const dialog = screen.getByRole('dialog', { name: 'appLog.runDetail.workflowTitle' })
+  const dialog = screen.getByRole('dialog', { name: 'Log Detail' })
   await expect.element(dialog).toBeVisible()
 
-  await screen.getByRole('button', { name: 'common.operation.close' }).click()
+  await screen.getByRole('button', { name: 'Close' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'Reopen agent log' }).click()
   await expect.element(dialog).toBeVisible()
@@ -108,7 +110,7 @@ it('closes and reopens the portalled dialog through its real controls', async ()
 it('closes the inline viewer only for an outside interaction', async () => {
   await page.viewport(1200, 800)
   const { screen } = await renderAgentLog(<ControlledModal />)
-  const title = screen.getByRole('heading', { name: 'appLog.runDetail.workflowTitle' })
+  const title = screen.getByRole('heading', { name: 'Log Detail' })
   await title.click()
   await expect.element(title).toBeVisible()
 
@@ -141,9 +143,9 @@ it('preserves the selected tracing view when another message replaces the record
     <AgentLogModal appId="app-id" currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
   await expect.element(screen.getByText('User')).toBeVisible()
-  const tracing = screen.getByRole('button', { name: 'runLog.tracing' })
+  const tracing = screen.getByRole('button', { name: 'TRACING' })
   await tracing.click()
-  await expect.element(screen.getByText('appLog.agentLogDetail.finalProcessing')).toBeVisible()
+  await expect.element(screen.getByText('Final Processing')).toBeVisible()
 
   await rerender(
     <AgentLogModal
@@ -153,7 +155,7 @@ it('preserves the selected tracing view when another message replaces the record
       width={1000}
     />,
   )
-  await expect.element(screen.getByText('appLog.agentLogDetail.finalProcessing')).toBeVisible()
+  await expect.element(screen.getByText('Final Processing')).toBeVisible()
   await expect.element(tracing).toHaveFocus()
   expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
     {
@@ -176,5 +178,7 @@ it('ignores a failed request after its record has been replaced', async () => {
   await expect.element(screen.getByText('User')).toBeVisible()
   oldResponse.reject(new Error('Old request failed'))
   await expect.element(screen.getByText('User')).toBeVisible()
-  expect(toastMock.error).not.toHaveBeenCalled()
+  await expect
+    .element(screen.getByRole('dialog', { name: 'Old request failed' }))
+    .not.toBeInTheDocument()
 })

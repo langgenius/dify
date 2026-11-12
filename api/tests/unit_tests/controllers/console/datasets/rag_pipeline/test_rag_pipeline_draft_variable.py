@@ -178,7 +178,7 @@ class TestRagPipelineVariableCollectionApi:
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", sqlite_db),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService"),
         ):
-            result = method(api, editor_user, pipeline)
+            result = method(api, sqlite_db.session(), editor_user, pipeline)
 
         assert isinstance(result, Response)
         assert result.status_code == 204
@@ -206,12 +206,12 @@ class TestRagPipelineNodeVariableCollectionApi:
                 return_value=srv,
             ),
         ):
-            result = method(api, editor_user, pipeline, "node1")
+            result = method(api, sqlite_db.session(), editor_user, pipeline, "node1")
 
         assert result == {"items": []}
         srv.list_node_variables.assert_called_once_with("p1", "node1", user_id="account-1")
 
-    def test_get_node_variables_invalid_node(self, app: Flask, editor_user):
+    def test_get_node_variables_invalid_node(self, app: Flask, sqlite_db, editor_user):
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -219,7 +219,7 @@ class TestRagPipelineNodeVariableCollectionApi:
             app.test_request_context("/"),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, editor_user, _pipeline(), SYSTEM_VARIABLE_NODE_ID)
+                method(api, sqlite_db.session(), editor_user, _pipeline(), SYSTEM_VARIABLE_NODE_ID)
 
 
 class TestRagPipelineVariableApi:
@@ -239,7 +239,7 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(NotFoundError):
-                method(api, editor_user, _pipeline(), "v1")
+                method(api, sqlite_db.session(), editor_user, _pipeline(), "v1")
 
     def test_patch_variable_invalid_file_payload(self, app: Flask, sqlite_db, editor_user):
         api = RagPipelineVariableApi()
@@ -263,7 +263,14 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, WorkflowDraftVariablePatchPayload.model_validate(payload), editor_user, pipeline, "v1")
+                method(
+                    api,
+                    sqlite_db.session(),
+                    WorkflowDraftVariablePatchPayload.model_validate(payload),
+                    editor_user,
+                    pipeline,
+                    "v1",
+                )
 
     def test_delete_variable_success(self, app: Flask, sqlite_db, editor_user):
         api = RagPipelineVariableApi()
@@ -283,7 +290,7 @@ class TestRagPipelineVariableApi:
                 return_value=srv,
             ),
         ):
-            result = method(api, editor_user, pipeline, "v1")
+            result = method(api, sqlite_db.session(), editor_user, pipeline, "v1")
 
         assert result.status_code == 204
 
@@ -318,9 +325,9 @@ def test_direct_variable_access_rejects_different_user(
     rag_service = MagicMock()
     rag_service.get_draft_workflow.return_value = _workflow(pipeline)
     if payload is not None:
-        call_args = (api, payload, editor_user, pipeline, "v1")
+        call_args = (api, sqlite_db.session(), payload, editor_user, pipeline, "v1")
     else:
-        call_args = (api, editor_user, pipeline, "v1")
+        call_args = (api, sqlite_db.session(), editor_user, pipeline, "v1")
 
     with (
         app.test_request_context("/"),
@@ -376,7 +383,7 @@ class TestRagPipelineVariableResetApi:
                 return_value={"id": "v1"},
             ),
         ):
-            result = method(api, editor_user, pipeline, "v1")
+            result = method(api, sqlite_db.session(), editor_user, pipeline, "v1")
 
         assert result == {"id": "v1"}
 
@@ -403,7 +410,7 @@ class TestSystemAndEnvironmentVariablesApi:
                 return_value=srv,
             ),
         ):
-            result = method(api, editor_user, pipeline)
+            result = method(api, sqlite_db.session(), editor_user, pipeline)
 
         assert result == {"items": []}
         srv.list_system_variables.assert_called_once_with("p1", user_id="account-1")

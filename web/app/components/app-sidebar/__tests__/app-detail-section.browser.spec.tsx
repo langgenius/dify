@@ -5,25 +5,19 @@ import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
-const permissionState = vi.hoisted(() => ({ keys: [] as string[] }))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: permissionState.keys }))
-})
-
+// boundary: Next.js pathname/router context is not mounted in a focused Browser Mode render.
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/app-1/logs',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
   useSelectedLayoutSegment: () => 'logs',
 }))
-
-// AppInfo owns its menu and dialogs; this suite protects the surrounding navigation policy.
-vi.mock('../app-info', () => ({ AppInfoView: () => null }))
 
 async function renderSection({
   mode = 'chat',
@@ -40,6 +34,7 @@ async function renderSection({
     rbac_enabled: rbacEnabled,
     enable_app_deploy: false,
   })
+  seedWorkspacePermissionsQuery(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({
@@ -49,7 +44,6 @@ async function renderSection({
       permission_keys: permissions,
     }),
   )
-  permissionState.keys = []
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
       <AppDetailSection />
@@ -66,6 +60,7 @@ describe('AppDetailSection', () => {
         AppACLPermission.LogAndAnnotation,
         AppACLPermission.Monitor,
         AppACLPermission.AccessConfig,
+        AppACLPermission.Delete,
       ],
     })
     const destinations = [
@@ -76,6 +71,14 @@ describe('AppDetailSection', () => {
       ['common.appMenus.overview', '/app/app-1/overview'],
       ['navigation.settings.resourceAccess', '/app/app-1/access-config'],
     ] as const
+
+    const actions = screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })
+    await userEvent.click(actions)
+    await expect
+      .element(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+      .toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(actions).toHaveFocus()
 
     for (const [name, href] of destinations)
       await expect.element(screen.getByRole('link', { name })).toHaveAttribute('href', href)

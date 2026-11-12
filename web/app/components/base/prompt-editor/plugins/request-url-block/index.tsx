@@ -5,8 +5,12 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createRequestURLBlockNode, RequestURLBlockNode } from './node'
 
-export const INSERT_REQUEST_URL_BLOCK_COMMAND = createCommand('INSERT_REQUEST_URL_BLOCK_COMMAND')
-export const DELETE_REQUEST_URL_BLOCK_COMMAND = createCommand('DELETE_REQUEST_URL_BLOCK_COMMAND')
+export const INSERT_REQUEST_URL_BLOCK_COMMAND = createCommand<void>(
+  'INSERT_REQUEST_URL_BLOCK_COMMAND',
+)
+export const DELETE_REQUEST_URL_BLOCK_COMMAND = createCommand<void>(
+  'DELETE_REQUEST_URL_BLOCK_COMMAND',
+)
 
 const RequestURLBlock = memo(({ onInsert, onDelete }: RequestURLBlockType) => {
   const [editor] = useLexicalComposerContext()

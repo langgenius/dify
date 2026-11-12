@@ -34,7 +34,7 @@ async function dispatch(method: string, params: Record<string, unknown>): Promis
     case 'transform': {
       if (!projects.has(String(params.projectHandle))) throw new Error('Unknown projectHandle')
       if (typeof params.content !== 'string' || typeof params.fileName !== 'string')
-        throw new Error('Expected content and fileName strings')
+        throw new TypeError('Expected content and fileName strings')
       try {
         if (
           isSource(params.fileName) &&

@@ -6,8 +6,8 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createHistoryBlockNode, HistoryBlockNode } from './node'
 
-export const INSERT_HISTORY_BLOCK_COMMAND = createCommand('INSERT_HISTORY_BLOCK_COMMAND')
-export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_COMMAND')
+export const INSERT_HISTORY_BLOCK_COMMAND = createCommand<void>('INSERT_HISTORY_BLOCK_COMMAND')
+export const DELETE_HISTORY_BLOCK_COMMAND = createCommand<void>('DELETE_HISTORY_BLOCK_COMMAND')
 
 export type RoleName = {
   user: string
