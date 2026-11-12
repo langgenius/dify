@@ -4,6 +4,7 @@ import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from typing import override
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -121,6 +122,7 @@ def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harne
             self.end_headers()
             self.wfile.write(payload)
 
+        @override
         def log_message(self, format: str, *args: object) -> None:
             pass
 
