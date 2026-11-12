@@ -94,6 +94,44 @@ describe('TagInput', () => {
         .toBeVisible()
     })
 
+    it('ignores the Enter that accepts an IME candidate', async () => {
+      await renderTagInput()
+      const input = screen.getByRole('textbox')
+
+      await input.fill('ceshi')
+      input
+        .element()
+        .dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }),
+        )
+
+      await expect.element(input).toHaveValue('ceshi')
+      await expect
+        .element(screen.getByRole('status', { name: 'Tags' }))
+        .toHaveTextContent(JSON.stringify([]))
+
+      await input.fill('测试')
+      await userEvent.keyboard('{Enter}')
+
+      await expect
+        .element(screen.getByRole('status', { name: 'Tags' }))
+        .toHaveTextContent(JSON.stringify(['测试']))
+    })
+
+    it('does not append a return marker while composing in special mode', async () => {
+      await renderTagInput({ customizedConfirmKey: 'Tab' })
+      const input = screen.getByRole('textbox')
+
+      await input.fill('stop')
+      input
+        .element()
+        .dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }),
+        )
+
+      await expect.element(input).toHaveValue('stop')
+    })
+
     it('should add tag on blur when input has valid value', async () => {
       await renderTagInput()
       const input = screen.getByRole('textbox')
