@@ -180,7 +180,7 @@ class LegacyPluginInstallationGateway:
 
         manager = PluginInstaller()
 
-        # collect actual plugin_unique_identifiers
+        # Install only the exact identifiers admitted by the application owner.
         actual_plugin_unique_identifiers = []
         metas = []
         permission = PluginService._get_plugin_installation_permission()
@@ -199,15 +199,18 @@ class LegacyPluginInstallationGateway:
                 )
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
-                # use response plugin_unique_identifier
-                actual_plugin_unique_identifiers.append(response.unique_identifier)
-                metas.append({"plugin_unique_identifier": response.unique_identifier})
+                if response.unique_identifier != plugin_unique_identifier:
+                    raise ValueError(
+                        "Marketplace package identifier does not match the requested identifier."
+                    ) from None
             else:
                 # already downloaded, the cached pkg still has to satisfy the installation scope
                 plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
                 PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
+                if plugin_decode_response.unique_identifier != plugin_unique_identifier:
+                    raise ValueError("Marketplace package identifier does not match the requested identifier.")
+            actual_plugin_unique_identifiers.append(plugin_unique_identifier)
+            metas.append({"plugin_unique_identifier": plugin_unique_identifier})
 
         result = manager.install_from_identifiers(
             tenant_id,
