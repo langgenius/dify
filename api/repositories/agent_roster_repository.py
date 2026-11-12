@@ -1,6 +1,5 @@
-"""Session-scoped Agent roster queries shared with legacy transaction callers."""
+"""Tenant-scoped Agent roster queries and detached invite-option records."""
 
-from pydantic import TypeAdapter
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,70 +17,75 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
-from services.agent.invite_options_store import AgentInviteOptionsPage
-from services.app.agent_app_contracts import AgentReferencingWorkflow
+from services.agent.invite_options_store import (
+    AgentInviteOption,
+    AgentInviteOptionsPage,
+    AgentInviteReference,
+    AgentInviteSnapshot,
+)
 
 
-def serialize_agent(
-    agent: Agent,
-    active_version: AgentConfigSnapshot | None = None,
-    published_references: list[AgentReferencingWorkflow] | None = None,
-    active_config_is_published: bool | None = None,
-    reference_count: int | None = None,
-) -> dict[str, object]:
-    """Project one loaded Agent and its related values without further database access."""
-    published_references = published_references or []
-    return {
-        "id": agent.id,
-        "name": agent.name,
-        "description": agent.description,
-        "role": agent.role or "",
-        "icon_type": agent.icon_type.value if agent.icon_type else None,
-        "icon": agent.icon,
-        "icon_background": agent.icon_background,
-        "agent_kind": agent.agent_kind.value,
-        "scope": agent.scope.value,
-        "source": agent.source.value,
-        "app_id": agent.app_id,
-        "backing_app_id": agent.backing_app_id,
-        "hidden_app_backed": bool(agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
-        "debug_conversation_id": None,
-        "workflow_id": agent.workflow_id,
-        "workflow_node_id": agent.workflow_node_id,
-        "active_config_snapshot_id": agent.active_config_snapshot_id,
-        "active_config_snapshot": serialize_version(active_version) if active_version else None,
-        "active_config_is_published": agent.active_config_is_published
-        if active_config_is_published is None
-        else active_config_is_published,
-        "status": agent.status.value,
-        "created_by": agent.created_by,
-        "updated_by": agent.updated_by,
-        "archived_by": agent.archived_by,
-        "archived_at": to_timestamp(agent.archived_at),
-        "created_at": to_timestamp(agent.created_at),
-        "updated_at": to_timestamp(agent.updated_at),
-        "reference_count": len(published_references) if reference_count is None else reference_count,
-        "published_reference_count": len(published_references),
-        "published_node_reference_count": sum(len(item["node_ids"]) for item in published_references),
-        "published_references": published_references,
-    }
-
-
-def serialize_version(version: AgentConfigSnapshot | None) -> dict[str, object] | None:
-    """Project a loaded snapshot, or return None when the snapshot is absent."""
+def _invite_snapshot(version: AgentConfigSnapshot | None) -> AgentInviteSnapshot | None:
+    """Project a loaded snapshot into a detached directory value."""
     if version is None:
         return None
-    return {
-        "id": version.id,
-        "agent_id": version.agent_id,
-        "version": version.version,
-        "display_version": version.version,
-        "snapshot_version": version.version,
-        "summary": version.summary,
-        "version_note": version.version_note,
-        "created_by": version.created_by,
-        "created_at": to_timestamp(version.created_at),
-    }
+    return AgentInviteSnapshot(
+        id=version.id,
+        agent_id=version.agent_id,
+        version=version.version,
+        display_version=version.version,
+        snapshot_version=version.version,
+        summary=version.summary,
+        version_note=version.version_note,
+        created_by=version.created_by,
+        created_at=to_timestamp(version.created_at),
+    )
+
+
+def _invite_option(
+    agent: Agent,
+    *,
+    snapshot: AgentConfigSnapshot | None,
+    references: tuple[AgentInviteReference, ...],
+    active_config_is_published: bool,
+    reference_count: int,
+    node_ids: tuple[str, ...],
+) -> AgentInviteOption:
+    """Project loaded Agent data and workflow usage before its session closes."""
+    return AgentInviteOption(
+        id=agent.id,
+        name=agent.name,
+        description=agent.description,
+        role=agent.role or "",
+        icon_type=agent.icon_type.value if agent.icon_type else None,
+        icon=agent.icon,
+        icon_background=agent.icon_background,
+        agent_kind=agent.agent_kind.value,
+        scope=agent.scope.value,
+        source=agent.source.value,
+        app_id=agent.app_id,
+        backing_app_id=agent.backing_app_id,
+        hidden_app_backed=bool(agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
+        workflow_id=agent.workflow_id,
+        workflow_node_id=agent.workflow_node_id,
+        active_config_snapshot_id=agent.active_config_snapshot_id,
+        active_config_snapshot=_invite_snapshot(snapshot),
+        active_config_is_published=active_config_is_published,
+        status=agent.status.value,
+        created_by=agent.created_by,
+        updated_by=agent.updated_by,
+        archived_by=agent.archived_by,
+        archived_at=to_timestamp(agent.archived_at),
+        created_at=to_timestamp(agent.created_at),
+        updated_at=to_timestamp(agent.updated_at),
+        reference_count=reference_count,
+        published_reference_count=len(references),
+        published_node_reference_count=sum(len(reference.node_ids) for reference in references),
+        published_references=references,
+        is_in_current_workflow=bool(node_ids),
+        in_current_workflow_count=len(node_ids),
+        existing_node_ids=node_ids,
+    )
 
 
 def build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None) -> Select[tuple[Agent]]:
@@ -98,7 +102,7 @@ def build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None) -> S
 
 
 def load_active_config_is_published_by_agent_id(*, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
-    """Return each Agent's stored normal-draft publish state.
+    """Return the stored normal-draft publish state for already tenant-scoped Agents.
 
     The flag is maintained by write paths against the normal shared draft:
     saves compare the draft content with the active snapshot, while publish
@@ -114,7 +118,7 @@ def load_active_config_is_published_by_agent_id(*, tenant_id: str, agents: list[
 
 def load_published_references_by_agent_id(
     session: Session, *, tenant_id: str, agent_ids: list[str]
-) -> dict[str, list[AgentReferencingWorkflow]]:
+) -> dict[str, tuple[AgentInviteReference, ...]]:
     """Return current published workflow references for the supplied tenant's Agents."""
     if not agent_ids:
         return {}
@@ -144,36 +148,34 @@ def load_published_references_by_agent_id(
         ).all()
     }
 
-    grouped: dict[str, dict[tuple[str, str], AgentReferencingWorkflow]] = {}
+    grouped: dict[str, dict[tuple[str, str], tuple[App, str, list[str]]]] = {}
     for binding in bindings:
         app = apps.get(binding.app_id)
         if binding.agent_id and app is not None and app.workflow_id == binding.workflow_id:
             by_workflow = grouped.setdefault(binding.agent_id, {})
             key = (binding.app_id, binding.workflow_id)
-            item = by_workflow.setdefault(
-                key,
-                AgentReferencingWorkflow(
-                    app_id=binding.app_id,
-                    app_name=app.name,
-                    app_icon_type=app.icon_type.value if app.icon_type else None,
-                    app_icon=app.icon,
-                    app_icon_background=app.icon_background,
-                    app_mode=str(app.mode),
-                    app_updated_at=to_timestamp(app.updated_at),
-                    workflow_id=binding.workflow_id,
-                    workflow_version=binding.workflow_version,
-                    node_ids=[],
-                ),
-            )
-            item["node_ids"].append(binding.node_id)
+            _, _, node_ids = by_workflow.setdefault(key, (app, binding.workflow_version, []))
+            node_ids.append(binding.node_id)
 
-    result: dict[str, list[AgentReferencingWorkflow]] = {}
+    result: dict[str, tuple[AgentInviteReference, ...]] = {}
     for agent_id, by_workflow in grouped.items():
-        references = list(by_workflow.values())
-        for reference in references:
-            reference["node_ids"] = sorted(set(reference["node_ids"]))
-        references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
-        result[agent_id] = references
+        references = [
+            AgentInviteReference(
+                app_id=app_id,
+                app_name=app.name,
+                app_icon_type=app.icon_type.value if app.icon_type else None,
+                app_icon=app.icon,
+                app_icon_background=app.icon_background,
+                app_mode=str(app.mode),
+                app_updated_at=to_timestamp(app.updated_at),
+                workflow_id=workflow_id,
+                workflow_version=workflow_version,
+                node_ids=tuple(sorted(set(node_ids))),
+            )
+            for (app_id, workflow_id), (app, workflow_version, node_ids) in by_workflow.items()
+        ]
+        references.sort(key=lambda item: (-(item.app_updated_at or 0), item.app_name.lower()))
+        result[agent_id] = tuple(references)
     return result
 
 
@@ -241,9 +243,6 @@ def load_versions_by_id(session: Session, version_ids: list[str]) -> dict[str, A
     return {version.id: version for version in versions}
 
 
-_PAGE_ADAPTER = TypeAdapter(AgentInviteOptionsPage)
-
-
 def list_invite_options_in_session(
     session: Session,
     *,
@@ -289,23 +288,18 @@ def list_invite_options_in_session(
             for binding in bindings:
                 if binding.agent_id:
                     usage_by_agent_id.setdefault(binding.agent_id, []).append(binding.node_id)
-    data: list[dict[str, object]] = []
-    for agent in agents:
-        item = serialize_agent(
+    data = tuple(
+        _invite_option(
             agent,
-            versions.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
-            references.get(agent.id, []),
-            published.get(agent.id, False),
-            counts.get(agent.id, 0),
+            snapshot=versions.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
+            references=references.get(agent.id, ()),
+            active_config_is_published=published.get(agent.id, False),
+            reference_count=counts.get(agent.id, 0),
+            node_ids=tuple(usage_by_agent_id.get(agent.id, ())),
         )
-        node_ids = usage_by_agent_id.get(agent.id, [])
-        item.update(
-            is_in_current_workflow=bool(node_ids), in_current_workflow_count=len(node_ids), existing_node_ids=node_ids
-        )
-        data.append(item)
-    return _PAGE_ADAPTER.validate_python(
-        {"data": data, "page": page, "limit": limit, "total": total, "has_more": page * limit < total}
+        for agent in agents
     )
+    return AgentInviteOptionsPage(data=data, page=page, limit=limit, total=total, has_more=page * limit < total)
 
 
 class SQLAlchemyAgentRosterRepository:

@@ -1640,3 +1640,12 @@ forbidden_modules =
     services.agent.roster_service
     services.agent.invite_options
 allow_indirect_imports = True
+
+[importlinter:contract:agent-legacy-roster-service-boundary]
+name = Legacy Agent roster service does not depend on the new roster repository
+type = forbidden
+source_modules =
+    services.agent.roster_service
+forbidden_modules =
+    repositories.agent_roster_repository
+allow_indirect_imports = True
