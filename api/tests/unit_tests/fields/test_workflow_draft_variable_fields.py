@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections import OrderedDict
 from typing import Any, NamedTuple
@@ -14,6 +15,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableWithoutValueResponse,
     _serialize_full_content,
 )
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response
@@ -319,7 +321,8 @@ def test_workflow_node_variables_fields() -> None:
     assert item_dict["value"] == 1
 
 
-def test_workflow_file_variable_with_signed_url() -> None:
+@pytest.mark.parametrize("file_array", [False, True])
+def test_workflow_file_variable_with_signed_url(file_array: bool) -> None:
     """Test that File type variables include signed URLs in API responses."""
     from graphon.file import File, FileTransferMethod, FileType
 
@@ -340,9 +343,10 @@ def test_workflow_file_variable_with_signed_url() -> None:
         app_id=_TEST_APP_ID,
         node_id="test_node",
         name="file_var",
-        value=build_segment(test_file),
+        value=build_segment([test_file] if file_array else test_file),
         node_execution_id=_TEST_NODE_EXEC_ID,
     )
+    persisted_value = file_var.value
 
     # Marshal the variable using the API fields
     resp = dump_response(WorkflowDraftVariableListResponse, WorkflowDraftVariableList(variables=[file_var]))
@@ -354,7 +358,7 @@ def test_workflow_file_variable_with_signed_url() -> None:
     assert item_dict["name"] == "file_var"
 
     # Verify the value is a dict (File.to_dict() result) and contains expected fields
-    value = item_dict["value"]
+    value = item_dict["value"][0] if file_array else item_dict["value"]
     assert isinstance(value, dict)
 
     # Verify the File fields are preserved
@@ -373,6 +377,10 @@ def test_workflow_file_variable_with_signed_url() -> None:
     assert "timestamp=" in remote_url
     assert "nonce=" in remote_url
     assert "sign=" in remote_url
+    cached_value = file_var.get_value().value
+    cached_file = cached_value[0] if file_array else cached_value
+    assert cached_file.remote_url is None
+    assert file_var.value == persisted_value
 
 
 def test_workflow_file_variable_remote_url() -> None:
@@ -416,3 +424,85 @@ def test_workflow_file_variable_remote_url() -> None:
 
     # For REMOTE_URL, the URL should be the original remote URL
     assert remote_url == test_file.remote_url
+
+
+@pytest.mark.parametrize("existing_row", [False, True])
+@pytest.mark.parametrize("transfer_method", [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL])
+def test_mixed_array_file_json_survives_draft_persistence_and_response(
+    existing_row: bool, transfer_method: FileTransferMethod
+) -> None:
+    file = File(
+        file_type=FileType.IMAGE,
+        transfer_method=transfer_method,
+        related_id="test_upload_file_id",
+        remote_url="https://example.com/test.jpg" if transfer_method == FileTransferMethod.REMOTE_URL else None,
+        filename="test.jpg",
+        extension=".jpg",
+        mime_type="image/jpeg",
+        size=12345,
+    )
+    file_data = file.model_dump(mode="json")
+    value = ["metadata", file_data, {"files": [file_data]}]
+    serialized = json.dumps(value)
+    if not existing_row:
+        saved = WorkflowDraftVariable.new_node_variable(
+            app_id=_TEST_APP_ID,
+            node_id="test_node",
+            name="mixed",
+            value=build_segment(value),
+            node_execution_id=_TEST_NODE_EXEC_ID,
+        )
+        serialized = saved.value
+        assert json.loads(serialized) == value
+    restored = WorkflowDraftVariable(
+        app_id=_TEST_APP_ID,
+        node_id="test_node",
+        name="mixed",
+        selector=json.dumps(["test_node", "mixed"]),
+        value_type=SegmentType.ARRAY_ANY,
+        value=serialized,
+    )
+
+    response = dump_response(WorkflowDraftVariableResponse, restored)
+
+    assert response["value"] == value
+    assert json.loads(restored.value) == value
+    assert restored.get_value().to_object() == value
+
+
+@pytest.mark.parametrize("existing_row", [False, True])
+def test_mixed_array_preserves_public_file_json(existing_row: bool) -> None:
+    file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/report.pdf",
+        related_id="upload-id",
+        filename="report.pdf",
+    )
+    with patch.object(File, "generate_url", return_value=file.remote_url):
+        file_data = file.to_dict()
+    value = [None, file_data, {"files": [file_data]}]
+    serialized = json.dumps(value)
+    with patch.object(File, "generate_url", side_effect=AssertionError("Must not resolve public file JSON")):
+        if not existing_row:
+            saved = WorkflowDraftVariable.new_node_variable(
+                app_id=_TEST_APP_ID,
+                node_id="test_node",
+                name="mixed",
+                value=build_segment(value),
+                node_execution_id=_TEST_NODE_EXEC_ID,
+            )
+            serialized = saved.value
+        restored = WorkflowDraftVariable(
+            app_id=_TEST_APP_ID,
+            node_id="test_node",
+            name="mixed",
+            selector=json.dumps(["test_node", "mixed"]),
+            value_type=SegmentType.ARRAY_ANY,
+            value=serialized,
+        )
+        response = dump_response(WorkflowDraftVariableResponse, restored)
+
+    assert json.loads(serialized) == value
+    assert response["value"] == value
+    assert restored.get_value().to_object() == value

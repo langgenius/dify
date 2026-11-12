@@ -18,6 +18,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine as _workflow_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import get_current_file_access_scope
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.human_input_adapter import (
@@ -39,6 +40,7 @@ from extensions.logstore.repositories.logstore_workflow_node_execution_repositor
     LogstoreWorkflowNodeExecutionRepository,
 )
 from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
+from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -46,6 +48,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.errors import WorkflowNodeRunFailedError
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
@@ -69,7 +72,13 @@ from models.agent_config_entities import AgentSoulConfig
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -85,7 +94,7 @@ from services.workflow_service import (
 )
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_upload_file
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """
@@ -3330,6 +3339,86 @@ class TestWorkflowServiceCases:
         def service(self, sqlite_engine: _workflow_service_Engine) -> WorkflowService:
             return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
+        @pytest.mark.parametrize("value_source", ["input_json", "draft_json", "typed_file"])
+        @pytest.mark.parametrize("same_tenant", [False, True])
+        def test_draft_node_preserves_file_json_and_checks_typed_file_ownership(
+            self,
+            service: WorkflowService,
+            sqlite_engine: _workflow_service_Engine,
+            sqlite_session: Session,
+            monkeypatch: pytest.MonkeyPatch,
+            value_source: str,
+            same_tenant: bool,
+        ) -> None:
+            monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+                graph={
+                    "nodes": [
+                        {
+                            "id": "end",
+                            "data": {
+                                "type": "end",
+                                "title": "End",
+                                "outputs": [{"variable": "result", "value_selector": ["source", "value"]}],
+                            },
+                        }
+                    ],
+                    "edges": [],
+                }
+            )
+            upload = make_upload_file(
+                tenant_id=app.tenant_id if same_tenant else "other-tenant",
+                created_by="another-account",
+            )
+            sqlite_session.add_all([app, account, workflow, upload])
+            file = File(
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=upload.id,
+            )
+            file_value = file if value_source == "typed_file" else file.model_dump(mode="json")
+            value = ["metadata", {"files": [file_value]}]
+            if value_source == "draft_json":
+                sqlite_session.add(
+                    WorkflowDraftVariable(
+                        app_id=app.id,
+                        user_id=account.id,
+                        node_id="source",
+                        name="value",
+                        selector=json.dumps(["source", "value"]),
+                        value_type="array[any]",
+                        value=json.dumps(value),
+                    )
+                )
+            sqlite_session.commit()
+            inputs = {} if value_source == "draft_json" else {"#source.value#": value}
+
+            assert get_current_file_access_scope() is None
+            if value_source != "typed_file":
+                result = service.run_draft_workflow_node(app, workflow, "end", inputs, account)
+                assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert result.inputs_dict == {"result": value}
+                assert result.outputs_dict == {"result": value}
+            elif same_tenant:
+                result = service.run_draft_workflow_node(app, workflow, "end", inputs, account)
+                assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert result.inputs_dict is not None
+                file_result = result.inputs_dict["result"][1]["files"][0]
+                assert file_result["reference"] == upload.id
+                assert f"/files/{upload.id}/file-preview?" in file_result["url"]
+                assert result.outputs_dict is not None
+                assert f"/files/{upload.id}/file-preview?" in result.outputs_dict["result"][1]["files"][0]["url"]
+            else:
+                with pytest.raises(ValueError, match=f"Upload file {upload.id} not found"):
+                    service.run_draft_workflow_node(app, workflow, "end", inputs, account)
+                execution = sqlite_session.scalars(select(WorkflowNodeExecutionModel)).one()
+                assert execution.status == WorkflowNodeExecutionStatus.FAILED
+                assert execution.error == "Node execution interrupted"
+                assert execution.finished_at is not None
+            assert get_current_file_access_scope() is None
+
         def test_run_draft_workflow_node_should_execute_start_node_successfully(
             self, service: WorkflowService, sqlite_engine: _workflow_service_Engine
         ) -> None:
@@ -4254,7 +4343,7 @@ class TestWorkflowAgentPreviewIdentityCases:
             yield app
 
     @staticmethod
-    @pytest.mark.parametrize("outcome", ["success", "failure", "exception", "cancel"])
+    @pytest.mark.parametrize("outcome", ["success", "failure", "exception", "cancel", "save_error"])
     @pytest.mark.usefixtures("preview_flask_app")
     def test_agent_preview_commits_runtime_identity_and_updates_same_row(
         sqlite_engine: _workflow_agent_preview_identity_Engine, outcome: str
@@ -4311,6 +4400,13 @@ class TestWorkflowAgentPreviewIdentityCases:
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             sessions, tenant_id, account, app_id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
         )
+        save_synchronously = repository.save_synchronously
+
+        def save_execution(execution: WorkflowNodeExecution) -> None:
+            if outcome == "save_error" and execution.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+                raise RuntimeError("terminal save failed")
+            save_synchronously(execution)
+
         observed_created_at = []
         execution_ids: list[str] = []
 
@@ -4356,12 +4452,16 @@ class TestWorkflowAgentPreviewIdentityCases:
             if outcome == "cancel":
                 raise PreviewCancelled()
             status = (
-                WorkflowNodeExecutionStatus.SUCCEEDED if outcome == "success" else WorkflowNodeExecutionStatus.FAILED
+                WorkflowNodeExecutionStatus.SUCCEEDED
+                if outcome in {"success", "save_error"}
+                else WorkflowNodeExecutionStatus.FAILED
             )
             result = NodeRunResult(
-                status=status, outputs={"answer": "done"}, error="" if outcome == "success" else "failed"
+                status=status,
+                outputs={"answer": "done"},
+                error="" if status == WorkflowNodeExecutionStatus.SUCCEEDED else "failed",
             )
-            if outcome == "success":
+            if outcome in {"success", "save_error"}:
                 yield NodeRunSucceededEvent(
                     id=execution_id, node_id=node_id, node_type="agent", node_run_result=result, start_at=started_at
                 )
@@ -4387,9 +4487,10 @@ class TestWorkflowAgentPreviewIdentityCases:
             ),
             patch("services.workflow_service.DraftVariableSaver.save"),
             patch("services.workflow_service.enqueue_draft_node_execution_trace"),
+            patch.object(repository, "save_synchronously", side_effect=save_execution),
         ):
-            if outcome in {"exception", "cancel"}:
-                with pytest.raises(RuntimeError if outcome == "exception" else PreviewCancelled):
+            if outcome in {"exception", "cancel", "save_error"}:
+                with pytest.raises(PreviewCancelled if outcome == "cancel" else RuntimeError):
                     service.run_draft_workflow_node(app, workflow, node_id, {}, account)
             else:
                 response = service.run_draft_workflow_node(app, workflow, node_id, {}, account)
@@ -4415,8 +4516,8 @@ class TestWorkflowAgentPreviewIdentityCases:
             assert row.status == (
                 WorkflowNodeExecutionStatus.SUCCEEDED if outcome == "success" else WorkflowNodeExecutionStatus.FAILED
             )
-            if outcome in {"exception", "cancel"}:
-                assert row.error == "Agent preview execution interrupted"
+            if outcome in {"exception", "cancel", "save_error"}:
+                assert row.error == "Node execution interrupted"
 
     @staticmethod
     @pytest.mark.usefixtures("preview_flask_app")

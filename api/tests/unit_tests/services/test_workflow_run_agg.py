@@ -1130,7 +1130,7 @@ def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
     assert isinstance(paused.reasons[0], HumanInputRequired)
     assert paused.reasons[0].form_version == "2"
     assert paused.reasons[0].form_content == source_form.resolved_form.legacy_form_content
-    assert paused.human_input_v2_forms[prepared_forms[0].form.id] is prepared_forms[0]
+    assert paused.human_input_v2_forms[prepared_forms[0].form.id] == prepared_forms[0]
     with Session(sqlite_engine) as session:
         pause = session.scalar(
             select(WorkflowPause).where(WorkflowPause.workflow_run_id == entity.workflow_execution_id)

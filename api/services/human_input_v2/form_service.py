@@ -42,7 +42,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variable_loader import VariableLoader, load_into_variable_pool
-from graphon.variables.segments import StringSegment
+from graphon.variables.segments import SecretSegment, StringSegment
 from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import naive_utc_now
 from models.workflow import WorkflowRun
@@ -338,7 +338,10 @@ class HumanInputFormService:
         node_data: HumanInputNodeData,
         variable_pool: ReadOnlyVariablePool,
     ) -> tuple[RecipientCreateParams, ...]:
-        """Resolve subjects once, merging provenance only for equal subjects."""
+        """Resolve subjects once, accepting string and secret variables for dynamic email.
+
+        Merge provenance for equal subjects; invalid recipients are skipped with a warning.
+        """
         contacts = SQLAlchemyContactRepository(session)
         resolved: dict[RecipientSubject, RecipientCreateParams] = {}
 
@@ -400,7 +403,7 @@ class HumanInputFormService:
                     if segment is None:
                         self._recipient_warning("variable_missing")
                         continue
-                    if not isinstance(segment, StringSegment):
+                    if not isinstance(segment, (StringSegment, SecretSegment)):
                         self._recipient_warning("unsupported_type")
                         continue
                     if not segment.value.strip():

@@ -34,22 +34,22 @@ def test_frozen_variables() -> None:
 
 def test_variable_value_type_immutable() -> None:
     with pytest.raises(ValidationError):
-        StringVariable(value_type=SegmentType.ARRAY_ANY, name="text", value="text")
+        StringVariable.model_validate({"value_type": SegmentType.ARRAY_ANY, "name": "text", "value": "text"})
 
     with pytest.raises(ValidationError):
         StringVariable.model_validate({"value_type": "not text", "name": "text", "value": "text"})
 
     var = IntegerVariable(name="integer", value=42)
     with pytest.raises(ValidationError):
-        IntegerVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
+        IntegerVariable.model_validate({"value_type": SegmentType.ARRAY_ANY, "name": var.name, "value": var.value})
 
     var = FloatVariable(name="float", value=float("3.14"))
     with pytest.raises(ValidationError):
-        FloatVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
+        FloatVariable.model_validate({"value_type": SegmentType.ARRAY_ANY, "name": var.name, "value": var.value})
 
     var = SecretVariable(name="secret", value="secret_value")
     with pytest.raises(ValidationError):
-        SecretVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
+        SecretVariable.model_validate({"value_type": SegmentType.ARRAY_ANY, "name": var.name, "value": var.value})
 
 
 def test_object_variable_to_object() -> None:

@@ -320,7 +320,9 @@ class PipelineGenerator(BaseAppGenerator):
         workflow_thread_pool_id: str | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
-        Generate App response.
+        Run an admitted pipeline with its user's file scope captured by the worker.
+
+        Restore the caller's scope on success or failure.
 
         :param pipeline: Pipeline
         :param workflow: Workflow
@@ -332,7 +334,10 @@ class PipelineGenerator(BaseAppGenerator):
         :param streaming: is stream
         :param workflow_thread_pool_id: workflow thread pool id
         """
-        with preserve_flask_contexts(flask_app, context_vars=context):
+        with (
+            preserve_flask_contexts(flask_app, context_vars=context),
+            self._bind_file_access_scope(tenant_id=pipeline.tenant_id, user=user, invoke_from=invoke_from),
+        ):
             # init queue manager
             workflow = session.get(Workflow, workflow_id)
             if not workflow:

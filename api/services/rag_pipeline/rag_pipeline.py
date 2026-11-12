@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session, sessionmaker
 import contexts
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -581,89 +582,99 @@ class RagPipelineService:
     def run_draft_workflow_node(
         self, pipeline: Pipeline, node_id: str, user_inputs: dict[str, Any], account: Account
     ) -> WorkflowNodeExecutionModel | None:
+        """Run an admitted account's draft node within the pipeline tenant.
+
+        Keep file access scoped through input loading, execution, and persistence.
+        Restore the previous scope on success or failure.
         """
-        Run draft workflow node
-        """
-        # fetch draft workflow by app_model
-        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
-        if not draft_workflow:
-            raise ValueError("Workflow not initialized")
-
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_config = draft_workflow.get_node_config_by_id(node_id)
-
-        eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
-        if eclosing_node_type_and_id:
-            _, enclosing_node_id = eclosing_node_type_and_id
-        else:
-            enclosing_node_id = None
-
-        workflow_node_execution = self._handle_node_run_result(
-            getter=lambda: WorkflowEntry.single_step_run(
-                execution_driver=WorkflowRunAgg.run,
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs=user_inputs,
-                user_id=account.id,
-                variable_pool=_build_seeded_variable_pool(
-                    build_bootstrap_variables(
-                        system_variables=default_system_variables(),
-                        environment_variables=draft_workflow.environment_variables,
-                    )
-                ),
-                variable_loader=DraftVarLoader(
-                    engine=db.engine,
-                    app_id=pipeline.id,
-                    tenant_id=pipeline.tenant_id,
-                    user_id=account.id,
-                ),
-            ),
-            start_at=start_at,
-            tenant_id=pipeline.tenant_id,
-            node_id=node_id,
-        )
-        workflow_node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
-
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=db.engine,
-            tenant_id=pipeline.tenant_id,
-            user=account,
-            app_id=pipeline.id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-        )
-        repository.save(workflow_node_execution)
-
-        # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(
-            workflow_node_execution.id
-        )
-
-        with sessionmaker(bind=db.engine).begin() as session:
-            draft_var_saver = DraftVariableSaver(
-                session=session,
+        with bind_file_access_scope(
+            FileAccessScope(
                 tenant_id=pipeline.tenant_id,
-                app_id=pipeline.id,
-                node_id=workflow_node_execution.node_id,
-                node_type=workflow_node_execution.node_type,
-                enclosing_node_id=enclosing_node_id,
-                node_execution_id=workflow_node_execution.id,
-                user=account,
-            )
-            draft_var_saver.save(
-                process_data=workflow_node_execution.process_data,
-                outputs=workflow_node_execution.outputs,
-            )
-        if isinstance(workflow_node_execution_db_model, WorkflowNodeExecutionModel):
-            enqueue_draft_node_execution_trace(
-                execution=workflow_node_execution_db_model,
-                outputs=workflow_node_execution.outputs,
-                workflow_execution_id=None,
                 user_id=account.id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
             )
-        return workflow_node_execution_db_model
+        ):
+            # fetch draft workflow by app_model
+            draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+            if not draft_workflow:
+                raise ValueError("Workflow not initialized")
+
+            # run draft workflow node
+            start_at = time.perf_counter()
+            node_config = draft_workflow.get_node_config_by_id(node_id)
+
+            eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+            if eclosing_node_type_and_id:
+                _, enclosing_node_id = eclosing_node_type_and_id
+            else:
+                enclosing_node_id = None
+
+            workflow_node_execution = self._handle_node_run_result(
+                getter=lambda: WorkflowEntry.single_step_run(
+                    execution_driver=WorkflowRunAgg.run,
+                    workflow=draft_workflow,
+                    node_id=node_id,
+                    user_inputs=user_inputs,
+                    user_id=account.id,
+                    variable_pool=_build_seeded_variable_pool(
+                        build_bootstrap_variables(
+                            system_variables=default_system_variables(),
+                            environment_variables=draft_workflow.environment_variables,
+                        )
+                    ),
+                    variable_loader=DraftVarLoader(
+                        engine=db.engine,
+                        app_id=pipeline.id,
+                        tenant_id=pipeline.tenant_id,
+                        user_id=account.id,
+                    ),
+                ),
+                start_at=start_at,
+                tenant_id=pipeline.tenant_id,
+                node_id=node_id,
+            )
+            workflow_node_execution.workflow_id = draft_workflow.id
+
+            # Create repository and save the node execution
+
+            repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                session_factory=db.engine,
+                tenant_id=pipeline.tenant_id,
+                user=account,
+                app_id=pipeline.id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            )
+            repository.save(workflow_node_execution)
+
+            # Convert node_execution to WorkflowNodeExecution after save
+            workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(
+                workflow_node_execution.id
+            )
+
+            with sessionmaker(bind=db.engine).begin() as session:
+                draft_var_saver = DraftVariableSaver(
+                    session=session,
+                    tenant_id=pipeline.tenant_id,
+                    app_id=pipeline.id,
+                    node_id=workflow_node_execution.node_id,
+                    node_type=workflow_node_execution.node_type,
+                    enclosing_node_id=enclosing_node_id,
+                    node_execution_id=workflow_node_execution.id,
+                    user=account,
+                )
+                draft_var_saver.save(
+                    process_data=workflow_node_execution.process_data,
+                    outputs=workflow_node_execution.outputs,
+                )
+            if isinstance(workflow_node_execution_db_model, WorkflowNodeExecutionModel):
+                enqueue_draft_node_execution_trace(
+                    execution=workflow_node_execution_db_model,
+                    outputs=workflow_node_execution.outputs,
+                    workflow_execution_id=None,
+                    user_id=account.id,
+                )
+            return workflow_node_execution_db_model
 
     def run_datasource_workflow_node(
         self,
@@ -926,26 +937,36 @@ class RagPipelineService:
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
     ) -> WorkflowNodeExecution:
-        """
-        Run draft workflow node
-        """
-        # run draft workflow node
-        start_at = time.perf_counter()
+        """Run a free node for an admitted account in the supplied tenant.
 
-        workflow_node_execution = self._handle_node_run_result(
-            getter=lambda: WorkflowEntry.run_free_node(
-                node_id=node_id,
-                node_data=node_data,
+        File access stays scoped through execution and result serialization.
+        Restore the previous scope on success or failure.
+        """
+        with bind_file_access_scope(
+            FileAccessScope(
                 tenant_id=tenant_id,
                 user_id=user_id,
-                user_inputs=user_inputs,
-            ),
-            start_at=start_at,
-            tenant_id=tenant_id,
-            node_id=node_id,
-        )
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+        ):
+            # run draft workflow node
+            start_at = time.perf_counter()
 
-        return workflow_node_execution
+            workflow_node_execution = self._handle_node_run_result(
+                getter=lambda: WorkflowEntry.run_free_node(
+                    node_id=node_id,
+                    node_data=node_data,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    user_inputs=user_inputs,
+                ),
+                start_at=start_at,
+                tenant_id=tenant_id,
+                node_id=node_id,
+            )
+
+            return workflow_node_execution
 
     def _handle_node_run_result(
         self,
@@ -1373,94 +1394,103 @@ class RagPipelineService:
         return node_exec
 
     def set_datasource_variables(self, pipeline: Pipeline, args: dict[str, Any], current_user: Account):
+        """Run and save datasource variables for an admitted pipeline account.
+
+        File access stays within the pipeline tenant through execution and persistence.
+        Restore the previous scope on success or failure.
         """
-        Set datasource variables
-        """
-
-        # fetch draft workflow by app_model
-        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
-        if not draft_workflow:
-            raise ValueError("Workflow not initialized")
-
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_id = args.get("start_node_id")
-        if not node_id:
-            raise ValueError("Node id is required")
-        node_config = draft_workflow.get_node_config_by_id(node_id)
-
-        eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
-        if eclosing_node_type_and_id:
-            _, enclosing_node_id = eclosing_node_type_and_id
-        else:
-            enclosing_node_id = None
-
-        system_inputs = build_system_variables(
-            datasource_type=args.get("datasource_type", "online_document"),
-            datasource_info=args.get("datasource_info", {}),
-        )
-
-        workflow_node_execution = self._handle_node_run_result(
-            getter=lambda: WorkflowEntry.single_step_run(
-                execution_driver=WorkflowRunAgg.run,
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs={},
-                user_id=current_user.id,
-                variable_pool=_build_seeded_variable_pool(
-                    build_bootstrap_variables(
-                        system_variables=system_inputs,
-                        rag_pipeline_variables=(),
-                    )
-                ),
-                variable_loader=DraftVarLoader(
-                    engine=db.engine,
-                    app_id=pipeline.id,
-                    tenant_id=pipeline.tenant_id,
-                    user_id=current_user.id,
-                ),
-            ),
-            start_at=start_at,
-            tenant_id=pipeline.tenant_id,
-            node_id=node_id,
-        )
-        workflow_node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine,
-            tenant_id=pipeline.tenant_id,
-            user=current_user,
-            app_id=pipeline.id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-        )
-        repository.save(workflow_node_execution)
-
-        # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
-
-        with sessionmaker(bind=db.engine).begin() as session:
-            draft_var_saver = DraftVariableSaver(
-                session=session,
+        with bind_file_access_scope(
+            FileAccessScope(
                 tenant_id=pipeline.tenant_id,
-                app_id=pipeline.id,
-                node_id=workflow_node_execution_db_model.node_id,
-                node_type=workflow_node_execution_db_model.node_type,
-                enclosing_node_id=enclosing_node_id,
-                node_execution_id=workflow_node_execution.id,
+                user_id=current_user.id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+        ):
+            # fetch draft workflow by app_model
+            draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+            if not draft_workflow:
+                raise ValueError("Workflow not initialized")
+
+            # run draft workflow node
+            start_at = time.perf_counter()
+            node_id = args.get("start_node_id")
+            if not node_id:
+                raise ValueError("Node id is required")
+            node_config = draft_workflow.get_node_config_by_id(node_id)
+
+            eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+            if eclosing_node_type_and_id:
+                _, enclosing_node_id = eclosing_node_type_and_id
+            else:
+                enclosing_node_id = None
+
+            system_inputs = build_system_variables(
+                datasource_type=args.get("datasource_type", "online_document"),
+                datasource_info=args.get("datasource_info", {}),
+            )
+
+            workflow_node_execution = self._handle_node_run_result(
+                getter=lambda: WorkflowEntry.single_step_run(
+                    execution_driver=WorkflowRunAgg.run,
+                    workflow=draft_workflow,
+                    node_id=node_id,
+                    user_inputs={},
+                    user_id=current_user.id,
+                    variable_pool=_build_seeded_variable_pool(
+                        build_bootstrap_variables(
+                            system_variables=system_inputs,
+                            rag_pipeline_variables=(),
+                        )
+                    ),
+                    variable_loader=DraftVarLoader(
+                        engine=db.engine,
+                        app_id=pipeline.id,
+                        tenant_id=pipeline.tenant_id,
+                        user_id=current_user.id,
+                    ),
+                ),
+                start_at=start_at,
+                tenant_id=pipeline.tenant_id,
+                node_id=node_id,
+            )
+            workflow_node_execution.workflow_id = draft_workflow.id
+
+            # Create repository and save the node execution
+            repository = SQLAlchemyWorkflowNodeExecutionRepository(
+                session_factory=db.engine,
+                tenant_id=pipeline.tenant_id,
                 user=current_user,
+                app_id=pipeline.id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
             )
-            draft_var_saver.save(
-                process_data=workflow_node_execution.process_data,
+            repository.save(workflow_node_execution)
+
+            # Convert node_execution to WorkflowNodeExecution after save
+            workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
+
+            with sessionmaker(bind=db.engine).begin() as session:
+                draft_var_saver = DraftVariableSaver(
+                    session=session,
+                    tenant_id=pipeline.tenant_id,
+                    app_id=pipeline.id,
+                    node_id=workflow_node_execution_db_model.node_id,
+                    node_type=workflow_node_execution_db_model.node_type,
+                    enclosing_node_id=enclosing_node_id,
+                    node_execution_id=workflow_node_execution.id,
+                    user=current_user,
+                )
+                draft_var_saver.save(
+                    process_data=workflow_node_execution.process_data,
+                    outputs=workflow_node_execution.outputs,
+                )
+            enqueue_draft_node_execution_trace(
+                execution=workflow_node_execution_db_model,
                 outputs=workflow_node_execution.outputs,
+                workflow_execution_id=None,
+                user_id=current_user.id,
             )
-        enqueue_draft_node_execution_trace(
-            execution=workflow_node_execution_db_model,
-            outputs=workflow_node_execution.outputs,
-            workflow_execution_id=None,
-            user_id=current_user.id,
-        )
-        return workflow_node_execution_db_model
+            return workflow_node_execution_db_model
 
     def _fetch_recommended_plugin_manifests(self, plugin_ids: list[str]) -> list[Any]:
         if not dify_config.MARKETPLACE_ENABLED:

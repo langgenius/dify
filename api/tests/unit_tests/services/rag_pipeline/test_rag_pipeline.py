@@ -14,7 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import get_current_file_access_scope
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.ext_database import db
 from graphon.engine_events import NodeRunFailedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -22,6 +24,7 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
@@ -47,6 +50,7 @@ from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _make_service() -> RagPipelineService:
@@ -263,6 +267,68 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
 
 
 class TestRagPipelineServiceCases:
+    @staticmethod
+    @pytest.mark.parametrize("typed_file", [False, True])
+    @pytest.mark.parametrize("same_tenant", [False, True])
+    def test_draft_node_preserves_file_json_and_checks_typed_file_ownership(
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        same_tenant: bool,
+        typed_file: bool,
+    ) -> None:
+        monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_session.get_bind()))
+        pipeline = _make_pipeline()
+        account = _make_account()
+        workflow = _make_workflow(
+            graph={
+                "nodes": [
+                    {
+                        "id": "end",
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "result", "value_selector": ["source", "value"]}],
+                        },
+                    }
+                ],
+                "edges": [],
+            }
+        )
+        upload = make_upload_file(
+            tenant_id=pipeline.tenant_id if same_tenant else "other-tenant",
+            created_by="another-account",
+        )
+        sqlite_session.add_all([pipeline, account, workflow, upload])
+        sqlite_session.commit()
+        file = File(
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=upload.id,
+        )
+        value = ["metadata", {"files": [file if typed_file else file.model_dump(mode="json")]}]
+        inputs = {"#source.value#": value}
+        service = RagPipelineService(sqlite_session, sqlite_session_factory)
+
+        assert get_current_file_access_scope() is None
+        if not typed_file:
+            result = service.run_draft_workflow_node(pipeline, "end", inputs, account)
+            assert result is not None
+            assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert result.outputs_dict == {"result": value}
+        elif same_tenant:
+            result = service.run_draft_workflow_node(pipeline, "end", inputs, account)
+            assert result is not None
+            assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert result.outputs_dict is not None
+            file_result = result.outputs_dict["result"][1]["files"][0]
+            assert file_result["reference"] == upload.id
+            assert f"/files/{upload.id}/file-preview?" in file_result["url"]
+        else:
+            with pytest.raises(ValueError, match=f"Upload file {upload.id} not found"):
+                service.run_draft_workflow_node(pipeline, "end", inputs, account)
+        assert get_current_file_access_scope() is None
+
     @staticmethod
     @pytest.fixture
     def pipeline_generator(mocker: MockerFixture):
