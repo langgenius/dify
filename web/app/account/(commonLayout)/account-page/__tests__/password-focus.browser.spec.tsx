@@ -53,7 +53,7 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(confirmPassword).toHaveFocus()
-  expect(mocks.request).toHaveBeenCalledOnce()
+  await vi.waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
 
   firstSave.reject(new Error('Password update failed'))
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
@@ -66,7 +66,7 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(save).toHaveFocus()
-  expect(mocks.request).toHaveBeenCalledTimes(2)
+  await vi.waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(2))
 
   retry.resolve(
     new Response(
