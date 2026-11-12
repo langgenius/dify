@@ -1,15 +1,14 @@
 import type { ContactImProviderDefinition } from './types'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { ContactImProvider, ContactImProviderField } from './types'
 
-const setupGuideUrls: Record<Exclude<ContactImProvider, 'resend'>, string> = {
-  slack: 'https://docs.slack.dev/interactivity/handling-user-interaction/',
-  feishu:
-    'https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/event-subscription-guide/callback-subscription/callback-overview',
-  lark: 'https://open.larksuite.com/document/uAjLw4CM/ukTMukTMukTM/event-subscription-guide/callback-subscription/callback-overview',
-  ding_talk: 'https://open.dingtalk.com/document/',
-  ms_teams:
-    'https://learn.microsoft.com/en-us/microsoftteams/platform/bots/how-to/authentication/bot-sso-register-aad',
-  we_com: 'https://developer.work.weixin.qq.com/document/path/90665',
+const setupGuidePaths: Record<Exclude<ContactImProvider, 'resend'>, DocPathWithoutLang> = {
+  slack: '/use-dify/workspace/channels/slack',
+  feishu: '/use-dify/workspace/channels/feishu-lark',
+  lark: '/use-dify/workspace/channels/feishu-lark',
+  ding_talk: '/use-dify/workspace/channels/dingtalk',
+  ms_teams: '/use-dify/workspace/channels/ms-teams',
+  we_com: '/use-dify/workspace/channels/wecom',
 }
 
 type ContactImCallbackSetup = {
@@ -53,7 +52,7 @@ export const resolveContactImProviderFormAdapter = (definition: ContactImProvide
     throw new Error('Email uses its dedicated configuration form')
 
   return {
-    setupGuideUrl: setupGuideUrls[definition.provider],
+    setupGuidePath: setupGuidePaths[definition.provider],
     fields: definition.requiredFields.map((field) => ({
       ...field,
       secret: field.secret || field.field === ContactImProviderField.Secret,

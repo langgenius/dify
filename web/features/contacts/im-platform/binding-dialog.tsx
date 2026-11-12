@@ -27,6 +27,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { ContactImCallbackSetup } from './callback-setup'
 import { canRetainCredential } from './credential-draft'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
@@ -60,7 +61,9 @@ export function ContactImBindingContent({
 }: ContactImBindingDialogProps) {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
+  const docLink = useDocLink()
   const adapter = resolveContactImProviderFormAdapter(provider)
+  const setupGuideUrl = docLink(adapter.setupGuidePath)
   const saveCredentials = useSaveContactImCredentials()
   const testConnection = useTestContactImConnection()
   const formRef = useRef<HTMLFormElement>(null)
@@ -312,7 +315,7 @@ export function ContactImBindingContent({
           callbackUrl={callbackUrl}
           providerName={provider.displayName}
           setup={callbackSetup}
-          setupGuideUrl={adapter.setupGuideUrl}
+          setupGuideUrl={setupGuideUrl}
           onBack={() => setStep('credentials')}
           onFinish={closeDialog}
         />
@@ -437,7 +440,7 @@ export function ContactImBindingContent({
             <div className="flex w-full flex-wrap items-center justify-between gap-3">
               <a
                 className="inline-flex items-center gap-1 rounded-sm system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                href={adapter.setupGuideUrl}
+                href={setupGuideUrl}
                 rel="noreferrer"
                 target="_blank"
               >
