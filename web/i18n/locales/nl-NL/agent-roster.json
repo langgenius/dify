@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "Uitvoeringen van externe agents zijn nog niet beschikbaar.",
   "external.workflow.task.characterCount_one": "{{count}} teken",
   "external.workflow.task.characterCount_other": "{{count}} tekens",
+  "external.workflow.task.unsupportedType": "{{variable}} heeft een niet-ondersteund type ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Annuleren en opnieuw proberen",
   "external.workflow.waitLimit.cancellationHelp": "Vraag annulering aan en wacht op bevestiging. Gebruik het resultaat als de taak eerder wordt voltooid.",
   "external.workflow.waitLimit.endWaiting": "Wachten beëindigen",

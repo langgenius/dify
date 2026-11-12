@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "اجرای عامل‌های خارجی هنوز در دسترس نیست.",
   "external.workflow.task.characterCount_one": "{{count}} نویسه",
   "external.workflow.task.characterCount_other": "{{count}} نویسه",
+  "external.workflow.task.unsupportedType": "{{variable}} از نوع پشتیبانی‌نشده است ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "لغو و تلاش مجدد",
   "external.workflow.waitLimit.cancellationHelp": "درخواست لغو بدهید و منتظر تأیید بمانید. اگر وظیفه زودتر تمام شد، از نتیجهٔ آن استفاده کنید.",
   "external.workflow.waitLimit.endWaiting": "پایان انتظار",

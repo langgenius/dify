@@ -6,7 +6,7 @@ import type { AgentOutputTypeOptionValue } from './plugins/agent-output-block/ut
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
 import type { RosterReferenceToken } from './plugins/roster-reference-block/utils'
-import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 
 type Option = {
   value: string
@@ -75,6 +75,9 @@ export type GetVarType = (payload: { nodeId: string; valueSelector: ValueSelecto
 export type WorkflowVariableBlockType = {
   show?: boolean
   variables?: NodeOutPutVar[]
+  selectableVariables?: NodeOutPutVar[]
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
+  getWarning?: (selector: ValueSelector) => string | undefined
   workflowNodesMap?: WorkflowNodesMap
   onInsert?: () => void
   onDelete?: () => void

@@ -11,7 +11,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { COMMAND_PRIORITY_EDITOR } from 'lexical'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, use, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import {
@@ -24,6 +24,7 @@ import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/com
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useSelectOrDelete } from '../../hooks'
+import { WorkflowVariableWarningContext } from './context'
 import { DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND, UPDATE_WORKFLOW_NODES_MAP } from './index'
 import { WorkflowVariableBlockNode } from './node'
 import { useLlmModelPluginInstalled } from './use-llm-model-plugin-installed'
@@ -47,6 +48,7 @@ const WorkflowVariableBlockComponent = ({
   getVarType,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation(['workflow'])
+  const getWarning = use(WorkflowVariableWarningContext)
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
@@ -125,6 +127,7 @@ const WorkflowVariableBlockComponent = ({
         handleVariableJump()
       }}
       isExceptionVariable={isException}
+      warningMsg={getWarning?.(variables)}
       errorMsg={
         !variableValid
           ? t(($) => $['errorMsg.invalidVariable'], { ns: 'workflow' })

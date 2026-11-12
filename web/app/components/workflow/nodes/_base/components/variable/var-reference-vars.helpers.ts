@@ -34,6 +34,14 @@ export const getVariableCategory = ({
   return 'system'
 }
 
+export const normalizeSpecialVariableSelector = (selector: ValueSelector): ValueSelector => {
+  const scopedVariable = selector[1]?.split('.')
+  if (scopedVariable && scopedVariable.length > 1 && isSpecialVar(scopedVariable[0]!))
+    return [...scopedVariable, ...selector.slice(2)]
+
+  return selector
+}
+
 export const getValueSelector = ({
   itemData,
   isFlat,
@@ -45,6 +53,7 @@ export const getValueSelector = ({
   isRagVariable,
   nodeId,
   objPath,
+  filterVar,
 }: {
   itemData: Var
   isFlat?: boolean
@@ -56,13 +65,16 @@ export const getValueSelector = ({
   isRagVariable?: boolean
   nodeId: string
   objPath: string[]
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }): ValueSelector | undefined => {
   if (!isSupportFileVar && isFile) return undefined
 
-  if (isFlat) return [itemData.variable]
-  if (isSys || isEnv || isChatVar || isRagVariable)
-    return [...objPath, ...itemData.variable.split('.')]
-  return [nodeId, ...objPath, itemData.variable]
+  const selector = isFlat
+    ? [itemData.variable]
+    : isSys || isEnv || isChatVar || isRagVariable
+      ? [...objPath, ...itemData.variable.split('.')]
+      : [nodeId, ...objPath, itemData.variable]
+  return !filterVar || filterVar(itemData, selector) ? selector : undefined
 }
 
 const getVisibleChildren = (vars: Var[]) => {

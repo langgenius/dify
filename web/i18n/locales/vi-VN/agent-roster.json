@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "Các lượt chạy tác nhân bên ngoài hiện chưa khả dụng.",
   "external.workflow.task.characterCount_one": "{{count}} ký tự",
   "external.workflow.task.characterCount_other": "{{count}} ký tự",
+  "external.workflow.task.unsupportedType": "{{variable}} có kiểu không được hỗ trợ ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Hủy và thử lại",
   "external.workflow.waitLimit.cancellationHelp": "Yêu cầu hủy và chờ xác nhận. Nếu tác vụ hoàn thành trước, hãy sử dụng kết quả của tác vụ đó.",
   "external.workflow.waitLimit.endWaiting": "Kết thúc chờ",

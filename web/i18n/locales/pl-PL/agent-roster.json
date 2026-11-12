@@ -153,6 +153,7 @@
   "external.workflow.runUnavailable": "Uruchomienia agentów zewnętrznych nie są jeszcze dostępne.",
   "external.workflow.task.characterCount_one": "{{count}} znak",
   "external.workflow.task.characterCount_other": "{{count}} znaków",
+  "external.workflow.task.unsupportedType": "{{variable}} ma nieobsługiwany typ ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Anuluj i ponów",
   "external.workflow.waitLimit.cancellationHelp": "Poproś o anulowanie i poczekaj na potwierdzenie. Jeśli zadanie zakończy się wcześniej, użyj jego wyniku.",
   "external.workflow.waitLimit.endWaiting": "Zakończ oczekiwanie",

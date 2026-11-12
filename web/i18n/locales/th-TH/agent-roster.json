@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "การเรียกใช้เอเจนต์ภายนอกยังไม่พร้อมใช้งาน",
   "external.workflow.task.characterCount_one": "{{count}} อักขระ",
   "external.workflow.task.characterCount_other": "{{count}} อักขระ",
+  "external.workflow.task.unsupportedType": "{{variable}} มีประเภทที่ไม่รองรับ ({{type}})",
   "external.workflow.waitLimit.cancelAndRetry": "ยกเลิกและลองใหม่",
   "external.workflow.waitLimit.cancellationHelp": "ขอยกเลิกและรอการยืนยัน หากงานเสร็จสิ้นก่อน ให้ใช้ผลลัพธ์ของงานนั้น",
   "external.workflow.waitLimit.endWaiting": "สิ้นสุดการรอ",

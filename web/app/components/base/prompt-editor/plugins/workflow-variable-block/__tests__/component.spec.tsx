@@ -1,5 +1,6 @@
 import type { LexicalEditor } from 'lexical'
 import type { ComponentProps } from 'react'
+import type { WorkflowVariableBlockType } from '../../../types'
 import type WorkflowVariableBlockComponent from '../component'
 import type { WorkflowNodesMap } from '../node'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -16,6 +17,7 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { TestLexicalComposer } from '@/test/lexical'
+import { WorkflowVariableWarningContext } from '../context'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../index'
 import { $createWorkflowVariableBlockNode, WorkflowVariableBlockNode } from '../node'
 
@@ -46,46 +48,57 @@ function renderVariables(props: Props[], hasContainer = true) {
     data: [],
     plugins: {},
   })
-  const view = renderWorkflowFlowComponent(
+  const renderEditor = (getWarning?: WorkflowVariableBlockType['getWarning']) => (
     <div id={hasContainer ? 'workflow-container' : undefined}>
-      <TestLexicalComposer
-        initialConfig={{
-          namespace: 'workflow-variable-test',
-          nodes: [WorkflowVariableBlockNode],
-          onError: (error: Error) => {
-            throw error
-          },
-          editorState: () => {
-            $getRoot().append(
-              $createParagraphNode().append(
-                ...props.map((props) =>
-                  $createWorkflowVariableBlockNode(
-                    props.variables,
-                    props.workflowNodesMap,
-                    props.getVarType,
-                    props.availableVariables,
+      <WorkflowVariableWarningContext value={getWarning}>
+        <TestLexicalComposer
+          initialConfig={{
+            namespace: 'workflow-variable-test',
+            nodes: [WorkflowVariableBlockNode],
+            onError: (error: Error) => {
+              throw error
+            },
+            editorState: () => {
+              $getRoot().append(
+                $createParagraphNode().append(
+                  ...props.map((props) =>
+                    $createWorkflowVariableBlockNode(
+                      props.variables,
+                      props.workflowNodesMap,
+                      props.getVarType,
+                      props.availableVariables,
+                    ),
                   ),
                 ),
-              ),
-            )
-          },
-        }}
-      >
-        <RichTextPlugin
-          contentEditable={<ContentEditable aria-label="Prompt" />}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        <Capture />
-      </TestLexicalComposer>
-    </div>,
-    { queryClient, reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 2 } } },
+              )
+            },
+          }}
+        >
+          <RichTextPlugin
+            contentEditable={<ContentEditable aria-label="Prompt" />}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <Capture />
+        </TestLexicalComposer>
+      </WorkflowVariableWarningContext>
+    </div>
   )
+  const view = renderWorkflowFlowComponent(renderEditor(), {
+    queryClient,
+    reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 2 } },
+  })
   const container = document.getElementById('workflow-container')
   if (container) {
     Object.defineProperty(container, 'clientWidth', { value: 1000, configurable: true })
     Object.defineProperty(container, 'clientHeight', { value: 800, configurable: true })
   }
-  return { ...view, editor: editor!, flowStore: flowStore! }
+  return {
+    ...view,
+    editor: editor!,
+    flowStore: flowStore!,
+    rerenderWarning: (getWarning?: WorkflowVariableBlockType['getWarning']) =>
+      view.rerender(renderEditor(getWarning)),
+  }
 }
 
 describe('WorkflowVariableBlockComponent', () => {
@@ -140,6 +153,28 @@ describe('WorkflowVariableBlockComponent', () => {
     ])
     await user.hover(await screen.findByText('missing'))
     expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
+  })
+
+  it('updates an existing token warning when input capabilities change without changing its reference', async () => {
+    const user = userEvent.setup()
+    const { editor, rerenderWarning } = renderVariables([
+      { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
+    ])
+    const warning = 'This agent does not support this input type'
+    rerenderWarning((selector) => (selector[1] === 'output' ? warning : undefined))
+    await user.hover(await screen.findByText('output'))
+    expect(await screen.findByText(warning)).toBeVisible()
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      '{{#node-1.output#}}',
+    )
+
+    await user.unhover(screen.getByText('output'))
+    rerenderWarning()
+    await user.hover(screen.getByText('output'))
+    await waitFor(() => expect(screen.queryByText(warning)).not.toBeInTheDocument())
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      '{{#node-1.output#}}',
+    )
   })
 
   it('shows the nested path and computed type in the real preview', async () => {

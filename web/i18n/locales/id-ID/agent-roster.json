@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "Eksekusi agen eksternal belum tersedia.",
   "external.workflow.task.characterCount_one": "{{count}} karakter",
   "external.workflow.task.characterCount_other": "{{count}} karakter",
+  "external.workflow.task.unsupportedType": "{{variable}} memiliki tipe yang tidak didukung ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Batalkan dan coba lagi",
   "external.workflow.waitLimit.cancellationHelp": "Minta pembatalan dan tunggu konfirmasi. Jika tugas selesai lebih dahulu, gunakan hasilnya.",
   "external.workflow.waitLimit.endWaiting": "Akhiri penantian",

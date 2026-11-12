@@ -151,6 +151,7 @@
   "external.workflow.runUnavailable": "Rulările agenților externi nu sunt încă disponibile.",
   "external.workflow.task.characterCount_one": "{{count}} caracter",
   "external.workflow.task.characterCount_other": "{{count}} caractere",
+  "external.workflow.task.unsupportedType": "{{variable}} are un tip neacceptat ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Anulează și reîncearcă",
   "external.workflow.waitLimit.cancellationHelp": "Solicitați anularea și așteptați confirmarea. Dacă sarcina se încheie înainte, folosiți rezultatul ei.",
   "external.workflow.waitLimit.endWaiting": "Oprește așteptarea",

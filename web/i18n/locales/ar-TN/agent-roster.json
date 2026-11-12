@@ -157,6 +157,7 @@
   "external.workflow.runUnavailable": "تشغيلات الوكيل الخارجي غير متاحة بعد.",
   "external.workflow.task.characterCount_one": "{{count}} حرف",
   "external.workflow.task.characterCount_other": "{{count}} حرفًا",
+  "external.workflow.task.unsupportedType": "{{variable}} من نوع غير مدعوم ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "الإلغاء وإعادة المحاولة",
   "external.workflow.waitLimit.cancellationHelp": "اطلب الإلغاء وانتظر التأكيد. إذا اكتملت المهمة أولاً، فاستخدم نتيجتها.",
   "external.workflow.waitLimit.endWaiting": "إنهاء الانتظار",

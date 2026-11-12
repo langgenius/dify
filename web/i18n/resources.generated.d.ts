@@ -325,6 +325,7 @@ export default interface Resources {
     'external.updated': 'Updated {{time}}'
     'external.workflow.runUnavailable': 'External agent runs are not available yet.'
     'external.workflow.task.characterCount': '{{count}} character' | '{{count}} characters'
+    'external.workflow.task.unsupportedType': '{{variable}} has an unsupported type ({{type}}).'
     'external.workflow.waitLimit.cancelAndRetry': 'Cancel and retry'
     'external.workflow.waitLimit.cancellationHelp': 'Request cancellation and wait for confirmation. If the task finishes first, use its result.'
     'external.workflow.waitLimit.endWaiting': 'End waiting'

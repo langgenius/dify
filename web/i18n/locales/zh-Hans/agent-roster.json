@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "外部 Agent 运行暂不可用。",
   "external.workflow.task.characterCount_one": "{{count}} 个字符",
   "external.workflow.task.characterCount_other": "{{count}} 个字符",
+  "external.workflow.task.unsupportedType": "{{variable}} 的类型（{{type}}）不受支持。",
   "external.workflow.waitLimit.cancelAndRetry": "取消并重试",
   "external.workflow.waitLimit.cancellationHelp": "请求取消并等待确认。如果任务先完成，则使用其结果。",
   "external.workflow.waitLimit.endWaiting": "结束等待",

@@ -153,6 +153,7 @@
   "external.workflow.runUnavailable": "Запуски зовнішніх агентів ще недоступні.",
   "external.workflow.task.characterCount_one": "{{count}} символ",
   "external.workflow.task.characterCount_other": "{{count}} символів",
+  "external.workflow.task.unsupportedType": "{{variable}} має непідтримуваний тип ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Скасувати й повторити",
   "external.workflow.waitLimit.cancellationHelp": "Запросіть скасування та дочекайтеся підтвердження. Якщо завдання завершиться раніше, використайте його результат.",
   "external.workflow.waitLimit.endWaiting": "Завершити очікування",

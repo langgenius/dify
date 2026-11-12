@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "외부 에이전트 실행은 아직 사용할 수 없습니다.",
   "external.workflow.task.characterCount_one": "{{count}}자",
   "external.workflow.task.characterCount_other": "{{count}}자",
+  "external.workflow.task.unsupportedType": "{{variable}}의 유형({{type}})은 지원되지 않습니다.",
   "external.workflow.waitLimit.cancelAndRetry": "취소 후 재시도",
   "external.workflow.waitLimit.cancellationHelp": "취소를 요청하고 확인을 기다립니다. 작업이 먼저 완료되면 해당 결과를 사용합니다.",
   "external.workflow.waitLimit.endWaiting": "대기 종료",

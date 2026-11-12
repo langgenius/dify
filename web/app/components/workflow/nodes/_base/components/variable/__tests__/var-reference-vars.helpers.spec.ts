@@ -91,6 +91,27 @@ describe('var-reference-vars helpers', () => {
     expect(vars[0]!.vars).toEqual([expect.objectContaining({ variable: 'another_value' })])
   })
 
+  it('rejects unsupported variable selectors after resolving their scope', () => {
+    const resolve = (itemData: Var) =>
+      getValueSelector({
+        itemData,
+        isSupportFileVar: true,
+        isFile: itemData.type === VarType.file,
+        isSys: false,
+        isEnv: itemData.variable.startsWith('env.'),
+        isChatVar: false,
+        nodeId: 'source',
+        objPath: [],
+        filterVar: (variable, selector) =>
+          variable.type === VarType.string && selector[0] === 'env',
+      })
+
+    expect(resolve({ variable: 'env.label', type: VarType.string })).toEqual(['env', 'label'])
+    expect(resolve({ variable: 'env.payload', type: VarType.object })).toBeUndefined()
+    expect(resolve({ variable: 'asset', type: VarType.file })).toBeUndefined()
+    expect(resolve({ variable: 'label', type: VarType.string })).toBeUndefined()
+  })
+
   it('should keep parent vars when search text matches a child variable', () => {
     const vars = filterReferenceVars(
       [

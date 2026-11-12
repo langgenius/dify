@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "Xarici agent işə salınmaları hələ əlçatan deyil.",
   "external.workflow.task.characterCount_one": "{{count}} simvol",
   "external.workflow.task.characterCount_other": "{{count}} simvol",
+  "external.workflow.task.unsupportedType": "{{variable}} dəstəklənməyən tipə malikdir ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Ləğv et və yenidən cəhd et",
   "external.workflow.waitLimit.cancellationHelp": "Ləğv tələb edin və təsdiqi gözləyin. Tapşırıq əvvəlcə tamamlanarsa, onun nəticəsindən istifadə edin.",
   "external.workflow.waitLimit.endWaiting": "Gözləməni bitir",

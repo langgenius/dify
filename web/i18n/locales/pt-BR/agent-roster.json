@@ -151,6 +151,7 @@
   "external.workflow.runUnavailable": "Execuções de agentes externos ainda não estão disponíveis.",
   "external.workflow.task.characterCount_one": "{{count}} caractere",
   "external.workflow.task.characterCount_other": "{{count}} caracteres",
+  "external.workflow.task.unsupportedType": "{{variable}} tem um tipo não compatível ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Cancelar e tentar novamente",
   "external.workflow.waitLimit.cancellationHelp": "Solicite o cancelamento e aguarde a confirmação. Se a tarefa terminar antes, use o resultado dela.",
   "external.workflow.waitLimit.endWaiting": "Encerrar espera",

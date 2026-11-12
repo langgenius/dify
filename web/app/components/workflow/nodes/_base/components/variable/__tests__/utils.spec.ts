@@ -8,6 +8,7 @@ import type { KnowledgeRetrievalV2NodeType } from '@/app/components/workflow/nod
 import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
+import type { ExternalAgentWorkflowPreviewNodeData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { describe, expect, it } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
@@ -22,6 +23,8 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import {
   findUsedVarNodes,
   getNodeUsedVarPassToServerKey,
@@ -267,6 +270,40 @@ describe('variable utils', () => {
         ]),
       )
     })
+
+    it.each([BlockEnum.Agent, BlockEnum.AgentV2])(
+      'uses external agent declared outputs without Dify system output: %s',
+      (type) => {
+        const node = createNode<ExternalAgentWorkflowPreviewNodeData>({
+          type,
+          title: 'External Agent',
+          desc: '',
+          ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+          agent_declared_outputs: [
+            {
+              name: 'attachments',
+              type: 'array',
+              array_item: { type: 'file' },
+              required: false,
+            },
+          ],
+        })
+
+        const availableVars = toNodeAvailableVars({
+          beforeNodes: [node],
+          isChatflow: false,
+          filterVar: () => true,
+          allPluginInfoList: {},
+        })
+
+        const externalAgentVars = availableVars.find((item) => item.nodeId === 'node-1')?.vars
+        expect(externalAgentVars).toContainEqual({
+          variable: 'attachments',
+          type: VarType.arrayFile,
+        })
+        expect(externalAgentVars).not.toContainEqual(expect.objectContaining({ variable: 'text' }))
+      },
+    )
   })
 
   describe('getNodeUsedVars', () => {
@@ -470,6 +507,18 @@ describe('variable utils', () => {
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
     })
 
+    it('reads variables from an external agent task', () => {
+      const node = createNode<ExternalAgentWorkflowPreviewNodeData>({
+        type: BlockEnum.Agent,
+        title: 'External Agent',
+        desc: '',
+        ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+        agent_task: 'Review {{#start.contract#}}',
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['start', 'contract'])
+    })
+
     it('reads both text and image selectors from a KnowledgeFS retrieval node', () => {
       const node = createNode<KnowledgeRetrievalV2NodeType>({
         type: BlockEnum.KnowledgeRetrievalV2,
@@ -581,6 +630,20 @@ describe('variable utils', () => {
       const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])
 
       expect((updatedNode.data as AgentV2NodeType).agent_task).toBe('Clarify {{#start.question#}}')
+    })
+
+    it('replaces variables in an external agent task', () => {
+      const node = createNode<ExternalAgentWorkflowPreviewNodeData>({
+        type: BlockEnum.Agent,
+        title: 'External Agent',
+        desc: '',
+        ...createExternalAgentWorkflowPreviewData(createExternalRosterPreview()[1]!),
+        agent_task: 'Review {{#start.contract#}}',
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'contract'], ['start', 'agreement'])
+
+      expect(updatedNode.data).toMatchObject({ agent_task: 'Review {{#start.agreement#}}' })
     })
 
     it('renames the KnowledgeFS retrieval image selector independently', () => {

@@ -37,6 +37,7 @@ import type {
   Var,
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
+import type { ExternalAgentWorkflowPreviewNodeData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import { uniq } from 'es-toolkit/array'
 import { isArray } from 'es-toolkit/compat'
@@ -56,7 +57,10 @@ import {
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
+import {
+  getAgentV2OutputVars,
+  getDeclaredOutputVarType,
+} from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputV2NodeDefault from '@/app/components/workflow/nodes/human-input-v2/default'
@@ -69,6 +73,8 @@ import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-sche
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
+import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/preview'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
 import {
@@ -306,6 +312,14 @@ const findExceptVarInObject = (
 
   return res
 }
+
+const getExternalAgentOutputVars = (data: {
+  agent_declared_outputs?: ExternalAgentWorkflowPreviewNodeData['agent_declared_outputs']
+}): Var[] =>
+  (data.agent_declared_outputs ?? externalAgentDefaultOutputs).map((output) => ({
+    variable: output.name,
+    type: getDeclaredOutputVarType(output),
+  }))
 
 const formatItem = (
   item: any,
@@ -564,6 +578,11 @@ const formatItem = (
     }
 
     case BlockEnum.Agent: {
+      if (isExternalAgentWorkflowPreviewData(data)) {
+        res.vars = getExternalAgentOutputVars(data)
+        break
+      }
+
       if (isAgentV2NodeData(data)) {
         res.vars = getAgentV2OutputVars(data)
         break
@@ -584,6 +603,11 @@ const formatItem = (
     }
 
     case BlockEnum.AgentV2: {
+      if (isExternalAgentWorkflowPreviewData(data)) {
+        res.vars = getExternalAgentOutputVars(data)
+        break
+      }
+
       res.vars = getAgentV2OutputVars(data as AgentV2NodeType)
       break
     }
@@ -1191,7 +1215,7 @@ export const getNodeInfoById = (nodes: any, id: string) => {
   return nodes.find((node: any) => node.id === id)
 }
 
-const matchNotSystemVars = (prompts: string[]) => {
+export const matchNotSystemVars = (prompts: string[]) => {
   if (!prompts) return []
 
   const allVars: string[] = []
@@ -1352,6 +1376,11 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       break
     }
     case BlockEnum.Agent: {
+      if (isExternalAgentWorkflowPreviewData(data)) {
+        res = matchNotSystemVars([data.agent_task || ''])
+        break
+      }
+
       if (isAgentV2NodeData(data)) {
         const payload = data
         res = matchNotSystemVars([
@@ -1806,6 +1835,15 @@ export const updateNodeVars = (
         break
       }
       case BlockEnum.Agent: {
+        if (isExternalAgentWorkflowPreviewData(data)) {
+          data.agent_task = replaceOldVarInText(
+            data.agent_task || '',
+            oldVarSelector,
+            newVarSelector,
+          )
+          break
+        }
+
         if (isAgentV2NodeData(data)) {
           const payload = data
           payload.agent_task = replaceOldVarInText(

@@ -553,6 +553,103 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await waitFor(() => expect(readEditorText(editor)).not.toContain('/child'))
   })
 
+  it('keeps the slash query when a visible parent is not selectable and permits its supported child', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+    const user = userEvent.setup()
+    const source = makeWorkflowVarNode('source', 'Source', [
+      makeWorkflowNodeVar('payload', VarType.object, [makeWorkflowNodeVar('name', VarType.string)]),
+      makeWorkflowNodeVar('hidden_file', VarType.file),
+    ])
+    render(
+      <MinimalEditor
+        triggerString="/"
+        workflowVariableBlock={makeWorkflowVariableBlock(
+          {
+            selectableVariables: [{ ...source, vars: source.vars.slice(0, 1) }],
+            filterVar: (_variable, selector) => selector.at(-1) === 'name',
+          },
+          [source],
+        )}
+        captures={captures}
+      />,
+    )
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+    await setEditorText(editor, '/', true)
+    const root = await screen.findByText('payload')
+    expect(screen.queryByText('hidden_file')).not.toBeInTheDocument()
+    await user.click(root)
+    expect(readEditorText(editor)).toBe('/')
+    expect(dispatchSpy).not.toHaveBeenCalledWith(
+      INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+      expect.anything(),
+    )
+
+    await user.hover(root)
+    await user.click(await screen.findByText('name'))
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
+      'source',
+      'payload',
+      'name',
+    ])
+    await waitFor(() => expect(readEditorText(editor)).toBe(''))
+  })
+
+  it.each<[string, string, string[]]>([
+    ['start', 'sys.files', ['sys', 'files', 'name']],
+    ['env', 'env.PROFILE', ['env', 'PROFILE', 'name']],
+    ['conversation', 'conversation.PROFILE', ['conversation', 'PROFILE', 'name']],
+    ['rag', 'rag.PROFILE', ['rag', 'PROFILE', 'name']],
+    ['source.with.dots', 'payload', ['source.with.dots', 'payload', 'name']],
+  ])(
+    'guards and inserts the same nested selector for %s / %s',
+    async (nodeId, variableName, expectedSelector) => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const user = userEvent.setup()
+      const variable = {
+        ...makeWorkflowNodeVar(variableName, VarType.object, [
+          makeWorkflowNodeVar('name', VarType.string),
+          makeWorkflowNodeVar('blocked', VarType.number),
+        ]),
+        des: variableName,
+      }
+      const filterVar = vi.fn((_variable: Var, selector: string[]) => selector.at(-1) === 'name')
+      render(
+        <MinimalEditor
+          triggerString="/"
+          workflowVariableBlock={makeWorkflowVariableBlock({ filterVar }, [
+            makeWorkflowVarNode(nodeId, 'Source', [variable]),
+          ])}
+          captures={captures}
+        />,
+      )
+      const editor = await waitForEditor(captures)
+      const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+      await setEditorText(editor, '/', true)
+      const root = document.querySelector(`[title="${variableName}"]`)
+      expect(root).not.toBeNull()
+      await user.hover(root as HTMLElement)
+      await user.click(await screen.findByText('blocked'))
+      expect(filterVar).toHaveBeenLastCalledWith(variable, [
+        ...expectedSelector.slice(0, -1),
+        'blocked',
+      ])
+      expect(readEditorText(editor)).toBe('/')
+      expect(dispatchSpy).not.toHaveBeenCalledWith(
+        INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+        expect.anything(),
+      )
+
+      await user.click(screen.getByText('name'))
+      expect(filterVar).toHaveBeenLastCalledWith(variable, expectedSelector)
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+        expectedSelector,
+      )
+      await waitFor(() => expect(readEditorText(editor)).toBe(''))
+    },
+  )
+
   it('filters workflow variables on the first character after slash and does not highlight context by default', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 

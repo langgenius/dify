@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "外部エージェントの実行はまだ利用できません。",
   "external.workflow.task.characterCount_one": "{{count}} 文字",
   "external.workflow.task.characterCount_other": "{{count}} 文字",
+  "external.workflow.task.unsupportedType": "{{variable}} の型（{{type}}）はサポートされていません。",
   "external.workflow.waitLimit.cancelAndRetry": "キャンセルして再試行",
   "external.workflow.waitLimit.cancellationHelp": "キャンセルを要求し、確認を待ちます。タスクが先に完了した場合は、その結果を使用します。",
   "external.workflow.waitLimit.endWaiting": "待機を終了",

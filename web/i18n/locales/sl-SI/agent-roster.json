@@ -153,6 +153,7 @@
   "external.workflow.runUnavailable": "Izvajanja zunanjih agentov še niso na voljo.",
   "external.workflow.task.characterCount_one": "{{count}} znak",
   "external.workflow.task.characterCount_other": "{{count}} znakov",
+  "external.workflow.task.unsupportedType": "{{variable}} ima nepodprto vrsto ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Prekliči in poskusi znova",
   "external.workflow.waitLimit.cancellationHelp": "Zahtevajte preklic in počakajte na potrditev. Če se naloga konča prej, uporabite njen rezultat.",
   "external.workflow.waitLimit.endWaiting": "Končaj čakanje",

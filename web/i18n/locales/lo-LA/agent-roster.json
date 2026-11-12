@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "ການເຮັດວຽກຂອງຕົວແທນພາຍນອກຍັງບໍ່ພ້ອມໃຊ້.",
   "external.workflow.task.characterCount_one": "{{count}} ຕົວອັກສອນ",
   "external.workflow.task.characterCount_other": "{{count}} ຕົວອັກສອນ",
+  "external.workflow.task.unsupportedType": "{{variable}} ມີປະເພດທີ່ບໍ່ຮອງຮັບ ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "ຍົກເລີກ ແລະ ລອງໃໝ່",
   "external.workflow.waitLimit.cancellationHelp": "ຮ້ອງຂໍໃຫ້ຍົກເລີກ ແລະ ລໍຖ້າການຢືນຢັນ. ຖ້າວຽກສຳເລັດກ່ອນ, ໃຫ້ໃຊ້ຜົນຂອງວຽກນັ້ນ.",
   "external.workflow.waitLimit.endWaiting": "ຢຸດລໍຖ້າ",

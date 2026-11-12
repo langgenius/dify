@@ -16,6 +16,7 @@ const VariableLabel = ({
   variableType,
   className,
   errorMsg,
+  warningMsg,
   onClick,
   isExceptionVariable,
   ref,
@@ -23,6 +24,7 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
+  const message = errorMsg || warningMsg
   const isShowNodeLabel = !(
     isENV(variables) ||
     isConversationVar(variables) ||
@@ -58,7 +60,7 @@ const VariableLabel = ({
           {capitalize(variableType)}
         </div>
       )}
-      {!!errorMsg && (
+      {!!message && (
         <span
           aria-hidden
           className="i-custom-vender-line-alertsAndFeedback-warning size-3 shrink-0 text-text-warning"
@@ -68,12 +70,12 @@ const VariableLabel = ({
     </div>
   )
 
-  if (!errorMsg) return badge
+  if (!message) return badge
 
   return (
     <Tooltip>
       <TooltipTrigger render={badge} />
-      <TooltipContent>{errorMsg}</TooltipContent>
+      <TooltipContent>{message}</TooltipContent>
     </Tooltip>
   )
 }

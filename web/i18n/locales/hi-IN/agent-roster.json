@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "बाहरी एजेंट रन अभी उपलब्ध नहीं हैं।",
   "external.workflow.task.characterCount_one": "{{count}} वर्ण",
   "external.workflow.task.characterCount_other": "{{count}} वर्ण",
+  "external.workflow.task.unsupportedType": "{{variable}} का प्रकार समर्थित नहीं है ({{type}})।",
   "external.workflow.waitLimit.cancelAndRetry": "रद्द करें और फिर से प्रयास करें",
   "external.workflow.waitLimit.cancellationHelp": "रद्द करने का अनुरोध करें और पुष्टि की प्रतीक्षा करें। यदि कार्य पहले पूरा हो जाता है, तो उसके परिणाम का उपयोग करें।",
   "external.workflow.waitLimit.endWaiting": "प्रतीक्षा समाप्त करें",

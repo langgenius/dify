@@ -149,6 +149,7 @@
   "external.workflow.runUnavailable": "Harici ajan çalıştırmaları henüz kullanılamıyor.",
   "external.workflow.task.characterCount_one": "{{count}} karakter",
   "external.workflow.task.characterCount_other": "{{count}} karakter",
+  "external.workflow.task.unsupportedType": "{{variable}}, desteklenmeyen bir türe sahip ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "İptal et ve yeniden dene",
   "external.workflow.waitLimit.cancellationHelp": "İptal isteyin ve onayı bekleyin. Görev önce tamamlanırsa sonucunu kullanın.",
   "external.workflow.waitLimit.endWaiting": "Beklemeyi sonlandır",

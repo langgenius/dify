@@ -42,6 +42,20 @@ export type ExternalAgentOverviewPreview = {
   sampleTraceSteps: ExternalAgentTestTracePreview[]
 }
 
+// Shared mock Agent Card input modes for the overview and workflow task validation.
+export function getExternalAgentDefaultInputFormats(agentId: string): string[] {
+  switch (agentId) {
+    case 'contract-review':
+    case 'vendor-screening':
+      return ['Text']
+    case 'document-review':
+    case 'invoice-audit':
+      return ['Text', 'PDF']
+    default:
+      return []
+  }
+}
+
 export function createExternalAgentOverviewPreview(
   agent: ExternalAgentListItem,
 ): ExternalAgentOverviewPreview {
@@ -51,7 +65,7 @@ export function createExternalAgentOverviewPreview(
   const vendor = agent.key === 'vendor-screening'
   return {
     agent,
-    defaultInputFormats: ['Text'],
+    defaultInputFormats: getExternalAgentDefaultInputFormats(agent.key),
     defaultOutputFormats: ['Text'],
     skills: vendor
       ? [
@@ -331,7 +345,7 @@ function createOtherAgentPreview(agent: ExternalAgentListItem): ExternalAgentOve
   const hasPreview = skills.length > 0
   return {
     agent: { ...agent, apps: [] },
-    defaultInputFormats: hasPreview ? ['Text', 'PDF'] : [],
+    defaultInputFormats: getExternalAgentDefaultInputFormats(agent.key),
     defaultOutputFormats: hasPreview ? ['Text'] : [],
     skills,
     endpoint: hasPreview ? `https://agents.acme.example/${agent.key}` : '',

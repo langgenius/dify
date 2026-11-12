@@ -11,23 +11,27 @@ const VariableLabelInEditor = ({
   isSelected,
   variables,
   errorMsg,
+  warningMsg,
   ...rest
 }: VariableLabelInEditorProps) => {
   const { hoverBorderColor, hoverBgColor, selectedBorderColor, selectedBgColor } =
     getVarBgColorInEditor(variables, !!errorMsg)
+  const hasWarning = !!warningMsg && !errorMsg
 
   return (
     <VariableLabel
       className={cn(
         'h-4.5 space-x-px rounded-[5px] px-1 shadow-xs',
-        !isSelected && hoverBgColor,
-        !isSelected && hoverBorderColor,
+        !hasWarning && !isSelected && hoverBgColor,
+        !hasWarning && !isSelected && hoverBorderColor,
         isSelected && 'border',
-        isSelected && selectedBorderColor,
-        isSelected && selectedBgColor,
+        !hasWarning && isSelected && selectedBorderColor,
+        !hasWarning && isSelected && selectedBgColor,
+        hasWarning && 'border border-state-warning-active bg-state-warning-hover',
       )}
       variables={variables}
       errorMsg={errorMsg}
+      warningMsg={warningMsg}
       {...rest}
     />
   )

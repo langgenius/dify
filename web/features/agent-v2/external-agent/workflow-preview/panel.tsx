@@ -191,6 +191,7 @@ export function ExternalAgentWorkflowPreviewPanel({
           />
           <ExternalAgentTaskField
             id={id}
+            agent={agent}
             value={task}
             outputs={outputs}
             onChange={(agent_task) => update({ agent_task })}

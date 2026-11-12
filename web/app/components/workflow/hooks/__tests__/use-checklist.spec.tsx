@@ -107,7 +107,13 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
   const queryClient = options.queryClient ?? createChecklistQueryClient()
   const { wrapper: QueryProvider } = createConsoleQueryWrapper({ queryClient })
   const store = createTestWorkflowStore({ nodes })
-  const wrapper = ({ children }: { children: ReactNode }) => (
+  const wrapper = ({
+    children,
+    graph = { nodes, edges },
+  }: {
+    children: ReactNode
+    graph?: Graph
+  }) => (
     <QueryProvider>
       <EditorResourceScope
         resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
@@ -115,8 +121,8 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
         <WorkflowContext value={store}>
           <ReactFlowProvider>
             <CatalogProvider>
-              <DatasetsDetailProvider nodes={nodes}>
-                <ReactFlow nodes={nodes} edges={edges} />
+              <DatasetsDetailProvider nodes={graph.nodes}>
+                <ReactFlow nodes={graph.nodes} edges={graph.edges} />
                 {children}
                 <AppToaster timeout={0} />
               </DatasetsDetailProvider>
@@ -171,6 +177,46 @@ function createCodeNode() {
     outputs: { result: { type: VarType.number, children: null } },
   } satisfies CodeNodeType
   return createNode({ id: 'code', data })
+}
+
+function buildExternalAgentTaskGraph({
+  agent = createExternalRosterPreview()[1]!,
+  outputType,
+}: {
+  agent?: ReturnType<typeof createExternalRosterPreview>[number]
+  outputType?: VarType
+} = {}) {
+  const startNode = createInputNode()
+  const sourceNode = createNode({
+    id: 'source',
+    data: {
+      type: BlockEnum.Code,
+      title: 'Source',
+      desc: '',
+      code_language: CodeLanguage.python3,
+      code: 'def main():\n    return {}',
+      variables: [],
+      outputs: outputType === undefined ? {} : { attachment: { type: outputType, children: null } },
+    } satisfies CodeNodeType,
+  })
+  const externalAgent = createNode({
+    id: 'external-agent',
+    data: {
+      type: BlockEnum.Agent,
+      title: agent.name,
+      desc: '',
+      ...createExternalAgentWorkflowPreviewData(agent),
+      agent_task: 'Review {{#source.attachment#}}',
+    },
+  })
+
+  return {
+    nodes: [startNode, sourceNode, externalAgent],
+    edges: [
+      createEdge({ source: startNode.id, target: sourceNode.id }),
+      createEdge({ source: sourceNode.id, target: externalAgent.id }),
+    ],
+  }
 }
 
 function buildConnectedGraph() {
@@ -346,6 +392,82 @@ describe('useChecklist', () => {
     expect(warning).toBeDefined()
     expect(warning!.errorMessages).toContain(
       'workflow.errorMsg.fieldRequired:{"field":"workflow.errorMsg.fields.model"}',
+    )
+  })
+
+  it('updates external agent task warnings when the agent or upstream outputs change', async () => {
+    const graph = buildExternalAgentTaskGraph({ outputType: VarType.file })
+    const { wrapper: Wrapper } = createChecklistWrapper(graph)
+    const documentReview = { ...createExternalRosterPreview()[1]!, key: 'document-review' }
+
+    function ChecklistOutput() {
+      const nodes = useNodes<CommonNodeType>()
+      const edges = useEdges<CommonEdgeType>()
+      const checklist = useChecklist(nodes, edges)
+      const warning = checklist.find((item) => item.id === 'external-agent')
+      return (
+        <output aria-label="External Agent checklist">
+          {JSON.stringify(warning?.errorMessages)}
+        </output>
+      )
+    }
+
+    const { rerender } = render(
+      <Wrapper graph={graph}>
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify([
+          'agentRoster.external.workflow.runUnavailable',
+          'agentRoster.external.workflow.task.unsupportedType:{"variable":"attachment","type":"file"}',
+        ]),
+      ),
+    )
+
+    rerender(
+      <Wrapper
+        graph={buildExternalAgentTaskGraph({ agent: documentReview, outputType: VarType.file })}
+      >
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify(['agentRoster.external.workflow.runUnavailable']),
+      ),
+    )
+
+    rerender(
+      <Wrapper
+        graph={buildExternalAgentTaskGraph({ agent: documentReview, outputType: VarType.number })}
+      >
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify([
+          'agentRoster.external.workflow.runUnavailable',
+          'agentRoster.external.workflow.task.unsupportedType:{"variable":"attachment","type":"number"}',
+        ]),
+      ),
+    )
+
+    rerender(
+      <Wrapper graph={buildExternalAgentTaskGraph({ agent: documentReview })}>
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify(['agentRoster.external.workflow.runUnavailable']),
+      ),
     )
   })
 

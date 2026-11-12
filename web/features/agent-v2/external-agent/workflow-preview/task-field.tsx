@@ -1,4 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { ExternalAgentWorkflowPreviewAgent } from './types'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -11,6 +12,11 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks/use-workflow-variables'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import {
+  getExternalAgentTaskVariableIssues,
+  isExternalAgentTaskVariableSupported,
+  resolveExternalAgentTaskVariable,
+} from './task-variables'
 
 function TaskToolbar({ value, focused }: { value: string; focused: boolean }) {
   const { t } = useTranslation(['workflowAgent', 'agentRoster'])
@@ -45,21 +51,37 @@ function TaskToolbar({ value, focused }: { value: string; focused: boolean }) {
 
 export function ExternalAgentTaskField({
   id,
+  agent,
   value,
   outputs,
   onChange,
   onOutputsChange,
 }: {
   id: string
+  agent: ExternalAgentWorkflowPreviewAgent
   value: string
   outputs: DeclaredOutputConfig[]
   onChange: (value: string) => void
   onOutputsChange: (outputs: DeclaredOutputConfig[], task?: string) => void
 }) {
-  const { t } = useTranslation(['workflowAgent'])
+  const { t } = useTranslation(['workflowAgent', 'agentRoster'])
   const labelId = useId()
+  const warningId = useId()
   const [focused, setFocused] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)
+  const { availableVars: selectableVariables } = useAvailableVarList(id, {
+    filterVar: (variable) => isExternalAgentTaskVariableSupported(agent, variable),
+  })
+  const issues = getExternalAgentTaskVariableIssues(agent, value, availableVars)
+  const getWarning = (selector: string[]) => {
+    const variable = resolveExternalAgentTaskVariable(selector, availableVars)
+    if (!variable || isExternalAgentTaskVariableSupported(agent, variable)) return undefined
+    return t(($) => $['external.workflow.task.unsupportedType'], {
+      ns: 'agentRoster',
+      variable: selector.slice(1).join('.'),
+      type: variable.type,
+    })
+  }
   const getWorkflowVarType = useWorkflowVariableType()
   const workflowNodesMap: WorkflowNodesMap = {}
   for (const node of availableNodesWithParent)
@@ -98,7 +120,9 @@ export function ExternalAgentTaskField({
           )}
         >
           <PromptEditor
-            aria-label={t(($) => $['nodes.agent.task.label'])}
+            aria-labelledby={labelId}
+            aria-describedby={issues.length ? warningId : undefined}
+            aria-invalid={issues.length > 0 || undefined}
             wrapperClassName="flex h-full flex-col"
             className="min-h-0 flex-1 overflow-y-auto px-3 py-2"
             placeholderClassName="px-3 py-2"
@@ -112,6 +136,12 @@ export function ExternalAgentTaskField({
             workflowVariableBlock={{
               show: true,
               variables: availableVars,
+              selectableVariables,
+              filterVar: (_variable, selector) => {
+                const variable = resolveExternalAgentTaskVariable(selector, availableVars)
+                return !!variable && isExternalAgentTaskVariableSupported(agent, variable)
+              },
+              getWarning,
               workflowNodesMap,
               getVarType: getWorkflowVarType,
             }}
@@ -122,6 +152,17 @@ export function ExternalAgentTaskField({
           </PromptEditor>
         </div>
       </div>
+      {issues.length > 0 && (
+        <div
+          id={warningId}
+          role="status"
+          className="space-y-1 system-xs-regular wrap-break-word text-text-warning"
+        >
+          {issues.map((issue) => (
+            <p key={issue.selector.join('.')}>{getWarning(issue.selector)}</p>
+          ))}
+        </div>
+      )}
     </Field>
   )
 }

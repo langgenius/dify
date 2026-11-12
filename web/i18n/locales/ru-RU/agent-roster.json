@@ -153,6 +153,7 @@
   "external.workflow.runUnavailable": "Запуски внешних агентов пока недоступны.",
   "external.workflow.task.characterCount_one": "{{count}} символ",
   "external.workflow.task.characterCount_other": "{{count}} символов",
+  "external.workflow.task.unsupportedType": "{{variable}} имеет неподдерживаемый тип ({{type}}).",
   "external.workflow.waitLimit.cancelAndRetry": "Отменить и повторить",
   "external.workflow.waitLimit.cancellationHelp": "Запросите отмену и дождитесь подтверждения. Если задача завершится раньше, используйте её результат.",
   "external.workflow.waitLimit.endWaiting": "Завершить ожидание",

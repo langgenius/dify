@@ -43,6 +43,7 @@ import {
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
+import { getExternalAgentTaskVariableIssues } from '@/features/agent-v2/external-agent/workflow-preview/task-variables'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
@@ -412,11 +413,25 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
       if (node && isExternalAgentWorkflowPreviewData(node.data)) {
+        const taskIssues = getExternalAgentTaskVariableIssues(
+          node.data.external_agent,
+          node.data.agent_task ?? '',
+          map[node.id]!.availableVars,
+        )
         list.push({
           id: node.id,
           type: BlockEnum.AgentV2,
           title: node.data.title,
-          errorMessages: [t(($) => $['external.workflow.runUnavailable'], { ns: 'agentRoster' })],
+          errorMessages: [
+            t(($) => $['external.workflow.runUnavailable'], { ns: 'agentRoster' }),
+            ...taskIssues.map((issue) =>
+              t(($) => $['external.workflow.task.unsupportedType'], {
+                ns: 'agentRoster',
+                variable: issue.variable,
+                type: issue.type,
+              }),
+            ),
+          ],
           canNavigate: true,
         })
         continue

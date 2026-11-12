@@ -22,6 +22,7 @@ import {
   getValueSelector,
   getVariableCategory,
   getVariableDisplayName,
+  normalizeSpecialVariableSelector,
 } from './var-reference-vars.helpers'
 
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
@@ -33,12 +34,14 @@ const resolveValueSelector = ({
   isSupportFileVar,
   nodeId,
   objPath,
+  filterVar,
 }: {
   itemData: Var
   isFlat?: boolean
   isSupportFileVar?: boolean
   nodeId: string
   objPath: string[]
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }) => {
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
@@ -59,6 +62,7 @@ const resolveValueSelector = ({
     isRagVariable,
     nodeId,
     objPath,
+    filterVar,
   })
 }
 
@@ -79,6 +83,7 @@ type ItemProps = {
   preferSchemaType?: boolean
   isSelected?: boolean
   onActivate?: () => void
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }
 
 const Item: FC<ItemProps> = ({
@@ -97,6 +102,7 @@ const Item: FC<ItemProps> = ({
   preferSchemaType,
   isSelected,
   onActivate,
+  filterVar,
 }) => {
   const nestedVariableTypes: readonly VarType[] = [VarType.object, VarType.file]
 
@@ -203,6 +209,7 @@ const Item: FC<ItemProps> = ({
       isSupportFileVar,
       nodeId,
       objPath,
+      filterVar,
     })
 
     if (valueSelector) onChange(valueSelector, itemData)
@@ -216,12 +223,12 @@ const Item: FC<ItemProps> = ({
     <div
       ref={itemRef}
       className={cn(
-        isObj || isStructureOutput ? 'pr-1' : 'pr-4.5',
+        isObj || isStructureOutput ? 'pe-1' : 'pe-4.5',
         (isHovering || isSelected) &&
           (isObj || isStructureOutput
             ? 'bg-components-panel-on-panel-item-bg-hover'
             : 'bg-state-base-hover'),
-        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+        'relative flex h-6 w-full cursor-pointer items-center rounded-md ps-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
         className,
       )}
       data-selected={isSelected ? 'true' : 'false'}
@@ -246,7 +253,7 @@ const Item: FC<ItemProps> = ({
         {!isEnv && !isChatVar && !isRagVariable && (
           <div
             title={itemData.variable}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {varName}
           </div>
@@ -254,7 +261,7 @@ const Item: FC<ItemProps> = ({
         {isEnv && (
           <div
             title={itemData.variable}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.replace('env.', '')}
           </div>
@@ -262,7 +269,7 @@ const Item: FC<ItemProps> = ({
         {isChatVar && (
           <div
             title={itemData.des}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.replace('conversation.', '')}
           </div>
@@ -270,20 +277,20 @@ const Item: FC<ItemProps> = ({
         {isRagVariable && (
           <div
             title={itemData.des}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.split('.').slice(-1)[0]}
           </div>
         )}
       </div>
-      <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">
+      <div className="ms-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">
         {preferSchemaType && itemData.schemaType ? itemData.schemaType : itemData.type}
       </div>
       {(isObj || isStructureOutput) && (
         <span
           aria-hidden
           className={cn(
-            'ml-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary',
+            'ms-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary',
             isHovering && 'text-text-tertiary',
           )}
         />
@@ -314,7 +321,11 @@ const Item: FC<ItemProps> = ({
             payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {
-              onChange(valueSelector, itemData)
+              const selector = filterVar
+                ? normalizeSpecialVariableSelector(valueSelector)
+                : valueSelector
+              if (filterVar && !filterVar(itemData, selector)) return
+              onChange(selector, itemData)
             }}
           />
         )}
@@ -338,6 +349,7 @@ type Props = Readonly<{
   onManageInputField?: () => void
   searchInputRef?: RefObject<HTMLInputElement | null>
   preferSchemaType?: boolean
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }> &
   (
     | { hideSearch: true; keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null }
@@ -360,6 +372,7 @@ const VarReferenceVars: FC<Props> = ({
   onManageInputField,
   searchInputRef: externalSearchInputRef,
   preferSchemaType,
+  filterVar,
 }) => {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const [internalSearchValue, setInternalSearchValue] = useState('')
@@ -423,11 +436,12 @@ const VarReferenceVars: FC<Props> = ({
         isSupportFileVar,
         nodeId,
         objPath: [],
+        filterVar,
       })
 
       if (valueSelector) onChange(valueSelector, itemData)
     },
-    [isSupportFileVar, onChange, selectableItems],
+    [isSupportFileVar, filterVar, onChange, selectableItems],
   )
 
   const handleKeyboardEvent = useCallback(
@@ -543,7 +557,7 @@ const VarReferenceVars: FC<Props> = ({
             )}
           </InputGroup>
           <div
-            className="relative -left-1 h-[0.5px] bg-black/5"
+            className="relative -inset-s-1 h-[0.5px] bg-black/5"
             style={{
               width: 'calc(100% + 8px)',
             }}
@@ -584,6 +598,7 @@ const VarReferenceVars: FC<Props> = ({
                   isFlat={item.isFlat}
                   isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                   preferSchemaType={preferSchemaType}
+                  filterVar={filterVar}
                   isSelected={effectiveSelectedIndex === optionIndex}
                   onActivate={() => setSelectedIndex(optionIndex)}
                 />
@@ -603,7 +618,7 @@ const VarReferenceVars: FC<Props> = ({
           ))}
         </div>
       ) : (
-        <div className="mt-2 pl-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
+        <div className="mt-2 ps-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
           {t(($) => $['common.noVar'], { ns: 'workflow' })}
         </div>
       )}
