@@ -43,7 +43,7 @@ describe('handleStream', () => {
     'cancels an open response after rejecting event %j',
     async (payload) => {
       const cancel = vi.fn()
-      let controller: ReadableStreamDefaultController<Uint8Array>
+      let controller: ReadableStreamDefaultController<Uint8Array> | undefined
       const body = new ReadableStream<Uint8Array>({
         start(value) {
           controller = value
@@ -58,7 +58,7 @@ describe('handleStream', () => {
         expect(onCompleted.mock.calls[0]?.[0]).toBe(true)
         await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1))
       } finally {
-        if (cancel.mock.calls.length === 0) controller!.close()
+        if (cancel.mock.calls.length === 0) controller?.close()
       }
     },
   )
