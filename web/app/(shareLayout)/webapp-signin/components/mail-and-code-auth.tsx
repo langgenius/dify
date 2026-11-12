@@ -11,13 +11,14 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { basePath } from '@/utils/var'
 
 export default function MailAndCodeAuth() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const emailFromLink = safeDecodeURIComponent(searchParams.get('email'))
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
   const locale = useLocale()

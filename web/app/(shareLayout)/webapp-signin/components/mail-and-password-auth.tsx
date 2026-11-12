@@ -25,6 +25,7 @@ import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { basePath } from '@/utils/var'
 
 type MailAndPasswordAuthProps = {
@@ -35,7 +36,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const emailFromLink = safeDecodeURIComponent(searchParams.get('email'))
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)

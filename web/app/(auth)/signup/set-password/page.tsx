@@ -28,6 +28,7 @@ import { consoleQuery } from '@/service/console'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 
@@ -52,7 +53,7 @@ const ChangePasswordForm = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const token = decodeURIComponent(searchParams.get('token') || '')
+  const token = safeDecodeURIComponent(searchParams.get('token'))
   const locale = useLocale()
 
   const formActionsRef = useRef<FormActions>(null)
