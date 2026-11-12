@@ -91,8 +91,9 @@ it('keeps offscreen page controls out of the native Tab order', async () => {
 
 it('rotates real pages until keyboard focus enters and keeps rotation stopped after focus leaves', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-  const screen = await setup({ autoPlay: true, autoPlayInterval: 1000 })
+  const screen = await setup({ autoPlay: true, autoPlayInterval: 1000, pauseWhenOffscreen: true })
   await expectActivePage(screen, 1)
+  await new Promise(requestAnimationFrame)
   await vi.advanceTimersByTimeAsync(1000)
   await expectActivePage(screen, 2)
   screen.getByRole('button', { name: 'Before carousel' }).element().focus()
@@ -100,10 +101,15 @@ it('rotates real pages until keyboard focus enters and keeps rotation stopped af
   // Pagination is the first control inside the real carousel.
   await expect.element(screen.getByRole('button', { name: pageName(1), exact: true })).toHaveFocus()
   await vi.advanceTimersByTimeAsync(2000)
-  await expectActivePage(screen, 2)
+  // Sample now: eventual matching could accept another full autoplay cycle.
+  expect(screen.getByRole('textbox', { name: 'Page 2 draft' }).element().checkVisibility()).toBe(
+    true,
+  )
   screen.getByRole('button', { name: 'After carousel' }).element().focus()
   await vi.advanceTimersByTimeAsync(2000)
-  await expectActivePage(screen, 2)
+  expect(screen.getByRole('textbox', { name: 'Page 2 draft' }).element().checkVisibility()).toBe(
+    true,
+  )
 })
 
 it('pauses viewport-managed rotation while hovered or scrolled out, then resumes when visible', async () => {
@@ -137,7 +143,9 @@ it('pauses viewport-managed rotation while hovered or scrolled out, then resumes
   await expectActivePage(screen, 2)
   await carousel.hover()
   await vi.advanceTimersByTimeAsync(2000)
-  await expectActivePage(screen, 2)
+  expect(screen.getByRole('textbox', { name: 'Page 2 draft' }).element().checkVisibility()).toBe(
+    true,
+  )
   await userEvent.unhover(carousel)
   await vi.advanceTimersByTimeAsync(1000)
   const third = screen.getByRole('textbox', { name: 'Page 3 draft' })
@@ -146,7 +154,7 @@ it('pauses viewport-managed rotation while hovered or scrolled out, then resumes
   const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
   document.dispatchEvent(new Event('visibilitychange'))
   await vi.advanceTimersByTimeAsync(2000)
-  await expectActivePage(screen, 3)
+  expect(third.element().checkVisibility()).toBe(true)
   visibility.mockReturnValue('visible')
   document.dispatchEvent(new Event('visibilitychange'))
   viewport.element().scrollTo({ top: 300 })
@@ -159,7 +167,7 @@ it('pauses viewport-managed rotation while hovered or scrolled out, then resumes
     .toBe(true)
   await new Promise(requestAnimationFrame)
   await vi.advanceTimersByTimeAsync(2000)
-  await expect.element(third).toBeInTheDocument()
+  expect(third.element().checkVisibility()).toBe(true)
   viewport.element().scrollTo({ top: 0 })
   await expect.poll(() => viewport.element().scrollTop).toBe(0)
   await new Promise(requestAnimationFrame)
@@ -220,7 +228,9 @@ it.each([false, true])(
     await expectActivePage(screen, 1)
     await new Promise(requestAnimationFrame)
     await vi.advanceTimersByTimeAsync(2000)
-    await expectActivePage(screen, 1)
+    expect(screen.getByRole('textbox', { name: 'Page 1 draft' }).element().checkVisibility()).toBe(
+      true,
+    )
     setReducedMotion(false)
     await vi.advanceTimersByTimeAsync(1000)
     await expectActivePage(screen, 2)
