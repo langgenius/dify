@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} приложение",
   "external.appsCount_other": "{{count}} приложений",
+  "external.clearFilters": "Очистить фильтры",
   "external.connect": "Подключить внешнего агента",
   "external.connection.authentication": "Аутентификация",
   "external.connection.bearerToken": "Токен Bearer",
@@ -43,6 +44,7 @@
   "external.editInfo": "Изменить информацию",
   "external.empty": "Внешних агентов пока нет",
   "external.emptySearch": "Подходящих агентов не найдено",
+  "external.emptySearchDescription": "Попробуйте другой поиск или очистите текущие фильтры.",
   "external.enable": "Включить агента",
   "external.enableDialog.description": "Разрешить новые вызовы приложений и тесты узлов.",
   "external.enableDialog.title": "Включить агента?",

@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} uygulama",
   "external.appsCount_other": "{{count}} uygulama",
+  "external.clearFilters": "Filtreleri temizle",
   "external.connect": "Harici ajan bağla",
   "external.connection.authentication": "Kimlik doğrulama",
   "external.connection.bearerToken": "Bearer belirteci",
@@ -41,6 +42,7 @@
   "external.editInfo": "Bilgileri düzenle",
   "external.empty": "Henüz harici ajan yok",
   "external.emptySearch": "Eşleşen ajan yok",
+  "external.emptySearchDescription": "Başka bir arama deneyin veya mevcut filtreleri temizleyin.",
   "external.enable": "Ajanı etkinleştir",
   "external.enableDialog.description": "Yeni uygulama çağrılarına ve düğüm testlerine izin verin.",
   "external.enableDialog.title": "Ajan etkinleştirilsin mi?",

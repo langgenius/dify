@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} app",
   "external.appsCount_other": "{{count}} app",
+  "external.clearFilters": "Cancella filtri",
   "external.connect": "Connetti agente esterno",
   "external.connection.authentication": "Autenticazione",
   "external.connection.bearerToken": "Token Bearer",
@@ -42,6 +43,7 @@
   "external.editInfo": "Modifica informazioni",
   "external.empty": "Nessun agente esterno al momento",
   "external.emptySearch": "Nessun agente corrispondente",
+  "external.emptySearchDescription": "Prova un'altra ricerca o cancella i filtri attuali.",
   "external.enable": "Abilita agente",
   "external.enableDialog.description": "Consenti nuove chiamate dalle app e nuovi test dei nodi.",
   "external.enableDialog.title": "Abilitare l’agente?",

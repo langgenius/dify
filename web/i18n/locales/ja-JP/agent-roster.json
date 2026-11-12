@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} 個のアプリ",
   "external.appsCount_other": "{{count}} 個のアプリ",
+  "external.clearFilters": "フィルターをクリア",
   "external.connect": "外部エージェントを接続",
   "external.connection.authentication": "認証",
   "external.connection.bearerToken": "Bearer トークン",
@@ -41,6 +42,7 @@
   "external.editInfo": "情報を編集",
   "external.empty": "外部エージェントはまだありません",
   "external.emptySearch": "一致するエージェントがありません",
+  "external.emptySearchDescription": "別の検索を試すか、現在のフィルターをクリアしてください。",
   "external.enable": "エージェントを有効化",
   "external.enableDialog.description": "新しいアプリ呼び出しとノードテストを許可します。",
   "external.enableDialog.title": "エージェントを有効にしますか？",

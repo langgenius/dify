@@ -176,6 +176,7 @@ export default interface Resources {
   }
   agentRoster: {
     'external.appsCount': '{{count}} app' | '{{count}} apps'
+    'external.clearFilters': 'Clear filters'
     'external.connect': 'Connect external agent'
     'external.connection.authentication': 'Authentication'
     'external.connection.bearerToken': 'Bearer token'
@@ -217,6 +218,7 @@ export default interface Resources {
     'external.editInfo': 'Edit info'
     'external.empty': 'No external agents yet'
     'external.emptySearch': 'No matching agents'
+    'external.emptySearchDescription': 'Try another search or clear the current filters.'
     'external.enable': 'Enable agent'
     'external.enableDialog.description': 'Allow new app calls and node tests.'
     'external.enableDialog.title': 'Enable agent?'

@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} tətbiq",
   "external.appsCount_other": "{{count}} tətbiq",
+  "external.clearFilters": "Süzgəcləri təmizlə",
   "external.connect": "Xarici agent qoş",
   "external.connection.authentication": "Autentifikasiya",
   "external.connection.bearerToken": "Bearer tokeni",
@@ -41,6 +42,7 @@
   "external.editInfo": "Məlumatı redaktə et",
   "external.empty": "Hələ xarici agent yoxdur",
   "external.emptySearch": "Uyğun agent yoxdur",
+  "external.emptySearchDescription": "Başqa axtarışı sınayın və ya cari süzgəcləri təmizləyin.",
   "external.enable": "Agenti aktivləşdir",
   "external.enableDialog.description": "Yeni tətbiq çağırışlarına və qovşaq testlərinə icazə verin.",
   "external.enableDialog.title": "Agent aktivləşdirilsin?",

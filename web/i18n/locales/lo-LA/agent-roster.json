@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} ແອັບ",
   "external.appsCount_other": "{{count}} ແອັບ",
+  "external.clearFilters": "ລ້າງຕົວກັ່ນຕອງ",
   "external.connect": "ເຊື່ອມຕໍ່ຕົວແທນພາຍນອກ",
   "external.connection.authentication": "ການຢືນຢັນຕົວຕົນ",
   "external.connection.bearerToken": "ໂທເຄັນ Bearer",
@@ -41,6 +42,7 @@
   "external.editInfo": "ແກ້ໄຂຂໍ້ມູນ",
   "external.empty": "ຍັງບໍ່ມີຕົວແທນພາຍນອກ",
   "external.emptySearch": "ບໍ່ພົບຕົວແທນທີ່ກົງກັນ",
+  "external.emptySearchDescription": "ລອງຄົ້ນຫາອີກຄັ້ງ ຫຼື ລ້າງຕົວກັ່ນຕອງປັດຈຸບັນ.",
   "external.enable": "ເປີດໃຊ້ງານຕົວແທນ",
   "external.enableDialog.description": "ອະນຸຍາດການເອີ້ນໃຊ້ແອັບ ແລະການທົດສອບໂນດໃໝ່.",
   "external.enableDialog.title": "ເປີດໃຊ້ງານຕົວແທນບໍ?",

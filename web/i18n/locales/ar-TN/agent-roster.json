@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} تطبيق",
   "external.appsCount_other": "{{count}} تطبيقات",
+  "external.clearFilters": "مسح عوامل التصفية",
   "external.connect": "توصيل وكيل خارجي",
   "external.connection.authentication": "المصادقة",
   "external.connection.bearerToken": "رمز Bearer",
@@ -45,6 +46,7 @@
   "external.editInfo": "تعديل المعلومات",
   "external.empty": "لا يوجد وكلاء خارجيون بعد",
   "external.emptySearch": "لا يوجد وكلاء مطابقون",
+  "external.emptySearchDescription": "جرّب بحثًا آخر أو امسح عوامل التصفية الحالية.",
   "external.enable": "تفعيل الوكيل",
   "external.enableDialog.description": "السماح باستدعاءات التطبيقات واختبارات العقد الجديدة.",
   "external.enableDialog.title": "تفعيل الوكيل؟",

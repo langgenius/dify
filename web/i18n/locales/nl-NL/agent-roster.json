@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} app",
   "external.appsCount_other": "{{count}} apps",
+  "external.clearFilters": "Filters wissen",
   "external.connect": "Externe agent verbinden",
   "external.connection.authentication": "Authenticatie",
   "external.connection.bearerToken": "Bearer-token",
@@ -41,6 +42,7 @@
   "external.editInfo": "Informatie bewerken",
   "external.empty": "Nog geen externe agenten",
   "external.emptySearch": "Geen overeenkomende agenten",
+  "external.emptySearchDescription": "Probeer een andere zoekopdracht of wis de huidige filters.",
   "external.enable": "Agent inschakelen",
   "external.enableDialog.description": "Nieuwe app-aanroepen en knooppunttests toestaan.",
   "external.enableDialog.title": "Agent inschakelen?",

@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} aplikacija",
   "external.appsCount_other": "{{count}} aplikacij",
+  "external.clearFilters": "Počisti filtre",
   "external.connect": "Poveži zunanjega agenta",
   "external.connection.authentication": "Preverjanje pristnosti",
   "external.connection.bearerToken": "Žeton Bearer",
@@ -43,6 +44,7 @@
   "external.editInfo": "Uredi podatke",
   "external.empty": "Še ni zunanjih agentov",
   "external.emptySearch": "Ni ujemajočih se agentov",
+  "external.emptySearchDescription": "Poskusite z drugim iskanjem ali počistite trenutne filtre.",
   "external.enable": "Omogoči agenta",
   "external.enableDialog.description": "Dovoli nove klice aplikacij in preizkuse vozlišč.",
   "external.enableDialog.title": "Omogočim agenta?",

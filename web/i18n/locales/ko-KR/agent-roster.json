@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "앱 {{count}}개",
   "external.appsCount_other": "앱 {{count}}개",
+  "external.clearFilters": "필터 지우기",
   "external.connect": "외부 에이전트 연결",
   "external.connection.authentication": "인증",
   "external.connection.bearerToken": "Bearer 토큰",
@@ -41,6 +42,7 @@
   "external.editInfo": "정보 편집",
   "external.empty": "아직 외부 에이전트가 없습니다",
   "external.emptySearch": "일치하는 에이전트가 없습니다",
+  "external.emptySearchDescription": "다른 검색어를 사용하거나 현재 필터를 지워 보세요.",
   "external.enable": "에이전트 활성화",
   "external.enableDialog.description": "새 앱 호출과 노드 테스트를 허용합니다.",
   "external.enableDialog.title": "에이전트를 활성화할까요?",

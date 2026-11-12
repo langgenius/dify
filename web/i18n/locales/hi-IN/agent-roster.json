@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} ऐप",
   "external.appsCount_other": "{{count}} ऐप",
+  "external.clearFilters": "फ़िल्टर साफ़ करें",
   "external.connect": "बाहरी एजेंट कनेक्ट करें",
   "external.connection.authentication": "प्रमाणीकरण",
   "external.connection.bearerToken": "Bearer टोकन",
@@ -41,6 +42,7 @@
   "external.editInfo": "जानकारी संपादित करें",
   "external.empty": "अभी तक कोई बाहरी एजेंट नहीं",
   "external.emptySearch": "कोई मेल खाते एजेंट नहीं",
+  "external.emptySearchDescription": "कोई अन्य खोज आज़माएँ या मौजूदा फ़िल्टर साफ़ करें।",
   "external.enable": "एजेंट सक्षम करें",
   "external.enableDialog.description": "नए ऐप कॉल और नोड परीक्षण की अनुमति दें।",
   "external.enableDialog.title": "एजेंट सक्षम करें?",

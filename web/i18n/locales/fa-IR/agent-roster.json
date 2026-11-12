@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} برنامه",
   "external.appsCount_other": "{{count}} برنامه",
+  "external.clearFilters": "فیلترها را پاک کنید",
   "external.connect": "اتصال عامل خارجی",
   "external.connection.authentication": "احراز هویت",
   "external.connection.bearerToken": "توکن Bearer",
@@ -41,6 +42,7 @@
   "external.editInfo": "ویرایش اطلاعات",
   "external.empty": "هنوز عامل خارجی وجود ندارد",
   "external.emptySearch": "هیچ عامل مطابقی نیست",
+  "external.emptySearchDescription": "جست‌وجوی دیگری را امتحان کنید یا فیلترهای فعلی را پاک کنید.",
   "external.enable": "فعال‌سازی عامل",
   "external.enableDialog.description": "فراخوانی‌های جدید برنامه و آزمایش گره‌ها مجاز شوند.",
   "external.enableDialog.title": "عامل فعال شود؟",

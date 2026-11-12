@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} application",
   "external.appsCount_other": "{{count}} applications",
+  "external.clearFilters": "Effacer les filtres",
   "external.connect": "Connecter un agent externe",
   "external.connection.authentication": "Authentification",
   "external.connection.bearerToken": "Jeton Bearer",
@@ -42,6 +43,7 @@
   "external.editInfo": "Modifier les informations",
   "external.empty": "Aucun agent externe pour le moment",
   "external.emptySearch": "Aucun agent correspondant",
+  "external.emptySearchDescription": "Essayez une autre recherche ou effacez les filtres actuels.",
   "external.enable": "Activer l’agent",
   "external.enableDialog.description": "Autoriser les nouveaux appels d’applications et les tests de nœuds.",
   "external.enableDialog.title": "Activer l’agent ?",

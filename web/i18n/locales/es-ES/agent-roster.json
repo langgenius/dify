@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} aplicación",
   "external.appsCount_other": "{{count}} aplicaciones",
+  "external.clearFilters": "Borrar filtros",
   "external.connect": "Conectar agente externo",
   "external.connection.authentication": "Autenticación",
   "external.connection.bearerToken": "Token Bearer",
@@ -42,6 +43,7 @@
   "external.editInfo": "Editar información",
   "external.empty": "Aún no hay agentes externos",
   "external.emptySearch": "No hay agentes coincidentes",
+  "external.emptySearchDescription": "Prueba otra búsqueda o borra los filtros actuales.",
   "external.enable": "Habilitar agente",
   "external.enableDialog.description": "Permitir nuevas llamadas de aplicaciones y pruebas de nodos.",
   "external.enableDialog.title": "¿Habilitar agente?",

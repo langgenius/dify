@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} застосунок",
   "external.appsCount_other": "{{count}} застосунків",
+  "external.clearFilters": "Очистити фільтри",
   "external.connect": "Підключити зовнішнього агента",
   "external.connection.authentication": "Автентифікація",
   "external.connection.bearerToken": "Токен Bearer",
@@ -43,6 +44,7 @@
   "external.editInfo": "Змінити інформацію",
   "external.empty": "Зовнішніх агентів поки немає",
   "external.emptySearch": "Немає відповідних агентів",
+  "external.emptySearchDescription": "Спробуйте інший пошук або очистіть поточні фільтри.",
   "external.enable": "Увімкнути агента",
   "external.enableDialog.description": "Дозволити нові виклики застосунків і тести вузлів.",
   "external.enableDialog.title": "Увімкнути агента?",

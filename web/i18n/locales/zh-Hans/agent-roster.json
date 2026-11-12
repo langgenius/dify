@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} 个应用",
   "external.appsCount_other": "{{count}} 个应用",
+  "external.clearFilters": "清除筛选",
   "external.connect": "连接外部 Agent",
   "external.connection.authentication": "身份验证",
   "external.connection.bearerToken": "Bearer token",
@@ -41,6 +42,7 @@
   "external.editInfo": "编辑信息",
   "external.empty": "暂无外部 Agent",
   "external.emptySearch": "没有匹配的 Agent",
+  "external.emptySearchDescription": "请尝试其他搜索条件或清除当前筛选。",
   "external.enable": "启用 Agent",
   "external.enableDialog.description": "允许新的应用调用和节点测试。",
   "external.enableDialog.title": "启用 Agent？",

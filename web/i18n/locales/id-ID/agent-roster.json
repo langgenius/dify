@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} aplikasi",
   "external.appsCount_other": "{{count}} aplikasi",
+  "external.clearFilters": "Hapus filter",
   "external.connect": "Hubungkan agen eksternal",
   "external.connection.authentication": "Autentikasi",
   "external.connection.bearerToken": "Token Bearer",
@@ -41,6 +42,7 @@
   "external.editInfo": "Edit informasi",
   "external.empty": "Belum ada agen eksternal",
   "external.emptySearch": "Tidak ada agen yang cocok",
+  "external.emptySearchDescription": "Coba pencarian lain atau hapus filter saat ini.",
   "external.enable": "Aktifkan agen",
   "external.enableDialog.description": "Izinkan panggilan aplikasi dan pengujian node baru.",
   "external.enableDialog.title": "Aktifkan agen?",

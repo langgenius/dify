@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} aplicație",
   "external.appsCount_other": "{{count}} aplicații",
+  "external.clearFilters": "Șterge filtrele",
   "external.connect": "Conectează un agent extern",
   "external.connection.authentication": "Autentificare",
   "external.connection.bearerToken": "Token Bearer",
@@ -42,6 +43,7 @@
   "external.editInfo": "Editează informațiile",
   "external.empty": "Încă nu există agenți externi",
   "external.emptySearch": "Niciun agent corespunzător",
+  "external.emptySearchDescription": "Încercați o altă căutare sau ștergeți filtrele curente.",
   "external.enable": "Activează agentul",
   "external.enableDialog.description": "Permite apeluri noi din aplicații și teste ale nodurilor.",
   "external.enableDialog.title": "Activezi agentul?",

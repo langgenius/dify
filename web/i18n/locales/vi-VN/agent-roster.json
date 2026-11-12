@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} ứng dụng",
   "external.appsCount_other": "{{count}} ứng dụng",
+  "external.clearFilters": "Xóa bộ lọc",
   "external.connect": "Kết nối tác nhân bên ngoài",
   "external.connection.authentication": "Xác thực",
   "external.connection.bearerToken": "Token Bearer",
@@ -41,6 +42,7 @@
   "external.editInfo": "Chỉnh sửa thông tin",
   "external.empty": "Chưa có tác nhân bên ngoài nào",
   "external.emptySearch": "Không có tác nhân phù hợp",
+  "external.emptySearchDescription": "Hãy thử tìm kiếm khác hoặc xóa các bộ lọc hiện tại.",
   "external.enable": "Bật tác nhân",
   "external.enableDialog.description": "Cho phép các lệnh gọi ứng dụng và kiểm thử nút mới.",
   "external.enableDialog.title": "Bật tác nhân?",

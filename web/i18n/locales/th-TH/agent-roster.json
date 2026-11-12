@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} แอป",
   "external.appsCount_other": "{{count}} แอป",
+  "external.clearFilters": "ล้างตัวกรอง",
   "external.connect": "เชื่อมต่อตัวแทนภายนอก",
   "external.connection.authentication": "การยืนยันตัวตน",
   "external.connection.bearerToken": "โทเค็น Bearer",
@@ -41,6 +42,7 @@
   "external.editInfo": "แก้ไขข้อมูล",
   "external.empty": "ยังไม่มีตัวแทนภายนอก",
   "external.emptySearch": "ไม่มีตัวแทนที่ตรงกัน",
+  "external.emptySearchDescription": "ลองค้นหาอีกครั้งหรือล้างตัวกรองปัจจุบัน",
   "external.enable": "เปิดใช้งานตัวแทน",
   "external.enableDialog.description": "อนุญาตการเรียกใช้แอปและการทดสอบโหนดใหม่",
   "external.enableDialog.title": "เปิดใช้งานตัวแทนหรือไม่?",

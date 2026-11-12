@@ -1,6 +1,7 @@
 {
   "external.appsCount_one": "{{count}} 個應用程式",
   "external.appsCount_other": "{{count}} 個應用程式",
+  "external.clearFilters": "清除篩選",
   "external.connect": "連線外部 Agent",
   "external.connection.authentication": "身分驗證",
   "external.connection.bearerToken": "Bearer token",
@@ -41,6 +42,7 @@
   "external.editInfo": "編輯資訊",
   "external.empty": "暫無外部 Agent",
   "external.emptySearch": "沒有符合的 Agent",
+  "external.emptySearchDescription": "請嘗試其他搜尋條件或清除目前的篩選。",
   "external.enable": "啟用 Agent",
   "external.enableDialog.description": "允許新的應用程式呼叫和節點測試。",
   "external.enableDialog.title": "啟用 Agent？",

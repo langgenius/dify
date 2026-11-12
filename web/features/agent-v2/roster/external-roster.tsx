@@ -184,6 +184,14 @@ export function ExternalRoster({ initialAgents }: ExternalRosterProps) {
         <ExternalAgentList
           agents={filteredAgents}
           onAction={canManage ? requestAction : undefined}
+          onClearFilters={() => {
+            void setFilters({
+              external_keyword: '',
+              external_status: 'all',
+              external_connected_by_me: false,
+            })
+            searchRef.current?.focus()
+          }}
           filtered={Boolean(
             keyword || filters.external_status !== 'all' || filters.external_connected_by_me,
           )}

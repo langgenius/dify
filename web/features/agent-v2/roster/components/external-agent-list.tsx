@@ -22,6 +22,7 @@ import { getExternalAgentOverviewPath } from '@/features/agent-v2/external-agent
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
+import { ExternalAgentEmptySearch } from './external-agent-empty-search'
 
 export type ExternalAgentListItem = {
   key: string
@@ -39,6 +40,7 @@ export type ExternalAgentListItem = {
 type ExternalAgentListProps = {
   agents: readonly ExternalAgentListItem[]
   filtered: boolean
+  onClearFilters: () => void
   onAction?: (request: ExternalAgentActionRequest) => void
 }
 
@@ -196,8 +198,17 @@ function ExternalAgentCard({
   )
 }
 
-export function ExternalAgentList({ agents, filtered, onAction }: ExternalAgentListProps) {
+export function ExternalAgentList({
+  agents,
+  filtered,
+  onClearFilters,
+  onAction,
+}: ExternalAgentListProps) {
   const { t } = useTranslation(['agentRoster'])
+
+  if (agents.length === 0 && filtered) {
+    return <ExternalAgentEmptySearch onClearFilters={onClearFilters} />
+  }
 
   return (
     <ScrollArea className="h-full">
@@ -223,9 +234,7 @@ export function ExternalAgentList({ agents, filtered, onAction }: ExternalAgentL
               >
                 <span className="i-ri-robot-2-line size-6" />
               </span>
-              <p className="system-sm-regular">
-                {filtered ? t(($) => $['external.emptySearch']) : t(($) => $['external.empty'])}
-              </p>
+              <p className="system-sm-regular">{t(($) => $['external.empty'])}</p>
             </div>
           )}
         </ScrollAreaContent>
