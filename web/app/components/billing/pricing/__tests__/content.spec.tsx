@@ -194,7 +194,7 @@ it.each([
       billing: { subscription: { plan: 'professional', interval: 'year' } },
       education: { enabled: true, activated },
     })
-    seedEducationStatus(queryClient, { is_student: true })
+    seedEducationStatus(queryClient, { is_student: true, can_redeem_discount: true })
     const checkoutUrl = 'https://billing.example.com/team-checkout'
     const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ url: checkoutUrl }), {
@@ -222,7 +222,7 @@ it('offers education pricing before Team checkout when the discount has not been
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient, { education: { enabled: true, activated: false } })
-  seedEducationStatus(queryClient, { is_student: true })
+  seedEducationStatus(queryClient, { is_student: true, can_redeem_discount: true })
   const pending = createDeferred<Response>()
   const checkout = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise)
   show()

@@ -33,7 +33,7 @@ export function PricingContent() {
   const educationQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
       enabled: checkEducationEligibility,
-      select: ({ is_student }) => is_student,
+      select: ({ can_redeem_discount }) => can_redeem_discount,
     }),
   )
   const isEducationDiscountEligible = checkEducationEligibility ? educationQuery.data : false
