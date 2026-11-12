@@ -812,13 +812,18 @@ def test_format_datasource_info_list_online_drive_file_preserves_credential_id(g
         },
     )
 
-    runtime = MagicMock()
-    runtime.runtime = SimpleNamespace(credentials=None)
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
+    class RuntimeCredentials:
+        credentials = None
+
+    class Runtime:
+        runtime = RuntimeCredentials()
+
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
 
     mocker.patch(
         "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
-        return_value=runtime,
+        return_value=Runtime(),
     )
     mocker.patch.object(module.DatasourceProviderService, "get_datasource_credentials", return_value={"k": "v"})
 
