@@ -842,3 +842,53 @@ class TestDatasetServiceGetRelatedApps:
 
         # Assert
         assert result == []
+
+
+def test_query_history_invalid_image_uuid_is_readable(db_session_with_containers: Session):
+    """PostgreSQL must never receive invalid UUIDs while reading legacy query records."""
+    from datetime import datetime
+
+    from sqlalchemy import select
+
+    from extensions.storage.storage_type import StorageType
+    from models.model import UploadFile
+    from services.knowledge.dataset_read_service import get_dataset_queries
+
+    session = db_session_with_containers
+    account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(session)
+    dataset = DatasetRetrievalTestDataFactory.create_dataset(session, tenant_id=tenant.id, created_by=account.id)
+    upload = UploadFile(
+        tenant_id=tenant.id,
+        storage_type=StorageType.LOCAL,
+        key="test.png",
+        name="test.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account.id,
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
+    session.add(upload)
+    session.flush()
+    content = json.dumps(
+        [
+            {"content_type": "text_query", "content": "example"},
+            {"content_type": "image_query", "content": ""},
+            {"content_type": "image_query", "content": "not-a-uuid"},
+            {"content_type": "image_query", "content": upload.id},
+        ]
+    )
+    query = DatasetRetrievalTestDataFactory.create_dataset_query(
+        session,
+        dataset_id=dataset.id,
+        created_by=account.id,
+        content=content,
+    )
+    result = get_dataset_queries(query, session=session)
+    assert [row["content"] for row in result] == ["example", "", "not-a-uuid", upload.id]
+    assert result[1]["file_info"] is None
+    assert result[2]["file_info"] is None
+    assert result[3]["file_info"]["id"] == upload.id
+    assert session.scalar(select(DatasetQuery.content).where(DatasetQuery.id == query.id)) == content

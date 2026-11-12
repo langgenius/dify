@@ -9,6 +9,7 @@ on:
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - patches/**
       - .github/actions/setup-web/**
       - .github/workflows/tool-test-sdks.yaml
 

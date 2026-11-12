@@ -12,6 +12,12 @@ class AppScopedTriggerEndUsers:
     def __init__(self, *, end_users: AppScopedEndUserService[EndUser]) -> None:
         self._end_users = end_users
 
+    def get_or_create_trigger_end_user(self, *, tenant_id: str, app_id: str) -> TriggerActor:
+        record = self._end_users.get_or_create_end_user_by_type(
+            type=EndUserType.TRIGGER, tenant_id=tenant_id, app_id=app_id, user_id=None
+        )
+        return TriggerActor(id=record.id, role=CreatorUserRole.END_USER)
+
     def create_trigger_end_users(
         self, *, tenant_id: str, app_ids: list[str], user_id: str
     ) -> Mapping[str, TriggerActor]:

@@ -66,6 +66,7 @@ import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyb
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
+import ContactSupport from '@/app/components/main-nav/components/contact-support'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
@@ -118,29 +119,31 @@ const skillSidebarHelpTriggerIcon = (
 
 function SkillSidebarAccountFooter({ compact = false }: { compact?: boolean }) {
   return (
-    <div
-      className={cn(
-        'shrink-0 border-t border-divider-subtle',
-        compact
-          ? 'flex w-full flex-col items-center gap-0.5 px-2 pt-1 pb-3'
-          : 'flex h-14 w-full items-center justify-between p-3',
-      )}
-    >
+    <div className="shrink-0 border-t border-divider-subtle">
+      <ContactSupport placement="sidebar" compact={compact} showDivider={false} />
       <div
         className={cn(
-          'flex min-w-0 items-center gap-1 overflow-hidden',
-          compact && 'w-full justify-center',
+          compact
+            ? 'flex w-full flex-col items-center gap-0.5 px-2 pt-1 pb-3'
+            : 'flex h-14 w-full items-center justify-between p-3',
         )}
       >
-        <AccountSection compact={compact} />
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-1 overflow-hidden',
+            compact && 'w-full justify-center',
+          )}
+        >
+          <AccountSection compact={compact} />
+        </div>
+        <HelpMenu
+          triggerIcon={skillSidebarHelpTriggerIcon}
+          triggerClassName={cn(
+            'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
+            compact && 'mt-2',
+          )}
+        />
       </div>
-      <HelpMenu
-        triggerIcon={skillSidebarHelpTriggerIcon}
-        triggerClassName={cn(
-          'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
-          compact && 'mt-2',
-        )}
-      />
     </div>
   )
 }

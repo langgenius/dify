@@ -1,9 +1,9 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
+import { TestLexicalComposer } from '@/test/lexical'
 import { $createAgentOutputBlockNode, AgentOutputBlockNode } from '../node'
 
 export type OutputEditorProps = {
@@ -24,7 +24,7 @@ export function OutputEditor({
 }: OutputEditorProps) {
   return (
     <>
-      <LexicalComposer
+      <TestLexicalComposer
         initialConfig={{
           namespace: 'agent-output-component',
           nodes: [AgentOutputBlockNode],
@@ -56,7 +56,7 @@ export function OutputEditor({
           placeholder={null}
           ErrorBoundary={LexicalErrorBoundary}
         />
-      </LexicalComposer>
+      </TestLexicalComposer>
       <button type="button">Outside editor</button>
     </>
   )

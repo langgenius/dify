@@ -17,7 +17,6 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.trigger.utils.locks import build_trigger_refresh_lock_key
 from extensions.ext_redis import RedisClientWrapper
 from models.enums import AppTriggerStatus
 from models.provider_ids import TriggerProviderID
@@ -443,6 +442,11 @@ class RedisTriggerSubscriptionLocks(TriggerSubscriptionLocks):
                 lock.release()
             except RedisError:
                 logger.exception("Failed to release trigger subscription lock %s", key)
+
+
+def build_trigger_refresh_lock_key(tenant_id: str, subscription_id: str) -> str:
+    """Build the Redis lock key for trigger subscription refresh in-flight protection."""
+    return f"trigger_provider_refresh_lock:{tenant_id}_{subscription_id}"
 
 
 class RedisTriggerSubscriptionRefreshReservations:
