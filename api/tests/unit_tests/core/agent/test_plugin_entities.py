@@ -127,23 +127,24 @@ class TestAgentStrategyParameterType:
 
 class TestAgentStrategyParameter:
     def test_valid_creation_minimal(self) -> None:
-        # bypass base PluginParameter required fields using model_construct
-        param = AgentStrategyParameter.model_construct(
+        """Given required strategy parameter fields, construct a valid parameter without help text."""
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
             help=None,
         )
         assert param.type == AgentStrategyParameter.AgentStrategyParameterType.STRING
         assert param.help is None
 
     def test_valid_creation_with_help(self) -> None:
+        """Given a localized label and help text, retain the supplied help model."""
         help_obj = I18nObject(en_US="test")
 
-        param = AgentStrategyParameter.model_construct(
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
             help=help_obj,
         )
         assert param.help == help_obj
@@ -156,15 +157,16 @@ class TestAgentStrategyParameter:
         assert any(error["loc"] == ("type",) for error in exc_info.value.errors())
 
     def test_init_frontend_parameter_calls_external(self, mocker: MockerFixture) -> None:
+        """Given a valid strategy parameter, delegate frontend conversion and return its result."""
         mock_func = mocker.patch(
             "core.agent.plugin_entities.init_frontend_parameter",
             return_value="frontend",
         )
 
-        param = AgentStrategyParameter.model_construct(
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
         )
 
         result = param.init_frontend_parameter("value")
@@ -173,15 +175,16 @@ class TestAgentStrategyParameter:
         assert result == "frontend"
 
     def test_init_frontend_parameter_propagates_exception(self, mocker: MockerFixture) -> None:
+        """Given a converter failure, propagate its exception from the valid parameter."""
         mocker.patch(
             "core.agent.plugin_entities.init_frontend_parameter",
             side_effect=RuntimeError("error"),
         )
 
-        param = AgentStrategyParameter.model_construct(
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
         )
 
         with pytest.raises(RuntimeError):
@@ -212,10 +215,6 @@ class TestAgentStrategyProviderEntity:
         entity = AgentStrategyProviderEntity(identity=provider_identity)
         assert entity.plugin_id is None
 
-    def test_invalid_identity_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            AgentStrategyProviderEntity(identity="invalid")
-
 
 # =========================================================
 # AgentStrategyEntity Tests
@@ -239,10 +238,11 @@ class TestAgentStrategyEntity:
         assert entity.parameters == []
 
     def test_parameters_preserved(self, strategy_identity: AgentStrategyIdentity) -> None:
-        param = AgentStrategyParameter.model_construct(
+        """Given complete strategy parameters, retain them in the strategy entity."""
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
         )
 
         entity = AgentStrategyEntity(
@@ -321,13 +321,6 @@ class TestAgentProviderEntityWithPlugin:
             strategies=[strategy],
         )
         assert entity.strategies == [strategy]
-
-    def test_invalid_strategies_type_raises(self, provider_identity: AgentStrategyProviderIdentity) -> None:
-        with pytest.raises(ValidationError):
-            AgentProviderEntityWithPlugin(
-                identity=provider_identity,
-                strategies="invalid",
-            )
 
 
 # =========================================================

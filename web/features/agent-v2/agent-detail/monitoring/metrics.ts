@@ -1,18 +1,18 @@
 import type { AgentStatisticSummaryEnvelopeResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { I18nKeysWithoutVariables } from '@/types/i18n'
 import dayjs from 'dayjs'
 import { formatNumberAbbreviated } from '@/utils/format'
 
 export type AgentMonitoringMetric = {
   id: string
-  titleKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
-  explanationKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
+  titleKey: I18nKeysWithoutVariables<'agentV2', 'agentDetail.monitoring.'>
+  explanationKey: I18nKeysWithoutVariables<'agentV2', 'agentDetail.monitoring.'>
   chartType: AgentMonitoringChartType
   rows: AgentMonitoringChartRow[]
   summaryValue: string
   valueKey: string
-  unitKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
+  unitKey?: I18nKeysWithoutVariables<'agentV2', 'agentDetail.monitoring.'>
   yMaxWhenEmpty: number
 }
 

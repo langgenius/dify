@@ -4,7 +4,7 @@ import logging
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from core.trigger.constants import TRIGGER_NODE_TYPES
+from constants.trigger import TRIGGER_NODE_TYPES
 from services.trigger.app_trigger_store import (
     AppTriggerPublicationWriter,
     AppTriggerStatusWriter,

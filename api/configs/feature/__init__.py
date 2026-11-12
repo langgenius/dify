@@ -45,7 +45,7 @@ class SecurityConfig(BaseSettings):
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing. "
+        description="Secret key for session cookie signing and account-bound personal access token verification. "
         "Leave empty to let Dify generate a persistent key in the storage directory, "
         "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",

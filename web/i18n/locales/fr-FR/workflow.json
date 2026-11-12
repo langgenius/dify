@@ -466,6 +466,7 @@
   "nodes.humanInputV2.recipients.help": "Choisissez qui peut répondre à cette étape de saisie humaine.",
   "nodes.humanInputV2.recipients.initiator": "L’utilisateur qui lance cette exécution via Web App ou CLI peut approuver",
   "nodes.humanInputV2.recipients.initiatorDescription": "La personne qui lance cette exécution du workflow peut répondre.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Lorsqu’une exécution démarre via un déclencheur, il n’y a pas d’initiateur pour recevoir les demandes d’approbation. Sélectionnez un contact ou indiquez une adresse e-mail à l’aide d’une variable.",
   "nodes.humanInputV2.recipients.inputHelp": "Saisissez ou collez plusieurs adresses e-mail séparées par des virgules. Appuyez sur / pour insérer une variable.",
   "nodes.humanInputV2.recipients.insertVariable": "Insérer une variable",
   "nodes.humanInputV2.recipients.loadError": "Impossible de charger les contacts. Les ID de contact enregistrés sont conservés.",

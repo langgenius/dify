@@ -466,6 +466,7 @@
   "nodes.humanInputV2.recipients.help": "Виберіть, хто може відповісти на цьому кроці введення людини.",
   "nodes.humanInputV2.recipients.initiator": "Користувач, який запускає це виконання через Web App або CLI, може його схвалити",
   "nodes.humanInputV2.recipients.initiatorDescription": "Відповісти може особа, яка запускає цей робочий процес.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Запуски за тригером не мають ініціатора, який міг би отримати запит на схвалення. Виберіть контакт або вкажіть адресу електронної пошти за допомогою змінної.",
   "nodes.humanInputV2.recipients.inputHelp": "Введіть або вставте кілька електронних адрес, розділених комами. Натисніть /, щоб вставити змінну.",
   "nodes.humanInputV2.recipients.insertVariable": "Вставити змінну",
   "nodes.humanInputV2.recipients.loadError": "Не вдалося завантажити контакти. Збережені ID контактів не змінено.",

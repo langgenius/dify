@@ -466,6 +466,7 @@
   "nodes.humanInputV2.recipients.help": "選擇可以回應此人工輸入步驟的人員。",
   "nodes.humanInputV2.recipients.initiator": "透過 Web App 或 CLI 發起本次執行的使用者可審批",
   "nodes.humanInputV2.recipients.initiatorDescription": "啟動此次工作流程執行的人員可以回應。",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "透過觸發器啟動的執行沒有可接收審批請求的發起人。請選取聯絡人，或使用變數提供電子郵件地址。",
   "nodes.humanInputV2.recipients.inputHelp": "輸入或貼上多個電子郵件地址，以逗號分隔。按 / 插入變數。",
   "nodes.humanInputV2.recipients.insertVariable": "插入變數",
   "nodes.humanInputV2.recipients.loadError": "無法載入聯絡人。已保留儲存的聯絡人 ID。",

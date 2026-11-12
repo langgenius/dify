@@ -95,6 +95,7 @@ jobs:
               - 'cli/**'
               - 'skills/**'
               - 'packages/contracts/**'
+              - 'packages/dev-proxy/**'
               - 'packages/tsconfig/**'
               - 'package.json'
               - 'pnpm-lock.yaml'

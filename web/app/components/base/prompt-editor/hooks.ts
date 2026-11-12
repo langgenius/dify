@@ -26,11 +26,11 @@ import { registerLexicalTextEntity } from './utils'
 
 type UseSelectOrDeleteHandler = (
   nodeKey: string,
-  command?: LexicalCommand<undefined>,
+  command?: LexicalCommand<void>,
 ) => [RefObject<HTMLDivElement | null>, boolean]
 export const useSelectOrDelete: UseSelectOrDeleteHandler = (
   nodeKey: string,
-  command?: LexicalCommand<undefined>,
+  command?: LexicalCommand<void>,
 ) => {
   const ref = useRef<HTMLDivElement>(null)
   const [editor] = useLexicalComposerContext()

@@ -2067,6 +2067,7 @@ export type HumanInputContact = {
 export type HumanInputContactSummary = {
   avatar_url?: string
   created_at: number
+  email?: string | null
   id: string
   name: string
 }
@@ -2093,6 +2094,7 @@ export type ImSyncRun = {
   error_message?: string | null
   finished_at?: number | null
   id: string
+  initiator_display_name: string
   provider: ImProvider
   result_counts: ImSyncRunResultCounts
   started_at?: number | null

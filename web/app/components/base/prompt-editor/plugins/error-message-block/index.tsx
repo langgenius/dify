@@ -5,10 +5,10 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createErrorMessageBlockNode, ErrorMessageBlockNode } from './node'
 
-export const INSERT_ERROR_MESSAGE_BLOCK_COMMAND = createCommand(
+export const INSERT_ERROR_MESSAGE_BLOCK_COMMAND = createCommand<void>(
   'INSERT_ERROR_MESSAGE_BLOCK_COMMAND',
 )
-export const DELETE_ERROR_MESSAGE_COMMAND = createCommand('DELETE_ERROR_MESSAGE_COMMAND')
+export const DELETE_ERROR_MESSAGE_COMMAND = createCommand<void>('DELETE_ERROR_MESSAGE_COMMAND')
 
 const ErrorMessageBlock = memo(({ onInsert, onDelete }: ErrorMessageBlockType) => {
   const [editor] = useLexicalComposerContext()
