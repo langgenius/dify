@@ -17,7 +17,7 @@ class CSVSanitizer:
     """
 
     # Characters that can start a formula in Excel/LibreOffice/Google Sheets
-    FORMULA_CHARS = frozenset(("=", "+", "-", "@", "\t", "\r"))
+    FORMULA_CHARS = frozenset(("=", "+", "-", "@", "\t", "\r", "\n"))
 
     @classmethod
     def sanitize_value(cls, value: Any) -> str:
@@ -51,8 +51,15 @@ class CSVSanitizer:
         if not str_value:
             return ""
 
-        # Check if first character is a formula initiator
-        if str_value[0] in cls.FORMULA_CHARS:
+        # Check if the first non-whitespace character is a formula initiator.
+        # Leading whitespace (spaces, tabs, newlines) is ignored by spreadsheet
+        # applications, so a formula char hidden behind it still triggers
+        # evaluation. Pure-whitespace values stay unchanged (no formula to run).
+        stripped = str_value.lstrip()
+        if not stripped:
+            return str_value
+
+        if stripped[0] in cls.FORMULA_CHARS:
             # Prefix with single quote to escape
             return f"'{str_value}"
 
