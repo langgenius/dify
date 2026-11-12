@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
@@ -28,11 +27,15 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, ConversationFromSource, ConversationStatus, InvokeFrom
+from models.enums import AppStatus, ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
 from repositories.agent_version_queries import visible_version_ids, visible_version_operations
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.app.agent_debug_conversations import (
+    create_agent_debug_conversation,
+    get_or_create_agent_debug_conversation,
+)
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -406,31 +409,6 @@ class AgentRosterService:
         self._session.flush()
         return app
 
-    def _create_agent_app_debug_conversation(self, *, app_id: str, account_id: str) -> str:
-        """Create one console debug conversation for an Agent App editor."""
-
-        conversation = Conversation(
-            app_id=app_id,
-            app_model_config_id=None,
-            model_provider=None,
-            model_id="",
-            override_model_configs=None,
-            mode=AppMode.AGENT,
-            name="Agent Debugging Conversation",
-            _inputs={},
-            introduction="",
-            system_instruction="",
-            system_instruction_tokens=0,
-            status=ConversationStatus.NORMAL,
-            invoke_from=InvokeFrom.DEBUGGER,
-            from_source=ConversationFromSource.CONSOLE,
-            from_end_user_id=None,
-            from_account_id=account_id,
-        )
-        self._session.add(conversation)
-        self._session.flush()
-        return conversation.id
-
     @staticmethod
     def runtime_backing_app_id(agent: Agent) -> str | None:
         """Return the App id that backs Agent runtime chat/log/monitoring."""
@@ -462,51 +440,14 @@ class AgentRosterService:
         if not backing_app_id:
             raise AgentNotFoundError()
 
-        mapping = self._session.scalar(
-            select(AgentDebugConversation).where(
-                AgentDebugConversation.tenant_id == agent.tenant_id,
-                AgentDebugConversation.agent_id == agent.id,
-                AgentDebugConversation.account_id == account_id,
-                AgentDebugConversation.draft_type == draft_type,
-            )
-        )
-        if mapping is not None:
-            conversation_id = self._session.scalar(
-                select(Conversation.id).where(
-                    Conversation.id == mapping.conversation_id,
-                    Conversation.app_id == backing_app_id,
-                    Conversation.from_source == ConversationFromSource.CONSOLE,
-                    Conversation.from_account_id == account_id,
-                    Conversation.is_deleted.is_(False),
-                )
-            )
-            if conversation_id:
-                return conversation_id
-
-            mapping.conversation_id = self._create_agent_app_debug_conversation(
-                app_id=backing_app_id,
-                account_id=account_id,
-            )
-            mapping.app_id = backing_app_id
-            self._session.flush()
-            return mapping.conversation_id
-
-        conversation_id = self._create_agent_app_debug_conversation(
-            app_id=backing_app_id,
+        return get_or_create_agent_debug_conversation(
+            self._session,
+            tenant_id=agent.tenant_id,
+            agent_id=agent.id,
+            backing_app_id=backing_app_id,
             account_id=account_id,
+            draft_type=draft_type,
         )
-        self._session.add(
-            AgentDebugConversation(
-                tenant_id=agent.tenant_id,
-                agent_id=agent.id,
-                app_id=backing_app_id,
-                account_id=account_id,
-                draft_type=draft_type,
-                conversation_id=conversation_id,
-            )
-        )
-        self._session.flush()
-        return conversation_id
 
     def get_or_create_build_conversation(
         self,
@@ -599,7 +540,8 @@ class AgentRosterService:
 
         retired_binding_id: str | None = None
         try:
-            conversation_id = self._create_agent_app_debug_conversation(
+            conversation_id = create_agent_debug_conversation(
+                self._session,
                 app_id=backing_app_id,
                 account_id=account_id,
             )
@@ -704,7 +646,8 @@ class AgentRosterService:
 
         retired_binding_id: str | None = None
         try:
-            conversation_id = self._create_agent_app_debug_conversation(
+            conversation_id = create_agent_debug_conversation(
+                self._session,
                 app_id=backing_app_id,
                 account_id=account_id,
             )
@@ -776,61 +719,6 @@ class AgentRosterService:
                 binding_ids=(retired_binding_id,),
             )
         return conversation_id
-
-    def load_or_create_build_conversation_ids_by_agent_id(
-        self,
-        *,
-        tenant_id: str,
-        agents: list[Agent],
-        account_id: str,
-    ) -> dict[str, str]:
-        """Return per-account Build conversations for a page of Agent Apps."""
-
-        conversation_ids_by_agent_id: dict[str, str] = {}
-        changed = False
-        for agent in agents:
-            if agent.tenant_id != tenant_id or agent.status != AgentStatus.ACTIVE:
-                continue
-            conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
-                agent=agent,
-                account_id=account_id,
-                draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            )
-            changed = True
-        if changed:
-            self._session.commit()
-        return conversation_ids_by_agent_id
-
-    def load_app_backing_agents_by_app_id(self, *, tenant_id: str, app_ids: list[str]) -> dict[str, Agent]:
-        """Return active app-backed Agents keyed by Agent App id."""
-        if not app_ids:
-            return {}
-        agents = self._session.scalars(
-            select(Agent).where(
-                Agent.tenant_id == tenant_id,
-                Agent.app_id.in_(app_ids),
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        ).all()
-        return {agent.app_id: agent for agent in agents if agent.app_id and agent.id}
-
-    def load_app_ids_for_agents(self, *, tenant_id: str, agent_ids: Sequence[str]) -> list[str]:
-        """Return active Agent App ids for the requested roster Agents."""
-        if not agent_ids:
-            return []
-        app_ids = self._session.scalars(
-            select(Agent.app_id).where(
-                Agent.tenant_id == tenant_id,
-                Agent.id.in_(agent_ids),
-                Agent.app_id.is_not(None),
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        ).all()
-        return sorted({str(app_id) for app_id in app_ids if app_id})
 
     def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
         """Return the roster Agent that backs the given Agent App, if any."""

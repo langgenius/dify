@@ -144,7 +144,11 @@ class AgentAppCollectionStore(Protocol):
     def list_apps(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
     ) -> AgentAppListPage:
-        """Return tenant-scoped detached results, preserving publication counts and Build conversations."""
+        """Return a tenant-scoped page after committing its per-account Build conversations.
+
+        The adapter enforces one editor mapping per Agent, account and draft surface
+        with a unique key. A failure rolls back the page's conversation changes.
+        """
         ...
 
 

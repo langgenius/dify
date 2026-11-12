@@ -9,23 +9,123 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
+from models.agent import AgentConfigDraftType
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
-from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.agent_roster_repository import (
+    load_published_references_by_agent_id,
+    load_reference_counts_by_agent_id,
+)
+from repositories.app.agent_app_queries import (
+    get_app_backing_agent,
+    get_roster_agent_app,
+    load_app_backing_agents_by_app_id,
+    load_app_ids_for_agents,
+)
+from repositories.app.agent_debug_conversations import get_or_create_agent_debug_conversation
+from repositories.app.console_repository import ConsoleAppRepository
+from repositories.app.response import app_record
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
     AgentAppAccessNotReadyError,
+    AgentAppListItem,
+    AgentAppListPage,
     AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
+from services.entities.app_entities import AppListParams
 
 
 class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def list_apps(
+        self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        """Load an admitted account's Agent App page and commit its Build conversations together.
+
+        A None visibility set leaves the App filters unrestricted by Agent id.
+        The editor mapping's unique key prevents concurrent duplicate mappings.
+        A write or projection failure rolls back the page's conversation changes.
+        """
+        tenant_id = context.active_workspace_id
+        account_id = context.account_id
+        with self._session_factory.begin() as session:
+            scoped_params = params
+            if accessible_agent_ids is not None:
+                app_ids = load_app_ids_for_agents(session, tenant_id=tenant_id, agent_ids=sorted(accessible_agent_ids))
+                scoped_params = params.model_copy(update={"accessible_app_ids": app_ids})
+            counts = ConsoleAppRepository.get_agent_publication_counts(account_id, tenant_id, scoped_params, session)
+            page = ConsoleAppRepository.get_paginate_apps(account_id, tenant_id, scoped_params, session)
+            if page is None:
+                return AgentAppListPage(
+                    page=params.page, limit=params.limit, total=0, has_more=False, publication_counts=counts, data=[]
+                )
+
+            agents = load_app_backing_agents_by_app_id(
+                session, tenant_id=tenant_id, app_ids=[app.id for app in page.items]
+            )
+            agent_ids = [agent.id for agent in agents.values()]
+            references = load_published_references_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
+            reference_counts = load_reference_counts_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
+            items: list[AgentAppListItem] = []
+            for app in page.items:
+                agent = agents.get(app.id)
+                backing_app_id = (agent.backing_app_id or app.id) if agent else None
+                conversation_id = (
+                    get_or_create_agent_debug_conversation(
+                        session,
+                        tenant_id=tenant_id,
+                        agent_id=agent.id,
+                        backing_app_id=backing_app_id,
+                        account_id=account_id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    )
+                    if agent and backing_app_id
+                    else None
+                )
+                items.append(
+                    AgentAppListItem(
+                        app=replace(app_record(app, session=session), has_draft_trigger=app.has_draft_trigger),
+                        agent_id=agent.id if agent else None,
+                        backing_app_id=backing_app_id,
+                        role=(agent.role or "") if agent else None,
+                        debug_conversation_id=conversation_id,
+                        active_config_is_published=bool(
+                            agent and agent.active_config_snapshot_id and agent.active_config_is_published
+                        ),
+                        reference_count=reference_counts.get(agent.id, 0) if agent else None,
+                        published_references=[
+                            AgentReferencingWorkflow(
+                                app_id=ref.app_id,
+                                app_name=ref.app_name,
+                                app_icon_type=ref.app_icon_type,
+                                app_icon=ref.app_icon,
+                                app_icon_background=ref.app_icon_background,
+                                app_mode=ref.app_mode,
+                                app_updated_at=ref.app_updated_at,
+                                workflow_id=ref.workflow_id,
+                                workflow_version=ref.workflow_version,
+                                node_ids=list(ref.node_ids),
+                            )
+                            for ref in (references.get(agent.id, ()) if agent else ())
+                        ],
+                        permission_keys=[],
+                    )
+                )
+            return AgentAppListPage(
+                page=page.page,
+                limit=page.per_page,
+                total=page.total,
+                has_more=page.has_next,
+                publication_counts=counts,
+                data=items,
+            )
 
     @staticmethod
     def _resolve_api_app(session: Session, *, tenant_id: str, agent_id: str) -> App:

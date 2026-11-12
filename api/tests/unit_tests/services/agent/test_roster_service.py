@@ -47,6 +47,7 @@ from models.workflow import Workflow
 from repositories.agent_roster_repository import list_invite_options_in_session
 from repositories.agent_version_queries import visible_version_operations
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.app.agent_app_queries import load_app_backing_agents_by_app_id
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
@@ -4205,7 +4206,8 @@ def test_load_app_backing_agents_skips_empty_agent_ids(sqlite_session: Session):
 
     session.add_all([valid_agent, empty_id_agent])
     session.commit()
-    result = AgentRosterService(session).load_app_backing_agents_by_app_id(
+    result = load_app_backing_agents_by_app_id(
+        session,
         tenant_id="tenant-1",
         app_ids=["app-1", "app-2"],
     )
@@ -4645,28 +4647,8 @@ def test_agent_app_debug_conversation_requires_app_binding(sqlite_session: Sessi
         )
 
 
-def test_load_or_create_build_conversations_supports_runtime_backed_agents(sqlite_session: Session):
+def test_build_conversation_creates_runtime_app_for_workflow_agent(sqlite_session: Session):
     session = sqlite_session
-    valid_agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        name="Analyst",
-        description="",
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
-    wrong_tenant_agent = Agent(
-        id="agent-2",
-        tenant_id="tenant-2",
-        app_id="app-2",
-        name="Other tenant",
-        description="",
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
     workflow_agent = Agent(
         id="agent-3",
         tenant_id="tenant-1",
@@ -4680,22 +4662,17 @@ def test_load_or_create_build_conversations_supports_runtime_backed_agents(sqlit
         workflow_node_id="node-1",
     )
 
-    session.add_all([valid_agent, wrong_tenant_agent, workflow_agent])
+    session.add(workflow_agent)
     session.commit()
-    result = AgentRosterService(session).load_or_create_build_conversation_ids_by_agent_id(
-        tenant_id="tenant-1",
-        agents=[valid_agent, wrong_tenant_agent, workflow_agent],
-        account_id="account-1",
+
+    conversation_id = AgentRosterService(session).get_or_create_build_conversation(
+        tenant_id="tenant-1", agent_id=workflow_agent.id, account_id="account-1"
     )
 
-    assert list(result) == ["agent-1", "agent-3"]
-    assert result["agent-1"]
-    assert result["agent-3"]
-    mappings = list(
-        session.scalars(select(AgentDebugConversation).where(AgentDebugConversation.tenant_id == "tenant-1"))
-    )
-    assert len(mappings) == 2
-    assert all(mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD for mapping in mappings)
+    mapping = session.scalars(select(AgentDebugConversation)).one()
+    assert mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD
+    assert mapping.conversation_id == conversation_id
+    assert mapping.app_id == workflow_agent.backing_app_id
 
 
 def test_agent_app_visible_versions_exclude_draft_saves():

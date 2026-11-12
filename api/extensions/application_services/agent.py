@@ -13,7 +13,6 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.version_service import AgentVersionService
-from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
@@ -66,7 +65,7 @@ def build_agent_app_services(
         lifecycle=AgentAppDeletionService(lifecycle=lifecycle),
         detail=detail,
         collection=AgentAppCollectionService(
-            store=AgentAppCollectionGateway(session_factory=database_client),
+            store=apps,
             access=AgentListVisibilityGateway(members=rbac_members),
             creator=lifecycle,
             detail=detail,

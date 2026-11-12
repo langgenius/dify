@@ -7,6 +7,7 @@ from threading import Thread
 from typing import override
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -23,10 +24,10 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import TagType
-from models.model import App, AppMode, AppModelConfig, Tag, TagBinding
+from models.model import App, AppMode, AppModelConfig, Conversation, Tag, TagBinding
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
+from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
-from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
 from services.enterprise.base import EnterpriseRequest
 from services.entities.app_entities import AppListParams
 from tests.helpers.unit.config_override import config_overrides_context
@@ -90,13 +91,34 @@ def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Ha
             app = session.get(App, app_id)
             assert app is not None
             app.maintainer = str(uuid4())
-    gateway = AgentAppCollectionGateway(session_factory=harness.sessions)
+    repository = AgentAppRepository(session_factory=harness.sessions)
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
-    result = gateway.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids={first_id})
+    result = repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids={first_id})
     assert result.total == 1
     assert [item.agent_id for item in result.data] == [first_id]
     assert result.publication_counts.published == 1
     assert result.publication_counts.drafts == 0
+
+
+def test_list_rolls_back_build_conversation_if_app_projection_fails(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    with harness.sessions.begin() as session:
+        app = session.get_one(App, app_id)
+        config = AppModelConfig(app_id=app_id, model="invalid JSON")
+        session.add(config)
+        session.flush()
+        app.app_model_config_id = config.id
+
+    repository = AgentAppRepository(session_factory=harness.sessions)
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    with pytest.raises(json.JSONDecodeError):
+        repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids=None)
+
+    with harness.sessions() as session:
+        assert (
+            session.scalar(select(AgentDebugConversation.id).where(AgentDebugConversation.agent_id == agent_id)) is None
+        )
+        assert session.scalar(select(Conversation.id).where(Conversation.app_id == app_id)) is None
 
 
 def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harness) -> None:

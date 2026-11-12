@@ -651,13 +651,13 @@ class TestAgentAppType:
             AppListParams(mode="agent", status="normal", agent_is_published=False),
             sqlite_session,
         )
-        counts = service.get_agent_publication_counts(
+        counts = ConsoleAppRepository.get_agent_publication_counts(
             creator_id,
             tenant_id,
             AppListParams(mode="agent", status="normal", agent_is_published=True),
             sqlite_session,
         )
-        searched_counts = service.get_agent_publication_counts(
+        searched_counts = ConsoleAppRepository.get_agent_publication_counts(
             creator_id,
             tenant_id,
             AppListParams(mode="agent", status="normal", name="Draft", agent_is_published=True),
