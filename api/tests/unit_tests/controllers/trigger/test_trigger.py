@@ -3,11 +3,12 @@
 import json
 from contextvars import Context
 from http import HTTPStatus
+from typing import cast
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Table
 
 from controllers.trigger.trigger import trigger_endpoint
 from models.trigger import TriggerSubscription
@@ -43,7 +44,7 @@ def test_invalid_endpoint_preserves_json_error_contract(endpoint_id: str) -> Non
 def test_subscription_query_failure_preserves_text_error_without_plugin_lookup(
     endpoint_harness: _Harness, daemon: _Daemon, sqlite_engine: Engine
 ) -> None:
-    TriggerSubscription.__table__.drop(sqlite_engine)
+    cast(Table, TriggerSubscription.__table__).drop(sqlite_engine)
 
     response = endpoint_harness.client.post(f"/triggers/plugin/{uuid4()}", json={})
 

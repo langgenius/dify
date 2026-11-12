@@ -54,7 +54,6 @@ project-excludes = [
   "controllers/service_api/dataset/test_document.py",
   "controllers/service_api/test_wraps.py",
   "controllers/service_api/test___init__.py",
-  "controllers/trigger/test_trigger.py",
   "controllers/web/test_human_input_form.py",
   "controllers/web/test_wraps.py",
   "core/agent/conftest.py",
