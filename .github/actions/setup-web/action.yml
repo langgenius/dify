@@ -6,8 +6,8 @@ inputs:
     description: Install web dependencies after setting up the toolchain
     default: 'true'
   cache-save:
-    description: Save the dependency cache after the job completes
-    default: 'true'
+    description: Save the dependency cache after the job completes; enable only in its designated writer
+    default: 'false'
 
 runs:
   using: composite
@@ -33,5 +33,5 @@ runs:
           npm: false
         cache: true
         # Nested composite post actions can evaluate inputs in the outer scope.
-        cache-save: ${{ inputs.cache-save || 'true' }}
+        cache-save: ${{ inputs.cache-save || 'false' }}
         run-install: ${{ inputs.run-install }}
