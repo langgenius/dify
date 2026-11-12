@@ -223,7 +223,7 @@ function TimeOwner() {
 }
 
 // Each language is a separate deferred asset; exercise its mapping through the calendar's
-// accessible weekday name, which must update from the temporary English fallback.
+// selected day's accessible name, which must update from the temporary English fallback.
 it.each([
   ['zh-Hant', '星期一'],
   ['ja-JP', '月曜日'],
@@ -248,7 +248,7 @@ it.each([
   const i18n = await createI18n(language)
   const screen = await render(
     <I18nextProvider i18n={i18n}>
-      <DatePicker defaultValue="2025-01-15">
+      <DatePicker defaultValue="2025-01-13">
         <DatePickerLabel>Date</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
@@ -256,15 +256,20 @@ it.each([
     </I18nextProvider>,
   )
   await screen.getByRole('button', { name: /^Date / }).click()
-  await expect.element(screen.getByRole('columnheader', { name: monday })).toBeVisible()
-  await expect.element(screen.getByRole('gridcell', { selected: true })).toBeInTheDocument()
+  await expect
+    .element(
+      screen.getByRole('gridcell', { selected: true }).getByRole('button', {
+        name: new RegExp(monday),
+      }),
+    )
+    .toBeVisible()
 })
 
 it('keeps an English calendar usable when the application language has no calendar locale', async () => {
   const i18n = await createI18n('en-GB')
   const screen = await render(
     <I18nextProvider i18n={i18n}>
-      <DatePicker defaultValue="2025-01-15">
+      <DatePicker defaultValue="2025-01-13">
         <DatePickerLabel>Date</DatePickerLabel>
         <DatePickerTrigger />
         <DatePickerContent />
@@ -272,8 +277,11 @@ it('keeps an English calendar usable when the application language has no calend
     </I18nextProvider>,
   )
   await screen.getByRole('button', { name: /^Date / }).click()
-  await expect.element(screen.getByRole('columnheader', { name: 'Monday' })).toBeVisible()
-  await expect.element(screen.getByRole('gridcell', { selected: true })).toBeInTheDocument()
+  await expect
+    .element(
+      screen.getByRole('gridcell', { selected: true }).getByRole('button', { name: /Monday/ }),
+    )
+    .toBeVisible()
 })
 
 it('preserves the selected date and current language when an older locale finishes loading', async () => {
