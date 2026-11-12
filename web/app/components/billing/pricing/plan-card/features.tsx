@@ -1,7 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ALL_PLANS } from '../../config'
 
@@ -11,8 +11,37 @@ type PlanFeatureExplanation = {
 }
 
 export function PlanFeatureInfotip({ children }: { children: ReactNode }) {
+  // Pinning belongs to the pressed feature. Hovering another feature must start a dismissible preview.
+  const [active, setActive] = useState<{ id: string; mode: 'hover' | 'pinned' } | null>(null)
   return (
-    <Infotip<PlanFeatureExplanation>>
+    <Infotip<PlanFeatureExplanation>
+      open={active !== null}
+      triggerId={active?.id ?? null}
+      onOpenChange={(open, details) => {
+        const id = details.trigger?.id
+        if (details.reason === 'trigger-press' && id) {
+          if (active?.mode === 'pinned' && active.id === id) {
+            setActive(null)
+          } else {
+            // Let hover keep its native leave behavior after this pin is replaced.
+            details.cancel()
+            setActive({ id, mode: 'pinned' })
+          }
+          return
+        }
+        if (details.reason === 'trigger-hover') {
+          if (active?.mode === 'pinned' && (!open || id === active.id)) {
+            details.cancel()
+            return
+          }
+          if (open && id) {
+            setActive({ id, mode: 'hover' })
+            return
+          }
+        }
+        if (!open) setActive(null)
+      }}
+    >
       {({ payload }) => (
         <>
           {children}
