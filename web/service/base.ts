@@ -603,6 +603,8 @@ export const handleStream = (
           hasError = true
           onCompleted?.(true, e as string)
           return
+        } finally {
+          if (hasError) void reader?.cancel().catch(() => {})
         }
         if (!hasError) read()
       },

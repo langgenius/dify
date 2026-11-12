@@ -39,6 +39,30 @@ const failedStream = (error: Error) =>
   )
 
 describe('handleStream', () => {
+  it.each([{ event: 'error', message: 'Run failed', code: 'run_failed' }, null])(
+    'cancels an open response after rejecting event %j',
+    async (payload) => {
+      const cancel = vi.fn()
+      let controller: ReadableStreamDefaultController<Uint8Array>
+      const body = new ReadableStream<Uint8Array>({
+        start(value) {
+          controller = value
+          value.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`))
+        },
+        cancel,
+      })
+      const onCompleted = vi.fn()
+      try {
+        handleStream(new Response(body), vi.fn(), onCompleted)
+        await waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(1))
+        expect(onCompleted.mock.calls[0]?.[0]).toBe(true)
+        await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1))
+      } finally {
+        if (cancel.mock.calls.length === 0) controller!.close()
+      }
+    },
+  )
+
   it.each([null, 'string', 42])('reports invalid event payload %s once', async (payload) => {
     const onData = vi.fn()
     const onCompleted = vi.fn()
