@@ -26,7 +26,7 @@ class ClamAVScanner(FileScanner):
             raise ScannerConfigError("ClamAV is not configured for this deployment")
 
     def _connect(self) -> socket.socket:
-        timeout = float(self.config.get("timeout") or 60.0)
+        timeout = self.request_timeout
         try:
             connection = socket.create_connection(
                 (str(self.config["host"]), int(self.config.get("port") or 3310)), timeout=min(timeout, 10.0)

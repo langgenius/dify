@@ -26,10 +26,10 @@ class CustomEndpointScanner(FileScanner):
     - ``file``: the file content, with its name and media type;
     - ``scan_id``, ``file_name``, ``file_size``, ``mime_type``, ``file_hash``: text fields.
 
-    It answers HTTP 200 with JSON ``{"verdict": "clean" | "infected" | "unscannable"}`` and
-    optionally ``threats`` (list of names), ``engine`` and ``message``. 401/403 mean the key is
-    wrong, 402/429 that quota is exhausted, 413 that the file is too large, and 5xx that the
-    service is temporarily unavailable.
+    It answers within ``FILE_SCAN_REQUEST_TIMEOUT_SECONDS`` with HTTP 200 and JSON
+    ``{"verdict": "clean" | "infected" | "unscannable"}``, optionally with ``threats`` (list of
+    names), ``engine`` and ``message``. 401/403 mean the key is wrong, 402/429 that quota is
+    exhausted, 413 that the file is too large, and 5xx that the service is temporarily unavailable.
     """
 
     provider_type: ClassVar[ScanProviderType] = ScanProviderType.API
@@ -55,7 +55,7 @@ class CustomEndpointScanner(FileScanner):
         response = http_request(
             "POST",
             str(self.config["endpoint"]),
-            timeout=float(self.config.get("timeout") or 60.0),
+            timeout=self.request_timeout,
             headers={"Authorization": f"Bearer {self.credentials['api_key']}"},
             data={
                 "scan_id": target.scan_id,

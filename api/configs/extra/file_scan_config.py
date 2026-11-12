@@ -17,7 +17,10 @@ class FileScanConfig(BaseSettings):
     )
     FILE_SCAN_CLAMAV_PORT: PositiveInt = Field(default=3310, description="TCP port of the clamd instance.")
     FILE_SCAN_REQUEST_TIMEOUT_SECONDS: PositiveInt = Field(
-        default=60, ge=5, le=300, description="Timeout for one request to a scanner."
+        default=300,
+        ge=5,
+        le=3600,
+        description="Timeout in seconds for one request to a scanner, for every scanner type.",
     )
     FILE_SCAN_MAX_ATTEMPTS: PositiveInt = Field(
         default=3, ge=1, le=5, description="Attempts per file when a scanner is temporarily unreachable."

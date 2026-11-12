@@ -98,7 +98,7 @@ def test_http_request_maps_transport_failures(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(base_module.ssrf_proxy, "make_request", timeout)
     with pytest.raises(ScannerError) as error:
-        base_module.http_request("GET", "https://scanner.example")
+        base_module.http_request("GET", "https://scanner.example", timeout=5)
     assert error.value.problem is ScanProblem.TIMEOUT
 
     def refused(*_args: object, **_kwargs: object) -> httpx.Response:
@@ -106,8 +106,29 @@ def test_http_request_maps_transport_failures(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(base_module.ssrf_proxy, "make_request", refused)
     with pytest.raises(ScannerError) as error:
-        base_module.http_request("GET", "https://scanner.example")
+        base_module.http_request("GET", "https://scanner.example", timeout=5)
     assert error.value.problem is ScanProblem.NETWORK
+
+
+def test_request_timeout_defaults_to_five_minutes_and_follows_the_deployment_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.file_scan.scanners import cloudmersive as cloudmersive_module
+    from core.file_scan.scanners import scanii as scanii_module
+
+    cloud = _use_http(
+        monkeypatch,
+        cloudmersive_module,
+        httpx.Response(200, json={"CleanResult": True}),
+        httpx.Response(200, json={"CleanResult": True}),
+    )
+    CloudmersiveScanner({"api_key": "k"}, {}).scan(_target())
+    CloudmersiveScanner({"api_key": "k"}, {"timeout": 900}).scan(_target())
+    assert [call[2]["timeout"] for call in cloud.calls] == [300.0, 900.0]
+
+    scanii = _use_http(monkeypatch, scanii_module, httpx.Response(201, json={"findings": []}))
+    ScaniiScanner({"api_key": "k", "api_secret": "s"}, {"region": "us1", "timeout": 120}).scan(_target())
+    assert scanii.calls[0][2]["timeout"] == 120.0
 
 
 # --- Cloudmersive

@@ -54,6 +54,7 @@ class CloudmersiveScanner(FileScanner):
         response = http_request(
             "POST",
             f"{endpoint}/virus/scan/file/advanced",
+            timeout=self.request_timeout,
             headers=headers,
             files={"inputFile": (target.file_name, target.load(), target.mime_type or "application/octet-stream")},
         )

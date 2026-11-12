@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 EICAR_TEST_FILE_NAME = "eicar-test.txt"
 CLEAN_TEST_FILE_NAME = "clean-test.txt"
 CLEAN_TEST_CONTENT = b"Dify file scan connectivity check.\n"
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 300.0
 
 
 def eicar_test_content() -> bytes:
@@ -57,6 +58,11 @@ class FileScanner(ABC):
     def __init__(self, credentials: Mapping[str, str], config: Mapping[str, Any]) -> None:
         self.credentials = credentials
         self.config = config
+
+    @property
+    def request_timeout(self) -> float:
+        """Seconds one request to the scanner may take (``FILE_SCAN_REQUEST_TIMEOUT_SECONDS``)."""
+        return float(self.config.get("timeout") or DEFAULT_REQUEST_TIMEOUT_SECONDS)
 
     @classmethod
     @abstractmethod
@@ -109,7 +115,7 @@ class FileScanner(ABC):
                 )
 
 
-def http_request(method: str, url: str, *, timeout: float = 60.0, **kwargs: Any) -> httpx.Response:
+def http_request(method: str, url: str, *, timeout: float, **kwargs: Any) -> httpx.Response:
     """Send one request through the SSRF proxy and map transport failures to ``ScannerError``."""
     try:
         return ssrf_proxy.make_request(
