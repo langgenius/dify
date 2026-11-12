@@ -75,7 +75,7 @@ def acknowledge_owned_messages(broker: Celery, queues: tuple[str, ...], owned_id
 
     Preconditions: task publication for this fixture has ended. Postcondition:
     its unconsumed envelopes are acknowledged; unrelated queued messages remain
-    available. This includes the production hardcoded retention wakeup queue.
+    available. BYOA wakeups never require opening the legacy retention queue.
     """
     with broker.connection_for_write() as connection:
         for queue in queues:
@@ -150,7 +150,7 @@ def test_transport(endpoint_domain: EndpointDomain) -> Iterator[TestTransport]:
             assert isinstance(after_task_publish, DisconnectableSignal)
             after_task_publish.disconnect(observe_publication)
             acknowledge_owned_messages(
-                broker, ("retention", dify_config.EXTERNAL_AGENTS_QUEUE, dify_config.OPS_TRACE_QUEUE), owned_ids
+                broker, (dify_config.EXTERNAL_AGENTS_QUEUE, dify_config.OPS_TRACE_QUEUE), owned_ids
             )
     broker.close()
 
@@ -219,6 +219,22 @@ def test_capabilities_start_result_and_cancel_are_real_serialized_transitions(te
     assert "opaque-encrypted-value" not in str(final)
     with pytest.raises(NotFound):
         invoke_test(domain, ExternalAgentTestResultApi, "get", agent_id=UUID(domain[2]), invocation_id=uuid4())
+
+
+def test_console_wakeup_uses_the_dedicated_queue_without_touching_old_retention(test_transport: TestTransport) -> None:
+    """The real composition publisher keeps old cleanup envelopes out of BYOA work."""
+    domain, _, broker = test_transport
+    with broker.connection_for_write() as connection:
+        with SimpleQueue(connection, "retention") as legacy:
+            before = legacy.qsize()
+            domain[3].external_agents.enqueue()
+            assert legacy.qsize() == before
+        with SimpleQueue(connection, dify_config.EXTERNAL_AGENTS_QUEUE) as inbox:
+            message = inbox.get(block=False)
+            assert message.headers["task"] == "tasks.external_agent_task.drain_external_commands"
+            message.ack()
+            with pytest.raises(Empty):
+                inbox.get(block=False)
 
 
 def test_upload_read_cap_exact_file_projection_and_scope_preserving_clear(test_transport: TestTransport) -> None:

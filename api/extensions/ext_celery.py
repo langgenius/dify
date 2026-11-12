@@ -180,8 +180,8 @@ def init_app(app: DifyApp) -> Celery:
         task_ignore_result=True,
         task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
         task_routes={
-            "tasks.external_agent_task.drain_external_commands": {"queue": "retention"},
-            "tasks.external_agent_task.maintain_external_agents": {"queue": "retention"},
+            "tasks.external_agent_task.drain_external_commands": {"queue": dify_config.EXTERNAL_AGENTS_QUEUE},
+            "tasks.external_agent_task.maintain_external_agents": {"queue": dify_config.EXTERNAL_AGENTS_QUEUE},
             "tasks.external_agent_task.execute_external_trace_delivery": {"queue": dify_config.OPS_TRACE_QUEUE},
             "tasks.external_agent_task.*": {"queue": dify_config.EXTERNAL_AGENTS_QUEUE},
             "tasks.trace_delivery_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
@@ -249,12 +249,12 @@ def init_app(app: DifyApp) -> Celery:
     beat_schedule["external_agent_commands"] = {
         "task": "tasks.external_agent_task.drain_external_commands",
         "schedule": timedelta(seconds=1 if dify_config.EXTERNAL_AGENTS_ENABLED else 5),
-        "options": {"queue": "retention", "expires": 30},
+        "options": {"queue": dify_config.EXTERNAL_AGENTS_QUEUE, "expires": 30},
     }
     beat_schedule["external_agent_maintenance"] = {
         "task": "tasks.external_agent_task.maintain_external_agents",
         "schedule": timedelta(seconds=dify_config.EXTERNAL_AGENTS_SWEEP_SECONDS),
-        "options": {"queue": "retention", "expires": 60},
+        "options": {"queue": dify_config.EXTERNAL_AGENTS_QUEUE, "expires": 60},
     }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK

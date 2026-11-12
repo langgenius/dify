@@ -89,6 +89,30 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
         assert actual[3] is None
         columns = {column["name"]: column for column in inspector.get_columns(legacy.name)}
         assert not columns["external_job_config"]["nullable"]
+        assert columns["external_job_config"]["default"] is not None
+        old_columns = connection.exec_driver_sql(
+            f"SELECT {', '.join(values)} FROM {legacy.name} WHERE node_id = 'native-node'"
+        ).one()
+        # A still-running old process omits every new column after the upgrade.
+        after_values = {**values, "id": "00000000-0000-0000-0000-000000000005", "node_id": "native-after-upgrade"}
+        connection.exec_driver_sql(
+            f"INSERT INTO {legacy.name} ({', '.join(after_values)}) VALUES ({', '.join('?' for _ in after_values)})",
+            tuple(after_values.values()),
+        )
+        assert (
+            json.loads(
+                connection.exec_driver_sql(
+                    f"SELECT external_job_config FROM {legacy.name} WHERE node_id = 'native-after-upgrade'"
+                ).scalar_one()
+            )
+            == {}
+        )
+        assert (
+            connection.exec_driver_sql(
+                f"SELECT {', '.join(values)} FROM {legacy.name} WHERE node_id = 'native-node'"
+            ).one()
+            == old_columns
+        )
         file_columns = {column["name"] for column in inspector.get_columns("external_agent_file_leases")}
         assert {"storage_key", "write_state", "write_lease_until", "cleanup_after", "content_hash"} <= file_columns
         with Operations.context(context):
@@ -96,7 +120,7 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
         assert sa.inspect(connection).get_table_names() == [legacy.name]
         assert not added.intersection(column["name"] for column in sa.inspect(connection).get_columns(legacy.name))
     engine.dispose()
-    assert ScriptDirectory(str(API / "migrations")).get_heads() == ["c3025a2a1109"]
+    assert ScriptDirectory(str(API / "migrations")).get_heads() == ["c3025dflt1112"]
 
 
 @pytest.mark.parametrize("dialect", [postgresql.dialect(), mysql.dialect()])
@@ -118,12 +142,16 @@ def test_static_new_tables_compile_for_supported_server_dialects(
             return False
 
         def add_column(self, column: sa.Column[object]) -> None:
-            str(sa.schema.CreateColumn(column).compile(dialect=dialect))
+            compiled = str(sa.schema.CreateColumn(column).compile(dialect=dialect))
+            if column.name == "external_job_config":
+                assert column.server_default is not None
+                assert "DEFAULT ('{}')" in compiled
 
-        def alter_column(self, name: str, *, nullable: bool, existing_type: object) -> None:
+        def alter_column(self, name: str, *, nullable: bool, existing_type: object, server_default: object) -> None:
             assert name == "external_job_config"
             assert nullable is False
             assert isinstance(existing_type, AdjustedJSON)
+            assert str(server_default) == "('{}')"
 
     class DDL:
         def create_table(self, name: str, *items: SchemaItem) -> None:
