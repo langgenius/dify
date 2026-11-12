@@ -284,7 +284,7 @@ catalog:
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Compiler API tools require TS 6; the mapper uses TS 7.1.
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
-  undici: 7.30.2
+  undici: 8.12.4
   unist-util-visit: 5.2.0
   use-context-selector: 2.0.0
   uuid: 14.0.3

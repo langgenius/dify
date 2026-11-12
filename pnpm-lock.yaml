@@ -747,8 +747,8 @@ catalogs:
       specifier: 3.19.3
       version: 3.19.3
     undici:
-      specifier: 7.30.2
-      version: 7.30.2
+      specifier: 8.12.4
+      version: 8.12.4
     unist-util-visit:
       specifier: 5.2.0
       version: 5.2.0
@@ -903,7 +903,7 @@ importers:
         version: 1.1.1
       undici:
         specifier: 'catalog:'
-        version: 7.30.2
+        version: 8.12.4
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -8716,6 +8716,10 @@ packages:
     resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
     engines: {node: '>=20.18.1'}
 
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
+    engines: {node: '>=22.19.0'}
+
   unicode-trie@2.0.0:
     resolution: {integrity: sha512-x7bc76x0bm4prf1VLg79uhAzKw8DVboClSN5VxJuQ+LKDOVEW9CdH+VY7SP+vX7xCYQqzzgQpFqz15zeLvAtZQ==}
 
@@ -16101,6 +16105,8 @@ snapshots:
 
   undici@7.30.2: {}
 
+  undici@8.12.4: {}
+
   unicode-trie@2.0.0:
     dependencies:
       pako: 0.2.9
@@ -16857,7 +16863,7 @@ time:
   tsrs@0.24.0-ts7.1.0-beta: '2026-11-10T16:24:25.680Z'
   typescript@7.1.0-beta: '2026-10-20T16:45:47.402Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
-  undici@7.30.2: '2026-11-05T09:06:58.994Z'
+  undici@8.12.4: '2026-11-05T08:55:59.361Z'
   unist-util-visit@5.2.0: '2026-10-24T18:44:36.789Z'
   use-context-selector@2.0.0: '2024-05-06T11:23:59.259Z'
   uuid@14.0.3: '2026-10-10T00:30:19.423Z'
