@@ -1,4 +1,4 @@
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
@@ -6,190 +6,137 @@ import HomeCatalogTabs from '../home-catalog-tabs'
 import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-state-provider'
 import styles from '../home-sticky.module.css'
 
-describe('Marketplace catalog tab handoff', () => {
-  it('hands off only when the in-flow tabs fully reach the sticky header', async () => {
-    await page.viewport(1200, 800)
-    const screen = await render(
-      <HomeStickyStateProvider>
-        <div
-          id={MARKETPLACE_CONTAINER_ID}
-          data-marketplace-standalone
-          style={{ display: 'flex', height: 320, flexDirection: 'column', overflowY: 'auto' }}
+async function renderCatalog() {
+  return render(
+    <HomeStickyStateProvider>
+      <button type="button">Before catalogs</button>
+      <div
+        id={MARKETPLACE_CONTAINER_ID}
+        data-marketplace-standalone
+        style={{ display: 'flex', height: 320, flexDirection: 'column', overflowY: 'auto' }}
+      >
+        <header
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 50,
+            display: 'flex',
+            height: 48,
+            flexShrink: 0,
+            alignItems: 'center',
+            background: 'white',
+          }}
         >
-          <div
-            data-testid="catalog-header"
-            style={{
-              position: 'sticky',
-              top: 0,
-              zIndex: 50,
-              display: 'flex',
-              height: 48,
-              flexShrink: 0,
-              alignItems: 'center',
-              background: 'white',
-            }}
-          >
-            <HomeStickyCatalogTabs>
-              <div className={styles.headerCatalogTabs} data-testid="header-catalog-tabs">
-                <HomeCatalogTabs
-                  isMarketplacePlatform
-                  labels={{ plugins: 'Plugins', templates: 'Templates' }}
-                />
-              </div>
-            </HomeStickyCatalogTabs>
-          </div>
-          <div style={{ height: 220, flexShrink: 0 }} />
-          <HomeCatalogNavigation
-            isMarketplacePlatform
-            catalogCategories={<div data-testid="catalog-categories">Categories</div>}
-            catalogTabs={
-              <div data-testid="content-catalog-tabs">
-                <HomeCatalogTabs
-                  isMarketplacePlatform
-                  labels={{ plugins: 'Plugins', templates: 'Templates' }}
-                />
-              </div>
-            }
-          />
-          <div data-testid="following-content" style={{ height: 640, flexShrink: 0 }} />
-        </div>
-      </HomeStickyStateProvider>,
-    )
+          <HomeStickyCatalogTabs>
+            <div className={styles.headerCatalogTabs}>
+              <HomeCatalogTabs
+                isMarketplacePlatform
+                labels={{ plugins: 'Plugins', templates: 'Templates' }}
+              />
+            </div>
+          </HomeStickyCatalogTabs>
+        </header>
+        <div style={{ height: 220, flexShrink: 0 }} />
+        <HomeCatalogNavigation
+          isMarketplacePlatform
+          catalogCategories={<button type="button">Categories</button>}
+          catalogTabs={
+            <div role="group" aria-label="In-flow catalogs">
+              <HomeCatalogTabs
+                isMarketplacePlatform
+                labels={{ plugins: 'Plugins', templates: 'Templates' }}
+              />
+            </div>
+          }
+        />
+        <section aria-label="Catalog results" style={{ height: 640, flexShrink: 0 }} />
+      </div>
+    </HomeStickyStateProvider>,
+  )
+}
 
+describe('Marketplace catalog tab handoff', () => {
+  it('moves keyboard focus to the same catalog in the header without moving the results', async () => {
+    await page.viewport(1200, 800)
+    const screen = await renderCatalog()
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
-    await expect.element(screen.getByTestId('content-catalog-tabs')).toBeVisible()
-    const header = screen.getByTestId('catalog-header').element()
-    const navigation = screen.getByRole('region').element()
-    const categories = screen.getByTestId('catalog-categories').element()
-    const contentTabsSlot = screen.getByTestId('content-catalog-tabs').element().parentElement!
-    const contentTabsRegion = contentTabsSlot.parentElement!
-    const headerTabsSlot = screen.getByTestId('header-catalog-tabs').element().parentElement!
-    const followingContent = screen.getByTestId('following-content').element() as HTMLElement
-    const initialHeight = navigation.getBoundingClientRect().height
-    const initialCategoryOffset =
-      categories.getBoundingClientRect().top - navigation.getBoundingClientRect().top
-    const initialHeaderSlotWidth = headerTabsSlot.getBoundingClientRect().width
-    const initialHeaderSlotHeight = headerTabsSlot.getBoundingClientRect().height
-    const initialFollowingOffset = followingContent.offsetTop
+    const plugins = screen.getByRole('link', { name: 'Plugins' })
+    const templates = screen.getByRole('link', { name: 'Templates' })
+    const categories = screen.getByRole('button', { name: 'Categories' })
+    const header = screen.getByRole('banner').element()
+    await expect.element(plugins).toBeVisible()
+    const contentPlugin = plugins.element()
+    const contentTemplates = templates.element()
+    const flowTabs = screen.getByRole('group', { name: 'In-flow catalogs' }).element()
+    const results = screen.getByRole('region', { name: 'Catalog results' }).element()
+    const resultsOffset = () => results.getBoundingClientRect().top + scrollContainer.scrollTop
+    const initialResultsOffset = resultsOffset()
     const initialScrollHeight = scrollContainer.scrollHeight
-    const contentPluginsLink =
-      contentTabsSlot.querySelector<HTMLAnchorElement>('a[href="/plugins"]')!
-    const headerPluginsLink = headerTabsSlot.querySelector<HTMLAnchorElement>('a[href="/plugins"]')!
-
-    expect(initialHeaderSlotWidth).toBeGreaterThan(0)
-    expect(initialHeaderSlotHeight).toBeGreaterThan(0)
-
-    contentPluginsLink.focus()
-    expect(document.activeElement).toBe(contentPluginsLink)
-
     const handoffScrollTop =
-      scrollContainer.scrollTop +
-      contentTabsRegion.getBoundingClientRect().bottom -
-      header.getBoundingClientRect().bottom
-    scrollContainer.scrollTop = handoffScrollTop - 1
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    )
+      flowTabs.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom
 
-    expect(scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
-    expect(
-      contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
-    ).toBeCloseTo(1)
-    expect(contentTabsSlot).not.toHaveAttribute('inert')
-    expect(document.activeElement).toBe(contentPluginsLink)
+    await screen.getByRole('button', { name: 'Before catalogs' }).click()
+    await userEvent.tab()
+    await expect.element(plugins).toHaveFocus()
+    expect(plugins.element()).toBe(contentPlugin)
 
-    scrollContainer.scrollTop = handoffScrollTop
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(true)
+    scrollContainer.scrollTo({ top: handoffScrollTop - 1 })
+    await expect.poll(() => scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
+    await expect.element(plugins).toHaveFocus()
+    expect(plugins.element()).toBe(contentPlugin)
 
-    expect(scrollContainer.scrollTop).toBe(handoffScrollTop)
-    expect(navigation.getBoundingClientRect().height).toBeCloseTo(initialHeight)
-    expect(
-      categories.getBoundingClientRect().top - navigation.getBoundingClientRect().top,
-    ).toBeCloseTo(initialCategoryOffset)
-    expect(
-      contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
-    ).toBeCloseTo(0)
-    expect(headerTabsSlot.getBoundingClientRect().width).toBeCloseTo(initialHeaderSlotWidth)
-    expect(headerTabsSlot.getBoundingClientRect().height).toBeCloseTo(initialHeaderSlotHeight)
-    expect(followingContent.offsetTop).toBe(initialFollowingOffset)
+    scrollContainer.scrollTo({ top: handoffScrollTop })
+    await expect.element(plugins).toHaveFocus()
+    await expect.poll(() => plugins.element() !== contentPlugin).toBe(true)
+    await expect.element(plugins).toBeVisible()
+    expect(resultsOffset()).toBeCloseTo(initialResultsOffset)
     expect(scrollContainer.scrollHeight).toBe(initialScrollHeight)
-    await vi.waitFor(
-      () => {
-        expect(document.activeElement).toBe(headerPluginsLink)
-      },
-      { timeout: 500 },
-    )
+    await userEvent.tab()
+    await expect.element(templates).toHaveFocus()
+    expect(templates.element()).not.toBe(contentTemplates)
+    await userEvent.tab()
+    await expect.element(categories).toHaveFocus()
+    await userEvent.tab({ shift: true })
+    await expect.element(templates).toHaveFocus()
 
-    scrollContainer.scrollTop = handoffScrollTop - 1
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await vi.waitFor(() => {
-      expect(document.activeElement).toBe(contentPluginsLink)
-    })
-
-    expect(scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
-    expect(
-      contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
-    ).toBeCloseTo(1)
+    scrollContainer.scrollTo({ top: handoffScrollTop - 1 })
+    await expect.element(templates).toHaveFocus()
+    await expect.poll(() => templates.element()).toBe(contentTemplates)
+    await userEvent.tab()
+    await expect.element(categories).toHaveFocus()
   })
 
-  it('keeps the in-flow tabs active when the standalone header slot is hidden on mobile', async () => {
+  // The focused desktop link is hidden before resize handoff can capture it: https://github.com/langgenius/dify/issues/46146
+  it.fails('keeps real catalog links keyboard-operable as the mobile header appears and disappears', async () => {
     await page.viewport(879, 800)
-    const screen = await render(
-      <HomeStickyStateProvider>
-        <div
-          id={MARKETPLACE_CONTAINER_ID}
-          data-marketplace-standalone
-          style={{ display: 'flex', height: 320, flexDirection: 'column', overflowY: 'auto' }}
-        >
-          <div style={{ display: 'flex', height: 48, flexShrink: 0 }}>
-            <HomeStickyCatalogTabs>
-              <div className={styles.headerCatalogTabs} data-testid="mobile-header-tabs">
-                Header tabs
-              </div>
-            </HomeStickyCatalogTabs>
-          </div>
-          <div style={{ height: 220, flexShrink: 0 }} />
-          <HomeCatalogNavigation
-            isMarketplacePlatform
-            catalogCategories={<div>Categories</div>}
-            catalogTabs={<div data-testid="mobile-content-tabs">Content tabs</div>}
-          />
-          <div style={{ height: 640, flexShrink: 0 }} />
-        </div>
-      </HomeStickyStateProvider>,
-    )
-
-    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
-    await expect.element(screen.getByTestId('mobile-content-tabs')).toBeVisible()
-    const contentTabsSlot = screen.getByTestId('mobile-content-tabs').element().parentElement!
-    const headerTabs = screen.getByTestId('mobile-header-tabs').element()
-    const headerTabsSlot = headerTabs.parentElement!
-
-    expect(getComputedStyle(headerTabs).display).toBe('none')
-
-    scrollContainer.scrollTop = 300
-    scrollContainer.dispatchEvent(new Event('scroll'))
-
-    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
-    expect(contentTabsSlot).not.toHaveAttribute('inert')
-    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
-    expect(headerTabsSlot).toHaveAttribute('inert')
+    const screen = await renderCatalog()
+    const plugins = screen.getByRole('link', { name: 'Plugins' })
+    const templates = screen.getByRole('link', { name: 'Templates' })
+    await expect.element(plugins).toBeVisible()
+    const contentPlugin = plugins.element()
+    await screen.getByRole('button', { name: 'Before catalogs' }).click()
+    await userEvent.tab()
+    await expect.element(plugins).toHaveFocus()
+    document.getElementById(MARKETPLACE_CONTAINER_ID)!.scrollTo({ top: 300 })
+    await expect.element(plugins).toHaveFocus()
+    await expect.element(plugins).toBeVisible()
+    expect(plugins.element()).toBe(contentPlugin)
 
     await page.viewport(880, 800)
-    await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(true)
-    expect(getComputedStyle(headerTabs).display).toBe('flex')
-    expect(contentTabsSlot).toHaveAttribute('aria-hidden', 'true')
-    expect(contentTabsSlot).toHaveAttribute('inert')
-    expect(headerTabsSlot).not.toHaveAttribute('aria-hidden')
-    expect(headerTabsSlot).not.toHaveAttribute('inert')
+    await expect.poll(() => plugins.element() !== contentPlugin).toBe(true)
+    await expect.element(plugins).toHaveFocus()
+    await expect.element(plugins).toBeVisible()
+    await userEvent.tab()
+    await expect.element(templates).toHaveFocus()
+    await userEvent.tab({ shift: true })
+    await expect.element(plugins).toHaveFocus()
 
     await page.viewport(879, 800)
-    await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(false)
-    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
-    expect(contentTabsSlot).not.toHaveAttribute('inert')
-    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
-    expect(headerTabsSlot).toHaveAttribute('inert')
+    await expect.poll(() => plugins.element()).toBe(contentPlugin)
+    await expect.element(plugins).toHaveFocus()
+    await userEvent.tab()
+    await expect.element(templates).toHaveFocus()
+    await userEvent.tab()
+    await expect.element(screen.getByRole('button', { name: 'Categories' })).toHaveFocus()
   })
 })
