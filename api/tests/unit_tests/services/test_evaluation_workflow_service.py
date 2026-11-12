@@ -1,7 +1,6 @@
 """Tests for evaluation-specific workflow service behavior."""
 
 import json
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -83,7 +82,7 @@ def test_evaluation_workflow_requires_declared_end_output() -> None:
         WorkflowService._validate_evaluation_workflow_nodes(workflow)
 
 
-def test_ordinary_publish_preserves_active_evaluation_kind() -> None:
+def test_ordinary_publish_preserves_active_evaluation_kind(sqlite_session: Session) -> None:
     active_workflow_id = str(uuid4())
     app = App(
         id=str(uuid4()),
@@ -97,11 +96,18 @@ def test_ordinary_publish_preserves_active_evaluation_kind() -> None:
         enable_api=True,
         max_active_requests=0,
     )
-    session = MagicMock()
-    session.scalar.return_value = WorkflowKind.EVALUATION
+    active_workflow = _workflow(
+        workflow_id=active_workflow_id,
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        kind=WorkflowKind.EVALUATION,
+        version="1",
+    )
+    sqlite_session.add_all([app, active_workflow])
+    sqlite_session.flush()
 
     kind = WorkflowService._resolve_publish_workflow_kind(
-        session=session,
+        session=sqlite_session,
         app_model=app,
         requested_kind=None,
     )
