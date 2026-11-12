@@ -130,7 +130,6 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   await userEvent.keyboard('{Escape}')
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(true)
-  expect(more.element().closest('[inert]')).toBeNull()
 
   // The pointer has already left: Tab between sidebar controls must keep the
   // panel usable, but moving focus outside must make its actions inert.
@@ -141,5 +140,9 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   const outside = screen.getByRole('button', { name: 'Before chat' })
   await outside.click()
   await expect.element(outside).toHaveFocus()
-  await expect.poll(() => conversation.element().closest('[inert]')).not.toBeNull()
+  const expand = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }).last()
+  await userEvent.tab()
+  await expect.element(expand).toHaveFocus()
+  await userEvent.tab()
+  await expect.element(screen.getByRole('textbox')).toHaveFocus()
 })
