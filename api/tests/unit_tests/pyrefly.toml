@@ -57,7 +57,6 @@ project-excludes = [
   "controllers/trigger/test_trigger.py",
   "controllers/trigger/test_webhook.py",
   "controllers/web/test_human_input_form.py",
-  "controllers/web/test_wraps.py",
   "core/agent/conftest.py",
   "core/agent/output_parser/test_cot_output_parser.py",
   "core/agent/test_cot_agent_runner.py",

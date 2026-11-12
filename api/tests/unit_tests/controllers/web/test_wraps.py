@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Never
@@ -374,7 +375,7 @@ class TestPublicAppAdmissionCases:
 class TestWrapsCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def _reset_logging_context():
+    def _reset_logging_context() -> Generator[None]:
         clear_request_context()
         yield
         clear_request_context()
@@ -384,16 +385,18 @@ class TestWrapsCases:
         from controllers.web import wraps
 
         app_model = _wraps_App(id="app-id", tenant_id="tenant-id")
-        end_user = _wraps_EndUser(id="end-user-id", tenant_id="tenant-id", type=None)
+        end_user = _wraps_EndUser(id="end-user-id", tenant_id="tenant-id", type=None)  # pyrefly: ignore[bad-argument-type]
         clear_request_context()
 
         @wraps.validate_jwt_token
-        def protected_view(received_app, received_user):
+        def protected_view(
+            received_app: _wraps_App, received_user: _wraps_EndUser
+        ) -> tuple[_wraps_App, _wraps_EndUser]:
             assert get_identity_context() == ("tenant-id", "end-user-id", "end_user")
             return received_app, received_user
 
         with mock.patch.object(wraps, "decode_jwt_token", return_value=(app_model, end_user)):
-            result = protected_view()
+            result = protected_view()  # pyrefly: ignore[bad-argument-count]
 
         assert result == (app_model, end_user)
 
@@ -404,14 +407,14 @@ class TestWrapsCases:
         clear_request_context()
 
         @wraps.validate_jwt_token
-        def protected_view(_app, _user):
+        def protected_view(_app: _wraps_App, _user: _wraps_EndUser) -> None:
             raise AssertionError("view must not be called")
 
         with (
             mock.patch.object(wraps, "decode_jwt_token", side_effect=Unauthorized()),
             pytest.raises(Unauthorized),
         ):
-            protected_view()
+            protected_view()  # pyrefly: ignore[bad-argument-count]
 
         assert get_identity_context() == ("", "", "")
 
@@ -424,7 +427,7 @@ class TestWrapsCases:
         tenant_id = str(uuid4())
         app_model = _wraps_App(
             tenant_id=tenant_id,
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT.value,  # pyrefly: ignore[bad-argument-type]
             name="test-app",
             enable_site=True,
             enable_api=True,
@@ -575,15 +578,17 @@ class TestWrapsCases:
     @staticmethod
     @pytest.mark.usefixtures("app_query_services")
     @pytest.mark.parametrize("token", [None, "expired-token"])
-    def test_web_auth_rejects_unknown_app_code_with_http_not_found(app, monkeypatch, token):
+    def test_web_auth_rejects_unknown_app_code_with_http_not_found(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, token: str | None
+    ) -> None:
         from controllers.web import wraps
         from libs.external_api import ExternalApi
 
         class ProtectedApi(wraps.WebApiResource):
-            def get(self, _app, _user):
+            def get(self, _app: _wraps_App, _user: _wraps_EndUser) -> None:
                 pytest.fail("An unknown WebApp must not reach the protected resource")
 
-        def reject_token(_self, _token):
+        def reject_token(_self: object, _token: str) -> None:
             raise Unauthorized("Authentication has expired.")
 
         monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", staticmethod(lambda: True))
