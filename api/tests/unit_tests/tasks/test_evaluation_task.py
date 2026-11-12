@@ -135,7 +135,8 @@ def test_customized_results_remap_positional_indices() -> None:
 
 
 def test_customized_evaluator_skips_rows_where_target_execution_failed(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     evaluation_instance = CapturingEvaluationInstance()
     evaluator_calls: list[dict[str, object]] = []
@@ -198,7 +199,8 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
 
 
 def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_error(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     evaluation_instance = CapturingEvaluationInstance()
 
@@ -1038,7 +1040,8 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(
 
 
 def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     lease = _lease("run-1")
     agent_item = AgentEvaluationItem(

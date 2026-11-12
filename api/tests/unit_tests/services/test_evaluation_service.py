@@ -197,7 +197,8 @@ def test_generated_template_uses_provided_column_names() -> None:
 
 
 def test_generated_template_includes_reference_columns_for_selected_metrics(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     app = App(name="Reference App", mode=AppMode.WORKFLOW)
     monkeypatch.setattr(
@@ -628,13 +629,13 @@ def test_console_supported_metrics_hide_legacy_agent_metrics(monkeypatch: pytest
         EvaluationService,
         "get_supported_metrics",
         lambda *_args, **_kwargs: [
-                "task_completion",
-                "trajectory_quality",
-                "tool_selection_correctness",
-                "tool_argument_correctness",
-                "argument_correctness",
-                "tool_call_accuracy",
-            ],
+            "task_completion",
+            "trajectory_quality",
+            "tool_selection_correctness",
+            "tool_argument_correctness",
+            "argument_correctness",
+            "tool_call_accuracy",
+        ],
     )
 
     assert EvaluationService.get_console_supported_metrics(EvaluationCategory.AGENT) == [
@@ -650,11 +651,11 @@ def test_available_metrics_hide_legacy_agent_metrics(monkeypatch: pytest.MonkeyP
         EvaluationService,
         "_union_supported_metric_names",
         lambda *_args, **_kwargs: [
-                "faithfulness",
-                "task_completion",
-                "argument_correctness",
-                "tool_call_accuracy",
-            ],
+            "faithfulness",
+            "task_completion",
+            "argument_correctness",
+            "tool_call_accuracy",
+        ],
     )
 
     assert EvaluationService.get_available_metrics() == ["faithfulness", "task_completion"]
@@ -725,9 +726,7 @@ def test_validate_config_accepts_native_metric_for_agent_v2_node(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     _persist_app(sqlite_session)
-    workflow = _workflow_with_nodes(
-        [("agent-1", {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"})]
-    )
+    workflow = _workflow_with_nodes([("agent-1", {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"})])
     monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: workflow)
     config = EvaluationConfigData(
         evaluation_model_provider="provider",
@@ -750,7 +749,8 @@ def test_validate_config_accepts_native_metric_for_agent_v2_node(
 
 
 def test_validate_agent_target_accepts_only_native_metrics_for_the_target(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     resolved_agents: list[str] = []
 
@@ -1018,7 +1018,8 @@ def test_knowledge_retrieval_v2_evaluation_scores_full_offloaded_results(
 
 
 def test_validate_config_requires_default_embedding_for_embedding_metrics(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     _persist_app(sqlite_session)
     workflow = _workflow_with_nodes([("node-1", {"type": "llm"})])
@@ -1052,7 +1053,8 @@ def test_validate_config_requires_default_embedding_for_embedding_metrics(
 
 
 def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
     _persist_app(sqlite_session)
@@ -1173,7 +1175,8 @@ def test_validate_workflow_retrieval_metric_preserves_node_scope(
 
 
 def test_validate_workflow_accepts_knowledge_retrieval_v2(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     _persist_app(sqlite_session)
     workflow = _workflow_with_nodes([("retrieval-v2", {"type": "knowledge-retrieval-v2"})])
@@ -1542,6 +1545,7 @@ def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
 
     def send_abort(task_id: str) -> None:
         aborted_tasks.append(task_id)
+
     monkeypatch.setattr(
         "core.app.apps.base_app_queue_manager.AppQueueManager.set_stop_flag_no_user_check",
         stop_flag,
@@ -1725,9 +1729,7 @@ def test_stage_agent_target_cleanup_stops_backend_only_after_commit(
 
     sqlite_session.commit()
 
-    assert stopped_checkpoints == [
-        (tenant_id, [("backend-run-1", "10000000-0000-0000-0000-000000000024")])
-    ]
+    assert stopped_checkpoints == [(tenant_id, [("backend-run-1", "10000000-0000-0000-0000-000000000024")])]
     assert celery_control.revocations == [("celery-task-1", False)]
 
 
@@ -1989,9 +1991,7 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
 
     assert retried.status == EvaluationRunStatus.PENDING
     assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is None
-    assert stopped_checkpoints == [
-        (tenant.id, [("backend-run-old", "30000000-0000-0000-0000-000000000170")])
-    ]
+    assert stopped_checkpoints == [(tenant.id, [("backend-run-old", "30000000-0000-0000-0000-000000000170")])]
     dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
     assert dispatched_payload["target_agent_config_snapshot_id"] == run.target_agent_config_snapshot_id
 
