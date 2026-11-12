@@ -1,3 +1,4 @@
+import type { AnnualDiscountActiveError } from '@dify/contracts/api/console/billing/types.gen'
 import type {
   BillingOperationFailedError,
   BillingRequestInProgressError,
@@ -6,12 +7,14 @@ import type {
 import { isDefinedError, ORPCError } from '@orpc/client'
 
 type BillingErrorCode = (
+  | AnnualDiscountActiveError
   | BillingOperationFailedError
   | BillingRequestInProgressError
   | BillingUnavailableError
 )['code']
 
 const billingErrorMessageKeyByCode = {
+  annual_discount_active: 'errors.annualDiscountActive',
   billing_operation_failed: 'errors.operationFailed',
   billing_request_in_progress: 'errors.requestInProgress',
   billing_unavailable: 'errors.unavailable',
