@@ -1,11 +1,10 @@
 import math
-from typing import Any
-from unittest.mock import MagicMock
+from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import Integer, select
+from sqlalchemy import Integer, create_engine, event, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, ORMExecuteState, Session, mapped_column
 
 from libs.pagination import PaginatedResult, clamp_pagination, paginate_query
 
@@ -18,6 +17,25 @@ class _CountTestRow(_PaginationTestBase):
     __tablename__ = "_count_order_by_test"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+@pytest.fixture
+def pagination_session() -> Iterator[tuple[Session, list[str]]]:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    statements: list[str] = []
+    try:
+        _PaginationTestBase.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add_all(_CountTestRow(id=row_id) for row_id in range(1, 6))
+            session.commit()
+
+            @event.listens_for(session, "do_orm_execute")
+            def capture_statement(state: ORMExecuteState) -> None:
+                statements.append(str(state.statement.compile(dialect=postgresql.dialect())).upper())
+
+            yield session, statements
+    finally:
+        engine.dispose()
 
 
 class TestPaginatedResultPages:
@@ -125,52 +143,32 @@ class TestPaginateQueryCount:
     ordering cannot change (#45734).
     """
 
-    def test_count_strips_order_by_from_the_wrapped_statement(self) -> None:
-        captured: dict[str, Any] = {}
+    def test_count_strips_order_by_from_the_wrapped_statement(
+        self, pagination_session: tuple[Session, list[str]]
+    ) -> None:
+        session, statements = pagination_session
+        stmt = select(_CountTestRow).where(_CountTestRow.id > 2).order_by(_CountTestRow.id.desc())
+        result = paginate_query(stmt, session=session, page=1, per_page=2)
 
-        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination count test needs a mock session to capture the compiled count SQL without a real DB
-        session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
-        session.scalars.return_value.all.return_value = []
+        count_sql, _ = statements
+        assert "ORDER BY" not in count_sql
+        assert result.total == 3
 
+    def test_count_preserves_caller_limit_and_offset(self, pagination_session: tuple[Session, list[str]]) -> None:
+        session, statements = pagination_session
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc()).limit(4).offset(2)
+        result = paginate_query(stmt, session=session, page=1, per_page=10)
+
+        count_sql, _ = statements
+        assert "LIMIT" in count_sql
+        assert "OFFSET" in count_sql
+        assert result.total == 3
+
+    def test_page_query_retains_order_by(self, pagination_session: tuple[Session, list[str]]) -> None:
+        session, statements = pagination_session
         stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
-        paginate_query(stmt, session=session, page=1, per_page=10)
+        result = paginate_query(stmt, session=session, page=2, per_page=2)
 
-        count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
-        assert "ORDER BY" not in count_sql.upper()
-
-    def test_count_preserves_caller_limit_and_offset(self) -> None:
-        """A pre-limited input statement must count the limited window, not the full table.
-
-        Removing ``.limit(None).offset(None)`` from the count base was flagged by
-        @GYJ99: stripping them silently widens a caller's pre-limited statement
-        to the full table in the count subquery.
-        """
-        captured: dict[str, Any] = {}
-
-        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination count test needs a mock session to capture the compiled count SQL without a real DB
-        session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
-        session.scalars.return_value.all.return_value = []
-
-        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc()).limit(2).offset(1)
-        paginate_query(stmt, session=session, page=1, per_page=10)
-
-        count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
-        assert "LIMIT" in count_sql.upper()
-        assert "OFFSET" in count_sql.upper()
-
-    def test_page_query_retains_order_by(self) -> None:
-        """The page query must keep its ORDER BY — only the count loses it."""
-        captured: dict[str, Any] = {}
-
-        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination page-query test needs a mock session to capture the compiled page SQL without a real DB
-        session.scalar.return_value = 0
-        session.scalars.side_effect = lambda stmt: (
-            captured.__setitem__("page_stmt", stmt),
-            MagicMock(all=lambda: []),
-        )[1]
-
-        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
-        paginate_query(stmt, session=session, page=1, per_page=10)
-
-        page_sql = str(captured["page_stmt"].compile(dialect=postgresql.dialect()))
-        assert "ORDER BY" in page_sql.upper()
+        _, page_sql = statements
+        assert "ORDER BY" in page_sql
+        assert [row.id for row in result.items] == [3, 2]
