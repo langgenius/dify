@@ -134,3 +134,31 @@ it('adds attachment mode once while preserving file-preview URL shape', async ()
       '//localhost:5001/files/123/file-preview?timestamp=1&as_attachment=true#page',
     )
 })
+
+it('keeps a malformed file-preview link renderable instead of crashing the conversation', async () => {
+  const screen = await render(
+    <div>
+      <Link
+        node={{
+          properties: {
+            href: 'http://host.example:99999/files/abc123/file-preview?timestamp=1&nonce=2&sign=3',
+          },
+        }}
+      >
+        Broken attachment
+      </Link>
+      <Link node={{ properties: { href: 'https://example.com' } }}>Normal link</Link>
+    </div>,
+  )
+
+  await expect.element(screen.getByText('Broken attachment')).toBeVisible()
+  await expect
+    .element(screen.getByRole('link', { name: 'Broken attachment' }))
+    .toHaveAttribute(
+      'href',
+      'http://host.example:99999/files/abc123/file-preview?timestamp=1&nonce=2&sign=3',
+    )
+  await expect
+    .element(screen.getByRole('link', { name: 'Normal link' }))
+    .toHaveAttribute('href', 'https://example.com')
+})
