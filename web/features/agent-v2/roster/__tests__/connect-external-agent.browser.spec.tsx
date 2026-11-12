@@ -6,7 +6,6 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
 import common from '@/i18n/locales/en-US/common.json'
-import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -16,19 +15,17 @@ import { createExternalOperation, createExternalVerification } from './external-
 const requests = vi.hoisted(() => ({
   verify: vi.fn(),
   create: vi.fn(),
-  capabilities: vi.fn(),
   push: vi.fn(),
 }))
 // boundary: restore real English translations for browser interactions.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
-// boundary: replace Console transport responses, preserving generated operation keys and policies.
+// boundary: replace Verify/Create transport responses while keeping the temporary capabilities policy real.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'externalAgents.capabilities.get': requests.capabilities,
       'externalAgents.verify.post': requests.verify,
       'externalAgents.post': requests.create,
     }),
@@ -82,7 +79,6 @@ beforeEach(({ onTestFinished }) => {
   onTestFinished(guardUnexpectedFetch())
   requests.verify.mockReset().mockResolvedValue(createExternalVerification())
   requests.create.mockReset().mockResolvedValue(createExternalOperation())
-  requests.capabilities.mockReset().mockResolvedValue(createExternalAgentCapabilities())
   requests.push.mockReset()
 })
 
