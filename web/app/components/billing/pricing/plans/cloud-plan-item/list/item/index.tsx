@@ -1,4 +1,5 @@
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import type { PlanFeatureExplanation } from '../../../../plan-feature-infotip'
+import { InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useId } from 'react'
 
 export function CloudPlanFeature({ label, description }: { label: string; description?: string }) {
@@ -14,17 +15,13 @@ export function CloudPlanFeature({ label, description }: { label: string; descri
         {label}
       </span>
       {description && (
-        <Infotip>
-          <InfotipTrigger
-            aria-labelledby={labelId}
-            iconVariant="information"
-            iconSize="small"
-            className="relative -m-1 size-[18px] text-(--pricing-info)"
-          />
-          <InfotipContent aria-labelledby={labelId} className="max-w-80 whitespace-pre-wrap">
-            {description}
-          </InfotipContent>
-        </Infotip>
+        <InfotipTrigger<PlanFeatureExplanation>
+          aria-labelledby={labelId}
+          payload={{ labelId, description }}
+          iconVariant="information"
+          iconSize="small"
+          className="relative -m-1 size-[18px] text-(--pricing-info)"
+        />
       )}
     </li>
   )
