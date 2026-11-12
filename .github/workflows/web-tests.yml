@@ -131,6 +131,22 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+      # Temporary draft-PR experiment: reuse one existing runner, never add a job.
+      - name: Benchmark browser runtime candidates
+        if: matrix.shardIndex == 1
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: node ./scripts/benchmark-browser-tests.mjs
+
+      - name: Upload browser performance results
+        if: ${{ always() && !cancelled() && matrix.shardIndex == 1 }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-performance
+          path: web/.vitest-browser/performance/results.json
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload browser failure artifacts
         if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
