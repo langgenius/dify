@@ -1,8 +1,5 @@
-import base64
 import hashlib
-import hmac
 import logging
-import os
 import time
 from collections.abc import Callable
 from dataclasses import replace
@@ -100,7 +97,6 @@ class FileScanService:
             mime_type=mime_type,
             file_hash=file_hash,
             load=lambda: storage.load_once(key),
-            download_url=lambda: signed_upload_file_url(upload_file_id),
         )
         outcome = self.scan(
             tenant_id=tenant_id,
@@ -206,7 +202,7 @@ class FileScanService:
             scanner: FileScanner | None = None
             config_error = ""
             try:
-                scanner = build_scanner(session, tenant_id, provider)
+                scanner = build_scanner(tenant_id, provider)
             except ScannerConfigError as error:
                 config_error = str(error)
 
@@ -355,18 +351,6 @@ class FileScanService:
         except Exception:
             logger.exception("Failed to store the file scan record for %s", target.file_name)
             return None
-
-
-def signed_upload_file_url(upload_file_id: str) -> str:
-    """A download URL for one ``UploadFile``, valid for ``FILES_ACCESS_TIMEOUT`` seconds."""
-    timestamp = str(int(time.time()))
-    nonce = os.urandom(16).hex()
-    message = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-    digest = hmac.new(dify_config.SECRET_KEY.encode(), message.encode(), hashlib.sha256).digest()
-    sign = base64.urlsafe_b64encode(digest).decode()
-    return (
-        f"{dify_config.FILES_URL}/files/{upload_file_id}/file-preview?timestamp={timestamp}&nonce={nonce}&sign={sign}"
-    )
 
 
 def _disabled() -> ScanOutcome:

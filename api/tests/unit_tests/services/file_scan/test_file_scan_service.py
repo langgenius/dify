@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar, override
 
+import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -93,7 +94,7 @@ def _settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _use_scanner(monkeypatch: pytest.MonkeyPatch, *verdicts: ScanVerdict) -> _Scanner:
     scanner = _Scanner(*verdicts)
-    monkeypatch.setattr(service_module, "build_scanner", lambda _session, _tenant_id, _provider: scanner)
+    monkeypatch.setattr(service_module, "build_scanner", lambda _tenant_id, _provider: scanner)
     return scanner
 
 
@@ -256,7 +257,7 @@ def test_one_bad_file_does_not_change_the_outcome_of_the_others(
             del external_id
             return verdicts[target.file_name]
 
-    monkeypatch.setattr(service_module, "build_scanner", lambda _session, _tenant_id, _provider: ByName())
+    monkeypatch.setattr(service_module, "build_scanner", lambda _tenant_id, _provider: ByName())
     ids = [
         _seed(
             sqlite_session_factory,
@@ -476,7 +477,7 @@ def test_missing_provider_missing_file_and_broken_settings_block_with_a_reason(
     other_tenant = service.scan_upload_file(tenant_id=OTHER_TENANT_ID, upload_file_id=upload_file_id, scope=SCOPE)
     assert other_tenant.status == "disabled"
 
-    def broken(_session: Session, _tenant_id: str, _provider: FileScanProvider) -> FileScanner:
+    def broken(_tenant_id: str, _provider: FileScanProvider) -> FileScanner:
         raise ScannerConfigError("ClamAV is not configured for this deployment")
 
     monkeypatch.setattr(service_module, "build_scanner", broken)
@@ -492,7 +493,7 @@ def test_missing_provider_missing_file_and_broken_settings_block_with_a_reason(
 def test_unexpected_failure_stops_only_this_file_and_never_raises(
     sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def explode(_session: Session, _tenant_id: str, _provider: FileScanProvider) -> FileScanner:
+    def explode(_tenant_id: str, _provider: FileScanProvider) -> FileScanner:
         raise RuntimeError("decryption failed")
 
     monkeypatch.setattr(service_module, "build_scanner", explode)
@@ -502,17 +503,6 @@ def test_unexpected_failure_stops_only_this_file_and_never_raises(
     outcome = _scan(service, upload_file_id)
 
     assert (outcome.allowed, outcome.code) == (False, ScanErrorCode.UNAVAILABLE)
-
-
-def test_signed_upload_file_url_matches_the_file_preview_signature(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(service_module.dify_config, "FILES_URL", "https://files.example")
-    monkeypatch.setattr(service_module.dify_config, "SECRET_KEY", "secret")
-
-    url = service_module.signed_upload_file_url("file-1")
-
-    assert url.startswith("https://files.example/files/file-1/file-preview?timestamp=")
-    assert "&nonce=" in url
-    assert "&sign=" in url
 
 
 # --- policies and providers
@@ -800,3 +790,61 @@ def test_stored_key_is_never_sent_to_a_new_address_unless_it_is_entered_again(
     )
     assert moved.config == {"endpoint": "https://other.example"}
     assert checked_scanner.seen_credentials[-1] == {"api_key": "new-secret"}
+
+
+def test_custom_endpoint_keeps_its_own_address_and_key(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core.file_scan.scanners import api as api_module
+
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    def respond(method: str, url: str, **kwargs: object) -> httpx.Response:
+        del method
+        calls.append((url, kwargs))
+        return httpx.Response(200, json={"verdict": "clean"})
+
+    monkeypatch.setattr(api_module, "http_request", respond)
+    providers = FileScanProviderService(sqlite_session_factory)
+
+    with pytest.raises(FileScanValidationError, match="endpoint must be an http or https URL"):
+        providers.create(
+            tenant_id=TENANT_ID,
+            account_id=ACCOUNT_ID,
+            name="Mine",
+            provider_type="api",
+            config={"endpoint": "ftp://scanner.example"},
+            credentials={"api_key": "secret"},
+        )
+    with pytest.raises(FileScanValidationError, match="api_key is required"):
+        providers.create(
+            tenant_id=TENANT_ID,
+            account_id=ACCOUNT_ID,
+            name="Mine",
+            provider_type="api",
+            config={"endpoint": "https://scanner.example/scan"},
+            credentials={},
+        )
+    assert calls == []
+
+    created = providers.create(
+        tenant_id=TENANT_ID,
+        account_id=ACCOUNT_ID,
+        name="Mine",
+        provider_type="api",
+        config={"endpoint": "https://scanner.example/scan"},
+        credentials={"api_key": "secret"},
+    )
+
+    assert (created.config, created.credentials_set) == (
+        {"endpoint": "https://scanner.example/scan"},
+        {"api_key": True},
+    )
+    url, kwargs = calls[0]
+    assert url == "https://scanner.example/scan"
+    assert kwargs["headers"] == {"Authorization": "Bearer secret"}
+
+    # The stored key is not sent to a different address unless it is entered again.
+    with pytest.raises(FileScanValidationError, match="Enter the credentials again"):
+        providers.update(tenant_id=TENANT_ID, provider_id=created.id, config={"endpoint": "https://collector.example"})
+    assert len(calls) == 1

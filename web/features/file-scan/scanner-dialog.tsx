@@ -33,7 +33,6 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { ProviderTypeIcon } from './provider-type-icon'
@@ -57,6 +56,15 @@ type FileScanProviderDialogProps = {
 
 const stringSetting = (value: unknown) => (typeof value === 'string' ? value : '')
 
+function isHttpUrl(value: string) {
+  try {
+    const { protocol } = new URL(value)
+    return protocol === 'http:' || protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function FileScanProviderDialog({
   onOpenChange,
   onSaved,
@@ -69,7 +77,6 @@ export function FileScanProviderDialog({
   const typeLabel = useFileScanProviderTypeLabel()
   const typeLabelId = useId()
   const privateProcessingId = useId()
-  const customEndpointLabelId = useId()
   const availableTypes = FILE_SCAN_PROVIDER_TYPES.filter((candidate) =>
     providerTypes.some((item) => item.provider_type === candidate && item.available),
   )
@@ -86,10 +93,6 @@ export function FileScanProviderDialog({
   const [privateProcessing, setPrivateProcessing] = useState(
     provider?.config.private_processing === true,
   )
-  const [customEndpointId, setCustomEndpointId] = useState(() =>
-    stringSetting(provider?.config.api_based_extension_id),
-  )
-  const [customEndpointMissing, setCustomEndpointMissing] = useState(false)
   const createMutation = useMutation(
     consoleQuery.fileScan.providers.post.mutationOptions({ context: { silent: true } }),
   )
@@ -102,6 +105,13 @@ export function FileScanProviderDialog({
   const saveError = createMutation.error ?? updateMutation.error
   const credentialFields =
     providerTypes.find((item) => item.provider_type === type)?.credential_fields ?? []
+
+  // The backend refuses to send stored credentials to a new address, so a changed address needs
+  // the secrets typed again.
+  const addressChanged =
+    provider !== undefined &&
+    (type === 'cloudmersive' || type === 'api') &&
+    endpoint.trim() !== stringSetting(provider.config.endpoint)
 
   const resetSaveError = () => {
     createMutation.reset()
@@ -116,15 +126,11 @@ export function FileScanProviderDialog({
 
   const handleSubmit = () => {
     if (!type || isSaving) return
-    if (type === 'api' && !customEndpointId) {
-      setCustomEndpointMissing(true)
-      return
-    }
     const config: Record<string, unknown> = {}
-    if (type === 'cloudmersive' && endpoint.trim()) config.endpoint = endpoint.trim()
+    if ((type === 'cloudmersive' || type === 'api') && endpoint.trim())
+      config.endpoint = endpoint.trim()
     if (type === 'scanii') config.region = region
     if (type === 'metadefender') config.private_processing = privateProcessing
-    if (type === 'api') config.api_based_extension_id = customEndpointId
     // A blank secret keeps the stored value when editing, so only typed secrets are sent.
     const typedCredentials = Object.fromEntries(
       credentialFields
@@ -163,15 +169,7 @@ export function FileScanProviderDialog({
           </DialogTitle>
           <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
         </DialogHeader>
-        <Form
-          className="contents"
-          onSubmit={(event) => {
-            event.preventDefault()
-            // The Custom Endpoint selector portals its own form, whose submit bubbles through React.
-            if (event.target !== event.currentTarget) return
-            handleSubmit()
-          }}
-        >
+        <Form className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <div id={typeLabelId} className="system-sm-medium text-text-secondary">
@@ -198,7 +196,7 @@ export function FileScanProviderDialog({
                       onClick={() => {
                         setSelectedType(candidate)
                         setCredentials({})
-                        setCustomEndpointMissing(false)
+                        setEndpoint('')
                         resetSaveError()
                       }}
                     >
@@ -243,8 +241,36 @@ export function FileScanProviderDialog({
               </FieldError>
             </Field>
 
+            {type === 'api' && (
+              <Field
+                name="endpoint"
+                validate={(value) =>
+                  typeof value === 'string' && value.trim() && !isHttpUrl(value.trim())
+                    ? t(($) => $['dialog.endpointUrlInvalid'])
+                    : null
+                }
+              >
+                <FieldLabel>{t(($) => $['dialog.endpointUrl'])}</FieldLabel>
+                <Input
+                  required
+                  maxLength={512}
+                  value={endpoint}
+                  placeholder="https://scanner.example.com/scan"
+                  onValueChange={setEndpoint}
+                />
+                <FieldDescription>{t(($) => $['dialog.endpointUrlDescription'])}</FieldDescription>
+                <FieldError match="valueMissing">
+                  {tCommon(($) => $['errorMsg.fieldRequired'], {
+                    field: t(($) => $['dialog.endpointUrl']),
+                  })}
+                </FieldError>
+                <FieldError match="customError" />
+              </Field>
+            )}
+
             {credentialFields.map((field) => {
-              const stored = provider?.credentials_set[field] === true
+              const saved = provider?.credentials_set[field] === true
+              const stored = saved && !addressChanged
               return (
                 <Field key={`${type}-${field}`} name={field}>
                   <FieldLabel>{credentialLabel(field)}</FieldLabel>
@@ -258,6 +284,9 @@ export function FileScanProviderDialog({
                       setCredentials((current) => ({ ...current, [field]: value }))
                     }
                   />
+                  {saved && addressChanged && (
+                    <FieldDescription>{t(($) => $['dialog.reenterApiKey'])}</FieldDescription>
+                  )}
                   <FieldError match="valueMissing">
                     {tCommon(($) => $['errorMsg.fieldRequired'], {
                       field: credentialLabel(field),
@@ -323,30 +352,6 @@ export function FileScanProviderDialog({
                   />
                 </div>
               </Field>
-            )}
-
-            {type === 'api' && (
-              <div
-                role="group"
-                aria-labelledby={customEndpointLabelId}
-                className="flex flex-col gap-1"
-              >
-                <div id={customEndpointLabelId} className="system-sm-medium text-text-secondary">
-                  {tCommon(($) => $['apiBasedExtension.selector.title'])}
-                </div>
-                <ApiBasedExtensionSelector
-                  value={customEndpointId}
-                  onChange={(id) => {
-                    setCustomEndpointId(id)
-                    setCustomEndpointMissing(false)
-                  }}
-                />
-                {customEndpointMissing && (
-                  <p role="alert" className="system-xs-regular text-text-destructive">
-                    {t(($) => $['dialog.customEndpointRequired'])}
-                  </p>
-                )}
-              </div>
             )}
 
             {saveError ? (
