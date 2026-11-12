@@ -2,6 +2,7 @@
 
 import type { RefObject } from 'react'
 import type { ExternalAgentListItem } from './external-agent-list'
+import type { IconPickerInputValue } from '@/app/components/base/icon-picker'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -28,8 +29,10 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
 
 export type ExternalAgentActionRequest = {
   kind: 'edit' | 'toggle' | 'delete'
@@ -38,7 +41,21 @@ export type ExternalAgentActionRequest = {
   adjacentFocusTargets: HTMLElement[]
 }
 
-type AgentInfo = Pick<ExternalAgentListItem, 'name' | 'role' | 'description'>
+type AgentInfo = Pick<ExternalAgentListItem, 'name' | 'role' | 'description' | 'icon'>
+
+function getPickerIcon(icon: ExternalAgentListItem['icon']): IconPickerInputValue | undefined {
+  if (!icon) return undefined
+  if (icon.icon_type === 'image') {
+    if (!icon.icon_url) return undefined
+    return icon.icon
+      ? { type: 'image', fileId: icon.icon, url: icon.icon_url }
+      : { type: 'link', url: icon.icon_url }
+  }
+  if (icon.icon_type === 'link') return icon.icon ? { type: 'link', url: icon.icon } : undefined
+  return icon.icon
+    ? { type: 'emoji', icon: icon.icon, background: icon.icon_background }
+    : undefined
+}
 
 type ExternalAgentActionsProps = {
   request: ExternalAgentActionRequest | undefined
@@ -59,6 +76,7 @@ function EditAgentInfo({
   onSubmit: (fields: AgentInfo) => void
 }) {
   const { t } = useTranslation(['agentRoster', 'common'])
+  const [icon, setIcon] = useState(agent.icon)
   return (
     <Form<AgentInfo>
       className="contents"
@@ -67,21 +85,51 @@ function EditAgentInfo({
           name: fields.name.trim(),
           role: fields.role.trim(),
           description: fields.description.trim(),
+          icon,
         })
       }
     >
       <DialogBody className="space-y-4">
         <div className="flex items-end gap-4">
-          <AppIcon
-            icon={agent.icon}
-            size="xxl"
-            shape="circle"
-            className="size-16"
-            fallback={{
-              content: <span className="i-ri-robot-2-line size-8 text-text-tertiary" />,
-              background: 'var(--color-background-section-burn)',
+          <IconPicker
+            value={getPickerIcon(icon)}
+            onValueChange={(selection) => {
+              setIcon(
+                selection.type === 'emoji'
+                  ? {
+                      icon_type: 'emoji',
+                      icon: selection.icon,
+                      icon_background: selection.background,
+                    }
+                  : { icon_type: 'image', icon: selection.fileId, icon_url: selection.url },
+              )
             }}
-          />
+          >
+            <IconPickerTrigger
+              aria-label={t(($) => $['roster.createForm.changeIcon'])}
+              className="group/icon relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-full"
+            >
+              <AppIcon
+                icon={icon}
+                size="xxl"
+                shape="circle"
+                className="size-16"
+                fallback={{
+                  content: (
+                    <span aria-hidden className="i-ri-robot-2-line size-8 text-text-tertiary" />
+                  ),
+                  background: 'var(--color-components-icon-bg-midnight-soft)',
+                }}
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#1a2133]/60 opacity-0 transition-opacity group-hover/icon:opacity-100 group-focus-visible/icon:opacity-100 motion-reduce:transition-none"
+              >
+                <span className="i-ri-edit-line size-5.5 text-white" />
+              </span>
+            </IconPickerTrigger>
+            <IconPickerContent />
+          </IconPicker>
           <Field
             name="name"
             className="min-w-0 flex-1 pb-1"
