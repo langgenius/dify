@@ -12,9 +12,17 @@ from typing import TypedDict, cast
 import pytest
 from pydantic import ValidationError
 
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
+from core.entities.provider_entities import (
+    HostedAudioSourceFact,
+    HostedEmbeddingSourceFact,
+    HostedSourceVariantFact,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+)
 from core.hosting_configuration import HostingProvider, PaidHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from services.entities.model_billing_audio_mapping import SelectedAudioSourceVariant
 from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
 from services.entities.model_billing_gemini_v8_mapping import SelectedGeminiV8SourceVariant
 from services.entities.model_billing_mapping import (
@@ -46,6 +54,7 @@ from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACT
 from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS as CURRENT_SOURCE_CONTRACTS
 from services.model_billing_source_variants import SourceVariantContext, selection_payload, source_endpoint_class
 from tests.helpers.unit import model_billing_gemini_v8_profiles as gemini_v8
+from tests.helpers.unit import model_billing_openai110_artifact_profiles as artifact110
 from tests.helpers.unit.model_billing_source_profiles import (
     DAEMON_REVISION,
     EMBEDDING_MODELS,
@@ -69,6 +78,111 @@ from tests.unit_tests.services.test_model_billing_openai_chat_adapter import bui
 REVISION = "source-variants-new-v2"
 OFFICIAL_ROOT_REVISION = "source-variants-official-root-v1"
 IDENTITY = ("langgenius/openai/openai", ModelType.LLM, "gpt-4o-mini")
+
+
+class _ArtifactFacts(TypedDict):
+    fact: HostedSourceVariantFact | None
+    embedding_fact: HostedEmbeddingSourceFact | None
+    audio_fact: HostedAudioSourceFact | None
+
+
+@pytest.mark.parametrize(
+    ("family", "row", "selector", "endpoint"),
+    [(family, *case) for family in artifact110.COUNTS for case in artifact110.cases(family)],
+    ids=[
+        family + "|" + r["profile_id"] + "|" + s + "|" + e
+        for family in artifact110.COUNTS
+        for r, s, e in artifact110.cases(family)
+    ],
+)
+def test_exact1ded_registry_context_factory_and_saved_selection_remain_uid_bound(
+    family: str, row: artifact110.ArtifactProfile, selector: str, endpoint: str
+) -> None:
+    from services.model_billing_mapping_service import hosted_audio_source_fact
+
+    catalog, _ = artifact110.schemas(family, row)
+    identity = (artifact110.PROVIDER, catalog.model_type, row["source_model"])
+    record = artifact110.mapping_record(family, row, selector, endpoint)
+    registry = source_mapping_revision(json.dumps([record]), artifact110.REVISION)
+    credentials: dict[str, object] = {
+        "openai_api_base": "https://api.openai.com" if endpoint == "official_root" else None,
+        "api_protocol": None if selector == "absent" else selector,
+        "enable_request_metadata": "disabled",
+    }
+
+    def capture(credentials: dict[str, object]) -> _ArtifactFacts:
+        result: _ArtifactFacts = {"fact": None, "embedding_fact": None, "audio_fact": None}
+        if family == "audio":
+            result["audio_fact"] = hosted_audio_source_fact(
+                provider=artifact110.PROVIDER,
+                source_uid=artifact110.SOURCE_UID,
+                models=[catalog],
+                credentials=credentials,
+            )
+        elif family == "embedding":
+            result["embedding_fact"] = hosted_embedding_source_fact(
+                provider=artifact110.PROVIDER,
+                source_uid=artifact110.SOURCE_UID,
+                models=[catalog],
+                credentials=credentials,
+            )
+        else:
+            result["fact"] = hosted_source_variant_fact(
+                provider=artifact110.PROVIDER,
+                source_uid=artifact110.SOURCE_UID,
+                models=[catalog],
+                credentials=credentials,
+            )
+        return result
+
+    facts = capture(credentials)
+    selected = resolve_source_mapping(
+        registry,
+        identity,
+        source_uid=artifact110.SOURCE_UID,
+        schema=catalog,
+        fact=facts["fact"],
+        embedding_fact=facts["embedding_fact"],
+        audio_fact=facts["audio_fact"],
+    )
+    assert isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant, SelectedAudioSourceVariant))
+    contract = build_source_adapter_contract(
+        selected,
+        source_provider=artifact110.PROVIDER,
+        source_plugin_unique_identifier=artifact110.SOURCE_UID,
+        source_schema=catalog,
+        source_credentials=None,
+    )
+    assert isinstance(contract, SourceParameterContract)
+    assert contract == restore_variant_source_contract(selected)
+    assert contract.profile_id == row["profile_id"]
+    assert contract.source_plugin_unique_identifier == artifact110.SOURCE_UID
+    frozen = selection_payload(selected).model_dump(mode="json")
+    assert registry.restore_selection(identity, frozen) == selected
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant"):
+        registry.restore_selection(identity, {**frozen, "source_plugin_uid": artifact110.OLD_UID})
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant"):
+        resolve_source_mapping(
+            registry,
+            identity,
+            source_uid=artifact110.OLD_UID,
+            schema=catalog,
+            fact=facts["fact"],
+            embedding_fact=facts["embedding_fact"],
+            audio_fact=facts["audio_fact"],
+        )
+    bad_credentials: dict[str, object] = {**credentials, "openai_api_base": "https://api.openai.com/v1"}
+    facts = capture(bad_credentials)
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant"):
+        resolve_source_mapping(
+            registry,
+            identity,
+            source_uid=artifact110.SOURCE_UID,
+            schema=catalog,
+            fact=facts["fact"],
+            embedding_fact=facts["embedding_fact"],
+            audio_fact=facts["audio_fact"],
+        )
 
 
 def variant_record() -> dict[str, object]:

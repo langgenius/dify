@@ -24,6 +24,9 @@ OPENAI_TTS_SOURCE_ADAPTER_ID = "openai_tts_source_v1"
 OPENAI_STT_SOURCE_ADAPTER_ID = "openai_stt_source_v1"
 OPENAI_AUDIO_SOURCE_ADAPTER_REVISION = "1"
 OPENAI_AUDIO_SOURCE_PROVIDER = "langgenius/openai/openai"
+OPENAI_AUDIO_ARTIFACT_SOURCE_UID = (
+    "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340"
+)
 OPENAI_AUDIO_SOURCE_UIDS: dict[Literal["042", "110"], str] = {
     "042": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
     "110": "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
@@ -221,6 +224,100 @@ _REVIEWED_CONTRACTS = (
 )
 
 
+# Separate exact signed artifact; historical tuples above remain immutable.
+_ARTIFACT_REVIEWED_CONTRACTS = (
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-stt-runtime-v1:gpt-4o-mini-transcribe",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini-transcribe",
+        source_schema_digest="sha256:d5068efeab303d9c9b3069c340399a2b073692a62165ab0e6d45171ac61540a3",
+        source_runtime_schema_digest="sha256:d5068efeab303d9c9b3069c340399a2b073692a62165ab0e6d45171ac61540a3",
+        target_model="gpt-4o-mini-transcribe",
+        rules_digest="sha256:6bca34fb26ae0fde4ca728c243059687316cae47f1bb6380d84cfda90d253f39",
+        adapter_id="openai_stt_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-stt-runtime-v1:gpt-4o-mini-transcribe-2025-12-15",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini-transcribe-2025-12-15",
+        source_schema_digest="sha256:5eb68970739004f64a281a8fd5c1087efe357e95ec185dcf3b88d6031000449f",
+        source_runtime_schema_digest="sha256:5eb68970739004f64a281a8fd5c1087efe357e95ec185dcf3b88d6031000449f",
+        target_model="gpt-4o-mini-transcribe-2025-12-15",
+        rules_digest="sha256:b4b3da5deec887b263f6655bc65f36be2180d40b499bf5c21e7e658f886f682c",
+        adapter_id="openai_stt_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-tts-runtime-v1:gpt-4o-mini-tts-2025-12-15",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini-tts-2025-12-15",
+        source_schema_digest="sha256:c2655154bee21e8e1f1d926e742847f0a622676d222a45c560803e848e4a0928",
+        source_runtime_schema_digest="sha256:c2655154bee21e8e1f1d926e742847f0a622676d222a45c560803e848e4a0928",
+        target_model="gpt-4o-mini-tts-2025-12-15",
+        rules_digest="sha256:4a48dc36ce1f8a3b8067227d735e797d878b8b8d5f4c524ad868a033e0283c66",
+        adapter_id="openai_tts_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-stt-runtime-v1:gpt-4o-transcribe",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-transcribe",
+        source_schema_digest="sha256:4954f8df114cf53b275da42a71f58a645ca702f5423c6cdde49c2bfab48c5c85",
+        source_runtime_schema_digest="sha256:4954f8df114cf53b275da42a71f58a645ca702f5423c6cdde49c2bfab48c5c85",
+        target_model="gpt-4o-transcribe",
+        rules_digest="sha256:d7cea996b55272c3f6be78c24ff03bec46c9dea51a5eb1365e199805b5656f0a",
+        adapter_id="openai_stt_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-stt-runtime-v1:gpt-4o-transcribe-diarize",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-transcribe-diarize",
+        source_schema_digest="sha256:f255fa546661d957977d13b09fe717a4166f4745f63d50b1c8b2b7813368294c",
+        source_runtime_schema_digest="sha256:f255fa546661d957977d13b09fe717a4166f4745f63d50b1c8b2b7813368294c",
+        target_model="gpt-4o-transcribe-diarize",
+        rules_digest="sha256:3919b0b8ed5df6bfada310a857de4ad1a9b75f3c535852e73a8ac832266be7d3",
+        adapter_id="openai_stt_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-tts-runtime-v1:tts-1",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="tts-1",
+        source_schema_digest="sha256:4368f72c4ff64235d8e2b8c18085eda762613270002428a7487af785353e1367",
+        source_runtime_schema_digest="sha256:4368f72c4ff64235d8e2b8c18085eda762613270002428a7487af785353e1367",
+        target_model="tts-1",
+        rules_digest="sha256:6c07c99aadcb106700df530a5aa741ef07389e62a73431e26d3afe75e830c508",
+        adapter_id="openai_tts_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-tts-runtime-v1:tts-1-hd",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="tts-1-hd",
+        source_schema_digest="sha256:449b7ee4c0fbbb61c8641c56d6092d1331a54595013a7102e22e85c5e88fb126",
+        source_runtime_schema_digest="sha256:449b7ee4c0fbbb61c8641c56d6092d1331a54595013a7102e22e85c5e88fb126",
+        target_model="tts-1-hd",
+        rules_digest="sha256:060e34e3467f8b2ad3eed7b1503d8e7dc412d955b984da5a90b1422df69d986c",
+        adapter_id="openai_tts_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIAudioSourceContract(
+        profile_id="openai-audio-110-1ded-stt-runtime-v1:whisper-1",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="whisper-1",
+        source_schema_digest="sha256:ff1b5d7a2a2a148d2a258f9616ec2b2b562a3eca8536e012e11741240d2baf96",
+        source_runtime_schema_digest="sha256:ff1b5d7a2a2a148d2a258f9616ec2b2b562a3eca8536e012e11741240d2baf96",
+        target_model="whisper-1",
+        rules_digest="sha256:5f822bb1653181ab4a0cf0fb4c92bc9158171c7889a574513bc304fee6b72822",
+        adapter_id="openai_stt_source_v1",
+        algorithm_revision="1",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, *_ARTIFACT_REVIEWED_CONTRACTS)
+
+
 def validate_openai_audio_settings(settings: SourceAudioSettings) -> None:
     endpoint = getattr(settings, "source_endpoint_class", None)
     protocol = getattr(settings, "api_protocol_behavior", None)
@@ -239,6 +336,8 @@ def validate_openai_audio_settings(settings: SourceAudioSettings) -> None:
 
 def _version(uid: str) -> Literal["042", "110"]:
     if type(uid) is str:
+        if uid == OPENAI_AUDIO_ARTIFACT_SOURCE_UID:
+            return "110"
         for version, expected in OPENAI_AUDIO_SOURCE_UIDS.items():
             if uid == expected:
                 return version
@@ -302,7 +401,8 @@ def _schema_digest(schema: AIModelEntity, source_model: str, model_type: ModelTy
 def _profile_id(source_model: str, uid: str, adapter_id: str) -> str:
     version = _version(uid)
     kind = "tts" if _kind(adapter_id) is ModelType.TTS else "stt"
-    return f"openai-audio-{version}-{kind}-runtime-v1:{source_model}"
+    artifact = "-1ded" if uid == OPENAI_AUDIO_ARTIFACT_SOURCE_UID else ""
+    return f"openai-audio-{version}{artifact}-{kind}-runtime-v1:{source_model}"
 
 
 def _runtime_pin(
@@ -333,7 +433,7 @@ def openai_audio_source_marker(
     model_type: ModelType,
     target_model: str,
 ) -> dict[str, object]:
-    if type(contract) is not OpenAIAudioSourceContract or contract not in _REVIEWED_CONTRACTS:
+    if type(contract) is not OpenAIAudioSourceContract or contract not in _ALL_REVIEWED_CONTRACTS:
         raise OpenAIAudioSourceAdapterError("Unreviewed frozen OpenAI audio source contract")
     validate_openai_audio_identity(
         adapter_id=contract.adapter_id,
@@ -382,7 +482,14 @@ def build_openai_audio_source_contract(
     )
     actual_catalog_digest = _schema_digest(source_schema, source_model, kind)
     profile = _profile_id(source_model, source_plugin_unique_identifier, adapter_id)
-    contract = next((c for c in _REVIEWED_CONTRACTS if c.profile_id == profile), None)
+    contract = next(
+        (
+            c
+            for c in _ALL_REVIEWED_CONTRACTS
+            if c.profile_id == profile and c.source_plugin_unique_identifier == source_plugin_unique_identifier
+        ),
+        None,
+    )
     if (
         contract is None
         or type(adapter_revision) is not str
@@ -440,7 +547,14 @@ def restore_openai_audio_source_contract(
         or any(type(v) is not str for k, v in marker.items() if k != "schema_version")
     ):
         raise OpenAIAudioSourceAdapterError("Invalid frozen OpenAI audio source marker")
-    contract = next((c for c in _REVIEWED_CONTRACTS if c.profile_id == marker["profile_id"]), None)
+    contract = next(
+        (
+            c
+            for c in _ALL_REVIEWED_CONTRACTS
+            if c.profile_id == marker["profile_id"] and c.source_plugin_unique_identifier == marker["source_plugin_uid"]
+        ),
+        None,
+    )
     if contract is None:
         raise OpenAIAudioSourceAdapterError("Invalid frozen OpenAI audio source marker")
     expected = openai_audio_source_marker(

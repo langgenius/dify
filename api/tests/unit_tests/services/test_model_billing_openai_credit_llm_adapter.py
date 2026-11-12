@@ -19,6 +19,9 @@ from services.entities.model_billing_mapping import (
     SourceVariantSettings,
     model_schema_digest,
 )
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import ArtifactProfile
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import cases as _artifact_cases
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import verify_factory_case as _verify_artifact_case
 
 _FIXTURES = Path(__file__).with_name("fixtures")
 
@@ -414,3 +417,14 @@ def test_dated_marker_keeps_source_identity_even_when_target_uses_reviewed_alias
         assert profile["source_version"] == "042"
         assert _marker(index)["source_model"] == profile["source_model"]
         assert _build(index).target_model == profile["target_model"]
+
+
+@pytest.mark.parametrize(
+    ("row", "selector", "endpoint"),
+    _artifact_cases("credit_llm_v1"),
+    ids=[r["profile_id"] + "|" + s + "|" + e for r, s, e in _artifact_cases("credit_llm_v1")],
+)
+def test_exact1ded_additive_factory_marker_restore_and_cross_uid_denials(
+    row: ArtifactProfile, selector: str, endpoint: str
+) -> None:
+    _verify_artifact_case("credit_llm_v1", row, selector, endpoint)

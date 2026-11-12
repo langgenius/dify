@@ -22,6 +22,9 @@ from services.model_billing_openai_provider110_adapter import (
     openai_provider110_source_marker,
     restore_openai_provider110_source_contract,
 )
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import ArtifactProfile
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import cases as _artifact_cases
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import verify_factory_case as _verify_artifact_case
 
 _DOCUMENT = json.loads((Path(__file__).parent / "fixtures/model_billing_openai_provider110_profiles.json").read_text())
 _PROFILES = cast(list[dict[str, object]], _DOCUMENT["profiles"])
@@ -206,3 +209,14 @@ def test_constructed_contract_cannot_add_unreviewed_profile_or_runtime_hash() ->
             model_type=ModelType.LLM,
             target_model="gpt-4o-mini",
         )
+
+
+@pytest.mark.parametrize(
+    ("row", "selector", "endpoint"),
+    _artifact_cases("provider110"),
+    ids=[r["profile_id"] + "|" + s + "|" + e for r, s, e in _artifact_cases("provider110")],
+)
+def test_exact1ded_additive_factory_marker_restore_and_cross_uid_denials(
+    row: ArtifactProfile, selector: str, endpoint: str
+) -> None:
+    _verify_artifact_case("provider110", row, selector, endpoint)

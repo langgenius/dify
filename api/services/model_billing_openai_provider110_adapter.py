@@ -16,6 +16,9 @@ from services.entities.model_billing_mapping import SourceParameterContract, mod
 OPENAI_PROVIDER110_SOURCE_ADAPTER_ID = "openai_provider110_source_v1"
 OPENAI_PROVIDER110_SOURCE_ADAPTER_REVISION = "1"
 OPENAI_PROVIDER110_SOURCE_PROVIDER = "langgenius/openai/openai"
+OPENAI_PROVIDER110_ARTIFACT_SOURCE_UID = (
+    "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340"
+)
 
 
 class OpenAIProvider110SourceAdapterError(ValueError):
@@ -88,7 +91,54 @@ _OFFICIAL_ROOT_REVIEWED_CONTRACTS = (
         algorithm_revision="2",
     ),
 )
-_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, *_OFFICIAL_ROOT_REVIEWED_CONTRACTS)
+# Separate exact signed artifact; historical tuples above remain immutable.
+_ARTIFACT_REVIEWED_CONTRACTS = (
+    OpenAIProvider110SourceContract(
+        profile_id="openai-110-1ded-chat-runtime-v1:gpt-4o-mini",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini",
+        source_schema_digest="sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+        source_runtime_schema_digest="sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+        target_model="gpt-4o-mini",
+        rules_digest="sha256:e60f57b1ab8cbae8e6f726b08c9fa8cff5f7654324d14b1fac8b1f9fba608ece",
+        adapter_id="openai_provider110_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIProvider110SourceContract(
+        profile_id="openai-110-1ded-responses-runtime-v1:gpt-4o-mini",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini",
+        source_schema_digest="sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+        source_runtime_schema_digest="sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+        target_model="gpt-4o-mini",
+        rules_digest="sha256:652c763f7d49f008babfc6f33cb2cea754e2befb00e2ed18de22b507b2ee24d4",
+        adapter_id="openai_provider110_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIProvider110SourceContract(
+        profile_id="openai-110-1ded-chat-official-root-runtime-v1:gpt-4o-mini",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini",
+        source_schema_digest="sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+        source_runtime_schema_digest="sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+        target_model="gpt-4o-mini",
+        rules_digest="sha256:5700b48cf440d6c0a1f7ed860d282f590476ca0543e5fd8841202fd27fcd24e5",
+        adapter_id="openai_provider110_source_v1",
+        algorithm_revision="2",
+    ),
+    OpenAIProvider110SourceContract(
+        profile_id="openai-110-1ded-responses-official-root-runtime-v1:gpt-4o-mini",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="gpt-4o-mini",
+        source_schema_digest="sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+        source_runtime_schema_digest="sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+        target_model="gpt-4o-mini",
+        rules_digest="sha256:b0f101c4beb17bd0a4ddf20b01a3c459fad919a4a8c6b900e34c537559df3a2d",
+        adapter_id="openai_provider110_source_v1",
+        algorithm_revision="2",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, *_OFFICIAL_ROOT_REVIEWED_CONTRACTS, *_ARTIFACT_REVIEWED_CONTRACTS)
 
 
 def _protocol(settings: OpenAI110SourceSettings) -> Literal["chat", "responses"]:
@@ -108,7 +158,8 @@ def _matches_settings(
     contract: OpenAIProvider110SourceContract, protocol: str, settings: OpenAI110SourceSettings
 ) -> bool:
     family = "official-root-runtime-v1" if settings.source_base_is_set else "runtime-v1"
-    return contract.profile_id == f"openai-110-{protocol}-{family}:gpt-4o-mini"
+    artifact = "-1ded" if contract.source_plugin_unique_identifier == OPENAI_PROVIDER110_ARTIFACT_SOURCE_UID else ""
+    return contract.profile_id == f"openai-110{artifact}-{protocol}-{family}:gpt-4o-mini"
 
 
 def openai_provider110_source_marker(
@@ -156,7 +207,8 @@ def build_openai_provider110_source_contract(
         (
             item
             for item in _ALL_REVIEWED_CONTRACTS
-            if _matches_settings(item, protocol, source_settings)
+            if item.source_plugin_unique_identifier == source_plugin_unique_identifier
+            and _matches_settings(item, protocol, source_settings)
             and item.algorithm_revision == adapter_revision
             and item.source_schema_digest == expected_source_schema_digest
             and item.rules_digest == expected_rules_digest
@@ -214,7 +266,9 @@ def restore_openai_provider110_source_contract(
         (
             item
             for item in _ALL_REVIEWED_CONTRACTS
-            if item.profile_id == marker["profile_id"] and _matches_settings(item, protocol, source_settings)
+            if item.profile_id == marker["profile_id"]
+            and item.source_plugin_unique_identifier == marker["source_plugin_uid"]
+            and _matches_settings(item, protocol, source_settings)
         ),
         None,
     )

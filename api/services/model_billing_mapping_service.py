@@ -89,6 +89,7 @@ from services.model_billing_gemini_credit_source_v2_adapter import (
 )
 from services.model_billing_migration_inventory import saved_dependency_inventory_policy
 from services.model_billing_openai_audio_adapter import (
+    OPENAI_AUDIO_ARTIFACT_SOURCE_UID,
     OPENAI_AUDIO_SOURCE_UIDS,
     OpenAIAudioSourceContract,
     SourceAudioSettings,
@@ -121,7 +122,7 @@ from services.model_billing_openai_credit_llm_v2_adapter import (
     restore_openai_credit_llm_source_contract as restore_openai_credit_llm_v2_source_contract,
 )
 from services.model_billing_openai_embedding_adapter import (
-    OPENAI_EMBEDDING_SOURCE_UIDS,
+    OPENAI_EMBEDDING_REVIEWED_SOURCE_UIDS,
     OpenAIEmbeddingSourceContract,
     OpenAIEmbeddingSourceSettings,
     build_openai_embedding_source_contract,
@@ -1020,7 +1021,7 @@ def hosted_embedding_source_fact(
     if (
         str(ModelProviderID(provider)) != "langgenius/openai/openai"
         or type(source_uid) is not str
-        or source_uid not in OPENAI_EMBEDDING_SOURCE_UIDS
+        or source_uid not in OPENAI_EMBEDDING_REVIEWED_SOURCE_UIDS
         or not isinstance(credentials, dict)
     ):
         return None
@@ -1047,7 +1048,7 @@ def hosted_audio_source_fact(
     """
     if (
         str(ModelProviderID(provider)) != "langgenius/openai/openai"
-        or source_uid not in OPENAI_AUDIO_SOURCE_UIDS.values()
+        or source_uid not in (*OPENAI_AUDIO_SOURCE_UIDS.values(), OPENAI_AUDIO_ARTIFACT_SOURCE_UID)
         or not isinstance(credentials, dict)
     ):
         return None

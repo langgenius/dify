@@ -68,6 +68,40 @@ def test_same_immutable_uid_reinstallation_uses_only_fresh_binding() -> None:
     assert meta.calls == [TENANT]
 
 
+@pytest.mark.parametrize("installed_new", [False, True])
+def test_readme_only_signed1ded_artifact_still_requires_publication_repreparation(installed_new: bool) -> None:
+    from tests.helpers.unit.model_billing_openai110_artifact_profiles import OLD_UID, SOURCE_UID
+
+    current, candidate = (SOURCE_UID, OLD_UID) if installed_new else (OLD_UID, SOURCE_UID)
+    meta = Metadata(
+        [
+            PluginModelProviderBinding(
+                provider="langgenius/openai/openai",
+                installation_id="owned-installation",
+                plugin_id="langgenius/openai",
+                plugin_unique_identifier=current,
+                runtime_type="local",
+                source=PluginInstallationSource.Marketplace,
+                version="1.1.0",
+                verified=True,
+            )
+        ]
+    )
+    route = SourcePluginProtection(TENANT, "old-frozen-profile", 1)
+    admission = ModelBillingSourcePluginAdmission(
+        routes=Routes(route),
+        dependencies=Inventories(SavedSystemDependencyInventory(TENANT, (dependency(),), (), (), "sha256:" + "f" * 64)),
+        candidates=gateway(meta),
+        pre_admitted_tenants=frozenset(),
+    )
+    admission.assert_allowed(AdmittedPluginInstallationCaller(TENANT), [current])
+    with pytest.raises(SourcePluginAdmissionError, match="requires_reprepare"):
+        admission.assert_allowed(AdmittedPluginInstallationCaller(TENANT), [candidate])
+    with pytest.raises(SourcePluginAdmissionError, match="cohort_frozen"):
+        gateway(meta).assert_frozen_bindings(TENANT, [candidate])
+    assert meta.calls == [TENANT] * 3
+
+
 @pytest.mark.parametrize("changed_uid", [False, True])
 def test_late_installed_system_provider_is_not_excluded_by_openai_only_publication(changed_uid: bool) -> None:
     meta = metadata()

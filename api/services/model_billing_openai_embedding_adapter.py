@@ -27,6 +27,10 @@ OPENAI_EMBEDDING_SOURCE_UIDS = frozenset(
         "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
     }
 )
+OPENAI_EMBEDDING_ARTIFACT_SOURCE_UID = (
+    "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340"
+)
+OPENAI_EMBEDDING_REVIEWED_SOURCE_UIDS = OPENAI_EMBEDDING_SOURCE_UIDS | {OPENAI_EMBEDDING_ARTIFACT_SOURCE_UID}
 OPENAI_EMBEDDING_SOURCE_OPERATIONS = frozenset({"model/schema", "text_embedding/invoke", "text_embedding/num_tokens"})
 
 
@@ -125,6 +129,45 @@ _REVIEWED_CONTRACTS = (
     ),
 )
 
+# Separate exact signed artifact; historical tuples above remain immutable.
+_ARTIFACT_REVIEWED_CONTRACTS = (
+    OpenAIEmbeddingSourceContract(
+        profile_id="openai-110-1ded-embedding-runtime-v1:text-embedding-3-large",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="text-embedding-3-large",
+        source_schema_digest="sha256:aac5a07e511a6398575c855a61f572add58bdae23f28ad072a92bb7c58e47f5d",
+        source_runtime_schema_digest="sha256:aac5a07e511a6398575c855a61f572add58bdae23f28ad072a92bb7c58e47f5d",
+        target_model="text-embedding-3-large",
+        rules_digest="sha256:a6fd7fe4e6ef8b5cf0a5ae6c6bf3f3728a81693012be176f64931c7e9ead1c1a",
+        adapter_id="openai_embedding_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIEmbeddingSourceContract(
+        profile_id="openai-110-1ded-embedding-runtime-v1:text-embedding-3-small",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="text-embedding-3-small",
+        source_schema_digest="sha256:ace3f43ba3540fd50fde03590705c8bedf4d8c12384ed286bb284762ba5aadb0",
+        source_runtime_schema_digest="sha256:ace3f43ba3540fd50fde03590705c8bedf4d8c12384ed286bb284762ba5aadb0",
+        target_model="text-embedding-3-small",
+        rules_digest="sha256:0612a87994d558fcd64690b89cb36d6469520da48bc7faa538d77806091f84a3",
+        adapter_id="openai_embedding_source_v1",
+        algorithm_revision="1",
+    ),
+    OpenAIEmbeddingSourceContract(
+        profile_id="openai-110-1ded-embedding-runtime-v1:text-embedding-ada-002",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
+        source_model="text-embedding-ada-002",
+        source_schema_digest="sha256:973002e4e3f913dd5366a37e85a674df1d3f104a0930abad6639ee7715a7500c",
+        source_runtime_schema_digest="sha256:973002e4e3f913dd5366a37e85a674df1d3f104a0930abad6639ee7715a7500c",
+        target_model="text-embedding-ada-002",
+        rules_digest="sha256:f3aa2113df6d61671d4948a6b641bab1dbf7048094eadbaf562e1487970a1e5f",
+        adapter_id="openai_embedding_source_v1",
+        algorithm_revision="1",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, *_ARTIFACT_REVIEWED_CONTRACTS)
+
+
 _MARKER_FIELDS = frozenset(
     {"schema_version", "profile_id", "source_plugin_uid", "source_model", "source_schema_digest", "rules_digest"}
 )
@@ -177,7 +220,7 @@ def _validate_embedding_identity(
         type(source_provider) is not str
         or source_provider != OPENAI_EMBEDDING_SOURCE_PROVIDER
         or type(source_plugin_unique_identifier) is not str
-        or source_plugin_unique_identifier not in OPENAI_EMBEDDING_SOURCE_UIDS
+        or source_plugin_unique_identifier not in OPENAI_EMBEDDING_REVIEWED_SOURCE_UIDS
         or type(source_model) is not str
         or source_model not in OPENAI_EMBEDDING_SOURCE_MODELS
         or model_type is not ModelType.TEXT_EMBEDDING
@@ -212,7 +255,7 @@ def openai_embedding_source_marker(
     Endpoint/SYSTEM authority is checked before construction and at admission;
     the marker deliberately contains neither a raw endpoint nor credential flags.
     """
-    if type(contract) is not OpenAIEmbeddingSourceContract or contract not in _REVIEWED_CONTRACTS:
+    if type(contract) is not OpenAIEmbeddingSourceContract or contract not in _ALL_REVIEWED_CONTRACTS:
         raise OpenAIEmbeddingSourceAdapterError("Unreviewed frozen OpenAI embedding source contract")
     _validate_embedding_identity(
         source_provider=source_provider,
@@ -265,7 +308,7 @@ def build_openai_embedding_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
+            for item in _ALL_REVIEWED_CONTRACTS
             if item.source_plugin_unique_identifier == source_plugin_unique_identifier
             and item.source_model == source_model
             and item.adapter_id == adapter_id
@@ -310,7 +353,15 @@ def restore_openai_embedding_source_contract(
         or any(type(value) is not str for key, value in marker.items() if key != "schema_version")
     ):
         raise OpenAIEmbeddingSourceAdapterError("Invalid frozen OpenAI embedding source marker")
-    contract = next((item for item in _REVIEWED_CONTRACTS if item.profile_id == marker["profile_id"]), None)
+    contract = next(
+        (
+            item
+            for item in _ALL_REVIEWED_CONTRACTS
+            if item.profile_id == marker["profile_id"]
+            and item.source_plugin_unique_identifier == marker["source_plugin_uid"]
+        ),
+        None,
+    )
     if contract is None or marker != openai_embedding_source_marker(
         contract,
         source_provider=source_provider,

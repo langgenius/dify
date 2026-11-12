@@ -28,6 +28,9 @@ from services.model_billing_openai_embedding_adapter import (
     validate_embedding_source_operations,
     validate_embedding_source_settings,
 )
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import ArtifactProfile
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import cases as _artifact_cases
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import verify_factory_case as _verify_artifact_case
 
 
 class _Profile(TypedDict):
@@ -415,3 +418,14 @@ def test_valid_marker_cannot_cross_a_different_logical_binding_or_settings(chang
             target_model="text-embedding-3-small" if change == "target" else contract.target_model,
             source_settings=OpenAIEmbeddingSourceSettings("unset", "enabled" if change == "settings" else "not_used"),  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.parametrize(
+    ("row", "selector", "endpoint"),
+    _artifact_cases("embedding"),
+    ids=[r["profile_id"] + "|" + s + "|" + e for r, s, e in _artifact_cases("embedding")],
+)
+def test_exact1ded_additive_factory_marker_restore_and_cross_uid_denials(
+    row: ArtifactProfile, selector: str, endpoint: str
+) -> None:
+    _verify_artifact_case("embedding", row, selector, endpoint)

@@ -21,6 +21,9 @@ from services.entities.model_billing_mapping import (
     SourceParameterContract,
     model_schema_digest,
 )
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import ArtifactProfile
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import cases as _artifact_cases
+from tests.helpers.unit.model_billing_openai110_artifact_profiles import verify_factory_case as _verify_artifact_case
 
 
 class _Profile(TypedDict):
@@ -409,3 +412,14 @@ def test_marker_field_change_and_runtime_drift_are_not_restore_authority(profile
                 marker,
                 **(_restore_arguments(arguments) | {"expected_source_runtime_schema_digest": invalid}),
             )
+
+
+@pytest.mark.parametrize(
+    ("row", "selector", "endpoint"),
+    _artifact_cases("audio"),
+    ids=[r["profile_id"] + "|" + s + "|" + e for r, s, e in _artifact_cases("audio")],
+)
+def test_exact1ded_additive_factory_marker_restore_and_cross_uid_denials(
+    row: ArtifactProfile, selector: str, endpoint: str
+) -> None:
+    _verify_artifact_case("audio", row, selector, endpoint)

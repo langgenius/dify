@@ -45,6 +45,7 @@ class SourceEmbeddingVariant(_StrictModel):
     source_plugin_uid: Literal[
         "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
         "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
     ]
     source_settings: EmbeddingSourceSettings
     source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
@@ -82,7 +83,11 @@ class SourceEmbeddingVariantMapping(_StrictModel):
         if len(selectors) != len(self.variants):
             raise ValueError("Ambiguous embedding source selector")
         for row in self.variants:
-            version = "042" if row.source_plugin_uid.startswith("langgenius/openai:0.4.2@") else "110"
+            version = {
+                "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468": "042",
+                "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c": "110",
+                "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340": "110-1ded",
+            }[row.source_plugin_uid]
             if row.target.model != self.source.model or row.source_profile_id != (
                 f"openai-{version}-embedding-runtime-v1:{self.source.model}"
             ):
@@ -98,6 +103,7 @@ class SourceEmbeddingVariantSelection(_StrictModel):
     source_plugin_uid: Literal[
         "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
         "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
     ]
     source_settings: EmbeddingSourceSettings
     source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")

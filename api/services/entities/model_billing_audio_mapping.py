@@ -63,6 +63,7 @@ class AudioSourceVariant(_StrictModel):
     source_plugin_uid: Literal[
         "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
         "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
     ]
     source_settings: AudioSourceSettings
     source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
@@ -119,7 +120,11 @@ class SourceAudioVariantMapping(_StrictModel):
                 model_type=self.source.model_type,
                 target_model=row.target.model,
             )
-            version = "042" if row.source_plugin_uid.startswith("langgenius/openai:0.4.2@") else "110"
+            version = {
+                "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468": "042",
+                "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c": "110",
+                "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340": "110-1ded",
+            }[row.source_plugin_uid]
             slug = "tts" if self.source.model_type is ModelType.TTS else "stt"
             if (
                 row.target.model_type is not self.source.model_type
@@ -135,6 +140,7 @@ class SourceAudioVariantSelection(_StrictModel):
     source_plugin_uid: Literal[
         "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
         "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        "langgenius/openai:1.1.0@1ded02acee56efd5788c86fd447d792e4923e959554a4942f440c7859d164340",
     ]
     source_settings: AudioSourceSettings
     source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
