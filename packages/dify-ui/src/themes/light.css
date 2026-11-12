@@ -565,6 +565,11 @@ html[data-theme='light'] {
   --color-components-chart-area-1: rgb(0 51 255 / 0.14);
   --color-components-chart-area-2: rgb(0 51 255 / 0.04);
 
+  --color-components-brand-mark-ink: #0033ff;
+  --color-components-brand-mark-ink-deep: #0330e5;
+  --color-components-brand-mark-ink-muted: #848793;
+  --color-components-brand-mark-ink-muted-deep: #62646c;
+
   --color-divider-subtle: rgb(16 24 40 / 0.04);
   --color-divider-regular: rgb(16 24 40 / 0.08);
   --color-divider-deep: rgb(16 24 40 / 0.14);

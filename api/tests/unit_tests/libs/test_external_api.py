@@ -1,12 +1,15 @@
 from collections.abc import Callable
 from functools import wraps
+from typing import Literal
 
 import pytest
 from flask import Blueprint, Flask
 from flask_restx import Api, Namespace, Resource
 from flask_restx.swagger import Swagger
-from pydantic import BaseModel
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from pydantic import BaseModel, ConfigDict, Field
+from pytest_mock import MockerFixture
+from werkzeug.datastructures import WWWAuthenticate
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
@@ -24,39 +27,55 @@ from libs.external_api import (
 from libs.rate_limit import _BearerRateLimited
 
 
-def _create_api_app():
+def _as_mapping(value: object) -> dict[str, object]:
+    """Narrow an untyped Swagger document node to a string-keyed mapping."""
+    if not isinstance(value, dict):
+        msg = f"expected a mapping, got {type(value).__name__}"
+        raise TypeError(msg)
+    return {str(key): item for key, item in value.items()}
+
+
+def _as_items(value: object) -> list[object]:
+    """Narrow an untyped Swagger document node to a list."""
+    if not isinstance(value, list):
+        msg = f"expected a list, got {type(value).__name__}"
+        raise TypeError(msg)
+    return list(value)
+
+
+def _create_api_app() -> Flask:
     app = Flask(__name__)
     bp = Blueprint("t", __name__)
     api = ExternalApi(bp)
 
     @api.route("/bad-request")
     class Bad(Resource):
-        def get(self):
+        def get(self) -> None:
             raise BadRequest("invalid input")
 
     @api.route("/unauth")
     class Unauth(Resource):
-        def get(self):
+        def get(self) -> None:
             raise Unauthorized("auth required")
 
     @api.route("/value-error")
     class ValErr(Resource):
-        def get(self):
+        def get(self) -> None:
             raise ValueError("boom")
 
     @api.route("/quota")
     class Quota(Resource):
-        def get(self):
+        def get(self) -> None:
             raise AppInvokeQuotaExceededError("quota exceeded")
 
     @api.route("/general")
     class Gen(Resource):
-        def get(self):
+        def get(self) -> None:
             raise RuntimeError("oops")
 
     @api.route("/plugin-runtime-error")
     class PluginRuntime(Resource):
-        def get(self):
+        def get(self) -> None:
             raise PluginRuntimeError(
                 "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1",
                 lambda_request_id="lambda-request-id",
@@ -67,7 +86,7 @@ def _create_api_app():
     # Special 400 message rewrite
     @api.route("/json-empty")
     class JsonEmpty(Resource):
-        def get(self):
+        def get(self) -> None:
             e = BadRequest()
             # Force the specific message the handler rewrites
             e.description = "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)"
@@ -76,24 +95,23 @@ def _create_api_app():
     # 400 mapping payload path
     @api.route("/param-errors")
     class ParamErrors(Resource):
-        def get(self):
+        def get(self) -> None:
             e = BadRequest()
             # Coerce a mapping description to trigger param error shaping
-            e.description = {"field": "is required"}
+            e.description = {"field": "is required"}  # pyrefly: ignore[bad-assignment]
             raise e
 
-    # The per-token rate limit raises this; ExternalApi must carry its Retry-After header to the
-    # wire (it reads getattr(e, "headers"), not werkzeug's get_headers()).
+    # The per-token rate limit carries Retry-After in an explicit headers attribute.
     @api.route("/rate-limited")
     class RateLimited(Resource):
-        def get(self):
+        def get(self) -> None:
             raise _BearerRateLimited(23)
 
     app.register_blueprint(bp, url_prefix="/api")
     return app
 
 
-def test_external_api_error_handlers_basic_paths():
+def test_external_api_error_handlers_basic_paths() -> None:
     app = _create_api_app()
     client = app.test_client()
 
@@ -120,7 +138,7 @@ def test_external_api_error_handlers_basic_paths():
     assert res.get_json()["status"] == 500
 
 
-def test_external_api_json_message_and_bad_request_rewrite():
+def test_external_api_json_message_and_bad_request_rewrite() -> None:
     app = _create_api_app()
     client = app.test_client()
 
@@ -130,7 +148,7 @@ def test_external_api_json_message_and_bad_request_rewrite():
     assert res.get_json()["message"] == "Invalid JSON payload received or JSON payload is empty."
 
 
-def test_external_api_plugin_runtime_error(mocker):
+def test_external_api_plugin_runtime_error(mocker: MockerFixture) -> None:
     mocker.patch("libs.external_api.get_request_id", return_value="api-request-id")
     app = _create_api_app()
 
@@ -148,7 +166,7 @@ def test_external_api_plugin_runtime_error(mocker):
     }
 
 
-def test_external_api_param_mapping_and_quota():
+def test_external_api_param_mapping_and_quota() -> None:
     app = _create_api_app()
     client = app.test_client()
 
@@ -164,9 +182,8 @@ def test_external_api_param_mapping_and_quota():
     assert res.status_code in (400, 429)
 
 
-def test_external_api_carries_exception_headers_to_429_response():
-    # Locks the coupling enforce_bearer_rate_limit relies on: handle_error reads getattr(e,
-    # "headers") and puts it on the response, so Retry-After reaches the wire.
+def test_external_api_carries_exception_headers_to_429_response() -> None:
+    # Keep supporting explicit headers used by enforce_bearer_rate_limit.
     app = _create_api_app()
     res = app.test_client().get("/api/rate-limited")
     assert res.status_code == 429
@@ -174,7 +191,42 @@ def test_external_api_carries_exception_headers_to_429_response():
     assert (res.get_json() or {})["status"] == 429
 
 
-def test_unauthorized_and_force_logout_clears_cookies():
+def test_external_api_explicit_headers_override_generated_headers() -> None:
+    class ExplicitRetryAfter(ServiceUnavailable):
+        headers = {"retry-after": "23"}
+
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    @api.route("/pending")
+    class Pending(Resource):
+        def get(self) -> None:
+            raise ExplicitRetryAfter(retry_after=5)
+
+    response = app.test_client().get("/pending")
+    assert response.status_code == 503
+    assert response.headers.getlist("Retry-After") == ["23"]
+    assert response.mimetype == "application/json"
+    assert response.get_json()["status"] == 503
+
+
+def test_external_api_preserves_multiple_authentication_challenges() -> None:
+    challenges = [WWWAuthenticate("Basic", {"realm": "api"}), WWWAuthenticate("Bearer", {"realm": "api"})]
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    @api.route("/unauth")
+    class Unauth(Resource):
+        def get(self) -> None:
+            raise Unauthorized(www_authenticate=challenges)
+
+    response = app.test_client().get("/unauth")
+    assert response.status_code == 401
+    assert response.headers.getlist("WWW-Authenticate") == [str(challenge) for challenge in challenges]
+    assert response.mimetype == "application/json"
+
+
+def test_unauthorized_and_force_logout_clears_cookies() -> None:
     """Test that UnauthorizedAndForceLogout error clears auth cookies"""
 
     class UnauthorizedAndForceLogout(BaseHTTPException):
@@ -242,12 +294,15 @@ class _PassthroughFormatter:
         return data
 
 
-def test_missing_flask_restx_private_hook_fails_at_startup(monkeypatch: pytest.MonkeyPatch):
+def test_missing_flask_restx_private_hook_fails_at_startup(monkeypatch: pytest.MonkeyPatch) -> None:
     """The guard exists so a flask-restx upgrade breaks construction, not the first 404."""
     monkeypatch.delattr(Api, "_should_use_fr_error_handler")
 
     with pytest.raises(RuntimeError, match="_should_use_fr_error_handler"):
-        ExternalApi(Blueprint("guard", __name__), error_body_formatter=_PassthroughFormatter())
+        ExternalApi(
+            Blueprint("guard", __name__),
+            error_body_formatter=_PassthroughFormatter(),  # pyrefly: ignore[bad-argument-type]
+        )
 
 
 def _unused_resolver(exception: type[Exception]) -> tuple[int, str]:
@@ -257,7 +312,42 @@ def _unused_resolver(exception: type[Exception]) -> tuple[int, str]:
 _ERROR_BODY_REF = {"$ref": "#/components/schemas/ErrorResponse"}
 
 
-def test_attach_error_response_schema_documents_the_error_body_on_every_error_status():
+class _Schema(BaseModel):
+    """The slice of a JSON-Schema node the documented responses are read through."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    ref: str | None = Field(default=None, alias="$ref")
+    anyOf: list["_Schema"] = Field(default_factory=list)
+
+
+class _MediaType(BaseModel):
+    schema_: _Schema | None = Field(default=None, alias="schema")
+
+
+class _Response(BaseModel):
+    description: str | None = None
+    content: dict[str, _MediaType] = Field(default_factory=dict)
+
+
+class _Operation(BaseModel):
+    responses: dict[str, _Response] = Field(default_factory=dict)
+
+
+class _PathItem(BaseModel):
+    get: _Operation | None = None
+
+
+class _Components(BaseModel):
+    schemas: dict[str, object] = Field(default_factory=dict)
+
+
+class _Document(BaseModel):
+    paths: dict[str, _PathItem] = Field(default_factory=dict)
+    components: _Components = Field(default_factory=_Components)
+
+
+def test_attach_error_response_schema_documents_the_error_body_on_every_error_status() -> None:
     explicit = {"application/json": {"schema": {"$ref": "#/components/schemas/Custom"}}}
     document: dict[str, object] = {
         "paths": {
@@ -295,7 +385,7 @@ def test_attach_error_response_schema_documents_the_error_body_on_every_error_st
     assert schema["required"] == ["code", "message", "status"]
 
 
-def test_attach_error_response_schema_leaves_documents_without_paths_alone():
+def test_attach_error_response_schema_leaves_documents_without_paths_alone() -> None:
     document: dict[str, object] = {"info": {"title": "empty"}}
 
     attach_error_response_schema(document, ErrorResponse, _unused_resolver)
@@ -342,7 +432,7 @@ def _guarded[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return document_errors(decorated, _WrapperDeniedError)
 
 
-def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> dict:
+def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> _Document:
     app = Flask(__name__)
     ns = Namespace("documented", path="/")
 
@@ -357,26 +447,35 @@ def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> dic
         @ns.response(404, "Item missing")
         @error_responses(*exceptions)
         @_guarded
-        def get(self):
+        def get(self) -> dict[str, object]:
             return {}
 
     api.add_namespace(ns)
-    app.register_blueprint(api.blueprint)
+    blueprint = api.blueprint
+    assert isinstance(blueprint, Blueprint)
+    app.register_blueprint(blueprint)
     with app.test_request_context("/"):
-        return Swagger(api).as_dict()
+        return _Document.model_validate(Swagger(api).as_dict())
 
 
-def _responses(document: dict) -> dict:
-    return document["paths"]["/documented"]["get"]["responses"]
+def _responses(document: _Document) -> dict[str, _Response]:
+    operation = document.paths["/documented"].get
+    assert operation is not None
+    return operation.responses
 
 
-def _error_options(document: dict, status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
+def _error_options(document: _Document, status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
     """The component names a status documents, in order, before the open error body that ends them."""
-    schema = _responses(document)[status]["content"]["application/json"]["schema"]
-    options = schema.get("anyOf", [schema])
+    schema = _responses(document)[status].content["application/json"].schema_
+    assert schema is not None
+    options = schema.anyOf or [schema]
     # A generic error can answer any documented status, so the open body is always the last option.
-    assert options[-1] == body_ref
-    return [option["$ref"].rsplit("/", 1)[-1] for option in options[:-1]]
+    assert options[-1].model_dump(by_alias=True, exclude_defaults=True) == body_ref
+    names: list[str] = []
+    for option in options[:-1]:
+        assert option.ref is not None
+        names.append(option.ref.rsplit("/", 1)[-1])
+    return names
 
 
 def _documented_names_for(*exceptions: type[Exception]) -> dict[str, bool]:
@@ -389,21 +488,26 @@ def _resolve_by_class(exception: type[Exception]) -> tuple[int, str]:
     return exception.code, exception.error_code
 
 
-def test_document_errors_keeps_hidden_views_and_methods_hidden():
+def test_document_errors_keeps_hidden_views_and_methods_hidden() -> None:
     class Partly(Resource):
         __apidoc__ = {"get": False, "post": {"description": "create"}}
 
     document_errors(Partly, _GuardDeniedError)
 
-    assert Partly.__apidoc__["get"] is False
-    assert Partly.__apidoc__["post"]["description"] == "create"
-    assert Partly.__apidoc__["post"]["vendor"][ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
-    assert Partly.__apidoc__["delete"]["vendor"][ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
+    apidoc = _as_mapping(Partly.__apidoc__)
+    assert apidoc["get"] is False
+    post_doc = _as_mapping(apidoc["post"])
+    assert post_doc["description"] == "create"
+    post_vendor = _as_mapping(post_doc["vendor"])
+    assert post_vendor[ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
+    delete_doc = _as_mapping(apidoc["delete"])
+    delete_vendor = _as_mapping(delete_doc["vendor"])
+    assert delete_vendor[ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
 
     class Hidden(Resource):
         __apidoc__ = False
 
-    def hidden_view():
+    def hidden_view() -> dict[str, object]:
         return {}
 
     hidden_view.__apidoc__ = False  # type: ignore[attr-defined]
@@ -412,20 +516,22 @@ def test_document_errors_keeps_hidden_views_and_methods_hidden():
     assert document_errors(hidden_view, _GuardDeniedError).__apidoc__ is False  # type: ignore[attr-defined]
 
 
-def test_error_responses_document_handler_wrapper_and_class_errors_by_code():
+def test_error_responses_document_handler_wrapper_and_class_errors_by_code() -> None:
     document = _documented_operation(
         ExternalApi(Blueprint("documented", __name__)), _DocumentedError, _ItemMissingError
     )
 
     assert _error_options(document, "400") == ["DocumentedError"]
     assert _error_options(document, "404") == ["ItemMissingError"]
-    assert _responses(document)["404"]["description"] == "Item missing"
+    assert _responses(document)["404"].description == "Item missing"
     assert _error_options(document, "401") == ["WrapperDeniedError"]
-    assert _responses(document)["401"]["description"] == "Unauthorized"
+    assert _responses(document)["401"].description == "Unauthorized"
     assert _error_options(document, "403") == ["GuardDeniedError"]
     # Generic codes (validation, framework errors) are not listed; the open default covers them.
-    assert _responses(document)["default"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
-    assert document["components"]["schemas"]["ItemMissingError"] == {
+    default_schema = _responses(document)["default"].content["application/json"].schema_
+    assert default_schema is not None
+    assert default_schema.model_dump(by_alias=True, exclude_defaults=True) == _ERROR_BODY_REF
+    assert document.components.schemas["ItemMissingError"] == {
         "allOf": [
             _ERROR_BODY_REF,
             {
@@ -442,7 +548,7 @@ def test_error_responses_document_handler_wrapper_and_class_errors_by_code():
     }
 
 
-def test_openapi_surface_resolves_codes_like_its_formatter():
+def test_openapi_surface_resolves_codes_like_its_formatter() -> None:
     from controllers.openapi import _OpenApi
     from controllers.openapi._errors import OpenApiErrorFormatter
 
@@ -453,18 +559,20 @@ def test_openapi_surface_resolves_codes_like_its_formatter():
 
     body_ref = {"$ref": "#/components/schemas/ErrorBody"}
     assert _error_options(document, "400", body_ref) == ["DocumentedError"]
-    component = document["components"]["schemas"]["DocumentedError"]
-    assert component["allOf"][0] == body_ref
-    assert component["allOf"][1]["properties"]["code"] == {"const": "documented_error", "type": "string"}
+    component = _as_mapping(document.components.schemas["DocumentedError"])
+    all_of = _as_items(component["allOf"])
+    assert all_of[0] == body_ref
+    properties = _as_mapping(_as_mapping(all_of[1])["properties"])
+    assert properties["code"] == {"const": "documented_error", "type": "string"}
 
 
 @pytest.mark.parametrize("exception", [ValueError, NotFound, Unauthorized])
-def test_error_responses_rejects_generic_errors(exception: type[Exception]):
+def test_error_responses_rejects_generic_errors(exception: type[Exception]) -> None:
     with pytest.raises(ValueError, match="generic errors are implied"):
         error_responses(exception)
 
 
-def test_error_responses_requires_an_error_code():
+def test_error_responses_requires_an_error_code() -> None:
     class _Placeholder(BaseHTTPException):
         code = 404
 
@@ -476,7 +584,7 @@ class _SurfaceOnlyError(Exception):
     pass
 
 
-def test_surface_specific_handlers_are_implicit_codes():
+def test_surface_specific_handlers_are_implicit_codes() -> None:
     api = ExternalApi(Blueprint("surface_handlers", __name__))
     api.document_error_handler(_SurfaceOnlyError, status=409, code="surface_conflict")
 
@@ -491,7 +599,7 @@ def test_surface_specific_handlers_are_implicit_codes():
     assert api.implicit_error_codes(409) == {"conflict", "surface_conflict_v2"}
 
 
-def test_error_components_are_shared_across_operations_and_carry_details():
+def test_error_components_are_shared_across_operations_and_carry_details() -> None:
     document: dict[str, object] = {
         "paths": {
             "/items": {
@@ -518,7 +626,7 @@ def test_error_components_are_shared_across_operations_and_carry_details():
     assert schemas["_ConflictDetails"]["required"] == ["server_hash"]
 
 
-def test_error_responses_union_explicit_schema_with_documented_codes():
+def test_error_responses_union_explicit_schema_with_documented_codes() -> None:
     explicit = {"application/json": {"schema": {"$ref": "#/components/schemas/Custom"}}}
     document: dict[str, object] = {
         "paths": {
@@ -546,7 +654,7 @@ def test_error_responses_union_explicit_schema_with_documented_codes():
     }
 
 
-def test_documented_status_keeps_its_other_media_types():
+def test_documented_status_keeps_its_other_media_types() -> None:
     content = {
         "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
         "application/json": {"schema": {"$ref": "#/components/schemas/Custom"}, "example": {"error": "x"}},
@@ -579,7 +687,7 @@ def test_documented_status_keeps_its_other_media_types():
     }
 
 
-def test_details_model_definitions_must_not_collide_with_different_schemas():
+def test_details_model_definitions_must_not_collide_with_different_schemas() -> None:
     document: dict[str, object] = {
         "components": {"schemas": {"_ConflictDetails": {"type": "object", "properties": {"other": {}}}}},
         "paths": {"/items": {"get": {"responses": {}, "x-dify-error-codes": _documented_names_for(_ConflictError)}}},
@@ -589,7 +697,36 @@ def test_details_model_definitions_must_not_collide_with_different_schemas():
         attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
 
 
-def test_error_component_names_must_not_collide():
+class _EnumConflictDetails(BaseModel):
+    state: Literal["retry", "configure", 1]
+
+
+class _EnumConflictError(BaseHTTPException):
+    error_code = "enum_conflict"
+    code = 409
+    details_model = _EnumConflictDetails
+
+
+def test_details_model_reuses_registered_schema_with_reordered_enum_values() -> None:
+    # Response schema registration sorts enums; their order does not change the contract.
+    schema = _EnumConflictDetails.model_json_schema(mode="serialization")
+    schema["properties"]["state"]["enum"].reverse()
+    document: dict[str, object] = {
+        "components": {"schemas": {"_EnumConflictDetails": schema}},
+        "paths": {
+            "/items": {"get": {"responses": {}, "x-dify-error-codes": _documented_names_for(_EnumConflictError)}}
+        },
+    }
+
+    attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
+
+    schemas = document["components"]["schemas"]  # type: ignore[index]
+    assert schemas["EnumConflictError"]["allOf"][1]["properties"]["details"] == {
+        "$ref": "#/components/schemas/_EnumConflictDetails"
+    }
+
+
+def test_error_component_names_must_not_collide() -> None:
     document: dict[str, object] = {
         "components": {"schemas": {"DocumentedConflictError": {"type": "object"}}},
         "paths": {"/items": {"get": {"responses": {}, "x-dify-error-codes": _documented_names_for(_ConflictError)}}},
@@ -609,7 +746,7 @@ class _ConflictWithoutDetails(BaseHTTPException):
     code = 409
 
 
-def test_error_code_maps_to_one_status_per_document():
+def test_error_code_maps_to_one_status_per_document() -> None:
     document: dict[str, object] = {
         "paths": {
             "/items": {
@@ -623,7 +760,7 @@ def test_error_code_maps_to_one_status_per_document():
         attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
 
 
-def test_error_code_classes_must_agree_on_details():
+def test_error_code_classes_must_agree_on_details() -> None:
     document: dict[str, object] = {
         "paths": {
             "/items": {
@@ -639,7 +776,7 @@ def test_error_code_classes_must_agree_on_details():
         attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
 
 
-def test_resolves_errors_in_flask_restx_dispatch_order():
+def test_resolves_errors_in_flask_restx_dispatch_order() -> None:
     """Flask-RESTX picks the first registered handler that matches, not the most specific one."""
     from core.errors.error import AppInvokeQuotaExceededError
 
@@ -650,7 +787,7 @@ def test_resolves_errors_in_flask_restx_dispatch_order():
     assert api.resolve_error(_DocumentedError) == (400, "documented_error")
 
 
-def test_framework_error_subclasses_are_implicit_codes():
+def test_framework_error_subclasses_are_implicit_codes() -> None:
     from flask import request
 
     app = Flask(__name__)
@@ -659,7 +796,7 @@ def test_framework_error_subclasses_are_implicit_codes():
 
     @api.route("/upload")
     class Upload(Resource):
-        def post(self):
+        def post(self) -> dict[str, object]:
             request.files["pkg"]  # a missing field raises BadRequestKeyError
             return {}
 
@@ -672,7 +809,7 @@ def test_framework_error_subclasses_are_implicit_codes():
     assert body["code"] in api.implicit_error_codes(400)
 
 
-def test_relayed_http_error_emits_the_standard_body_with_runtime_code_and_status():
+def test_relayed_http_error_emits_the_standard_body_with_runtime_code_and_status() -> None:
     from libs.exception import RelayedHTTPError
 
     error = RelayedHTTPError(status=409, error_code="downstream_conflict", message="busy", details={"retry": 3})
@@ -681,7 +818,7 @@ def test_relayed_http_error_emits_the_standard_body_with_runtime_code_and_status
     assert error.data == {"code": "downstream_conflict", "message": "busy", "status": 409, "details": {"retry": 3}}
 
 
-def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error():
+def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error() -> None:
     from libs.exception import RelayedHTTPError
 
     error_responses(RelayedHTTPError)  # accepted although its class keeps the placeholder code
@@ -708,7 +845,7 @@ def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error():
     assert operation["x-dify-relays-errors"] is True
 
 
-def test_keeps_placeholder_error_code_spots_undeclared_business_errors():
+def test_keeps_placeholder_error_code_spots_undeclared_business_errors() -> None:
     from libs.exception import RelayedHTTPError
 
     class _Placeholder(BaseHTTPException):
@@ -726,7 +863,7 @@ class _BootstrapMissingError(BaseHTTPException):
     code = 401
 
 
-def test_generic_errors_are_implicit_codes_and_never_listed():
+def test_generic_errors_are_implicit_codes_and_never_listed() -> None:
     api = ExternalApi(Blueprint("generic_errors", __name__))
     api.document_generic_errors(_BootstrapMissingError)
 
@@ -738,19 +875,19 @@ def test_generic_errors_are_implicit_codes_and_never_listed():
     assert "bootstrap_missing" not in api.implicit_error_codes(400)
     # The operation keeps its real business errors and documents nothing for the generic one.
     assert _error_options(document, "400") == ["DocumentedError"]
-    assert "BootstrapMissingError" not in document["components"]["schemas"]
+    assert "BootstrapMissingError" not in document.components.schemas
     assert _error_options(document, "401") == ["WrapperDeniedError"]
 
 
 @pytest.mark.parametrize("exception", [ValueError, NotFound])
-def test_document_generic_errors_takes_business_shaped_errors_only(exception: type[Exception]):
+def test_document_generic_errors_takes_business_shaped_errors_only(exception: type[Exception]) -> None:
     api = ExternalApi(Blueprint("generic_shape", __name__))
 
     with pytest.raises(ValueError, match="generic already"):
         api.document_generic_errors(exception)
 
 
-def test_document_generic_errors_requires_an_error_code():
+def test_document_generic_errors_requires_an_error_code() -> None:
     class _Placeholder(BaseHTTPException):
         code = 401
 

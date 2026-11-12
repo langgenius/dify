@@ -28,18 +28,19 @@ from controllers.console.explore.installed_app_admission import get_installed_ap
 from controllers.console.flask_admission import console_account_admission
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models import Account, App, AppMode, InstalledApp, Tenant, WorkflowRun
 from models.account import AccountStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_task_service import AppTaskControlService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
 from services.saved_message_service import SavedMessageActor, SavedMessagePage, SavedMessageRecord, SavedMessageService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
-from tests.unit_tests.services.test_app_task_service import _StopRedis
+from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 
 @dataclass
@@ -336,6 +337,7 @@ def test_permission_dependency_failure_preserves_cause_without_leaking_details(
     harness: _Harness,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given a failed permission dependency, retain its cause and exclude internal details from the response."""
     failure = WebAppAccessUnavailableError("private upstream response containing credentials")
     harness.state.permission_error = failure
     exceptions: list[Exception] = []
@@ -361,7 +363,7 @@ def test_permission_dependency_failure_preserves_cause_without_leaking_details(
     assert exceptions[0].__cause__ is failure
     records = [record for record in caplog.records if record.name == admission_module.__name__]
     assert len(records) == 1
-    assert records[0].exc_info is not None
+    assert isinstance(records[0].exc_info, tuple)
     assert records[0].exc_info[1] is failure
     assert harness.installed_app.id in records[0].getMessage()
     assert harness.installed_app.tenant_id in records[0].getMessage()
@@ -489,6 +491,7 @@ def test_migrated_saved_message_and_parameter_handlers_dispatch_through_full_adm
                 "retriever_resource",
                 "annotation_reply",
                 "more_like_this",
+                "show_thoughts",
                 "sensitive_word_avoidance",
                 "file_upload",
             )
@@ -571,7 +574,7 @@ def running_workflow(
         app_id=harness.target_app.id,
         workflow_id=str(uuid4()),
         task_id=_WORKFLOW_TASK_ID,
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.RUNNING,
@@ -866,6 +869,7 @@ def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     sqlite_session_factory: sessionmaker[Session],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given a graph Redis failure, keep the stop flag, return success, and log the cause."""
     _set_app_mode(harness, sqlite_session_factory, AppMode.ADVANCED_CHAT)
     failure = RedisConnectionError("Graph channel unavailable")
     stop_redis.command_error = failure
@@ -878,7 +882,7 @@ def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     assert stop_redis.values[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == b"1"
     assert stop_redis.expirations[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == 600
     assert stop_redis.commands == {}
-    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    assert any(isinstance(record.exc_info, tuple) and record.exc_info[1] is failure for record in caplog.records)
     with sqlite_session_factory() as session:
         run = session.get(WorkflowRun, running_workflow.id)
         assert run is not None

@@ -26,7 +26,6 @@ export const DatasetCardTags = ({
     onOpenTagManagement={onOpenTagManagement}
     onTagsChange={onTagsChange}
     canBindOrUnbindTags={canBindOrUnbindTags}
-    className={cn('mx-3 w-auto', !embeddingAvailable && 'opacity-30')}
-    onClick={(event) => event.stopPropagation()}
+    className={cn('relative mx-3 w-auto', !embeddingAvailable && 'opacity-30')}
   />
 )

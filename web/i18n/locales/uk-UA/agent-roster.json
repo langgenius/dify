@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "напр. Помічник з досліджень",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Це назавжди видалить {{name}}. Вебзастосунок і доступ до API цього Agent, а також робочі процеси, що його використовують, негайно припинять працювати.",
+  "roster.deleteDialog.inputLabel": "Введіть <name>{{name}}</name> для підтвердження",
+  "roster.deleteDialog.inputPlaceholder": "Введіть ім’я агента",
   "roster.deleteDialog.title": "Видалити {{name}}?",
   "roster.deleteFailed": "Не вдалося видалити агента.",
   "roster.duplicateDialog.description": "Створіть копію {{name}} та налаштуйте її ідентичність Agent.",

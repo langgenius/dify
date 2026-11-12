@@ -54,7 +54,7 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
   return (
     <li
       className={cn(
-        'group relative isolate col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
+        'group relative isolate col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-start shadow-xs shadow-shadow-shadow-3',
         isClickable && 'cursor-pointer',
       )}
     >

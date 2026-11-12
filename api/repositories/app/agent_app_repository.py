@@ -1,22 +1,87 @@
 """Agent App persistence, reusing the roster's canonical app and reference queries."""
 
+from dataclasses import replace
 from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
-from models.enums import AppStatus
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict
+from models.enums import ApiTokenType, AppStatus
+from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
+from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.app.agent_app_contracts import AgentAppNotFoundError, AgentReferencingWorkflow
+from services.app.agent_app_contracts import (
+    AgentApiAccess,
+    AgentApiAccessChange,
+    AgentAppAccessNotReadyError,
+    AgentAppNotFoundError,
+    AgentReferencingWorkflow,
+)
 
 
 class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @staticmethod
+    def _resolve_api_app(session: Session, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve only an active, app-backed roster Agent in the given tenant."""
+        app = get_roster_agent_app(session, tenant_id=tenant_id, agent_id=agent_id)
+        if app is None:
+            raise AgentAppNotFoundError
+        return app
+
+    @staticmethod
+    def _api_access(session: Session, app: App) -> AgentApiAccess:
+        """Materialize access state while the app and publication data are available."""
+        agent = get_app_backing_agent(session, tenant_id=app.tenant_id, app_id=app.id)
+        ready = bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
+        count = session.scalar(
+            select(func.count(ApiToken.id)).where(
+                or_(ApiToken.tenant_id == app.tenant_id, ApiToken.tenant_id.is_(None)),
+                ApiToken.type == ApiTokenType.APP,
+                ApiToken.app_id == app.id,
+            )
+        )
+        return AgentApiAccess(
+            app_id=app.id,
+            access_ready=ready,
+            enabled=bool(app.enable_api and ready),
+            api_rpm=app.api_rpm or 0,
+            api_rph=app.api_rph or 0,
+            api_key_count=count or 0,
+        )
+
+    def get_api_access(self, *, tenant_id: str, agent_id: str) -> AgentApiAccess:
+        """Return detached access state for an active Agent App in the tenant."""
+        with self._session_factory() as session:
+            app = self._resolve_api_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            return self._api_access(session, app)
+
+    def set_api_access(self, *, tenant_id: str, agent_id: str, account_id: str, enabled: bool) -> AgentApiAccessChange:
+        """Commit access state in one transaction; an unpublished Agent cannot be enabled."""
+        with self._session_factory.begin() as session:
+            app = self._resolve_api_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            access = self._api_access(session, app)
+            if enabled and not access.access_ready:
+                raise AgentAppAccessNotReadyError
+            changed = app.enable_api != enabled
+            if changed:
+                app.enable_api = enabled
+                app.updated_by = account_id
+                app.updated_at = naive_utc_now()
+            return AgentApiAccessChange(
+                access=replace(access, enabled=bool(enabled and access.access_ready)), changed=changed
+            )
+
+    def resolve_roster_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Resolve a roster Agent's configuration owner without materializing inline Apps."""
+        with self._session_factory() as session:
+            return self._resolve_api_app(session, tenant_id=tenant_id, agent_id=agent_id).id
 
     def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         with self._session_factory() as session:

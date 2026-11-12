@@ -183,7 +183,7 @@ describe('ChatInputArea', () => {
       expect(getTextarea()!).toHaveAttribute('placeholder', expect.stringContaining('TestBot'))
     })
 
-    it('keeps a visible label for the input after typing', async () => {
+    it('keeps the accessible name for the input after typing', async () => {
       const user = userEvent.setup()
       render(
         <ChatInputArea
@@ -197,7 +197,7 @@ describe('ChatInputArea', () => {
       await user.type(input, 'A research assistant')
 
       expect(input).toHaveValue('A research assistant')
-      expect(screen.getByText('Describe your agent')).toBeVisible()
+      expect(input).toHaveAccessibleName('Describe your agent')
     })
 
     it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
@@ -521,32 +521,6 @@ describe('ChatInputArea', () => {
       await act(async () => finishSave())
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       expect(getTextarea()).toHaveValue('Converted voice text')
-    })
-
-    it('should preserve the current query and report transcription failure', async () => {
-      const user = userEvent.setup({ delay: null })
-      vi.mocked(transcribeAudio).mockRejectedValueOnce(new Error('API error'))
-      render(
-        <ChatInputArea
-          speechToTextConfig={{ enabled: true }}
-          speechToTextTarget={speechToTextTarget}
-          visionConfig={mockVisionConfig}
-        />,
-      )
-      await user.type(getTextarea()!, 'Keep this text')
-      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
-
-      await user.click(voiceInputButton)
-      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.api.actionFailed',
-        })
-      })
-      expect(getTextarea()!).toHaveValue('Keep this text')
-      await waitFor(() => expect(voiceInputButton).toHaveFocus())
     })
 
     it('should restore focus to the voice input trigger when conversion is cancelled', async () => {

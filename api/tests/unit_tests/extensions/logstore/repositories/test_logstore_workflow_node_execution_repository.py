@@ -22,6 +22,15 @@ def _make_account() -> Account:
     return account
 
 
+@pytest.fixture
+def logstore_schema(sqlite_engine: Engine) -> None:
+    with sqlite_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE workflow_node_execution AS SELECT *, 1 AS log_version FROM workflow_node_executions WHERE 0"
+        )
+
+
+@pytest.mark.usefixtures("logstore_schema")
 @pytest.mark.parametrize("source_app", ["caller-app", "source-app"])
 def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_agent_rows(
     config_overrides: Callable[..., None],
@@ -95,7 +104,7 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
         session.commit()
     with sqlite_engine.begin() as connection:
         connection.exec_driver_sql(
-            "CREATE TABLE workflow_node_execution AS SELECT *, 1 AS log_version FROM workflow_node_executions"
+            "INSERT INTO workflow_node_execution SELECT *, 1 AS log_version FROM workflow_node_executions"
         )
         connection.exec_driver_sql("UPDATE workflow_node_execution SET triggered_from = NULL WHERE id = 'legacy-exec'")
 

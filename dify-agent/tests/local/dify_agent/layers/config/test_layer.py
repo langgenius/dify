@@ -84,5 +84,10 @@ async def test_first_pull_failure_retries_then_current_config_refreshes_without_
         assert "original" in seen_instructions[0] and "revised" in seen_instructions[1]
         assert "dify-agent config env push --help" not in seen_instructions[0]
         assert "dify-agent config env push --help" in seen_instructions[1]
+        assert "dify-agent config prompt pull --help" in seen_instructions[0]
+        assert "dify-agent config prompt pull --help" in seen_instructions[1]
+        assert "dify-agent config prompt push --help" not in seen_instructions[0]
+        assert "dify-agent config prompt push --help" in seen_instructions[1]
+        assert "already-built run requests keep their prompt" in seen_instructions[1]
         assert set(state) == {"initialized", "pulled_skill_outputs", "pulled_file_outputs"}
         assert "Instructions from skill" in state["pulled_skill_outputs"]["skill"]

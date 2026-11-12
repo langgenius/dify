@@ -240,7 +240,7 @@ describe('SkillDetailPage metadata', () => {
 
     expect(await sidebar.findByText('Search')).toBeInTheDocument()
     expect(sidebar.queryByText('Productivity')).not.toBeInTheDocument()
-    expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.updateTagsFailed')
+    expect(mocks.toastError).toHaveBeenCalledWith('Saving tags failed')
     await user.click(
       screen.getByRole('combobox', {
         name: 'skill.skillManagement.detail.addTag',
@@ -402,7 +402,7 @@ describe('SkillDetailPage metadata', () => {
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.duplicate' }))
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
+      expect(mocks.toastError).toHaveBeenCalledWith('Duplicate failed')
     })
     expect(mocks.routerPush).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(
@@ -668,7 +668,7 @@ describe('SkillDetailPage metadata', () => {
     expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.published')
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -989,14 +989,14 @@ describe('SkillDetailPage metadata', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.click(await screen.findByText('references'))
     await user.click(getFileTreeButton('references/refund-policy.md'))
     await user.click(
-      screen.getByRole('button', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
+      screen.getByRole('radio', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
     )
 
     await waitFor(() => expect(getSourceEditor().value).toContain('# 退款政策'))

@@ -6,14 +6,22 @@ import {
   markAppDeletionStarted,
   markAppDeletionSucceeded,
 } from './app-deletion'
-// oxlint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests legacy auth replay.
+import { request } from './base'
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
+
+const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/notifications', () => ({
   toast: {
     add: vi.fn(),
     error: vi.fn(),
   },
+}))
+
+vi.mock('./refresh-token', () => ({
+  refreshAccessTokenOrReLogin: refreshAccessTokenOrReLoginMock,
 }))
 
 const { toast } = await import('@/app/notifications')
@@ -111,6 +119,66 @@ describe('base', () => {
       if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
       expect(request.url).toBe(`${PUBLIC_API_PREFIX}/environment/workflow-app/login/status`)
     })
+  })
+
+  it('should replay a caller-owned JSON request after refreshing an expired token', async () => {
+    const body = { documentIds: ['document-1'] }
+    const callerRequest = new Request(
+      'http://localhost/console/api/knowledge-fs/spaces/space-1/documents/reindex',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+    const cloneSpy = vi.spyOn(callerRequest, 'clone')
+    const sentRequests: Array<{ body: unknown; method: string }> = []
+    refreshAccessTokenOrReLoginMock.mockResolvedValue(undefined)
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (resource) => {
+      const outgoingRequest =
+        resource instanceof Request ? resource : new Request(resource.toString())
+      sentRequests.push({
+        body: JSON.parse(await outgoingRequest.text()) as unknown,
+        method: outgoingRequest.method,
+      })
+      if (sentRequests.length === 1) {
+        return new Response(
+          JSON.stringify({
+            code: 'unauthorized',
+            message: 'Expired access token',
+            status: 401,
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      }
+      return new Response(JSON.stringify({ result: 'queued' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    // oxlint-disable-next-line typescript/no-deprecated -- This spec directly tests legacy auth replay.
+    const response = await request<Response>(
+      callerRequest.url,
+      {},
+      {
+        fetchCompat: true,
+        request: callerRequest,
+      },
+    )
+
+    await expect(response.json()).resolves.toEqual({ result: 'queued' })
+    expect(refreshAccessTokenOrReLoginMock).toHaveBeenCalledOnce()
+    // happy-dom permits reconstructing an already-used Request, unlike browsers.
+    // Verify the transport preserves its caller-owned input before ky consumes each attempt.
+    expect(cloneSpy).toHaveBeenCalledTimes(2)
+    expect(sentRequests).toEqual([
+      { body, method: 'POST' },
+      { body, method: 'POST' },
+    ])
   })
 
   describe('Error responses', () => {

@@ -21,7 +21,7 @@ if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 from models.account import Account, TenantAccountRole
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 @pytest.fixture

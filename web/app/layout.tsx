@@ -1,9 +1,8 @@
-import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { HydrationBoundary } from '@tanstack/react-query'
+import { dir } from 'i18next'
 import { Provider as JotaiProvider } from 'jotai/react'
-import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { IS_PROD } from '@/config'
@@ -15,6 +14,7 @@ import {
   dehydrateSystemFeatures,
   getOptionalSystemFeatures,
 } from '@/features/system-features/server'
+import { ThemeProvider } from '@/features/theme/provider'
 import { getLocaleOnServer } from '@/i18n/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
@@ -24,6 +24,7 @@ import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import { TanStackQueryProvider } from './query-provider'
+import { QueryStateProvider } from './query-state-provider'
 import '@/service/console/server'
 import './styles/globals.css'
 import './styles/markdown.css'
@@ -31,7 +32,6 @@ import './styles/markdown.css'
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  viewportFit: 'cover',
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -57,13 +57,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const datasetMap = getDatasetMap()
   const requestHeaders = await headers()
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-  const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
-    attribute: 'data-theme',
-    defaultTheme: 'system',
-    enableSystem: true,
-    disableTransitionOnChange: true,
-  }
-  if (nonce !== undefined) themeProviderProps.nonce = nonce
 
   const errorDocument = getAppAccessErrorDocument(requestHeaders)
   const [locale] = errorDocument
@@ -72,29 +65,31 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dehydratedState = errorDocument ? undefined : dehydrateSystemFeatures()
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} dir={dir(locale)} {...datasetMap} suppressHydrationWarning>
       <head>{!errorDocument && <ReactScanLoader />}</head>
-      <body className="bg-background-body" {...datasetMap}>
+      <body className="bg-background-body">
         {!errorDocument && <CloudAnalytics />}
         <div className="isolate">
           <JotaiProvider>
-            <ThemeProvider {...themeProviderProps}>
+            <ThemeProvider nonce={nonce}>
               <NuqsAdapter>
                 {errorDocument ? (
                   children
                 ) : (
-                  <TanStackQueryProvider>
-                    <HydrationBoundary state={dehydratedState}>
-                      <I18nServerProvider>
-                        <AppToaster timeout={5000} limit={3} />
-                        <SystemFeaturesBootstrapBoundary>
-                          <TooltipProvider delay={300} closeDelay={200}>
-                            <AppAccessBoundary>{children}</AppAccessBoundary>
-                          </TooltipProvider>
-                        </SystemFeaturesBootstrapBoundary>
-                      </I18nServerProvider>
-                    </HydrationBoundary>
-                  </TanStackQueryProvider>
+                  <QueryStateProvider>
+                    <TanStackQueryProvider>
+                      <HydrationBoundary state={dehydratedState}>
+                        <I18nServerProvider>
+                          <AppToaster timeout={5000} limit={3} />
+                          <SystemFeaturesBootstrapBoundary>
+                            <TooltipProvider delay={300} closeDelay={200}>
+                              <AppAccessBoundary>{children}</AppAccessBoundary>
+                            </TooltipProvider>
+                          </SystemFeaturesBootstrapBoundary>
+                        </I18nServerProvider>
+                      </HydrationBoundary>
+                    </TanStackQueryProvider>
+                  </QueryStateProvider>
                 )}
               </NuqsAdapter>
             </ThemeProvider>

@@ -47,8 +47,10 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
 from extensions.ext_database import db
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -69,6 +71,7 @@ from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
 from models.model import Message, MessageAgentThought
+from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +277,7 @@ class _AgentProcessRecorder:
         self._tool_by_index: dict[int, str] = {}
         self._tool_by_call_id: dict[str, str] = {}
         self._open_tool_by_name: dict[str, set[str]] = {}
+        self._knowledge_receipts: set[str] = set()
 
     def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
         data = event.data
@@ -430,6 +434,16 @@ class _AgentProcessRecorder:
 
     def _record_tool_return_part(self, part: dict[str, Any]) -> None:
         self._close_thinking_segments()
+        sources = []
+        for source in knowledge_sources_from_tool_part(part):
+            citation = source.knowledge_fs_citation
+            if citation and citation.id not in self._knowledge_receipts and len(self._knowledge_receipts) < 200:
+                self._knowledge_receipts.add(citation.id)
+                sources.append(source)
+        if sources:
+            self._queue_manager.publish(
+                QueueRetrieverResourcesEvent(retriever_resources=sources), PublishFrom.APPLICATION_MANAGER
+            )
         tool_call_id = _string_or_none(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         content = part.get("content")
@@ -640,6 +654,7 @@ class AgentAppRunner:
         home_snapshot_id: str | None,
         conversation_id: str,
         query: str,
+        inputs: Mapping[str, Any] | None = None,
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
@@ -669,6 +684,7 @@ class AgentAppRunner:
             backend_binding_ref=stored.backend_binding_ref,
             conversation_id=conversation_id,
             query=query,
+            inputs=inputs or {},
             files=tuple(files or ()),
             image_detail_config=image_detail_config,
             idempotency_key=message_id,
@@ -728,18 +744,39 @@ class AgentAppRunner:
                 message_id,
                 exc_info=True,
             )
-        self._publish_terminal_answer(
-            queue_manager=queue_manager,
-            model_name=model_name,
-            answer=answer,
-            query=query,
-            usage=terminal_usage,
-        )
+        try:
+            self._publish_terminal_answer(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                answer=answer,
+                query=query,
+                usage=terminal_usage,
+            )
+        except GenerateTaskStoppedError:
+            # Stop can become visible after stream consumption returned its
+            # success but before the final chunk/end reaches the consumer.
+            self._finish_stopped_terminal(
+                terminal,
+                dify_context=dify_context,
+                session_scope=scope,
+                binding_id=runtime.binding_id,
+                message_id=message_id,
+            )
+            raise
         self._save_session(
             scope=scope,
             binding_id=runtime.binding_id,
             snapshot=terminal.session_snapshot,
         )
+        tracing_hooks = application_tracing_hooks()
+        if tracing_hooks is not None:
+            tracing_hooks.capture_agent_app_terminal(
+                tenant_id=dify_context.tenant_id,
+                app_id=dify_context.app_id,
+                message_id=message_id,
+                outcome="succeeded",
+                output=answer,
+            )
 
     def _build_session_scope(
         self,
@@ -780,6 +817,7 @@ class AgentAppRunner:
         backend_binding_ref: str,
         conversation_id: str,
         query: str,
+        inputs: Mapping[str, Any],
         files: tuple[File, ...],
         image_detail_config: ImagePromptMessageContent.DETAIL | None,
         idempotency_key: str,
@@ -795,6 +833,7 @@ class AgentAppRunner:
                 agent_soul=agent_soul,
                 conversation_id=conversation_id,
                 user_query=query,
+                inputs=inputs,
                 files=files,
                 image_detail_config=image_detail_config,
                 idempotency_key=idempotency_key,
@@ -857,6 +896,20 @@ class AgentAppRunner:
             for public_event in public_events:
                 if public_event.id is not None:
                     last_event_id = public_event.id
+                internal_events = self._event_adapter.adapt(public_event)
+                for internal_event in internal_events:
+                    if isinstance(
+                        internal_event,
+                        AgentBackendRunSucceededInternalEvent
+                        | AgentBackendRunFailedInternalEvent
+                        | AgentBackendRunCancelledInternalEvent,
+                    ):
+                        # A terminal frame may already have arrived when stop
+                        # becomes visible. Keep the observed runtime result.
+                        terminal = internal_event
+                        break
+                if terminal is not None:
+                    break
                 if queue_manager.is_stopped():
                     flush_pending_agent_message_text()
                     self._cancel_run(
@@ -865,9 +918,11 @@ class AgentAppRunner:
                         session_scope=session_scope,
                         binding_id=binding_id,
                         message_id=message_id,
+                        dify_context=dify_context,
+                        queue_manager=queue_manager,
                     )
                     raise GenerateTaskStoppedError()
-                for internal_event in self._event_adapter.adapt(public_event):
+                for internal_event in internal_events:
                     if queue_manager.is_stopped():
                         flush_pending_agent_message_text()
                         self._cancel_run(
@@ -876,6 +931,8 @@ class AgentAppRunner:
                             session_scope=session_scope,
                             binding_id=binding_id,
                             message_id=message_id,
+                            dify_context=dify_context,
+                            queue_manager=queue_manager,
                         )
                         raise GenerateTaskStoppedError()
                     if internal_event.type in (
@@ -904,11 +961,6 @@ class AgentAppRunner:
                                 )
                             continue
                         continue
-                    flush_pending_agent_message_text()
-                    terminal = internal_event
-                    break
-                if terminal is not None:
-                    break
         except GenerateTaskStoppedError:
             raise
         except Exception as error:
@@ -919,19 +971,43 @@ class AgentAppRunner:
                 session_scope=session_scope,
                 binding_id=binding_id,
                 message_id=message_id,
+                dify_context=dify_context,
+                queue_manager=queue_manager,
             )
             if queue_manager.is_stopped():
                 raise GenerateTaskStoppedError() from error
             raise
-        flush_pending_agent_message_text()
+        try:
+            flush_pending_agent_message_text()
+        except GenerateTaskStoppedError:
+            if terminal is not None:
+                self._finish_stopped_terminal(
+                    terminal,
+                    dify_context=dify_context,
+                    session_scope=session_scope,
+                    binding_id=binding_id,
+                    message_id=message_id,
+                )
+            raise
         if queue_manager.is_stopped():
-            self._cancel_run(
-                run_id,
-                after=last_event_id,
-                session_scope=session_scope,
-                binding_id=binding_id,
-                message_id=message_id,
-            )
+            if terminal is not None:
+                self._finish_stopped_terminal(
+                    terminal,
+                    dify_context=dify_context,
+                    session_scope=session_scope,
+                    binding_id=binding_id,
+                    message_id=message_id,
+                )
+            else:
+                self._cancel_run(
+                    run_id,
+                    after=last_event_id,
+                    session_scope=session_scope,
+                    binding_id=binding_id,
+                    message_id=message_id,
+                    dify_context=dify_context,
+                    queue_manager=queue_manager,
+                )
             raise GenerateTaskStoppedError()
         return terminal, process_recorder
 
@@ -943,29 +1019,68 @@ class AgentAppRunner:
         session_scope: AgentAppSessionScope,
         binding_id: str,
         message_id: str,
+        dify_context: DifyRunContext,
+        queue_manager: AppQueueManager,
     ) -> None:
         try:
             public_event = self._agent_backend_client.cancel_run_and_wait(run_id, after=after)
             for internal_event in self._event_adapter.adapt(public_event):
-                if (
-                    isinstance(internal_event, AgentBackendRunCancelledInternalEvent)
-                    and internal_event.session_snapshot is not None
-                ):
-                    self._save_session(
-                        scope=session_scope,
-                        binding_id=binding_id,
-                        snapshot=internal_event.session_snapshot,
-                    )
                 if isinstance(internal_event, AgentBackendRunCancelledInternalEvent):
-                    self._persist_message_usage(
+                    self._finish_stopped_terminal(
+                        internal_event,
+                        dify_context=dify_context,
+                        session_scope=session_scope,
+                        binding_id=binding_id,
                         message_id=message_id,
-                        usage=_llm_usage_from_agent_backend(internal_event.usage),
+                        queue_manager=queue_manager,
                     )
         except Exception:
             logger.warning(
                 "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
                 run_id,
                 exc_info=True,
+            )
+
+    def _finish_stopped_terminal(
+        self,
+        terminal: AgentBackendRunSucceededInternalEvent
+        | AgentBackendRunFailedInternalEvent
+        | AgentBackendRunCancelledInternalEvent,
+        *,
+        dify_context: DifyRunContext,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
+        message_id: str,
+        queue_manager: AppQueueManager | None = None,
+    ) -> None:
+        """Keep the observed runtime result when the client has requested stop."""
+        if terminal.session_snapshot is not None:
+            self._save_session(scope=session_scope, binding_id=binding_id, snapshot=terminal.session_snapshot)
+        self._persist_message_usage(message_id=message_id, usage=_llm_usage_from_agent_backend(terminal.usage))
+        if queue_manager is not None and not queue_manager.is_stopped():
+            # A stream error can cancel its runtime only for cleanup. Keep its
+            # snapshot/usage, but let the original business failure own the root.
+            # Check after cleanup so a Stop observed during its wait still wins.
+            return
+        tracing_hooks = application_tracing_hooks()
+        if tracing_hooks is not None:
+            outcome: Literal["succeeded", "failed", "cancelled"]
+            if isinstance(terminal, AgentBackendRunSucceededInternalEvent):
+                outcome = "succeeded"
+            elif isinstance(terminal, AgentBackendRunFailedInternalEvent):
+                outcome = "failed"
+            else:
+                outcome = "cancelled"
+            tracing_hooks.capture_agent_app_terminal(
+                tenant_id=dify_context.tenant_id,
+                app_id=dify_context.app_id,
+                message_id=message_id,
+                outcome=outcome,
+                output=(
+                    self._terminal_output_to_answer(terminal.output)
+                    if isinstance(terminal, AgentBackendRunSucceededInternalEvent)
+                    else None
+                ),
             )
 
     def _publish_terminal_answer(
@@ -992,7 +1107,11 @@ class AgentAppRunner:
         if usage is None or (usage.total_tokens <= 0 and usage.total_price <= 0):
             return
         try:
-            message = db.session.get(Message, message_id)
+            # A stopped consumer may have committed its stop intent/partial
+            # answer through another session. Merge usage with that latest row
+            # under the same short lock used by its save, not an identity-cache
+            # snapshot that can erase the intent or newer reported usage.
+            message = db.session.get(Message, message_id, populate_existing=True, with_for_update=True)
             if message is None:
                 logger.warning("Cannot persist Agent App usage: message not found: %s", message_id)
                 return

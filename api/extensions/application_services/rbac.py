@@ -39,7 +39,7 @@ def build_rbac_services(
     return RBACServices(
         queries=ResourceQueryService(apps=apps, datasets=datasets),
         roles=RoleService(
-            roles=enterprise.RBACService.Roles, catalog=enterprise.RBACService.Catalog, settings=settings
+            roles=enterprise.RBACService.KnowledgeFSRoles, catalog=enterprise.RBACService.Catalog, settings=settings
         ),
         policies=PolicyService(
             policies=enterprise.RBACService.AccessPolicies, bindings=enterprise.RBACService.AccessPolicyBindings
@@ -47,7 +47,7 @@ def build_rbac_services(
         members=MemberService(
             members=workspaces,
             workspace_roles=workspace_members,
-            roles=enterprise.RBACService.MemberRoles,
+            roles=enterprise.RBACService.KnowledgeFSMemberRoles,
             permissions=enterprise.RBACService.MyPermissions,
             apps=enterprise.RBACService.AppPermissions,
             datasets=enterprise.RBACService.DatasetPermissions,

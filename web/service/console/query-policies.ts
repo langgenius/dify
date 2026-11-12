@@ -4,12 +4,19 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  DatasetListResponse,
+  DocumentWithSegmentsListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import type { AccountWithRoleListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { noop } from 'es-toolkit/function'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
   legacyWorkflowVersionHistoryKey,
@@ -17,11 +24,43 @@ import {
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
 
+async function refreshRejectedPersonalToken(
+  error: unknown,
+  client: QueryClient,
+  tokenId: string,
+  query: RouterUtils<ConsoleClient>,
+) {
+  const status = getHttpErrorStatus(error)
+  if (status !== 403 && status !== 404 && status !== 409) return
+  await Promise.all([
+    client.invalidateQueries({ queryKey: query.account.personalAccessTokens.get.key() }),
+    client.invalidateQueries({
+      queryKey: query.account.personalAccessTokens.byTokenId.get.queryKey({
+        input: { params: { token_id: tokenId } },
+      }),
+    }),
+  ])
+}
+
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
       workflowRunArchives: {
+        downloads: {
+          post: {
+            mutationOptions: {
+              onSuccess: (task, _variables, _onMutateResult, context) => {
+                context.client.setQueryData(
+                  consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
+                    input: { params: { download_id: task.download_id } },
+                  }),
+                  task,
+                )
+              },
+            },
+          },
+        },
         byYear: {
           byMonth: {
             delete: {
@@ -333,6 +372,168 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          humanInput: {
+            v2: {
+              contacts: {
+                platform: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                },
+                byContactId: {
+                  imBindings: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                  imOverride: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                external: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byContactId: {
+                    patch: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                remove: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                },
+              },
+              imSyncRuns: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (data, _variables, _onMutateResult, context) => {
+                      context.client.setQueryData(
+                        consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
+                        data,
+                      )
+                      return context.client.resetQueries({
+                        queryKey:
+                          consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),
+                      })
+                    },
+                  },
+                },
+              },
+              channels: {
+                email: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byChannelId: {
+                    put: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                im: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byChannelId: {
+                    put: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                    replacement: {
+                      post: {
+                        mutationOptions: {
+                          onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                            invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          members: {
+            byMemberId: {
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) => {
+                    context.client.setQueriesData(
+                      { queryKey: consoleQuery.workspaces.current.members.get.key() },
+                      (members: AccountWithRoleListResponse | undefined) =>
+                        members && {
+                          ...members,
+                          accounts: members.accounts.filter(
+                            (member) => member.id !== variables.params.member_id,
+                          ),
+                        },
+                    )
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.members.get.key(),
+                    })
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+          },
           toolProvider: {
             builtin: {
               byProvider: {
@@ -839,6 +1040,58 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       account: {
+        personalAccessTokens: {
+          byTokenId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  context.client.removeQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                  await context.client.invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onError: (error, variables, _onMutateResult, context) =>
+                  refreshRejectedPersonalToken(
+                    error,
+                    context.client,
+                    variables.params.token_id,
+                    consoleQuery,
+                  ),
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  await Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client
+                  .invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                  .catch(noop)
+              },
+            },
+          },
+        },
         education: {
           get: {
             queryOptions: {
@@ -934,6 +1187,61 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          annotations: {
+            byAnnotationId: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.annotations.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    })
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.annotations.key({
+                          input: { params: { app_id: variables.params.app_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.features.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.annotations.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    }),
+                    context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+                  ])
+                },
+              },
+            },
+          },
+          traceRuns: {
+            bySourceKind: {
+              bySourceId: {
+                get: { queryOptions: { context: { silent: true }, retry: false } },
+              },
+            },
+          },
           workflowRuns: {
             tasks: {
               byTaskId: {
@@ -964,13 +1272,41 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           trace: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                onSuccess: (_data, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.apps.byAppId.trace.get.queryKey({
                       input: { params: variables.params },
                     }),
-                  })
+                    {
+                      ...variables.body,
+                      capture_content: variables.body.capture_content ?? false,
+                      capture_agent: variables.body.capture_agent ?? true,
+                    },
+                  )
+                },
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    ...(error
+                      ? [
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.apps.byAppId.traceConfig.get.key({
+                              input: { params: variables.params },
+                            }),
+                          }),
+                        ]
+                      : []),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
@@ -979,45 +1315,81 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             post: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                      input: {
-                        params: variables.params,
-                        query: { tracing_provider: variables.body.tracing_provider },
-                      },
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
             patch: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                      input: {
-                        params: variables.params,
-                        query: { tracing_provider: variables.body.tracing_provider },
-                      },
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
             delete: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                      input: {
-                        params: variables.params,
-                        query: { tracing_provider: variables.query.tracing_provider },
-                      },
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.query.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
@@ -1412,10 +1784,112 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  context.client.setQueriesData(
+                    { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'query' }) },
+                    (list: KnowledgeFsSpaceListResponse | undefined) => {
+                      if (
+                        !list?.data.some(
+                          (item) => item.control_space_id === variables.params.control_space_id,
+                        )
+                      )
+                        return list
+                      return {
+                        ...list,
+                        data: list.data.filter(
+                          (item) => item.control_space_id !== variables.params.control_space_id,
+                        ),
+                      }
+                    },
+                  )
+                  context.client.setQueriesData(
+                    { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }) },
+                    (list: InfiniteData<KnowledgeFsSpaceListResponse, unknown> | undefined) => {
+                      if (
+                        !list?.pages.some((page) =>
+                          page.data.some(
+                            (item) => item.control_space_id === variables.params.control_space_id,
+                          ),
+                        )
+                      )
+                        return list
+                      return {
+                        ...list,
+                        pages: list.pages.map((page) => ({
+                          ...page,
+                          data: page.data.filter(
+                            (item) => item.control_space_id !== variables.params.control_space_id,
+                          ),
+                        })),
+                      }
+                    },
+                  )
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+                  })
+                },
+              },
+            },
+          },
+        },
+      },
       datasets: {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          delete: {
+            mutationOptions: {
+              onSuccess: (_data, variables, _result, context) => {
+                context.client.setQueriesData(
+                  { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) },
+                  (list: DatasetListResponse | undefined) => {
+                    if (!list?.data.some((item) => item.id === variables.params.dataset_id))
+                      return list
+                    const total = Math.max(0, list.total - 1)
+                    return {
+                      ...list,
+                      data: list.data.filter((item) => item.id !== variables.params.dataset_id),
+                      total,
+                      has_more: list.page * list.limit < total,
+                    }
+                  },
+                )
+                context.client.setQueriesData(
+                  { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) },
+                  (list: InfiniteData<DatasetListResponse, unknown> | undefined) => {
+                    if (
+                      !list?.pages.some((page) =>
+                        page.data.some((item) => item.id === variables.params.dataset_id),
+                      )
+                    )
+                      return list
+                    return {
+                      ...list,
+                      pages: list.pages.map((page) => {
+                        const total = Math.max(0, page.total - 1)
+                        return {
+                          ...page,
+                          data: page.data.filter((item) => item.id !== variables.params.dataset_id),
+                          total,
+                          has_more: page.page * page.limit < total,
+                        }
+                      }),
+                    }
+                  },
+                )
+                void context.client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+              },
+            },
+          },
+          // The upgrade dialog reports start failures, including model issues, inline.
+          knowledgeFsUpgrades: {
+            post: { mutationOptions: { context: { silent: true } } },
+          },
           get: {
             queryOptions: {
               // A missing or inaccessible dataset sends the detail page back to the list.
@@ -1428,6 +1902,32 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           documents: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  const documentIds = new Set(variables.query?.document_id ?? [])
+                  const input = { params: variables.params }
+                  context.client.setQueriesData(
+                    {
+                      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                        type: 'query',
+                        input,
+                      }),
+                    },
+                    (list: DocumentWithSegmentsListResponse | undefined) => {
+                      if (!list) return list
+                      const data = list.data.filter((document) => !documentIds.has(document.id))
+                      if (data.length === list.data.length) return list
+                      const total = Math.max(0, list.total - (list.data.length - data.length))
+                      return { ...list, data, total, has_more: list.page * list.limit < total }
+                    },
+                  )
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
+                  })
+                },
+              },
+            },
             byDocumentId: {
               pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
             },
@@ -1746,6 +2246,127 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAgentId: {
+          trace: {
+            post: {
+              mutationOptions: {
+                onSuccess: (data, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.agent.byAgentId.trace.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    data,
+                  )
+                },
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    ...(error
+                      ? [
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.agent.byAgentId.traceConfig.get.key({
+                              input: { params: variables.params },
+                            }),
+                          }),
+                        ]
+                      : []),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
+          traceConfig: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error && getHttpErrorStatus(error) !== 409) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.query.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
           apiKeys: {
             post: {
               mutationOptions: {
@@ -1830,7 +2451,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     return {
                       ...oldList,
                       data: oldList.data.map((item) =>
-                        item.id === updatedAgent.id ? updatedAgent : item,
+                        item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                       ),
                     }
                   },
@@ -1852,7 +2473,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       pages: oldList.pages.map((page) => ({
                         ...page,
                         data: page.data.map((item) =>
-                          item.id === updatedAgent.id ? updatedAgent : item,
+                          item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                         ),
                       })),
                     }
@@ -2191,14 +2812,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     (current) =>
                       current && {
                         ...current,
-                        environment_deployments: current.environment_deployments.map(
-                          (deployment) =>
-                            deployment.environment.id === environment_id
-                              ? {
-                                  ...deployment,
-                                  access: { ...deployment.access, enable_api: updated.enabled },
-                                }
-                              : deployment,
+                        environment_deployments: current.environment_deployments.map((deployment) =>
+                          deployment.environment.id === environment_id
+                            ? {
+                                ...deployment,
+                                access: { ...deployment.access, enable_api: updated.enabled },
+                              }
+                            : deployment,
                         ),
                       },
                   )
@@ -2252,14 +2872,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     (current) =>
                       current && {
                         ...current,
-                        environment_deployments: current.environment_deployments.map(
-                          (deployment) =>
-                            deployment.environment.id === environment_id
-                              ? {
-                                  ...deployment,
-                                  access: { ...deployment.access, enable_site: updated.enabled },
-                                }
-                              : deployment,
+                        environment_deployments: current.environment_deployments.map((deployment) =>
+                          deployment.environment.id === environment_id
+                            ? {
+                                ...deployment,
+                                access: { ...deployment.access, enable_site: updated.enabled },
+                              }
+                            : deployment,
                         ),
                       },
                   )
@@ -2464,6 +3083,32 @@ function invalidateAgentAccessQueries(
     query.agent.get.key(),
     query.agent.inviteOptions.get.key(),
     query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+}
+
+function invalidateHumanInputContactQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.humanInput.v2.contacts.key(),
+    query.workspaces.current.humanInput.v2.contactOptions.key(),
+    query.workspaces.current.humanInput.v2.imIdentities.key(),
+    query.workspaces.current.humanInput.v2.organizationCandidates.key(),
+  ])
+}
+
+function invalidateHumanInputChannelQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  return Promise.all([
+    invalidateHumanInputContactQueries(query, client),
+    invalidateQueryKeys(client, [
+      query.workspaces.current.humanInput.v2.channels.key(),
+      query.workspaces.current.humanInput.v2.imIdentities.key(),
+      query.workspaces.current.humanInput.v2.imSyncRuns.key(),
+    ]),
   ])
 }
 

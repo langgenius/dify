@@ -3,14 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
-  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
-}))
 vi.mock('@/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/env')>()
-  return { ...actual, env: { ...actual.env, NEXT_PUBLIC_WEB_PREFIX: '' } }
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
+    },
+  }
 })
 
 // Mock marketplace client
@@ -52,94 +53,19 @@ const createMockPlugin = (overrides?: Partial<Plugin>): Plugin => ({
   ...overrides,
 })
 
-describe('plugin and bundle links', () => {
+describe('plugin and bundle icons', () => {
   it.each([
-    { type: 'plugin' as const, collection: 'plugins', detail: 'plugin' },
-    { type: 'bundle' as const, collection: 'bundles', detail: 'bundles' },
-  ])('builds $type links and formats card data', async ({ type, collection, detail }) => {
-    const {
-      getPluginIconInMarketplace,
-      getFormattedPlugin,
-      getPluginLinkInMarketplace,
-      getPluginDetailLinkInMarketplace,
-    } = await import('../utils')
+    { type: 'plugin' as const, collection: 'plugins' },
+    { type: 'bundle' as const, collection: 'bundles' },
+  ])('builds $type icons and formats card data', async ({ type, collection }) => {
+    const { getPluginIconInMarketplace, getFormattedPlugin } = await import('../utils')
     const plugin = { ...createMockPlugin({ type }), labels: { en_US: 'Bundle label' } }
     const icon = `https://marketplace.dify.ai/api/v1/${collection}/test-org/test-plugin/icon`
     expect(getPluginIconInMarketplace(plugin)).toBe(icon)
-    expect(getPluginLinkInMarketplace(plugin)).toBe(
-      `https://marketplace.dify.ai/${collection}/test-org/test-plugin`,
-    )
-    expect(getPluginDetailLinkInMarketplace(plugin)).toBe(`/${detail}/test-org/test-plugin`)
     expect(getFormattedPlugin(plugin)).toEqual({
       ...plugin,
       icon,
       ...(type === 'bundle' ? { brief: plugin.description, label: plugin.labels } : {}),
-    })
-  })
-})
-
-describe('getTemplateDetailLinkInMarketplace', () => {
-  it('keeps the same local link after a title change and prefers the unique handle', async () => {
-    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
-    const template = {
-      id: '5d107b52-8d4d-447b-9bad-1c5c16b01721',
-      template_name: 'Legal Research Agent',
-      publisher_handle: 'Dify Display Name',
-      publisher_unique_handle: 'dify-unique',
-    }
-
-    const link = getTemplateDetailLinkInMarketplace(template)
-    expect(link).toBe('/template/dify-unique/5d107b52-8d4d-447b-9bad-1c5c16b01721')
-    const renamedTemplate = { ...template, template_name: 'Renamed research agent' }
-    expect(getTemplateDetailLinkInMarketplace(renamedTemplate)).toBe(link)
-  })
-
-  it('encodes both path segments and falls back to the publisher handle', async () => {
-    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
-
-    expect(
-      getTemplateDetailLinkInMarketplace({
-        id: 'template/one',
-        publisher_handle: 'Research / 团队',
-        publisher_unique_handle: '',
-      }),
-    ).toBe('/template/Research%20%2F%20%E5%9B%A2%E9%98%9F/template%2Fone')
-  })
-
-  it('uses the template fallback when publisher handles are absent', async () => {
-    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
-
-    expect(getTemplateDetailLinkInMarketplace({ id: 'template-2' })).toBe(
-      '/template/template/template-2',
-    )
-  })
-})
-
-describe('getTemplateLinkInMarketplace', () => {
-  it('preserves embedded context while dropping legacy identity parameters', async () => {
-    const { getTemplateLinkInMarketplace } = await import('../utils')
-
-    const link = new URL(
-      getTemplateLinkInMarketplace(
-        { id: 'template-1', publisher_handle: 'Display Name', publisher_unique_handle: 'dify' },
-        {
-          tid: 'legacy-short-id',
-          templateId: 'legacy-id',
-          creationType: 'templates',
-          language: 'zh-Hans',
-          theme: 'dark',
-          source: 'https://cloud.dify.ai',
-          view: 'modal',
-        },
-      ),
-    )
-
-    expect(link.origin + link.pathname).toBe('https://marketplace.dify.ai/template/dify/template-1')
-    expect(Object.fromEntries(link.searchParams)).toEqual({
-      language: 'zh-Hans',
-      theme: 'dark',
-      source: 'https://cloud.dify.ai',
-      view: 'modal',
     })
   })
 })

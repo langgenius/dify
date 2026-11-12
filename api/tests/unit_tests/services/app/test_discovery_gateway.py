@@ -31,7 +31,7 @@ def test_visibility_needs_no_database_session(
     monkeypatch.setattr(Session, "__init__", reject_session)
     result = EnterpriseAppDiscoveryAccess().visibility(RequestContext("req", None, "account-1", "tenant-1"))
     if rbac_enabled:
-        assert result == AppAccessFilter({"app-1"}, False)
+        assert result == AppAccessFilter({"app-1"})
         assert send.call_args_list == [
             call(
                 "GET",

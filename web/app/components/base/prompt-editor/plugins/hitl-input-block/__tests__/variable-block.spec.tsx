@@ -1,12 +1,12 @@
 import type { LexicalEditor } from 'lexical'
 import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $getRoot } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import { CaptureEditorPlugin } from '../../__tests__/test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
 import { HITLInputNode } from '../node'
@@ -49,7 +49,7 @@ const renderVariableBlock = (props: {
   }
 
   const utils = render(
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'hitl-input-variable-block-test',
         onError: (error: Error) => {
@@ -67,7 +67,7 @@ const renderVariableBlock = (props: {
         ragVariables={props.ragVariables}
       />
       <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
 
   return {
@@ -85,7 +85,7 @@ describe('HITLInputVariableBlockComponent', () => {
     it('should throw when hitl input node is not registered on editor', () => {
       expect(() => {
         render(
-          <LexicalComposer
+          <TestLexicalComposer
             initialConfig={{
               namespace: 'hitl-input-variable-block-missing-node-test',
               onError: (error: Error) => {
@@ -98,7 +98,7 @@ describe('HITLInputVariableBlockComponent', () => {
               variables={['node-1', 'output']}
               workflowNodesMap={createWorkflowNodesMap()}
             />
-          </LexicalComposer>,
+          </TestLexicalComposer>,
         )
       }).toThrow('HITLInputNodePlugin: HITLInputNode not registered on editor')
     })
@@ -123,22 +123,70 @@ describe('HITLInputVariableBlockComponent', () => {
       const editor = getEditor()
       expect(editor).not.toBeNull()
 
-      let handled = false
       act(() => {
         editor!.update(() => {
           $getRoot().selectEnd()
         })
-        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
           workflowNodesMap: createWorkflowNodesMap(),
           availableVariables: [],
         })
       })
 
-      expect(handled).toBe(true)
       await waitFor(() => {
         expect(screen.getByText('Node One')).toBeInTheDocument()
       })
     })
+  })
+
+  it('refreshes every Human Input variable block from a single workflow map update', async () => {
+    let editor: LexicalEditor | null = null
+    render(
+      <TestLexicalComposer
+        initialConfig={{
+          namespace: 'hitl-variable-broadcast-test',
+          nodes: [HITLInputNode],
+          onError: (error: Error) => {
+            throw error
+          },
+        }}
+      >
+        <HITLInputVariableBlockComponent variables={['node-1', 'first']} workflowNodesMap={{}} />
+        <HITLInputVariableBlockComponent variables={['node-1', 'second']} workflowNodesMap={{}} />
+        <CaptureEditorPlugin
+          onReady={(value) => {
+            editor = value
+          }}
+        />
+      </TestLexicalComposer>,
+    )
+
+    await waitFor(() => {
+      expect(editor).not.toBeNull()
+    })
+    expect(screen.queryByText('Node One')).not.toBeInTheDocument()
+
+    act(() => {
+      editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: createWorkflowNodesMap(),
+        availableVariables: [],
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getAllByText('Node One')).toHaveLength(2)
+    })
+
+    // Later edits must also reach both references, rather than retaining a stale title.
+    act(() => {
+      editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: createWorkflowNodesMap('Renamed Node'),
+        availableVariables: [],
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getAllByText('Renamed Node')).toHaveLength(2)
+    })
+    expect(screen.queryByText('Node One')).not.toBeInTheDocument()
   })
 
   describe('Validation branches', () => {

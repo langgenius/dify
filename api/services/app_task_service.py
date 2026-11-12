@@ -7,6 +7,7 @@ new Engine command channel mechanism.
 
 import json
 import logging
+from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import select
@@ -39,6 +40,12 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
 logger = logging.getLogger(__name__)
 
 
+class WorkflowStopOutcome(StrEnum):
+    STOPPED = "stopped"
+    NOT_FOUND = "not_found"
+    NOT_STOPPABLE = "not_stoppable"
+
+
 class AppTaskControlService:
     """Service for managing application task operations."""
 
@@ -63,27 +70,33 @@ class AppTaskControlService:
         """
         return AppQueueManager.set_stop_flag(task_id, invoke_from, user_id, redis=self._redis_client)
 
-    def stop_app_task(
+    def stop_message_task(self, *, task_id: str, caller_role: CreatorUserRole, caller_id: str) -> bool:
+        """Stop a chat, agent-chat or completion task, restricting end users to their own tasks."""
+        if caller_role == CreatorUserRole.END_USER:
+            return self.stop_task(task_id, InvokeFrom.OPENAPI, caller_id)
+        set_app_task_stop_flag(task_id, redis=self._redis_client)
+        return True
+
+    def stop_workflow_run(
         self,
         *,
         tenant_id: str,
         app_id: str,
-        task_id: str,
+        run_id: str,
         app_mode: AppMode,
         caller_role: CreatorUserRole,
         caller_id: str,
-    ) -> bool:
-        """Stop after app admission, restricting all end users to their own tasks."""
+    ) -> WorkflowStopOutcome:
+        """Stop a workflow run by its run ID, restricting end users to their own runs."""
         owner = (caller_role, caller_id) if caller_role == CreatorUserRole.END_USER else None
-        if app_mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-            admitted = self.stop_workflow_task(
-                tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=app_mode, owner=owner
-            )
-            return admitted or owner is None
-        if owner is not None:
-            return self.stop_task(task_id, InvokeFrom.OPENAPI, caller_id)
-        set_app_task_stop_flag(task_id, redis=self._redis_client)
-        return True
+        return AppTaskService.stop_workflow_run(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            run_id=run_id,
+            app_mode=app_mode,
+            owner=owner,
+            redis=self._redis_client,
+        )
 
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         """Stop a workflow after app admission, without consulting the user ownership cache.
@@ -186,6 +199,47 @@ class AppTaskService:
             after_id = pauses[-1][1].id
 
     @staticmethod
+    def stop_workflow_run(
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+        app_mode: AppMode,
+        owner: tuple[CreatorUserRole, str] | None,
+        redis: RedisClientWrapper,
+    ) -> WorkflowStopOutcome:
+        repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
+        run = repository.get_workflow_run_by_id_and_tenant_id(tenant_id, run_id)
+        if run is None:
+            return WorkflowStopOutcome.NOT_FOUND
+        if run.app_id != app_id:
+            return WorkflowStopOutcome.NOT_FOUND
+        if owner is not None and (run.created_by_role, run.created_by) != owner:
+            return WorkflowStopOutcome.NOT_FOUND
+        if run.task_id is None:
+            return WorkflowStopOutcome.NOT_STOPPABLE
+        task_id = AppTaskService._parse_task_id(run.task_id)
+        try:
+            paused_run = repository.stop_paused_workflow_task(
+                tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner
+            )
+        except WorkflowTaskOwnerMismatchError:
+            return WorkflowStopOutcome.NOT_STOPPABLE
+        stopped = AppTaskService._finish_workflow_stop(
+            run=paused_run, tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=app_mode, redis=redis
+        )
+        if not stopped:
+            return WorkflowStopOutcome.NOT_STOPPABLE
+        return WorkflowStopOutcome.STOPPED
+
+    @staticmethod
+    def _parse_task_id(task_id: str) -> str:
+        try:
+            return str(UUID(task_id))
+        except ValueError as exc:
+            raise ValueError("Invalid task ID: expected a UUID") from exc
+
+    @staticmethod
     def stop_workflow_task(
         *,
         tenant_id: str,
@@ -201,10 +255,7 @@ class AppTaskService:
         transition and form invalidation must complete before acknowledging stop.
         Omitted Redis uses the compatibility transport; injected callers supply theirs.
         """
-        try:
-            task_id = str(UUID(task_id))
-        except ValueError as exc:
-            raise ValueError("Invalid task ID: expected a UUID") from exc
+        task_id = AppTaskService._parse_task_id(task_id)
         repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
         try:
             run = repository.stop_paused_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner)
@@ -217,6 +268,20 @@ class AppTaskService:
                 )
         except WorkflowTaskOwnerMismatchError:
             return False
+        return AppTaskService._finish_workflow_stop(
+            run=run, tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=app_mode, redis=redis
+        )
+
+    @staticmethod
+    def _finish_workflow_stop(
+        *,
+        run: WorkflowRun | None,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        app_mode: AppMode,
+        redis: RedisClientWrapper | None,
+    ) -> bool:
         if run is not None and run.status == WorkflowExecutionStatus.RUNNING:
             # Resume has claimed the pause, but may not have opened its queue.
             # The repository has already checked the complete app/user owner.

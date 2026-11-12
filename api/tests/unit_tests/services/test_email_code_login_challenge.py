@@ -10,7 +10,7 @@ from services.email_code_login_challenge import (
     EmailCodeLoginChallengeStore,
     EmailCodeLoginChallengeUnavailableError,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TOKEN = "00000000-0000-4000-8000-000000000001"
 

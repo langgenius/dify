@@ -27,7 +27,7 @@ class Segmentation(BaseModel):
         validation_alias=AliasChoices("separator", "delimiter"),
     )
     max_tokens: int = Field(description="Maximum token count per chunk.")
-    chunk_overlap: int = Field(default=0, description="Token overlap between chunks.")
+    chunk_overlap: int = Field(default=0, ge=0, description="Token overlap between chunks.")
 
 
 class Rule(BaseModel):

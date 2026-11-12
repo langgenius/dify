@@ -7,7 +7,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
-from tests.unit_tests.core.datasource.factories import datasource_entity, provider_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity, provider_entity
 
 
 class TestWebsiteCrawlDatasourcePluginProviderController:

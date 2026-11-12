@@ -1,214 +1,165 @@
-import type { TextGenerationRunControl } from '../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { onTestFinished } from 'vite-plus/test'
+import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
+import { AppSourceType, sendCompletionMessage } from '@/service/share'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import TextGeneration from '../index'
 
-const {
-  mockMode,
-  mockMedia,
-  mockAppStateRef,
-  mockBatchStateRef,
-  sidebarPropsSpy,
-  resultPanelPropsSpy,
-  mockSetIsCallBatchAPI,
-  mockResetBatchExecution,
-  mockHandleRunBatch,
-} = vi.hoisted(() => ({
-  mockMode: { value: 'create' },
-  mockMedia: { value: 'pc' },
-  mockAppStateRef: { value: null as unknown },
-  mockBatchStateRef: { value: null as unknown },
-  sidebarPropsSpy: vi.fn(),
-  resultPanelPropsSpy: vi.fn(),
-  mockSetIsCallBatchAPI: vi.fn(),
-  mockResetBatchExecution: vi.fn(),
-  mockHandleRunBatch: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  MediaType: {
-    mobile: 'mobile',
-    pc: 'pc',
-    tablet: 'tablet',
-  },
-  default: () => mockMedia.value,
+const { searchParams, acceptCSV } = vi.hoisted(() => ({
+  searchParams: new URLSearchParams(),
+  acceptCSV: { current: (_payload: { data: string[][] }) => {} },
 }))
 
 vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => ({
-    get: (key: string) => (key === 'mode' ? mockMode.value : null),
+  useSearchParams: () => searchParams,
+  usePathname: () => '/completion/share-code',
+  useParams: () => ({ token: 'share-code' }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}))
+
+vi.mock('@/i18n/client', () => ({ changeLanguage: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/app/components/base/amplitude/web-app-event', () => ({ trackWebAppEvent: vi.fn() }))
+
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  fetchSavedMessage: vi.fn().mockResolvedValue({ data: [] }),
+  sendCompletionMessage: vi.fn().mockResolvedValue(undefined),
+}))
+
+// CSV parsing is an external SDK boundary; the upload wrapper, batch owner and results stay real.
+vi.mock('react-papaparse', () => ({
+  useCSVReader: () => ({
+    CSVReader: ({
+      onUploadAccepted,
+      children,
+    }: {
+      onUploadAccepted: typeof acceptCSV.current
+      children: (context: { getRootProps: () => object; acceptedFile: null }) => ReactNode
+    }) => {
+      acceptCSV.current = onUploadAccepted
+      return children({ getRootProps: () => ({}), acceptedFile: null })
+    },
+  }),
+  useCSVDownloader: () => ({
+    CSVDownloader: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Type: { Link: 'link' },
   }),
 }))
 
-vi.mock('../hooks/use-text-generation-app-state', () => ({
-  useTextGenerationAppState: () => mockAppStateRef.value,
-}))
+function renderGeneration({ ready = true, installed = false } = {}) {
+  if (ready) {
+    useWebAppStore.setState({
+      appInfo: {
+        app_id: 'app-1',
+        mode: 'completion',
+        custom_config: null,
+        site: { title: 'Generator', description: 'Description', default_language: 'en-US' },
+      },
+      appParams: createChatConfigFixture({
+        user_input_form: [
+          {
+            'text-input': {
+              label: 'Name',
+              variable: 'name',
+              required: true,
+              max_length: 48,
+              default: '',
+              hide: false,
+            },
+          },
+        ],
+      }),
+      webAppAccessMode: AccessMode.PUBLIC,
+    })
+  }
+  return renderWithConsoleQuery(<TextGeneration isInstalledApp={installed} />, {
+    systemFeatures: { branding: { enabled: false, workspace_logo: '' } },
+  })
+}
 
-vi.mock('../hooks/use-text-generation-batch', () => ({
-  useTextGenerationBatch: () => mockBatchStateRef.value,
-}))
-
-vi.mock('../text-generation-sidebar', () => ({
-  default: (props: {
-    currentTab: string
-    onRunOnceSend: () => void
-    onBatchSend: (data: string[][]) => void
-  }) => {
-    sidebarPropsSpy(props)
-    return (
-      <div data-testid="sidebar">
-        <span data-testid="sidebar-current-tab">{props.currentTab}</span>
-        <button type="button" onClick={props.onRunOnceSend}>
-          run-once
-        </button>
-        <button type="button" onClick={() => props.onBatchSend([['name'], ['Alice']])}>
-          run-batch
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../text-generation-result-panel', () => ({
-  default: (props: {
-    allTaskList: unknown[]
-    controlSend: number
-    controlStopResponding: number
-    isShowResultPanel: boolean
-    onRunControlChange: (value: TextGenerationRunControl | null) => void
-    onRunStart: () => void
-  }) => {
-    resultPanelPropsSpy(props)
-    return (
-      <div data-testid="result-panel">
-        <span data-testid="show-result">{props.isShowResultPanel ? 'shown' : 'hidden'}</span>
-        <span data-testid="control-send">{String(props.controlSend)}</span>
-        <span data-testid="control-stop">{String(props.controlStopResponding)}</span>
-        <span data-testid="task-count">{String(props.allTaskList.length)}</span>
-        <button
-          type="button"
-          onClick={() => props.onRunControlChange({ isStopping: false, onStop: vi.fn() })}
-        >
-          set-run-control
-        </button>
-        <button type="button" onClick={props.onRunStart}>
-          start-run
-        </button>
-      </div>
-    )
-  },
-}))
-
-const createAppState = (overrides: Record<string, unknown> = {}) => ({
-  accessMode: AccessMode.PUBLIC,
-  appId: 'app-1',
-  appSourceType: 'webApp',
-  customConfig: {
-    remove_webapp_brand: false,
-    replace_webapp_logo: '',
-  },
-  handleRemoveSavedMessage: vi.fn(),
-  handleSaveMessage: vi.fn(),
-  moreLikeThisConfig: { enabled: true },
-  promptConfig: {
-    prompt_template: '',
-    prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
-  },
-  savedMessages: [],
-  siteInfo: {
-    title: 'Generator',
-    description: 'Description',
-  },
-  systemFeatures: {},
-  textToSpeechConfig: { enabled: true },
-  visionConfig: { enabled: false },
-  ...overrides,
-})
-
-const createBatchState = (overrides: Record<string, unknown> = {}) => ({
-  allFailedTaskList: [],
-  allSuccessTaskList: [],
-  allTaskList: [],
-  allTasksRun: true,
-  controlRetry: 0,
-  exportRes: [],
-  handleCompleted: vi.fn(),
-  handleRetryAllFailedTask: vi.fn(),
-  handleRunBatch: (data: string[][], options: { onStart: () => void }) => {
-    mockHandleRunBatch(data, options)
-    options.onStart()
-    return true
-  },
-  isCallBatchAPI: false,
-  noPendingTask: true,
-  resetBatchExecution: () => mockResetBatchExecution(),
-  setIsCallBatchAPI: (value: boolean) => mockSetIsCallBatchAPI(value),
-  showTaskList: [],
-  ...overrides,
+beforeEach(() => {
+  searchParams.delete('mode')
 })
 
 describe('TextGeneration', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockMode.value = 'create'
-    mockMedia.value = 'pc'
-    mockAppStateRef.value = createAppState()
-    mockBatchStateRef.value = createBatchState()
+    useWebAppStore.setState(useWebAppStore.getInitialState(), true)
+    const stopGuard = guardUnexpectedFetch()
+    onTestFinished(stopGuard)
   })
 
-  it('should render the loading state until app state is ready', () => {
-    mockAppStateRef.value = createAppState({ appId: '', siteInfo: null, promptConfig: null })
-
-    render(<TextGeneration />)
-
+  it('shows loading until app metadata is ready', () => {
+    renderGeneration({ ready: false })
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
   })
 
-  it('should fall back to create mode for unsupported query params', () => {
-    mockMode.value = 'unsupported'
-
-    render(<TextGeneration isInstalledApp />)
-
-    expect(screen.getByTestId('sidebar-current-tab')).toHaveTextContent('create')
-    expect(sidebarPropsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentTab: 'create',
-        isInstalledApp: true,
-        isPC: true,
-      }),
+  it('falls back to the create tab for an unsupported mode in an installed app', async () => {
+    searchParams.set('mode', 'unsupported')
+    renderGeneration({ installed: true })
+    expect(
+      await screen.findByRole('tab', { name: 'share.generation.tabs.create' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'share.generation.tabs.batch' })).toHaveAttribute(
+      'aria-selected',
+      'false',
     )
   })
 
-  it('should orchestrate a run-once request and reveal the result panel', async () => {
+  it('runs the entered inputs and displays the streamed completion', async () => {
     const user = userEvent.setup()
-    render(<TextGeneration />)
-
-    await user.click(screen.getByRole('button', { name: 'run-once' }))
-
-    expect(mockSetIsCallBatchAPI).toHaveBeenCalledWith(false)
-    expect(mockResetBatchExecution).toHaveBeenCalledTimes(1)
-    await waitFor(() => {
-      expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
+    renderGeneration()
+    await user.type(await screen.findByRole('textbox', { name: 'Name' }), 'Alice')
+    await user.click(screen.getByRole('button', { name: 'share.generation.run' }))
+    await waitFor(() =>
+      expect(sendCompletionMessage).toHaveBeenCalledWith(
+        { inputs: { name: 'Alice' } },
+        expect.any(Object),
+        AppSourceType.webApp,
+        'app-1',
+      ),
+    )
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    const handlers = vi.mocked(sendCompletionMessage).mock.calls[0]![1]
+    act(() => {
+      handlers.onData?.('Hello Alice', false, { messageId: 'message-1', taskId: 'task-1' })
+      handlers.onCompleted?.()
     })
-    expect(Number(screen.getByTestId('control-send').textContent)).toBeGreaterThan(0)
+    expect(await screen.findByText('Hello Alice')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  it('should orchestrate batch runs through the batch hook and expose the result panel', async () => {
+  it('runs accepted CSV rows through the batch owner and renders their results', async () => {
     const user = userEvent.setup()
-    mockMode.value = 'batch'
-
-    render(<TextGeneration />)
-
-    await user.click(screen.getByRole('button', { name: 'run-batch' }))
-
-    expect(mockHandleRunBatch).toHaveBeenCalledWith(
-      [['name'], ['Alice']],
-      expect.objectContaining({ onStart: expect.any(Function) }),
+    searchParams.set('mode', 'batch')
+    renderGeneration()
+    const batch = await screen.findByRole('tabpanel', { name: 'share.generation.tabs.batch' })
+    act(() => acceptCSV.current({ data: [['Name'], ['Alice']] }))
+    await user.click(within(batch).getByRole('button', { name: 'share.generation.run' }))
+    await waitFor(() =>
+      expect(sendCompletionMessage).toHaveBeenCalledWith(
+        { inputs: { name: 'Alice' } },
+        expect.any(Object),
+        AppSourceType.webApp,
+        'app-1',
+      ),
     )
-    await waitFor(() => {
-      expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
+    expect(screen.getByText('share.generation.executions:{"num":1}')).toBeInTheDocument()
+    const handlers = vi.mocked(sendCompletionMessage).mock.calls[0]![1]
+    act(() => {
+      handlers.onData?.('Batch result for Alice', false, {
+        messageId: 'message-1',
+        taskId: 'task-1',
+      })
+      handlers.onCompleted?.()
     })
-    expect(Number(screen.getByTestId('control-stop').textContent)).toBeGreaterThan(0)
+    expect(await screen.findByText('Batch result for Alice')).toBeInTheDocument()
+    expect(within(batch).getByRole('button', { name: 'share.generation.run' })).toBeEnabled()
   })
 })

@@ -9,11 +9,11 @@ from core.external_data_tool.external_data_fetch import ExternalDataFetch
 
 class TestExternalDataFetch:
     @pytest.fixture
-    def app(self):
+    def app(self) -> Flask:
         app = Flask(__name__)
         return app
 
-    def test_fetch_success(self, app: Flask):
+    def test_fetch_success(self, app: Flask) -> None:
         with app.app_context():
             fetcher = ExternalDataFetch()
 
@@ -30,7 +30,7 @@ class TestExternalDataFetch:
                 # This approach is robust regardless of thread scheduling order
                 from unittest.mock import MagicMock
 
-                def factory_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
+                def factory_side_effect[**P](*args: P.args, **kwargs: P.kwargs) -> None:
                     variable = kwargs.get("variable")
                     mock_instance = MagicMock()
                     if variable == "var1":
@@ -64,7 +64,7 @@ class TestExternalDataFetch:
                     name="type2", tenant_id="tenant1", app_id="app1", variable="var2", config={"c2": "v2"}
                 )
 
-    def test_fetch_no_tools(self):
+    def test_fetch_no_tools(self) -> None:
         # We don't necessarily need app_context if there are no tools,
         # but fetch calls current_app._get_current_object() only inside the loop.
         # Wait, let's look at the code.
@@ -79,7 +79,7 @@ class TestExternalDataFetch:
         assert result_inputs == inputs
         assert result_inputs is not inputs  # Should be a copy
 
-    def test_fetch_with_none_variable(self, app: Flask):
+    def test_fetch_with_none_variable(self, app: Flask) -> None:
         with app.app_context():
             fetcher = ExternalDataFetch()
             tool = ExternalDataVariableEntity(variable="var1", type="type1", config={})
@@ -95,7 +95,7 @@ class TestExternalDataFetch:
                 assert "var1" not in result_inputs
                 assert result_inputs == {"in": "val"}
 
-    def test_query_external_data_tool(self, app: Flask):
+    def test_query_external_data_tool(self, app: Flask) -> None:
         fetcher = ExternalDataFetch()
         tool = ExternalDataVariableEntity(variable="var1", type="type1", config={"k": "v"})
 

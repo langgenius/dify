@@ -42,6 +42,7 @@ export const zApiBaseUrlResponse = z.object({
  */
 export const zDatasetApiKeyCreatePayload = z.object({
   dataset_ids: z.array(z.string()).optional(),
+  knowledge_space_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -51,6 +52,7 @@ export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
   dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
+  knowledge_space_ids: z.array(z.string()).optional().default([]),
   last_used_at: z.int().nullish(),
   token: z.string(),
   type: z.string(),
@@ -458,6 +460,14 @@ export const zCompletionRequestError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * KnowledgeFSUpgradeRetryResponse
+ */
+export const zKnowledgeFsUpgradeRetryResponse = z.object({
+  id: z.string(),
+  status: z.literal('queued').optional().default('queued'),
+})
 
 /**
  * MetadataArgs
@@ -869,6 +879,58 @@ export const zHitTestingQuery = z.object({
   content: z.string(),
 })
 
+export const zKnowledgeFsUpgradeBlockReason = z.enum([
+  'already_upgraded',
+  'feature_disabled',
+  'retry_required',
+  'unsupported_dataset_provider',
+  'upgrade_in_progress',
+])
+
+/**
+ * KnowledgeFSUpgradeStage
+ */
+export const zKnowledgeFsUpgradeStage = z.enum([
+  'completed',
+  'creating_sources',
+  'finalizing',
+  'migrating_access',
+  'submitting_documents',
+  'validating',
+  'waiting_for_space',
+])
+
+/**
+ * KnowledgeFSUpgradeJobStatus
+ */
+export const zKnowledgeFsUpgradeJobStatus = z.enum(['failed', 'queued', 'running', 'succeeded'])
+
+/**
+ * KnowledgeFSUpgradeJobResponse
+ */
+export const zKnowledgeFsUpgradeJobResponse = z.object({
+  completed_at: z.iso.datetime().nullish(),
+  completed_documents: z.int().gte(0),
+  completed_sources: z.int().gte(0),
+  id: z.string(),
+  last_error_code: z.string().nullish(),
+  last_error_message: z.string().nullish(),
+  new_control_space_id: z.string().nullish(),
+  old_dataset_id: z.string(),
+  snapshot_at: z.iso.datetime(),
+  stage: zKnowledgeFsUpgradeStage,
+  status: zKnowledgeFsUpgradeJobStatus,
+  total_documents: z.int().gte(0),
+  total_sources: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSUpgradeJobListResponse
+ */
+export const zKnowledgeFsUpgradeJobListResponse = z.object({
+  data: z.array(zKnowledgeFsUpgradeJobResponse),
+})
+
 /**
  * DatasetMetadataListItemResponse
  */
@@ -885,6 +947,16 @@ export const zDatasetMetadataListItemResponse = z.object({
 export const zDatasetMetadataListResponse = z.object({
   built_in_field_enabled: z.boolean(),
   doc_metadata: z.array(zDatasetMetadataListItemResponse),
+})
+
+/**
+ * KnowledgeFSUpgradeDiscoveryResponse
+ */
+export const zKnowledgeFsUpgradeDiscoveryResponse = z.object({
+  block_reason: zKnowledgeFsUpgradeBlockReason.nullish(),
+  can_retry: z.boolean(),
+  can_upgrade: z.boolean(),
+  job: zKnowledgeFsUpgradeJobResponse.nullish(),
 })
 
 /**
@@ -917,7 +989,7 @@ export const zRerankingModel = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
@@ -1097,9 +1169,113 @@ export const zHitTestingFile = z.object({
 })
 
 /**
+ * KnowledgeFSUpgradeModelChoice
+ */
+export const zKnowledgeFsUpgradeModelChoice = z.object({
+  model: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * KnowledgeFSUpgradeModelsPayload
+ */
+export const zKnowledgeFsUpgradeModelsPayload = z.object({
+  embedding: zKnowledgeFsUpgradeModelChoice,
+  reasoning: zKnowledgeFsUpgradeModelChoice,
+  rerank: zKnowledgeFsUpgradeModelChoice,
+})
+
+/**
+ * KnowledgeFSUpgradeStartPayload
+ */
+export const zKnowledgeFsUpgradeStartPayload = z.object({
+  models: zKnowledgeFsUpgradeModelsPayload.nullish(),
+})
+
+/**
+ * KnowledgeFSUpgradeModelRecommendationResponse
+ */
+export const zKnowledgeFsUpgradeModelRecommendationResponse = z.object({
+  available: z.boolean(),
+  source: z.enum(['legacy', 'workspace_default']).nullable(),
+  unavailable_reason: z
+    .enum([
+      'credential-removed',
+      'deprecated',
+      'disabled',
+      'missing',
+      'no-configure',
+      'no-permission',
+      'not_found',
+      'quota-exceeded',
+    ])
+    .nullish(),
+  value: zKnowledgeFsUpgradeModelChoice.nullable(),
+})
+
+/**
+ * KnowledgeFSUpgradeModelRecommendationsResponse
+ */
+export const zKnowledgeFsUpgradeModelRecommendationsResponse = z.object({
+  embedding: zKnowledgeFsUpgradeModelRecommendationResponse,
+  reasoning: zKnowledgeFsUpgradeModelRecommendationResponse,
+  rerank: zKnowledgeFsUpgradeModelRecommendationResponse,
+})
+
+/**
+ * KnowledgeFSUpgradePreparationResponse
+ */
+export const zKnowledgeFsUpgradePreparationResponse = z.object({
+  block_reason: zKnowledgeFsUpgradeBlockReason.nullish(),
+  can_retry: z.boolean(),
+  can_upgrade: z.boolean(),
+  job: zKnowledgeFsUpgradeJobResponse.nullish(),
+  models: zKnowledgeFsUpgradeModelRecommendationsResponse.nullish(),
+})
+
+/**
+ * KnowledgeFSUpgradeModelIssueResponse
+ */
+export const zKnowledgeFsUpgradeModelIssueResponse = z.object({
+  field: z.enum(['embedding', 'reasoning', 'rerank']),
+  model: z.string().nullish(),
+  provider: z.string().nullish(),
+  reason: z.enum([
+    'credential-removed',
+    'deprecated',
+    'disabled',
+    'missing',
+    'no-configure',
+    'no-permission',
+    'not_found',
+    'quota-exceeded',
+  ]),
+})
+
+/**
+ * KnowledgeFSUpgradeModelErrorDetailsResponse
+ */
+export const zKnowledgeFsUpgradeModelErrorDetailsResponse = z.object({
+  issues: z.array(zKnowledgeFsUpgradeModelIssueResponse).min(1).max(3),
+})
+
+/**
+ * KnowledgeFsUpgradeModelsUnavailableError
+ *
+ * One or more selected upgrade models are unavailable.
+ */
+export const zKnowledgeFsUpgradeModelsUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_upgrade_models_unavailable'),
+    details: zKnowledgeFsUpgradeModelErrorDetailsResponse.optional(),
+    status: z.literal(422),
+  }),
+)
+
+/**
  * CreatorUserRole
  */
-export const zCreatorUserRole = z.enum(['account', 'end_user'])
+export const zCreatorUserRole = z.enum(['account', 'dataset_api_key', 'end_user'])
 
 /**
  * DatasetQuerySource
@@ -1331,6 +1507,7 @@ export const zDatasetListItemResponse = z.object({
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
   keyword_number: z.int().nullish(),
+  knowledge_fs_upgrade: zKnowledgeFsUpgradeDiscoveryResponse,
   maintainer: z.string().nullish(),
   name: z.string(),
   partial_member_list: z.array(z.string()),
@@ -1461,7 +1638,7 @@ export const zRetrievalModel = z.object({
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -1819,6 +1996,11 @@ export const zDataSource = z.object({
 
 /**
  * KnowledgeConfig
+ *
+ * Document ingestion configuration with a validated indexing technique.
+ *
+ * The indexing technique remains an IndexTechniqueType enum after validation.
+ * JSON serialization preserves its public economy or high_quality value.
  */
 export const zKnowledgeConfig = z.object({
   data_source: zDataSource.nullish(),
@@ -1830,7 +2012,7 @@ export const zKnowledgeConfig = z.object({
   duplicate: z.boolean().optional().default(true),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']),
+  indexing_technique: zIndexTechniqueType,
   is_multimodal: z.boolean().optional().default(false),
   name: z.string().nullish(),
   original_document_id: z.string().nullish(),
@@ -1847,6 +2029,7 @@ export const zKnowledgeConfig = z.object({
 })
 
 export const zGetDatasetsQuery = z.object({
+  creator_ids: z.array(z.string().min(1).max(255)).max(100).optional(),
   ids: z.array(z.string()).optional(),
   include_all: z.boolean().optional().default(false),
   keyword: z.string().optional(),
@@ -1982,6 +2165,11 @@ export const zPostDatasetsInitBody = zKnowledgeConfig
  * Dataset initialized successfully
  */
 export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
+
+/**
+ * Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base
+ */
+export const zGetDatasetsKnowledgeFsUpgradeJobsResponse = zKnowledgeFsUpgradeJobListResponse
 
 /**
  * Built-in fields retrieved successfully
@@ -2558,6 +2746,53 @@ export const zGetDatasetsByDatasetIdIndexingStatusPath = z.object({
  * Indexing status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdIndexingStatusResponse = zDocumentStatusListResponse
+
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base
+ */
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  zKnowledgeFsUpgradePreparationResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody = zKnowledgeFsUpgradeStartPayload
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted
+ */
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse = zKnowledgeFsUpgradeJobResponse
+
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.string(),
+})
+
+/**
+ * Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base
+ */
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  zKnowledgeFsUpgradeJobResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.string(),
+})
+
+/**
+ * Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted
+ */
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  zKnowledgeFsUpgradeRetryResponse
 
 export const zGetDatasetsByDatasetIdMetadataPath = z.object({
   dataset_id: z.uuid(),

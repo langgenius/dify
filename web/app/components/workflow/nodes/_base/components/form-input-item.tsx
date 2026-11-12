@@ -463,7 +463,6 @@ const FormInputItem: FC<Props> = ({
       {isAppSelector && (
         <AppSelector
           disabled={readOnly}
-          scope={scope || 'all'}
           value={varInput?.value}
           onSelect={handleAppOrModelSelect}
         />

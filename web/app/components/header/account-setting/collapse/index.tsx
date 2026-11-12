@@ -27,7 +27,7 @@ const Collapse = <T extends IItem>({
     <div className={cn('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
       <button
         type="button"
-        className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-left text-xs leading-4.5 font-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-3 py-2 text-start text-xs leading-4.5 font-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={toggle}
       >
         {title}
@@ -42,7 +42,7 @@ const Collapse = <T extends IItem>({
             <button
               key={item.key}
               type="button"
-              className="block w-full border-none bg-transparent p-0 text-left"
+              className="block w-full border-none bg-transparent p-0 text-start"
               onClick={() => onSelect?.(item)}
             >
               {renderItem(item)}

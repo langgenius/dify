@@ -1,10 +1,10 @@
 import type { LexicalEditor } from 'lexical'
 import type { ReactNode } from 'react'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { render } from '@testing-library/react'
 import { $createParagraphNode, $getRoot, $nodesOfType } from 'lexical'
 import * as React from 'react'
+import { TestLexicalComposer } from '@/test/lexical'
 import { ContextBlockNode } from '../../context-block/node'
 import { $createCustomTextNode, CustomTextNode } from '../../custom-text/node'
 import ContextBlockReplacementBlock from '../context-block-replacement-block'
@@ -25,7 +25,7 @@ function createEditorConfig() {
 }
 
 function TestWrapper({ children }: { children: ReactNode }) {
-  return <LexicalComposer initialConfig={createEditorConfig()}>{children}</LexicalComposer>
+  return <TestLexicalComposer initialConfig={createEditorConfig()}>{children}</TestLexicalComposer>
 }
 
 function renderWithEditor(ui: ReactNode) {
@@ -104,9 +104,9 @@ describe('ContextBlockReplacementBlock', () => {
 
       expect(() => {
         render(
-          <LexicalComposer initialConfig={configWithoutNode}>
+          <TestLexicalComposer initialConfig={configWithoutNode}>
             <ContextBlockReplacementBlock />
-          </LexicalComposer>,
+          </TestLexicalComposer>,
         )
       }).toThrow('ContextBlockNodePlugin: ContextBlockNode not registered on editor')
     })

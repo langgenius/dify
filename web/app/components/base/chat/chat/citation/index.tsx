@@ -31,7 +31,13 @@ const Citation: FC<CitationProps> = ({
         const documentId = next.document_id
         const documentName = next.document_name
         const dataSourceType = next.data_source_type
-        const documentIndex = prev.findIndex((i) => i.documentId === documentId)
+        const documentIndex = prev.findIndex(
+          (i) =>
+            i.documentId === documentId &&
+            (dataSourceType !== 'knowledge_fs' ||
+              (i.sources[0]?.dataset_id === next.dataset_id &&
+                i.sources[0]?.document_version === next.document_version)),
+        )
 
         if (documentIndex > -1) {
           prev[documentIndex]!.sources.push(next)
@@ -62,7 +68,6 @@ const Citation: FC<CitationProps> = ({
       const fullWidth =
         widths.reduce((total, width) => total + width, 0) + Math.max(0, widths.length - 1) * 4
       if (fullWidth <= containerWidth) {
-        // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
         setLimitNumberInOneLine(resources.length)
         return
       }
@@ -74,9 +79,9 @@ const Citation: FC<CitationProps> = ({
         if (totalWidth + 4 + 34 > containerWidth) break
         limit += 1
       }
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
       setLimitNumberInOneLine(limit)
     }
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
     updateLimit()
     const observer = new ResizeObserver(updateLimit)
     observer.observe(container)
@@ -93,6 +98,11 @@ const Citation: FC<CitationProps> = ({
 
   return (
     <div className="mt-3 -mb-1">
+      {data.flatMap((source) =>
+        source.knowledge_fs_citation
+          ? [<span key={source.knowledge_fs_citation.id} id={source.knowledge_fs_citation.id} />]
+          : [],
+      )}
       <div
         data-testid="citation-title"
         className="mb-2 flex items-center system-xs-medium text-text-tertiary"
@@ -103,7 +113,7 @@ const Citation: FC<CitationProps> = ({
       <div className="relative flex flex-wrap">
         {resources.map((res, index) => (
           <div
-            key={res.documentId}
+            key={`${res.sources[0]?.dataset_id}:${res.documentId}:${res.sources[0]?.document_version}`}
             aria-hidden
             data-testid="citation-measurement-item"
             className="absolute top-0 left-0 -z-10 mr-1 mb-1 h-7 w-auto max-w-60 pr-2 pl-7 text-xs whitespace-nowrap opacity-0"
@@ -115,7 +125,10 @@ const Citation: FC<CitationProps> = ({
           </div>
         ))}
         {resources.slice(0, showMore ? resourcesLength : limitNumberInOneLine).map((res) => (
-          <div key={res.documentId} className="mr-1 mb-1 cursor-pointer">
+          <div
+            key={`${res.sources[0]?.dataset_id}:${res.documentId}:${res.sources[0]?.document_version}`}
+            className="mr-1 mb-1 cursor-pointer"
+          >
             <Popup data={res} showHitInfo={showHitInfo} />
           </div>
         ))}

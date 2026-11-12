@@ -16,6 +16,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -31,7 +32,7 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
     _stop_global_redis,
     harness,
 )
-from tests.unit_tests.services.test_app_task_service import _StopRedis
+from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 __all__ = ["_stop_global_redis", "harness"]
 
@@ -114,7 +115,7 @@ def runtime(
                 app_id=harness.target_app.id,
                 workflow_id="workflow-1",
                 task_id=_TASK_ID,
-                type=WorkflowType.WORKFLOW,
+                type=ModelWorkflowType(WorkflowType.WORKFLOW),
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 version="1",
                 status=WorkflowExecutionStatus.RUNNING,
@@ -496,6 +497,7 @@ def test_workflow_stop_preserves_legacy_redis_failure_without_attempting_graph_c
 def test_workflow_stop_keeps_legacy_flag_and_success_when_graph_command_fails(
     harness: _Harness, runtime: _Runtime, stop_redis: _StopRedis, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given a failed graph command, keep the stop flag, return success, and log the cause."""
     failure = RedisConnectionError("Graph channel unavailable")
     stop_redis.command_error = failure
 
@@ -505,5 +507,5 @@ def test_workflow_stop_keeps_legacy_flag_and_success_when_graph_command_fails(
     assert stop_redis.operations == ["legacy_flag", "graph_command"]
     assert stop_redis.reads == []
     assert stop_redis.values[_STOP_KEY] == b"1"
-    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    assert any(isinstance(record.exc_info, tuple) and record.exc_info[1] is failure for record in caplog.records)
     runtime.assert_usage_unchanged()

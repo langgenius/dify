@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getMaxVarNameLength, MAX_VAR_KEY_LENGTH } from '@/config'
 import {
   checkKey,
   checkKeys,
-  getMarketplaceUrl,
   getNewVar,
   getNewVarInWorkflow,
   getVars,
@@ -189,58 +188,6 @@ describe('Variable Utilities', () => {
       const result = getNewVarInWorkflow('numVar', InputVarType.number)
       expect(result.variable).toBe('numVar')
       expect(result.type).toBe(InputVarType.number)
-    })
-  })
-
-  describe('getMarketplaceUrl', () => {
-    it('should add additional parameters', () => {
-      const url = getMarketplaceUrl('/plugins', { category: 'ai', version: '1.0' })
-      expect(url).toContain('category=ai')
-      expect(url).toContain('version=1.0')
-    })
-
-    it('should skip undefined parameters', () => {
-      const url = getMarketplaceUrl('/plugins', { category: 'ai', version: undefined })
-      expect(url).toContain('category=ai')
-      expect(url).not.toContain('version=')
-    })
-
-    it('should include provided source without double encoding', () => {
-      const url = getMarketplaceUrl(
-        '/plugins',
-        { category: 'ai' },
-        { source: 'https://example.com/app' },
-      )
-      expect(url).toContain('source=https%3A%2F%2Fexample.com')
-      expect(url).not.toContain('source=https%253A%252F%252Fexample.com')
-    })
-
-    it('should let params replace the default source without duplicating it', () => {
-      const url = getMarketplaceUrl(
-        '/plugins',
-        { source: 'http://localhost:3001', language: 'en-US' },
-        { source: 'http://localhost:3000' },
-      )
-      const searchParams = new URL(url, 'https://marketplace.dify.ai').searchParams
-
-      expect(searchParams.getAll('source')).toEqual(['http://localhost:3001'])
-      expect(searchParams.get('language')).toBe('en-US')
-    })
-
-    it('should not access window during server render', () => {
-      vi.stubGlobal('window', undefined)
-
-      try {
-        const url = getMarketplaceUrl('/plugins', { category: 'ai' })
-        expect(url).toContain('category=ai')
-        expect(url).not.toContain('source=')
-      } finally {
-        vi.unstubAllGlobals()
-      }
-    })
-
-    it('should not append empty query string when no params are available', () => {
-      expect(getMarketplaceUrl('/plugins')).toBe('/plugins')
     })
   })
 

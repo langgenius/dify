@@ -10,9 +10,8 @@ export const changeLanguage = async (lng?: string) => {
   await i18n.changeLanguage(normalizeLocale(lng))
 }
 
-export const setLocaleOnClient = async (locale: string, reloadPage = true) => {
+export const setLocaleOnClient = async (locale: string) => {
   const normalized = normalizeLocale(locale)
   Cookies.set(LOCALE_COOKIE_NAME, normalized, { expires: 365 })
   await changeLanguage(normalized)
-  if (reloadPage) location.reload()
 }

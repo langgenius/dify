@@ -67,7 +67,8 @@ const renderState = (state: AgentRosterListState) => {
 
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <AgentRosterList label="Agent roster list" state={state} />
+      <h1 id="agent-roster-title">Agents</h1>
+      <AgentRosterList aria-labelledby="agent-roster-title" state={state} />
     </QueryClientProvider>,
   )
 
@@ -113,7 +114,8 @@ describe('AgentRosterList', () => {
   it('exposes each agent card with its name, draft status, and description', () => {
     renderList([createAgent()])
 
-    const list = screen.getByRole('list')
+    const list = screen.getByRole('list', { name: 'agentRoster.roster.listLabel' })
+    expect(screen.getByRole('region', { name: 'Agents' })).toContainElement(list)
     const card = within(list).getByRole('listitem', { name: 'Research Agent' })
     const cardLink = within(card).getByRole('link', { name: 'Research Agent' })
 

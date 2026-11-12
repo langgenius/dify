@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
   "operation.cancel": "Cancel",
+  "operation.close": "Close",
   "operation.now": "Now",
   "operation.ok": "OK",
   "operation.pickDate": "Pick Date",

@@ -195,11 +195,9 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
               render={
                 <button
                   type="button"
-                  aria-label={
-                    t(($) => $['nodes.triggerWebhook.debugUrlCopy'], {
-                      ns: 'workflowIntegrations',
-                    }) || ''
-                  }
+                  aria-label={t(($) => $['nodes.triggerWebhook.debugUrlCopy'], {
+                    ns: 'workflowIntegrations',
+                  })}
                   className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-0.5 font-mono text-[13px] leading-4.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
                   onClick={() => {
                     copy(webhookDebugUrl)
@@ -210,7 +208,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
                 </button>
               }
             />
-            <TooltipContent placement="top">
+            <TooltipContent>
               {debugUrlCopied
                 ? t(($) => $['nodes.triggerWebhook.debugUrlCopied'], { ns: 'workflowIntegrations' })
                 : t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflowIntegrations' })}

@@ -36,7 +36,7 @@ const renderDialog = (agent: AgentComposerAgentResponse = inlineAgent) => {
 
   render(
     <SaveInlineAgentToRosterDialog
-      resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
+      resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
       initialAgent={agent}
       nodeId="node-1"
       open
@@ -233,7 +233,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     }
     const { rerender } = render(
       <SaveInlineAgentToRosterDialog
-        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
         initialAgent={inlineAgent}
         nodeId="node-1"
         open
@@ -244,7 +244,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open
@@ -264,7 +264,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open={false}
@@ -278,7 +278,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open
