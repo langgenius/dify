@@ -168,6 +168,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       currentModel?.model &&
       !model.provider
     ) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Asynchronously loaded provider defaults initialize the existing model draft.
       handleModelChanged({
         provider: currentProvider?.provider,
         modelId: currentModel?.model,
@@ -189,6 +190,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
     if (!modelChanged) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the pending model change after the new model capabilities have rendered.
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
   }, [handleVisionConfigAfterModelChanged, isVisionModel, modelChanged])

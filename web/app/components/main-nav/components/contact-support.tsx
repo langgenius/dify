@@ -16,7 +16,6 @@ import { toast } from '@/app/notifications'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import contactSupportIcon from '../assets/contact-support.svg'
 
 type ContactSupportProps = {
   placement: 'menu' | 'sidebar'
@@ -56,7 +55,7 @@ export default function ContactSupport({ placement }: ContactSupportProps) {
         </div>
         <button type="button" className={sidebarItemClassName} onClick={openZendesk}>
           <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-            <img src={contactSupportIcon.src} alt="" width={18} height={18} />
+            <span className="i-ri-message-3-line size-[18px]" />
           </span>
           <span className="min-w-0 truncate" title={label}>
             {label}

@@ -9,8 +9,8 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel
 
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE, TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from libs.datetime_utils import ensure_naive_utc

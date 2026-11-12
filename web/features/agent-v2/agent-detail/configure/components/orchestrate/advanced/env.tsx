@@ -34,13 +34,13 @@ import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { getEnvImportPlatform, parseEnvImport } from './env-utils'
 
-const scopeLabelKeys: Record<
-  EnvScope,
-  I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>
-> = {
+const scopeLabelKeys = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
   secret: 'agentDetail.configure.advancedSettings.envEditor.scopeSecret',
-}
+} as const satisfies Record<
+  EnvScope,
+  I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>
+>
 
 const envScopeOptions: EnvScope[] = ['secret', 'plain']
 

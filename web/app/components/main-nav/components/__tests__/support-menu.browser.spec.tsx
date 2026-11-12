@@ -4,7 +4,10 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestQueryClient } from '@/test/query-client'
@@ -17,15 +20,14 @@ const boundary = vi.hoisted(() => ({
   },
   openZendesk: vi.fn(),
   pricingUpdates: vi.fn(),
-  toastError: vi.fn(),
 }))
 
+// boundary: Zendesk loads a third-party script and widget outside the test page.
 vi.mock('@/app/components/base/zendesk/runtime', () => ({
   zendeskRuntime: { open: boundary.openZendesk },
 }))
 
-vi.mock('@/app/notifications', () => ({ toast: { error: boundary.toastError } }))
-
+// boundary: build-time public support configuration is varied to cover each external destination.
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   const dynamicZendeskWidgetKey = {
@@ -48,6 +50,7 @@ async function renderSupportMenu({
   plan?: CloudPlan | null
 } = {}) {
   const queryClient = createTestQueryClient(() => new Promise(() => {}))
+  seedAccountProfileQuery(queryClient, { email: 'user@example.com' }, { currentVersion: '1.0.0' })
   seedSystemFeatures(queryClient, { deployment_edition: edition })
   if (plan !== null) {
     seedFeatures(queryClient, { billing: { subscription: { plan } } })
@@ -61,6 +64,7 @@ async function renderSupportMenu({
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter onUrlUpdate={boundary.pricingUpdates}>
+        <AppToaster timeout={0} />
         <ContactSupport placement="sidebar" />
         <Menu>
           <MenuTrigger>Support</MenuTrigger>
@@ -82,6 +86,8 @@ beforeEach(() => {
   boundary.config.zendeskWidgetKey = 'zendesk-key'
   boundary.openZendesk.mockResolvedValue(undefined)
 })
+
+afterEach(() => toast.dismiss())
 
 it('opens Zendesk from the paid sidebar and keeps contact support out of Help', async () => {
   const { screen } = await renderSupportMenu()
@@ -106,7 +112,11 @@ it('surfaces a failed Zendesk launch and permits a fresh retry', async () => {
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'common.userProfile.contactSupport' }))
-  expect(boundary.toastError).toHaveBeenCalledWith('common.api.actionFailed')
+  const notification = screen.getByRole('dialog', { name: 'common.api.actionFailed' })
+  await expect.element(notification).toBeVisible()
+  await notification.hover()
+  await userEvent.click(screen.getByRole('button', { name: 'Close notification' }))
+  await expect.element(notification).not.toBeInTheDocument()
 
   await userEvent.click(screen.getByRole('button', { name: 'common.userProfile.contactSupport' }))
   expect(boundary.openZendesk).toHaveBeenCalledTimes(2)
@@ -133,7 +143,6 @@ it('routes a sandbox to the existing pricing flow', async () => {
 it('does not show email support in Cloud when Zendesk is unavailable', async () => {
   boundary.config.zendeskWidgetKey = ''
   const { screen } = await renderSupportMenu()
-
   await expect
     .element(screen.getByRole('button', { name: 'common.userProfile.contactSupport' }))
     .not.toBeInTheDocument()

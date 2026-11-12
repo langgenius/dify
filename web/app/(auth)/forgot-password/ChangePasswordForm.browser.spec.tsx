@@ -30,8 +30,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/utils/var', () => ({ basePath: '' }))
-
 const changePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
 const validPassword = 'ValidPass123!'
 
@@ -113,6 +111,9 @@ it('submits the verified token through the native password form', async () => {
   await expect
     .element(screen.getByRole('heading', { level: 1, name: 'login.passwordChangedTip' }))
     .toBeVisible()
+  await expect
+    .element(screen.getByRole('link', { name: 'login.passwordChanged' }))
+    .toHaveAttribute('href', '/signin')
   await expect.poll(() => document.title).toBe('login.passwordChangedTip - Dify')
 })
 

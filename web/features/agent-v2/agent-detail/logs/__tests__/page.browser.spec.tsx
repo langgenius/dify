@@ -2,9 +2,14 @@ import type {
   AgentLogListResponse,
   AgentLogSourceListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import { QueryClient } from '@tanstack/react-query'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import agentV2 from '@/i18n/locales/en-US/agent-v-2.json'
+import appLog from '@/i18n/locales/en-US/app-log.json'
+import common from '@/i18n/locales/en-US/common.json'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogsPage } from '../page'
 
@@ -13,19 +18,8 @@ const mocks = vi.hoisted(() => ({
   sources: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: agentV2 } = await import('@/i18n/locales/en-US/agent-v-2.json')
-  const { default: appLog } = await import('@/i18n/locales/en-US/app-log.json')
-  const { default: common } = await import('@/i18n/locales/en-US/common.json')
-  return createReactI18nextMock({ ...agentV2, ...appLog, ...common })
-})
-
-vi.mock('@/context/i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/context/i18n')>()),
-  useDocLink: () => (path: string) => path,
-}))
-vi.mock('@/hooks/use-timestamp', () => ({ default: () => ({ formatTime: () => '' }) }))
+vi.unmock('react-i18next')
+// boundary: generated Console transport supplies the log-list server responses.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -52,18 +46,30 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
   await page.viewport(320, 256)
   mocks.logs.mockResolvedValue(emptyLogs)
   mocks.sources.mockResolvedValue(emptySources)
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { agentV2, appLog, common } },
+    keySeparator: false,
+    interpolation: { escapeValue: false },
+  })
+  const { queryClient } = createConsoleQueryWrapper()
 
   try {
     const screen = await render(
       <QueryClientTestProvider queryClient={queryClient}>
-        <div style={{ width: 224, height: 256 }}>
-          <AgentLogsPage agentId="agent-1" />
-        </div>
+        <I18nextProvider i18n={i18n}>
+          <div style={{ width: 224, height: 256 }}>
+            <AgentLogsPage agentId="agent-1" />
+          </div>
+        </I18nextProvider>
       </QueryClientTestProvider>,
     )
 
     await expect.element(screen.getByText('No logs found')).toBeVisible()
+    await expect
+      .element(screen.getByRole('link', { name: 'Learn more' }))
+      .toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/monitor/logs')
     const section = screen.getByRole('region', { name: 'Logs' }).first().element()
     const panel = section.firstElementChild as HTMLElement
     const controls = [
