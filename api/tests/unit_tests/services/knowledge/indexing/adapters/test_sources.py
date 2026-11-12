@@ -333,6 +333,40 @@ def test_invalid_or_unknown_sources_are_rejected_at_the_adapter_boundary() -> No
         resolver.resolve(_source("mystery", {}))
 
 
+@pytest.mark.parametrize(
+    "workspace_info",
+    [{"notion_workspace_id": ""}, {}],
+    ids=["empty", "missing"],
+)
+def test_stored_notion_source_without_workspace_id_still_resolves_for_indexing(
+    workspace_info: dict[str, object],
+) -> None:
+    source = _source(
+        "notion_import",
+        {"credential_id": "credential-1", "notion_page_id": "notion-page-1", "type": "page", **workspace_info},
+    )
+    resolver = CompositeStoredSourceResolver(adapters={"notion_import": _notion_resolver()})
+
+    extraction = resolver.resolve_for_indexing(source)
+
+    assert extraction.notion_info is not None
+    assert extraction.notion_info.notion_workspace_id == ""
+    assert extraction.notion_info.notion_obj_id == "notion-page-1"
+    assert extraction.notion_info.notion_access_token == "stored-secret"
+
+
+def test_stored_notion_source_without_page_id_is_rejected() -> None:
+    resolver = _notion_resolver()
+
+    with pytest.raises(IndexingInputSourceError, match="notion_page_id"):
+        resolver.resolve(
+            _source(
+                "notion_import",
+                {"credential_id": "credential-1", "notion_workspace_id": "", "notion_page_id": "", "type": "page"},
+            ),
+        )
+
+
 def test_formal_notion_extraction_carries_source_update_scope_but_preview_does_not() -> None:
     source = _source(
         "notion_import",
