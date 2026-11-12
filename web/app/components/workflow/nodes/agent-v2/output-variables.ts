@@ -88,7 +88,8 @@ function isDeclaredOutputChild(child: unknown): child is DeclaredOutputChild {
 function toDeclaredOutputVar(output: DeclaredOutputField): Var {
   const variable: Var = { variable: output.name, type: getDeclaredOutputVarType(output) }
   if (output.type === 'object' && Array.isArray(output.children)) {
-    const children = output.children.filter(isDeclaredOutputChild).map(toDeclaredOutputVar)
+    const declaredChildren: readonly unknown[] = output.children
+    const children = declaredChildren.filter(isDeclaredOutputChild).map(toDeclaredOutputVar)
     if (children.length) variable.children = children
   }
   return variable
