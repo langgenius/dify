@@ -243,6 +243,11 @@ def test_run_response_accepts_database_timestamps(sqlite_session: Session) -> No
     assert response.started_at is not None
 
 
+def test_available_workflow_response_requires_a_timestamp() -> None:
+    with pytest.raises(ValueError, match="timestamp is required"):
+        controller.AvailableEvaluationWorkflowResponse._normalize_timestamp(None)
+
+
 def test_accessible_dataset_checks_tenant_and_permission(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -340,6 +345,64 @@ def test_retry_run_reuses_owned_dataset_and_maps_errors(
             target_type="apps",
             target_id="target-1",
             run_id=run.id,
+        )
+
+
+def test_retry_run_rejects_missing_dataset_file(sqlite_session: Session) -> None:
+    run = _evaluation_run(sqlite_session, status=EvaluationRunStatus.FAILED)
+    with pytest.raises(BadRequest, match="no dataset file"):
+        controller._retry_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="target-1",
+            run_id=run.id,
+        )
+
+
+@pytest.mark.parametrize(
+    ("error", "http_error"),
+    [
+        (EvaluationFrameworkNotConfiguredError(), BadRequest),
+        (EvaluationDatasetInvalidError(), BadRequest),
+        (EvaluationMaxConcurrentRunsError(), TooManyRequests),
+        (ValueError("invalid target"), BadRequest),
+    ],
+)
+def test_retry_run_maps_service_errors(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, error: Exception, http_error: type[Exception]
+) -> None:
+    upload = make_upload_file(file_id="file-1", name="dataset.csv")
+    sqlite_session.add(upload)
+    run = _evaluation_run(sqlite_session, status=EvaluationRunStatus.FAILED, dataset_file_id=upload.id)
+    monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
+
+    def fail_retry(**_kwargs: object) -> EvaluationRun:
+        raise error
+
+    monkeypatch.setattr(EvaluationService, "retry_evaluation_run", fail_retry)
+    with pytest.raises(http_error):
+        controller._retry_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="target-1",
+            run_id=run.id,
+        )
+
+
+def test_cancel_run_maps_invalid_transition(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_cancel(*_args: object) -> EvaluationRun:
+        raise ValueError("completed runs cannot be cancelled")
+
+    monkeypatch.setattr(EvaluationService, "cancel_evaluation_run", fail_cancel)
+    with pytest.raises(BadRequest, match="completed runs cannot be cancelled"):
+        controller._cancel_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="target-1",
+            run_id="run-1",
         )
 
 

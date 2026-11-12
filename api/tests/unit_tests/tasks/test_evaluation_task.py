@@ -1374,6 +1374,83 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
     assert enqueued_bindings == [(tenant_id, binding_id)]
 
 
+def test_execute_agent_target_reuses_persisted_target_without_restarting_backend(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000122"
+    lease = _lease(run_id)
+    item = EvaluationDatasetInput(index=7, inputs={"query": "research this"})
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="agents",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[item],
+    )
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id=run_id,
+                    tenant_id=run_data.tenant_id,
+                    target_type=EvaluationTargetType.AGENTS,
+                    target_id=run_data.target_id,
+                    target_agent_config_snapshot_id=run_data.target_agent_config_snapshot_id,
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    execution_token=lease.token,
+                    total_items=1,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                ),
+                EvaluationRunItem(
+                    evaluation_run_id=run_id,
+                    item_index=7,
+                    status=EvaluationRunItemStatus.TARGET_COMPLETED,
+                    inputs='{"query": "research this"}',
+                    target_result_json=AgentEvaluationItem(
+                        index=7, inputs={"task": "research this"}, output="done"
+                    ).model_dump_json(),
+                ),
+            ]
+        )
+        session.commit()
+
+    monkeypatch.setattr(
+        "tasks.evaluation_task.AgentEvaluationTargetService.resolve_active_snapshot", lambda **_kwargs: object()
+    )
+
+    def unexpected_backend(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("A checkpointed row must not restart the Agent backend")
+
+    monkeypatch.setattr("tasks.evaluation_task.create_agent_backend_run_client", unexpected_backend)
+    with sqlite_session_factory() as session:
+        agent_item, error = _execute_agent_target(
+            session=session, run_data=run_data, dataset_item=item, account_id="account-1", lease=lease
+        )
+        assert agent_item is not None
+        assert agent_item.output == "done"
+        assert error is None
+
+        checkpoint = session.scalar(
+            select(EvaluationRunItem).where(
+                EvaluationRunItem.evaluation_run_id == run_id, EvaluationRunItem.item_index == 7
+            )
+        )
+        assert checkpoint is not None
+        checkpoint.status = EvaluationRunItemStatus.COMPLETED
+        session.commit()
+        agent_item, error = _execute_agent_target(
+            session=session, run_data=run_data, dataset_item=item, account_id="account-1", lease=lease
+        )
+
+    assert agent_item is None
+    assert error == "Agent evaluation row was already completed."
+
+
 def test_resume_agent_rows_reuses_target_checkpoint(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
@@ -1589,6 +1666,58 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
     assert persisted_result.actual_output == "done"
     assert persisted_result.metrics[0].name == "score"
     assert persisted_result.overall_score == 0.8
+
+
+def test_evaluate_agent_row_keeps_native_and_customized_failures_on_the_row(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    persisted: list[list[EvaluationItemResult]] = []
+    monkeypatch.setattr(
+        "tasks.evaluation_task._persist_results", lambda _session, _lease, results, *_args: persisted.append(results)
+    )
+    monkeypatch.setattr("tasks.evaluation_task._clear_workflow_cancellation_signals", lambda *_args: None)
+
+    def customized_failure(**_kwargs: object) -> list[EvaluationItemResult]:
+        raise RuntimeError("evaluator unavailable")
+
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_failure)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        target_agent_config_snapshot_id="snapshot-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="task_completion", node_info_list=[NodeInfo(node_id="agent-1", type="agent", title="Agent")]
+            )
+        ],
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            evaluation_workflow_version_id="evaluator-version",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+    )
+    agent_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
+
+    _evaluate_agent_row(
+        session=sqlite_session,
+        run_data=run_data,
+        evaluation_instance=CapturingEvaluationInstance(),
+        agent_item=agent_item,
+        target_error=None,
+        task_position=2,
+        lease=_lease("run-1"),
+    )
+
+    assert len(persisted) == 1
+    assert persisted[0][0].actual_output == "done"
+    assert "Agent evaluator returned no result" in (persisted[0][0].error or "")
+    assert "evaluator unavailable" in (persisted[0][0].error or "")
 
 
 def test_resume_retrieval_rows_skips_completed_checkpoint(
