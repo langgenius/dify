@@ -2,7 +2,7 @@ import math
 from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import Integer, create_engine, event, select
+from sqlalchemy import Integer, Select, create_engine, event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, ORMExecuteState, Session, mapped_column
 
@@ -31,7 +31,9 @@ def pagination_session() -> Iterator[tuple[Session, list[str]]]:
 
             @event.listens_for(session, "do_orm_execute")
             def capture_statement(state: ORMExecuteState) -> None:
-                statements.append(str(state.statement.compile(dialect=postgresql.dialect())).upper())
+                statement = state.statement
+                assert isinstance(statement, Select)
+                statements.append(str(statement.compile(dialect=postgresql.dialect())).upper())
 
             yield session, statements
     finally:
