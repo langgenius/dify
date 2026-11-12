@@ -245,14 +245,16 @@ export function ContactEmailConfigContent({
 
             <Field name="senderName">
               <div>
-                <FieldLabel className="block">
-                  {t(($) => $['imPlatform.email.senderName'])}
-                </FieldLabel>
-                {!canRetainField(ContactImProviderField.SenderName) && (
-                  <span aria-hidden className="text-text-destructive-secondary">
-                    *
-                  </span>
-                )}
+                <div className="flex items-center gap-1">
+                  <FieldLabel className="block">
+                    {t(($) => $['imPlatform.email.senderName'])}
+                  </FieldLabel>
+                  {!canRetainField(ContactImProviderField.SenderName) && (
+                    <span aria-hidden className="system-xs-regular text-text-destructive-secondary">
+                      *
+                    </span>
+                  )}
+                </div>
                 <FieldDescription className="pt-0">
                   {t(($) => $['imPlatform.email.senderNameDescription'])}
                 </FieldDescription>
