@@ -6,6 +6,7 @@ from typing_extensions import TypedDict
 
 from services.model_billing_dependency_inventory import ResolvedModelDependency, SavedModelReference
 from services.model_billing_dependency_provenance import (
+    AccessCheckedSavedModelMigrationIntent,
     ModelDependencyDefault,
     ModelDependencyProviderState,
     ModelDependencyQuota,
@@ -92,6 +93,89 @@ def test_unproven_or_unavailable_owner_is_not_guessed_byok(changes: StateChanges
 def test_saved_system_reference_outside_displayed_hosted_restrictions_still_requires_compatibility() -> None:
     quota = replace(QUOTAS[0], models=(("llm", "other-model"),))
     assert resolve(replace(STATE, quotas=(quota,))).owner == "shared_credit_pool"
+
+
+def test_v3_exact_credit_access_does_not_reinterpret_historical_v2() -> None:
+    state = replace(STATE, quotas=tuple(replace(q, models=(("llm", "gpt-4o-mini"),)) for q in QUOTAS))
+    reference = replace(REFERENCE, model="gpt-6-astra")
+    snapshot = Selections(state).selection_snapshot("tenant")
+    old = StableSavedModelMigrationIntent.resolve_snapshot(snapshot, (reference,))[0]
+    denied = AccessCheckedSavedModelMigrationIntent.resolve_snapshot(snapshot, (reference,))[0]
+    assert old.migration_intent == "shared_credit_pool"
+    assert old.migration_pool_types == ("paid", "trial")
+    assert denied.migration_intent == "policy_excluded"
+    assert denied.exclusion_reason == "not_in_enabled_finite_credit_pools"
+    assert denied.migration_pool_types == denied.pool_types == ()
+    assert denied.owner == "unknown"
+    assert denied.migration_configuration_digest == old.migration_configuration_digest
+    positive = AccessCheckedSavedModelMigrationIntent.resolve_snapshot(snapshot, (REFERENCE,))[0]
+    assert positive.migration_intent == "shared_credit_pool"
+    assert positive.migration_pool_types == ("paid", "trial")
+
+
+@pytest.mark.parametrize("models", [(), (("text-embedding", "gpt-4o-mini"),)])
+def test_v3_matches_normal_name_only_and_empty_unrestricted_access(models: tuple[tuple[str, str], ...]) -> None:
+    state = replace(STATE, quotas=(replace(QUOTAS[0], models=models),))
+    result = AccessCheckedSavedModelMigrationIntent(selections=Selections(state)).resolve("tenant", (REFERENCE,))[0]
+    assert result.migration_intent == "shared_credit_pool"
+    assert result.migration_pool_types == ("paid",)
+
+
+def test_v3_future_trial_access_is_required_and_usage_is_not_a_policy_change() -> None:
+    state = replace(
+        STATE,
+        quotas=(
+            replace(QUOTAS[0], models=(("llm", "other"),)),
+            replace(QUOTAS[1], models=(("llm", REFERENCE.model or ""),)),
+        ),
+    )
+    first = AccessCheckedSavedModelMigrationIntent(selections=Selections(state)).resolve("tenant", (REFERENCE,))[0]
+    consumed = replace(state, quotas=tuple(replace(q, used=q.limit) for q in state.quotas), current_quota_type="trial")
+    second = AccessCheckedSavedModelMigrationIntent(selections=Selections(consumed)).resolve("tenant", (REFERENCE,))[0]
+    assert first.migration_pool_types == second.migration_pool_types == ("trial",)
+    assert first.migration_intent == second.migration_intent == "shared_credit_pool"
+    assert first.migration_configuration_digest == second.migration_configuration_digest
+    changed = replace(state, quotas=(replace(state.quotas[0], models=()), state.quotas[1]))
+    third = AccessCheckedSavedModelMigrationIntent(selections=Selections(changed)).resolve("tenant", (REFERENCE,))[0]
+    assert third.migration_configuration_digest != first.migration_configuration_digest
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        replace(STATE, preferred="custom"),
+        replace(STATE, quotas=(ModelDependencyQuota("free", "tokens", 100, 0),), current_quota_type="free"),
+        replace(STATE, quotas=(ModelDependencyQuota("paid", "credits", -1, 0),)),
+    ],
+)
+def test_v3_custom_and_independent_owners_remain_exactly_historical(state: ModelDependencyProviderState) -> None:
+    snapshot = Selections(state).selection_snapshot("tenant")
+    assert AccessCheckedSavedModelMigrationIntent.resolve_snapshot(
+        snapshot, (REFERENCE,)
+    ) == StableSavedModelMigrationIntent.resolve_snapshot(snapshot, (REFERENCE,))
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        replace(STATE, trustworthy=False),
+        replace(STATE, preference_trustworthy=False),
+        replace(STATE, installed=False),
+        replace(STATE, system_enabled=False, custom_available=False),
+    ],
+)
+def test_v3_cannot_use_denied_name_to_exempt_unproven_source(state: ModelDependencyProviderState) -> None:
+    reference = replace(REFERENCE, model="gpt-6-astra")
+    result = AccessCheckedSavedModelMigrationIntent(selections=Selections(state)).resolve("tenant", (reference,))[0]
+    assert result.migration_intent == "unknown"
+    assert result.exclusion_reason is None
+
+
+def test_v3_dynamic_selection_does_not_become_a_policy_exclusion() -> None:
+    reference = replace(REFERENCE, kind="dynamic", model=None)
+    result = AccessCheckedSavedModelMigrationIntent(selections=Selections(STATE)).resolve("tenant", (reference,))[0]
+    assert result.migration_intent == "unknown"
+    assert result.exclusion_reason is None
 
 
 def test_workspace_default_is_exact_saved_default_no_first_model_fallback() -> None:

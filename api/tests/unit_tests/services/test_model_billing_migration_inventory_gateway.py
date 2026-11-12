@@ -34,11 +34,13 @@ from services.model_billing_dependency_inventory import (
     ModelDependencyDocument,
 )
 from services.model_billing_dependency_provenance import (
+    AccessCheckedSavedModelMigrationIntent,
     ModelDependencyProviderState,
     ModelDependencyQuota,
     ModelDependencySelectionSnapshot,
     SavedModelDependencyProvenance,
     StableSavedModelMigrationIntent,
+    stable_selection_digest,
 )
 from services.model_billing_migration_inventory import (
     ManagedModelReadinessBinding,
@@ -975,6 +977,225 @@ def test_only_saved_required_model_is_checked_even_if_other_catalog_models_have_
     metadata.catalogs[0].declaration.models.append(schema("unused-not-mapped"))
     result = gateway.sources("tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),))
     assert [item["model"] for item in result.models] == ["saved-model"]
+    assert metadata.dynamic_uid is None
+
+
+def test_v3_normal_inventory_excludes_only_policy_denied_saved_model_without_schema_rpc(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    state = selections.value.providers[0]
+    selections.value = replace(
+        selections.value,
+        providers=(replace(state, quotas=(replace(state.quotas[0], models=(("llm", "saved-model"),)),)),),
+    )
+    documents = Documents(
+        (
+            ModelDependencyDocument(
+                "tenant",
+                "classic_app",
+                "original-app",
+                "saved",
+                ClassicModelSelectors(
+                    json.dumps({"provider": PROVIDER, "name": "saved-model", "mode": "chat"}),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+            ),
+            ModelDependencyDocument(
+                "tenant",
+                "classic_app",
+                "fallback-app",
+                "saved",
+                ClassicModelSelectors(
+                    json.dumps({"provider": PROVIDER, "name": "gpt-6-astra", "mode": "chat"}),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+            ),
+        )
+    )
+    dependencies = ModelBillingDependencyInventory(
+        documents=documents,
+        extractor=TypedModelDependencyExtractor(strategies=PluginAgentStrategySelectorQuery()),
+        provenance=SavedModelDependencyProvenance(selections=selections),
+        stable_provenance=StableSavedModelMigrationIntent(selections=selections),
+        access_checked_provenance=AccessCheckedSavedModelMigrationIntent(selections=selections),
+    )
+    facade = ModelBillingMigrationInventory(
+        dependencies=dependencies,
+        evidence=gateway,
+        historical=Historical(),
+        policy_json=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "new-v2", "inventory_policy": "saved_system_dependencies_v3"}]
+        ),
+    )
+    result = facade.inventory("tenant", "new-v2")
+    assert [item["model"] for item in result["models"]] == ["saved-model"]
+    assert result["access_policy_excluded_sources"] == [
+        {
+            "provider": PROVIDER,
+            "model_type": "llm",
+            "model": "gpt-6-astra",
+            "reason": "not_in_enabled_finite_credit_pools",
+            "configuration_digest": stable_selection_digest(selections.value.providers[0]),
+        }
+    ]
+    assert result["retired_saved_sources"] == []
+    assert metadata.dynamic_uid is None
+
+
+@pytest.mark.parametrize(
+    "change", ["models", "uid", "preference", "missing-digest", "extra-digest", "duplicate-state", "unverified-binding"]
+)
+def test_v3_expected_selection_digest_and_fresh_binding_fail_closed(
+    change: str, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    state = selections.value.providers[0]
+    expected = {PROVIDER: stable_selection_digest(state)}
+    if change == "models":
+        state = replace(state, quotas=(replace(state.quotas[0], models=(("llm", "other"),)),))
+    elif change == "uid":
+        state = replace(state, source_plugin_unique_identifier=UID[:-1] + "b")
+    elif change == "preference":
+        state = replace(state, preferred="custom", custom_available=True)
+    elif change == "missing-digest":
+        expected = {}
+    elif change == "extra-digest":
+        expected["other/provider/name"] = "sha256:extra"
+    elif change == "unverified-binding":
+        metadata.bindings[0].verified = False
+    selections.value = replace(selections.value, providers=(state, state) if change == "duplicate-state" else (state,))
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.sources(
+            "tenant",
+            "new-v2",
+            (),
+            inventory_policy="saved_system_dependencies_v3",
+            source_ownership_providers=(PROVIDER,),
+            expected_selection_digests=expected,
+        )
+    assert metadata.dynamic_uid is None
+
+
+def test_v3_digest_is_mandatory_even_for_empty_saved_configuration(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    gateway, _, _, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.sources("tenant", "new-v2", (), inventory_policy="saved_system_dependencies_v3")
+    assert (
+        gateway.sources(
+            "tenant", "new-v2", (), inventory_policy="saved_system_dependencies_v3", expected_selection_digests={}
+        ).models
+        == ()
+    )
+
+
+def test_v3_allowed_missing_mapping_remains_blocked(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    metadata.catalogs[0].declaration.models.append(schema("not-mapped"))
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.sources(
+            "tenant",
+            "new-v2",
+            (RequiredSavedCreditModel(PROVIDER, "llm", "not-mapped", ("paid",)),),
+            inventory_policy="saved_system_dependencies_v3",
+            expected_selection_digests={PROVIDER: stable_selection_digest(selections.value.providers[0])},
+        )
+
+
+@pytest.mark.parametrize("change", ["prefer-system", "remove-custom"])
+def test_v3_custom_selection_cannot_change_to_system_between_snapshots(
+    change: str, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _, _, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    custom = replace(selections.value.providers[0], preferred="custom", custom_available=True)
+    second = (
+        replace(custom, preferred="system") if change == "prefer-system" else replace(custom, custom_available=False)
+    )
+
+    @dataclass
+    class ChangingSelections:
+        calls: int = 0
+
+        def selection_snapshot(self, tenant_id: str) -> ModelDependencySelectionSnapshot:
+            assert tenant_id == "tenant"
+            self.calls += 1
+            return ModelDependencySelectionSnapshot((custom if self.calls == 1 else second,), ())
+
+    snapshots = ChangingSelections()
+    dependencies = ModelBillingDependencyInventory(
+        documents=Documents(
+            (
+                ModelDependencyDocument(
+                    "tenant",
+                    "classic_app",
+                    "app",
+                    "saved",
+                    ClassicModelSelectors(
+                        json.dumps({"provider": PROVIDER, "name": "saved-model", "mode": "chat"}),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    ),
+                ),
+            )
+        ),
+        extractor=TypedModelDependencyExtractor(strategies=PluginAgentStrategySelectorQuery()),
+        provenance=SavedModelDependencyProvenance(selections=snapshots),
+        access_checked_provenance=AccessCheckedSavedModelMigrationIntent(selections=snapshots),
+    )
+    gateway = module.SavedDependencyMigrationEvidenceGateway(
+        selections=snapshots, records=ModelBillingDependencyRepository(session_factory=sqlite_session_factory)
+    )
+    facade = ModelBillingMigrationInventory(
+        dependencies=dependencies,
+        evidence=gateway,
+        historical=Historical(),
+        policy_json=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "new-v2", "inventory_policy": "saved_system_dependencies_v3"}]
+        ),
+    )
+    with pytest.raises(ModelRouteUnavailable):
+        facade.inventory("tenant", "new-v2")
+    assert snapshots.calls == 2
+
+
+def test_v3_custom_only_digest_does_not_require_marketplace_system_binding(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    state = replace(
+        selections.value.providers[0],
+        preferred="custom",
+        custom_available=True,
+        system_enabled=False,
+        source_plugin_unique_identifier=None,
+    )
+    selections.value = replace(selections.value, providers=(state,))
+    metadata.bindings.clear()
+    metadata.catalogs.clear()
+    result = gateway.sources(
+        "tenant",
+        "new-v2",
+        (),
+        inventory_policy="saved_system_dependencies_v3",
+        expected_selection_digests={PROVIDER: stable_selection_digest(state)},
+    )
+    assert result.models == ()
+    assert result.source_ownership == {}
     assert metadata.dynamic_uid is None
 
 

@@ -495,12 +495,12 @@ def uses_published_tokener_balance(state: dict[str, Any] | None) -> bool:
 
 
 def uses_stable_dependency_inventory(raw_policy: str, state: dict[str, Any] | None) -> bool:
-    """Exact revision dispatch for v2-only preservation; no runtime/root lookup."""
+    """Exact revision dispatch for stable preservation; no runtime/root lookup."""
     revision = state.get("model_mapping_version") if state else None
-    return (
-        isinstance(revision, str)
-        and saved_dependency_inventory_policy(raw_policy, revision) == "saved_system_dependencies_v2"
-    )
+    return isinstance(revision, str) and saved_dependency_inventory_policy(raw_policy, revision) in {
+        "saved_system_dependencies_v2",
+        "saved_system_dependencies_v3",
+    }
 
 
 def validate_prepared_provider_provenance(provider: str, state: dict[str, Any]) -> None:

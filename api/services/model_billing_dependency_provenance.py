@@ -242,6 +242,63 @@ class StableSavedModelMigrationIntent:
         return tuple(result)
 
 
+class AccessCheckedSavedModelMigrationIntent:
+    """V3 only: finite capability must also pass normal ModelManager access.
+
+    Match exact names, not model types; an empty restriction list is unrestricted.
+    Historical v1/v2 resolution and fingerprints are deliberately unchanged.
+    """
+
+    def __init__(self, *, selections: ModelDependencySelectionQuery) -> None:
+        self._selections = selections
+
+    def resolve(self, tenant_id: str, references: Sequence[SavedModelReference]) -> Sequence[ResolvedModelDependency]:
+        return self.resolve_snapshot(self._selections.selection_snapshot(tenant_id), references)
+
+    @staticmethod
+    def resolve_snapshot(
+        snapshot: ModelDependencySelectionSnapshot, references: Sequence[SavedModelReference]
+    ) -> Sequence[ResolvedModelDependency]:
+        original = StableSavedModelMigrationIntent.resolve_snapshot(snapshot, references)
+        providers = {item.provider: item for item in snapshot.providers}
+        result: list[ResolvedModelDependency] = []
+        for item in original:
+            if item.migration_intent != "shared_credit_pool":
+                result.append(item)
+                continue
+            if item.reference.kind == "dynamic" or not item.model or not item.model_type:
+                result.append(replace(item, migration_intent="unknown"))
+                continue
+            state = providers[item.provider or ""]
+            allowed = tuple(
+                quota.pool_type
+                for quota in state.quotas
+                if quota.pool_type in item.migration_pool_types
+                and (not quota.models or any(name == item.model for _, name in quota.models))
+            )
+            # Actual current access may be denied even though a later pool is
+            # allowed. Do not label that unavailable request as paid usage.
+            current = next((quota for quota in state.quotas if quota.pool_type == state.current_quota_type), None)
+            if (
+                item.owner == "shared_credit_pool"
+                and current
+                and current.models
+                and all(name != item.model for _, name in current.models)
+            ):
+                item = replace(item, owner="unknown", pool_types=())
+            result.append(
+                replace(item, migration_pool_types=tuple(sorted(allowed)))
+                if allowed
+                else replace(
+                    item,
+                    migration_intent="policy_excluded",
+                    migration_pool_types=(),
+                    exclusion_reason="not_in_enabled_finite_credit_pools",
+                )
+            )
+        return tuple(result)
+
+
 def stable_shared_pool_types(state: ModelDependencyProviderState) -> tuple[str, ...]:
     """Finite shared pools that can become active without changing config.
 

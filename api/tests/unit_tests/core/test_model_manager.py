@@ -211,6 +211,70 @@ def test_model_manager_rejects_system_model_by_exact_name() -> None:
     bundle.configuration.get_current_credentials.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "case", ["denied", "allowed", "unrestricted", "name-across-types", "future-trial", "current-trial"]
+)
+def test_v3_inventory_access_matches_real_model_manager_bundle(case: str) -> None:
+    from dataclasses import replace
+
+    from services.model_billing_dependency_provenance import (
+        AccessCheckedSavedModelMigrationIntent,
+        ModelDependencyQuota,
+    )
+    from tests.unit_tests.core.plugin.backwards_invocation.test_model import _hosted_bundle
+    from tests.unit_tests.services.test_model_billing_dependency_provenance import REFERENCE, STATE, Selections
+
+    bundle = _hosted_bundle(ModelType.LLM)
+    requested = "gpt-6-astra" if case in {"denied", "unrestricted"} else "gpt-4o-mini"
+    kind = ModelType.TEXT_EMBEDDING if case == "name-across-types" else ModelType.LLM
+    allowed = [] if case == "unrestricted" else [RestrictModel(model="gpt-4o-mini", model_type=kind)]
+    system = bundle.configuration.system_configuration
+    system.current_quota_type = ProviderQuotaType.TRIAL if case == "current-trial" else ProviderQuotaType.PAID
+    system.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=pool,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=100,
+            quota_used=0,
+            is_valid=True,
+            restrict_models=[RestrictModel(model="other", model_type=ModelType.LLM)]
+            if pool == ProviderQuotaType.PAID and case in {"future-trial", "current-trial"}
+            else allowed,
+        )
+        for pool in (ProviderQuotaType.PAID, ProviderQuotaType.TRIAL)
+    ]
+    if case in {"denied", "future-trial"}:
+        with pytest.raises(ModelCurrentlyNotSupportError, match="is not allowed"):
+            ModelManager._validate_system_model_access(bundle, model_type=ModelType.LLM, model=requested)
+    else:
+        ModelManager._validate_system_model_access(bundle, model_type=ModelType.LLM, model=requested)
+    state = replace(
+        STATE,
+        current_quota_type=system.current_quota_type.value,
+        quotas=tuple(
+            ModelDependencyQuota(
+                quota.quota_type.value,
+                quota.quota_unit.value,
+                quota.quota_limit,
+                quota.quota_used,
+                tuple((restricted.model_type.value, restricted.model) for restricted in quota.restrict_models),
+            )
+            for quota in system.quota_configurations
+        ),
+    )
+    result = AccessCheckedSavedModelMigrationIntent(selections=Selections(state)).resolve(
+        "tenant", (replace(REFERENCE, model=requested),)
+    )[0]
+    if case == "denied":
+        assert result.migration_intent == "policy_excluded"
+        assert result.exclusion_reason == "not_in_enabled_finite_credit_pools"
+    else:
+        assert result.migration_intent == "shared_credit_pool"
+        assert result.migration_pool_types == (
+            ("trial",) if case in {"future-trial", "current-trial"} else ("paid", "trial")
+        )
+
+
 def test_model_manager_matches_allowlist_name_across_model_types() -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,

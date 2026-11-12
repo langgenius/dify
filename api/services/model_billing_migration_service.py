@@ -348,12 +348,9 @@ class ModelBillingMigrationService:
             row.state["source_ownership"] = snapshot
             from services.model_billing_migration_inventory import saved_dependency_inventory_policy
 
-            if (
-                saved_dependency_inventory_policy(
-                    dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, row.state["model_mapping_version"]
-                )
-                == "saved_system_dependencies_v2"
-            ):
+            if saved_dependency_inventory_policy(
+                dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, row.state["model_mapping_version"]
+            ) in {"saved_system_dependencies_v2", "saved_system_dependencies_v3"}:
                 from services.model_billing_mapping_service import source_mapping_revision
 
                 try:

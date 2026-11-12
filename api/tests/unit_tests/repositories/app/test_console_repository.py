@@ -101,6 +101,70 @@ def test_model_dependency_documents_include_all_owned_versions_not_only_current_
     assert owned.app_model_config_id == current.id
 
 
+def test_v3_keeps_historical_app_config_but_excludes_its_denied_system_model(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from dataclasses import replace
+
+    from services.model_billing_dependency_adapters import (
+        PluginAgentStrategySelectorQuery,
+        TypedModelDependencyExtractor,
+    )
+    from services.model_billing_dependency_inventory import (
+        AdmittedModelDependencyCaller,
+        ModelBillingDependencyInventory,
+    )
+    from services.model_billing_dependency_provenance import (
+        AccessCheckedSavedModelMigrationIntent,
+        StableSavedModelMigrationIntent,
+    )
+    from services.model_billing_dependency_runtime import CompositeModelDependencyDocuments
+    from tests.unit_tests.services.test_model_billing_dependency_provenance import PROVIDER, QUOTAS, STATE, Selections
+
+    app = persist_app(sqlite_session)
+    historical, current = [
+        AppModelConfig(app_id=app.id, model=json.dumps({"provider": PROVIDER, "name": model, "mode": "chat"}))
+        for model in ("gpt-6-astra", "gpt-4o-mini")
+    ]
+    sqlite_session.add_all([historical, current])
+    sqlite_session.flush()
+    app.app_model_config_id = current.id
+    sqlite_session.commit()
+    before = [
+        (row.id, row.model)
+        for row in sqlite_session.scalars(
+            select(AppModelConfig).where(AppModelConfig.app_id == app.id).order_by(AppModelConfig.id)
+        )
+    ]
+    state = replace(STATE, quotas=tuple(replace(q, models=(("llm", "gpt-4o-mini"),)) for q in QUOTAS))
+    selections = Selections(state)
+    inventory = ModelBillingDependencyInventory(
+        documents=CompositeModelDependencyDocuments(
+            (ConsoleAppRepository(session_factory=sqlite_session_factory).collect_model_dependency_documents,)
+        ),
+        extractor=TypedModelDependencyExtractor(strategies=PluginAgentStrategySelectorQuery()),
+        provenance=StableSavedModelMigrationIntent(selections=selections),
+        stable_provenance=StableSavedModelMigrationIntent(selections=selections),
+        access_checked_provenance=AccessCheckedSavedModelMigrationIntent(selections=selections),
+    )
+    old = inventory.collect(AdmittedModelDependencyCaller(WORKSPACE, "historical", "saved_system_dependencies_v2"))
+    new = inventory.collect(AdmittedModelDependencyCaller(WORKSPACE, "new", "saved_system_dependencies_v3"))
+    assert {item.reference.revision for item in old.required} == {historical.id, current.id}
+    assert [(item.reference.revision, item.model) for item in new.required] == [(current.id, "gpt-4o-mini")]
+    assert [(item.reference.revision, item.model, item.exclusion_reason) for item in new.excluded] == [
+        (historical.id, "gpt-6-astra", "not_in_enabled_finite_credit_pools")
+    ]
+    assert new.problems == ()
+    sqlite_session.expire_all()
+    assert [
+        (row.id, row.model)
+        for row in sqlite_session.scalars(
+            select(AppModelConfig).where(AppModelConfig.app_id == app.id).order_by(AppModelConfig.id)
+        )
+    ] == before
+    assert sqlite_session.get(App, app.id).app_model_config_id == current.id
+
+
 @pytest.mark.parametrize("case", ["visible", "missing", "disabled_api", "disabled_status", "foreign_workspace"])
 def test_visible_app_lookup_checks_workspace_status_and_api(sqlite_session: Session, case: str) -> None:
     app = persist_app(sqlite_session, enable_api=case != "disabled_api")

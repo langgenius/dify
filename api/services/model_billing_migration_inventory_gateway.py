@@ -44,11 +44,17 @@ from services.entities.model_billing_gemini_mapping import SelectedGeminiSourceV
 from services.entities.model_billing_gemini_v8_mapping import SelectedGeminiV8SourceVariant
 from services.entities.model_billing_mapping import SourceParameterContract
 from services.entities.model_billing_tongyi_mapping import SelectedTongyiSourceVariant
-from services.model_billing_dependency_inventory import DependencyInventoryPolicy, SavedModelReference
+from services.model_billing_dependency_inventory import (
+    DependencyInventoryPolicy,
+    SavedModelReference,
+    stable_dependency_inventory_policy,
+)
 from services.model_billing_dependency_provenance import (
+    AccessCheckedSavedModelMigrationIntent,
     ModelDependencySelectionQuery,
     SavedModelDependencyProvenance,
     StableSavedModelMigrationIntent,
+    stable_selection_digest,
     stable_source_ownership,
 )
 from services.model_billing_mapping_service import (
@@ -110,6 +116,7 @@ class SavedDependencyMigrationEvidenceGateway:
         *,
         inventory_policy: DependencyInventoryPolicy = "saved_system_dependencies_v1",
         source_ownership_providers: tuple[str, ...] = (),
+        expected_selection_digests: Mapping[str, str] | None = None,
     ) -> SavedDependencySourceEvidence:
         try:
             return self._sources(
@@ -118,6 +125,7 @@ class SavedDependencyMigrationEvidenceGateway:
                 models,
                 inventory_policy=inventory_policy,
                 source_ownership_providers=source_ownership_providers,
+                expected_selection_digests=expected_selection_digests,
             )
         except (ModelRouteUnavailable, ModelRouteUnmapped):
             raise
@@ -132,12 +140,28 @@ class SavedDependencyMigrationEvidenceGateway:
         *,
         inventory_policy: DependencyInventoryPolicy = "saved_system_dependencies_v1",
         source_ownership_providers: tuple[str, ...] = (),
+        expected_selection_digests: Mapping[str, str] | None = None,
     ) -> SavedDependencySourceEvidence:
         registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, revision)
-        if registry.has_variants and inventory_policy != "saved_system_dependencies_v2":
+        if registry.has_variants and not stable_dependency_inventory_policy(inventory_policy):
             raise ModelRouteUnmapped
         policy = resolve_source_capability_policy(dify_config.TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON, revision)
         snapshot = self._selections.selection_snapshot(tenant_id)
+        if inventory_policy == "saved_system_dependencies_v3":
+            expected_providers = set(source_ownership_providers) | {item.provider for item in models}
+            states = {item.provider: item for item in snapshot.providers}
+            if (
+                expected_selection_digests is None
+                or not expected_providers <= set(expected_selection_digests)
+                or len(states) != len(snapshot.providers)
+                or any(
+                    provider not in states or stable_selection_digest(states[provider]) != digest
+                    for provider, digest in expected_selection_digests.items()
+                )
+            ):
+                raise ModelRouteUnavailable
+        elif expected_selection_digests is not None:
+            raise ModelRouteUnavailable
         references = tuple(
             SavedModelReference(
                 "tenant_default", tenant_id, revision, str(index), "fixed", item.provider, item.model_type, item.model
@@ -145,7 +169,9 @@ class SavedDependencyMigrationEvidenceGateway:
             for index, item in enumerate(models)
         )
         owners = (
-            StableSavedModelMigrationIntent.resolve_snapshot(snapshot, references)
+            AccessCheckedSavedModelMigrationIntent.resolve_snapshot(snapshot, references)
+            if inventory_policy == "saved_system_dependencies_v3"
+            else StableSavedModelMigrationIntent.resolve_snapshot(snapshot, references)
             if inventory_policy == "saved_system_dependencies_v2"
             else SavedModelDependencyProvenance.resolve_snapshot(snapshot, references)
         )
@@ -155,7 +181,7 @@ class SavedDependencyMigrationEvidenceGateway:
                     owner.migration_intent != "shared_credit_pool"
                     or set(owner.migration_pool_types) != set(required.pool_types)
                 )
-                if inventory_policy == "saved_system_dependencies_v2"
+                if stable_dependency_inventory_policy(inventory_policy)
                 else (owner.owner != "shared_credit_pool" or set(owner.pool_types) != set(required.pool_types))
             )
             for owner, required in zip(owners, models, strict=True)
@@ -176,7 +202,7 @@ class SavedDependencyMigrationEvidenceGateway:
             for item in snapshot.providers
             if item.system_enabled and item.current_quota_type is not None
         }
-        if inventory_policy == "saved_system_dependencies_v2":
+        if stable_dependency_inventory_policy(inventory_policy):
             referenced = set(source_ownership_providers) | {item.provider for item in models}
             for provider in referenced:
                 source = provider_states.get(provider)

@@ -88,6 +88,58 @@ def test_saved_system_model_outside_allowlist_remains_required_and_config_is_fin
     )
 
 
+def test_v3_access_exclusion_is_explicit_and_keeps_the_saved_reference() -> None:
+    from services.model_billing_dependency_provenance import (
+        AccessCheckedSavedModelMigrationIntent,
+        StableSavedModelMigrationIntent,
+    )
+    from tests.unit_tests.services.test_model_billing_dependency_provenance import QUOTAS, STATE, Selections
+
+    references = (reference("gpt-4o-mini"), reference("gpt-6-astra"))
+    state = replace(STATE, quotas=tuple(replace(q, models=(("llm", "gpt-4o-mini"),)) for q in QUOTAS))
+    selections = Selections(state)
+    service = ModelBillingDependencyInventory(
+        documents=Documents(),
+        extractor=Extractor(references),
+        provenance=Provenance(()),
+        stable_provenance=StableSavedModelMigrationIntent(selections=selections),
+        access_checked_provenance=AccessCheckedSavedModelMigrationIntent(selections=selections),
+    )
+    historical = service.collect(AdmittedModelDependencyCaller("tenant", "old", "saved_system_dependencies_v2"))
+    result = service.collect(AdmittedModelDependencyCaller("tenant", "new", "saved_system_dependencies_v3"))
+    assert [item.model for item in historical.required] == ["gpt-4o-mini", "gpt-6-astra"]
+    assert [item.model for item in result.required] == ["gpt-4o-mini"]
+    assert result.excluded[0].reference == references[1]
+    assert result.excluded[0].exclusion_reason == "not_in_enabled_finite_credit_pools"
+    assert result.problems == ()
+    assert result.snapshot_digest != historical.snapshot_digest
+
+
+def test_v3_requires_its_explicit_resolver_and_cannot_exempt_dynamic_identity() -> None:
+    with pytest.raises(ModelDependencyInventoryError, match="provenance_unavailable"):
+        inventory(()).collect(AdmittedModelDependencyCaller("tenant", "new", "saved_system_dependencies_v3"))
+    ref = replace(reference("outside"), kind="dynamic")
+    forged = ResolvedModelDependency(
+        ref,
+        "unknown",
+        PROVIDER,
+        "llm",
+        "outside",
+        exclusion_reason="not_in_enabled_finite_credit_pools",
+        migration_intent="policy_excluded",
+        migration_configuration_digest="sha256:configuration",
+    )
+    service = ModelBillingDependencyInventory(
+        documents=Documents(),
+        extractor=Extractor((ref,)),
+        provenance=Provenance(()),
+        access_checked_provenance=Provenance((forged,)),
+    )
+    result = service.collect(AdmittedModelDependencyCaller("tenant", "new", "saved_system_dependencies_v3"))
+    assert result.excluded == result.required == ()
+    assert result.problems[0].code == "dynamic_system_model_unresolved"
+
+
 def test_dynamic_and_missing_default_are_blockers_not_guessed_models() -> None:
     dynamic = replace(reference(), kind="dynamic", provider=None, model=None, configuration_digest="sha256:selector")
     items = (ResolvedModelDependency(dynamic, "unknown", None, "llm", None),)

@@ -18,6 +18,7 @@ from services.model_billing_dependency_inventory import (
     DependencyInventoryPolicy,
     ModelDependencyInventoryError,
     SavedSystemDependencyInventory,
+    stable_dependency_inventory_policy,
 )
 
 
@@ -63,6 +64,8 @@ class MigrationInventoryEvidence(Protocol):
         *,
         inventory_policy: DependencyInventoryPolicy = "saved_system_dependencies_v1",
         source_ownership_providers: tuple[str, ...] = (),
+        # None is historical v1/v2; v3 requires even an explicit empty mapping.
+        expected_selection_digests: Mapping[str, str] | None = None,
     ) -> SavedDependencySourceEvidence: ...
 
     def validate_target(self, tenant_id: str, revision: str, inventory: Mapping[str, object]) -> str:
@@ -136,7 +139,7 @@ class ModelBillingMigrationInventory:
         caller = AdmittedModelDependencyCaller(
             tenant_id,
             revision,
-            policy.inventory_policy if policy.inventory_policy == "saved_system_dependencies_v2" else None,
+            policy.inventory_policy if stable_dependency_inventory_policy(policy.inventory_policy) else None,
         )
         saved = self._dependencies.collect(caller)
         if saved.tenant_id != tenant_id or saved.problems:
@@ -147,7 +150,7 @@ class ModelBillingMigrationInventory:
                 raise ModelDependencyInventoryError("saved_system_dependencies_unresolved")
             pools = (
                 item.migration_pool_types
-                if policy.inventory_policy == "saved_system_dependencies_v2"
+                if stable_dependency_inventory_policy(policy.inventory_policy)
                 else item.pool_types
             )
             required.setdefault((item.provider, item.model_type, item.model), set()).update(pools)
@@ -155,6 +158,19 @@ class ModelBillingMigrationInventory:
             RequiredSavedCreditModel(provider, kind, model, tuple(sorted(pools)))
             for (provider, kind, model), pools in sorted(required.items())
         )
+        selection_digests: dict[str, str] = {}
+        if policy.inventory_policy == "saved_system_dependencies_v3":
+            for item in [*saved.required, *saved.excluded]:
+                if item.migration_intent not in {"shared_credit_pool", "custom", "independent", "policy_excluded"}:
+                    continue
+                if (
+                    not item.provider
+                    or not item.migration_configuration_digest.startswith("sha256:")
+                    or item.provider in selection_digests
+                    and selection_digests[item.provider] != item.migration_configuration_digest
+                ):
+                    raise ModelDependencyInventoryError("dependency_selection_digest_missing_or_conflicting")
+                selection_digests[item.provider] = item.migration_configuration_digest
         evidence = (
             self._evidence.sources(
                 tenant_id,
@@ -167,13 +183,33 @@ class ModelBillingMigrationInventory:
                             item.provider
                             for item in [*saved.required, *saved.excluded]
                             if item.provider is not None
-                            and item.migration_intent in {"shared_credit_pool", "independent"}
+                            and item.migration_intent in {"shared_credit_pool", "independent", "policy_excluded"}
                         }
                     )
                 ),
+                expected_selection_digests=selection_digests,
             )
-            if policy.inventory_policy == "saved_system_dependencies_v2"
-            else self._evidence.sources(tenant_id, revision, models)
+            if policy.inventory_policy == "saved_system_dependencies_v3"
+            else (
+                self._evidence.sources(
+                    tenant_id,
+                    revision,
+                    models,
+                    inventory_policy=policy.inventory_policy,
+                    source_ownership_providers=tuple(
+                        sorted(
+                            {
+                                item.provider
+                                for item in [*saved.required, *saved.excluded]
+                                if item.provider is not None
+                                and item.migration_intent in {"shared_credit_pool", "independent"}
+                            }
+                        )
+                    ),
+                )
+                if policy.inventory_policy == "saved_system_dependencies_v2"
+                else self._evidence.sources(tenant_id, revision, models)
+            )
         )
         classified = [*evidence.models, *evidence.unavailable_sources]
         actual = {(item.get("provider"), item.get("model_type"), item.get("model")) for item in classified}
@@ -186,7 +222,7 @@ class ModelBillingMigrationInventory:
                 "model": item.model,
                 "pool_types": list(
                     item.migration_pool_types
-                    if policy.inventory_policy == "saved_system_dependencies_v2"
+                    if stable_dependency_inventory_policy(policy.inventory_policy)
                     else item.pool_types
                 ),
                 "reason": "retired",
@@ -204,8 +240,20 @@ class ModelBillingMigrationInventory:
             "unavailable_sources": list(evidence.unavailable_sources),
             "source_capability_policy_digest": evidence.source_policy_digest,
         }
+        if policy.inventory_policy == "saved_system_dependencies_v3":
+            payload["access_policy_excluded_sources"] = [
+                {
+                    "provider": item.provider,
+                    "model_type": item.model_type,
+                    "model": item.model,
+                    "reason": item.exclusion_reason,
+                    "configuration_digest": item.migration_configuration_digest,
+                }
+                for item in saved.excluded
+                if item.exclusion_reason == "not_in_enabled_finite_credit_pools"
+            ]
         if evidence.source_variant_registry_digest is not None:
-            if policy.inventory_policy != "saved_system_dependencies_v2":
+            if not stable_dependency_inventory_policy(policy.inventory_policy):
                 raise ModelDependencyInventoryError("source_variants_require_stable_saved_policy")
             payload["source_variant_registry_digest"] = evidence.source_variant_registry_digest
             # Prospective declarations are not installed source evidence and
@@ -220,7 +268,7 @@ class ModelBillingMigrationInventory:
             # Empty is a positively collected saved configuration snapshot, not
             # a missing source provider/schema that happened to yield zero rows.
         }
-        if policy.inventory_policy == "saved_system_dependencies_v2":
+        if stable_dependency_inventory_policy(policy.inventory_policy):
             # Read-only diagnostics are explicitly not part of preparation or
             # source ownership authority. Normal consumption may change them.
             result["actual_runtime_ownership"] = [

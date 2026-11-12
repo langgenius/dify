@@ -5,6 +5,32 @@ default-model identities are not rewritten. Only a server-resolved SYSTEM
 shared-credit-pool invocation redirects; BYOK, provider-owned FREE and unmetered
 invocations retain their previous execution and settlement owners.
 
+## Versioned saved-model access policy
+
+A new reviewed mapping revision may declare `inventory_policy:
+"saved_system_dependencies_v3"` in the existing schema-version1 dependency
+inventory configuration. This is opt-in only: historical revisions, v1/v2
+resolution, payloads and hashes remain unchanged. Adding support does not
+configure/deploy a revision, migrate a paid cycle or grant money.
+
+V3 retains saved references, including dormant AppModelConfig rows. For a trusted
+SYSTEM intent it requires only finite shared-credit pools whose normal
+ModelManager access policy permits the exact model name. Empty restrictions
+remain unrestricted; comparison remains name-only across model types. A model
+permitted in a later finite pool remains required even when the current pool
+denies it or is exhausted. Denial by every possible finite shared-credit pool is
+reported as `not_in_enabled_finite_credit_pools`, never BYOK, retirement or a
+successful free request. Unknown/dynamic ownership remains a blocker; allowed
+models still require exact immutable source/schema/mapping proof.
+
+The v3 evidence pass rechecks existing stable selection digests against a fresh
+normal snapshot, including providers referenced only by exclusions. Digests bind
+pool restrictions, source UID and preference, not changing usage/balances. Mixed
+snapshot policy/UID changes fail closed. Explicit exclusions participate only in
+the new inventory hash. No App, historical config row, credential or runtime
+access owner is changed. Publish only with a new reviewed mapping revision;
+never relabel a prepared/active revision.
+
 ## Rollout prerequisites
 
 1. Deploy a daemon advertising `model-redirect/v1` on every serving node. The

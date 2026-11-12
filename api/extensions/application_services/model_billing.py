@@ -9,7 +9,11 @@ from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepositor
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
 from services.model_billing_dependency_adapters import PluginAgentStrategySelectorQuery, TypedModelDependencyExtractor
 from services.model_billing_dependency_inventory import ModelBillingDependencyInventory
-from services.model_billing_dependency_provenance import SavedModelDependencyProvenance, StableSavedModelMigrationIntent
+from services.model_billing_dependency_provenance import (
+    AccessCheckedSavedModelMigrationIntent,
+    SavedModelDependencyProvenance,
+    StableSavedModelMigrationIntent,
+)
 from services.model_billing_dependency_runtime import (
     CompositeModelDependencyDocuments,
     KnowledgeModelDependencyDocuments,
@@ -42,6 +46,9 @@ def build_model_billing_dependencies(*, database_client: sessionmaker[Session]) 
         retirements=RevisionModelDependencyRetirements(),
         stable_provenance=StableSavedModelMigrationIntent(selections=SavedModelSelectionRuntimeQuery(records=records)),
         policies=RevisionModelDependencyInventoryPolicies(),
+        access_checked_provenance=AccessCheckedSavedModelMigrationIntent(
+            selections=SavedModelSelectionRuntimeQuery(records=records)
+        ),
     )
 
 

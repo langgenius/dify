@@ -16,8 +16,14 @@ from typing import Literal, Protocol
 type DocumentKind = Literal["classic_app", "conversation_override", "workflow", "agent", "dataset", "tenant_default"]
 type ReferenceKind = Literal["fixed", "tenant_default", "dynamic"]
 type SettlementOwner = Literal["shared_credit_pool", "custom", "provider_free", "unmetered", "unknown"]
-type DependencyInventoryPolicy = Literal["saved_system_dependencies_v1", "saved_system_dependencies_v2"]
-type MigrationModelIntent = Literal["shared_credit_pool", "custom", "independent", "unknown"]
+type DependencyInventoryPolicy = Literal[
+    "saved_system_dependencies_v1", "saved_system_dependencies_v2", "saved_system_dependencies_v3"
+]
+type MigrationModelIntent = Literal["shared_credit_pool", "custom", "independent", "unknown", "policy_excluded"]
+
+
+def stable_dependency_inventory_policy(policy: DependencyInventoryPolicy) -> bool:
+    return policy in {"saved_system_dependencies_v2", "saved_system_dependencies_v3"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +135,7 @@ class ResolvedModelDependency:
     model_type: str | None
     model: str | None
     pool_types: tuple[str, ...] = ()
-    exclusion_reason: Literal["retired"] | None = None
+    exclusion_reason: Literal["retired", "not_in_enabled_finite_credit_pools"] | None = None
     # Version 2 separates migration capability from the observed request owner.
     # In particular temporary fallback to BYOK never becomes evidence of BYOK
     # intent, nor is an independent FREE request reported as charged credits.
@@ -223,6 +229,8 @@ class ModelBillingDependencyInventory:
         retirements: ModelDependencyRetirementQuery | None = None,
         stable_provenance: ModelDependencyProvenance | None = None,
         policies: ModelDependencyInventoryPolicies | None = None,
+        # None preserves historical construction; v3 fails closed without it.
+        access_checked_provenance: ModelDependencyProvenance | None = None,
     ) -> None:
         self._documents = documents
         self._extractor = extractor
@@ -230,6 +238,7 @@ class ModelBillingDependencyInventory:
         self._retirements = retirements
         self._stable_provenance = stable_provenance
         self._policies = policies
+        self._access_checked_provenance = access_checked_provenance
 
     def collect(self, caller: AdmittedModelDependencyCaller) -> SavedSystemDependencyInventory:
         documents = self._documents.collect(caller.tenant_id)
@@ -239,9 +248,19 @@ class ModelBillingDependencyInventory:
         policy = caller.inventory_policy or (
             self._policies.for_revision(caller.mapping_revision) if self._policies else "saved_system_dependencies_v1"
         )
-        if policy not in {"saved_system_dependencies_v1", "saved_system_dependencies_v2"}:
+        if policy not in {
+            "saved_system_dependencies_v1",
+            "saved_system_dependencies_v2",
+            "saved_system_dependencies_v3",
+        }:
             raise ModelDependencyInventoryError("unknown_dependency_inventory_policy")
-        provenance = self._stable_provenance if policy == "saved_system_dependencies_v2" else self._provenance
+        provenance = (
+            self._access_checked_provenance
+            if policy == "saved_system_dependencies_v3"
+            else self._stable_provenance
+            if policy == "saved_system_dependencies_v2"
+            else self._provenance
+        )
         if provenance is None:
             raise ModelDependencyInventoryError("stable_dependency_provenance_unavailable")
         resolved = provenance.resolve(caller.tenant_id, extracted.references)
@@ -255,8 +274,20 @@ class ModelBillingDependencyInventory:
         problems = list(extracted.problems)
         for item in resolved:
             reference = item.reference
-            intent = item.migration_intent if policy == "saved_system_dependencies_v2" else item.owner
-            pools = item.migration_pool_types if policy == "saved_system_dependencies_v2" else item.pool_types
+            intent = item.migration_intent if stable_dependency_inventory_policy(policy) else item.owner
+            pools = item.migration_pool_types if stable_dependency_inventory_policy(policy) else item.pool_types
+            if policy == "saved_system_dependencies_v3" and intent == "policy_excluded":
+                if (
+                    reference.kind != "dynamic"
+                    and item.provider
+                    and item.model_type
+                    and item.model
+                    and not pools
+                    and item.exclusion_reason == "not_in_enabled_finite_credit_pools"
+                    and item.migration_configuration_digest
+                ):
+                    excluded.append(item)
+                    continue
             if intent == "shared_credit_pool" and (item.provider, item.model_type, item.model) in retired:
                 excluded.append(replace(item, exclusion_reason="retired"))
                 continue
@@ -316,7 +347,7 @@ class ModelBillingDependencyInventory:
                 for item in problems
             ],
         }
-        if policy == "saved_system_dependencies_v2":
+        if stable_dependency_inventory_policy(policy):
             # Actual owner/current pool stay on the returned records for audit,
             # not in a capability/configuration hash that must survive usage.
             payload["references"] = [
