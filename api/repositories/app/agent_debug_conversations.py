@@ -1,11 +1,11 @@
 """Editor conversation persistence within a caller-owned transaction."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from models.agent import AgentConfigDraftType, AgentDebugConversation
 from models.enums import ConversationFromSource, ConversationStatus, InvokeFrom
-from models.model import AppMode, Conversation
+from models.model import AppMode, Conversation, Message
 
 
 def create_agent_debug_conversation(session: Session, *, app_id: str, account_id: str) -> str:
@@ -91,3 +91,8 @@ def get_or_create_agent_debug_conversation(
     )
     session.flush()
     return conversation_id
+
+
+def count_agent_debug_conversation_messages(session: Session, *, conversation_id: str) -> int:
+    """Count messages for a conversation the caller has already resolved in its owner scope."""
+    return session.scalar(select(func.count(Message.id)).where(Message.conversation_id == conversation_id)) or 0

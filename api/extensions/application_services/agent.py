@@ -59,12 +59,14 @@ def build_agent_app_services(
     apps = AgentAppRepository(session_factory=database_client)
     lifecycle = AppLifecycleGateway(session_factory=database_client)
     detail = AgentAppDetailService(
-        runtime=lifecycle, presentation=AgentAppDetailPresentationGateway(members=rbac_members)
+        store=apps,
+        presentation=AgentAppDetailPresentationGateway(members=rbac_members),
+        notify_updated=notify_agent_app_updated,
     )
     return AgentAppServices(
         access=AgentAppAccessService(references=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
-        lifecycle=AgentAppDeletionService(lifecycle=lifecycle),
+        lifecycle=AgentAppDeletionService(store=apps, notify_deleted=lifecycle.deleted),
         detail=detail,
         collection=AgentAppCollectionService(
             store=apps,

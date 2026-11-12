@@ -27,8 +27,8 @@ from models.agent import (
 )
 from models.model import App, AppMode
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
+from repositories.app.agent_app_repository import AgentAppRepository
 from services.app.agent_app_service import AgentAppDeletionService
-from services.app.console_gateway import AppLifecycleGateway
 from services.entities.app_entities import AppDeletion, AppEvent
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
@@ -38,14 +38,10 @@ pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
 
 @dataclass
 class RecordedCleanup:
-    """Retain the real SQL adapter while recording the external cleanup boundary."""
+    """Record external cleanup after verifying the deletion committed."""
 
-    gateway: AppLifecycleGateway
     sessions: sessionmaker[Session]
     published: list[AppDeletion] = field(default_factory=list)
-
-    def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
-        return self.gateway.delete_agent(context, agent_id)
 
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
         assert context.active_workspace_id == deleted.app.tenant_id
@@ -61,9 +57,14 @@ class RecordedCleanup:
 @pytest.fixture
 def cleanup(harness: Harness) -> RecordedCleanup:
     services = harness.client.application.extensions["application_services"]
-    recorded = RecordedCleanup(gateway=AppLifecycleGateway(session_factory=harness.sessions), sessions=harness.sessions)
+    recorded = RecordedCleanup(sessions=harness.sessions)
+    repository = AgentAppRepository(session_factory=harness.sessions)
     harness.client.application.extensions["application_services"] = replace(
-        services, agent_apps=replace(services.agent_apps, lifecycle=AgentAppDeletionService(lifecycle=recorded))
+        services,
+        agent_apps=replace(
+            services.agent_apps,
+            lifecycle=AgentAppDeletionService(store=repository, notify_deleted=recorded.deleted),
+        ),
     )
     return recorded
 

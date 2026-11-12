@@ -23,7 +23,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
-from models.model import App, Conversation, IconType, Message
+from models.model import App, Conversation, IconType
 from repositories.agent_roster_queries import (
     build_roster_agents_stmt,
     load_published_workflows_by_agent_id,
@@ -32,6 +32,7 @@ from repositories.agent_roster_queries import (
 from repositories.agent_version_queries import visible_version_ids, visible_version_operations
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from repositories.app.agent_debug_conversations import (
+    count_agent_debug_conversation_messages,
     create_agent_debug_conversation,
     get_or_create_agent_debug_conversation,
 )
@@ -459,14 +460,7 @@ class AgentRosterService:
     def count_agent_app_debug_conversation_messages(self, *, conversation_id: str) -> int:
         """Return the number of visible messages in an Agent App debug conversation."""
 
-        return (
-            self._session.scalar(
-                select(func.count(Message.id)).where(
-                    Message.conversation_id == conversation_id,
-                )
-            )
-            or 0
-        )
+        return count_agent_debug_conversation_messages(self._session, conversation_id=conversation_id)
 
     def rotate_preview_conversation(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
         """Rotate Preview and retire its exact Conversation-owned Binding.

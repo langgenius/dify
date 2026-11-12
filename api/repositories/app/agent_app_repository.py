@@ -1,41 +1,45 @@
 """Agent App persistence, reusing the roster's canonical app and reference queries."""
 
+from collections.abc import Sequence
 from dataclasses import replace
 from typing import Any, cast
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
-from models.agent import AgentConfigDraftType
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentScope, AgentStatus
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
 from repositories.agent_roster_queries import load_reference_counts_by_agent_id
 from repositories.agent_roster_repository import load_published_references_by_agent_id
-from repositories.app.agent_app_queries import (
-    get_app_backing_agent,
-    get_roster_agent_app,
-    load_app_backing_agents_by_app_id,
-    load_app_ids_for_agents,
+from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.app.agent_debug_conversations import (
+    count_agent_debug_conversation_messages,
+    get_or_create_agent_debug_conversation,
 )
-from repositories.app.agent_debug_conversations import get_or_create_agent_debug_conversation
+from repositories.app.agent_runtime_app import ensure_workflow_agent_backing_app, resolve_agent_runtime_app
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.response import app_record
-from services.agent.errors import AgentNotFoundError
+from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
+from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
     AgentAppAccessNotReadyError,
+    AgentAppDetail,
     AgentAppListItem,
     AgentAppListPage,
+    AgentAppNameConflictError,
     AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
-from services.entities.app_entities import AppListParams
+from services.entities.app_entities import AppDeletion, AppListParams, AppUpdateArguments, UpdateAppParams
 
 
 class AgentAppRepository:
@@ -56,7 +60,9 @@ class AgentAppRepository:
         with self._session_factory.begin() as session:
             scoped_params = params
             if accessible_agent_ids is not None:
-                app_ids = load_app_ids_for_agents(session, tenant_id=tenant_id, agent_ids=sorted(accessible_agent_ids))
+                app_ids = self._load_app_ids_for_agents(
+                    session, tenant_id=tenant_id, agent_ids=sorted(accessible_agent_ids)
+                )
                 scoped_params = params.model_copy(update={"accessible_app_ids": app_ids})
             counts = ConsoleAppRepository.get_agent_publication_counts(account_id, tenant_id, scoped_params, session)
             page = ConsoleAppRepository.get_paginate_apps(account_id, tenant_id, scoped_params, session)
@@ -65,7 +71,7 @@ class AgentAppRepository:
                     page=params.page, limit=params.limit, total=0, has_more=False, publication_counts=counts, data=[]
                 )
 
-            agents = load_app_backing_agents_by_app_id(
+            agents = self._load_app_backing_agents_by_app_id(
                 session, tenant_id=tenant_id, app_ids=[app.id for app in page.items]
             )
             agent_ids = [agent.id for agent in agents.values()]
@@ -126,7 +132,127 @@ class AgentAppRepository:
             )
 
     @staticmethod
-    def _resolve_api_app(session: Session, *, tenant_id: str, agent_id: str) -> App:
+    def _load_app_backing_agents_by_app_id(session: Session, *, tenant_id: str, app_ids: list[str]) -> dict[str, Agent]:
+        """Return active app-backed Agents keyed by Agent App id."""
+        if not app_ids:
+            return {}
+        agents = session.scalars(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.app_id.in_(app_ids),
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        return {agent.app_id: agent for agent in agents if agent.app_id and agent.id}
+
+    @staticmethod
+    def _load_app_ids_for_agents(session: Session, *, tenant_id: str, agent_ids: Sequence[str]) -> list[str]:
+        """Return active Agent App ids for the requested roster Agents."""
+        if not agent_ids:
+            return []
+        app_ids = session.scalars(
+            select(Agent.app_id).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id.in_(agent_ids),
+                Agent.app_id.is_not(None),
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        return sorted({str(app_id) for app_id in app_ids if app_id})
+
+    def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
+        """Resolve and delete an active roster Agent App in one transaction."""
+        with self._session_factory.begin() as session:
+            app = self._resolve_roster_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+            ResourceAccessTokenCleanupRepository(session=session).delete_resource_relations(
+                tenant_id=context.active_workspace_id,
+                resource_type=ResourceAccessTokenResourceType.APP,
+                resource_id=app.id,
+            )
+            return ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
+
+    def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
+        """Return the tenant Agent's detached detail, materializing a hidden runtime App if needed."""
+        with self._session_factory() as session:
+            app = resolve_agent_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+            if app is None:
+                raise AgentAppNotFoundError
+            agent = session.scalar(
+                select(Agent).where(
+                    Agent.tenant_id == context.active_workspace_id,
+                    Agent.id == agent_id,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            )
+            if agent is None:
+                raise AgentAppNotFoundError
+            record = app_record(app, session=session, projection="detail-with-site")
+            # The legacy response view detects old Agent configurations here,
+            # including its existing mode update and commit.
+            should_mask_agent_mode = bool(
+                record.app_model_config is not None and app.is_agent_with_session(session=session)
+            )
+            return AgentAppDetail(
+                app=record,
+                agent_id=agent.id,
+                app_id=agent.app_id,
+                backing_app_id=agent.backing_app_id or agent.app_id,
+                hidden_app_backed=bool(agent.backing_app_id and agent.backing_app_id != agent.app_id),
+                role=agent.role or "",
+                access_ready=agent_has_workflow_callable_active_snapshot(session=session, agent=agent),
+                should_mask_agent_mode=should_mask_agent_mode,
+            )
+
+    def get_agent_build_conversation(self, context: RequestContext, agent_id: str, *, app_id: str) -> tuple[str, int]:
+        """Commit the caller's Build conversation if the Agent still owns the same runtime App."""
+        with self._session_factory.begin() as session:
+            agent = session.scalar(
+                select(Agent).where(
+                    Agent.tenant_id == context.active_workspace_id,
+                    Agent.id == agent_id,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            )
+            if agent is None or (agent.backing_app_id or agent.app_id) != app_id:
+                raise AgentAppNotFoundError
+            backing_app_id = ensure_workflow_agent_backing_app(session, agent=agent, account_id=context.account_id)
+            if backing_app_id is None:
+                raise AgentAppNotFoundError
+            conversation_id = get_or_create_agent_debug_conversation(
+                session,
+                tenant_id=context.active_workspace_id,
+                agent_id=agent_id,
+                backing_app_id=backing_app_id,
+                account_id=context.account_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            )
+            return conversation_id, count_agent_debug_conversation_messages(session, conversation_id=conversation_id)
+
+    def update_agent(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> str:
+        """Commit updates for the tenant's active roster Agent App and return its id."""
+        with self._session_factory() as session:
+            app = self._resolve_roster_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+            args: AppUpdateArguments = {
+                "name": params.name,
+                "description": params.description,
+                "icon_type": params.icon_type,
+                "icon": params.icon,
+                "icon_background": params.icon_background,
+                "use_icon_as_answer_icon": params.use_icon_as_answer_icon,
+                "max_active_requests": params.max_active_requests,
+                "role": params.role,
+            }
+            try:
+                return ConsoleAppRepository.update_app(app, args, account_id=context.account_id, session=session).id
+            except AgentNameConflictError as exc:
+                raise AgentAppNameConflictError from exc
+
+    @staticmethod
+    def _resolve_roster_app(session: Session, *, tenant_id: str, agent_id: str) -> App:
         """Resolve only an active, app-backed roster Agent in the given tenant."""
         app = get_roster_agent_app(session, tenant_id=tenant_id, agent_id=agent_id)
         if app is None:
@@ -157,13 +283,13 @@ class AgentAppRepository:
     def get_api_access(self, *, tenant_id: str, agent_id: str) -> AgentApiAccess:
         """Return detached access state for an active Agent App in the tenant."""
         with self._session_factory() as session:
-            app = self._resolve_api_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            app = self._resolve_roster_app(session, tenant_id=tenant_id, agent_id=agent_id)
             return self._api_access(session, app)
 
     def set_api_access(self, *, tenant_id: str, agent_id: str, account_id: str, enabled: bool) -> AgentApiAccessChange:
         """Commit access state in one transaction; an unpublished Agent cannot be enabled."""
         with self._session_factory.begin() as session:
-            app = self._resolve_api_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            app = self._resolve_roster_app(session, tenant_id=tenant_id, agent_id=agent_id)
             access = self._api_access(session, app)
             if enabled and not access.access_ready:
                 raise AgentAppAccessNotReadyError
@@ -179,7 +305,7 @@ class AgentAppRepository:
     def resolve_roster_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         """Resolve a roster Agent's configuration owner without materializing inline Apps."""
         with self._session_factory() as session:
-            return self._resolve_api_app(session, tenant_id=tenant_id, agent_id=agent_id).id
+            return self._resolve_roster_app(session, tenant_id=tenant_id, agent_id=agent_id).id
 
     def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         with self._session_factory() as session:
