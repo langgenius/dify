@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import math
+from dataclasses import dataclass
 from importlib import import_module
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, override
 
 from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator, merge_agent_evaluation_results
@@ -61,6 +61,17 @@ _RAGAS_REFERENCE_METRICS = {
 
 _NATIVE_AGENT_METRICS = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
 _RAGAS_METRIC_TIMEOUT_SECONDS = 180
+
+
+@dataclass(frozen=True)
+class RagasAgentComponents:
+    AIMessage: type[Any]
+    HumanMessage: type[Any]
+    MultiTurnSample: type[Any]
+    ToolCall: type[Any]
+    ToolCallAccuracy: type[Any]
+
+
 # Retry only provider failures known to be transient. Client-side validation
 # failures such as PluginInvokeError must surface immediately.
 _RAGAS_RETRYABLE_EXCEPTIONS = (
@@ -212,7 +223,7 @@ class RagasEvaluator(BaseEvaluationInstance):
         return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
 
     @staticmethod
-    def _build_agent_sample(item: AgentEvaluationItem, components: SimpleNamespace | None = None) -> Any:
+    def _build_agent_sample(item: AgentEvaluationItem, components: RagasAgentComponents | None = None) -> Any:
         """Build the MultiTurnSample required by RAGAS ToolCallAccuracy."""
         components = components or _load_ragas_agent_components()
 
@@ -400,12 +411,12 @@ def _import_ragas_metrics_module() -> Any:
         return import_module("ragas.metrics.collections")
 
 
-def _load_ragas_agent_components() -> SimpleNamespace:
+def _load_ragas_agent_components() -> RagasAgentComponents:
     from ragas.dataset_schema import MultiTurnSample
     from ragas.messages import AIMessage, HumanMessage, ToolCall
     from ragas.metrics import ToolCallAccuracy
 
-    return SimpleNamespace(
+    return RagasAgentComponents(
         AIMessage=AIMessage,
         HumanMessage=HumanMessage,
         MultiTurnSample=MultiTurnSample,

@@ -1,8 +1,8 @@
 """Contract tests for the pinned RAGAS adapter."""
 
 import sys
-from types import ModuleType, SimpleNamespace
-from typing import TYPE_CHECKING, cast
+from dataclasses import dataclass
+from types import ModuleType
 
 import pytest
 
@@ -13,16 +13,13 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
     EvaluationItemInput,
 )
-from core.evaluation.frameworks.ragas.ragas_evaluator import RagasEvaluator
+from core.evaluation.frameworks.ragas.ragas_evaluator import RagasAgentComponents, RagasEvaluator
 from core.plugin.impl.exc import PluginInvokeError
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-
-if TYPE_CHECKING:
-    from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
 
 
 class _FakeRagasData:
@@ -48,8 +45,8 @@ class _FakeToolCallAccuracy:
         )
 
 
-def _fake_agent_components() -> SimpleNamespace:
-    return SimpleNamespace(
+def _fake_agent_components() -> RagasAgentComponents:
+    return RagasAgentComponents(
         AIMessage=_FakeRagasData,
         HumanMessage=_FakeRagasData,
         MultiTurnSample=_FakeRagasData,
@@ -90,15 +87,17 @@ def test_build_ragas_metrics_preserves_canonical_names(monkeypatch: pytest.Monke
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    metrics_module = SimpleNamespace(
-        Faithfulness=FakeMetric,
-        AnswerRelevancy=FakeMetric,
-        AnswerCorrectness=FakeMetric,
-        SemanticSimilarity=FakeMetric,
-        ContextPrecision=FakeMetric,
-        ContextRecall=FakeMetric,
-        ContextRelevance=FakeMetric,
-    )
+    metrics_module = ModuleType("ragas.metrics")
+    for name in (
+        "Faithfulness",
+        "AnswerRelevancy",
+        "AnswerCorrectness",
+        "SemanticSimilarity",
+        "ContextPrecision",
+        "ContextRecall",
+        "ContextRelevance",
+    ):
+        setattr(metrics_module, name, FakeMetric)
     monkeypatch.setattr(
         "core.evaluation.frameworks.ragas.ragas_evaluator._import_ragas_metrics_module",
         lambda: metrics_module,
@@ -125,19 +124,32 @@ def test_build_ragas_metrics_preserves_canonical_names(monkeypatch: pytest.Monke
 def test_evaluate_with_ragas_uses_bounded_transient_retry_config(monkeypatch: pytest.MonkeyPatch) -> None:
     import pandas as pd
 
+    @dataclass
+    class FakeEvaluationDataset:
+        samples: list[object]
+
+    @dataclass
+    class FakeRunConfig:
+        timeout: int
+        exception_types: tuple[type[Exception], ...]
+
+    class FakeEvaluationResult:
+        def to_pandas(self) -> pd.DataFrame:
+            return pd.DataFrame({"answer_relevancy": [0.75]})
+
     captured: dict[str, object] = {}
 
-    def fake_evaluate(**kwargs: object) -> SimpleNamespace:
+    def fake_evaluate(**kwargs: object) -> FakeEvaluationResult:
         captured.update(kwargs)
-        return SimpleNamespace(to_pandas=lambda: pd.DataFrame({"answer_relevancy": [0.75]}))
+        return FakeEvaluationResult()
 
     ragas_module = ModuleType("ragas")
     ragas_module.__path__ = []
     ragas_module.__dict__["evaluate"] = fake_evaluate
     dataset_schema_module = ModuleType("ragas.dataset_schema")
-    dataset_schema_module.__dict__["EvaluationDataset"] = lambda samples: SimpleNamespace(samples=samples)
+    dataset_schema_module.__dict__["EvaluationDataset"] = FakeEvaluationDataset
     run_config_module = ModuleType("ragas.run_config")
-    run_config_module.__dict__["RunConfig"] = lambda **kwargs: SimpleNamespace(**kwargs)
+    run_config_module.__dict__["RunConfig"] = FakeRunConfig
     monkeypatch.setitem(sys.modules, "ragas", ragas_module)
     monkeypatch.setitem(sys.modules, "ragas.dataset_schema", dataset_schema_module)
     monkeypatch.setitem(sys.modules, "ragas.run_config", run_config_module)
@@ -149,12 +161,13 @@ def test_evaluate_with_ragas_uses_bounded_transient_retry_config(monkeypatch: py
     results = evaluator._evaluate_with_ragas(
         [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer")],
         ["answer_relevancy"],
-        cast("DifyModelWrapper", object()),
+        object(),
         object(),
         EvaluationCategory.LLM,
     )
 
-    run_config = cast(SimpleNamespace, captured["run_config"])
+    run_config = captured["run_config"]
+    assert isinstance(run_config, FakeRunConfig)
     assert run_config.timeout == 180
     assert run_config.exception_types == (
         InvokeConnectionError,

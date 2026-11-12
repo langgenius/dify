@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import TYPE_CHECKING, Any, override
 
 from pydantic import BaseModel
 
@@ -33,6 +33,7 @@ class DifyDeepEvalModel(DeepEvalBaseLLM):
         self.dify_model_name = model_name
         self.tenant_id = tenant_id
         self.user_id = user_id
+        self._dify_model: ModelInstance
         super().__init__(model_name)
 
     def load_model(self) -> Any:
@@ -40,12 +41,14 @@ class DifyDeepEvalModel(DeepEvalBaseLLM):
         from graphon.model_runtime.entities.model_entities import ModelType
 
         model_manager = create_plugin_model_manager(tenant_id=self.tenant_id, user_id=self.user_id)
-        return model_manager.get_model_instance(
+        model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id,
             provider=self.model_provider,
             model_type=ModelType.LLM,
             model=self.dify_model_name,
         )
+        self._dify_model = model_instance
+        return model_instance
 
     def generate(self, prompt: str, schema: type[BaseModel] | None = None) -> Any:
         """Generate text or a schema-validated response for a DeepEval prompt."""
@@ -59,7 +62,7 @@ class DifyDeepEvalModel(DeepEvalBaseLLM):
             SystemPromptMessage(content="You are an evaluation judge. Follow the requested output format exactly."),
             UserPromptMessage(content=prompt),
         ]
-        model_instance = cast("ModelInstance", self.model)
+        model_instance = self._dify_model
         if schema is not None:
             from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 

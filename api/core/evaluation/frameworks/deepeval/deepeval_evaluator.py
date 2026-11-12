@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from collections.abc import Sequence
-from types import SimpleNamespace
+from dataclasses import dataclass
 from typing import Any, override
 
 from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator, merge_agent_evaluation_results
@@ -53,6 +53,20 @@ _ANSWER_CORRECTNESS_STEPS = [
     "Ignore harmless differences in wording or presentation that do not change the meaning.",
     "Assign a higher score when the actual output is both factually correct and complete.",
 ]
+
+
+@dataclass(frozen=True)
+class DeepEvalComponents:
+    AnswerRelevancyMetric: type[Any]
+    ArgumentCorrectnessMetric: type[Any]
+    ContextualPrecisionMetric: type[Any]
+    ContextualRecallMetric: type[Any]
+    ContextualRelevancyMetric: type[Any]
+    FaithfulnessMetric: type[Any]
+    GEval: type[Any]
+    LLMTestCase: type[Any]
+    SingleTurnParams: type[Any]
+    ToolCall: type[Any]
 
 
 class DeepEvalEvaluator(BaseEvaluationInstance):
@@ -241,7 +255,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         return results
 
 
-def _load_deepeval_components() -> SimpleNamespace:
+def _load_deepeval_components() -> DeepEvalComponents:
     from deepeval.metrics import (
         AnswerRelevancyMetric,
         ArgumentCorrectnessMetric,
@@ -253,7 +267,7 @@ def _load_deepeval_components() -> SimpleNamespace:
     )
     from deepeval.test_case import LLMTestCase, SingleTurnParams, ToolCall
 
-    return SimpleNamespace(
+    return DeepEvalComponents(
         AnswerRelevancyMetric=AnswerRelevancyMetric,
         ArgumentCorrectnessMetric=ArgumentCorrectnessMetric,
         ContextualPrecisionMetric=ContextualPrecisionMetric,
@@ -270,7 +284,7 @@ def _load_deepeval_components() -> SimpleNamespace:
 def _build_deepeval_metrics(
     requested_metrics: list[str],
     model: DifyDeepEvalModel,
-    components: SimpleNamespace,
+    components: DeepEvalComponents,
 ) -> list[tuple[str, Any]]:
     """Build fresh stateful metric instances for one dataset item."""
     standard_metric_classes = {
@@ -323,7 +337,7 @@ def _build_deepeval_metrics(
 def _build_test_case(
     item: EvaluationItemInput,
     category: EvaluationCategory,
-    components: SimpleNamespace,
+    components: DeepEvalComponents,
 ) -> Any:
     if category == EvaluationCategory.AGENT:
         if not isinstance(item, AgentEvaluationItem):

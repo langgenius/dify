@@ -9,14 +9,14 @@ from dataclasses import dataclass
 from datetime import timedelta
 from numbers import Real
 from threading import Event, Thread
-from typing import Any, cast
+from typing import Any
 
 from celery import Task, shared_task
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy import select, update
-from sqlalchemy.engine import CursorResult
+from sqlalchemy.engine import CursorResult, Result
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
@@ -85,6 +85,13 @@ class EvaluationRunCancelledError(Exception):
 
 class EvaluationRunOwnershipLostError(Exception):
     """Raised when a task invocation no longer owns the evaluation run lease."""
+
+
+def _affected_rows(result: Result[Any]) -> int:
+    """Require a DML cursor result before relying on its affected-row count."""
+    if not isinstance(result, CursorResult):
+        raise TypeError("Evaluation lease update did not return a cursor result.")
+    return result.rowcount
 
 
 @dataclass(frozen=True)
@@ -269,20 +276,17 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
 def _renew_evaluation_run_heartbeat(lease: EvaluationRunLease) -> bool:
     """Renew the lease only while the evaluation remains executable."""
     with session_factory.create_session() as session:
-        result = cast(
-            CursorResult[Any],
-            session.execute(
-                update(EvaluationRun)
-                .where(
-                    EvaluationRun.id == lease.run_id,
-                    EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                    EvaluationRun.execution_token == lease.token,
-                )
-                .values(heartbeat_at=naive_utc_now())
-            ),
+        result = session.execute(
+            update(EvaluationRun)
+            .where(
+                EvaluationRun.id == lease.run_id,
+                EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                EvaluationRun.execution_token == lease.token,
+            )
+            .values(heartbeat_at=naive_utc_now())
         )
         session.commit()
-        return result.rowcount == 1
+        return _affected_rows(result) == 1
 
 
 def _renew_evaluation_run_heartbeat_while_running(lease: EvaluationRunLease, stop_event: Event) -> None:
@@ -336,27 +340,24 @@ def reconcile_stale_evaluation_runs() -> int:
             ).all()
         )
         for run in candidates:
-            result = cast(
-                CursorResult[Any],
-                session.execute(
-                    update(EvaluationRun)
-                    .where(
-                        EvaluationRun.id == run.id,
-                        EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                        EvaluationRun.execution_token == run.execution_token,
-                        EvaluationRun.heartbeat_at.is_not(None),
-                        EvaluationRun.heartbeat_at < cutoff,
-                    )
-                    .values(
-                        status=EvaluationRunStatus.FAILED,
-                        execution_token=None,
-                        heartbeat_at=None,
-                        completed_at=naive_utc_now(),
-                        error="Evaluation run heartbeat lease expired.",
-                    )
-                ),
+            result = session.execute(
+                update(EvaluationRun)
+                .where(
+                    EvaluationRun.id == run.id,
+                    EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                    EvaluationRun.execution_token == run.execution_token,
+                    EvaluationRun.heartbeat_at.is_not(None),
+                    EvaluationRun.heartbeat_at < cutoff,
+                )
+                .values(
+                    status=EvaluationRunStatus.FAILED,
+                    execution_token=None,
+                    heartbeat_at=None,
+                    completed_at=naive_utc_now(),
+                    error="Evaluation run heartbeat lease expired.",
+                )
             )
-            if result.rowcount == 1:
+            if _affected_rows(result) == 1:
                 stale_runs.append(
                     (
                         run.tenant_id,
@@ -543,12 +544,12 @@ def _execute_running_evaluation(
         )
     )
     try:
-        result = cast(CursorResult[Any], session.execute(statement))
+        result = session.execute(statement)
     except Exception:
         session.rollback()
         _delete_stored_result_file(result_file.key)
         raise
-    if result.rowcount != 1:
+    if _affected_rows(result) != 1:
         session.rollback()
         _delete_stored_result_file(result_file.key)
         _assert_execution_lease(session, lease)
@@ -1727,8 +1728,8 @@ def _persist_results(
                     progress_rate=_checkpoint_progress(checkpointed, total_items or 0),
                 )
             )
-            update_result = cast(CursorResult[Any], session.execute(progress_update))
-            if update_result.rowcount != 1:
+            update_result = session.execute(progress_update)
+            if _affected_rows(update_result) != 1:
                 session.rollback()
                 _assert_execution_lease(session, lease)
                 raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} checkpoint lease was rejected.")
@@ -1761,38 +1762,32 @@ def _cooperative_checkpoint(session: Session, lease: EvaluationRunLease) -> None
 
 def _touch_execution_lease(session: Session, lease: EvaluationRunLease) -> None:
     """Fence a pending transaction by locking and renewing its current owner."""
-    result = cast(
-        CursorResult[Any],
-        session.execute(
-            update(EvaluationRun)
-            .where(
-                EvaluationRun.id == lease.run_id,
-                EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                EvaluationRun.execution_token == lease.token,
-            )
-            .values(heartbeat_at=naive_utc_now())
-        ),
+    result = session.execute(
+        update(EvaluationRun)
+        .where(
+            EvaluationRun.id == lease.run_id,
+            EvaluationRun.status == EvaluationRunStatus.RUNNING,
+            EvaluationRun.execution_token == lease.token,
+        )
+        .values(heartbeat_at=naive_utc_now())
     )
-    if result.rowcount != 1:
+    if _affected_rows(result) != 1:
         session.rollback()
         _assert_execution_lease(session, lease)
         raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} lease update was rejected.")
 
 
 def _update_run_progress(session: Session, lease: EvaluationRunLease, progress_rate: float) -> None:
-    result = cast(
-        CursorResult[Any],
-        session.execute(
-            update(EvaluationRun)
-            .where(
-                EvaluationRun.id == lease.run_id,
-                EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                EvaluationRun.execution_token == lease.token,
-            )
-            .values(progress_rate=min(max(progress_rate, 0.0), 0.99))
-        ),
+    result = session.execute(
+        update(EvaluationRun)
+        .where(
+            EvaluationRun.id == lease.run_id,
+            EvaluationRun.status == EvaluationRunStatus.RUNNING,
+            EvaluationRun.execution_token == lease.token,
+        )
+        .values(progress_rate=min(max(progress_rate, 0.0), 0.99))
     )
-    if result.rowcount != 1:
+    if _affected_rows(result) != 1:
         session.rollback()
         _assert_execution_lease(session, lease)
         raise EvaluationRunOwnershipLostError(f"Evaluation run {lease.run_id} progress lease was rejected.")
@@ -1826,27 +1821,24 @@ def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) ->
                 EvaluationRun.id == lease.run_id
             )
         ).one_or_none()
-        result = cast(
-            CursorResult[Any],
-            session.execute(
-                update(EvaluationRun)
-                .where(
-                    EvaluationRun.id == lease.run_id,
-                    EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                    EvaluationRun.execution_token == lease.token,
-                )
-                .values(
-                    status=EvaluationRunStatus.FAILED,
-                    execution_token=None,
-                    heartbeat_at=None,
-                    error=error[:2000],
-                    completed_at=naive_utc_now(),
-                )
-            ),
+        result = session.execute(
+            update(EvaluationRun)
+            .where(
+                EvaluationRun.id == lease.run_id,
+                EvaluationRun.status == EvaluationRunStatus.RUNNING,
+                EvaluationRun.execution_token == lease.token,
+            )
+            .values(
+                status=EvaluationRunStatus.FAILED,
+                execution_token=None,
+                heartbeat_at=None,
+                error=error[:2000],
+                completed_at=naive_utc_now(),
+            )
         )
         session.commit()
         if (
-            result.rowcount == 1
+            _affected_rows(result) == 1
             and run_identity is not None
             and EvaluationTargetType(run_identity.target_type) == EvaluationTargetType.AGENTS
         ):
@@ -1868,26 +1860,23 @@ def _mark_run_pending_for_retry(
 ) -> bool:
     """Release the running lease while retaining row checkpoints for the next attempt."""
     session.rollback()
-    result = cast(
-        CursorResult[Any],
-        session.execute(
-            update(EvaluationRun)
-            .where(
-                EvaluationRun.id == lease.run_id,
-                EvaluationRun.status == EvaluationRunStatus.RUNNING,
-                EvaluationRun.execution_token == lease.token,
-            )
-            .values(
-                status=EvaluationRunStatus.PENDING,
-                execution_token=None,
-                heartbeat_at=None,
-                completed_at=None,
-                error=f"Retry {retry_number}/{max_retries} scheduled after: {error}"[:2000],
-            )
-        ),
+    result = session.execute(
+        update(EvaluationRun)
+        .where(
+            EvaluationRun.id == lease.run_id,
+            EvaluationRun.status == EvaluationRunStatus.RUNNING,
+            EvaluationRun.execution_token == lease.token,
+        )
+        .values(
+            status=EvaluationRunStatus.PENDING,
+            execution_token=None,
+            heartbeat_at=None,
+            completed_at=None,
+            error=f"Retry {retry_number}/{max_retries} scheduled after: {error}"[:2000],
+        )
     )
     session.commit()
-    return result.rowcount == 1
+    return _affected_rows(result) == 1
 
 
 def _compute_metrics_summary(

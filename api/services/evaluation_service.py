@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from decimal import Decimal, InvalidOperation
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -23,7 +23,7 @@ from core.evaluation.agent.customized_workflow_adapter import (
     AGENT_CUSTOM_EVALUATOR_OUTPUT_TYPES,
 )
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
-from core.evaluation.entities.config_entity import EvaluationFrameworkEnum, SelectableEvaluationFramework
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
     METRIC_VALUE_TYPE_MAPPING,
@@ -427,7 +427,7 @@ class EvaluationService:
         if config is None:
             config = EvaluationConfiguration(
                 tenant_id=tenant_id,
-                target_type=target_type,
+                target_type=EvaluationTargetType(target_type),
                 target_id=target_id,
                 created_by=account_id,
                 updated_by=account_id,
@@ -489,14 +489,16 @@ class EvaluationService:
         config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
         if config is None:
             raise EvaluationNotFoundError("Evaluation configuration not found. Save evaluation settings first.")
+        if "evaluation_framework" in run_request.model_fields_set:
+            framework = run_request.evaluation_framework
+        else:
+            framework = EvaluationRunRequest.model_validate(
+                {"file_id": run_request.file_id, "evaluation_framework": config.evaluation_framework}
+            ).evaluation_framework
 
         return EvaluationRunRequest(
             file_id=run_request.file_id,
-            evaluation_framework=(
-                run_request.evaluation_framework
-                if "evaluation_framework" in run_request.model_fields_set
-                else cast(SelectableEvaluationFramework, config.evaluation_framework)
-            ),
+            evaluation_framework=framework,
             evaluation_model=config.evaluation_model or "",
             evaluation_model_provider=config.evaluation_model_provider or "",
             default_metrics=[DefaultMetric.model_validate(metric) for metric in config.default_metrics_list],
@@ -590,8 +592,8 @@ class EvaluationService:
                 )
             if target is None:
                 raise ValueError("Evaluation target not found.")
-            if normalized_target_type == EvaluationTargetType.APPS:
-                cls._validate_app_mode(cast(App, target))
+            if isinstance(target, App):
+                cls._validate_app_mode(target)
             published_workflow = target_workflow or cls._resolve_published_workflow(
                 target, normalized_target_type.value, session
             )
@@ -1077,7 +1079,7 @@ class EvaluationService:
         )
         evaluation_run = EvaluationRun(
             tenant_id=tenant_id,
-            target_type=target_type,
+            target_type=EvaluationTargetType(target_type),
             target_id=target_id,
             target_workflow_version_id=target_workflow_version_id,
             target_agent_config_snapshot_id=target_agent_config_snapshot_id,

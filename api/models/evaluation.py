@@ -10,9 +10,10 @@ from sqlalchemy import DateTime, Float, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
-from .base import Base
+from .base import TypeBase
 from .types import EnumText, LongText, StringUUID
 
 
@@ -39,7 +40,7 @@ class EvaluationRunItemStatus(StrEnum):
     COMPLETED = "completed"
 
 
-class EvaluationConfiguration(Base):
+class EvaluationConfiguration(TypeBase, kw_only=True):
     """Latest editable evaluation configuration for a tenant-owned target."""
 
     __tablename__ = "evaluation_configurations"
@@ -49,28 +50,41 @@ class EvaluationConfiguration(Base):
         sa.Index("evaluation_configuration_evaluator_app_idx", "tenant_id", "evaluator_app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7())
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     target_type: Mapped[EvaluationTargetType] = mapped_column(EnumText(EvaluationTargetType, length=32), nullable=False)
     target_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     evaluation_framework: Mapped[EvaluationFrameworkEnum] = mapped_column(
-        EnumText(EvaluationFrameworkEnum, length=20), nullable=False, server_default="ragas"
+        EnumText(EvaluationFrameworkEnum, length=20),
+        nullable=False,
+        server_default="ragas",
+        default=EvaluationFrameworkEnum.RAGAS,
     )
-    evaluation_model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    evaluation_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    metrics_config: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    judgment_conditions: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    evaluator_app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    evaluation_model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    evaluation_model: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    metrics_config: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    judgment_conditions: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    evaluator_app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     updated_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
     )
 
     @property
@@ -96,7 +110,7 @@ class EvaluationConfiguration(Base):
         return f"<EvaluationConfiguration(id={self.id}, target={self.target_type}:{self.target_id})>"
 
 
-class EvaluationRun(Base):
+class EvaluationRun(TypeBase, kw_only=True):
     """Immutable configuration snapshot and mutable execution state for one evaluation."""
 
     __tablename__ = "evaluation_runs"
@@ -107,40 +121,50 @@ class EvaluationRun(Base):
         sa.Index("evaluation_run_status_heartbeat_idx", "status", "heartbeat_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7())
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     target_type: Mapped[EvaluationTargetType] = mapped_column(EnumText(EvaluationTargetType, length=32), nullable=False)
     target_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    target_workflow_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    target_agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    target_workflow_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    target_agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     evaluation_config_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     config_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
 
     status: Mapped[EvaluationRunStatus] = mapped_column(
         EnumText(EvaluationRunStatus, length=20), nullable=False, default=EvaluationRunStatus.PENDING
     )
-    dataset_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    result_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    dataset_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    result_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     total_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     progress_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    metrics_summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    execution_token: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    metrics_summary: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    execution_token: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
     )
 
     @property
@@ -159,7 +183,7 @@ class EvaluationRun(Base):
         return f"<EvaluationRun(id={self.id}, status={self.status})>"
 
 
-class EvaluationRunItem(Base):
+class EvaluationRunItem(TypeBase, kw_only=True):
     """Per-dataset-row result for an evaluation run."""
 
     __tablename__ = "evaluation_run_items"
@@ -170,11 +194,13 @@ class EvaluationRunItem(Base):
         sa.Index("evaluation_run_item_agent_backend_run_idx", "agent_backend_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7())
+    )
     evaluation_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    agent_backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    agent_backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     item_index: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[EvaluationRunItemStatus] = mapped_column(
         EnumText(EvaluationRunItemStatus, length=20),
@@ -182,16 +208,22 @@ class EvaluationRunItem(Base):
         default=EvaluationRunItemStatus.COMPLETED,
     )
 
-    inputs: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    expected_output: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    actual_output: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    metrics: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    judgment: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    metadata_json: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    target_result_json: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    overall_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    inputs: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    expected_output: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    actual_output: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    metrics: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    judgment: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    metadata_json: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    target_result_json: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    overall_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
 
     @property
     def inputs_dict(self) -> dict[str, Any]:

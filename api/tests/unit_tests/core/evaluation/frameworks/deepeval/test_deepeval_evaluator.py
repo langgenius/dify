@@ -1,7 +1,5 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
 
@@ -13,6 +11,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemInput,
 )
 from core.evaluation.frameworks.deepeval.deepeval_evaluator import (
+    DeepEvalComponents,
     DeepEvalEvaluator,
     _build_deepeval_metrics,
     _build_test_case,
@@ -50,8 +49,8 @@ class _FakeMetric:
         return self.score
 
 
-def _fake_components() -> SimpleNamespace:
-    return SimpleNamespace(
+def _fake_components() -> DeepEvalComponents:
+    return DeepEvalComponents(
         AnswerRelevancyMetric=_FakeMetric,
         ArgumentCorrectnessMetric=_FakeMetric,
         ContextualPrecisionMetric=_FakeMetric,
@@ -90,8 +89,9 @@ def test_supported_metrics_use_native_deepeval_coverage() -> None:
     assert evaluator.metric_requires_expected_output("context_relevance") is False
 
 
-def test_metric_factory_always_injects_dify_model_and_score_only_threshold() -> None:
-    model = cast(DifyDeepEvalModel, object())
+def test_metric_factory_always_injects_dify_model_and_score_only_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(DifyDeepEvalModel, "load_model", lambda _self: object())
+    model = DifyDeepEvalModel("provider", "judge-model", "tenant")
     components = _fake_components()
 
     metrics = _build_deepeval_metrics(
@@ -115,10 +115,9 @@ def test_metric_factory_always_injects_dify_model_and_score_only_threshold() -> 
     assert metrics[1][1].kwargs["evaluation_steps"]
 
 
-def test_metric_factory_matches_pinned_deepeval_api() -> None:
-    model = object.__new__(DifyDeepEvalModel)
-    model.model_provider = "provider"
-    model.dify_model_name = "judge-model"
+def test_metric_factory_matches_pinned_deepeval_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(DifyDeepEvalModel, "load_model", lambda _self: object())
+    model = DifyDeepEvalModel("provider", "judge-model", "tenant")
 
     metrics = _build_deepeval_metrics(
         [

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar, cast
+from typing import Any, ParamSpec, TypeVar
 from urllib.parse import quote
 from uuid import UUID
 
@@ -311,7 +311,9 @@ def evaluation_target_required(
     def decorator(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            session = cast(Session, args[1])
+            session = args[1]
+            if not isinstance(session, Session):
+                raise TypeError("Evaluation endpoint requires a database session.")
             target_type = str(kwargs.pop("evaluate_target_type"))
             target_id = str(kwargs.pop("evaluate_target_id"))
             current_user, tenant_id = current_account_with_tenant()

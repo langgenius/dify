@@ -8,7 +8,7 @@ import math
 import re
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, create_model, model_validator
 
@@ -428,7 +428,10 @@ class AgentLLMJudgeEvaluator:
         sanitization_warnings: Sequence[str],
     ) -> EvaluationMetric:
         """Judge all assessable calls in one request and bind trusted call identities locally."""
-        sanitized_calls = cast(list[Mapping[str, Any]], sanitized_payload["tool_calls"])
+        raw_calls = sanitized_payload["tool_calls"]
+        if not isinstance(raw_calls, list) or not all(isinstance(call, Mapping) for call in raw_calls):
+            raise ValueError("Sanitized tool calls must be a list of mappings.")
+        sanitized_calls = raw_calls
         indexed_calls = [(f"call_{index}", call) for index, call in enumerate(sanitized_calls, start=1)]
         judge_output = judge_model.generate(
             system_prompt=system_prompt,

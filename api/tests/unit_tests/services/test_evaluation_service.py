@@ -1279,7 +1279,7 @@ def test_validate_config_rejects_undeclared_customized_output(monkeypatch: pytes
 
 def test_validate_config_rejects_non_workflow_app(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT.value)
+    session.scalar.return_value = App(id="app-1", mode=AppMode.ADVANCED_CHAT.value)
     monkeypatch.setattr(
         EvaluationService,
         "get_supported_metrics",

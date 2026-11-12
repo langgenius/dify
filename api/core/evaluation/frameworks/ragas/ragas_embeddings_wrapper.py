@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, cast, override
+from typing import Any, override
 
 from langchain_core.embeddings import Embeddings
 
@@ -33,7 +33,9 @@ class DifyEmbeddingsWrapper(Embeddings):
         from graphon.model_runtime.entities.model_entities import ModelPropertyKey
         from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 
-        model_type_instance = cast(TextEmbeddingModel, model_instance.model_type_instance)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, TextEmbeddingModel):
+            raise TypeError("The configured embedding model has an incompatible runtime type.")
         model_schema = model_type_instance.get_model_schema(model_instance.model_name, model_instance.credentials)
         if model_schema is None:
             return 1

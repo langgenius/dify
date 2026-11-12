@@ -11,8 +11,7 @@ anywhere that already has per-item metric results.
 """
 
 import logging
-from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 from core.evaluation.entities.judgment_entity import (
     JudgmentCondition,
@@ -132,7 +131,7 @@ class JudgmentProcessor:
             passed = _evaluate_condition(
                 operator=condition.comparison_operator,
                 value=coerced_actual,
-                expected=cast(str | Sequence[str] | bool | Sequence[bool] | None, expected),
+                expected=expected,
             )
 
             return JudgmentConditionResult(
