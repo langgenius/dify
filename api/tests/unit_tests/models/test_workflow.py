@@ -580,7 +580,7 @@ class TestWorkflowCases:
 
 """Regression coverage for ``models.workflow.WorkflowAppLog`` account accessors.
 
-Ensures the ``@property``鈫抯ession-parameter refactor preserves the role-based dispatch:
+Ensures the ``@property``→session-parameter refactor preserves the role-based dispatch:
 ``created_by_account`` looks up an Account only when role is ACCOUNT; ``created_by_end_user``
 looks up an EndUser only when role is END_USER.
 
@@ -1737,7 +1737,7 @@ class TestWorkflowModelsCases:
 
 """Regression coverage for ``WorkflowNodeExecutionModel`` account accessors.
 
-Ensures the ``@property``鈫抯ession-parameter refactor preserves the role-based dispatch:
+Ensures the ``@property``→session-parameter refactor preserves the role-based dispatch:
 ``created_by_account`` looks up an Account only when role is ACCOUNT; ``created_by_end_user``
 looks up an EndUser only when role is END_USER. Also covers the session-carrying response
 source used by the console endpoints that validate ``WorkflowRunNodeExecutionResponse``
@@ -2032,7 +2032,7 @@ class TestWorkflowNodeExecutionOffloadCases:
 
 """Regression coverage for ``WorkflowRun`` account accessors.
 
-Ensures the ``@property``鈫抯ession-parameter refactor preserves the role-based dispatch:
+Ensures the ``@property``→session-parameter refactor preserves the role-based dispatch:
 ``created_by_account`` looks up an Account only when role is ACCOUNT; ``created_by_end_user``
 looks up an EndUser only when role is END_USER. Also covers the session-carrying response
 sources used by the console endpoints that validate the run detail / pagination responses
