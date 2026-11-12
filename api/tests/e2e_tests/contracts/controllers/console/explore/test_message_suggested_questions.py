@@ -221,6 +221,7 @@ def _error(response: TestResponse, *, status: int, code: str) -> None:
 def test_owner_provider_resolution_failure_returns_empty_questions(
     harness: _Harness, mode: AppMode, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given a provider lookup failure, return no questions and retain the logged exception."""
     assert harness.target.tenant_id != harness.installation.tenant_id
     with harness.factory.begin() as session:
         app = session.get(App, harness.target.id)
@@ -248,7 +249,7 @@ def test_owner_provider_resolution_failure_returns_empty_questions(
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

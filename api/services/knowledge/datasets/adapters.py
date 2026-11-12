@@ -208,7 +208,7 @@ class SQLAlchemyDatasetOperations:
                     dataset_ids=list(query.ids) if query.ids else None,
                 )
             )
-            if query.ids:
+            if query.ids and not query.for_selection:
                 datasets, total = DatasetService.get_datasets_by_ids(
                     list(query.ids),
                     context.active_workspace_id,
@@ -230,6 +230,8 @@ class SQLAlchemyDatasetOperations:
                     query.include_all,
                     creator_ids=list(query.creator_ids),
                     tags=self._tags,
+                    for_selection=query.for_selection,
+                    ids=list(query.ids) if query.ids else None,
                     accessible_dataset_ids=accessible_ids,
                     availability=query.availability,
                     unavailable_dataset_ids=unavailable_dataset_ids,
@@ -261,7 +263,7 @@ class SQLAlchemyDatasetOperations:
                 ).model_dump(mode="json")
             return {
                 "data": data,
-                "has_more": not query.ids and page * limit < total,
+                "has_more": (query.for_selection or not query.ids) and page * limit < total,
                 "total": total,
                 "page": page,
                 "limit": limit,

@@ -22,6 +22,7 @@ export const syncRun = (overrides: Partial<ImSyncRun> = {}): ImSyncRun => ({
   channel_id: channel.id,
   channel_config_version: 1,
   provider: 'feishu',
+  initiator_display_name: '',
   started_at: 1,
   finished_at: 2,
   status: 'succeeded',

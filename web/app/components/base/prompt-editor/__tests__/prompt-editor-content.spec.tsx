@@ -2,8 +2,7 @@ import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { LexicalEditor } from 'lexical'
 import type { ComponentProps } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { CodeNode } from '@lexical/code'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { CodeNode } from '@lexical/code-core'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,6 +20,7 @@ import { useEffect } from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { TestLexicalComposer } from '@/test/lexical'
 import { AgentOutputBlockNode } from '../plugins/agent-output-block/node'
 import { ContextBlockNode } from '../plugins/context-block'
 import { CurrentBlockNode } from '../plugins/current-block'
@@ -95,7 +95,7 @@ const PromptEditorContentHarness = ({
   ...props
 }: ComponentProps<typeof PromptEditorContent> & { captures: Captures; initialText?: string }) => (
   <EventEmitterContextProvider>
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'prompt-editor-content-test',
         editable: true,
@@ -128,7 +128,7 @@ const PromptEditorContentHarness = ({
     >
       <CaptureEditorAndEmitter captures={captures} />
       <PromptEditorContent {...props} />
-    </LexicalComposer>
+    </TestLexicalComposer>
   </EventEmitterContextProvider>
 )
 

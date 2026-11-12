@@ -18,6 +18,9 @@ a new case; review incidental visual adjustments in Storybook without adding a p
 The package has two [Vitest projects]. Both run in Playwright Chromium [Browser Mode]; the project
 name identifies the behavior owner, not a different runtime.
 
+Primitive unit-test Playwright traces are disabled locally to avoid large disk usage. CI retains
+traces on failure under `.vitest-browser/traces/`.
+
 Use Storybook for a documented component example. Every story is a render contract and runs the
 configured accessibility checks through the [Storybook Vitest addon]. Add `play` when the example
 also owns visible state changes, user interaction, keyboard paths, overlay flows, form behavior,

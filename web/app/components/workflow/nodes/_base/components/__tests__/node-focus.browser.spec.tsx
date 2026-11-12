@@ -16,26 +16,6 @@ beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
 })
 
-// Plugin installation is outside node trigger and popup focus ownership.
-vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: () => null,
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateCheckInstalled: () => vi.fn(),
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-  useInvalidateAllTriggerPlugins: () => vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: () => ({ data: undefined }),
-}))
-
 function FocusNode({ id, data }: NodeProps<CommonNodeType>) {
   return (
     <div className="group relative h-24 w-60 bg-components-panel-bg">
@@ -87,7 +67,13 @@ it.each([0, 1])(
     await userEvent.tab()
     await expect.element(node).toHaveFocus()
     // Click the real React Flow handle: its transparent button intentionally does not receive pointer events.
-    await userEvent.click(trigger.element().parentElement!)
+    const bounds = trigger.element().getBoundingClientRect()
+    const handle = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    )
+    if (!handle) throw new Error('The node handle must be hit-testable')
+    await userEvent.click(handle)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await screen.getByRole('dialog').hover()
     await userEvent.keyboard('{Escape}')
@@ -120,7 +106,13 @@ it.each([0, 1])(
     const editor = screen.getByRole('textbox', { name: 'Outside editor' })
     const input = editor.element()
     await expect.element(trigger).toBeInTheDocument()
-    await userEvent.click(trigger.element().parentElement!)
+    const bounds = trigger.element().getBoundingClientRect()
+    const handle = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    )
+    if (!handle) throw new Error('The node handle must be hit-testable')
+    await userEvent.click(handle)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await userEvent.click(input)
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()

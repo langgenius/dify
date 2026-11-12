@@ -27,6 +27,7 @@ class DatasetListFilter:
     tag_ids: Sequence[str] = ()
     creator_ids: Sequence[str] = ()
     availability: DatasetAvailabilityFilter = DatasetAvailabilityFilter.ALL
+    for_selection: bool = False
 
 
 @dataclass(frozen=True)
@@ -67,7 +68,17 @@ class DatasetOperations(Protocol):
         accessible_ids: list[str] | None,
         *,
         embedding_models: set[str],
-    ) -> DatasetPage: ...
+    ) -> DatasetPage:
+        """Return an owner-scoped page with all requested filters applied before pagination.
+
+        Preconditions: context identifies the workspace; accessible_ids is the
+        admitted RBAC scope. embedding_models contains its active model keys when
+        availability is filtered, and may be empty for an unfiltered selection.
+        Postconditions: rows and totals agree, no records outside that scope are
+        returned, and no persistence objects or open sessions escape the port.
+        """
+        ...
+
     def embedding_models(self, workspace_id: str) -> set[str]: ...
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
     def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> DatasetDetailRecord: ...
@@ -118,10 +129,26 @@ class DatasetApplicationService:
         )
 
     def list_datasets(self, context: RequestContext, query: DatasetListFilter) -> DatasetPage:
+        """List datasets for an admitted workspace without changing persisted state.
+
+        Preconditions: context identifies the admitted account and active workspace.
+        Postconditions: the adapter applies visibility and availability before
+        pagination. Regular lists include permissions and embedding availability;
+        selection lists preserve the adapter's undecorated response. Model lookup
+        failures propagate rather than presenting filtered datasets as available.
+        """
         visibility = self._operations.visibility(context)
         ids = visibility.list_scope(rbac_enabled=self._rbac_enabled)
-        embedding_models = self._operations.embedding_models(context.active_workspace_id)
+        # Selection omits embedding metadata, but an explicit availability filter
+        # still needs the active model snapshot before pagination.
+        embedding_models = (
+            set()
+            if query.for_selection and query.availability is DatasetAvailabilityFilter.ALL
+            else self._operations.embedding_models(context.active_workspace_id)
+        )
         result = self._operations.list_datasets(context, query, ids, embedding_models=embedding_models)
+        if query.for_selection:
+            return result
         for item in result["data"]:
             item["permission_keys"] = list(visibility.overrides.get(item["id"], visibility.default_permissions))
             self._embedding_available(item, embedding_models, listing=True)

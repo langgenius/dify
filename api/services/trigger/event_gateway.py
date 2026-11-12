@@ -7,14 +7,17 @@ from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.plugin.utils.http_parser import deserialize_request
 from core.trigger.errors import EventIgnoreError
-from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from services.trigger.event_service import PreparedTriggerEvent, TriggerEventDefinition
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 
 
 class PluginTriggerEventGateway:
+    def __init__(self, *, providers: PluginTriggerProviderLoader) -> None:
+        self._providers = providers
+
     def describe(self, *, tenant_id: str, provider_id: TriggerProviderID, event_name: str) -> TriggerEventDefinition:
-        provider = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+        provider = self._providers.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
         identity = provider.entity.identity
         return TriggerEventDefinition(
             plugin_unique_identifier=provider.plugin_unique_identifier,

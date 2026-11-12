@@ -1,9 +1,10 @@
 """Application services for Agent App workflow references and presentation features."""
 
+from collections.abc import Callable
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.app.agent_app_contracts import AgentReferencingWorkflow
+from services.app.agent_app_contracts import AgentApiAccess, AgentApiAccessChange, AgentReferencingWorkflow
 
 
 class AgentAppReferences(Protocol):
@@ -20,6 +21,39 @@ class AgentAppFeatures(Protocol):
 
 class AgentFeatureValidator(Protocol):
     def validate_features(self, tenant_id: str, config: dict[str, Any]) -> dict[str, Any]: ...
+
+
+class AgentApiAccessStore(Protocol):
+    """Read and update API access within the Agent App's tenant scope."""
+
+    def get_api_access(self, *, tenant_id: str, agent_id: str) -> AgentApiAccess:
+        """Return access state, or raise AgentAppNotFoundError for an inaccessible Agent."""
+        ...
+
+    def set_api_access(self, *, tenant_id: str, agent_id: str, account_id: str, enabled: bool) -> AgentApiAccessChange:
+        """Commit the setting and state together; reject enabling an unpublished Agent."""
+        ...
+
+
+class AgentApiAccessService:
+    """Manage Agent API access and notify listeners only after a successful change."""
+
+    def __init__(self, *, store: AgentApiAccessStore, notify_updated: Callable[[str, str], None]) -> None:
+        self._store = store
+        self._notify_updated = notify_updated
+
+    def get(self, context: RequestContext, agent_id: str) -> AgentApiAccess:
+        """Return the admitted workspace's Agent access state, or raise if absent."""
+        return self._store.get_api_access(tenant_id=context.active_workspace_id, agent_id=agent_id)
+
+    def set_enabled(self, context: RequestContext, agent_id: str, enabled: bool) -> AgentApiAccess:
+        """Commit the setting and emit an update only when its value changes."""
+        result = self._store.set_api_access(
+            tenant_id=context.active_workspace_id, agent_id=agent_id, account_id=context.account_id, enabled=enabled
+        )
+        if result.changed:
+            self._notify_updated(context.active_workspace_id, result.access.app_id)
+        return result.access
 
 
 class AgentAppAccessService:

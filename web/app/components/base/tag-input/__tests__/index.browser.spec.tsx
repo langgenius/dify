@@ -2,13 +2,9 @@ import type { ComponentProps } from 'react'
 import { useState } from 'react'
 import { page as screen, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import TagInput from '../index'
-
-const mockNotify = vi.fn()
-
-vi.mock('@/app/notifications', () => ({
-  toast: { error: (message: string) => mockNotify({ type: 'error', message }) },
-}))
 
 type TagInputProps = ComponentProps<typeof TagInput>
 
@@ -20,6 +16,7 @@ function ControlledTags(props: Partial<TagInputProps>) {
       <TagInput {...props} id="recipient-tags" items={items} onChange={setItems} />
       <output aria-label="Tags">{JSON.stringify(items)}</output>
       <button>Next field</button>
+      <AppToaster timeout={0} />
     </>
   )
 }
@@ -31,7 +28,7 @@ const renderTagInput = async (props: Partial<TagInputProps> = {}) => {
 describe('TagInput', () => {
   beforeEach(async () => {
     await screen.viewport(800, 600)
-    vi.clearAllMocks()
+    toast.dismiss()
   })
 
   describe('Rendering', () => {
@@ -144,10 +141,9 @@ describe('TagInput', () => {
       await expect
         .element(screen.getByRole('status', { name: 'Tags' }))
         .toHaveTextContent(JSON.stringify(['dup-tag']))
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'datasetDocuments.segment.keywordDuplicate',
-      })
+      await expect
+        .element(screen.getByRole('dialog', { name: 'datasetDocuments.segment.keywordDuplicate' }))
+        .toBeVisible()
     })
 
     it('should notify length error when tag is longer than 20 chars', async () => {
@@ -160,10 +156,9 @@ describe('TagInput', () => {
       await expect
         .element(screen.getByRole('status', { name: 'Tags' }))
         .toHaveTextContent(JSON.stringify([]))
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'datasetDocuments.segment.keywordError',
-      })
+      await expect
+        .element(screen.getByRole('dialog', { name: 'datasetDocuments.segment.keywordError' }))
+        .toBeVisible()
     })
 
     it('should notify required error when value is empty and required is true', async () => {
@@ -176,10 +171,9 @@ describe('TagInput', () => {
       await expect
         .element(screen.getByRole('status', { name: 'Tags' }))
         .toHaveTextContent(JSON.stringify([]))
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'datasetDocuments.segment.keywordEmpty',
-      })
+      await expect
+        .element(screen.getByRole('dialog', { name: 'datasetDocuments.segment.keywordEmpty' }))
+        .toBeVisible()
     })
 
     it('should ignore empty value when required is false', async () => {
@@ -192,7 +186,7 @@ describe('TagInput', () => {
       await expect
         .element(screen.getByRole('status', { name: 'Tags' }))
         .toHaveTextContent(JSON.stringify([]))
-      expect(mockNotify).not.toHaveBeenCalled()
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     })
   })
 })

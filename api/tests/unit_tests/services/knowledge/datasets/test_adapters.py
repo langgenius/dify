@@ -661,6 +661,51 @@ def test_availability_filter_applies_to_requested_ids(
     assert [item["id"] for item in result["data"]] == ["unavailable"]
 
 
+@pytest.mark.parametrize(
+    ("availability", "expected"),
+    [
+        (DatasetAvailabilityFilter.ALL, ["available-a", "available-b", "unavailable"]),
+        (DatasetAvailabilityFilter.AVAILABLE, ["available-a", "available-b"]),
+        (DatasetAvailabilityFilter.UNAVAILABLE, ["unavailable"]),
+    ],
+)
+def test_selection_combines_requested_ids_with_availability_before_pagination(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    availability: DatasetAvailabilityFilter,
+    expected: list[str],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                high_quality_dataset("available-b"),
+                high_quality_dataset("available-a"),
+                high_quality_dataset("unavailable", model="removed-model"),
+                high_quality_dataset("not-requested"),
+            ]
+        )
+
+    pages = [
+        operations.list_datasets(
+            CONTEXT,
+            DatasetListFilter(
+                ids=["unavailable", "available-b", "available-a", "foreign"],
+                for_selection=True,
+                availability=availability,
+                page=page,
+                limit=1,
+            ),
+            None,
+            embedding_models=ACTIVE_EMBEDDING_MODELS,
+        )
+        for page in range(1, len(expected) + 1)
+    ]
+
+    assert [item["id"] for page in pages for item in page["data"]] == expected
+    assert all(page["total"] == len(expected) for page in pages)
+    assert [page["has_more"] for page in pages] == [True] * (len(expected) - 1) + [False]
+
+
 def test_availability_filter_agrees_with_card_availability(
     operations: SQLAlchemyDatasetOperations,
     monkeypatch: pytest.MonkeyPatch,

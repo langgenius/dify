@@ -2,12 +2,17 @@
 Test utilities for code executor integration tests.
 
 This module provides lazy import functions to avoid module loading issues
-that occur when modules are imported before the flask_app_with_containers fixture
+that occur when modules are imported before the dify_sandbox_container fixture
 has set up the proper environment variables and configuration.
 """
 
 import importlib
 from typing import TYPE_CHECKING
+
+import pytest
+from testcontainers.core.container import DockerContainer
+
+from configs import dify_config
 
 if TYPE_CHECKING:
     pass
@@ -84,14 +89,20 @@ class CodeExecutorTestMixin:
     Mixin class providing lazy import methods for code executor tests.
 
     This mixin helps avoid module loading issues by deferring imports
-    until after the flask_app_with_containers fixture has set up the environment.
+    until after the sandbox fixture has set up its endpoint and configuration.
     """
 
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def _configure_sandbox(self, dify_sandbox_container: DockerContainer) -> None:
         """
-        Setup method called before each test method.
-        Force reload the code_executor module to ensure fresh initialization.
+        Require a healthy sandbox and reload the cached endpoint before each test.
+
+        Code execution stays real without starting Flask, PostgreSQL or Redis.
         """
+        endpoint = (
+            f"http://{dify_sandbox_container.get_container_host_ip()}:{dify_sandbox_container.get_exposed_port(8194)}"
+        )
+        assert str(dify_config.CODE_EXECUTION_ENDPOINT).rstrip("/") == endpoint
         force_reload_code_executor()
 
     @property

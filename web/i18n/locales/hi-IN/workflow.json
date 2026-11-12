@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "चुनें कि मानव इनपुट के इस चरण का उत्तर कौन दे सकता है।",
   "nodes.humanInputV2.recipients.initiator": "Web App या CLI के ज़रिए यह रन शुरू करने वाला उपयोगकर्ता अनुमोदन कर सकता है",
   "nodes.humanInputV2.recipients.initiatorDescription": "इस वर्कफ़्लो को शुरू करने वाला व्यक्ति उत्तर दे सकता है।",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "ट्रिगर से शुरू होने वाले रन में अनुमोदन अनुरोध पाने के लिए कोई आरंभकर्ता नहीं होता। कोई संपर्क चुनें या ईमेल पता देने के लिए किसी वेरिएबल का उपयोग करें।",
   "nodes.humanInputV2.recipients.inputHelp": "अल्पविराम से अलग किए गए कई ईमेल टाइप या पेस्ट करें। वेरिएबल डालने के लिए / दबाएँ।",
   "nodes.humanInputV2.recipients.insertVariable": "वेरिएबल डालें",
   "nodes.humanInputV2.recipients.loadError": "संपर्क लोड नहीं किए जा सके। सहेजी गई संपर्क ID सुरक्षित हैं।",
