@@ -13,10 +13,19 @@ const asAttachmentParamPattern = /[?&]as_attachment=/
 const withFilePreviewAttachment = (href: string) => {
   if (!filePreviewPathPattern.test(href) || asAttachmentParamPattern.test(href)) return href
 
-  const url = new URL(href, 'http://dify.local')
-  url.searchParams.set('as_attachment', 'true')
+  try {
+    const url = new URL(href, 'http://dify.local')
+    url.searchParams.set('as_attachment', 'true')
 
-  return href.startsWith('//') ? url.href.replace(url.protocol, '') : url.href
+    return href.startsWith('//') ? url.href.replace(url.protocol, '') : url.href
+  } catch (error) {
+    if (error instanceof TypeError) {
+      // URL 解析失败时保留原链接，附件模式增强失败不应中断消息渲染。
+      return href
+    }
+
+    throw error
+  }
 }
 
 const Link = ({ node, children, ...props }: any) => {

@@ -134,3 +134,28 @@ it('adds attachment mode once while preserving file-preview URL shape', async ()
       '//localhost:5001/files/123/file-preview?timestamp=1&as_attachment=true#page',
     )
 })
+
+it('keeps malformed file-preview URLs renderable', async () => {
+  const malformedPortHref = 'http://host.example:99999/files/abc123/file-preview?timestamp=1&nonce=2&sign=3'
+  const malformedIpv6Href = 'http://[::1/files/abc123/file-preview?timestamp=1&nonce=2&sign=3'
+  const premarkedHref = `${malformedPortHref}&as_attachment=true`
+  const links = [
+    ['Malformed port', malformedPortHref],
+    ['Malformed IPv6', malformedIpv6Href],
+    ['Premarked attachment', premarkedHref],
+    ['Normal link', 'https://example.com'],
+  ] as const
+  const screen = await render(
+    <div>
+      {links.map(([label, href]) => (
+        <Link key={label} node={{ properties: { href } }}>
+          {label}
+        </Link>
+      ))}
+    </div>,
+  )
+
+  for (const [label, href] of links) {
+    await expect.element(screen.getByRole('link', { name: label })).toHaveAttribute('href', href)
+  }
+})
