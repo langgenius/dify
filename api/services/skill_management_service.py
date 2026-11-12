@@ -1337,7 +1337,7 @@ class SkillManagementService:
                     )
                 }
             )
-        return SkillAssistActionResult(plan=plan)
+        return SkillAssistActionResult(plan=plan)  # noqa: B901  # StopIteration.value is the generator completion result.
 
     @staticmethod
     def _latest_assistant_suggested_identity(
@@ -1397,7 +1397,7 @@ class SkillManagementService:
             text = message.get_text_content()
             if text:
                 raw_parts.append(text)
-        return "".join(raw_parts)
+        return "".join(raw_parts)  # noqa: B901  # StopIteration.value is the generator completion result.
 
     @staticmethod
     def _extract_reasoning_content(value: Any) -> str:
@@ -1801,11 +1801,18 @@ class SkillManagementService:
         skill_id: str,
         payload: SkillMetadataPayload,
     ) -> dict[str, Any]:
+        """Update an existing workspace skill after checking the supplied revision.
+
+        Renames persist the display name in both the skill and its text draft in
+        one transaction, preserving the skill identifier. Missing skills, stale
+        revisions, or invalid frontmatter fail before committing any changes.
+        """
         with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             if payload.display_name is not None:
                 skill.display_name = payload.display_name
+                self._sync_draft_display_name(session, skill=skill)
             if payload.icon is not None:
                 skill.icon = payload.icon
             if payload.tags is not None:
@@ -4602,6 +4609,40 @@ class SkillManagementService:
             next_frontmatter = f"{frontmatter}\nmetadata:\n  display-name: {escaped_display_name}"
 
         return f"---\n{next_frontmatter}\n---\n{content[match.end() :]}"
+
+    def _sync_draft_display_name(self, session: Session, *, skill: Skill) -> None:
+        """Stage the skill's display name in its draft without changing other metadata.
+
+        The caller owns the transaction and must have checked the skill revision.
+        Missing or non-text drafts are left alone; invalid frontmatter raises
+        before changing the file. Existing body text is preserved verbatim.
+        """
+        file = session.scalar(
+            select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id, SkillDraftFile.path == _SKILL_MD)
+        )
+        if file is None or file.content_text is None:
+            return
+        content = file.content_text
+        match = _FRONTMATTER_RE.match(content)
+        if match is None:
+            content = (
+                self._build_skill_md(
+                    name=skill.name, description=skill.description, display_name=skill.display_name, body=""
+                )
+                + content
+            )
+        else:
+            frontmatter = self._parse_frontmatter(content)
+            metadata = frontmatter.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata["display-name"] = skill.display_name
+            frontmatter["metadata"] = metadata
+            serialized = yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False).rstrip()
+            content = f"---\n{serialized}\n---\n{content[match.end() :]}"
+        file.content_text = content
+        file.size = len(content.encode("utf-8"))
+        file.hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     def _sync_skill_md_text(self, skill: Skill, content: str) -> str:
         body = _FRONTMATTER_RE.sub("", content, count=1)

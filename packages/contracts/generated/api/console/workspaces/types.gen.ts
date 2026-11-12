@@ -1614,6 +1614,21 @@ export type TriggerSubscriptionBuilderUpdatePayload = {
   } | null
 }
 
+export type TriggerSubscriptionLimitReachedError = ErrorResponse & {
+  code: 'trigger_subscription_limit_reached'
+  status: 400
+}
+
+export type TriggerSubscriptionNameConflictError = ErrorResponse & {
+  code: 'trigger_subscription_name_conflict'
+  status: 409
+}
+
+export type TriggerSubscriptionProviderError = ErrorResponse & {
+  code: 'trigger_subscription_provider_error'
+  status: 502
+}
+
 export type TriggerSubscriptionBuilderCreatePayload = {
   credential_type?: string
 }
@@ -1674,6 +1689,21 @@ export type TriggerSubscriptionVerifyPayload = {
   credentials: {
     [key: string]: unknown
   }
+}
+
+export type TriggerSubscriptionInvalidError = ErrorResponse & {
+  code: 'trigger_subscription_invalid'
+  status: 400
+}
+
+export type TriggerSubscriptionNotFoundError = ErrorResponse & {
+  code: 'trigger_subscription_not_found'
+  status: 404
+}
+
+export type TriggerSubscriptionChangedError = ErrorResponse & {
+  code: 'trigger_subscription_changed'
+  status: 409
 }
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
@@ -2004,6 +2034,7 @@ export type HumanInputContact = {
 export type HumanInputContactSummary = {
   avatar_url?: string
   created_at: number
+  email?: string | null
   id: string
   name: string
 }
@@ -2030,6 +2061,7 @@ export type ImSyncRun = {
   error_message?: string | null
   finished_at?: number | null
   id: string
+  initiator_display_name: string
   provider: ImProvider
   result_counts: ImSyncRunResultCounts
   started_at?: number | null
@@ -10547,6 +10579,9 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBu
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdErrors =
   {
+    400: TriggerSubscriptionLimitReachedError | ErrorResponse
+    409: TriggerSubscriptionNameConflictError | ErrorResponse
+    502: TriggerSubscriptionProviderError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -10754,6 +10789,9 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdErrors =
   {
+    400: TriggerSubscriptionInvalidError | ErrorResponse
+    404: TriggerSubscriptionNotFoundError | ErrorResponse
+    502: TriggerSubscriptionProviderError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -10778,6 +10816,9 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteErrors = {
+  404: TriggerSubscriptionNotFoundError | ErrorResponse
+  409: TriggerSubscriptionChangedError | ErrorResponse
+  502: TriggerSubscriptionProviderError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -10801,6 +10842,9 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors = {
+  404: TriggerSubscriptionNotFoundError | ErrorResponse
+  409: TriggerSubscriptionChangedError | TriggerSubscriptionNameConflictError | ErrorResponse
+  502: TriggerSubscriptionProviderError | ErrorResponse
   default: ErrorResponse
 }
 

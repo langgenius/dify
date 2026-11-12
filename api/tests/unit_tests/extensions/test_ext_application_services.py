@@ -150,6 +150,7 @@ from services.network_access_group_gateway import (
 )
 from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -158,7 +159,11 @@ from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import CeleryTraceEmitter
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from services.trigger.oauth_gateway import TriggerOAuthBuilderGateway
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.oauth_gateway import PluginTriggerOAuthGateway, TriggerOAuthBuilderGateway
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -1119,11 +1124,54 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
-    assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
-    assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
-    gateway = services.workspaces.trigger_oauth._builders
+    assert services.triggers.subscriptions._credentials is services.credential_queries
+    assert services.triggers.events._subscriptions is services.triggers.subscriptions
+    assert services.triggers.binding_queries is services.triggers.subscription_management._subscriptions
+    assert services.triggers.events._requests is services.triggers.endpoints._requests
+    assert services.workspaces.plugin_parameters._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._builders is services.triggers.builders
+    assert (
+        services.workspaces.plugin_parameters._subscriptions is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscriptions._schemas is services.triggers.providers
+    assert services.triggers.subscriptions._subscriptions is services.triggers.subscription_management._subscriptions
+    gateway = services.triggers.oauth._builders
     assert isinstance(gateway, TriggerOAuthBuilderGateway)
-    assert gateway._builders is services.workspaces.trigger_builders
+    assert gateway._builders is services.triggers.builders
+    assert services.triggers.builders._create_subscription == services.triggers.subscription_management.create
+    assert services.triggers.endpoints._subscriptions is services.triggers.subscription_management._subscriptions
+    assert (
+        services.triggers.subscription_renewal._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._providers is services.triggers.subscription_management._providers
+    assert services.triggers.subscription_refresh._renewal is services.triggers.subscription_renewal
+    assert (
+        services.triggers.subscription_refresh._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._locks is services.triggers.subscription_management._locks
+    assert services.triggers.subscription_renewal._codec is services.triggers.subscription_management._codec
+    assert services.triggers.subscription_renewal._clients is services.triggers.oauth_clients
+    assert services.triggers.subscription_renewal._oauth is services.triggers.oauth._providers
+    provider_query = services.triggers.providers
+    events_gateway = services.triggers.events._plugins
+    endpoint_gateway = services.triggers.endpoints._provider
+    subscription_gateway = services.triggers.subscription_management._providers
+    oauth_gateway = services.triggers.oauth._providers
+    parameter_gateway = services.workspaces.plugin_parameters._plugins
+    assert isinstance(provider_query, PluginTriggerProviderQuery)
+    assert isinstance(events_gateway, PluginTriggerEventGateway)
+    assert isinstance(endpoint_gateway, PluginTriggerEndpointGateway)
+    assert isinstance(subscription_gateway, PluginTriggerSubscriptionGateway)
+    assert isinstance(oauth_gateway, PluginTriggerOAuthGateway)
+    assert isinstance(parameter_gateway, DaemonPluginParameterGateway)
+    provider_loader = provider_query._providers
+    assert events_gateway._providers is provider_loader
+    assert endpoint_gateway._providers is provider_loader
+    assert subscription_gateway._providers is provider_loader
+    assert oauth_gateway._providers is provider_loader
+    assert parameter_gateway._providers is provider_loader
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

@@ -63,9 +63,10 @@ import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
+import ContactSupport from '@/app/components/main-nav/components/contact-support'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
@@ -118,29 +119,31 @@ const skillSidebarHelpTriggerIcon = (
 
 function SkillSidebarAccountFooter({ compact = false }: { compact?: boolean }) {
   return (
-    <div
-      className={cn(
-        'shrink-0 border-t border-divider-subtle',
-        compact
-          ? 'flex w-full flex-col items-center gap-0.5 px-2 pt-1 pb-3'
-          : 'flex h-14 w-full items-center justify-between p-3',
-      )}
-    >
+    <div className="shrink-0 border-t border-divider-subtle">
+      <ContactSupport placement="sidebar" compact={compact} showDivider={false} />
       <div
         className={cn(
-          'flex min-w-0 items-center gap-1 overflow-hidden',
-          compact && 'w-full justify-center',
+          compact
+            ? 'flex w-full flex-col items-center gap-0.5 px-2 pt-1 pb-3'
+            : 'flex h-14 w-full items-center justify-between p-3',
         )}
       >
-        <AccountSection compact={compact} />
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-1 overflow-hidden',
+            compact && 'w-full justify-center',
+          )}
+        >
+          <AccountSection compact={compact} />
+        </div>
+        <HelpMenu
+          triggerIcon={skillSidebarHelpTriggerIcon}
+          triggerClassName={cn(
+            'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
+            compact && 'mt-2',
+          )}
+        />
       </div>
-      <HelpMenu
-        triggerIcon={skillSidebarHelpTriggerIcon}
-        triggerClassName={cn(
-          'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
-          compact && 'mt-2',
-        )}
-      />
     </div>
   )
 }
@@ -1177,7 +1180,7 @@ export function FileTree({
           className={cn(
             'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
             collapsed && sidebarFloating
-              ? 'absolute top-1 bottom-1 left-1 z-40 w-60 overflow-hidden border border-divider-subtle shadow-lg'
+              ? 'absolute inset-s-1 top-1 bottom-1 z-40 w-60 overflow-hidden border border-divider-subtle shadow-lg'
               : 'flex-1 overflow-visible',
           )}
           style={{ width: collapsed ? skillSidebarMinWidth : sidebarWidth }}
@@ -1193,14 +1196,14 @@ export function FileTree({
               aria-valuetext={t(($) => $['resize.width'], { ns: 'common', width: sidebarWidth })}
               aria-controls={sidebarPanelId}
               tabIndex={0}
-              className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
+              className="group/resize absolute -inset-e-2 top-0 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
               onKeyDown={handleSidebarResizeKeyDown}
               onPointerDown={handleSidebarResizePointerDown}
             >
               <span
                 aria-hidden
                 className={cn(
-                  'absolute right-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
+                  'absolute inset-e-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
                   sidebarResizing && 'h-full bg-state-accent-solid opacity-100',
                 )}
               />
@@ -1208,7 +1211,7 @@ export function FileTree({
           )}
           <div
             data-testid="skill-detail-sidebar-header"
-            className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
+            className="flex h-12 shrink-0 items-center py-2 ps-1 pe-2"
           >
             <Breadcrumb
               aria-label={tCommon(($) => $['mainNav.skills'], { ns: 'navigation' })}
@@ -1218,7 +1221,7 @@ export function FileTree({
                 <BreadcrumbItem className="shrink-0">
                   <BreadcrumbLink
                     render={<Link href="/skills" />}
-                    className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                    className="gap-0 rounded-lg py-2 ps-0.5 pe-1.5 hover:bg-background-default-hover"
                     aria-label={t(($) => $['skillManagement.detail.back'])}
                   >
                     <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -1588,7 +1591,7 @@ export function FileTree({
                   render={
                     <button
                       type="button"
-                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-start system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
                     >
                       <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>

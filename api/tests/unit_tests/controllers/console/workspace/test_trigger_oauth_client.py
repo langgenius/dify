@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN, HIDDEN_VALUE, UNKNOWN_VALUE
+from controllers.console.workspace.plugin import (
+    PluginFetchDynamicSelectOptionsApi,
+    PluginFetchDynamicSelectOptionsWithCredentialsApi,
+)
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
@@ -29,7 +33,10 @@ from controllers.console.workspace.trigger_providers import (
     TriggerSubscriptionBuilderLogsApi,
     TriggerSubscriptionBuilderUpdateApi,
     TriggerSubscriptionBuilderVerifyApi,
+    TriggerSubscriptionDeleteApi,
     TriggerSubscriptionListApi,
+    TriggerSubscriptionUpdateApi,
+    TriggerSubscriptionVerifyApi,
 )
 from controllers.console.wraps import _is_setup_completed
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
@@ -37,7 +44,6 @@ from core.helper.encrypter import decrypt_token
 from core.plugin.entities.oauth import OAuthSchema
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import SubscriptionConstructor, TriggerProviderEntity, TriggerProviderIdentity
-from core.trigger.provider import PluginTriggerProviderController
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services, build_application_services
 from extensions.ext_key_provider import key_provider_manager
@@ -55,6 +61,7 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from services.trigger.oauth_client_service import TriggerOAuthClientService, TriggerOAuthProviderMetadata
+from services.trigger.plugin_provider import PluginTriggerProvider
 from tests.helpers.unit.config_override import config_overrides_context
 
 _PROVIDER = "langgenius/github/github"
@@ -69,7 +76,7 @@ _SCHEMA = [
 class _PluginMetadata:
     """Only plugin-daemon metadata is supplied locally; credential logic is real."""
 
-    provider: PluginTriggerProviderController
+    provider: PluginTriggerProvider
     sessions: list[Session]
     verified: bool = True
     provider_requests: int = 0
@@ -199,7 +206,7 @@ def harness(
             account_id, tenant_id = account.id, tenant.id
 
         sessions: list[Session] = []
-        provider = PluginTriggerProviderController(
+        provider = PluginTriggerProvider(
             entity=TriggerProviderEntity(
                 identity=TriggerProviderIdentity(
                     author="Dify",
@@ -225,7 +232,7 @@ def harness(
             clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
             providers=metadata,
         )
-        services = replace(services, workspaces=replace(services.workspaces, trigger_oauth_clients=oauth_clients))
+        services = replace(services, triggers=replace(services.triggers, oauth_clients=oauth_clients))
         app.extensions["application_services"] = services
         bind_account_loader(app, services.accounts.identity.load_user)
         login_manager = DifyLoginManager()
@@ -234,6 +241,11 @@ def harness(
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+        api.add_resource(
+            PluginFetchDynamicSelectOptionsWithCredentialsApi,
+            "/workspaces/current/plugin/parameters/dynamic-options-with-credentials",
+        )
         api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
         api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
         api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
@@ -257,6 +269,18 @@ def harness(
         )
         api.add_resource(TriggerSubscriptionBuilderLogsApi, f"{builder_path}/logs/<path:subscription_builder_id>")
         api.add_resource(TriggerSubscriptionBuilderBuildApi, f"{builder_path}/build/<path:subscription_builder_id>")
+        api.add_resource(
+            TriggerSubscriptionUpdateApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
+        )
+        api.add_resource(
+            TriggerSubscriptionDeleteApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
+        )
+        api.add_resource(
+            TriggerSubscriptionVerifyApi,
+            "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
+        )
         app.register_blueprint(blueprint)
 
         with app.app_context():
@@ -402,7 +426,7 @@ def test_concurrent_save_preserves_winning_secret(harness: _Harness, existing: b
         assert response.status_code == HTTPStatus.OK
 
     def save_during_provider_lookup() -> None:
-        application_services().workspaces.trigger_oauth_clients.save(
+        application_services().triggers.oauth_clients.save(
             tenant_id=harness.tenant_id,
             provider_id=TriggerProviderID(_PROVIDER),
             client_params={"client_id": "winning-client", "client_secret": winning_secret},

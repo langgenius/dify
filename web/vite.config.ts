@@ -41,6 +41,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
         command === 'serve' && isPreview !== true
           ? (await import('code-inspector-plugin')).codeInspectorPlugin({
               bundler: 'vite',
+              behavior: { locate: true, defaultAction: 'locate' },
             })
           : undefined
 
@@ -78,7 +79,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [{ find: '~@', replacement: projectRoot }],
+      // Storybook's Next.js preset merges aliases as an object.
+      alias: { '~@': projectRoot },
     },
     // vinext related config
     ...(!isTest && !isStorybook
@@ -144,11 +146,18 @@ export default defineConfig(({ command, mode, isPreview }) => {
           }),
           optimizeDeps: {
             include: [
+              '@base-ui/react/collapsible',
               '@base-ui/react/fieldset',
               '@base-ui/react/number-field',
+              '@base-ui/react/popover',
               '@base-ui/react/slider',
+              '@lexical/react/LexicalExtensionComposer',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
+              'dayjs/plugin/timezone',
+              'dayjs/plugin/utc',
+              'es-toolkit/function',
+              'next/script',
               'react-textarea-autosize',
             ],
           },

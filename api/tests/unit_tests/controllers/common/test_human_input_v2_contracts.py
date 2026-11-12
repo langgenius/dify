@@ -18,6 +18,7 @@ from controllers.common.human_input_v2_contracts import (
     NodeDataMigrationResponse,
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
+from core.workflow.human_input_adapter import BoundRecipient, EmailDeliveryMethod
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
 
 
@@ -39,6 +40,7 @@ def test_sync_run_exposes_captured_revision() -> None:
             "provider": "feishu",
             "channel_id": "channel-id",
             "channel_config_version": 4,
+            "initiator_display_name": "Sync Admin",
         }
     )
 
@@ -157,6 +159,7 @@ def test_node_data_migration_transport_refines_invalid_delivery_methods_into_pre
 
 
 def test_node_data_migration_transport_normalizes_real_and_compatibility_member_ids() -> None:
+    """Given both legacy member ID spellings, produce email recipients with the same reference IDs."""
     request_body = NodeDataMigrationPayload.model_validate(
         {
             "nodes": [
@@ -189,8 +192,12 @@ def test_node_data_migration_transport_normalizes_real_and_compatibility_member_
     preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
     assert preflight.issues == ()
     method = preflight.node_data.delivery_methods[0]
+    assert isinstance(method, EmailDeliveryMethod)
     assert method.type == "email"
-    assert [source.reference_id for source in method.config.recipients.items] == ["member-real", "member-compat"]
+    assert method.config.recipients.items == [
+        BoundRecipient(reference_id="member-real"),
+        BoundRecipient(reference_id="member-compat"),
+    ]
 
 
 def test_node_data_migration_transport_reports_configured_unsupported_delivery_methods() -> None:

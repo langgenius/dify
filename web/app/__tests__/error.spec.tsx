@@ -79,7 +79,7 @@ describe('route error recovery', () => {
 
       expect(refresh).toHaveBeenCalled()
       expect(window.location.href).toBe(initialUrl)
-      if (!(error instanceof Error)) throw new Error('Expected a profile request failure')
+      if (!(error instanceof Error)) throw new TypeError('Expected a profile request failure')
       render(
         <QueryErrorResetBoundary>
           {({ isReset }) => renderError({ error, retry: () => retry(isReset()) })}

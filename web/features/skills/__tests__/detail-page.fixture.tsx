@@ -6,11 +6,15 @@ import type {
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
@@ -30,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   publishSkillMutationOptions: vi.fn(),
   routerPush: vi.fn(),
   routeSkillId: 'skill-1',
+  supportPlan: 'sandbox' as 'sandbox' | 'team',
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
   modelParameterRulesFetch: vi.fn<typeof fetch>(),
@@ -219,6 +224,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       },
     },
     consoleQuery: {
+      features: actual.consoleQuery.features,
+      systemFeatures: actual.consoleQuery.systemFeatures,
       workspaces: {
         current: {
           models: modelQuery.workspaces.current.models,
@@ -517,6 +524,8 @@ export function renderSkillDetailPage({
   strict?: boolean
 } = {}) {
   const { wrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+  if (!queryClient.getQueryData(consoleQuery.systemFeatures.get.queryKey()))
+    seedSystemFeatures(queryClient)
 
   return {
     ...render(
@@ -572,7 +581,7 @@ export function placeCaretAtEnd(element: HTMLElement) {
 export function getFileTreeItem(path: string) {
   const fileButton = document.querySelector(`[title="${path}"]`)
   const treeItem = fileButton?.closest('[data-skill-file-tree-item]')
-  if (!(treeItem instanceof HTMLElement)) throw new Error(`file tree item not found: ${path}`)
+  if (!(treeItem instanceof HTMLElement)) throw new TypeError(`file tree item not found: ${path}`)
 
   return treeItem
 }
@@ -615,14 +624,15 @@ export function preserveDraftFilesOnSave() {
 
 export function getFileTreeButton(path: string) {
   const fileButton = document.querySelector(`[title="${path}"]`)
-  if (!(fileButton instanceof HTMLButtonElement)) throw new Error(`file button not found: ${path}`)
+  if (!(fileButton instanceof HTMLButtonElement))
+    throw new TypeError(`file button not found: ${path}`)
 
   return fileButton
 }
 
 export function getFileTreeContextRegion() {
   const region = document.querySelector('[data-skill-file-tree-context-region]')
-  if (!(region instanceof HTMLElement)) throw new Error('file tree context region not found')
+  if (!(region instanceof HTMLElement)) throw new TypeError('file tree context region not found')
 
   return region
 }
@@ -680,7 +690,8 @@ export async function openVersionRowActions(
 ) {
   const versionText = await screen.findByText(versionName)
   const versionRow = versionText.closest('li')
-  if (!(versionRow instanceof HTMLElement)) throw new Error(`version row not found: ${versionName}`)
+  if (!(versionRow instanceof HTMLElement))
+    throw new TypeError(`version row not found: ${versionName}`)
   const buttons = within(versionRow).getAllByRole('button')
   const actionButton = buttons.at(-1)
   if (!actionButton) throw new Error(`version row action not found: ${versionName}`)
@@ -708,12 +719,20 @@ export function resetDetailPageFixture() {
   })
   mocks.modelParameterRulesFetch.mockImplementation(async (input) => {
     const url = input instanceof Request ? input.url : String(input)
+    if (url.endsWith('/system-features')) return Response.json(createSystemFeaturesFixture())
+    if (url.endsWith('/features'))
+      return Response.json(
+        zGetFeaturesResponse.parse({
+          billing: { subscription: { plan: mocks.supportPlan } },
+        }),
+      )
     if (!url.includes('/models/parameter-rules'))
       throw new Error(`Unexpected Skill detail request: ${url}`)
     return Response.json({ data: [] })
   })
   vi.stubGlobal('fetch', mocks.modelParameterRulesFetch)
   mocks.routeSkillId = 'skill-1'
+  mocks.supportPlan = 'sandbox'
   mocks.defaultTextGenerationModel = {
     provider: {
       provider: 'langgenius/openai/openai',

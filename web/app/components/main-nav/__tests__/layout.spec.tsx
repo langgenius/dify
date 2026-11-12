@@ -60,6 +60,10 @@ vi.mock('../index', () => ({
   ),
 }))
 
+vi.mock('../mobile-nav', () => ({
+  MainNavMobileBar: () => <header data-testid="main-nav-mobile-bar" />,
+}))
+
 vi.mock('@/app/components/app-sidebar/dataset-detail-sidebar', () => ({
   DatasetDetailSidebar: () => <aside aria-label="Knowledge sidebar">Knowledge sidebar</aside>,
 }))
@@ -181,6 +185,8 @@ describe('MainNavLayout', () => {
       const detailSidebar = screen.getByRole('complementary', { name: 'Detail sidebar' })
 
       expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+
+      expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
       expect(screen.getAllByRole('main')).toHaveLength(1)
       expect(main).toHaveAttribute('id', 'main-content')
       expect(main).toHaveTextContent('dataset detail')
@@ -203,6 +209,8 @@ describe('MainNavLayout', () => {
       )
 
       expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+
+      expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
       expect(
         screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
       ).not.toBeInTheDocument()
@@ -220,6 +228,8 @@ describe('MainNavLayout', () => {
     )
 
     expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+
+    expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveTextContent('skill detail')
   })
 
@@ -233,6 +243,8 @@ describe('MainNavLayout', () => {
     )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+
+    expect(screen.getByTestId('main-nav-mobile-bar')).toBeInTheDocument()
   })
 
   it.each([
@@ -254,6 +266,7 @@ describe('MainNavLayout', () => {
 
       expect(screen.getByRole('complementary', { name: 'Knowledge sidebar' })).toBeInTheDocument()
       expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
       expect(screen.getByRole('main')).toHaveTextContent('document upload')
     },
   )
@@ -276,6 +289,8 @@ describe('MainNavLayout', () => {
     )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+
+    expect(screen.getByTestId('main-nav-mobile-bar')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
   })
 
@@ -302,6 +317,7 @@ describe('MainNavLayout', () => {
         </MainNavLayout>,
       )
       expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+      expect(screen.getByTestId('main-nav-mobile-bar')).toBeInTheDocument()
       expect(
         screen.queryByRole('complementary', { name: 'Detail sidebar' }),
       ).not.toBeInTheDocument()

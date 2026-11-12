@@ -1,12 +1,12 @@
 import type { LexicalEditor } from 'lexical'
 import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $getRoot } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import { CaptureEditorPlugin } from '../../__tests__/test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
 import { HITLInputNode } from '../node'
@@ -49,7 +49,7 @@ const renderVariableBlock = (props: {
   }
 
   const utils = render(
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'hitl-input-variable-block-test',
         onError: (error: Error) => {
@@ -67,7 +67,7 @@ const renderVariableBlock = (props: {
         ragVariables={props.ragVariables}
       />
       <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
 
   return {
@@ -85,7 +85,7 @@ describe('HITLInputVariableBlockComponent', () => {
     it('should throw when hitl input node is not registered on editor', () => {
       expect(() => {
         render(
-          <LexicalComposer
+          <TestLexicalComposer
             initialConfig={{
               namespace: 'hitl-input-variable-block-missing-node-test',
               onError: (error: Error) => {
@@ -98,7 +98,7 @@ describe('HITLInputVariableBlockComponent', () => {
               variables={['node-1', 'output']}
               workflowNodesMap={createWorkflowNodesMap()}
             />
-          </LexicalComposer>,
+          </TestLexicalComposer>,
         )
       }).toThrow('HITLInputNodePlugin: HITLInputNode not registered on editor')
     })
@@ -142,7 +142,7 @@ describe('HITLInputVariableBlockComponent', () => {
   it('refreshes every Human Input variable block from a single workflow map update', async () => {
     let editor: LexicalEditor | null = null
     render(
-      <LexicalComposer
+      <TestLexicalComposer
         initialConfig={{
           namespace: 'hitl-variable-broadcast-test',
           nodes: [HITLInputNode],
@@ -158,7 +158,7 @@ describe('HITLInputVariableBlockComponent', () => {
             editor = value
           }}
         />
-      </LexicalComposer>,
+      </TestLexicalComposer>,
     )
 
     await waitFor(() => {

@@ -7,9 +7,9 @@ from pydantic import ValidationError
 
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.noop import NoopHomeSnapshotBackend
 from dify_agent.runtime_backend.openshell import (
     OpenShellExecutionBindingBackend,
-    OpenShellHomeSnapshotBackend,
     OpenShellSDKControlPlane,
 )
 from dify_agent.runtime_backend.profile import (
@@ -132,14 +132,9 @@ _OPENSHELL_DRIVER_CONFIG = (
 )
 
 
-def test_openshell_backend_requires_gateway_endpoint_and_driver_config() -> None:
+def test_openshell_backend_requires_gateway_endpoint() -> None:
     with pytest.raises(ValidationError, match="openshell_gateway_endpoint"):
         _ = RuntimeBackendSettings(runtime_backend="openshell")
-    with pytest.raises(ValidationError, match="openshell_driver_config"):
-        _ = RuntimeBackendSettings(
-            runtime_backend="openshell",
-            openshell_gateway_endpoint="gateway.example:17670",
-        )
 
 
 def test_openshell_backend_rejects_invalid_driver_config_json() -> None:
@@ -157,14 +152,15 @@ def test_openshell_backend_rejects_invalid_driver_config_json() -> None:
         )
 
 
-def test_openshell_backend_rejects_empty_driver_config_object() -> None:
-    with pytest.raises(ValidationError, match="must mount the shared Home Snapshot volume"):
-        _ = RuntimeBackendSettings(
-            runtime_backend="openshell",
-            openshell_gateway_endpoint="gateway.example:17670",
-            openshell_driver_config="{}",
-            openshell_shellctl_auth_token="token-1",
-        )
+@pytest.mark.parametrize("driver_config", [None, "", "   ", "{}"])
+def test_openshell_backend_accepts_absent_or_empty_driver_config(driver_config: str | None) -> None:
+    settings = RuntimeBackendSettings(
+        runtime_backend="openshell",
+        openshell_gateway_endpoint="gateway.example:17670",
+        openshell_driver_config=driver_config,
+        openshell_shellctl_auth_token="token-1",
+    )
+    assert settings.openshell_driver_config == driver_config
 
 
 def test_openshell_backend_requires_shellctl_auth_token() -> None:
@@ -172,7 +168,6 @@ def test_openshell_backend_requires_shellctl_auth_token() -> None:
         _ = RuntimeBackendSettings(
             runtime_backend="openshell",
             openshell_gateway_endpoint="gateway.example:17670",
-            openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
         )
 
 
@@ -181,7 +176,6 @@ def test_openshell_backend_requires_paired_tls_client_material() -> None:
         _ = RuntimeBackendSettings(
             runtime_backend="openshell",
             openshell_gateway_endpoint="gateway.example:17670",
-            openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
             openshell_shellctl_auth_token="token-1",
             openshell_tls_client_cert_path="/etc/dify/tls.crt",
         )
@@ -191,30 +185,17 @@ def test_openshell_backend_requires_paired_tls_client_material() -> None:
         _ = RuntimeBackendSettings(
             runtime_backend="openshell",
             openshell_gateway_endpoint="gateway.example:17670",
-            openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
             openshell_shellctl_auth_token="token-1",
             openshell_tls_client_cert_path="/etc/dify/tls.crt",
             openshell_tls_client_key_path="",
         )
 
 
-def test_openshell_backend_rejects_relative_shared_mount_path() -> None:
-    with pytest.raises(ValidationError, match="absolute POSIX path"):
-        _ = RuntimeBackendSettings(
-            runtime_backend="openshell",
-            openshell_gateway_endpoint="gateway.example:17670",
-            openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
-            openshell_shellctl_auth_token="token-1",
-            openshell_shared_mount_path="relative/shared",
-        )
-
-
-def test_openshell_backend_wires_shared_deployment_config_into_both_drivers() -> None:
+def test_openshell_backend_wires_deployment_config_into_binding_driver() -> None:
     settings = RuntimeBackendSettings(
         runtime_backend="openshell",
         openshell_gateway_endpoint="gateway.example:17670",
         openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
-        openshell_shared_mount_path="/mnt/shared",
         openshell_shellctl_auth_token="token-1",
         openshell_shellctl_port=6006,
     )
@@ -222,17 +203,15 @@ def test_openshell_backend_wires_shared_deployment_config_into_both_drivers() ->
     profile = create_runtime_backend_profile(settings)
 
     assert isinstance(profile.execution_bindings, OpenShellExecutionBindingBackend)
-    assert isinstance(profile.home_snapshots, OpenShellHomeSnapshotBackend)
+    # OpenShell cannot snapshot; the profile wires the explicit no-op backend.
+    assert isinstance(profile.home_snapshots, NoopHomeSnapshotBackend)
     control_plane = profile.execution_bindings.control_plane
     assert isinstance(control_plane, OpenShellSDKControlPlane)
     assert control_plane.endpoint == "gateway.example:17670"
+    # Operator-supplied driver_config is passed through verbatim.
     assert control_plane.driver_config == {
         "docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared", "target": "/mnt/dify-agent-shared"}]}
     }
-    assert control_plane.shared_mount_path == "/mnt/shared"
-    assert profile.home_snapshots.control_plane is control_plane
-    assert profile.home_snapshots.shared_mount_path == "/mnt/shared"
-    assert profile.execution_bindings.shared_mount_path == "/mnt/shared"
     assert profile.execution_bindings.shellctl_auth_token == "token-1"
     assert profile.execution_bindings.shellctl_port == 6006
     # Egress control defaults to opt-out: no allowlist reaches the gateway.

@@ -13,6 +13,7 @@ from core.human_input_v2.im_integration.adapters.factory import build_im_provide
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, TenantId, WorkspaceScope
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
@@ -103,7 +104,9 @@ def build_im_contact_sync_application(
     deployment_adapter_factory: IMChannelAdapterFactory | None = None,
 ) -> IMContactSyncApplication:
     sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
-    sync_service = IMSyncService(sessions, _resolve_channel, _dispatch)
+    sync_service = IMSyncService(
+        sessions, _resolve_channel, _dispatch, account_query=SQLAlchemyAccountRepository(sessions)
+    )
     worker = IMContactSyncWorker(
         sync_service,
         _reconciliation_factory(
@@ -137,7 +140,7 @@ def build_im_contact_sync_worker(
 
 def build_im_sync_service(*, session_maker: sessionmaker[Session] | None = None) -> IMSyncService:
     sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
-    return IMSyncService(sessions, _resolve_channel, _dispatch)
+    return IMSyncService(sessions, _resolve_channel, _dispatch, account_query=SQLAlchemyAccountRepository(sessions))
 
 
 def _resolve_channel(session: Session, owner_scope: DirectoryScope) -> IMChannel | None:

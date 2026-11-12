@@ -1,7 +1,11 @@
 import type { consoleClient } from '@/service/console'
 import { QueryClient } from '@tanstack/react-query'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import appAnnotation from '@/i18n/locales/en-US/app-annotation.json'
+import common from '@/i18n/locales/en-US/common.json'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import AddAnnotationDialog from '../index'
@@ -10,12 +14,9 @@ const api = vi.hoisted(() => ({
   add: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
 }))
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return { ...actual, ...createReactI18nextMock() }
-})
+vi.unmock('react-i18next')
 
+// boundary: the test exercises the real annotation owner while replacing its HTTP mutation.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -33,18 +34,26 @@ it('resets a continuous-entry form without losing its preference or skipping nat
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
   seedSystemFeatures(client, { deployment_edition: 'COMMUNITY' })
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { appAnnotation, common } },
+    keySeparator: false,
+  })
   const screen = await render(
     <QueryClientTestProvider queryClient={client}>
-      <AddAnnotationDialog appId="app-id" onAdded={() => {}} />
+      <I18nextProvider i18n={i18n}>
+        <AddAnnotationDialog appId="app-id" onAdded={() => {}} />
+      </I18nextProvider>
     </QueryClientTestProvider>,
   )
-  const trigger = screen.getByRole('button', { name: 'appAnnotation.table.header.addAnnotation' })
+  const trigger = screen.getByRole('button', { name: 'Add Annotation' })
   await trigger.click()
-  const dialog = screen.getByRole('dialog', { name: 'appAnnotation.addModal.title' })
-  const question = dialog.getByRole('textbox', { name: 'appAnnotation.addModal.queryName' })
-  const answer = dialog.getByRole('textbox', { name: 'appAnnotation.addModal.answerName' })
-  const next = dialog.getByRole('checkbox', { name: 'appAnnotation.addModal.createNext' })
-  const submit = dialog.getByRole('button', { name: 'common.operation.add' })
+  const dialog = screen.getByRole('dialog', { name: 'Add Annotation Reply' })
+  const question = dialog.getByRole('textbox', { name: 'Question' })
+  const answer = dialog.getByRole('textbox', { name: 'Answer' })
+  const next = dialog.getByRole('checkbox', { name: 'Add another annotated response' })
+  const submit = dialog.getByRole('button', { name: 'Add' })
 
   await question.fill('First question')
   await answer.fill('First answer')
@@ -59,8 +68,8 @@ it('resets a continuous-entry form without losing its preference or skipping nat
   await submit.click()
   await expect.element(question).toHaveFocus()
   await expect.element(question).toHaveAttribute('aria-invalid', 'true')
-  await expect.element(dialog.getByText('appAnnotation.errorMessage.queryRequired')).toBeVisible()
-  await expect.element(dialog.getByText('appAnnotation.errorMessage.answerRequired')).toBeVisible()
+  await expect.element(dialog.getByText('Question is required')).toBeVisible()
+  await expect.element(dialog.getByText('Answer is required')).toBeVisible()
   expect(api.add).toHaveBeenCalledOnce()
 
   await question.fill('Second question')
@@ -77,8 +86,6 @@ it('resets a continuous-entry form without losing its preference or skipping nat
   await expect.element(question).toHaveValue('')
   await expect.element(answer).toHaveValue('')
   await expect.element(next).not.toBeChecked()
-  await expect
-    .element(dialog.getByText('appAnnotation.errorMessage.queryRequired'))
-    .not.toBeInTheDocument()
+  await expect.element(dialog.getByText('Question is required')).not.toBeInTheDocument()
   client.clear()
 })

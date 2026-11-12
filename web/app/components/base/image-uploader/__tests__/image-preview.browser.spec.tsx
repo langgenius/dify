@@ -7,11 +7,10 @@ const imageUrl = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://ww
 
 it('keeps the portalled preview fullscreen and owns arrows only while open', async () => {
   // Real layout and native initial focus prove the popup/content split retains the preview boundary.
-  const onNext = vi.fn()
-  const onCancel = vi.fn()
 
   function PreviewHost() {
     const [open, setOpen] = useState(false)
+    const [index, setIndex] = useState(1)
     return (
       <>
         <button type="button" onClick={() => setOpen(true)}>
@@ -20,12 +19,10 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
         {open && (
           <ImagePreview
             url={imageUrl}
-            title="Local preview"
-            onNext={onNext}
-            onCancel={() => {
-              onCancel()
-              setOpen(false)
-            }}
+            title={`Local preview ${index}`}
+            onPrev={() => setIndex((current) => current - 1)}
+            onNext={() => setIndex((current) => current + 1)}
+            onCancel={() => setOpen(false)}
           />
         )}
       </>
@@ -35,7 +32,7 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
   await page.viewport(960, 640)
   const screen = await render(<PreviewHost />)
   await screen.getByRole('button', { name: 'Open preview' }).click()
-  const dialog = screen.getByRole('dialog', { name: 'Local preview' })
+  const dialog = screen.getByRole('dialog')
   await expect.element(dialog).toBeVisible()
   await expect.poll(() => dialog.element().contains(document.activeElement)).toBe(true)
   const bounds = dialog.element().getBoundingClientRect()
@@ -44,13 +41,17 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
   expect(bounds.width).toBeCloseTo(960)
   expect(bounds.height).toBeCloseTo(640)
 
-  const image = dialog.getByRole('img', { name: 'Local preview' })
+  const image = dialog.getByRole('img')
+  await expect.element(image).toBeVisible()
+  await (image.element() as HTMLImageElement).decode()
   await expect.poll(() => image.element().getBoundingClientRect().width).toBeGreaterThan(0)
   const initialWidth = image.element().getBoundingClientRect().width
   await userEvent.keyboard('{ArrowRight>3/}')
-  expect(onNext).toHaveBeenCalledOnce()
+  await expect.element(dialog).toHaveAccessibleName('Local preview 2')
   await userEvent.keyboard('{ArrowRight}')
-  expect(onNext).toHaveBeenCalledTimes(2)
+  await expect.element(dialog).toHaveAccessibleName('Local preview 3')
+  await userEvent.keyboard('{ArrowLeft}')
+  await expect.element(dialog).toHaveAccessibleName('Local preview 2')
   await userEvent.keyboard('{ArrowUp>3/}')
   await expect
     .poll(() => image.element().getBoundingClientRect().width)
@@ -58,10 +59,9 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(onCancel).toHaveBeenCalledOnce()
   await userEvent.keyboard('{ArrowRight}{ArrowUp}')
-  expect(onNext).toHaveBeenCalledTimes(2)
-  expect(onCancel).toHaveBeenCalledOnce()
+  await screen.getByRole('button', { name: 'Open preview' }).click()
+  await expect.element(dialog).toHaveAccessibleName('Local preview 2')
 })
 
 it('zooms and pans without exposing blank edges, then recenters when zoomed out', async () => {
@@ -69,10 +69,12 @@ it('zooms and pans without exposing blank edges, then recenters when zoomed out'
   await page.viewport(480, 320)
   const largeImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="teal" /></svg>')}`
   const screen = await render(
-    <ImagePreview url={largeImage} title="Pan preview" onCancel={vi.fn()} />,
+    <ImagePreview url={largeImage} title="Pan preview" onCancel={() => {}} />,
   )
   const dialog = screen.getByRole('dialog', { name: 'Pan preview' })
   const image = dialog.getByRole('img', { name: 'Pan preview' })
+  await expect.element(image).toBeVisible()
+  await (image.element() as HTMLImageElement).decode()
   await expect.poll(() => image.element().getBoundingClientRect().width).toBeGreaterThan(0)
   const initial = image.element().getBoundingClientRect()
   await screen.getByRole('button', { name: 'common.operation.zoomIn' }).click()
