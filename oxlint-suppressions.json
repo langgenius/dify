@@ -1630,11 +1630,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/roster-reference-block/component.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
     "no-restricted-imports": {
       "count": 1
