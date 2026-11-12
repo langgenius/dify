@@ -1,73 +1,82 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState } from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { consoleQueryKey } from '@/test/console/operation-hooks'
+import {
+  CONVERSATION_ID_INFO,
+  TAB_CONVERSATION_ID_INFO,
+} from '@/app/components/base/chat/constants'
+import { useWebAppStore } from '@/context/web-app-context'
+import { AppSourceType } from '@/service/share'
+import { shareQueryKeys } from '@/service/use-share'
+import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWithHistory from '../index'
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'pc',
-  MediaType: { mobile: 'mobile', tablet: 'tablet', pc: 'pc' },
-}))
+// boundary: Browser Mode has no Next App Router; the real chat owner consumes its route contract.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/agent/test',
   useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
 }))
-vi.mock('@/context/web-app-context', () => ({ useWebAppStore: () => null }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: consoleQueryKey('systemFeatures.get'),
-    initialData: { branding: { enabled: false } },
-    queryFn: async () => ({ branding: { enabled: false } }),
-    staleTime: Infinity,
-  }),
-}))
-// Replace conversation loading and the chat renderer; keep the production layout,
-// sidebar, header, and conversation menu that own focus and visibility real.
-vi.mock('../hooks', () => ({
-  useChatWithHistory: () => {
-    const [sidebarCollapseState, setSidebarCollapseState] = useState(false)
-    return {
-      appData: { site: { title: 'Keyboard chat', icon: '😀', icon_type: 'emoji' } },
-      pinnedConversationList: [],
-      conversationList: [
-        { id: 'saved', name: 'Saved conversation', inputs: null, introduction: '' },
-      ],
-      currentConversationId: '',
-      inputsForms: [],
-      appPrevChatTree: [],
-      newConversationInputs: {},
-      newConversationInputsRef: { current: {} },
-      sidebarCollapseState,
-      handleSidebarCollapse: setSidebarCollapseState,
-      handleNewConversation: vi.fn(),
-      handleChangeConversation: vi.fn(),
-      isInstalledApp: true,
-      isResponding: false,
-    }
-  },
-}))
-vi.mock('../chat-wrapper', () => ({
-  default: () => <button type="button">Chat input boundary</button>,
-}))
+
+const conversation = {
+  id: 'saved',
+  name: 'Saved conversation',
+  inputs: {},
+  introduction: '',
+}
+
+async function renderChatOwner() {
+  await page.viewport(960, 600)
+  const appInfo = {
+    app_id: 'app-1',
+    end_user_id: 'user-1',
+    site: { title: 'Keyboard chat', icon: '😀', icon_type: 'emoji' as const },
+    custom_config: null,
+  }
+  const selection = JSON.stringify({ 'app-1': { 'user-1': '' } })
+  localStorage.setItem(CONVERSATION_ID_INFO, selection)
+  sessionStorage.setItem(TAB_CONVERSATION_ID_INFO, selection)
+  localStorage.setItem('webappSidebarCollapse', 'expanded')
+  useWebAppStore.setState({
+    appInfo,
+    appParams: createChatConfigFixture(),
+    appMeta: { tool_icons: {} },
+  })
+  const client = createConsoleQueryClient()
+  const listKey = (pinned: boolean) =>
+    shareQueryKeys.conversationList(null, {
+      appSourceType: AppSourceType.webApp,
+      appId: 'app-1',
+      pinned,
+      limit: 100,
+    })
+  client.setQueryData(listKey(false), { data: [conversation], has_more: false, limit: 100 })
+  client.setQueryData(listKey(true), { data: [], has_more: false, limit: 100 })
+  seedSystemFeatures(client, { branding: { enabled: false } })
+  onTestFinished(() => {
+    useWebAppStore.setState({ appInfo: undefined, appParams: undefined, appMeta: undefined })
+  })
+  onTestFinished(guardUnexpectedFetch())
+  return render(
+    <QueryClientProvider client={client}>
+      <section aria-label="Chat preview" className="h-150 w-240">
+        <button type="button">Before chat</button>
+        <ChatWithHistory />
+      </section>
+    </QueryClientProvider>,
+  )
+}
 
 it('keeps desktop keyboard focus visible across sidebar states and conversation actions', async () => {
   // Real Chromium is needed to prove native inert Tab skipping, focus restoration
   // during collapse, and focus-visible opacity on a non-hovered conversation row.
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const screen = await render(
-    <QueryClientProvider client={client}>
-      <div className="h-150 w-240">
-        <button type="button">Before chat</button>
-        <ChatWithHistory />
-      </div>
-    </QueryClientProvider>,
-  )
+  const screen = await renderChatOwner()
   const before = screen.getByRole('button', { name: 'Before chat' })
   const collapse = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
-  const chat = screen.getByRole('button', { name: 'Chat input boundary' })
+  const chat = screen.getByRole('textbox')
   await before.click()
   await userEvent.tab()
   await expect.element(collapse).toHaveFocus()
@@ -100,28 +109,24 @@ it('keeps desktop keyboard focus visible across sidebar states and conversation 
 it('keeps the floating sidebar available while its menu or focus is inside and closes after focus leaves', async () => {
   // Pointer leave and Escape cross the real portal boundary; focus must return
   // to a visible, interactive trigger instead of a newly inert offscreen panel.
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const screen = await render(
-    <QueryClientProvider client={client}>
-      <section aria-label="Chat preview" className="h-150 w-240">
-        <button type="button">Outside sidebar</button>
-        <ChatWithHistory />
-      </section>
-    </QueryClientProvider>,
-  )
+  const screen = await renderChatOwner()
   await screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }).click()
   await screen.getByRole('region', { name: 'Chat preview' }).hover({ position: { x: 2, y: 150 } })
   const conversation = screen.getByRole('button', { name: 'Saved conversation' }).last()
   await expect.element(conversation).toBeVisible()
-  await conversation.click()
+  conversation.element().focus()
+  await expect.element(conversation).toHaveFocus()
   await userEvent.tab()
-  const more = screen.getByRole('button', { name: 'common.operation.more' }).nth(2)
+  const more = screen
+    .getByRole('button', { name: 'common.operation.more' })
+    .all()
+    .find((button) => button.element() === document.activeElement)!
   await expect.element(more).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect
     .element(screen.getByRole('menuitem', { name: 'explore.sidebar.action.pin' }))
     .toBeVisible()
-  await screen.getByRole('button', { name: 'Outside sidebar' }).hover()
+  await screen.getByRole('button', { name: 'Before chat' }).hover()
   await userEvent.keyboard('{Escape}')
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(true)
@@ -133,7 +138,7 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   await expect.element(conversation).toHaveFocus()
   await userEvent.tab()
   await expect.element(more).toHaveFocus()
-  const outside = screen.getByRole('button', { name: 'Outside sidebar' })
+  const outside = screen.getByRole('button', { name: 'Before chat' })
   await outside.click()
   await expect.element(outside).toHaveFocus()
   await expect.poll(() => conversation.element().closest('[inert]')).not.toBeNull()

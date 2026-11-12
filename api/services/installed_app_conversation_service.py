@@ -1,13 +1,13 @@
 """Manage an account's conversations in an admitted installation."""
 
-from typing import Protocol
-
 from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_service import ConversationNameService
+from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import (
     ConversationPage,
     ConversationRecord,
     InstalledAppConversationRef,
+    InstalledAppConversationScope,
 )
 from services.installed_app_access_service import InstalledAppRef
 
@@ -16,21 +16,15 @@ class ConversationNotChatAppError(ValueError):
     """The installed app does not support conversation management."""
 
 
-class InstalledAppConversationStore(Protocol):
-    def get_page(
-        self, *, installed_app: InstalledAppRef, account_id: str, last_id: str | None, limit: int, pinned: bool | None
-    ) -> ConversationPage: ...
-
-
 class InstalledAppConversationService:
     def __init__(
         self,
         *,
-        conversations: InstalledAppConversationStore,
+        queries: ConversationQueryService,
         names: ConversationNameService,
         commands: ConversationCommandService,
     ) -> None:
-        self._conversations: InstalledAppConversationStore = conversations
+        self._queries = queries
         self._names = names
         self._commands = commands
 
@@ -38,8 +32,13 @@ class InstalledAppConversationService:
         self, *, installed_app: InstalledAppRef, account_id: str, last_id: str | None, limit: int, pinned: bool | None
     ) -> ConversationPage:
         self._get_chat_mode(installed_app)
-        return self._conversations.get_page(
-            installed_app=installed_app, account_id=account_id, last_id=last_id, limit=limit, pinned=pinned
+        return self._queries.get_page(
+            scope=InstalledAppConversationScope(installed_app=installed_app, account_id=account_id),
+            invoke_from="explore",
+            last_id=last_id,
+            limit=limit,
+            pinned=pinned,
+            sort_by="-updated_at",
         )
 
     def rename(

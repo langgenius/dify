@@ -7,6 +7,13 @@ extension. TypeScript 7.1 content mappers must already be enabled in the workspa
 The extension asks the active TypeScript hover provider for the resolved symbol's
 backend link. It does not run exporters, parse TypeScript, or create index files.
 Both `api` and `query` method properties are supported, including import aliases.
+Repository type subpaths also carry backend links: registered Community models
+open their Python classes, and request/response/error envelope types open the
+corresponding API handler. Import aliases and type re-exports retain these links.
+Try `DatasetCreatePayload` or `PostDatasetsData` in
+[`examples/repository/compatibility.ts`].
+Synthetic models and Enterprise snapshots without local source metadata have no
+backend target.
 Existing schema definitions remain available; VS Code may show multiple targets
 when a file-backed contract also has a schema definition. Use Go to Implementation
 to select the backend alone. Missing local backend files are skipped.
@@ -20,3 +27,5 @@ code --install-extension openapi-backend-navigation-0.1.0.vsix --force
 
 Reload the VS Code window after installation. On `consoleClient.datasets.get`,
 hover to click **Open backend implementation**, or press F12 on `get`.
+
+[`examples/repository/compatibility.ts`]: ../examples/repository/compatibility.ts

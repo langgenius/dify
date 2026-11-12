@@ -1,6 +1,7 @@
 import { createInstance } from 'i18next'
 import app from '../locales/en-US/app.json'
 import common from '../locales/en-US/common.json'
+import tools from '../locales/en-US/tools.json'
 import { getInitOptions } from '../settings'
 
 describe('default translation namespace', () => {
@@ -27,4 +28,15 @@ describe('default translation namespace', () => {
       expect(i18n.t(($) => $['operation.save'], { ns: 'common' })).toBe(common['operation.save'])
     },
   )
+})
+
+it('keeps intentionally empty tooltips blank instead of displaying translation keys', async () => {
+  const i18n = createInstance()
+  await i18n.init({
+    ...getInitOptions(['tools']),
+    lng: 'en-US',
+    resources: { 'en-US': { tools } },
+  })
+
+  expect(i18n.t(($) => $['addToolModal.agent.tip'], { ns: 'tools' })).toBe('')
 })

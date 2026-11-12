@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -10,11 +10,16 @@ import pytest
 from flask import Flask
 from flask.typing import ResponseReturnValue
 from flask_restx import Api, Resource
+from redis import Redis
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.workspace import workspace as controller
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
+from enums import DeploymentEdition
 from extensions.application_services.workspace import WorkspaceServices
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import register_external_error_handlers
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
@@ -91,9 +96,17 @@ MEMBER = {"workspace_id": "w1", "account_id": "a1", "email": "member@example.com
 class TestWorkspaceCases:
     @staticmethod
     @pytest.fixture
-    def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> Mock:
         provisioning = create_autospec(WorkspaceProvisioningService, instance=True)
-        services = WorkspaceServices(
+        redis = RedisClientWrapper()
+        redis.initialize(Redis())
+        services = replace(
+            build_application_services(
+                database_client=sqlite_session_factory,
+                deployment_edition=DeploymentEdition.COMMUNITY,
+                initialization_password="",
+                redis=redis,
+            ).workspaces,
             queries=create_autospec(WorkspaceQueryService, instance=True),
             management=create_autospec(WorkspaceService, instance=True),
             provisioning=provisioning,

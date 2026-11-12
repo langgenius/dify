@@ -370,7 +370,7 @@ function CreateFromDSLModal({
                   autoComplete="off"
                   required
                   disabled={isImporting}
-                  placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
+                  placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' })}
                   defaultValue={dslUrl}
                 />
                 <FieldError />

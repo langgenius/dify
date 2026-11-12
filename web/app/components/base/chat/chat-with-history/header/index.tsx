@@ -175,7 +175,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
               {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
+              {t(($) => $['chat.deleteConversation.content'], { ns: 'share' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

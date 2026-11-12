@@ -107,7 +107,7 @@ const CreateFromDSLModal = ({
                   </FieldLabel>
                   <Input
                     autoComplete="off"
-                    placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
+                    placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' })}
                     value={dslUrlValue}
                     onChange={(e) => setDslUrlValue(e.target.value)}
                   />

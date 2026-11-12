@@ -19,7 +19,7 @@ export type ConfigurationViewModel = {
   featuresData: FeaturesData
   isAgent: boolean
   isAdvancedMode: boolean
-  isMobile: boolean
+  isBelowSm: boolean
   isShowDebugPanel: boolean
   isShowHistoryModal: boolean
   isShowSelectDataSet: boolean

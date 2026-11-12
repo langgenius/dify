@@ -12,6 +12,10 @@ const api = vi.hoisted(() => ({
   features: vi.fn<typeof consoleClient.features.get>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   remove: vi.fn<typeof consoleClient.workspaces.current.members.byMemberId.delete>(),
+  contactsEnabled: vi.fn(() => false),
+}))
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: api.contactsEnabled,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -39,6 +43,7 @@ const member = (id: string): AccountWithRoleResponse => ({
   status: 'active',
 })
 beforeEach(() => {
+  api.contactsEnabled.mockReturnValue(false)
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   vi.stubGlobal(
     'fetch',
@@ -83,6 +88,17 @@ async function setup(ids: string[]) {
   }
   return { screen, open }
 }
+
+it('returns focus after deleting a member with Contacts enabled, using the supported member API', async () => {
+  api.contactsEnabled.mockReturnValue(true)
+  const { screen, open } = await setup(['Alpha', 'Beta'])
+  await open('Alpha')
+  await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { member_id: 'Alpha' } })
+})
 
 it('removes the member before a slow list refresh completes', async () => {
   const { screen, open } = await setup(['Alpha', 'Beta'])

@@ -50,6 +50,9 @@ it.each([
     await expect.element(trigger).toMatchTextContent(`${hour}:${minute}`)
     await trigger.click()
     await expect.element(screen.getByRole('gridcell', { selected: true })).toHaveTextContent(day)
+    await expect
+      .element(screen.getByRole('gridcell', { selected: true }).getByRole('button'))
+      .toHaveAccessibleName(new RegExp(`^${day}: `))
     await screen.getByRole('button', { name: /Choose month and year:/ }).click()
     await expect
       .element(screen.getByRole('listbox', { name: 'Year' }).getByRole('option', { name: year }))

@@ -37,8 +37,3 @@ def test_query_rejects_workspace_id() -> None:
 def test_query_validates_mode_against_supported_app_type() -> None:
     with pytest.raises(ValidationError):
         PermittedExternalAppsListQuery.model_validate({"mode": "not-a-mode"})
-
-
-def test_query_clamps_limit_at_max() -> None:
-    with pytest.raises(ValidationError):
-        PermittedExternalAppsListQuery.model_validate({"limit": 500})

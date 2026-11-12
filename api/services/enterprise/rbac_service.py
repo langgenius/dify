@@ -500,7 +500,7 @@ class RBACService:
     """
 
     # ------------------------------------------------------------------
-    # Permission catalog (screenshot 3: 新增/编辑角色 弹窗内的权限列表).
+    # Permission catalog (screenshot 3: permission list in the create/edit role dialog).
     # ------------------------------------------------------------------
     class Catalog:
         @staticmethod

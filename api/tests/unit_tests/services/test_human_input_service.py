@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
@@ -277,6 +277,7 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
         workflow_id="workflow-id",
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-id",
         app_config=app_config,
         inputs={},

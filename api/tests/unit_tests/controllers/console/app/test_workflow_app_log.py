@@ -6,7 +6,7 @@ from controllers.console.app import workflow_app_log as workflow_app_log_module
 from graphon.enums import WorkflowExecutionStatus
 
 
-def test_workflow_app_log_query_parses_bool_and_datetime():
+def test_workflow_app_log_query_parses_bool_and_datetime() -> None:
     query = workflow_app_log_module.WorkflowAppLogQuery.model_validate(
         {
             "detail": "true",
@@ -22,7 +22,7 @@ def test_workflow_app_log_query_parses_bool_and_datetime():
     assert query.limit == 10
 
 
-def test_workflow_app_log_pagination_response_normalizes_nested_fields():
+def test_workflow_app_log_pagination_response_normalizes_nested_fields() -> None:
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     response = workflow_app_log_module.WorkflowAppLogPaginationResponse.model_validate(
         {

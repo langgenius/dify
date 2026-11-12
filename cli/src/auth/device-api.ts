@@ -1,4 +1,5 @@
 import type { Dispatcher } from 'undici'
+import { fetch } from 'undici'
 import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { buildFetchInit } from '@/net/fetch-init'

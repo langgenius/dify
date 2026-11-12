@@ -475,6 +475,7 @@ class Parameters(BaseModel):
     speech_to_text: FeatureToggleObject
     text_to_speech: TextToSpeechObject
     retriever_resource: FeatureToggleObject
+    show_thoughts: FeatureToggleObject = Field(default_factory=lambda: {"enabled": False})
     annotation_reply: FeatureToggleObject
     more_like_this: FeatureToggleObject
     user_input_form: UserInputFormList

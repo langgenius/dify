@@ -1,7 +1,7 @@
 import type { Locator } from '@playwright/test'
 import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent-soul.ts'
 import type { DifyWorld } from '../../support/world.ts'
-import { zPostAgentByAgentIdConfigFilesResponse } from '@dify/contracts/api/console/agent/zod.gen'
+import { zPostAgentByAgentIdConfigFilesBatchResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
 import { normalAgentPrompt } from '../../agent-v2/support/agent-soul.ts'
 import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/config-assets.ts'
@@ -49,17 +49,40 @@ export const getAgentEnvVariables = async (world: DifyWorld, agentId: string) =>
   return draft.agent_soul?.env?.variables ?? []
 }
 
+export const submitAgentConfigFiles = async (
+  world: DifyWorld,
+  dialog: Locator,
+  expectedNames: string[],
+) => {
+  const page = world.getPage()
+  const agentId = getCurrentAgentId(world)
+  const commitResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/config/files/batch`),
+  )
+  await dialog.getByRole('button', { name: 'Upload', exact: true }).click()
+  const commitResponse = await commitResponsePromise
+  expect(commitResponse.status()).toBe(201)
+  const committed = zPostAgentByAgentIdConfigFilesBatchResponse.parse(await commitResponse.json())
+
+  for (const file of committed.files) {
+    world.createdAgentConfigFiles.push({ agentId, name: file.name })
+  }
+  expect(committed.files.map((file) => file.name).sort()).toEqual([...expectedNames].sort())
+  await expect(dialog).not.toBeVisible({ timeout: 30_000 })
+}
+
 export const uploadAgentConfigFile = async (
   world: DifyWorld,
   material: keyof typeof agentBuilderTestMaterials,
 ) => {
   const page = world.getPage()
-  const agentId = getCurrentAgentId(world)
   const fileName = agentBuilderTestMaterials[material]
   const filePath = getAgentBuilderTestMaterialPath(material)
 
   await page.getByRole('button', { name: 'Add file' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Upload file' })
+  const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true })
   await expect(dialog).toBeVisible()
 
   const fileChooserPromise = page.waitForEvent('filechooser')
@@ -67,22 +90,7 @@ export const uploadAgentConfigFile = async (
   await (await fileChooserPromise).setFiles(filePath)
   await expect(dialog.getByText(fileName)).toBeVisible()
 
-  const commitResponsePromise = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/config/files`),
-  )
-  await dialog.getByRole('button', { name: 'Upload' }).click()
-  const commitResponse = await commitResponsePromise
-  expect(commitResponse.status()).toBe(201)
-  const committed = zPostAgentByAgentIdConfigFilesResponse.parse(await commitResponse.json())
-  await expect(dialog).not.toBeVisible({ timeout: 30_000 })
-
-  const committedName = committed.file?.name
-  if (!committedName)
-    throw new Error('Agent config file upload response did not include a file name.')
-
-  world.createdAgentConfigFiles.push({ agentId, name: committedName })
+  await submitAgentConfigFiles(world, dialog, [fileName])
 }
 
 export const expectAgentConfigFileVisible = async (

@@ -15,11 +15,7 @@ import {
 import { documentUploadFingerprint } from '../../upload/policy'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentUploadingAtom } from '../state/upload'
-import {
-  DOCUMENT_STAGING_REQUEST_TIMEOUT,
-  DocumentStagingCanceledError,
-  DocumentStagingTimeoutError,
-} from './model'
+import { DocumentStagingCanceledError } from './model'
 
 export function useDocumentUploadSession() {
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
@@ -48,10 +44,8 @@ export function useDocumentUploadSession() {
         const controller = new AbortController()
         controllers.push(controller)
         let settled = false
-        let timeout: number | undefined
         const promise = new Promise<string>((resolve, reject) => {
           function cleanup() {
-            if (timeout !== undefined) window.clearTimeout(timeout)
             controller.signal.removeEventListener('abort', handleAbort)
             if (stagingControllersRef.current.get(file) === controller) {
               stagingPromisesRef.current.delete(file)
@@ -74,10 +68,6 @@ export function useDocumentUploadSession() {
           controller.signal.addEventListener('abort', handleAbort, { once: true })
           function stage() {
             if (controller.signal.aborted) return
-            timeout = window.setTimeout(
-              () => controller.abort(new DocumentStagingTimeoutError()),
-              DOCUMENT_STAGING_REQUEST_TIMEOUT,
-            )
             void stageKnowledgeFsDocument(file, controller.signal).then((uploadId) => {
               if (settled) {
                 void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)

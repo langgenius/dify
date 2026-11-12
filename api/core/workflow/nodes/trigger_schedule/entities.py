@@ -2,7 +2,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
 
@@ -24,12 +24,6 @@ class ScheduleConfig(BaseModel):
     node_id: str
     cron_expression: str
     timezone: str = "UTC"
-
-
-class SchedulePlanUpdate(BaseModel):
-    node_id: str | None = None
-    cron_expression: str | None = None
-    timezone: str | None = None
 
 
 class VisualConfig(BaseModel):

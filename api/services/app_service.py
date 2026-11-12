@@ -9,7 +9,7 @@ from typing import Any, NotRequired, TypedDict, cast
 
 import sqlalchemy as sa
 from pydantic import JsonValue
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -255,10 +255,9 @@ class AppService:
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
+            filters.append(sa.or_(App.maintainer == user_id, App.id.in_(params.accessible_app_ids)))
+        if params.resource_app_ids is not None:
+            filters.append(App.id.in_(params.resource_app_ids))
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
@@ -427,7 +426,7 @@ class AppService:
 
         # get model config
         default_model_config = app_template.get("model_config")
-        default_model_config = default_model_config.copy() if default_model_config else None
+        default_model_config = deepcopy(default_model_config) if default_model_config else None
         if default_model_config and "model" in default_model_config:
             default_model_dict = default_model_config["model"]
             # get model provider
@@ -911,7 +910,7 @@ class AppService:
 
         # get model config
         default_model_config = app_template.get("model_config")
-        default_model_config = default_model_config.copy() if default_model_config else None
+        default_model_config = deepcopy(default_model_config) if default_model_config else None
         if default_model_config and "model" in default_model_config:
             default_model_dict = default_model_config["model"]
             # get model provider

@@ -276,6 +276,36 @@ describe('DSL Import with Human Input Node', () => {
       })
     })
 
+    it.each([
+      ['id', undefined, 'emptyActionId'],
+      ['id', null, 'emptyActionId'],
+      ['title', undefined, 'emptyActionTitle'],
+      ['title', null, 'emptyActionTitle'],
+    ])('validates historical action %s = %s without throwing', (field, value, error) => {
+      const action = { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }
+      Reflect.set(action, field, value)
+      const payload: HumanInputNodeType = {
+        type: BlockEnum.HumanInput,
+        title: 'Legacy approval',
+        desc: '',
+        delivery_methods: [{ id: 'web', type: DeliveryMethodType.WebApp, enabled: true }],
+        form_content: '',
+        inputs: [],
+        user_actions: [action],
+        timeout: 3,
+        timeout_unit: 'day',
+      }
+      expect(
+        humanInputDefault.checkValid(
+          payload,
+          withSelectorKey((key: string) => key, 'workflow'),
+        ),
+      ).toMatchObject({
+        isValid: false,
+        errorMessage: `nodes.humanInput.errorMsg.${error}`,
+      })
+    })
+
     it('ignores incomplete email configuration when that delivery method is disabled', () => {
       const payload = createHumanInputNode({
         delivery_methods: [

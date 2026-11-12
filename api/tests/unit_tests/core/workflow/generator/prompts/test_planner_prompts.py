@@ -22,23 +22,23 @@ from core.workflow.generator.prompts.planner_prompts import (
 
 
 class TestPlannerSystemPrompt:
-    def test_documents_the_mode_output_field(self):
+    def test_documents_the_mode_output_field(self) -> None:
         """Auto-mode resolution rides on the planner echoing its mode choice."""
         assert '"mode": "workflow | advanced-chat"' in PLANNER_SYSTEM_PROMPT
         assert "When the ``# Mode`` section says auto, YOU decide" in PLANNER_SYSTEM_PROMPT
 
-    def test_prioritizes_installed_tools_and_requires_structured_selection(self):
+    def test_prioritizes_installed_tools_and_requires_structured_selection(self) -> None:
         assert "INSTALLED-TOOL-FIRST" in PLANNER_SYSTEM_PROMPT
         assert 'you MUST use a "tool" node' in PLANNER_SYSTEM_PROMPT
         assert '"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}' in PLANNER_SYSTEM_PROMPT
 
 
 class TestFormatIdealOutputSection:
-    def test_returns_empty_string_for_blank_input(self):
+    def test_returns_empty_string_for_blank_input(self) -> None:
         assert format_ideal_output_section("") == ""
         assert format_ideal_output_section("   \n\t  ") == ""
 
-    def test_wraps_content_in_a_labelled_section(self):
+    def test_wraps_content_in_a_labelled_section(self) -> None:
         out = format_ideal_output_section("A short summary.")
 
         assert out.startswith("# Ideal output")
@@ -47,21 +47,21 @@ class TestFormatIdealOutputSection:
 
 
 class TestToolCatalogueSections:
-    def test_planner_returns_empty_when_catalogue_is_blank(self):
+    def test_planner_returns_empty_when_catalogue_is_blank(self) -> None:
         assert format_planner_tool_catalogue_section("") == ""
         assert format_planner_tool_catalogue_section("   ") == ""
 
-    def test_planner_includes_catalogue(self):
+    def test_planner_includes_catalogue(self) -> None:
         out = format_planner_tool_catalogue_section("- google/search — Search.")
 
         assert "# Relevant installed tools" in out
         assert "dynamically selected" in out.lower()
         assert "- google/search — Search." in out
 
-    def test_node_builder_returns_empty_when_catalogue_is_blank(self):
+    def test_node_builder_returns_empty_when_catalogue_is_blank(self) -> None:
         assert format_node_tool_catalogue_section("") == ""
 
-    def test_node_builder_requires_exact_provider_and_tool_ids(self):
+    def test_node_builder_requires_exact_provider_and_tool_ids(self) -> None:
         out = format_node_tool_catalogue_section("- google/search — Search.")
 
         assert "exact" in out.lower()
@@ -71,7 +71,7 @@ class TestToolCatalogueSections:
 
 
 class TestNodeBuilderPrompt:
-    def test_only_includes_target_node_schema_and_compact_output_contract(self):
+    def test_only_includes_target_node_schema_and_compact_output_contract(self) -> None:
         prompt = get_node_builder_system_prompt("llm")
 
         assert '"config"' in prompt
@@ -80,7 +80,7 @@ class TestNodeBuilderPrompt:
         assert '"viewport":' not in prompt
         assert '"positionAbsolute":' not in prompt
 
-    def test_supports_main_human_input_and_assigner_contracts(self):
+    def test_supports_main_human_input_and_assigner_contracts(self) -> None:
         human_input = get_node_builder_system_prompt("human-input")
         assigner = get_node_builder_system_prompt("assigner")
 
@@ -89,12 +89,12 @@ class TestNodeBuilderPrompt:
         assert '"version": "2"' in assigner
         assert "variable_selector" in assigner
 
-    def test_common_node_prompts_stay_small(self):
+    def test_common_node_prompts_stay_small(self) -> None:
         sizes = [len(get_node_builder_system_prompt(node_type)) for node_type in ("start", "llm", "end")]
 
         assert max(sizes) < 3000
 
-    def test_unknown_node_type_gets_minimal_fallback(self):
+    def test_unknown_node_type_gets_minimal_fallback(self) -> None:
         prompt = get_node_builder_system_prompt("future-node")
 
         assert "future-node" in prompt
@@ -102,7 +102,7 @@ class TestNodeBuilderPrompt:
 
 
 class TestNodeBuilderUserSections:
-    def test_formats_start_inputs(self):
+    def test_formats_start_inputs(self) -> None:
         out = format_start_inputs_section(
             [{"variable": "url", "label": "URL", "type": "text-input"}, {"variable": "", "label": "Ignored"}]
         )
@@ -111,10 +111,10 @@ class TestNodeBuilderUserSections:
         assert "type='text-input'" in out
         assert "Ignored" not in out
 
-    def test_empty_start_inputs_are_omitted(self):
+    def test_empty_start_inputs_are_omitted(self) -> None:
         assert format_start_inputs_section([]) == ""
 
-    def test_parallel_plan_is_compact_and_preserves_topology(self):
+    def test_parallel_plan_is_compact_and_preserves_topology(self) -> None:
         rendered = format_parallel_plan(
             [{"id": "node1", "node_type": "start"}, {"id": "node2", "node_type": "end"}],
             [{"source": "node1", "target": "node2"}],
@@ -124,7 +124,7 @@ class TestNodeBuilderUserSections:
         assert json.loads(rendered)["edges"] == [{"source": "node1", "target": "node2"}]
         assert "start_inputs" not in json.loads(rendered)
 
-    def test_parallel_plan_carries_declared_start_inputs(self):
+    def test_parallel_plan_carries_declared_start_inputs(self) -> None:
         rendered = format_parallel_plan(
             [{"id": "node1", "node_type": "start"}],
             [],
@@ -135,21 +135,21 @@ class TestNodeBuilderUserSections:
 
 
 class TestModeSection:
-    def test_advanced_chat_documents_system_variables(self):
+    def test_advanced_chat_documents_system_variables(self) -> None:
         out = format_mode_section("advanced-chat")
 
         assert "sys.query" in out
         assert '["sys", "query"]' in out
         assert "do NOT invent start-node variables" in out
 
-    def test_workflow_mode_forbids_system_variables(self):
+    def test_workflow_mode_forbids_system_variables(self) -> None:
         out = format_mode_section("workflow")
 
         assert "NO automatic system variables" in out
 
 
 class TestExistingGraphSection:
-    def test_edge_lines_surface_branch_source_handles(self):
+    def test_edge_lines_surface_branch_source_handles(self) -> None:
         out = format_existing_graph_section(
             {
                 "nodes": [{"id": "node1", "data": {"type": "if-else", "title": "Branch"}}],
@@ -164,5 +164,5 @@ class TestExistingGraphSection:
         assert "- node2 -> node3\n" in out
         assert "copy its source_handle verbatim" in out
 
-    def test_create_mode_renders_nothing(self):
+    def test_create_mode_renders_nothing(self) -> None:
         assert format_existing_graph_section(None) == ""

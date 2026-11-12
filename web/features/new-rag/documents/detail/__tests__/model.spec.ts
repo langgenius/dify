@@ -242,6 +242,73 @@ describe('document detail model', () => {
     expect(tree.roots[0]?.children[0]?.targetChunkId).toBe('tax-table')
   })
 
+  it('shows a fallback outline summary once for unsectioned source chunks', () => {
+    const first = chunk({ id: 'source-1', ordinal: 0, text: 'Knowledge sources ground agents.' })
+    const second = chunk({
+      id: 'source-2',
+      ordinal: 1,
+      text: 'Generative orchestration filters sources.',
+    })
+    const model = buildDocumentDetailModel(
+      [second, first],
+      [
+        outlineNode({
+          section_path: ['Document'],
+          source_node_ids: ['source-2', 'source-1'],
+          summary: 'Agents use knowledge sources and filter them during orchestration.',
+          title: 'Document',
+          toc_source: 'fallback',
+        }),
+      ],
+    )
+
+    expect(model.tree.roots).toEqual([
+      { children: [], id: 'outline-1', label: 'Document', targetChunkId: 'source-1' },
+    ])
+    expect(model.contentBlocks.map((block) => block.body)).toEqual([first.text, second.text])
+    expect(model.contentBlocksByChunkId.get('source-1')).toMatchObject({
+      heading: { level: 1, text: 'Document' },
+      summary: 'Agents use knowledge sources and filter them during orchestration.',
+    })
+    expect(model.contentBlocksByChunkId.get('source-2')?.heading).toBeUndefined()
+    expect(model.contentBlocksByChunkId.get('source-2')?.summary).toBeUndefined()
+  })
+
+  it('uses source identities to distinguish outline sections with the same path', () => {
+    const model = buildDocumentDetailModel(
+      [
+        chunk({ id: 'first', ordinal: 0, sectionPath: ['Guide'] }),
+        chunk({ id: 'second', ordinal: 1, sectionPath: ['Guide'] }),
+      ],
+      [
+        outlineNode({ id: 'first-outline', source_node_ids: ['first'], summary: 'First section.' }),
+        outlineNode({
+          id: 'second-outline',
+          source_node_ids: ['second'],
+          summary: 'Second section.',
+        }),
+      ],
+    )
+
+    expect(model.tree.roots.map((node) => node.targetChunkId)).toEqual(['first', 'second'])
+    expect(model.contentBlocksByChunkId.get('first')?.summary).toBe('First section.')
+    expect(model.contentBlocksByChunkId.get('second')).toMatchObject({
+      heading: { level: 1, text: 'Guide' },
+      summary: 'Second section.',
+    })
+  })
+
+  it('does not attach an unloaded source summary to a different chunk with the same path', () => {
+    const model = buildDocumentDetailModel(
+      [chunk({ id: 'loaded', sectionPath: ['Guide'] })],
+      [outlineNode({ source_node_ids: ['not-loaded-yet'], summary: 'Another chunk summary.' })],
+    )
+
+    expect(model.contentBlocksByChunkId.get('loaded')?.summary).toBeUndefined()
+    expect(model.tree.byId.has('outline-1')).toBe(false)
+    expect(model.contentBlocksByChunkId.has('loaded')).toBe(true)
+  })
+
   it('uses the persisted outline hierarchy and hides a legacy HTML title chunk', () => {
     const titleChunk = chunk({
       id: 'html-title',

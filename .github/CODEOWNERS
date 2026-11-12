@@ -99,6 +99,8 @@
 /api/tests/**/tasks/test_async_workflow_tasks.py @Mairuis
 /api/tests/**/services/test_billing_service.py @zyssyz123
 /api/tests/**/controllers/console/billing/ @zyssyz123
+/api/tests/**/services/billing_client/ @zyssyz123
+/api/tests/**/dev/test_generate_billing_client.py @zyssyz123
 /api/tests/**/configs/enterprise/ @GareArc
 /api/tests/**/services/enterprise/ @GareArc
 /api/tests/**/services/test_feature_service.py @GareArc
@@ -188,6 +190,8 @@
 # Backend - Billing
 /api/services/billing_service.py @zyssyz123
 /api/controllers/console/billing/ @zyssyz123
+/api/services/billing_client/ @zyssyz123
+/api/dev/generate_billing_client.py @zyssyz123
 
 # Backend - Enterprise
 /api/configs/enterprise/ @GareArc
@@ -225,16 +229,16 @@
 /.github/workflows/web-tests.yml @iamjoel
 
 # Frontend - App - Orchestration
-/web/app/components/workflow/ @iamjoel @zxhlyh
-/web/app/components/workflow-app/ @iamjoel @zxhlyh
-/web/app/components/app/configuration/ @iamjoel @zxhlyh
-/web/app/components/app/app-publisher/ @iamjoel @zxhlyh
+/web/app/components/workflow/ @iamjoel
+/web/app/components/workflow-app/ @iamjoel
+/web/app/components/app/configuration/ @iamjoel
+/web/app/components/app/app-publisher/ @iamjoel
 
 # Frontend - WebApp - Chat
-/web/app/components/base/chat/ @iamjoel @zxhlyh
+/web/app/components/base/chat/ @iamjoel
 
 # Frontend - WebApp - Completion
-/web/app/components/share/text-generation/ @iamjoel @zxhlyh
+/web/app/components/share/text-generation/ @iamjoel
 
 # Frontend - App - List and Creation
 /web/app/components/apps/ @JzoNgKVO @iamjoel
@@ -266,8 +270,8 @@
 
 # Frontend - RAG - Orchestration (general rule first, specific rules below override)
 /web/app/components/rag-pipeline/ @iamjoel @WTW0313
-/web/app/components/rag-pipeline/components/rag-pipeline-main.tsx @iamjoel @zxhlyh
-/web/app/components/rag-pipeline/store/ @iamjoel @zxhlyh
+/web/app/components/rag-pipeline/components/rag-pipeline-main.tsx @iamjoel
+/web/app/components/rag-pipeline/store/ @iamjoel
 
 # Frontend - RAG - Documents List
 /web/app/components/datasets/documents/create-from-pipeline/ @iamjoel @WTW0313
@@ -288,12 +292,8 @@
 /web/app/components/plugins/marketplace/ @iamjoel @Yessenia-d
 
 # Frontend - Login and Registration
-/web/app/signin/ @iamjoel
-/web/app/signup/ @iamjoel
-/web/app/reset-password/ @iamjoel
-/web/app/install/ @iamjoel
-/web/app/init/ @iamjoel
-/web/app/forgot-password/ @iamjoel
+/web/app/(auth)/ @iamjoel
+/web/app/components/auth-shell/ @iamjoel
 /web/app/account/ @iamjoel
 
 # Frontend - Service Authentication
@@ -316,22 +316,22 @@
 /web/app/components/base/ga/ @CodingOnStar @iamjoel
 
 # Frontend - Base Components
-/web/app/components/base/ @iamjoel @zxhlyh
+/web/app/components/base/ @iamjoel
 
 # Frontend - Base Components Tests
 /web/app/components/base/**/*.spec.tsx @hyoban @CodingOnStar
 
 # Frontend - Utils and Hooks
-/web/utils/time.ts @iamjoel @zxhlyh
-/web/utils/format.ts @iamjoel @zxhlyh
-/web/utils/clipboard.ts @iamjoel @zxhlyh
+/web/utils/time.ts @iamjoel
+/web/utils/format.ts @iamjoel
+/web/utils/clipboard.ts @iamjoel
 
 # Frontend - Billing and Education
-/web/app/components/billing/ @iamjoel @zxhlyh
-/web/app/education/ @iamjoel @zxhlyh
+/web/app/components/billing/ @iamjoel
+/web/app/education/ @iamjoel
 
 # Frontend - Workspace
-/web/app/components/header/account-menu/workplace-selector/ @iamjoel @zxhlyh
+/web/app/components/header/account-menu/workplace-selector/ @iamjoel
 
 # Frontend - App Shell and Console Bootstrap
 /web/app/layout.tsx @iamjoel @lyzno1

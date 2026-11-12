@@ -115,10 +115,13 @@ function Annotation({ appDetail }: AnnotationProps) {
 
   const handleBatchDelete = async () => {
     try {
-      await consoleClient.apps.byAppId.annotations.delete({
-        params: { app_id: appDetail.id },
-        query: { annotation_id: selectedIds },
-      })
+      await consoleClient.apps.byAppId.annotations.delete(
+        {
+          params: { app_id: appDetail.id },
+          query: { annotation_id: selectedIds },
+        },
+        { context: { silent: true } },
+      )
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])

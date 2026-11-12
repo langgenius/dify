@@ -497,6 +497,7 @@ def test_workflow_stop_preserves_legacy_redis_failure_without_attempting_graph_c
 def test_workflow_stop_keeps_legacy_flag_and_success_when_graph_command_fails(
     harness: _Harness, runtime: _Runtime, stop_redis: _StopRedis, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given a failed graph command, keep the stop flag, return success, and log the cause."""
     failure = RedisConnectionError("Graph channel unavailable")
     stop_redis.command_error = failure
 
@@ -506,5 +507,5 @@ def test_workflow_stop_keeps_legacy_flag_and_success_when_graph_command_fails(
     assert stop_redis.operations == ["legacy_flag", "graph_command"]
     assert stop_redis.reads == []
     assert stop_redis.values[_STOP_KEY] == b"1"
-    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    assert any(isinstance(record.exc_info, tuple) and record.exc_info[1] is failure for record in caplog.records)
     runtime.assert_usage_unchanged()

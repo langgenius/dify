@@ -10,36 +10,46 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from configs.deploy import IMEventTransportMode
 from configs.feature import OpsTraceConfig
 from enums import DeploymentEdition
 
 
-def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
-    with pytest.raises(ValidationError, match="must cover the retry window"):
-        OpsTraceConfig(
-            OPS_TRACE_UNIFIED_ENABLED=True,
-            OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
-            OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
-            OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
-        )
+def test_ops_trace_export_attempts_must_be_positive() -> None:
+    with pytest.raises(ValidationError, match="OPS_TRACE_EXPORT_MAX_ATTEMPTS"):
+        OpsTraceConfig(OPS_TRACE_EXPORT_MAX_ATTEMPTS=0)
 
 
-def test_ops_trace_config_skips_parent_context_validation_when_unified_tracing_is_disabled() -> None:
-    OpsTraceConfig(
-        OPS_TRACE_UNIFIED_ENABLED=False,
-        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
-        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
-        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
-    )
+@pytest.mark.parametrize("queue", ["", " ", "ops_trace,ops_trace_v2", "ops trace", "ops_trace\n"])
+def test_ops_trace_queue_requires_one_shell_safe_queue_name(queue: str) -> None:
+    with pytest.raises(ValidationError, match="OPS_TRACE_QUEUE"):
+        OpsTraceConfig(OPS_TRACE_QUEUE=queue)
 
 
-def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> None:
-    OpsTraceConfig(
-        OPS_TRACE_UNIFIED_ENABLED=True,
-        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
-        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
-        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=20,
-    )
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("WEBHOOK", IMEventTransportMode.WEBHOOK),
+        ("STREAM", IMEventTransportMode.STREAM),
+    ],
+)
+def test_im_event_transport_mode_loads_both_supported_values(
+    value: str,
+    expected: IMEventTransportMode,
+) -> None:
+    config = _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE=value)
+
+    assert config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE is expected
+    assert {mode.value for mode in IMEventTransportMode} == {"WEBHOOK", "STREAM"}
+
+
+def test_im_event_transport_mode_defaults_to_webhook() -> None:
+    assert _IsolatedDifyConfig().HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE == IMEventTransportMode.WEBHOOK
+
+
+def test_im_event_transport_mode_rejects_invalid_values() -> None:
+    with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
+        _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE="SOCKET")
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -66,6 +76,7 @@ class _IsolatedDifyConfig(DifyConfig):
 
 
 def _make_config(**values: object) -> DifyConfig:
+    values.setdefault("HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", "WEBHOOK")
     # Pydantic exposes a generated field-wise signature, while this helper intentionally forwards heterogeneous input.
     factory = cast(Callable[..., _IsolatedDifyConfig], _IsolatedDifyConfig)
     return factory(**values)
@@ -107,8 +118,9 @@ def test_dify_config() -> None:
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
     assert config.APP_MAX_EXECUTION_TIME == 3600
     assert config.WORKFLOW_MAX_EXECUTION_TIME == 3600
-    assert config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES == 780
-    assert config.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS == 3900
+    assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 6
+    assert config.OPS_TRACE_QUEUE == "ops_trace_v2"
+    assert config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK is True
     assert config.GRAPH_ENGINE_MAX_WORKERS == 10
 
     # annotated field with custom configured value
@@ -119,6 +131,21 @@ def test_dify_config() -> None:
 
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
+
+
+def test_dify_config_ignores_removed_trace_dispatch_settings() -> None:
+    removed = {
+        "OPS_TRACE_UNIFIED_ENABLED": "true",
+        "OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES": "780",
+        "OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS": "5",
+        # Shorter than the old retry window, which used to fail startup.
+        "OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS": "19",
+    }
+
+    config = _make_config(**removed)
+
+    assert not any(hasattr(config, name) for name in removed)
+    assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 6
 
 
 @pytest.mark.parametrize(

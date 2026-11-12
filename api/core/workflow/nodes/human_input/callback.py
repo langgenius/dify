@@ -98,7 +98,9 @@ class DifyHITLCallback:
         )
         if form is None:
             created = self._create_form(ctx, form_id=form_id)
-            return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=created.id))
+            return PauseRequested(
+                session_id=self._session_binding.issue_session_id_for_form(node_version="1", form_id=created.id)
+            )
 
         status = self._normalize_status(form.status)
         if status == HumanInputFormStatus.WAITING.value and not form.submitted:
@@ -124,7 +126,9 @@ class DifyHITLCallback:
             raise AssertionError(msg)
 
         if not form.submitted:
-            return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
+            return PauseRequested(
+                session_id=self._session_binding.issue_session_id_for_form(node_version="1", form_id=form.id)
+            )
 
         selected_action_id = form.selected_action_id
         if selected_action_id is None:

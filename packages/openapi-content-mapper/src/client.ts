@@ -180,7 +180,8 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
         headers.delete('Content-Type')
         body = form
       } else if (mediaType === 'application/octet-stream') {
-        if (!(options.body instanceof Blob)) throw new Error('Binary body must be a Blob or File')
+        if (!(options.body instanceof Blob))
+          throw new TypeError('Binary body must be a Blob or File')
         headers.set('Content-Type', mediaType)
         body = options.body
       } else {

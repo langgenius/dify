@@ -26,6 +26,12 @@ export const agentComposerKnowledgeRetrievalsAtom = atom(
   },
 )
 
+/** Agent Knowledge Base bindings stay saved but hidden while KnowledgeFS is unavailable. */
+export const getVisibleKnowledgeRetrievals = (
+  retrievals: AgentKnowledgeRetrievalItem[],
+  knowledgeFsEnabled: boolean,
+) => (knowledgeFsEnabled ? retrievals : retrievals.filter((item) => !item.controlSpaceId))
+
 export const removeKnowledgeRetrievalAtom = atom(null, (_get, set, retrievalId: string) => {
   set(agentComposerKnowledgeRetrievalsAtom, (retrievals) =>
     retrievals.filter((retrieval) => retrieval.id !== retrievalId),

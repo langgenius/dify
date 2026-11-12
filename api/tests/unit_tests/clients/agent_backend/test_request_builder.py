@@ -20,7 +20,7 @@ from dify_agent.protocol import (
     CreateRunRequest,
 )
 from dify_agent.runtime.context import Services
-from dify_agent.runtime.modules import create_modules, load_modules
+from dify_agent.runtime.modules import create_modules, load_modules, snapshot_modules
 from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
@@ -93,6 +93,39 @@ def test_request_builder_outputs_dify_agent_create_run_request() -> None:
     assert request.idempotency_key == "workflow-run-1:node-execution-1"
     assert request.metadata == {"workflow_id": "workflow-1", "node_id": "node-1"}
     assert "purpose" not in dumped
+
+
+def test_workflow_multimodal_prompt_loads_and_round_trips_between_turns() -> None:
+    from dify_agent.layers.user_prompt.layer import Capability
+    from pydantic_ai.messages import BinaryContent
+
+    builder = AgentBackendRunRequestBuilder()
+    original = _run_input()
+    client = httpx.AsyncClient()
+    services = Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+    try:
+        previous = load_modules(builder.build_for_workflow_node(original), services, "previous")
+        original.session_snapshot = snapshot_modules(previous)
+        original.user_images = [
+            DifyUserPromptImageConfig(
+                filename="sample.png", mime_type="image/png", format="png", base64_data="aW1hZ2U="
+            )
+        ]
+        with_image = load_modules(builder.build_for_workflow_node(original), services, "with-image")
+        modules = create_modules(with_image)
+        capability = modules["user_prompt"]
+        assert isinstance(capability, Capability)
+        content = capability.build_user_content(with_image)
+        assert content[0] == "Summarize the report."
+        assert isinstance(content[1], BinaryContent)
+        assert content[1].data == b"image"
+        original.session_snapshot = snapshot_modules(with_image)
+        original.user_images = []
+        after = load_modules(builder.build_for_workflow_node(original), services, "after")
+        assert "workflow_user_prompt" in after.layers
+        assert "user_prompt" not in after.layers
+    finally:
+        asyncio.run(client.aclose())
 
 
 def test_request_builder_separates_agent_soul_and_workflow_job_prompt() -> None:

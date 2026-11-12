@@ -36,7 +36,7 @@ export async function renderBillingSettings() {
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'normal' },
     workspacePermissionKeys: [],
-    features: { billing: { subscription: { plan: 'team' } } },
+    features: { im_centrally_managed: true, billing: { subscription: { plan: 'team' } } },
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {

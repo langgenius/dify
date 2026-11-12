@@ -241,9 +241,10 @@ class DatasourceInvokeFrom(StrEnum):
 
 class OnlineDocumentPage(BaseModel):
     """
-    Online document page
+    Online document page. Tree previews keep the optional child hint through plugin transport.
     """
 
+    has_children: bool | None = Field(None, description="Whether the preview page can be expanded")
     page_id: str = Field(..., description="The page id")
     page_name: str = Field(..., description="The page title")
     page_icon: dict[str, Any] | None = Field(None, description="The page icon")
@@ -254,9 +255,10 @@ class OnlineDocumentPage(BaseModel):
 
 class OnlineDocumentInfo(BaseModel):
     """
-    Online document info
+    Online document info. Optional workspace cursors survive plugin transport for paged previews.
     """
 
+    next_cursor: str | None = Field(None, description="Cursor for the next workspace preview page")
     workspace_id: str | None = Field(None, description="The workspace id")
     workspace_name: str | None = Field(None, description="The workspace name")
     workspace_icon: str | None = Field(None, description="The workspace icon")
@@ -266,9 +268,10 @@ class OnlineDocumentInfo(BaseModel):
 
 class OnlineDocumentPagesMessage(BaseModel):
     """
-    Get online document pages response
+    Get online document pages response. Optional cursors survive plugin transport for paged previews.
     """
 
+    next_cursor: str | None = Field(None, description="Cursor for the next preview page")
     result: list[OnlineDocumentInfo]
 
 
@@ -486,7 +489,7 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     """
 
     bucket: str | None = Field(None, description="The file bucket")
-    prefix: str = Field(..., description="The parent folder ID")
+    prefix: str = Field(default="", description="The prefix to browse. An empty string means the root folder.")
     max_keys: int = Field(20, description="Page size for pagination")
     next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 

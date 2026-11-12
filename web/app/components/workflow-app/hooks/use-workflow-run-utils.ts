@@ -365,6 +365,7 @@ export const runTriggerDebug = async ({
         },
         {
           needAllResponseContent: true,
+          silent: true,
         },
       )
 

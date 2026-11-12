@@ -14,6 +14,7 @@ type OptionColumnProps = {
   onEscape?: () => void
   scrollRequest?: number
   focusOnMount?: boolean
+  readOnly?: boolean
 }
 
 function OptionColumn({
@@ -25,6 +26,7 @@ function OptionColumn({
   focusOnMount,
   onEscape,
   scrollRequest = 0,
+  readOnly,
 }: OptionColumnProps) {
   const ref = React.useRef<HTMLDivElement>(null)
   const id = React.useId()
@@ -78,12 +80,17 @@ function OptionColumn({
     const option = nearestOption()
     if (!option) return undefined
     const next = Number(option.dataset.optionValue)
-    if (next !== value) onValueChange(next)
+    if (next !== value && !readOnly) onValueChange(next)
     return option
   })
   const finishScroll = React.useEffectEvent(() => {
     cancelGesture()
     scrollRef.current.target = null
+    if (readOnly) {
+      const selected = ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+      if (selected) scrollToOption(selected)
+      return
+    }
     const option = selectNearest()
     if (option && ref.current?.contains(ref.current.ownerDocument.activeElement))
       option.focus({ preventScroll: true })
@@ -142,9 +149,13 @@ function OptionColumn({
       role="listbox"
       tabIndex={-1}
       aria-orientation="vertical"
+      aria-readonly={readOnly || undefined}
       ref={ref}
       aria-label={label}
-      className="relative flex h-full min-h-0 min-w-0 flex-1 snap-y snap-mandatory scrollbar-none flex-col items-stretch gap-0.5 overflow-y-auto overscroll-none scroll-auto after:pointer-events-none after:h-[max(0px,calc(100%-1.625rem))] after:shrink-0 after:content-['']"
+      className={cn(
+        "relative flex h-full min-h-0 min-w-0 flex-1 snap-y snap-mandatory scrollbar-none flex-col items-stretch gap-0.5 overflow-y-auto overscroll-none scroll-auto after:pointer-events-none after:h-[max(0px,calc(100%-1.625rem))] after:shrink-0 after:content-['']",
+        readOnly && 'overflow-y-hidden',
+      )}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
           searchRef.current = { text: '', time: 0, startIndex: 0 }
@@ -157,6 +168,7 @@ function OptionColumn({
           onEscape()
           return
         }
+        if (readOnly) return
         if (event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return
         if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key))
           searchRef.current = { text: '', time: 0, startIndex: 0 }
@@ -239,7 +251,9 @@ function OptionColumn({
           aria-selected={option.value === value}
           tabIndex={index === tabbableIndex ? 0 : -1}
           data-option-value={option.value}
-          onClick={(event) => focusValue(option.value, event.detail > 0)}
+          onClick={(event) => {
+            if (!readOnly) focusValue(option.value, event.detail > 0)
+          }}
           className={cn(
             'aria-selected:bg-components-button-ghost-bg-hover',
             'flex min-h-6 shrink-0 snap-start items-center justify-center rounded-md px-1 system-xs-medium text-text-secondary tabular-nums hover:not-aria-selected:bg-state-base-hover-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid forced-colors:aria-selected:outline forced-colors:aria-selected:outline-[Highlight]',

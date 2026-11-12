@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -8,7 +8,7 @@ import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { consoleQuery } from '@/service/console'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -58,10 +58,7 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const { canSetPluginPreferences } = usePluginSettingsAccess()
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const { data, isLoading: isDataSourceListLoading } = useQuery(
     consoleQuery.auth.plugin.datasource.list.get.queryOptions(),
   )
@@ -179,8 +176,9 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
           })}
         </div>
       )}
-      {!isDataSourceListLoading && enable_marketplace && (
+      {!isDataSourceListLoading && marketplace && (
         <InstallFromMarketplace
+          marketplace={marketplace}
           providers={dataSources}
           searchText={searchText}
           onOpenMarketplace={onOpenMarketplace}

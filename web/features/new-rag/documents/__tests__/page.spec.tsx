@@ -1267,9 +1267,12 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeDocuments.downloadDocuments' }))
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', document_id: 'report' },
-    })
+    expect(downloadDocumentMutation).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1', document_id: 'report' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
@@ -1308,9 +1311,12 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', document_id: 'failed-report' },
-    })
+    expect(downloadDocumentMutation).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1', document_id: 'failed-report' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
   })
 
@@ -1971,6 +1977,7 @@ describe('DocumentsPage', () => {
       expect.objectContaining({
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       }),
+      { context: { silent: true } },
     )
   })
 
@@ -2012,13 +2019,16 @@ describe('DocumentsPage', () => {
     await user.type(input, 'Renamed handbook.pdf')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith({
-      body: {
-        expectedRowVersion: 1,
-        patch: { displayName: 'Renamed handbook.pdf' },
+    expect(renameDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          expectedRowVersion: 1,
+          patch: { displayName: 'Renamed handbook.pdf' },
+        },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+      { context: { silent: true } },
+    )
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'common.operation.rename' }),
@@ -2035,10 +2045,13 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
 
-    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
-      body: { enabled: false, expectedRowVersion: 1 },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: { enabled: false, expectedRowVersion: 1 },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
@@ -2054,10 +2067,13 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
 
-    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
-      body: { enabled: true, expectedRowVersion: 1 },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: { enabled: true, expectedRowVersion: 1 },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -2076,11 +2092,14 @@ describe('DocumentsPage', () => {
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    expect(removeDocumentMutation).toHaveBeenCalledWith({
-      body: { expectedRevision: 1 },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(removeDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: { expectedRevision: 1 },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
@@ -2847,7 +2866,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+    expect(toastMock.error).toHaveBeenCalledWith('settings refresh failed')
   })
 
   it('discards a staged upload without claiming it', async () => {
@@ -2868,7 +2887,7 @@ describe('DocumentsPage', () => {
     expect(screen.queryByLabelText('knowledgeCreate.uploadDocuments')).not.toBeInTheDocument()
   })
 
-  it('times out an exact 15 MiB staging request and discards a late success', async () => {
+  it('keeps a slow exact 15 MiB staging request alive until it settles', async () => {
     vi.useFakeTimers()
     let resolveStaging!: (value: { id: string }) => void
     let stagingSignal: AbortSignal | undefined
@@ -2891,30 +2910,24 @@ describe('DocumentsPage', () => {
       })
 
       expect(stageUploadMutation).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        vi.advanceTimersByTime(5 * 60_000)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
       expect(stagingSignal?.aborted).toBe(false)
+      expect(toastMock.error).not.toHaveBeenCalled()
 
       await act(async () => {
-        vi.advanceTimersByTime(30_000)
+        resolveStaging({ id: 'slow-boundary-upload' })
         await Promise.resolve()
         await Promise.resolve()
       })
 
-      expect(stagingSignal?.aborted).toBe(true)
-      expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
-      expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
-      expect(screen.getByRole('listitem')).not.toHaveAttribute('aria-busy')
-
-      await act(async () => {
-        resolveStaging({ id: 'late-boundary-upload' })
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-
-      expect(discardStagedUploadMutation).toHaveBeenCalledOnce()
-      expect(discardStagedUploadMutation).toHaveBeenCalledWith('late-boundary-upload')
-      expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(discardStagedUploadMutation).not.toHaveBeenCalled()
+      expect(toastMock.error).not.toHaveBeenCalled()
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -4550,16 +4563,19 @@ describe('DocumentsPage', () => {
     ).toBeEnabled()
     await user.click(within(actions).getByRole('button', { name: 'knowledgeSpace.disableSource' }))
 
-    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
-      body: {
-        documents: [
-          { documentId: 'one', expectedRowVersion: 2 },
-          { documentId: 'two', expectedRowVersion: 4 },
-        ],
-        enabled: false,
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          documents: [
+            { documentId: 'one', expectedRowVersion: 2 },
+            { documentId: 'two', expectedRowVersion: 4 },
+          ],
+          enabled: false,
+        },
+        params: { control_space_id: 'space-1' },
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -4593,16 +4609,19 @@ describe('DocumentsPage', () => {
     })
     await user.click(within(actions).getByRole('button', { name: 'dataset.enable' }))
 
-    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
-      body: {
-        documents: [
-          { documentId: 'one', expectedRowVersion: 3 },
-          { documentId: 'two', expectedRowVersion: 7 },
-        ],
-        enabled: true,
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          documents: [
+            { documentId: 'one', expectedRowVersion: 3 },
+            { documentId: 'two', expectedRowVersion: 7 },
+          ],
+          enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -4678,10 +4697,13 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
-      body: { document_ids: ['one', 'two'] },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: { document_ids: ['one', 'two'] },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'space-1-documents.zip',
@@ -4717,10 +4739,13 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
-      body: { document_ids: ['download-only'] },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: { document_ids: ['download-only'] },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
@@ -4763,10 +4788,13 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
-      body: { document_ids: ['failed'] },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: { document_ids: ['failed'] },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'failed-documents.zip',
@@ -4853,16 +4881,19 @@ describe('DocumentsPage', () => {
     expect(bulkRemoveDocumentsMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(bulkRemoveDocumentsMutation).toHaveBeenCalledOnce()
-    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith({
-      body: {
-        documents: [
-          { documentId: 'one', expectedRevision: 2 },
-          { documentId: 'two', expectedRevision: 4 },
-        ],
+    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          documents: [
+            { documentId: 'one', expectedRevision: 2 },
+            { documentId: 'two', expectedRevision: 4 },
+          ],
+        },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1' },
       },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },

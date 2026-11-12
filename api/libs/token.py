@@ -219,7 +219,6 @@ def check_csrf_token(request: Request, user_id: str):
         verified = PassportService().verify(csrf_token)
     except Exception:
         _unauthorized()
-        raise  # unreachable, but helps the type checker see verified is always bound
 
     if verified.get("sub") != user_id:
         _unauthorized()

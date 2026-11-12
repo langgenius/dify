@@ -10,10 +10,10 @@ import { KnowledgeSpaceShell } from '../../space/shell'
 import { DocumentResultsSurface } from '../results/surface'
 import { DocumentsStateBoundary } from '../state/boundary'
 
-vi.mock('../../components/knowledge-model-readiness-banner', () => ({
-  KnowledgeModelReadinessBanner: () => null,
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/documents',
+  useSearchParams: () => new URLSearchParams(),
 }))
-vi.mock('@/next/navigation', () => ({ usePathname: () => '/datasets/new/space-1/documents' }))
 const api = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get>(),
 }))
@@ -39,6 +39,10 @@ vi.mock('@/service/console', async (importOriginal) => {
       'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': async () => ({
         data: [],
         next_cursor: null,
+      }),
+      'knowledgeFs.spaces.byControlSpaceId.settings.get': async () => ({
+        active_profile_available: false,
+        configuration_state: 'validation-failed',
       }),
     }),
   }
@@ -72,7 +76,8 @@ it.each([
     )
     const { queryClient } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: 'ENTERPRISE' },
-      knowledgeFsFeatures: { enabled: true, upload_enabled: true },
+      features: { enable_knowledge_fs: true },
+      knowledgeFsFeatures: { upload_enabled: true },
     })
     const screen = await render(
       <QueryClientTestProvider queryClient={queryClient}>
@@ -87,6 +92,7 @@ it.each([
         </QueryTestingAdapter>
       </QueryClientTestProvider>,
     )
+    await expect.element(screen.getByText('common.api.actionFailed')).toBeInTheDocument()
     const loadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
     await expect.element(loadMore).toBeInTheDocument()
     const region = page

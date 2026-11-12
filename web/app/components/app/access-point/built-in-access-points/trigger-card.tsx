@@ -20,6 +20,7 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 
 function TriggerIcon({
@@ -68,6 +69,7 @@ function TriggerAccessPointItem({
   const queryClient = useQueryClient()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },
@@ -77,8 +79,11 @@ function TriggerAccessPointItem({
             input: { params: { app_id: appId } },
           }),
         }),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )

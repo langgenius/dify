@@ -1,59 +1,21 @@
 import type { SnippetListItem } from '@/types/snippet'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createStore, Provider } from 'jotai'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { consoleQueryKey } from '@/test/console/operation-hooks'
-import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetList from '..'
 
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
-const mockQueryState = vi.hoisted(() => ({
-  creatorIDs: [] as string[],
-  keywords: '',
-  tagIDs: [] as string[],
-  publishStatus: 'all' as const,
-}))
 
+// boundary: snippet pagination stops at the snippet service hook.
 vi.mock('@/service/use-snippets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-snippets')>()),
   useInfiniteSnippetList: (params: unknown, options: unknown) =>
     mockUseInfiniteSnippetList(params, options),
 }))
 
-vi.mock('../hooks/use-snippets-query-state', () => ({
-  useSnippetsQueryState: () => ({
-    query: mockQueryState,
-    setCreatorIDs: vi.fn(),
-    setKeywords: vi.fn(),
-    setTagIDs: vi.fn(),
-    setPublishStatus: vi.fn(),
-    flush: vi.fn().mockResolvedValue(new URLSearchParams()),
-  }),
-}))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-  }))
-})
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: ['snippets.create_and_modify'],
-  }))
-})
-
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({
-    queryFn: async () => ({ profile: { id: 'creator-1' } }),
-    queryKey: consoleQueryKey('account.profile.get'),
-  }),
-}))
-
+// boundary: member and tag reads stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -68,17 +30,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+// boundary: Studio list navigation stops at the unavailable Next App Router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
-  TagManagementModal: () => null,
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
 }))
 
 const snippet: SnippetListItem = {
@@ -105,19 +60,16 @@ const expectWithinHorizontalBounds = (element: Element, container: Element) => {
 }
 
 const renderSnippetList = async () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
+  onTestFinished(guardUnexpectedFetch())
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
+    workspacePermissionKeys: ['snippets.create_and_modify'],
   })
-  queryClient.setQueryData(consoleQueryKey('account.profile.get'), { profile: { id: 'creator-1' } })
-
-  const store = createStore()
-  seedRegisteredConsoleStateFixture(store)
+  const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <Provider store={store}>
+    <ConsoleProvider>
+      <UrlState>
         <main
           aria-label="Snippet list page"
           className="flex h-dvh w-full min-w-0 flex-col overflow-hidden"
@@ -125,8 +77,8 @@ const renderSnippetList = async () => {
         >
           <SnippetList />
         </main>
-      </Provider>
-    </QueryClientProvider>,
+      </UrlState>
+    </ConsoleProvider>,
   )
 }
 
@@ -184,6 +136,16 @@ describe('Snippet list reflow', () => {
     await expect.element(search).toBeVisible()
     await expect.element(createAction).toBeVisible()
     await expect.element(card).toBeVisible()
+    await expect.poll(() => document.title).toContain('workflow.tabs.snippets')
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
+      { keyword: '', limit: 30, page: 1 },
+      { enabled: true },
+    )
+
+    await search.fill('sales')
+    await expect
+      .poll(() => mockUseInfiniteSnippetList.mock.calls.at(-1)?.[0])
+      .toEqual({ keyword: 'sales', limit: 30, page: 1 })
 
     const mainElement = main.element()
     const gridElement = card.element().closest('[aria-busy]')

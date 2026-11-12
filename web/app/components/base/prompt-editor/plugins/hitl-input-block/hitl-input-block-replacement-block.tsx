@@ -127,6 +127,7 @@ const HITLInputReplacementBlock = ({
   }, [])
 
   const getMatch = useCallback((text: string) => {
+    REGEX.lastIndex = 0
     const matchArr = REGEX.exec(text)
 
     if (matchArr === null) return null

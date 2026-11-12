@@ -3,11 +3,13 @@
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, event, text
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
+from configs import dify_config
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.rbac import locators
-from core.rbac import RBACResourceScope
+from controllers.common.rbac.checks import RBACCheck, enforce_rbac_checks
+from core.rbac import RBACPermission, RBACResourceScope
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.model import AppMode
 from tests.helpers.unit.model_factories import make_app, make_dataset, make_document
@@ -122,6 +124,78 @@ def test_app_owner_resolution_preserves_normal_app_requirement(
         identity = locators.ResourceIdentity(RBACResourceScope.APP, "app")
         assert locator.owner_id("workspace", identity) == ("owner" if normal else None)
         assert locator.owner_id("other-workspace", identity) is None
+
+
+@pytest.mark.parametrize("status", [AgentStatus.ACTIVE, AgentStatus.ARCHIVED])
+def test_agent_owner_resolution_is_workspace_scoped(rbac_domain: RBACDomain, status: AgentStatus) -> None:
+    with rbac_domain.sessions.begin() as session:
+        session.add(
+            Agent(
+                id="agent",
+                tenant_id="workspace",
+                name="Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+                created_by="owner",
+                status=status,
+            )
+        )
+    locator = locators.AgentId()
+    identity = locators.ResourceIdentity(RBACResourceScope.AGENT, "agent")
+    assert locator.owner_id("workspace", identity) == ("owner" if status == AgentStatus.ACTIVE else None)
+    assert locator.owner_id("other-workspace", identity) is None
+    assert locator.owner_id("workspace", locators.ResourceIdentity(RBACResourceScope.AGENT, "missing")) is None
+
+
+@pytest.mark.parametrize(
+    ("workspace_id", "account_id", "is_owner"),
+    [("workspace", "owner", True), ("workspace", "other", False), ("other-workspace", "owner", False)],
+)
+def test_agent_creator_bypasses_rbac_only_in_own_workspace(
+    app: Flask,
+    rbac_domain: RBACDomain,
+    monkeypatch: pytest.MonkeyPatch,
+    workspace_id: str,
+    account_id: str,
+    is_owner: bool,
+) -> None:
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    rbac_domain.transport.response = {"allowed": False}
+    with rbac_domain.sessions.begin() as session:
+        session.add(
+            Agent(
+                id="agent",
+                tenant_id="workspace",
+                name="Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+                created_by="owner",
+            )
+        )
+    with app.test_request_context():
+        if is_owner:
+            enforce_rbac_checks(
+                tenant_id=workspace_id,
+                account_id=account_id,
+                checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, locators.AgentId())],
+                path_args={"agent_id": "agent"},
+            )
+            assert not rbac_domain.transport.requests
+        else:
+            with pytest.raises(Forbidden):
+                enforce_rbac_checks(
+                    tenant_id=workspace_id,
+                    account_id=account_id,
+                    checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, locators.AgentId())],
+                    path_args={"agent_id": "agent"},
+                )
+            assert rbac_domain.transport.only_request.json == {
+                "tenant_id": workspace_id,
+                "account_id": account_id,
+                "scene": "agent_preview",
+                "resource_type": "agent",
+                "resource_id": "agent",
+            }
 
 
 @pytest.mark.parametrize("locator", [locators.DatasetByDocument(), locators.DatasetByPipeline()])

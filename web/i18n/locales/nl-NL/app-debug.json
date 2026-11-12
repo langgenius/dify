@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Generate multiple texts at once, and then edit and continue to generate",
   "feature.moreLikeThis.tip": "Using this feature will incur additional tokens overhead",
   "feature.moreLikeThis.title": "More like this",
+  "feature.showThoughts.description": "Toon het denkproces van het model in gesprekken.",
+  "feature.showThoughts.title": "Denkproces tonen",
   "feature.speechToText.description": "Voice input can be used in chat.",
   "feature.speechToText.title": "Speech to Text",
   "feature.suggestedQuestionsAfterAnswer.description": "Setting up next questions suggestion can give users a better chat.",
