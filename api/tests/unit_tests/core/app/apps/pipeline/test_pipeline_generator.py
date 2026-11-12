@@ -795,6 +795,87 @@ def test_format_datasource_info_list_online_drive_folder(generator, mocker: Mock
     assert result == [{"id": "f"}]
 
 
+def test_format_datasource_info_list_online_drive_file_preserves_credential_id(generator, mocker: MockerFixture):
+    workflow = _build_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "drive",
+                        "credential_id": "cred",
+                    },
+                }
+            ]
+        },
+    )
+
+    runtime = MagicMock()
+    runtime.runtime = SimpleNamespace(credentials=None)
+    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
+
+    mocker.patch(
+        "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
+        return_value=runtime,
+    )
+    mocker.patch.object(module.DatasourceProviderService, "get_datasource_credentials", return_value={"k": "v"})
+
+    result = generator._format_datasource_info_list(
+        DatasourceProviderType.ONLINE_DRIVE,
+        [
+            {"id": "file-1", "name": "report.txt", "bucket": "b", "credential_id": "cred-1"},
+            {"id": "file-2", "name": "notes.txt", "bucket": "b"},
+        ],
+        _build_pipeline(),
+        workflow,
+        "start",
+        _build_user(),
+    )
+
+    assert result[0]["credential_id"] == "cred-1"
+    assert result[1]["credential_id"] is None
+
+
+def test_get_files_in_folder_propagates_credential_id(generator):
+    class File:
+        def __init__(self, id, name, type):
+            self.id = id
+            self.name = name
+            self.type = type
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            return iter([Result([FilesPage([File("f1", "file1", "file")])])])
+
+    all_files = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=Runtime(),
+        prefix="root",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={"credential_id": "cred-1"},
+    )
+
+    assert all_files == [{"id": "f1", "name": "file1", "bucket": "b", "credential_id": "cred-1"}]
+
+
 def test_get_files_in_folder_recurses_and_collects(generator):
     class File:
         def __init__(self, id, name, type):
