@@ -2,9 +2,11 @@
 
 import json
 from datetime import datetime
+from inspect import unwrap
 from uuid import UUID, uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
@@ -20,6 +22,7 @@ from models.evaluation import (
     EvaluationRunStatus,
     EvaluationTargetType,
 )
+from models.model import App, AppMode
 from services.errors.base import NoPermissionError
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
@@ -29,12 +32,13 @@ from services.errors.evaluation import (
 )
 from services.evaluation_service import EvaluationService
 from services.knowledge.dataset_service import DatasetService
-from tests.helpers.unit.model_factories import make_account, make_dataset, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_app, make_dataset, make_upload_file
 
 
 def _evaluation_run(
     session: Session,
     *,
+    run_id: str = "run-1",
     target_type: EvaluationTargetType = EvaluationTargetType.APPS,
     status: EvaluationRunStatus = EvaluationRunStatus.PENDING,
     dataset_file_id: str | None = None,
@@ -50,7 +54,7 @@ def _evaluation_run(
         updated_by="account-1",
     )
     run = EvaluationRun(
-        id="run-1",
+        id=run_id,
         tenant_id="tenant-1",
         target_type=target_type,
         target_id="target-1",
@@ -332,3 +336,107 @@ def test_retry_run_reuses_owned_dataset_and_maps_errors(
             target_id="target-1",
             run_id=run.id,
         )
+
+
+def test_target_decorator_resolves_scoped_workflow_app(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = make_account()
+    app = make_app(app_id="target-1", mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    checks: list[dict[str, object]] = []
+    monkeypatch.setattr(controller, "enforce_rbac_checks", lambda **kwargs: checks.append(kwargs))
+
+    @controller.evaluation_target_required(app_permission=controller.RBACPermission.APP_VIEW_LAYOUT)
+    def view(_resource: object, session: Session, **kwargs: object) -> App:
+        assert session is sqlite_session
+        assert kwargs["target_type"] == "apps"
+        target = kwargs["target"]
+        assert isinstance(target, App)
+        return target
+
+    assert view(None, sqlite_session, evaluate_target_type="apps", evaluate_target_id=app.id) is app
+    assert checks[0]["tenant_id"] == "tenant-1"
+    assert checks[0]["path_args"] == {"evaluate_target_id": app.id}
+
+    with pytest.raises(NotFound):
+        view(None, sqlite_session, evaluate_target_type="apps", evaluate_target_id="missing")
+    with pytest.raises(NotFound):
+        view(None, sqlite_session, evaluate_target_type="invalid", evaluate_target_id=app.id)
+    with pytest.raises(TypeError):
+        view(None, object(), evaluate_target_type="apps", evaluate_target_id=app.id)
+
+    app.mode = AppMode.CHAT
+    sqlite_session.flush()
+    with pytest.raises(BadRequest, match="workflow apps"):
+        view(None, sqlite_session, evaluate_target_type="apps", evaluate_target_id=app.id)
+
+
+def test_app_read_routes_use_persisted_config_and_run(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = make_account()
+    app = make_app(app_id="target-1", mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    run = _evaluation_run(sqlite_session, run_id=str(uuid4()))
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    flask_app = Flask(__name__)
+
+    with flask_app.test_request_context("/?page=1&page_size=10"):
+        config = unwrap(controller.EvaluationDetailApi.get)(
+            controller.EvaluationDetailApi(), sqlite_session, app, "apps"
+        )
+        logs = unwrap(controller.EvaluationLogsApi.get)(controller.EvaluationLogsApi(), sqlite_session, app, "apps")
+        detail = unwrap(controller.EvaluationRunDetailApi.get)(
+            controller.EvaluationRunDetailApi(), sqlite_session, app, "apps", UUID(run.id)
+        )
+
+    assert config["evaluation_framework"] == "ragas"
+    assert logs["total"] == 1
+    assert logs["data"][0]["id"] == run.id
+    assert detail["run"]["id"] == run.id
+
+
+def test_app_cancel_retry_and_file_routes_scope_the_run(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = make_account()
+    app = make_app(app_id="target-1", mode=AppMode.WORKFLOW)
+    upload = make_upload_file(file_id=str(uuid4()), name="dataset.csv")
+    sqlite_session.add_all([app, upload])
+    run = _evaluation_run(
+        sqlite_session, run_id=str(uuid4()), status=EvaluationRunStatus.RUNNING, dataset_file_id=upload.id
+    )
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
+    monkeypatch.setattr(
+        controller.file_helpers,
+        "get_signed_file_url",
+        lambda *, upload_file_id, as_attachment: f"/download/{upload_file_id}?attachment={as_attachment}",
+    )
+
+    def retry(**_kwargs: object) -> EvaluationRun:
+        run.status = EvaluationRunStatus.PENDING
+        return run
+
+    monkeypatch.setattr(EvaluationService, "retry_evaluation_run", retry)
+    cancelled = unwrap(controller.EvaluationRunCancelApi.post)(
+        controller.EvaluationRunCancelApi(), sqlite_session, app, "apps", UUID(run.id)
+    )
+    retried = unwrap(controller.EvaluationRunRetryApi.post)(
+        controller.EvaluationRunRetryApi(), sqlite_session, app, "apps", UUID(run.id)
+    )
+    file_response = unwrap(controller.EvaluationFileDownloadApi.get)(
+        controller.EvaluationFileDownloadApi(), sqlite_session, app, "apps", UUID(upload.id)
+    )
+
+    assert cancelled["status"] == "cancelled"
+    assert retried["status"] == "pending"
+    assert file_response["id"] == upload.id
+
+
+def test_available_metrics_route_uses_selected_framework() -> None:
+    flask_app = Flask(__name__)
+    with flask_app.test_request_context("/?evaluation_framework=ragas"):
+        response = unwrap(controller.EvaluationAvailableMetricsApi.get)(controller.EvaluationAvailableMetricsApi())
+    assert "faithfulness" in response["metrics"]

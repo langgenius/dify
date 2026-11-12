@@ -20,7 +20,7 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 class _RecordingStrategy:
     """Supply a deterministic strategy and retain its invocation arguments."""
 
-    meta_version = None
+    meta_version: str | None = None
 
     def __init__(self) -> None:
         self.invocations: list[dict[str, object]] = []

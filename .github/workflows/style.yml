@@ -71,7 +71,7 @@ jobs:
 
       - name: Install dependencies
         if: inputs.run-python-style
-        run: uv sync --project api --dev
+        run: uv sync --project api --dev --group evaluation
 
       - name: Run Import Linter
         if: inputs.run-python-style
