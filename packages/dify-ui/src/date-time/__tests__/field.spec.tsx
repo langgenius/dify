@@ -224,12 +224,16 @@ it.each(families)(
       family.initial,
       expect.objectContaining({ reason: 'reset', event: expect.any(Event) }),
     )
-    expect(
-      new FormData(screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement).get(
-        'departure',
-      ),
-    ).toBe(family.serialized)
-    expect(stateOf(screen)).toMatchObject({ dirty: false, touched: false, filled: true })
+    await expect
+      .poll(() =>
+        new FormData(
+          screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement,
+        ).get('departure'),
+      )
+      .toBe(family.serialized)
+    await expect
+      .poll(() => stateOf(screen))
+      .toMatchObject({ dirty: false, touched: false, filled: true })
   },
 )
 
@@ -457,7 +461,7 @@ it.each([false, true])(
     await userEvent.tab()
     await expect.element(screen.getByRole('button', { name: 'Next field' })).toHaveFocus()
     expect(validate).toHaveBeenCalledExactlyOnceWith('2025-01-15', { departure: '2025-01-15' })
-    expect(stateOf(screen)).toMatchObject({ focused: false, touched: true })
+    await expect.poll(() => stateOf(screen)).toMatchObject({ focused: false, touched: true })
     await expect.element(screen.getByText('Choose another date.', { exact: true })).toBeVisible()
   },
 )
