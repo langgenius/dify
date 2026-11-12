@@ -10,7 +10,6 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, RootModel, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
@@ -51,12 +50,11 @@ from graphon.file import helpers as file_helpers
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
-from models import Account, App, Dataset, UploadFile
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
+from models import Account, App, Dataset
+from models.agent import Agent
 from models.evaluation import EvaluationConfiguration, EvaluationRun, EvaluationTargetType
 from models.model import AppMode
 from models.snippet import CustomizedSnippet
-from models.workflow import WorkflowKind, WorkflowType
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -325,24 +323,11 @@ def evaluation_target_required(
                     checks=[RBACCheck(app_permission, PlainApp("evaluate_target_id"))],
                     path_args={"evaluate_target_id": target_id},
                 )
-                target: EvaluationTarget | None = session.scalar(
-                    select(App).where(
-                        App.id == target_id,
-                        App.tenant_id == tenant_id,
-                        App.status == "normal",
-                    )
-                )
             elif target_type == EvaluationTargetType.SNIPPETS.value:
                 enforce_rbac_checks(
                     tenant_id=tenant_id,
                     account_id=current_user.id,
                     checks=[RBACCheck(snippet_permission, Workspace())],
-                )
-                target = session.scalar(
-                    select(CustomizedSnippet).where(
-                        CustomizedSnippet.id == target_id,
-                        CustomizedSnippet.tenant_id == tenant_id,
-                    )
                 )
             elif target_type == EvaluationTargetType.AGENTS.value:
                 enforce_rbac_checks(
@@ -351,19 +336,12 @@ def evaluation_target_required(
                     checks=[RBACCheck(agent_permission, AgentId("evaluate_target_id"))],
                     path_args={"evaluate_target_id": target_id},
                 )
-                target = session.scalar(
-                    select(Agent).where(
-                        Agent.id == target_id,
-                        Agent.tenant_id == tenant_id,
-                        Agent.scope == AgentScope.ROSTER,
-                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                        Agent.status == AgentStatus.ACTIVE,
-                        Agent.app_id.is_not(None),
-                    )
-                )
             else:
                 raise NotFound("Evaluation target not found.")
 
+            target: EvaluationTarget | None = EvaluationService.get_console_target(
+                session, tenant_id, target_type, target_id
+            )
             if target is None:
                 raise NotFound("Evaluation target not found.")
             if isinstance(target, App) and AppMode.value_of(target.mode) != AppMode.WORKFLOW:
@@ -422,7 +400,7 @@ def _load_evaluation_dataset(
     tenant_id: str,
     file_id: str,
 ) -> tuple[bytes, str]:
-    upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id))
+    upload_file = EvaluationService.get_dataset_upload_file(session, tenant_id, file_id)
     if upload_file is None:
         raise NotFound("Evaluation dataset file not found.")
     try:
@@ -989,12 +967,9 @@ class AvailableEvaluationWorkflowsApi(EvaluationEditionResource):
             named_only=query.named_only,
             keyword=query.keyword,
         )
-        app_names = {
-            app.id: app.name
-            for app in session.scalars(
-                select(App).where(App.tenant_id == tenant_id, App.id.in_({workflow.app_id for workflow in workflows}))
-            ).all()
-        }
+        app_names = EvaluationService.get_workflow_app_names(
+            session, tenant_id, {workflow.app_id for workflow in workflows}
+        )
         items = [
             {
                 "id": workflow.id,
@@ -1033,23 +1008,7 @@ class EvaluationWorkflowAssociatedTargetsApi(EvaluationEditionResource):
     @with_session(write=False)
     def get(self, session: Session, workflow_id: UUID) -> dict[str, Any]:
         _, tenant_id = current_account_with_tenant()
-        evaluator_app = session.scalar(
-            select(App).where(
-                App.id == str(workflow_id),
-                App.tenant_id == tenant_id,
-                App.status == "normal",
-            )
-        )
-        evaluator_workflow = (
-            WorkflowService().get_published_workflow(app_model=evaluator_app, session=session)
-            if evaluator_app is not None
-            else None
-        )
-        if (
-            evaluator_workflow is None
-            or evaluator_workflow.type != WorkflowType.WORKFLOW
-            or evaluator_workflow.resolved_kind != WorkflowKind.EVALUATION
-        ):
+        if EvaluationService.get_published_evaluator_workflow(session, tenant_id, str(workflow_id)) is None:
             raise NotFound("Evaluation workflow not found.")
         configs = EvaluationService.list_targets_by_customized_workflow(session, tenant_id, str(workflow_id))
 
@@ -1057,26 +1016,7 @@ class EvaluationWorkflowAssociatedTargetsApi(EvaluationEditionResource):
         for config in configs:
             ids_by_type.setdefault(config.target_type.value, set()).add(config.target_id)
 
-        names: dict[tuple[str, str], str] = {}
-        app_ids = ids_by_type.get(EvaluationTargetType.APPS.value, set())
-        if app_ids:
-            for app in session.scalars(select(App).where(App.tenant_id == tenant_id, App.id.in_(app_ids))).all():
-                names[(EvaluationTargetType.APPS.value, app.id)] = app.name
-        snippet_ids = ids_by_type.get(EvaluationTargetType.SNIPPETS.value, set())
-        if snippet_ids:
-            for snippet in session.scalars(
-                select(CustomizedSnippet).where(
-                    CustomizedSnippet.tenant_id == tenant_id,
-                    CustomizedSnippet.id.in_(snippet_ids),
-                )
-            ).all():
-                names[(EvaluationTargetType.SNIPPETS.value, snippet.id)] = snippet.name
-        dataset_ids = ids_by_type.get(EvaluationTargetType.KNOWLEDGE_BASE.value, set())
-        if dataset_ids:
-            for dataset in session.scalars(
-                select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
-            ).all():
-                names[(EvaluationTargetType.KNOWLEDGE_BASE.value, dataset.id)] = dataset.name
+        names = EvaluationService.get_associated_target_names(session, tenant_id, ids_by_type)
 
         items = [
             {

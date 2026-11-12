@@ -4,6 +4,7 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 
 from sqlalchemy import and_, exists, inspect, or_, select
@@ -898,6 +899,30 @@ class WorkflowService:
             workflow_kind=WorkflowKind.EVALUATION,
         )
 
+    def publish_evaluation_workflow_for_app(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> datetime:
+        """Publish and activate an evaluator in one transaction."""
+        with sessionmaker(db.engine).begin() as session:
+            workflow = self.publish_evaluation_workflow(
+                session=session,
+                app_model=app_model,
+                account=account,
+                marked_name=marked_name,
+                marked_comment=marked_comment,
+            )
+            app_in_session = session.get(App, app_model.id)
+            if app_in_session is not None:
+                app_in_session.workflow_id = workflow.id
+                app_in_session.updated_by = account.id
+                app_in_session.updated_at = naive_utc_now()
+            return workflow.created_at
+
     def convert_published_workflow_kind(
         self,
         *,
@@ -932,6 +957,21 @@ class WorkflowService:
         workflow.updated_at = naive_utc_now()
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
         return workflow
+
+    def convert_published_workflow_kind_for_app(
+        self, *, app_model: App, target_kind: WorkflowKind, account: Account
+    ) -> tuple[str, str, str, datetime]:
+        """Convert a published workflow kind and return its response fields."""
+        with sessionmaker(db.engine).begin() as session:
+            workflow = self.convert_published_workflow_kind(
+                session=session, app_model=app_model, target_kind=target_kind, account=account
+            )
+            return (
+                workflow.id,
+                workflow.type.value,
+                workflow.resolved_kind.value,
+                workflow.updated_at or workflow.created_at,
+            )
 
     @staticmethod
     def _validate_evaluation_workflow_nodes(workflow: Workflow) -> None:

@@ -1407,26 +1407,16 @@ class EvaluationPublishedWorkflowApi(Resource):
     def post(self, args: PublishWorkflowPayload, current_user: Account, app_model: App):
         workflow_service = WorkflowService()
         try:
-            with sessionmaker(db.engine).begin() as session:
-                workflow = workflow_service.publish_evaluation_workflow(
-                    session=session,
-                    app_model=app_model,
-                    account=current_user,
-                    marked_name=args.marked_name or "",
-                    marked_comment=args.marked_comment or "",
-                )
-                app_model_in_session = session.get(App, app_model.id)
-                if app_model_in_session:
-                    app_model_in_session.workflow_id = workflow.id
-                    app_model_in_session.updated_by = current_user.id
-                    app_model_in_session.updated_at = naive_utc_now()
-                response = {
-                    "result": "success",
-                    "created_at": TimestampField().format(workflow.created_at),
-                }
+            created_at = workflow_service.publish_evaluation_workflow_for_app(
+                app_model=app_model,
+                account=current_user,
+                marked_name=args.marked_name or "",
+                marked_comment=args.marked_comment or "",
+            )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
 
+        response = {"result": "success", "created_at": TimestampField().format(created_at)}
         return dump_response(WorkflowPublishResponse, response)
 
 
@@ -1453,25 +1443,21 @@ class WorkflowKindConvertApi(Resource):
         target_kind = WorkflowKind.EVALUATION if query.target_type == "evaluation" else WorkflowKind.STANDARD
 
         try:
-            with sessionmaker(db.engine).begin() as session:
-                workflow = WorkflowService().convert_published_workflow_kind(
-                    session=session,
-                    app_model=app_model,
-                    target_kind=target_kind,
-                    account=current_user,
-                )
-                response = {
-                    "result": "success",
-                    "workflow_id": workflow.id,
-                    "type": workflow.type.value,
-                    "kind": workflow.resolved_kind.value,
-                    "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-                }
+            workflow_id, workflow_type, kind, updated_at = WorkflowService().convert_published_workflow_kind_for_app(
+                app_model=app_model, target_kind=target_kind, account=current_user
+            )
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
 
+        response = {
+            "result": "success",
+            "workflow_id": workflow_id,
+            "type": workflow_type,
+            "kind": kind,
+            "updated_at": TimestampField().format(updated_at),
+        }
         return dump_response(WorkflowKindConvertResponse, response)
 
 

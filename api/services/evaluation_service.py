@@ -49,7 +49,7 @@ from graphon.node_events.base import NodeRunResult
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
-from models.agent import Agent
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 from models.dataset import Dataset
 from models.evaluation import (
     EvaluationConfiguration,
@@ -112,6 +112,85 @@ class EvaluationService:
     BOOLEAN_DATASET_INPUT_TYPES = {"boolean", "bool", "checkbox", "switch"}
     TRUE_DATASET_VALUES = {"true", "1", "yes", "y", "on"}
     FALSE_DATASET_VALUES = {"false", "0", "no", "n", "off"}
+
+    @staticmethod
+    def get_console_target(
+        session: Session, tenant_id: str, target_type: str, target_id: str
+    ) -> App | CustomizedSnippet | Agent | None:
+        """Resolve a tenant-scoped target after the controller enforces its RBAC policy."""
+        if target_type == EvaluationTargetType.APPS.value:
+            return session.scalar(
+                select(App).where(App.id == target_id, App.tenant_id == tenant_id, App.status == "normal")
+            )
+        if target_type == EvaluationTargetType.SNIPPETS.value:
+            return session.scalar(
+                select(CustomizedSnippet).where(
+                    CustomizedSnippet.id == target_id, CustomizedSnippet.tenant_id == tenant_id
+                )
+            )
+        if target_type == EvaluationTargetType.AGENTS.value:
+            return session.scalar(
+                select(Agent).where(
+                    Agent.id == target_id,
+                    Agent.tenant_id == tenant_id,
+                    Agent.scope == AgentScope.ROSTER,
+                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                    Agent.status == AgentStatus.ACTIVE,
+                    Agent.app_id.is_not(None),
+                )
+            )
+        return None
+
+    @staticmethod
+    def get_dataset_upload_file(session: Session, tenant_id: str, file_id: str) -> UploadFile | None:
+        return session.scalar(select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id))
+
+    @staticmethod
+    def get_workflow_app_names(session: Session, tenant_id: str, app_ids: set[str]) -> dict[str, str]:
+        if not app_ids:
+            return {}
+        apps = session.scalars(select(App).where(App.tenant_id == tenant_id, App.id.in_(app_ids))).all()
+        return {app.id: app.name for app in apps}
+
+    @staticmethod
+    def get_published_evaluator_workflow(session: Session, tenant_id: str, app_id: str) -> Workflow | None:
+        app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal"))
+        if app is None:
+            return None
+        workflow = WorkflowService().get_published_workflow(app_model=app, session=session)
+        if (
+            workflow is None
+            or workflow.type != WorkflowType.WORKFLOW
+            or workflow.resolved_kind != WorkflowKind.EVALUATION
+        ):
+            return None
+        return workflow
+
+    @staticmethod
+    def get_associated_target_names(
+        session: Session, tenant_id: str, ids_by_type: Mapping[str, set[str]]
+    ) -> dict[tuple[str, str], str]:
+        names: dict[tuple[str, str], str] = {}
+        app_ids = ids_by_type.get(EvaluationTargetType.APPS.value, set())
+        if app_ids:
+            for app in session.scalars(select(App).where(App.tenant_id == tenant_id, App.id.in_(app_ids))).all():
+                names[(EvaluationTargetType.APPS.value, app.id)] = app.name
+        snippet_ids = ids_by_type.get(EvaluationTargetType.SNIPPETS.value, set())
+        if snippet_ids:
+            for snippet in session.scalars(
+                select(CustomizedSnippet).where(
+                    CustomizedSnippet.tenant_id == tenant_id,
+                    CustomizedSnippet.id.in_(snippet_ids),
+                )
+            ).all():
+                names[(EvaluationTargetType.SNIPPETS.value, snippet.id)] = snippet.name
+        dataset_ids = ids_by_type.get(EvaluationTargetType.KNOWLEDGE_BASE.value, set())
+        if dataset_ids:
+            for dataset in session.scalars(
+                select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+            ).all():
+                names[(EvaluationTargetType.KNOWLEDGE_BASE.value, dataset.id)] = dataset.name
+        return names
 
     @classmethod
     def generate_dataset_template(
