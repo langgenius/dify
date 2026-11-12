@@ -1,11 +1,11 @@
 import type { LexicalEditor } from 'lexical'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import { $nodesOfType, COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import {
   getNodeCount,
   readEditorStateValue,
@@ -33,7 +33,7 @@ const UpdateWorkflowNodesMapPlugin = ({ onUpdate }: UpdateWorkflowNodesMapPlugin
   useEffect(() => {
     return editor.registerCommand(
       UPDATE_WORKFLOW_NODES_MAP,
-      (payload: unknown) => {
+      (payload) => {
         onUpdate(payload)
         return true
       },
@@ -255,7 +255,7 @@ describe('HITLInputBlock', () => {
     it('should throw when hitl input node is not registered on editor', () => {
       expect(() => {
         render(
-          <LexicalComposer
+          <TestLexicalComposer
             initialConfig={{
               namespace: 'hitl-input-block-plugin-missing-node-test',
               onError: (error: Error) => {
@@ -271,7 +271,7 @@ describe('HITLInputBlock', () => {
               onFormInputItemRemove={vi.fn()}
               workflowNodesMap={createWorkflowNodesMap('Map Node')}
             />
-          </LexicalComposer>,
+          </TestLexicalComposer>,
         )
       }).toThrow('HITLInputBlockPlugin: HITLInputBlock not registered on editor')
     })

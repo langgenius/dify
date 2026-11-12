@@ -63,6 +63,30 @@ class AgentAppNotFoundError(Exception):
     pass
 
 
+class AgentAppAccessNotReadyError(Exception):
+    """The Agent has no published snapshot suitable for API access."""
+
+
+@dataclass(frozen=True, slots=True)
+class AgentApiAccess:
+    """Committed, detached access state for a tenant-owned Agent App."""
+
+    app_id: str
+    access_ready: bool
+    enabled: bool
+    api_rpm: int
+    api_rph: int
+    api_key_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class AgentApiAccessChange:
+    """The resulting access state and whether the stored setting changed."""
+
+    access: AgentApiAccess
+    changed: bool
+
+
 class WorkflowSandboxAppNotFoundError(Exception):
     pass
 

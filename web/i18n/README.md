@@ -1,5 +1,7 @@
 # Internationalization
 
+Intentionally empty translations remain empty through the explicit `returnEmptyString: true` option; optional labels and sentence fragments must not display their translation keys.
+
 English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the source flat keys and placeholders. They may also add the plural variants required by their language. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
 
 The module keeps runtime code and bundled translation assets together. `#i18n` remains the conditional client/server entrypoint; `locales/` contains translation JSON only. Per-locale loaders preserve the existing dynamic-import boundaries. This layout is a project ownership convention, not an i18next requirement.
@@ -60,10 +62,10 @@ every supported locale. Missing categories can fall back to English even when
 `_one` and `_other` exist. The key checker permits language-specific variants
 of source plural families and preserves them during `--auto-remove`; their
 placeholders and tags are checked against the English `_other` variant.
-The official i18next 26.4 selector types check interpolation parameters when
-options are supplied, but still allow the entire options argument to be omitted
-in this mode. Generated types do not close that upstream gap, and plural strings
-without a `{{count}}` placeholder do not infer a required count. Always supply
+i18next 27 checks interpolation parameters even when the entire options argument
+is omitted. Labels translated without options use `I18nKeysWithoutVariables` to
+exclude messages requiring interpolation. Plural strings without a `{{count}}`
+placeholder do not infer a required count. Always supply
 the runtime `count` for plural calls. Broad `SelectorParam` annotations also
 widen the selected value to `string`; prefer inline selectors when parameter
 inference matters. See the [official TypeScript guidance] and [plural rules].

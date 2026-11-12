@@ -15,14 +15,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.utils.encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_redis import redis_client
 from models.base import TypeBase
 from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as PermissionCredentialType
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
+from services.trigger.credential_encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_provider_query
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 from tests.unit_tests.controllers.console.workspace.test_trigger_provider_query import _Daemon, _provider
