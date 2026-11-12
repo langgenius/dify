@@ -125,7 +125,12 @@ jobs:
         env:
           # Unit uploads already include all authored sources, including untested modules.
           DIFY_TEST_COVERAGE_ONLY_EXECUTED: 'true'
+          VITEST_EXP_V8_PERSISTENT: 'true'
         run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+
+      - name: Verify retained browser traces
+        if: matrix.shardIndex == 1
+        run: node test/verify-browser-traces.mjs
 
       - name: Report browser coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

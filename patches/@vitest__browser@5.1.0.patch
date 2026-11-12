@@ -1,0 +1,21 @@
+diff --git a/dist/index.js b/dist/index.js
+index 1e16ab3c79635ab487cfad025462c61c3fa9c0c4..e0b8f611d654dd07ea165f40b36339db4ced01f4 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -3564,6 +3564,7 @@ body {
+ 			// request interception serves a mocked dependency at the original URL,
+ 			// so a cached original would never reach the mock; import map mocks
+ 			// have their own URLs and keep Vite's immutable caching
++			const cacheSourceModules = immutablePrefixes.length > 0 && !parentServer.vitest.config.watch && process.env.VITEST_EXP_CACHE_MODULES !== "false";
+ 			const interceptsMocks = () => Array.from(parentServer.children).some((child) => !child.state.usesImportMaps(child.config));
+ 			server.middlewares.use((req, res, next) => {
+ 				const url = req.url;
+@@ -3572,6 +3573,8 @@ body {
+ 						pinCacheControl(res, "public,max-age=31536000,immutable");
+ 					} else if (versionRegexp.test(url) && !isOptimizedChunk(server, url) && interceptsMocks()) {
+ 						pinCacheControl(res, "no-cache");
++					} else if (cacheSourceModules && req.headers["sec-fetch-dest"] === "script" && !url.includes("mock") && !interceptsMocks()) {
++						pinCacheControl(res, "private,max-age=31536000,immutable");
+ 					}
+ 				}
+ 				next();

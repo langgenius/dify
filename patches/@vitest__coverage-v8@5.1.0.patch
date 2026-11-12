@@ -1,0 +1,66 @@
+diff --git a/dist/commands-C6w5FFZp.js b/dist/commands-C6w5FFZp.js
+index 8a1d547090dd46c42a9633c4163e2dc9fb9a3f14..38a935649f77f9259b1e8981fbf99d61f7cd6a6b 100644
+--- a/dist/commands-C6w5FFZp.js
++++ b/dist/commands-C6w5FFZp.js
+@@ -134,7 +134,26 @@ const commands = {
+ 	takeV8Coverage,
+ 	stopV8Coverage
+ };
++const persistentCoverageSessions = new WeakMap();
++function usePersistentCoverage(context) {
++	return process.env.VITEST_EXP_V8_PERSISTENT === "true" && !context.project.vitest.config.watch && !!context.provider.getCDPSession;
++}
++async function getCoverageSession(context) {
++	if (!usePersistentCoverage(context)) return context.__ensureCDPHandler();
++	let session = persistentCoverageSessions.get(context.page);
++	if (!session) {
++		session = (async () => {
++			const cdp = await context.provider.getCDPSession(context.sessionId);
++			await cdp.send("Profiler.enable");
++			await cdp.send("Profiler.startPreciseCoverage", { callCount: true, detailed: true });
++			return cdp;
++		})();
++		persistentCoverageSessions.set(context.page, session);
++	}
++	return session;
++}
+ async function startV8Coverage(context) {
++	if (usePersistentCoverage(context)) { await getCoverageSession(context); return; }
+ 	const session = await context.__ensureCDPHandler();
+ 	// Previous test file's modules must be collected, otherwise V8 reuses their compiled code without block coverage
+ 	await session.send("HeapProfiler.collectGarbage");
+@@ -145,12 +164,13 @@ async function startV8Coverage(context) {
+ 	});
+ }
+ async function stopV8Coverage(context) {
++	if (usePersistentCoverage(context)) return;
+ 	const session = await context.__ensureCDPHandler();
+ 	await session.send("Profiler.stopPreciseCoverage");
+ 	await session.send("Profiler.disable");
+ }
+ async function takeV8Coverage(context, pageUrl) {
+-	const session = await context.__ensureCDPHandler();
++	const session = await getCoverageSession(context);
+ 	const coverage = await session.send("Profiler.takePreciseCoverage");
+ 	const origin = new URL(pageUrl).origin;
+ 	const result = [];
+@@ -189,7 +209,7 @@ function filterResult(url, origin, pageUrl) {
+ 	if (url.includes("__vitest__/assets")) {
+ 		return false;
+ 	}
+-	if (url === pageUrl) {
++	if (url === pageUrl || isTesterDocument(url, pageUrl)) {
+ 		return false;
+ 	}
+ 	if (url.includes("/@id/@vitest/")) {
+@@ -201,4 +221,10 @@ function filterResult(url, origin, pageUrl) {
+ 	return true;
+ }
+ 
++function isTesterDocument(url, pageUrl) {
++	const target = new URL(url);
++	const page = new URL(pageUrl);
++	return target.pathname === page.pathname && target.searchParams.has("iframeId") && target.searchParams.get("sessionId") === page.searchParams.get("sessionId");
++}
++
+ export { commands as c, normalize as n, writeCoverageFile as w };
