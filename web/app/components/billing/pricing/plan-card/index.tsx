@@ -19,11 +19,9 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
 import { billingErrorMessageKey } from '../../billing-error'
 import { ALL_PLANS } from '../../config'
-import { useEducationDiscount } from '../../hooks/use-education-discount'
 import { CloudPlanFeatures } from './features'
 import { RollingPrice } from './rolling-price'
 
@@ -44,7 +42,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
   const isEducationDiscountEligible = billing?.isEducationDiscountEligible
   const { t } = useTranslation(['billing', 'common', 'education'])
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
+  const [pendingAction, setPendingAction] = React.useState<'plan' | 'education' | null>(null)
   const isYearly = billingInterval === 'year'
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'sandbox'
@@ -77,8 +75,6 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
   const planName = t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })
   const cycleName = (yearly: boolean) =>
     t(($) => $[yearly ? 'pricing.cycle.annual' : 'pricing.cycle.monthly'], { ns: 'billing' })
-  const openAsyncWindow = useAsyncWindowOpen()
-  const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const [confirmationOpen, setConfirmationOpen] = React.useState(false)
 
   const showPlanButton =
@@ -99,52 +95,35 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
           ? t(($) => $['plansCommon.upgradeToTeam'], { ns: 'billing' })
           : t(($) => $['plansCommon.upgradeToProfessional'], { ns: 'billing' })
 
-  const runPlanAction = async () => {
-    if (isPlanActionPending || isEducationDiscountLoading) return
+  const runPlanAction = async (action: 'plan' | 'education' = 'plan') => {
+    if (pendingAction || isPlanDisabled) return
+    if (!canManageBilling) {
+      toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
+      return
+    }
+    if (plan === 'sandbox') return
 
-    if (!billing || isPlanDisabled) return
-
-    setIsPlanActionPending(true)
+    setPendingAction(action)
     try {
-      if (!canManageBilling) {
-        toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
-        return
-      }
-      if (isCurrentPaidPlan && !needsCycleNotice) {
-        await openAsyncWindow(
-          async () => {
-            const { url } = await consoleClient.billing.invoices.get(undefined, {
-              context: { silent: true },
-            })
-            if (url) return url
-            throw new Error('Failed to open billing page')
-          },
-          {
-            onError: (error) => {
-              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
-            },
-          },
-        )
-        return
-      }
-
-      if (isFreePlan) return
-
-      if (educationOffer) {
-        await handleEducationDiscount()
-        return
-      }
-
-      const { url } = await consoleClient.billing.subscription.get(
-        { query: { plan, interval: billingInterval } },
-        { context: { silent: true } },
-      )
-      // Adb Block additional tracking block the gtag, so we need to redirect directly
+      const options = { context: { silent: true } }
+      const { url } =
+        isCurrentPaidPlan && !needsCycleNotice
+          ? await consoleClient.billing.invoices.get(undefined, options)
+          : await consoleClient.billing.subscription.get(
+              {
+                query:
+                  action === 'education'
+                    ? { plan: 'professional', interval: 'year' }
+                    : { plan, interval: billingInterval },
+              },
+              options,
+            )
+      if (!url) throw new Error('Missing billing URL')
       window.location.href = url
     } catch (error) {
       toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
-      setIsPlanActionPending(false)
+      setPendingAction(null)
     }
   }
   const confirmPlanAction = async () => {
@@ -157,7 +136,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
       variant={null}
       size={null}
       disabled={isPlanDisabled}
-      loading={!confirmationOpen && (isPlanActionPending || isEducationDiscountLoading)}
+      loading={!confirmationOpen && pendingAction !== null}
       className={cn(
         'h-auto min-h-15 w-full gap-2 rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default *:aria-hidden:size-5',
         isPrimaryAction
@@ -168,7 +147,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
         isPlanDisabled &&
           'data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-components-button-tertiary-text-disabled',
       )}
-      onClick={needsEducationNotice || needsCycleNotice ? undefined : runPlanAction}
+      onClick={needsEducationNotice || needsCycleNotice ? undefined : () => runPlanAction()}
     >
       <span className="min-w-0">{buttonLabel}</span>
     </Button>
@@ -277,7 +256,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
                 <Button
                   size="large"
                   variant="primary"
-                  loading={isPlanActionPending}
+                  loading={pendingAction === 'plan'}
                   onClick={confirmPlanAction}
                 >
                   {t(($) => $['plansCommon.manageSubscription'], { ns: 'billing' })}
@@ -288,8 +267,8 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
                 <Button
                   size="large"
                   onClick={confirmPlanAction}
-                  disabled={isEducationDiscountLoading}
-                  loading={isPlanActionPending}
+                  disabled={pendingAction === 'education'}
+                  loading={pendingAction === 'plan'}
                   className="h-auto min-h-9 w-full whitespace-normal sm:w-auto sm:min-w-38"
                 >
                   {t(($) => $['educationPricingConfirm.cancel'], { ns: 'education' })}
@@ -297,9 +276,9 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
                 <Button
                   variant="primary"
                   size="large"
-                  onClick={handleEducationDiscount}
-                  disabled={isPlanActionPending}
-                  loading={isEducationDiscountLoading}
+                  onClick={() => runPlanAction('education')}
+                  disabled={pendingAction === 'plan'}
+                  loading={pendingAction === 'education'}
                   className="h-auto min-h-9 w-full whitespace-normal sm:w-auto sm:min-w-61"
                 >
                   {t(($) => $['educationPricingConfirm.continue'], { ns: 'education' })}
