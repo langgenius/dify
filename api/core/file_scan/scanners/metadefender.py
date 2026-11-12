@@ -18,6 +18,7 @@ from core.file_scan.entities import ScanProblem, ScanProviderType, ScanTarget, S
 BASE_URL = "https://api.metadefender.com/v4"
 POLL_INTERVAL_SECONDS = 2.0
 DEFAULT_WAIT_SECONDS = 50.0
+POLL_REQUEST_TIMEOUT_SECONDS = 30.0
 
 # ``scan_results.scan_all_result_i`` codes, from OPSWAT's "Description on scan result codes".
 _CLEAN = frozenset({0, 7})
@@ -81,7 +82,9 @@ class MetaDefenderScanner(FileScanner):
         headers["filename"] = quote(target.file_name)
         if self.config.get("private_processing"):
             headers["privateprocessing"] = "1"
-        response = http_request("POST", f"{BASE_URL}/file", headers=headers, content=target.load())
+        response = http_request(
+            "POST", f"{BASE_URL}/file", timeout=self.request_timeout, headers=headers, content=target.load()
+        )
         if response.status_code == 400:
             code = _error_code(response)
             if code == _FILE_TOO_LARGE_CODE:
@@ -96,7 +99,12 @@ class MetaDefenderScanner(FileScanner):
 
     def _result(self, data_id: str) -> ScanVerdict | None:
         """Return the verdict, or ``None`` while MetaDefender is still scanning."""
-        response = http_request("GET", f"{BASE_URL}/file/{quote(data_id, safe='')}", headers=self._headers())
+        response = http_request(
+            "GET",
+            f"{BASE_URL}/file/{quote(data_id, safe='')}",
+            timeout=POLL_REQUEST_TIMEOUT_SECONDS,
+            headers=self._headers(),
+        )
         try:
             raise_for_provider_status(response)
         except ScannerError as error:

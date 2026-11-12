@@ -44,6 +44,7 @@ class ScaniiScanner(FileScanner):
         response = http_request(
             "POST",
             f"{self._base_url()}/files",
+            timeout=self.request_timeout,
             auth=self._auth(),
             files={"file": (target.file_name, target.load(), target.mime_type or "application/octet-stream")},
         )
