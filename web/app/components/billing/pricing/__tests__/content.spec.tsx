@@ -1,3 +1,4 @@
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
@@ -112,11 +113,7 @@ it('preserves a billing interval selected before education eligibility arrives',
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient, { education: { enabled: true } })
-  let resolveEducation!: (data: {
-    is_student: boolean
-    allow_refresh: boolean
-    expire_at: null
-  }) => void
+  let resolveEducation!: (data: EducationStatusResponse) => void
   const options = consoleQuery.account.education.get.queryOptions()
   const request = queryClient.query({
     ...options,
@@ -132,7 +129,13 @@ it('preserves a billing interval selected before education eligibility arrives',
   await user.click(screen.getByRole('switch'))
   await user.click(screen.getByRole('switch'))
   await act(async () => {
-    resolveEducation({ is_student: true, allow_refresh: false, expire_at: null })
+    resolveEducation({
+      is_student: true,
+      allow_refresh: false,
+      can_redeem_discount: true,
+      expire_at: null,
+      result: true,
+    })
     await request
   })
   await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
@@ -143,6 +146,7 @@ it('preserves a billing interval selected before education eligibility arrives',
     queryClient.setQueryData(options.queryKey, {
       is_student: true,
       allow_refresh: true,
+      can_redeem_discount: true,
       expire_at: null,
       result: true,
     }),
@@ -156,6 +160,7 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, {
     is_student: true,
     allow_refresh: false,
+    can_redeem_discount: true,
     result: true,
     expire_at: null,
   })
