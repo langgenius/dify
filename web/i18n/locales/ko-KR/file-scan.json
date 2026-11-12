@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "엔드포인트 URL",
   "dialog.endpointUrlDescription": "Dify가 각 파일을 이 주소로 전송하고 판정 결과를 기다립니다. 요청 형식은 도움말 문서를 참고하세요.",
   "dialog.endpointUrlInvalid": "http:// 또는 https://로 시작하는 올바른 주소를 입력하세요.",
+  "dialog.getApiKey": "{{vendor}}에서 API 키 받기",
   "dialog.name": "이름",
   "dialog.namePlaceholder": "예: 프로덕션 스캐너",
   "dialog.privateProcessing": "프라이빗 검사 사용",

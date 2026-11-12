@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "एंडपॉइंट URL",
   "dialog.endpointUrlDescription": "Dify हर फ़ाइल को इस पते पर भेजता है और जाँच के नतीजे की प्रतीक्षा करता है। अनुरोध के प्रारूप के लिए सहायता दस्तावेज़ देखें।",
   "dialog.endpointUrlInvalid": "http:// या https:// से शुरू होने वाला मान्य पता दर्ज करें।",
+  "dialog.getApiKey": "{{vendor}} से API कुंजी प्राप्त करें",
   "dialog.name": "नाम",
   "dialog.namePlaceholder": "उदाहरण के लिए, प्रोडक्शन स्कैनर",
   "dialog.privateProcessing": "निजी स्कैनिंग का उपयोग करें",

@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL do endpoint",
   "dialog.endpointUrlDescription": "O Dify envia cada arquivo para este endereço e aguarda um veredito. Consulte a documentação de ajuda para ver o formato da requisição.",
   "dialog.endpointUrlInvalid": "Insira um endereço válido que comece com http:// ou https://.",
+  "dialog.getApiKey": "Obter chave de API da {{vendor}}",
   "dialog.name": "Nome",
   "dialog.namePlaceholder": "Por exemplo, Scanner de produção",
   "dialog.privateProcessing": "Usar verificação privada",

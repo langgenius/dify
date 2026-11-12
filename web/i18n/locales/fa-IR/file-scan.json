@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "نشانی URL نقطه پایانی",
   "dialog.endpointUrlDescription": "Dify هر فایل را به این نشانی می‌فرستد و منتظر نتیجه بررسی می‌ماند. برای قالب درخواست، مستندات راهنما را ببینید.",
   "dialog.endpointUrlInvalid": "یک نشانی معتبر وارد کنید که با http:// یا https:// شروع شود.",
+  "dialog.getApiKey": "دریافت کلید API از {{vendor}}",
   "dialog.name": "نام",
   "dialog.namePlaceholder": "برای مثال: اسکنر محیط عملیاتی",
   "dialog.privateProcessing": "استفاده از اسکن خصوصی",

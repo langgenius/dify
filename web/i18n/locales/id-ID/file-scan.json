@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL endpoint",
   "dialog.endpointUrlDescription": "Dify mengirim setiap file ke alamat ini dan menunggu hasil pemeriksaan. Lihat dokumentasi bantuan untuk format permintaan.",
   "dialog.endpointUrlInvalid": "Masukkan alamat valid yang diawali dengan http:// atau https://.",
+  "dialog.getApiKey": "Dapatkan kunci API dari {{vendor}}",
   "dialog.name": "Nama",
   "dialog.namePlaceholder": "Misalnya, Pemindai produksi",
   "dialog.privateProcessing": "Gunakan pemindaian privat",

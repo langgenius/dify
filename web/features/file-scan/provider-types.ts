@@ -22,6 +22,18 @@ const PROVIDER_BRAND_NAMES: Record<Exclude<FileScanProviderType, 'api'>, string>
   metadefender: 'MetaDefender Cloud',
 }
 
+// Where each cloud vendor lets a customer create an API key.
+const PROVIDER_API_KEY_URLS: Partial<Record<FileScanProviderType, string>> = {
+  cloudmersive: 'https://portal.cloudmersive.com/keys',
+  scanii: 'https://www.scanii.com/accounts',
+  metadefender: 'https://metadefender.opswat.com/account',
+}
+
+/** The vendor page for creating an API key; ClamAV and custom endpoints have none. */
+export function fileScanProviderApiKeyUrl(type: FileScanProviderType) {
+  return PROVIDER_API_KEY_URLS[type]
+}
+
 export function isFileScanProviderType(value: string): value is FileScanProviderType {
   return FILE_SCAN_PROVIDER_TYPES.some((type) => type === value)
 }

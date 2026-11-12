@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL конечной точки",
   "dialog.endpointUrlDescription": "Dify отправляет каждый файл на этот адрес и ожидает вердикт. Формат запроса описан в справочной документации.",
   "dialog.endpointUrlInvalid": "Введите действительный адрес, начинающийся с http:// или https://.",
+  "dialog.getApiKey": "Получить API-ключ в {{vendor}}",
   "dialog.name": "Название",
   "dialog.namePlaceholder": "Например: Рабочий сканер",
   "dialog.privateProcessing": "Использовать приватную проверку",

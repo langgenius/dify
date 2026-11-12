@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "Son nöqtə URL-i",
   "dialog.endpointUrlDescription": "Dify hər faylı bu ünvana göndərir və yoxlama nəticəsini gözləyir. Sorğu formatı üçün yardım sənədlərinə baxın.",
   "dialog.endpointUrlInvalid": "http:// və ya https:// ilə başlayan etibarlı ünvan daxil edin.",
+  "dialog.getApiKey": "{{vendor}} xidmətindən API açarı alın",
   "dialog.name": "Ad",
   "dialog.namePlaceholder": "Məsələn, İstehsal skaneri",
   "dialog.privateProcessing": "Özəl skandan istifadə et",

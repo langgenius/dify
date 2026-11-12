@@ -10,6 +10,7 @@
   "dialog.endpointUrl": "URL končne točke",
   "dialog.endpointUrlDescription": "Dify vsako datoteko pošlje na ta naslov in pričakuje rezultat preverjanja. Oblika zahteve je opisana v dokumentaciji za pomoč.",
   "dialog.endpointUrlInvalid": "Vnesite veljaven naslov, ki se začne s http:// ali https://.",
+  "dialog.getApiKey": "Pridobi ključ API pri {{vendor}}",
   "dialog.name": "Ime",
   "dialog.namePlaceholder": "Na primer: Produkcijski pregledovalnik",
   "dialog.privateProcessing": "Uporabi zasebno pregledovanje",
