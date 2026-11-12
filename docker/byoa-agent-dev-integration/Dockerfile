@@ -41,7 +41,7 @@ RUN /usr/local/bin/uv pip install --python /app/api/.venv/bin/python \
 RUN /usr/local/bin/uv pip install --python /app/api/.venv/bin/python \
       --no-deps --reinstall --editable /app/packages/graphon
 
-RUN /app/api/.venv/bin/python /app/byoa-dev-integration/validate_environment.py validate
+RUN PYTHONPATH=/app/api /app/api/.venv/bin/python /app/byoa-dev-integration/validate_environment.py validate
 ENV MIGRATION_ENABLED=false
 USER dify
 WORKDIR /app/api
