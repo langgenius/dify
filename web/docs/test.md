@@ -25,6 +25,8 @@ The unit coverage report includes authored JavaScript and TypeScript throughout 
 
 Run the full `unit` project before using coverage to identify untested modules. A focused run measures only the selected tests. CI collects Browser Mode coverage separately and combines it with unit coverage under the same Codecov `web` flag. Zero unit coverage does not imply that Browser Mode or E2E never exercises the file; E2E does not contribute to the coverage report. Anonymous VM scripts and subprocesses can also execute code without attributing coverage to its source file. Check existing tests and separate product modules from development tooling when prioritizing the findings.
 
+Browser CI sets `DIFY_TEST_COVERAGE_ONLY_EXECUTED=true` so its report includes loaded source files without generating zero-coverage entries for every other Web module. The unit uploads retain the complete authored-source denominator, and Codecov combines both reports. Leave this variable unset when collecting the full unit diagnostic report.
+
 ## Choose the Right Boundary
 
 Use the smallest boundary that includes the behavior owner and proves the product contract without coupling the test to implementation:
@@ -120,6 +122,7 @@ Put `// boundary: <reason>` immediately above each retained owned-path or otherw
 
 - Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
 - Browser string locators use Vitest 5's exact, case-sensitive matching; use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; in Browser Mode, `toHaveTextContent` checks the entire normalized text, while `toMatchTextContent` handles substring or regular-expression checks, including negated partial checks.
+- Browser Mode omits dependency sourcemaps and the Playwright trace screenshot filmstrip. Application sourcemaps, mapped error stacks, failure screenshots, and DOM snapshots in retained traces remain available. Pass `--browser.dependencySourcemaps` when debugging into third-party dependencies.
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Keep one behavior domain per Browser spec and split suites near 500 lines. Scope fixtures and mocks to the file that uses them; extract only genuinely shared, side-effect-free presets.
 - Browser failures keep screenshots under `web/.vitest-browser/`. Playwright traces are disabled locally to avoid large disk usage; CI retains traces on failure and uploads that directory only when failure artifacts exist. Browser Mode does not own coverage or report merging.
