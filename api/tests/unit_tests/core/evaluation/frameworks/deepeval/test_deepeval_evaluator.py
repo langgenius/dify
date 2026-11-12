@@ -3,12 +3,15 @@ from contextlib import contextmanager
 
 import pytest
 
+from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator
 from core.evaluation.entities.config_entity import DeepEvalConfig
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     AgentToolCall,
     EvaluationCategory,
     EvaluationItemInput,
+    EvaluationItemResult,
+    EvaluationMetric,
 )
 from core.evaluation.frameworks.deepeval.deepeval_evaluator import (
     DeepEvalComponents,
@@ -89,6 +92,15 @@ def test_supported_metrics_use_native_deepeval_coverage() -> None:
     assert evaluator.metric_requires_embeddings("answer_relevancy") is False
     assert evaluator.metric_requires_expected_output("answer_correctness") is True
     assert evaluator.metric_requires_expected_output("context_relevance") is False
+    assert evaluator.get_supported_metrics(EvaluationCategory.WORKFLOW) == [
+        "faithfulness",
+        "answer_relevancy",
+        "answer_correctness",
+    ]
+    assert evaluator.get_supported_metrics(EvaluationCategory.SNIPPET) == evaluator.get_supported_metrics(
+        EvaluationCategory.WORKFLOW
+    )
+    assert evaluator.get_supported_metrics(EvaluationCategory.KNOWLEDGE_BASE) == []
 
 
 def test_metric_factory_always_injects_dify_model_and_score_only_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -291,3 +303,71 @@ def test_argument_correctness_without_tool_calls_is_not_applicable(monkeypatch: 
     assert results[0].metrics[0].name == "argument_correctness"
     assert results[0].metrics[0].value is None
     assert results[0].metrics[0].details["status"] == "not_applicable"
+
+
+def test_agent_evaluation_merges_native_judge_and_deepeval_metric(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        AgentLLMJudgeEvaluator,
+        "evaluate",
+        lambda *_args: [EvaluationItemResult(index=4, metrics=[EvaluationMetric(name="task_completion", value=0.8)])],
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components", _fake_components
+    )
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+
+    result = evaluator.evaluate_agent(
+        [
+            AgentEvaluationItem(
+                index=4,
+                inputs={"task": "Find Paris"},
+                output="Paris",
+                tool_calls=[AgentToolCall(name="search", arguments={"query": "Paris"})],
+            )
+        ],
+        ["task_completion", "argument_correctness"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert [(metric.name, metric.value) for metric in result.metrics] == [
+        ("task_completion", 0.8),
+        ("argument_correctness", 0.875),
+    ]
+
+
+def test_non_finite_deepeval_score_is_a_row_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components", _fake_components
+    )
+    monkeypatch.setattr(_FakeMetric, "measure", lambda *_args, **_kwargs: float("nan"))
+
+    result = DeepEvalEvaluator(DeepEvalConfig()).evaluate_retrieval(
+        [EvaluationItemInput(index=2, inputs={"query": "What?"}, output="Paris")],
+        ["context_relevance", "unsupported_metric"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.metrics == []
+    assert "non-finite score" in (result.error or "")
+    assert "unsupported_metric" in (result.error or "")
+
+
+def test_agent_test_case_requires_agent_input() -> None:
+    with pytest.raises(TypeError, match="AgentEvaluationItem"):
+        _build_test_case(
+            EvaluationItemInput(index=1, inputs={"task": "hello"}, output="Paris"),
+            EvaluationCategory.AGENT,
+            _fake_components(),
+        )

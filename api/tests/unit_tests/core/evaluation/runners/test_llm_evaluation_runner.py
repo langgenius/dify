@@ -5,7 +5,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
     NodeInfo,
 )
-from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
+from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner, _extract_llm_output
 from graphon.node_events import NodeRunResult
 from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 
@@ -75,3 +75,42 @@ def test_llm_runner_strips_inline_reasoning_from_evaluation_output() -> None:
     items = evaluation_instance.llm_items
     assert items[0].output == "Dify is an LLM application platform."
     assert results[0].actual_output == "Dify is an LLM application platform."
+
+
+def test_llm_runner_serializes_multimodal_prompts_and_structured_output() -> None:
+    evaluation_instance = CapturingEvaluationInstance()
+    runner = LLMEvaluationRunner(evaluation_instance)
+    metric = DefaultMetric(metric="answer_correctness", node_info_list=[])
+
+    assert runner.evaluate_metrics([], metric, "provider", "model", "tenant") == []
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                process_data={
+                    "prompts": [
+                        {
+                            "role": "system",
+                            "text": ["Follow the context:", {"text": "<context>ground truth</context>"}],
+                        },
+                        {"text": [{"image": "asset-id"}, {"text": "What is the answer?"}]},
+                    ]
+                },
+                outputs={"structured_output": {"answer": "你好"}},
+            )
+        ],
+        default_metric=metric,
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant",
+    )
+
+    item = evaluation_instance.llm_items[0]
+    assert item.context == ["ground truth"]
+    assert "system: Follow the context:\n<context>ground truth</context>" in item.inputs["prompt"]
+    assert 'unknown: {"image": "asset-id"}' in item.inputs["prompt"]
+    assert item.output == '{"answer": "你好"}'
+
+
+def test_llm_runner_handles_answer_fallback_and_absent_output() -> None:
+    assert _extract_llm_output({"answer": "fallback"}) == "fallback"
+    assert _extract_llm_output({}) == ""

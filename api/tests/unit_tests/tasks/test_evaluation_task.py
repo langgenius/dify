@@ -319,6 +319,63 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
     assert persisted == [results]
 
 
+def test_customized_metric_runner_maps_filtered_rows_to_original_positions(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    persisted: list[list[EvaluationItemResult]] = []
+    monkeypatch.setattr(
+        "tasks.evaluation_task._persist_results",
+        lambda _session, _lease, results, *_args: persisted.append(results),
+    )
+    evaluator_task_ids: list[str] = []
+
+    def evaluate_customized(**kwargs: object) -> list[EvaluationItemResult]:
+        mappings = kwargs["node_run_result_mapping_list"]
+        assert isinstance(mappings, list)
+        assert len(mappings) == 1
+        task_id_factory = kwargs["task_id_factory"]
+        assert callable(task_id_factory)
+        evaluator_task_ids.append(task_id_factory(0))
+        return [EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="score", value=0.9)])]
+
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", evaluate_customized)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            evaluation_workflow_version_id="evaluator-version",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[
+            EvaluationDatasetInput(index=10, inputs={"prompt": "missing"}),
+            EvaluationDatasetInput(index=20, inputs={"prompt": "present"}),
+        ],
+    )
+
+    results = _execute_evaluation_runner(
+        sqlite_session,
+        run_data,
+        CapturingEvaluationInstance(),
+        [{}, {"llm": NodeRunResult(outputs={"text": "answer"})}],
+        _lease(run_data.evaluation_run_id),
+        task_positions=[5, 7],
+        report_progress=False,
+    )
+
+    assert evaluator_task_ids == [_workflow_task_id("run-1", "evaluator", 7)]
+    assert results[0].error == "Target execution produced no successful node results for this row."
+    assert results[1].index == 20
+    assert results[1].metrics[0].value == 0.9
+    assert persisted == [results]
+
+
 _NODE_INFO = NodeInfo(node_id="llm-1", type="llm", title="Answer")
 _EXECUTION_TOKEN = "40000000-0000-0000-0000-000000000001"
 
@@ -1100,6 +1157,91 @@ def test_resume_workflow_rows_reuses_target_checkpoint(
     assert runner_calls[0]["workflow_run_id_map"] == {7: "30000000-0000-0000-0000-000000000091"}
     assert runner_calls[0]["task_positions"] == [0]
     assert runner_calls[0]["lease"] == lease
+
+
+def test_resume_workflow_rows_checkpoints_new_targets_and_persists_row_errors(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000102"
+    lease = _lease(run_id)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="answer_relevancy", node_info_list=[_NODE_INFO])],
+        input_list=[
+            EvaluationDatasetInput(index=7, inputs={"prompt": "first"}),
+            EvaluationDatasetInput(index=9, inputs={"prompt": "second"}),
+        ],
+    )
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id=run_data.tenant_id,
+                target_type=EvaluationTargetType.APPS,
+                target_id=run_data.target_id,
+                target_workflow_version_id=run_data.target_workflow_version_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=lease.token,
+                total_items=2,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    cleared_task_ids: list[str] = []
+    monkeypatch.setattr(
+        "core.app.apps.execution_coordinator.clear_app_task_cancellation_signals",
+        lambda task_id: cleared_task_ids.append(task_id),
+    )
+
+    def execute_targets(**kwargs: object) -> tuple[list[dict[str, NodeRunResult]], list[str | None], list[str | None]]:
+        callback = kwargs["result_callback"]
+        progress = kwargs["progress_callback"]
+        assert callable(callback)
+        assert callable(progress)
+        assert kwargs["task_positions"] == [0, 1]
+        success = {"llm-1": NodeRunResult(outputs={"text": "answer"})}
+        callback(0, success, "workflow-run-7", None)
+        progress(1, 2)
+        callback(1, {}, None, "provider unavailable")
+        progress(2, 2)
+        return [success, {}], ["workflow-run-7", None], [None, "provider unavailable"]
+
+    monkeypatch.setattr(EvaluationService, "execute_targets", execute_targets)
+    evaluator = CapturingEvaluationInstance(
+        llm_result_factory=lambda items: [
+            EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="answer_relevancy", value=0.8)])
+            for _item in items
+        ]
+    )
+    with sqlite_session_factory() as session:
+        _resume_workflow_rows(session, run_data, evaluator, lease)
+
+    with sqlite_session_factory() as session:
+        checkpoints = session.scalars(
+            select(EvaluationRunItem)
+            .where(EvaluationRunItem.evaluation_run_id == run_id)
+            .order_by(EvaluationRunItem.item_index)
+        ).all()
+        assert [checkpoint.status for checkpoint in checkpoints] == [
+            EvaluationRunItemStatus.COMPLETED,
+            EvaluationRunItemStatus.COMPLETED,
+        ]
+        assert checkpoints[0].workflow_run_id == "workflow-run-7"
+        assert checkpoints[0].metrics_list[0]["value"] == 0.8
+        assert checkpoints[1].error == "Target execution failed: provider unavailable"
+    assert cleared_task_ids == [
+        _workflow_task_id(run_id, "target", 0),
+        _workflow_task_id(run_id, "target", 1),
+    ]
 
 
 def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(

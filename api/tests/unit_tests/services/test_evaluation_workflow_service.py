@@ -117,6 +117,21 @@ def test_ordinary_publish_preserves_active_evaluation_kind(sqlite_session: Sessi
     assert kind == WorkflowKind.EVALUATION
 
 
+def test_publish_kind_uses_explicit_request_or_standard_default(sqlite_session: Session) -> None:
+    app = App(id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.WORKFLOW)
+
+    assert (
+        WorkflowService._resolve_publish_workflow_kind(
+            session=sqlite_session, app_model=app, requested_kind=WorkflowKind.EVALUATION
+        )
+        == WorkflowKind.EVALUATION
+    )
+    assert (
+        WorkflowService._resolve_publish_workflow_kind(session=sqlite_session, app_model=app, requested_kind=None)
+        == WorkflowKind.STANDARD
+    )
+
+
 def test_list_evaluation_workflows_returns_only_each_apps_active_version(sqlite_session: Session) -> None:
     tenant_id = str(uuid4())
     app_id = str(uuid4())
@@ -268,7 +283,10 @@ def test_convert_published_workflow_kind_updates_only_active_version(
         app_id=app_id,
         kind=WorkflowKind.STANDARD,
         version="2",
-        nodes=[{"id": "end", "data": {"type": BuiltinNodeTypes.END, "outputs": [{"variable": "score"}]}}],
+        nodes=[
+            {"id": "unknown", "data": {"type": 17}},
+            {"id": "end", "data": {"type": BuiltinNodeTypes.END, "outputs": [{"variable": "score"}]}},
+        ],
     )
     historical = _workflow(
         workflow_id=str(uuid4()), tenant_id=tenant_id, app_id=app_id, kind=WorkflowKind.STANDARD, version="1"
@@ -311,4 +329,17 @@ def test_convert_published_workflow_kind_rejects_missing_active_version(sqlite_s
             app_model=app,
             target_kind=WorkflowKind.EVALUATION,
             account=make_account(account_id=str(uuid4())),
+        )
+
+
+def test_convert_published_workflow_kind_rejects_invalid_kind(sqlite_session: Session) -> None:
+    app = App(id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.WORKFLOW)
+    service = WorkflowService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
+
+    with pytest.raises(ValueError, match="target_kind must be either"):
+        service.convert_published_workflow_kind(
+            session=sqlite_session,
+            app_model=app,
+            target_kind=WorkflowKind.SNIPPET,
+            account=make_account(),
         )

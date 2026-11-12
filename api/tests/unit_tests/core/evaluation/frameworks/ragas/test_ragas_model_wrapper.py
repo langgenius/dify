@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompt_values import ChatPromptValue, StringPromptValue
 
 from core.entities.embedding_type import EmbeddingInputType
+from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 
@@ -107,6 +108,22 @@ def test_dify_model_wrapper_rounds_ragas_temperature_for_plugin(
             wrapper = wrapper_module.DifyModelWrapper("provider", "model", "tenant")
 
             model_instance = _LLMModel()
+            assembly = PluginModelAssembly(tenant_id="tenant", user_id=None)
+            model_requests: list[dict[str, object]] = []
+
+            def get_model_instance(**kwargs: object) -> _LLMModel:
+                model_requests.append(kwargs)
+                return model_instance
+
+            monkeypatch.setattr(assembly.model_manager, "get_model_instance", get_model_instance)
+            monkeypatch.setattr(
+                "core.plugin.impl.model_runtime_factory.create_plugin_model_manager",
+                lambda **_kwargs: assembly.model_manager,
+            )
+            assert wrapper._get_model_instance() is model_instance
+            assert model_requests == [
+                {"tenant_id": "tenant", "provider": "provider", "model_type": "llm", "model": "model"}
+            ]
             monkeypatch.setattr(wrapper, "_get_model_instance", lambda: model_instance)
 
             generated = wrapper.generate_text(StringPromptValue(text="judge this"), n=2, temperature=0.743)
@@ -180,3 +197,14 @@ def test_dify_embeddings_wrapper_uses_default_model_and_provider_batch_size(
         (["query"], EmbeddingInputType.QUERY),
         (["semantic"], EmbeddingInputType.DOCUMENT),
     ]
+
+    assert wrapper.embed_documents([]) == []
+    run_config = object()
+    wrapper.set_run_config(run_config)
+    assert wrapper.run_config is run_config
+    assert asyncio.run(wrapper.embed_text("plain", is_async=False)) == [5.0, 1.0]
+    assert asyncio.run(wrapper.embed_texts(["one", "two"], is_async=False)) == [[3.0, 1.0], [3.0, 1.0]]
+    assert asyncio.run(wrapper.embed_texts(["three"], is_async=True)) == [[5.0, 1.0]]
+    assert asyncio.run(wrapper.aembed_query("async")) == [5.0, 1.0]
+    monkeypatch.setattr(model_instance.model_type_instance, "get_model_schema", lambda *_args: None)
+    assert DifyEmbeddingsWrapper._max_batch_size(model_instance) == 1

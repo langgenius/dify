@@ -339,3 +339,77 @@ def test_agent_evaluation_merges_native_judge_and_reference_metrics(monkeypatch:
     assert [metric.name for metric in results[0].metrics] == ["task_completion", "tool_call_accuracy"]
     assert [metric.value for metric in results[0].metrics] == [0.8, 1.0]
     assert "unsupported_metric" in (results[0].error or "")
+
+
+def test_ragas_agent_metric_rejects_non_finite_reference_score(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = RagasEvaluator(RagasConfig())
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.ragas.ragas_evaluator._load_ragas_agent_components",
+        _fake_agent_components,
+    )
+    monkeypatch.setattr(_FakeToolCallAccuracy, "multi_turn_score", lambda *_args: float("inf"))
+
+    result = evaluator.evaluate_agent(
+        [
+            AgentEvaluationItem(
+                index=3,
+                inputs={"task": "Check the weather"},
+                output="Sunny",
+                tool_calls=[AgentToolCall(name="weather", arguments={"city": "Paris"})],
+                expected_tool_calls=[AgentToolCall(name="weather", arguments={"city": "Paris"})],
+            )
+        ],
+        ["tool_call_accuracy"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.metrics == []
+    assert "non-finite score" in (result.error or "")
+
+
+def test_ragas_rejects_agent_metric_with_no_supported_evaluator() -> None:
+    with pytest.raises(ValueError, match="does not support any requested Agent metrics"):
+        RagasEvaluator(RagasConfig()).evaluate_agent([], ["unsupported_metric"], "provider", "model", "tenant")
+
+
+def test_ragas_metric_loader_reports_missing_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing_metrics() -> None:
+        raise ImportError("ragas unavailable")
+
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.ragas.ragas_evaluator._import_ragas_metrics_module", missing_metrics
+    )
+
+    with pytest.raises(RuntimeError, match="not installed in the evaluation worker"):
+        RagasEvaluator._build_ragas_metrics(["faithfulness"], object())
+
+
+def test_ragas_category_calls_use_tenant_scoped_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = RagasEvaluator(RagasConfig())
+    categories: list[EvaluationCategory] = []
+
+    def evaluate_with_ragas(
+        items: list[EvaluationItemInput],
+        metrics: list[str],
+        model_wrapper: object,
+        embeddings_wrapper: object,
+        category: EvaluationCategory,
+    ) -> list[EvaluationItemResult]:
+        assert items[0].output == "answer"
+        assert metrics == evaluator.get_supported_metrics(category)
+        assert vars(model_wrapper)["model_provider"] == "provider"
+        assert vars(model_wrapper)["model_name"] == "model"
+        assert vars(model_wrapper)["tenant_id"] == "tenant"
+        assert vars(embeddings_wrapper)["tenant_id"] == "tenant"
+        categories.append(category)
+        return [EvaluationItemResult(index=0, actual_output="answer")]
+
+    monkeypatch.setattr(evaluator, "_evaluate_with_ragas", evaluate_with_ragas)
+    items = [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer")]
+
+    assert evaluator.evaluate_llm(items, [], "provider", "model", "tenant")[0].actual_output == "answer"
+    assert evaluator.evaluate_retrieval(items, [], "provider", "model", "tenant")[0].actual_output == "answer"
+    assert evaluator.evaluate_workflow(items, [], "provider", "model", "tenant")[0].actual_output == "answer"
+    assert categories == [EvaluationCategory.LLM, EvaluationCategory.RETRIEVAL, EvaluationCategory.WORKFLOW]

@@ -22,6 +22,7 @@ from core.evaluation.agent.agent_judge_evaluator import (
     _strict_judge_json_schema,
     _task_completion_payload,
     _tool_argument_batch_schema,
+    _tool_argument_payload,
     _tool_selection_payload,
     _validated_success_criteria_assessments,
     _weighted_score,
@@ -585,6 +586,109 @@ def test_tool_selection_payload_excludes_arguments_and_tool_schemas() -> None:
     assert "Paris" not in serialized
     assert "input_schema" not in serialized
     assert payload["tool_selection_events"][0]["selected_tool_ref"] == "weather"
+
+
+def test_tool_selection_payload_binds_observations_before_each_call() -> None:
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Look up the weather twice."},
+        output="Sunny",
+        available_tools=[AgentToolDefinition(tool_ref="weather/weather", name="weather")],
+        trajectory=AgentTrajectory(
+            source="legacy",
+            steps=[
+                AgentTrajectoryStep(
+                    step_id="first-result", sequence=1, step_type="tool_result", content="Paris: sunny"
+                ),
+                AgentTrajectoryStep(
+                    step_id="second-call",
+                    sequence=2,
+                    step_type="tool_call",
+                    tool_call_id="call-2",
+                    tool_ref="weather/weather",
+                ),
+                AgentTrajectoryStep(step_id="second-error", sequence=3, step_type="error", error="timeout"),
+                AgentTrajectoryStep(
+                    step_id="third-call",
+                    sequence=4,
+                    step_type="tool_call",
+                    tool_call_id="call-3",
+                    tool_ref="weather/weather",
+                ),
+            ],
+        ),
+    )
+
+    events = _tool_selection_payload(item)["tool_selection_events"]
+
+    assert [event["tool_call_id"] for event in events] == ["call-2", "call-3"]
+    assert [step["step_id"] for step in events[0]["preceding_observations"]] == ["first-result"]
+    assert [step["step_id"] for step in events[1]["preceding_observations"]] == ["first-result", "second-error"]
+
+
+def test_tool_argument_payload_marks_calls_without_visible_schema_unassessable() -> None:
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Check the weather."},
+        output="Done",
+        tool_calls=[
+            AgentToolCall(name="unknown", call_id="call-1"),
+            AgentToolCall(name="weather", call_id="call-2"),
+        ],
+        available_tools=[AgentToolDefinition(tool_ref="weather/weather", name="weather", schema_available=False)],
+    )
+
+    payload, assessable_ids, warnings = _tool_argument_payload(item)
+
+    assert payload["tool_calls"] == []
+    assert assessable_ids == []
+    assert len(warnings) == 2
+    assert "could not be matched" in warnings[0]
+    assert "no captured model-visible input schema" in warnings[1]
+
+
+@pytest.mark.parametrize(
+    ("metric", "available_tools", "tool_calls", "expected_status", "expected_error"),
+    [
+        ("tool_selection_correctness", [], [], "not_applicable", None),
+        ("tool_selection_correctness", None, [], None, "runtime tool snapshot is missing"),
+        ("tool_argument_correctness", None, [AgentToolCall(name="weather")], None, "runtime tool snapshot is missing"),
+        ("trajectory_quality", [], [], None, "normalized Agent trajectory is missing"),
+    ],
+)
+def test_agent_judge_preconditions_return_row_local_results(
+    monkeypatch: pytest.MonkeyPatch,
+    metric: str,
+    available_tools: list[AgentToolDefinition] | None,
+    tool_calls: list[AgentToolCall],
+    expected_status: str | None,
+    expected_error: str | None,
+) -> None:
+    def unexpected_judge(*_args: object) -> None:
+        pytest.fail("A precondition failure must not invoke the judge model")
+
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", unexpected_judge)
+    result = AgentLLMJudgeEvaluator().evaluate(
+        [
+            AgentEvaluationItem(
+                index=3,
+                inputs={"task": "Check the weather."},
+                output="Done",
+                tool_calls=tool_calls,
+                available_tools=available_tools,
+            )
+        ],
+        [metric],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.index == 3
+    if expected_status is not None:
+        assert result.metrics[0].details["status"] == expected_status
+    if expected_error is not None:
+        assert expected_error in (result.error or "")
 
 
 def test_agent_judge_sanitizer_redacts_secrets_and_truncates_large_values() -> None:
