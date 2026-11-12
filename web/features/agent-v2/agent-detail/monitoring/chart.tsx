@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { I18nKeysWithoutVariables } from '@/types/i18n'
 import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import dayjs from 'dayjs'
@@ -14,13 +14,13 @@ import { formatToLocalTime } from '@/utils/format'
 import { buildChartOptions, getChartValueField, getTokenSummary } from './chart-utils'
 
 type AgentMonitoringChartProps = {
-  titleKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
-  explanationKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
+  titleKey: I18nKeysWithoutVariables<'agentV2', 'agentDetail.monitoring.'>
+  explanationKey: I18nKeysWithoutVariables<'agentV2', 'agentDetail.monitoring.'>
   summaryValue: string
   rows: AgentMonitoringChartRow[]
   chartType: AgentMonitoringChartType
   valueKey?: string
-  unitKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
+  unitKey?: I18nKeysWithoutVariables<'agentV2', 'agentDetail.monitoring.'>
   yMaxWhenEmpty: number
 }
 

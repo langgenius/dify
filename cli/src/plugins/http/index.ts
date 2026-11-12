@@ -1,6 +1,8 @@
+import type { FormData, RequestInit } from 'undici'
 import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
+import { fetch, Headers } from 'undici'
 import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'

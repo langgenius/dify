@@ -37,8 +37,8 @@ export class RequestURLBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedLexicalNode {
     return {
+      ...super.exportJSON(),
       type: 'request-url-block',
-      version: 1,
     }
   }
 

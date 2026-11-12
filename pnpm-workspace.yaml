@@ -34,10 +34,9 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
-  # tsrs 0.18 is published by the oxc-project GitHub Actions trusted publisher
-  # with provenance. pnpm still reports a downgrade against earlier releases of
-  # the same package name.
-  - tsrs@0.18.0-ts7.1.0-dev.20260929
+  # tsrs is published by oxc-project GitHub Actions with npm provenance; pnpm
+  # reports a downgrade against the historical publisher of this package name.
+  - tsrs@0.24.0-ts7.1.0-beta
 verifyDepsBeforeRun: install
 packages:
   - web
@@ -47,16 +46,34 @@ packages:
   - cli
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
-  '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  # Inspector terminals are unused; click-to-source does not need a native PTY.
+  '@code-inspector/core@2.0.9>node-pty:optional': '-'
+  # Upgrade public matcher APIs; glob 13 still needs RegExp internals until its v14 upgrade.
+  '@eslint/config-array>minimatch': 11.0.7
+  # Keep docgen's provenance-verified release while updating its glob implementation.
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>glob': 14.0.4
+  # Keep Streamdown's math renderer aligned with the application's KaTeX stylesheet.
+  '@streamdown/math@1.0.3>katex': 0.19.1
+  '@tsslint/cli>minimatch': 11.0.7
+  '@tsslint/config>minimatch': 11.0.7
+  '@tsslint/core>minimatch': 11.0.7
+  '@typescript-eslint/typescript-estree>minimatch': 11.0.7
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  eslint-plugin-no-barrel-files>minimatch: 11.0.7
+  eslint>minimatch: 11.0.7
   fflate@>=0.7.0 <0.7.5: 0.7.5
   # Keep Vitest's optional DOM peer aligned with Web so browser matcher types augment one Vitest instance.
   happy-dom: 'catalog:'
+  # The ESM SVG importer uses the unchanged synchronous APIs; tools v5 removes extract-zip.
+  iconify-import-svg>@iconify/tools: 5.0.14
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.3.1: ^4.3.2
+  # micromark math still declares vulnerable KaTeX 0.16; verify its HTML compiler separately.
+  micromark-extension-math>katex: 0.18.10
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
+  'rehype-katex@7.0.1>katex': 0.19.1
   rollup@>=4.0.0 <4.59.0: 4.63.5
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
@@ -80,32 +97,32 @@ catalog:
   '@date-fns/tz': 1.5.0
   '@daypicker/react': 10.0.2
   '@egoist/tailwindcss-icons': 1.9.2
-  '@eslint-react/eslint-plugin': 5.28.8
+  '@eslint-react/eslint-plugin': 5.30.1
   '@eslint/markdown': 8.0.3
   '@floating-ui/react': 0.27.20
-  '@formatjs/intl-localematcher': 0.9.0
+  '@formatjs/intl-localematcher': 0.10.1
   '@heroicons/react': 2.2.0
   '@hey-api/openapi-ts': 0.99.0
   '@hono/node-server': 2.1.6
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/logos': 1.2.19
   '@iconify-json/ri': 1.2.10
-  '@lexical/code': 0.47.0
-  '@lexical/link': 0.47.0
-  '@lexical/list': 0.47.0
-  '@lexical/react': 0.47.0
-  '@lexical/selection': 0.47.0
-  '@lexical/text': 0.47.0
-  '@lexical/utils': 0.47.0
+  '@lexical/code-core': 0.53.0
+  '@lexical/link': 0.53.0
+  '@lexical/list': 0.53.0
+  '@lexical/react': 0.53.0
+  '@lexical/selection': 0.53.0
+  '@lexical/text': 0.53.0
+  '@lexical/utils': 0.53.0
   '@mediabunny/mp3-encoder': 1.65.2
   '@monaco-editor/react': 4.7.0
-  '@napi-rs/keyring': 1.3.0
+  '@napi-rs/keyring': 2.1.2
   '@orpc/client': 1.16.2
   '@orpc/contract': 1.16.2
   '@orpc/openapi-client': 1.16.2
   '@orpc/standard-server': 1.16.2
   '@orpc/tanstack-query': 1.16.2
-  '@pierre/highlights': 0.3.0
+  '@pierre/highlights': 0.5.1
   '@playwright/test': 1.65.0
   '@remixicon/react': 4.9.0
   # Keep v10 for self-hosted Sentry compatibility; v11 requires server >=26.4.2 (#43035).
@@ -130,7 +147,7 @@ catalog:
   '@tanstack/form-core': 1.33.5
   '@tanstack/query-core': 5.107.1
   '@tanstack/react-form': 1.33.5
-  '@tanstack/react-hotkeys': 0.17.0
+  '@tanstack/react-hotkeys': 0.23.1
   '@tanstack/react-query': 5.107.1
   '@tanstack/react-virtual': 3.14.26
   '@testing-library/dom': 10.4.2
@@ -164,10 +181,10 @@ catalog:
   axe-core: 4.14.0
   bowser: 2.15.0
   c12: 4.0.0-rc.4
-  chokidar: 5.0.0
+  chokidar: 6.0.0
   class-variance-authority: 0.7.1
   cn: 0.5.2
-  code-inspector-plugin: 1.6.6
+  code-inspector-plugin: 2.0.9
   concurrently: 10.0.7
   copy-to-clipboard: 4.0.2
   cron-parser: 5.10.4
@@ -185,12 +202,12 @@ catalog:
   es-toolkit: 1.53.2
   eslint: 10.14.0
   eslint-config-flat-gitignore: 2.4.0
-  eslint-markdown: 0.20.0
+  eslint-markdown: 0.21.0
   eslint-plugin-antfu: 3.3.1
   eslint-plugin-better-tailwindcss: 4.11.0
   eslint-plugin-jsdoc: 65.4.5
   eslint-plugin-jsonc: 3.4.2
-  eslint-plugin-markdown-preferences: 0.42.0
+  eslint-plugin-markdown-preferences: 0.43.0
   eslint-plugin-n: 18.5.0
   eslint-plugin-no-barrel-files: 2.3.0
   eslint-plugin-perfectionist: 5.13.0
@@ -206,7 +223,7 @@ catalog:
   hono: 4.13.17
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  i18next: 26.7.2
+  i18next: 27.1.1
   i18next-resources-for-ts: 2.1.2
   i18next-resources-to-backend: 1.2.4
   iconify-import-svg: 0.2.0
@@ -219,16 +236,16 @@ catalog:
   js-yaml: 5.5.0
   jsonc-eslint-parser: 3.3.0
   jsonschema: 1.5.0
-  katex: 0.18.10
+  katex: 0.19.1
   knip: 6.45.0
   ky: 2.2.0
-  lexical: 0.47.0
+  lexical: 0.53.0
   lockfile: 1.0.4
   loro-crdt: 1.17.1
   mediabunny: 1.65.2
   mime: 4.1.2
   mitt: 3.0.1
-  motion: 13.5.1
+  motion: 14.12.0
   negotiator: 1.1.0
   next: 16.4.6
   next-themes: 0.4.6
@@ -244,7 +261,7 @@ catalog:
   react: 19.3.1
   react-dom: 19.3.1
   react-easy-crop: 6.2.5
-  react-i18next: 17.1.13
+  react-i18next: 18.0.1
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.3.1
@@ -264,12 +281,12 @@ catalog:
   svgo: 4.1.0
   tailwindcss: 4.3.5
   tldts: 7.4.21
-  tsrs: 0.18.0-ts7.1.0-dev.20260929
+  tsrs: 0.24.0-ts7.1.0-beta
   # JavaScript Compiler API for codegen/lint/i18n tools; type checks still use tsrs.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Compiler API tools require TS 6; the mapper uses TS 7.1.
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
-  undici: 7.30.2
+  undici: 8.12.4
   unist-util-visit: 5.2.0
   use-context-selector: 2.0.0
   uuid: 14.0.3
@@ -277,9 +294,9 @@ catalog:
   vinext: 1.4.5
   # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
-  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.6.0
   vite-plugin-inspect: 12.1.0
-  vite-plus: 1.5.0
+  vite-plus: 1.6.0
   vitest: 5.1.0
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
