@@ -204,7 +204,7 @@ class ApiBasedToolSchemaParser:
 
             bundles.append(
                 ApiToolBundle(
-                    server_url=server_url + interface["path"],
+                    server_url=server_url.rstrip("/") + interface["path"],
                     method=interface["method"],
                     summary=interface["operation"]["description"]
                     if "description" in interface["operation"]
