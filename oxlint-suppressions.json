@@ -4685,11 +4685,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/nodes/knowledge-retrieval-v2/components/add-knowledge-space.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/knowledge-retrieval-v2/components/knowledge-space-list.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
