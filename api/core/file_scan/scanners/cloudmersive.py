@@ -35,6 +35,7 @@ class CloudmersiveScanner(FileScanner):
 
     provider_type: ClassVar[ScanProviderType] = ScanProviderType.CLOUDMERSIVE
     credential_fields: ClassVar[tuple[str, ...]] = ("api_key",)
+    destination_fields: ClassVar[tuple[str, ...]] = ("endpoint",)
 
     @classmethod
     @override

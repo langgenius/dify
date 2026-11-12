@@ -557,6 +557,8 @@ class _CheckedScanner(_Scanner):
     checks: ClassVar[int] = 0
     fail_with: ClassVar[Exception | None] = None
     credential_fields: ClassVar[tuple[str, ...]] = ("api_key",)
+    destination_fields: ClassVar[tuple[str, ...]] = ("endpoint",)
+    seen_credentials: ClassVar[list[dict[str, str]]] = []
 
     def __init__(self, credentials: Mapping[str, str], config: Mapping[str, object]) -> None:
         super().__init__(ScanVerdict.clean())
@@ -572,6 +574,7 @@ class _CheckedScanner(_Scanner):
     @override
     def check(self) -> None:
         type(self).checks += 1
+        type(self).seen_credentials.append(dict(self.credentials))
         failure = type(self).fail_with
         if failure is not None:
             raise failure
@@ -580,6 +583,7 @@ class _CheckedScanner(_Scanner):
 @pytest.fixture
 def checked_scanner(monkeypatch: pytest.MonkeyPatch) -> type[_CheckedScanner]:
     _CheckedScanner.checks = 0
+    _CheckedScanner.seen_credentials.clear()
     _CheckedScanner.fail_with = None
     classes = {**provider_module.SCANNER_CLASSES, ScanProviderType.CLOUDMERSIVE: _CheckedScanner}
     monkeypatch.setattr(provider_module, "SCANNER_CLASSES", classes)
@@ -759,3 +763,40 @@ def test_dataset_scope_exists_only_for_a_dataset_of_the_workspace(
     assert policies.dataset_scope(tenant_id=TENANT_ID, dataset_id=dataset_id) == ScanScope("dataset", dataset_id)
     assert policies.dataset_scope(tenant_id=OTHER_TENANT_ID, dataset_id=dataset_id) is None
     assert policies.dataset_scope(tenant_id=TENANT_ID, dataset_id="99999999-9999-4999-8999-999999999999") is None
+
+
+def test_stored_key_is_never_sent_to_a_new_address_unless_it_is_entered_again(
+    sqlite_session_factory: sessionmaker[Session], checked_scanner: type[_CheckedScanner]
+) -> None:
+    providers = FileScanProviderService(sqlite_session_factory)
+    created = providers.create(
+        tenant_id=TENANT_ID,
+        account_id=ACCOUNT_ID,
+        name="Scanner",
+        provider_type="cloudmersive",
+        config={"endpoint": "https://vendor.example"},
+        credentials={"api_key": "stored-secret"},
+    )
+    checked_scanner.seen_credentials.clear()
+
+    with pytest.raises(FileScanValidationError, match="Enter the credentials again"):
+        providers.update(tenant_id=TENANT_ID, provider_id=created.id, config={"endpoint": "https://collector.example"})
+    with pytest.raises(FileScanValidationError, match="Enter the credentials again"):
+        providers.update(tenant_id=TENANT_ID, provider_id=created.id, config={})
+
+    # No connectivity check ran, so the stored key went nowhere, and nothing was saved.
+    assert checked_scanner.seen_credentials == []
+    assert providers.list(tenant_id=TENANT_ID)[0].config == {"endpoint": "https://vendor.example"}
+
+    # The same address, or a new address together with a newly entered key, is accepted.
+    providers.update(
+        tenant_id=TENANT_ID, provider_id=created.id, name="Renamed", config={"endpoint": "https://vendor.example"}
+    )
+    moved = providers.update(
+        tenant_id=TENANT_ID,
+        provider_id=created.id,
+        config={"endpoint": "https://other.example"},
+        credentials={"api_key": "new-secret"},
+    )
+    assert moved.config == {"endpoint": "https://other.example"}
+    assert checked_scanner.seen_credentials[-1] == {"api_key": "new-secret"}

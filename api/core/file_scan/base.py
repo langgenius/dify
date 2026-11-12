@@ -47,6 +47,12 @@ class FileScanner(ABC):
     provider_type: ClassVar[ScanProviderType]
     credential_fields: ClassVar[tuple[str, ...]] = ()
     """Names of secret settings. They are stored encrypted and never returned to the console."""
+    destination_fields: ClassVar[tuple[str, ...]] = ()
+    """Names of settings that decide where the credentials are sent.
+
+    Changing one of them requires entering the credentials again; otherwise an administrator who
+    cannot read a stored key could point the scanner at their own server and collect it.
+    """
 
     def __init__(self, credentials: Mapping[str, str], config: Mapping[str, Any]) -> None:
         self.credentials = credentials
