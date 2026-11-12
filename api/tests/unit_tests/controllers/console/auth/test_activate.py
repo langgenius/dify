@@ -1,6 +1,7 @@
 """Transport-boundary tests for account invitation activation."""
 
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,7 +69,7 @@ class TestActivateCheckApi:
         app: Flask,
         activation_service: AccountActivationService,
     ) -> None:
-        activation_service.check.return_value = ActivationCheckResult(
+        cast(MagicMock, activation_service.check).return_value = ActivationCheckResult(
             is_valid=True,
             data=ActivationCheckData(
                 workspace_name="Test Workspace",
@@ -99,7 +100,7 @@ class TestActivateCheckApi:
                 "requires_setup": True,
             },
         }
-        activation_service.check.assert_called_once_with(
+        cast(MagicMock, activation_service.check).assert_called_once_with(
             InvitationLookup(
                 workspace_id="workspace-123",
                 email="invitee@example.com",
@@ -108,7 +109,7 @@ class TestActivateCheckApi:
         )
 
     def test_omits_data_for_invalid_invitation(self, app: Flask, activation_service: AccountActivationService) -> None:
-        activation_service.check.return_value = ActivationCheckResult(is_valid=False)
+        cast(MagicMock, activation_service.check).return_value = ActivationCheckResult(is_valid=False)
 
         with (
             app.test_request_context("/activate/check?token=invalid-token"),
@@ -133,7 +134,7 @@ class TestActivateCheckApi:
         ):
             ActivateCheckApi().get()
 
-        activation_service.check.assert_not_called()
+        cast(MagicMock, activation_service.check).assert_not_called()
 
 
 class TestActivateApi:
@@ -170,7 +171,7 @@ class TestActivateApi:
             response = ActivateApi().post()
 
         assert response == {"result": "success"}
-        activation_service.activate.assert_called_once_with(
+        cast(MagicMock, activation_service.activate).assert_called_once_with(
             ActivationCommand(
                 invitation=InvitationLookup(
                     workspace_id="workspace-123",
@@ -201,7 +202,7 @@ class TestActivateApi:
             response = ActivateApi().post()
 
         assert response == {"result": "success"}
-        activation_service.activate.assert_called_once_with(
+        cast(MagicMock, activation_service.activate).assert_called_once_with(
             ActivationCommand(invitation=InvitationLookup(workspace_id=None, email=None, token="valid-token")),
             authenticated_account_id=None,
         )
@@ -223,7 +224,7 @@ class TestActivateApi:
         service_error: Exception,
         http_error: type[Exception],
     ) -> None:
-        activation_service.activate.side_effect = service_error
+        cast(MagicMock, activation_service.activate).side_effect = service_error
 
         with (
             app.test_request_context("/activate", method="POST", json={"token": "invalid-token"}),
@@ -250,4 +251,4 @@ class TestActivateApi:
             ActivateApi().post()
 
         extract_token.assert_not_called()
-        activation_service.activate.assert_not_called()
+        cast(MagicMock, activation_service.activate).assert_not_called()
