@@ -98,6 +98,11 @@ class MCPTool(Tool):
         # Extract usage metadata from MCP protocol's _meta field
         self._latest_usage = self._derive_usage_from_result(result)
 
+        # MCP reports tool execution failures in-band: the call succeeds at the protocol
+        # level, isError is set, and content describes the failure.
+        if result.isError:
+            raise ToolInvokeError(self._error_message_from_result(result))
+
         # handle dify tool output
         for content in result.content:
             match content:
@@ -128,6 +133,12 @@ class MCPTool(Tool):
                 yield self.create_variable_message(k, v)
         elif result.structuredContent:
             yield self.create_json_message(result.structuredContent)
+
+    def _error_message_from_result(self, result: CallToolResult) -> str:
+        details = [content.text for content in result.content if isinstance(content, TextContent) and content.text]
+        if details:
+            return "\n".join(details)
+        return f"MCP tool {self.entity.identity.name} reported an error without details"
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage]:
         """Process text content and yield appropriate messages."""
