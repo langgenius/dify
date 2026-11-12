@@ -44,10 +44,12 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
+from repositories.agent_roster_queries import load_reference_counts_by_agent_id
 from repositories.agent_roster_repository import list_invite_options_in_session
 from repositories.agent_version_queries import visible_version_operations
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_queries import load_app_backing_agents_by_app_id
+from repositories.app.console_repository import ConsoleAppRepository
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
@@ -66,13 +68,13 @@ from services.agent.roster_service import AgentRosterService
 from services.agent.version_store import AgentVersionUnavailableError
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
-from services.app_service import AppListParams, AppService
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
     ComposerSaveStrategy,
     ComposerVariant,
 )
+from services.entities.app_entities import AppListParams
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_workflow
 
 
@@ -3969,7 +3971,7 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
         )
 
 
-def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_roster_list_and_invite_options(sqlite_session: Session) -> None:
     session = sqlite_session
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     updated_at = datetime(2026, 1, 3, 3, 4, 5, tzinfo=UTC)
@@ -4038,11 +4040,12 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_
         revision=1,
         operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
     )
-    session.add_all([agent, unconfigured_agent, version, unconfigured_version, workflow_row, binding, publish_revision])
+    app = _app(app_id=workflow_row.app_id)
+    session.add_all(
+        [agent, unconfigured_agent, version, unconfigured_version, workflow_row, binding, publish_revision, app]
+    )
     session.commit()
     service = AgentRosterService(session)
-    monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
-    monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {"agent-1": 1})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
     invited = list_invite_options_in_session(
@@ -4317,9 +4320,7 @@ def test_reference_counts_include_draft_and_published_bindings_once_per_app(sqli
     stale_workflow.version = "current-version"
     session.add_all([*bindings, app_one, app_two, draft_workflow, published_workflow, stale_workflow])
     session.commit()
-    service = AgentRosterService(session)
-
-    result = service._load_reference_counts_by_agent_id(tenant_id="tenant-1", agent_ids=["agent-1"])
+    result = load_reference_counts_by_agent_id(session, tenant_id="tenant-1", agent_ids=["agent-1"])
 
     assert result == {"agent-1": 1}
 
@@ -4798,14 +4799,18 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
 
 
 def test_app_list_all_excludes_agent_apps_by_default(sqlite_session: Session):
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="all"), sqlite_session)
+    filters = ConsoleAppRepository._build_app_list_filters(
+        "account-1", "tenant-1", AppListParams(mode="all"), sqlite_session
+    )
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "apps.mode != :mode_1" in sql
 
 
 def test_app_list_agent_mode_requires_visible_roster_backing_agent(sqlite_session: Session):
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="agent"), sqlite_session)
+    filters = ConsoleAppRepository._build_app_list_filters(
+        "account-1", "tenant-1", AppListParams(mode="agent"), sqlite_session
+    )
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "EXISTS" in sql

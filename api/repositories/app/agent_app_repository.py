@@ -13,10 +13,8 @@ from machinery.context import RequestContext
 from models.agent import AgentConfigDraftType
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
-from repositories.agent_roster_repository import (
-    load_published_references_by_agent_id,
-    load_reference_counts_by_agent_id,
-)
+from repositories.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent_roster_repository import load_published_references_by_agent_id
 from repositories.app.agent_app_queries import (
     get_app_backing_agent,
     get_roster_agent_app,

@@ -111,10 +111,10 @@ from services.app.agent_app_contracts import (
     AgentAppNameConflictError,
     AgentAppNotFoundError,
 )
-from services.app_service import AppListParams, AppResponseView, CreateAppParams
+from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
-from services.entities.app_entities import UpdateAppParams
+from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
