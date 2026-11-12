@@ -217,12 +217,12 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
                 try:
                     with use_plugin_daemon_request_timeout(_DEEPEVAL_METRIC_TIMEOUT_SECONDS):
                         measured_score = metric.measure(test_case, _show_indicator=False)
-                    score = getattr(metric, "score", measured_score)
+                    score = metric.score if metric.score is not None else measured_score
                     numeric_score = float(score)
                     if not math.isfinite(numeric_score):
                         raise ValueError(f"DeepEval returned a non-finite score: {score}")
                     details: dict[str, Any] = {}
-                    reason = getattr(metric, "reason", None)
+                    reason = metric.reason
                     if reason:
                         details["reason"] = str(reason)
                     metrics.append(EvaluationMetric(name=canonical_name, value=numeric_score, details=details))

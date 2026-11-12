@@ -443,8 +443,9 @@ class AgentLLMJudgeEvaluator:
         serialized_assessments: list[dict[str, Any]] = []
         warnings = [*payload_warnings, *sanitization_warnings]
         evidence_step_ids: list[str] = []
+        batch_outputs = judge_output.model_dump()
         for key, call in indexed_calls:
-            call_output = cast(ToolArgumentJudgeOutput, getattr(judge_output, key))
+            call_output = ToolArgumentJudgeOutput.model_validate(batch_outputs[key])
             assessment = ToolCallArgumentAssessment(
                 tool_call_id=str(call["tool_call_id"]),
                 tool_ref=str(call["tool_ref"]),
@@ -767,10 +768,39 @@ def _bounded_trajectory_steps(steps: Sequence[AgentTrajectoryStep]) -> list[Agen
 
 
 def _weighted_score(criteria: BaseModel, weights: Mapping[str, float]) -> float:
+    if isinstance(criteria, TaskCompletionCriteria):
+        assessments = {
+            "goal_satisfaction": criteria.goal_satisfaction,
+            "correctness_and_evidence_consistency": criteria.correctness_and_evidence_consistency,
+            "completeness": criteria.completeness,
+        }
+    elif isinstance(criteria, TrajectoryQualityCriteria):
+        assessments = {
+            "progress_and_coherence": criteria.progress_and_coherence,
+            "efficiency": criteria.efficiency,
+            "observation_usage": criteria.observation_usage,
+            "error_recovery": criteria.error_recovery,
+        }
+    elif isinstance(criteria, ToolSelectionCriteria):
+        assessments = {
+            "required_capability_coverage": criteria.required_capability_coverage,
+            "selected_tool_fit": criteria.selected_tool_fit,
+            "irrelevant_selection_avoidance": criteria.irrelevant_selection_avoidance,
+        }
+    elif isinstance(criteria, ToolArgumentCriteria):
+        assessments = {
+            "schema_conformance": criteria.schema_conformance,
+            "required_parameter_coverage": criteria.required_parameter_coverage,
+            "semantic_value_correctness": criteria.semantic_value_correctness,
+            "context_consistency": criteria.context_consistency,
+        }
+    else:
+        raise TypeError(f"Unsupported judge criteria: {type(criteria).__name__}")
+
     weighted_total = 0.0
     applicable_weight = 0.0
     for criterion_name, weight in weights.items():
-        criterion = cast(CriterionAssessment, getattr(criteria, criterion_name))
+        criterion = assessments[criterion_name]
         if not criterion.applicable:
             continue
         assert criterion.score is not None
