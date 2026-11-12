@@ -33,6 +33,8 @@ from core.evaluation.entities.evaluation_entity import (
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig, JudgmentResult
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
+from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
+from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -276,6 +278,52 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
     assert persisted == [results]
 
 
+def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fails(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_metric(_items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
+        raise RuntimeError("judge unavailable")
+
+    def fail_customized(**_kwargs: object) -> list[EvaluationItemResult]:
+        raise RuntimeError("evaluator unavailable")
+
+    persisted: list[list[EvaluationItemResult]] = []
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", fail_customized)
+    monkeypatch.setattr(
+        "tasks.evaluation_task._persist_results", lambda _session, _lease, results, *_args: persisted.append(results)
+    )
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[DefaultMetric(metric="answer_relevancy", node_info_list=[_NODE_INFO])],
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            evaluation_workflow_version_id="evaluator-version",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+    )
+
+    results = _execute_evaluation_runner(
+        sqlite_session,
+        run_data,
+        CapturingEvaluationInstance(llm_result_factory=fail_metric),
+        [{"llm-1": NodeRunResult(outputs={"text": "answer"})}],
+        _lease("run-1"),
+    )
+
+    assert "judge unavailable" in (results[0].error or "")
+    assert "evaluator unavailable" in (results[0].error or "")
+    assert persisted == [results]
+
+
 def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -411,6 +459,7 @@ def test_merge_and_stamp_results_use_dataset_indices() -> None:
         42,
         EvaluationItemResult(index=42, metrics=[EvaluationMetric(name="answer_correctness", value=0.8)]),
     )
+    _stamp_and_merge([EvaluationItemResult(index=5, error="extra result")], [42], _NODE_INFO, results_by_index)
 
     assert [metric.name for metric in results_by_index[42].metrics] == [
         "faithfulness",
@@ -421,6 +470,15 @@ def test_merge_and_stamp_results_use_dataset_indices() -> None:
 
 def test_create_runner_supports_agent_category() -> None:
     assert isinstance(_create_runner(EvaluationCategory.AGENT, CapturingEvaluationInstance()), AgentEvaluationRunner)
+    assert isinstance(_create_runner(EvaluationCategory.LLM, CapturingEvaluationInstance()), LLMEvaluationRunner)
+    assert isinstance(
+        _create_runner(EvaluationCategory.RETRIEVAL, CapturingEvaluationInstance()), RetrievalEvaluationRunner
+    )
+    assert isinstance(
+        _create_runner(EvaluationCategory.KNOWLEDGE_BASE, CapturingEvaluationInstance()), RetrievalEvaluationRunner
+    )
+    with pytest.raises(ValueError, match="Unsupported evaluation category"):
+        _create_runner(EvaluationCategory.WORKFLOW, CapturingEvaluationInstance())
 
 
 def test_customized_results_remap_positional_indices() -> None:
