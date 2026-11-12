@@ -90,22 +90,36 @@ it('fails on missing emitted files instead of reporting false savings', async ()
   await rm(join(root, 'dist/client/lazy.js'))
   await expect(collect(root, sha)).rejects.toThrow('ENOENT')
 })
-it('measures feature client references using source paths instead of generated wrapper hashes', async () => {
+it('groups feature client references by source path and counts their shared chunks once', async () => {
   const analysis = graph()
   const featureModule = {
     path: 'features/new-rag/quality/page.tsx',
     size: 6,
-    importers: [1],
+    importers: [1, 3],
   }
   analysis.modules = [
     analysis.modules[0]!,
     { path: '\\0virtual:vinext-client-reference-module/abcd/page', size: 4 },
     featureModule,
+    { path: '\\0virtual:vinext-client-reference-module/efgh/page', size: 9 },
   ]
-  const result = await collect(await fixture(analysis), sha)
-  expect(result.entries['dynamic-entry: features/new-rag/quality/page.tsx']).toEqual({
-    raw: 15,
-    gzip: gzipSync('lazy').length + gzipSync('shared').length + gzipSync('entry').length,
+  analysis.chunks.push({
+    name: 'reference.js',
+    size: 9,
+    type: 'dynamic-entry',
+    entryModule: 3,
+    imports: [{ type: 'static', targetChunkIndex: 1 }],
+  })
+  const root = await fixture(analysis)
+  await writeFile(join(root, 'dist/client/reference.js'), 'reference')
+  const result = await collect(root, sha)
+  expect(result.entries['client-reference: features/new-rag/quality/page.tsx']).toEqual({
+    raw: 24,
+    gzip:
+      gzipSync('lazy').length +
+      gzipSync('reference').length +
+      gzipSync('shared').length +
+      gzipSync('entry').length,
   })
   expect(Object.keys(result.entries).some((key) => key.includes('abcd'))).toBe(false)
 })

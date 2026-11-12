@@ -121,11 +121,13 @@ export async function collect(appDirectory: string, commit: string): Promise<Sna
   }
   await visit(join(client, '_next/static'))
   const entries: Record<string, Size> = Object.create(null)
+  const entryChunks = new Map<string, Set<number>>()
   for (const [index, chunk] of analysis.chunks.entries()) {
     if (chunk.entryModule === undefined || chunk.type === 'common') continue
     const entryModule = chunk.entryModule
     let source = analysis.modules[entryModule]!.path
-    if (source.includes('virtual:vinext-client-reference-module/')) {
+    const clientReference = source.includes('virtual:vinext-client-reference-module/')
+    if (clientReference) {
       source =
         analysis.modules.find(
           (module) =>
@@ -140,11 +142,14 @@ export async function collect(appDirectory: string, commit: string): Promise<Sna
       !source.includes('virtual:vinext-app-browser-entry')
     )
       continue
-    const key = `${chunk.type}: ${source}`
-    if (Object.hasOwn(entries, key)) throw new Error(`Duplicate entry: ${key}`)
-    entries[key] = await sumFiles(
-      [...staticClosure(analysis, index)].map((i) => analysis.chunks[i]!.name),
-    )
+    const key = `${clientReference ? 'client-reference' : chunk.type}: ${source}`
+    const chunks = entryChunks.get(key) ?? new Set<number>()
+    if (entryChunks.has(key) && !clientReference) throw new Error(`Duplicate entry: ${key}`)
+    for (const dependency of staticClosure(analysis, index)) chunks.add(dependency)
+    entryChunks.set(key, chunks)
+  }
+  for (const [key, chunks] of entryChunks) {
+    entries[key] = await sumFiles([...chunks].map((i) => analysis.chunks[i]!.name))
   }
   if (!Object.keys(entries).length) throw new Error('No application entries in Rolldown analysis.')
   const packages: Record<string, number> = Object.create(null)
