@@ -106,14 +106,9 @@ async function tap(target: Locator) {
 it('keeps a tapped explanation readable until an outside tap', async () => {
   await openPricing()
   await page.viewport(390, 844)
-  await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: true })
-  try {
-    const runs = page.getByRole('button', { name: '500 app runs / month' })
-    await tap(runs)
-    await expect.element(page.getByText(billing['pricing.runs.tooltip'])).toBeVisible()
-    await tap(page.getByRole('heading', { name: 'Dify Cloud' }))
-    await expect.element(page.getByText(billing['pricing.runs.tooltip'])).not.toBeInTheDocument()
-  } finally {
-    await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: false })
-  }
+  const runs = page.getByRole('button', { name: '500 app runs / month' })
+  await tap(runs)
+  await expect.element(page.getByText(billing['pricing.runs.tooltip'])).toBeVisible()
+  await tap(page.getByRole('heading', { name: 'Dify Cloud' }))
+  await expect.element(page.getByText(billing['pricing.runs.tooltip'])).not.toBeInTheDocument()
 })
