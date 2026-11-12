@@ -266,7 +266,7 @@ function ImagePreviewer(props: ImagePreviewerProps) {
       disablePointerDismissal
     >
       <DialogPortal>
-        <ImagePreviewerContent {...props} />
+        <ImagePreviewerContent key={JSON.stringify(props.images.map(image => image.url))} {...props} />
       </DialogPortal>
     </Dialog>
   )
