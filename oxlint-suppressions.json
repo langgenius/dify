@@ -1630,11 +1630,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/roster-reference-block/component.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2895,11 +2890,6 @@
   "web/app/components/plugins/marketplace/creator-profile/view.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/plugins/marketplace/description/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 20
     }
   },
   "web/app/components/plugins/marketplace/empty/index.tsx": {
@@ -6137,11 +6127,6 @@
   "web/features/new-rag/overview/overview-inventory.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/features/new-rag/overview/overview-metrics.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/features/new-rag/quality/quality-row-menu-trigger.tsx": {

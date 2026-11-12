@@ -25662,6 +25662,7 @@ Rate limit exceeded
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | allow_refresh | boolean |  | Yes |
+| can_redeem_discount | boolean | Whether the account can redeem its education discount in the current verification period. | Yes |
 | expire_at | integer |  | Yes |
 | is_student | boolean |  | Yes |
 | result | boolean |  | Yes |
