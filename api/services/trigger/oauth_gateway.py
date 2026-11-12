@@ -129,11 +129,7 @@ class PluginTriggerOAuthGateway:
 
 
 class OAuthProxyContextGateway:
-    """Retain the shared proxy format so in-flight callbacks survive deployment.
-
-    TODO: Migrate the shared proxy owner to atomic consumption for all plugin
-    OAuth callers; its existing GET/DELETE pair does not exclude concurrent replay.
-    """
+    """Retain the shared proxy format so in-flight callbacks survive deployment."""
 
     max_age: int = OAuthProxyService.__MAX_AGE__
 
