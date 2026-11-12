@@ -6,6 +6,7 @@ workflow-node agent binding, and service delegation for the new config surface.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -55,7 +56,7 @@ _MOD = "controllers.console.app.agent_config_inspector"
 app = Flask(__name__)
 
 
-def _raw(method):
+def _raw(method: Callable[..., object]):  # pyrefly: ignore[unannotated-return]
     return unwrap(method)
 
 
@@ -74,7 +75,7 @@ _USER = Account(name="User", email="user@example.com")
 _USER.id = "acct-1"
 
 
-def test_resolve_bound_agent_uses_injected_session(unbound_session: Session):
+def test_resolve_bound_agent_uses_injected_session(unbound_session: Session) -> None:
     session = unbound_session
     resolver = MagicMock(return_value="agent-1")
     app_model = App(
@@ -95,7 +96,7 @@ def test_resolve_bound_agent_uses_injected_session(unbound_session: Session):
     assert resolver.call_args.kwargs["session"] is session
 
 
-def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session):
+def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session) -> None:
     raw = _raw(AgentConfigManifestByAgentApi.get)
     with app.test_request_context("/?draft_type=debug_build"):
         with (
@@ -107,9 +108,9 @@ def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session
             config_service.return_value.manifest.return_value = {
                 "agent_id": "agent-1",
                 "config_version": {"id": "build-draft-1", "kind": "build_draft", "writable": True},
-                "skills": {"items": []},
-                "files": {"items": []},
-                "env_keys": [],
+                "skills": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
+                "files": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
+                "env_keys": [],  # pyrefly: ignore[implicit-any-empty-container]
                 "note": "",
             }
             body = raw(AgentConfigManifestByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1")
@@ -118,7 +119,7 @@ def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session
     assert config_service.return_value.manifest.call_args.kwargs["config_version_kind"].value == "build_draft"
 
 
-def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session: Session):
+def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session: Session) -> None:
     raw = _raw(AgentConfigManifestApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
@@ -127,9 +128,9 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session:
             config_service.return_value.manifest.return_value = {
                 "agent_id": "wf-agent-9",
                 "config_version": {"id": "draft-1", "kind": "draft", "writable": True},
-                "skills": {"items": []},
-                "files": {"items": []},
-                "env_keys": [],
+                "skills": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
+                "files": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
+                "env_keys": [],  # pyrefly: ignore[implicit-any-empty-container]
                 "note": "",
             }
             body = raw(AgentConfigManifestApi(), unbound_session, _USER, _APP)
@@ -215,7 +216,7 @@ def test_config_write_prepares_draft_before_independent_service_session(sqlite_s
     assert commits == ["commit"]
 
 
-def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Session):
+def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Session) -> None:
     raw = _raw(AgentConfigSkillInspectByAgentApi.get)
     with app.test_request_context("/"):
         with (
@@ -242,7 +243,7 @@ def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Se
                     "binary": False,
                     "text": "# PDF Toolkit\nUse it.\n",
                 },
-                "warnings": [],
+                "warnings": [],  # pyrefly: ignore[implicit-any-empty-container]
             }
             response = raw(
                 AgentConfigSkillInspectByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1", "pdf-toolkit"
@@ -252,7 +253,7 @@ def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Se
     assert b"PDF Toolkit" in response.get_data()
 
 
-def test_file_preview_api_passes_through_and_maps_errors(unbound_session: Session):
+def test_file_preview_api_passes_through_and_maps_errors(unbound_session: Session) -> None:
     raw = _raw(AgentConfigFilePreviewApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
@@ -281,7 +282,7 @@ def test_file_preview_api_passes_through_and_maps_errors(unbound_session: Sessio
     assert body["code"] == "config_file_not_found"
 
 
-def test_skill_upload_by_agent_delegates_after_version_resolution(unbound_session: Session):
+def test_skill_upload_by_agent_delegates_after_version_resolution(unbound_session: Session) -> None:
     raw = _raw(AgentConfigSkillUploadByAgentApi.post)
     with app.test_request_context("/?draft_type=debug_build"):
         with (
@@ -306,7 +307,7 @@ def test_skill_upload_by_agent_delegates_after_version_resolution(unbound_sessio
     assert upload_skill.call_args.kwargs["version_kind"].value == "build_draft"
 
 
-def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup(unbound_session: Session):
+def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup(unbound_session: Session) -> None:
     raw = _raw(AgentConfigFilesByAgentApi.post)
     with app.test_request_context("/?draft_type=debug_build", json={"upload_file_id": "upload-1"}):
         with (
