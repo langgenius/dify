@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import inspect
 import json
+from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
@@ -64,7 +66,7 @@ def _workflow_app(*, app_id: str = "app", tenant_id: str = "t1") -> _workflow_Ap
     )
 
 
-def _make_workflow(**overrides) -> Workflow:
+def _make_workflow(**overrides) -> Workflow:  # pyrefly: ignore[implicit-any-parameter]
     graph = overrides.pop("graph_dict", {"nodes": [], "edges": []})
     features = overrides.pop("features_dict", {"file_upload": {"enabled": False}})
     environment_variables = overrides.pop(
@@ -280,7 +282,7 @@ class TestWorkflowCases:
         )
 
         @contextmanager
-        def transaction():
+        def transaction() -> Generator[Session]:
             events.append("transaction-enter")
             yield session
             events.append("transaction-exit")
@@ -617,7 +619,7 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
             raise workflow_module.WorkflowHashNotEqualError()
 
         service = SimpleNamespace(sync_draft_workflow=_raise)
@@ -636,7 +638,7 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
             raise workflow_module.VariableError("description too long")
 
         monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
@@ -788,7 +790,7 @@ class TestWorkflowCases:
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
 
-        def get_all_published_workflow(*, session: Session, **_kwargs):
+        def get_all_published_workflow(*, session: Session, **_kwargs: object) -> tuple[list[object], bool]:
             assert session is sqlite_session
             return [workflow], False
 
@@ -1070,7 +1072,7 @@ class TestWorkflowCases:
                     },
                 }
             ],
-            "edges": [],
+            "edges": [],  # pyrefly: ignore[implicit-any-empty-container]
         }
 
         monkeypatch.setattr(
@@ -1300,12 +1302,12 @@ class TestWorkflowCases:
         apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
+        batch_size = workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+        empty_entry: dict[str, object] = {}
         first_pipeline = Mock()
-        first_pipeline.execute.return_value = [
-            {} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)
-        ]
+        first_pipeline.execute.return_value = [empty_entry for _ in range(batch_size)]
         second_pipeline = Mock()
-        second_pipeline.execute.return_value = [{}]
+        second_pipeline.execute.return_value = [empty_entry]
         redis_pipeline_factory = Mock(side_effect=[first_pipeline, second_pipeline])
         monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
@@ -1364,7 +1366,7 @@ def _workflow_convert_api_app(app_id: str) -> _workflow_convert_api_App:
 class TestWorkflowConvertApiCases:
     class TestConvertToWorkflowApi:
         @pytest.fixture
-        def api(self):
+        def api(self) -> workflow_module.ConvertToWorkflowApi:
             return workflow_module.ConvertToWorkflowApi()
 
         def test_convert_to_workflow_attaches_permission_keys_when_rbac_enabled(
@@ -1653,7 +1655,7 @@ class TestWorkflowHumanInputDebugApiCases:
             json={"delivery_method_id": "bad"},
         ):
             with pytest.raises(ValueError, match="bad delivery method"):
-                workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+                workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")  # pyrefly: ignore[missing-argument,unexpected-keyword]
 
     @staticmethod
     def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1667,4 +1669,4 @@ class TestWorkflowHumanInputDebugApiCases:
             json={"inputs": ["not-a-dict"]},
         ):
             with pytest.raises(UnprocessableEntity):
-                workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+                workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")  # pyrefly: ignore[missing-argument,unexpected-keyword]
