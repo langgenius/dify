@@ -108,7 +108,15 @@ it('requires each selected scope and preserves selections while switching the ex
 })
 
 it('duplicates expired access while excluding unavailable resources and workspaces', async () => {
-  const expired = { ...token, status: 'expired' as const }
+  const expired = {
+    ...token,
+    status: 'expired' as const,
+    created_at: '2026-07-01T00:00:00Z',
+    expires_at: '2026-09-29T00:00:00Z',
+    resource_count: 2,
+    workspace_count: 2,
+    unavailable_count: 2,
+  }
   api.list.mockResolvedValue(tokenList([expired]))
   api.detail.mockResolvedValue({
     token: expired,

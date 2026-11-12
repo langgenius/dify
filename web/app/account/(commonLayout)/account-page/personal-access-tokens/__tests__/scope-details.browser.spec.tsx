@@ -20,8 +20,12 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.unmock('react-i18next')
 
 beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-12T00:00:00Z'))
   await page.viewport(1100, 800)
 })
+
+afterEach(() => vi.useRealTimers())
 
 const production: PersonalAccessTokenResourceResponse = {
   resource_type: 'app_deployment',
@@ -118,7 +122,12 @@ it.each([
 
 it('opens saved expired access with workspace roles and unavailable items without offering a secret', async () => {
   const { token, tokenList, renderTokenPage } = await import('./browser-test-env')
-  const expired = { ...token, status: 'expired' as const, expires_at: '2026-09-29T00:00:00Z' }
+  const expired = {
+    ...token,
+    status: 'expired' as const,
+    created_at: '2026-07-01T00:00:00Z',
+    expires_at: '2026-09-29T00:00:00Z',
+  }
   responses.call.mockImplementation(async (operation: string) =>
     operation.includes('byTokenId')
       ? {
@@ -169,7 +178,7 @@ it('opens saved expired access with workspace roles and unavailable items withou
   await row.getByRole('button', { name: token.name }).click()
   const dialog = screen.getByRole('dialog', { name: 'Access scope' })
   await expect.element(dialog.getByText('Expired on 2026-09-29')).toBeVisible()
-  await expect.element(dialog.getByText('Created · 2026-10-15')).toBeVisible()
+  await expect.element(dialog.getByText('Created · 2026-07-01')).toBeVisible()
   await expect
     .element(dialog.getByRole('cell', { name: 'Acme · Built-in', exact: true }))
     .toBeVisible()
@@ -194,7 +203,7 @@ it('explains cross-workspace deployment access without labeling it revoked or ex
     ...token,
     status: 'active' as const,
     unavailable_count: 0,
-    expires_at: '2099-01-01T00:00:00Z',
+    expires_at: '2027-01-13T00:00:00Z',
   }
   responses.call.mockImplementation(async (operation: string) =>
     operation.includes('byTokenId')
