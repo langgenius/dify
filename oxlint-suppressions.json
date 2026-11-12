@@ -6134,11 +6134,6 @@
       "count": 1
     }
   },
-  "web/features/new-rag/overview/overview-metrics.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/new-rag/quality/quality-row-menu-trigger.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
