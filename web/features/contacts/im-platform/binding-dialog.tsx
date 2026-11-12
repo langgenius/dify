@@ -441,9 +441,7 @@ export function ContactImBindingContent({
                 rel="noreferrer"
                 target="_blank"
               >
-                {hasCallbackSetup
-                  ? t(($) => $['imPlatform.bindingDialog.openSetupGuide'])
-                  : t(($) => $['imPlatform.action.setupGuide'])}
+                {t(($) => $['imPlatform.bindingDialog.openSetupGuide'])}
                 <span aria-hidden className="i-ri-external-link-line size-3" />
               </a>
               <div className="ms-auto flex gap-2">
