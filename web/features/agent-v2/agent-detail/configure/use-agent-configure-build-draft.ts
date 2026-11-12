@@ -12,7 +12,7 @@ import type {
   AgentSoulConfigFormState,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { isEqual } from 'es-toolkit/predicate'
+import { deepEqual } from 'fast-equals'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -61,7 +61,7 @@ function getItemDiff<TItem>({
       continue
     }
 
-    if (!isEqual(item, currentItem)) {
+    if (!deepEqual(item, currentItem)) {
       changes.push({
         id: key,
         name: getName(item),
@@ -218,7 +218,7 @@ export function useAgentConfigureBuildDraftData({
     const normalDraft = agentSoulConfigToFormState(composerAgentSoulConfig)
     const buildDraft = agentSoulConfigToFormState(buildDraftAgentSoulConfig)
     const changedKeys = (Object.keys(buildDraft) as Array<keyof typeof buildDraft>).filter(
-      (key) => !isEqual(buildDraft[key], normalDraft[key]),
+      (key) => !deepEqual(buildDraft[key], normalDraft[key]),
     )
 
     return getAgentBuildDraftChangeSummary({

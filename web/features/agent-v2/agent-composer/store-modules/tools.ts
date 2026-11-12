@@ -7,7 +7,7 @@ import type {
 } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
-import { isEqual } from 'es-toolkit/predicate'
+import { deepEqual } from 'fast-equals'
 import { atom } from 'jotai'
 import { selectAtom } from 'jotai/utils'
 import { syncCliToolReferenceLabels } from '../reference-labels'
@@ -56,7 +56,7 @@ export const agentComposerToolPresentationIdentitiesAtom = selectAtom(
         },
       ]
     }),
-  isEqual,
+  deepEqual,
 )
 
 const toProviderToolAction = (tool: AgentProviderToolDefaultValue) => ({

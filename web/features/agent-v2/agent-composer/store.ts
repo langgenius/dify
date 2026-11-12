@@ -1,5 +1,5 @@
 import type { AgentSoulConfigFormState } from './form-state'
-import { isEqual } from 'es-toolkit/predicate'
+import { deepEqual } from 'fast-equals'
 import { atom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
@@ -30,5 +30,5 @@ export const isAgentComposerDirtyAtom = atom((get) => {
   const savedDraft = get(agentComposerSavedDraftAtom)
   const draft = get(agentComposerDraftAtom)
 
-  return !isEqual(draft, savedDraft ?? defaultAgentSoulConfigFormState)
+  return !deepEqual(draft, savedDraft ?? defaultAgentSoulConfigFormState)
 })

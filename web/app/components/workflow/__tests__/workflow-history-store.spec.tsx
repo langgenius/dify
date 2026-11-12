@@ -48,7 +48,10 @@ describe('workflow history store', () => {
     store.getState().initializeWorkflowHistory(history)
     store.temporal.getState().resume()
 
-    store.getState().setWorkflowHistory(structuredClone(history))
+    const equivalentGraph = structuredClone(history)
+    // Signed zero represents the same canvas position.
+    equivalentGraph.nodes[0]!.position.x = -0
+    store.getState().setWorkflowHistory(equivalentGraph)
     expect(store.temporal.getState().pastStates).toHaveLength(0)
 
     const edited = structuredClone(history)
@@ -64,7 +67,7 @@ describe('workflow history store', () => {
     expect(store.temporal.getState().pastStates).toHaveLength(1)
 
     store.temporal.getState().undo()
-    expect(store.getState().workflowHistory).toEqual(history)
+    expect(store.getState().workflowHistory).toEqual(equivalentGraph)
     store.temporal.getState().redo()
     expect(store.getState().workflowHistory).toEqual(edited)
   })

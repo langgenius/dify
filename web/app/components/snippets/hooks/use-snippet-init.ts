@@ -1,5 +1,5 @@
 import type { SnippetWorkflow } from '@/types/snippet'
-import { isEqual } from 'es-toolkit/predicate'
+import { deepEqual } from 'fast-equals'
 import { useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { isNotFoundError } from '@/service/http-error'
@@ -120,7 +120,7 @@ export const useSnippetInit = (snippetId: string) => {
         publishedWorkflow,
         hasDraftChanges:
           !!draftWorkflow &&
-          !isEqual(
+          !deepEqual(
             getComparableWorkflowData(draftWorkflow),
             getComparableWorkflowData(publishedWorkflow),
           ),

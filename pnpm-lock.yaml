@@ -545,6 +545,9 @@ catalogs:
     eventsource-parser:
       specifier: 4.1.3
       version: 4.1.3
+    fast-equals:
+      specifier: 6.2.2
+      version: 6.2.2
     foxact:
       specifier: 0.3.12
       version: 0.3.12
@@ -1658,6 +1661,9 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.53.2
+      fast-equals:
+        specifier: 'catalog:'
+        version: 6.2.2
       foxact:
         specifier: 'catalog:'
         version: 0.3.12(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -6679,6 +6685,10 @@ packages:
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
+
+  fast-equals@6.2.2:
+    resolution: {integrity: sha512-n+XqoarWCgcar0O3om3DeNYx6xTuLWGTUF1bRZ9iuO00tsPepzP1L4V7rqtxxZ4PEya34UCESReimFvxmEVwIA==}
+    engines: {node: '>=6.0.0'}
 
   fast-glob@3.3.3:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
@@ -13594,6 +13604,8 @@ snapshots:
 
   fast-deep-equal@3.1.3: {}
 
+  fast-equals@6.2.2: {}
+
   fast-glob@3.3.3:
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -16783,6 +16795,7 @@ time:
   eslint-plugin-yml@3.10.0: '2026-11-04T09:52:24.972Z'
   eslint@10.14.0: '2026-10-30T14:12:27.179Z'
   eventsource-parser@4.1.3: '2026-10-25T21:38:04.279Z'
+  fast-equals@6.2.2: '2026-11-01T21:48:35.464Z'
   foxact@0.3.12: '2026-09-18T13:19:15.594Z'
   fuse.js@7.5.0: '2026-07-13T17:23:36.705Z'
   happy-dom@21.0.4: '2026-10-20T18:05:53.295Z'

@@ -9,7 +9,7 @@ import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
-import { isEqual } from 'es-toolkit/predicate'
+import { deepEqual } from 'fast-equals'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -308,7 +308,7 @@ export function useAgentConfigureSync({
 
     const draft = store.get(agentComposerDraftAtom)
     const configSnapshot = getAgentSoulDraft()
-    const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
+    const hasEffectiveModelChange = !deepEqual(configSnapshot.model, baseConfigRef.current?.model)
     debouncedSaveDraft.cancel?.()
     if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange) return
 

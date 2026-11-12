@@ -3,7 +3,7 @@ import type { WorkflowHistoryEventT } from '../../hooks/use-workflow-history'
 import type { Edge, Node } from '../../types'
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { isEqual } from 'es-toolkit/predicate'
+import { deepEqual } from 'fast-equals'
 
 export type WorkflowHistoryEventMeta = {
   nodeId?: string
@@ -31,7 +31,7 @@ export const isWorkflowHistoryTemporalStateEqual = (
 ) => {
   if (pastState.workflowHistory === currentState.workflowHistory) return true
 
-  return isEqual(pastState.workflowHistory, currentState.workflowHistory)
+  return deepEqual(pastState.workflowHistory, currentState.workflowHistory)
 }
 
 export type HistorySliceShape = {
