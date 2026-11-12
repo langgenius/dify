@@ -1305,6 +1305,7 @@ name = App trigger management contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.trigger.app_trigger_store
+    services.trigger.app_trigger_service
 forbidden_modules =
     configs
     controllers
@@ -1468,7 +1469,10 @@ source_modules =
     services.trigger.subscription_query_service
     services.trigger.subscription_service
     services.trigger.subscription_renewal_service
+    services.trigger.subscription_refresh_service
     services.trigger.subscription_binding_service
+    services.async_workflow_service
+    services.trigger.workflow_dispatch_service
 forbidden_modules =
     controllers
     extensions

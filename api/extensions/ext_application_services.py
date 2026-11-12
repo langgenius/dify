@@ -220,6 +220,7 @@ from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import StoredPolicyTraceScopes
+from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -589,6 +590,11 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
         credentials=credential_queries,
+        workflow_queries=app_definition_repository,
+        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
+        trigger_end_users=AppScopedTriggerEndUsers(
+            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
+        ),
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
