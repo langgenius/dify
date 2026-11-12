@@ -15,6 +15,8 @@ from models.agent import (
     Agent,
     AgentConfigSnapshot,
     AgentDebugConversation,
+    AgentScope,
+    AgentSource,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
@@ -122,6 +124,9 @@ def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harne
             )
 
     whitelist: dict[str, object] = {"unrestricted": True, "resource_ids": []}
+    permissions: dict[str, object] = {
+        "agent": {"overrides": [{"resource_id": first_id, "permission_keys": ["agent.acl.preview"]}]}
+    }
     requests: list[tuple[str, str | None, str | None]] = []
 
     class Handler(BaseHTTPRequestHandler):
@@ -129,7 +134,7 @@ def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harne
             path = self.path.split("?", 1)[0]
             requests.append((path, self.headers.get("X-Inner-Tenant-Id"), self.headers.get("X-Inner-Account-Id")))
             if path == "/rbac/my-permissions":
-                data = {"agent": {"overrides": [{"resource_id": first_id, "permission_keys": ["agent.acl.preview"]}]}}
+                data = permissions
             elif path == "/rbac/agents/whitelist/resources":
                 data = whitelist
             else:
@@ -176,9 +181,23 @@ def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harne
             assert invite.status_code == HTTPStatus.OK
             assert [item["id"] for item in invite.get_json()["data"]] == [second_id]
 
+            whitelist.update(unrestricted=True, resource_ids=[])
+            permissions.clear()
+            response = harness.client.get("/console/api/agent", headers=harness.headers)
+            assert response.status_code == HTTPStatus.OK
+            assert response.get_json()["data"] == []
+            assert response.get_json()["total"] == 0
+            assert response.get_json()["has_more"] is False
+            assert response.get_json()["publication_counts"] == {"published": 0, "drafts": 0}
+            invite = harness.client.get("/console/api/agent/invite-options", headers=harness.headers)
+            assert invite.status_code == HTTPStatus.OK
+            assert invite.get_json()["data"] == []
+            assert invite.get_json()["total"] == 0
+            assert invite.get_json()["has_more"] is False
+
         assert requests == [
             (path, harness.tenant_id, harness.account_id)
-            for _ in range(4)
+            for _ in range(6)
             for path in ("/rbac/my-permissions", "/rbac/agents/whitelist/resources")
         ]
     finally:
@@ -197,9 +216,42 @@ def test_list_excludes_agents_from_another_workspace(harness: Harness) -> None:
     assert foreign_id != own_id
 
 
+def test_invite_options_includes_roster_agent_without_app(harness: Harness) -> None:
+    agent_id, snapshot_id = str(uuid4()), str(uuid4())
+    with harness.sessions.begin() as session:
+        session.add(
+            Agent(
+                id=agent_id,
+                tenant_id=harness.tenant_id,
+                name="Roster Agent",
+                source=AgentSource.ROSTER,
+                scope=AgentScope.ROSTER,
+                active_config_snapshot_id=snapshot_id,
+                active_config_has_model=True,
+                created_by=harness.account_id,
+            )
+        )
+        session.add(
+            AgentConfigSnapshot(
+                id=snapshot_id,
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                version=1,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+    response = harness.client.get("/console/api/agent/invite-options", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    [item] = response.get_json()["data"]
+    assert item["id"] == agent_id
+    assert item["app_id"] is None
+    assert item["backing_app_id"] is None
+
+
 def test_invite_options_filters_callable_agents_and_reports_workflow_usage(harness: Harness) -> None:
     agent_id, _ = harness.create_agent(published=True)
     workflow_app_id, workflow_id = str(uuid4()), str(uuid4())
+    published_workflow_id = str(uuid4())
     with harness.sessions.begin() as session:
         agent = session.get(Agent, agent_id)
         assert agent is not None
@@ -222,6 +274,32 @@ def test_invite_options_filters_callable_agents_and_reports_workflow_usage(harne
                 app_id=workflow_app_id,
                 version="draft",
                 created_by=harness.account_id,
+            )
+        )
+        session.add(
+            App(
+                id=workflow_app_id,
+                tenant_id=harness.tenant_id,
+                name="Published Flow",
+                mode=AppMode.WORKFLOW,
+                workflow_id=published_workflow_id,
+                created_by=harness.account_id,
+                maintainer=harness.account_id,
+                enable_site=False,
+                enable_api=False,
+            )
+        )
+        session.add(
+            WorkflowAgentNodeBinding(
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                app_id=workflow_app_id,
+                workflow_id=published_workflow_id,
+                workflow_version="v1",
+                node_id="published-node",
+                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                current_snapshot_id=agent.active_config_snapshot_id,
+                node_job_config=WorkflowNodeJobConfig(),
             )
         )
         session.add(
@@ -251,6 +329,11 @@ def test_invite_options_filters_callable_agents_and_reports_workflow_usage(harne
     assert item["is_in_current_workflow"] is True
     assert item["in_current_workflow_count"] == 1
     assert item["existing_node_ids"] == ["node-1"]
+    assert item["active_config_snapshot"]["id"] == item["active_config_snapshot_id"]
+    assert item["published_reference_count"] == 1
+    assert item["published_node_reference_count"] == 1
+    assert item["published_references"][0]["app_id"] == workflow_app_id
+    assert item["published_references"][0]["node_ids"] == ["published-node"]
     assert (
         harness.client.get("/console/api/agent/invite-options?limit=0", headers=harness.headers).status_code
         == HTTPStatus.UNPROCESSABLE_ENTITY

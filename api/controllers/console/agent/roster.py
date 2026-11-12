@@ -971,7 +971,7 @@ class AgentInviteOptionsApi(Resource):
         """Return visible Workflow-callable Agents and their current workflow usage."""
         return dump_response(
             AgentInviteOptionsResponse,
-            application_services().agent_apps.collection.list_invite_options(
+            application_services().agent_invite_options.list(
                 context,
                 page=req_data.page,
                 limit=req_data.limit,

@@ -10,8 +10,10 @@ from enums import CloudPlan, DeploymentEdition
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.invite_options_gateway import AgentInviteOptionsGateway
 from services.agent.version_service import AgentVersionService
-from services.app.agent_app_collection_gateway import AgentAppCollectionAccessGateway, AgentAppCollectionGateway
+from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
@@ -30,6 +32,7 @@ from services.app.console_gateway import (
 )
 from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
+from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
 
 
@@ -64,7 +67,7 @@ def build_agent_app_services(
         detail=detail,
         collection=AgentAppCollectionService(
             store=AgentAppCollectionGateway(session_factory=database_client),
-            access=AgentAppCollectionAccessGateway(members=rbac_members),
+            access=AgentListVisibilityGateway(members=rbac_members),
             creator=lifecycle,
             detail=detail,
         ),
@@ -87,4 +90,14 @@ def build_agent_version_service(*, database_client: sessionmaker[Session]) -> Ag
         restore_allowed=lambda tenant_id: _can_restore_version(
             tenant_id, edition=dify_config.DEPLOYMENT_EDITION, get_plan=FeatureService.get_workspace_plan
         ),
+    )
+
+
+def build_agent_invite_options_service(
+    *, database_client: sessionmaker[Session], rbac_members: MemberService
+) -> AgentInviteOptionsService:
+    """Wire the Agent directory query and its shared workspace visibility rules."""
+    return AgentInviteOptionsService(
+        store=AgentInviteOptionsGateway(session_factory=database_client),
+        visibility=AgentListVisibilityGateway(members=rbac_members),
     )

@@ -4,38 +4,12 @@ from dataclasses import replace
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from machinery.context import RequestContext
 from repositories.app.response import app_record
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppListItem, AgentAppListPage
 from services.app_service import AppService
-from services.enterprise import rbac_service
 from services.entities.app_entities import AppListParams
-from services.rbac.agent_list_visibility import visible_agent_ids
-from services.rbac.contracts import ResourcePermissionSnapshot
-from services.rbac.members import MemberService
-
-
-class AgentAppCollectionAccessGateway:
-    """Resolve the caller's Agent visibility outside the collection database session."""
-
-    def __init__(self, *, members: MemberService) -> None:
-        self._members = members
-
-    def permissions(self, context: RequestContext) -> tuple[set[str] | None, ResourcePermissionSnapshot]:
-        """Return the existing whitelist boundary and permission snapshot for this account."""
-        permissions = self._members.permissions(context.active_workspace_id, context.account_id)
-        if not dify_config.RBAC_ENABLED:
-            return None, permissions.agent
-        whitelist = rbac_service.RBACService.AgentAccess.whitelist_resources(
-            context.active_workspace_id, context.account_id
-        )
-        return visible_agent_ids(permissions, whitelist), permissions.agent
-
-    def visible_ids(self, context: RequestContext) -> set[str] | None:
-        """Resolve visibility for invite options; skip permission queries when RBAC is disabled."""
-        return self.permissions(context)[0] if dify_config.RBAC_ENABLED else None
 
 
 class AgentAppCollectionGateway:
@@ -47,27 +21,6 @@ class AgentAppCollectionGateway:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
-
-    def list_invite_options(
-        self,
-        context: RequestContext,
-        *,
-        page: int,
-        limit: int,
-        keyword: str | None,
-        app_id: str | None,
-        accessible_agent_ids: set[str] | None,
-    ) -> dict[str, object]:
-        """Return serialized invite options after the tenant-scoped read session closes."""
-        with self._session_factory() as session:
-            return AgentRosterService(session).list_invite_options(
-                tenant_id=context.active_workspace_id,
-                page=page,
-                limit=limit,
-                keyword=keyword,
-                app_id=app_id,
-                accessible_agent_ids=sorted(accessible_agent_ids) if accessible_agent_ids is not None else None,
-            )
 
     def list_apps(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
