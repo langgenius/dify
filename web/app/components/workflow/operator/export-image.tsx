@@ -151,8 +151,6 @@ const ExportImage = memo(() => {
               case 'svg':
                 dataUrl = await toSvg(flowElement, baseOptions)
                 break
-              default:
-                dataUrl = await toPng(flowElement, exportOptions)
             }
 
             filename += '-whole-workflow'
@@ -171,8 +169,6 @@ const ExportImage = memo(() => {
             case 'svg':
               dataUrl = await toSvg(flowElement, baseOptions)
               break
-            default:
-              dataUrl = await toPng(flowElement, baseOptions)
           }
         }
 
