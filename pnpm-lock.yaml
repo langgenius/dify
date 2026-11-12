@@ -545,9 +545,6 @@ catalogs:
     eventsource-parser:
       specifier: 4.1.3
       version: 4.1.3
-    fast-deep-equal:
-      specifier: 3.1.3
-      version: 3.1.3
     foxact:
       specifier: 0.3.12
       version: 0.3.12
@@ -1661,9 +1658,6 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.53.2
-      fast-deep-equal:
-        specifier: 'catalog:'
-        version: 3.1.3
       foxact:
         specifier: 'catalog:'
         version: 0.3.12(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -16789,7 +16783,6 @@ time:
   eslint-plugin-yml@3.10.0: '2026-11-04T09:52:24.972Z'
   eslint@10.14.0: '2026-10-30T14:12:27.179Z'
   eventsource-parser@4.1.3: '2026-10-25T21:38:04.279Z'
-  fast-deep-equal@3.1.3: '2020-06-08T07:27:28.474Z'
   foxact@0.3.12: '2026-09-18T13:19:15.594Z'
   fuse.js@7.5.0: '2026-07-13T17:23:36.705Z'
   happy-dom@21.0.4: '2026-10-20T18:05:53.295Z'

@@ -23,7 +23,7 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import isEqual from 'fast-deep-equal'
+import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'

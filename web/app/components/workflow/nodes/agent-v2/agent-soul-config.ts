@@ -6,7 +6,7 @@ import type { DefaultModelResponse } from '@/app/components/header/account-setti
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
-import isEqual from 'fast-deep-equal'
+import { isEqual } from 'es-toolkit/predicate'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'

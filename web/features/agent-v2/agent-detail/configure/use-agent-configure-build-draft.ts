@@ -12,7 +12,7 @@ import type {
   AgentSoulConfigFormState,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import isEqual from 'fast-deep-equal'
+import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'

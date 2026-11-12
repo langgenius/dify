@@ -102,6 +102,33 @@ it('loads draft fields and metadata while preserving the published graph', async
   })
 })
 
+it('treats independently loaded identical graphs and input fields as an unchanged draft', async () => {
+  const published = workflow({
+    graph: {
+      nodes: [
+        {
+          id: 'llm',
+          data: { model: { name: 'gpt-4.1', completion_params: { temperature: 0.2 } } },
+        },
+      ],
+      edges: [{ id: 'connection', source: 'start', target: 'llm' }],
+      viewport: { x: 10, y: 20, zoom: 1.2 },
+    },
+    input_fields: [{ label: 'Question', variable: 'question', type: 'text-input', required: true }],
+  })
+  requests.published.mockResolvedValue(published)
+  requests.draft.mockResolvedValue({
+    ...structuredClone(published),
+    id: 'another-draft',
+    hash: 'different-hash',
+    updated_at: published.updated_at + 1,
+  })
+
+  const { result } = renderInit()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(result.current.data?.hasDraftChanges).toBe(false)
+})
+
 it('keeps initialization gated until the draft request completes', async () => {
   const pending = createDeferred<SnippetWorkflow>()
   requests.draft.mockReturnValue(pending.promise)

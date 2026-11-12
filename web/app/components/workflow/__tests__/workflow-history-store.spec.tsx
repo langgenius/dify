@@ -29,6 +29,46 @@ const createWrapper = () => {
 }
 
 describe('workflow history store', () => {
+  it('deduplicates cloned graphs and preserves nested edits through undo and redo', () => {
+    const store = createWorkflowStore({})
+    const history: WorkflowHistoryState = {
+      nodes: [
+        createNode({
+          id: 'llm',
+          data: {
+            type: BlockEnum.LLM,
+            model: { name: 'gpt-4.1', completion_params: { temperature: 0.2 } },
+          },
+        }),
+      ],
+      edges: [createEdge({ id: 'connection', source: 'start', target: 'llm' })],
+      workflowHistoryEvent: undefined,
+    }
+    store.temporal.getState().pause()
+    store.getState().initializeWorkflowHistory(history)
+    store.temporal.getState().resume()
+
+    store.getState().setWorkflowHistory(structuredClone(history))
+    expect(store.temporal.getState().pastStates).toHaveLength(0)
+
+    const edited = structuredClone(history)
+    edited.nodes[0] = createNode({
+      ...edited.nodes[0],
+      data: {
+        ...edited.nodes[0]!.data,
+        model: { name: 'gpt-4.1', completion_params: { temperature: 0.8 } },
+      },
+    })
+    store.getState().setWorkflowHistory(edited)
+    store.getState().setWorkflowHistory(structuredClone(edited))
+    expect(store.temporal.getState().pastStates).toHaveLength(1)
+
+    store.temporal.getState().undo()
+    expect(store.getState().workflowHistory).toEqual(history)
+    store.temporal.getState().redo()
+    expect(store.getState().workflowHistory).toEqual(edited)
+  })
+
   it('sanitizes selected flags when history state is replaced through the exposed store api', () => {
     const wrapper = createWrapper()
 

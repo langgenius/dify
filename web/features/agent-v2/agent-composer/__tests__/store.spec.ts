@@ -6,10 +6,35 @@ import { defaultAgentSoulConfigFormState } from '../form-state'
 import {
   agentComposerDraftAtom,
   agentComposerSavedDraftAtom,
+  isAgentComposerDirtyAtom,
   rebaseAgentComposerDraftAtom,
 } from '../store'
 
 describe('agent composer store conversions', () => {
+  it('marks nested model edits dirty and clears them when the saved values are restored', () => {
+    const store = createStore()
+    const draft = {
+      ...defaultAgentSoulConfigFormState,
+      model: {
+        provider: 'openai',
+        model: 'gpt-4.1',
+        model_settings: { temperature: 0.2, stop: ['END', 'STOP'] },
+      },
+    }
+    store.set(rebaseAgentComposerDraftAtom, { draft })
+    store.set(agentComposerDraftAtom, structuredClone(draft))
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+
+    store.set(agentComposerDraftAtom, {
+      ...draft,
+      model: { ...draft.model, model_settings: { temperature: 0.2, stop: ['STOP', 'END'] } },
+    })
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(true)
+
+    store.set(agentComposerDraftAtom, structuredClone(draft))
+    expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+  })
+
   it('should hydrate missing file and skill references from API config', () => {
     const formState = agentSoulConfigToFormState({
       config_files: [

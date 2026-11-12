@@ -20,7 +20,7 @@ import type { Emoji } from '@/app/components/tools/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import isDeepEqual from 'fast-deep-equal'
+import { isEqual } from 'es-toolkit/predicate'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -653,7 +653,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
   useEffect(() => {
     const currentChecklistItems = workflowStore.getState().checklistItems
-    if (isDeepEqual(currentChecklistItems, needWarningNodes)) return
+    if (isEqual(currentChecklistItems, needWarningNodes)) return
 
     workflowStore.setState({ checklistItems: needWarningNodes })
   }, [needWarningNodes, workflowStore])

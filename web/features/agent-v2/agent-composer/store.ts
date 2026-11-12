@@ -1,5 +1,5 @@
 import type { AgentSoulConfigFormState } from './form-state'
-import isEqual from 'fast-deep-equal'
+import { isEqual } from 'es-toolkit/predicate'
 import { atom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
