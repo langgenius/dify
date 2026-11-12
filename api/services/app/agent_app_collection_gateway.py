@@ -1,5 +1,7 @@
 """Bridge Agent collection queries to the legacy roster and App persistence APIs."""
 
+from dataclasses import replace
+
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -86,7 +88,7 @@ class AgentAppCollectionGateway:
                 agent = agents.get(str(app.id))
                 items.append(
                     AgentAppListItem(
-                        app=app_record(app, session=session),
+                        app=replace(app_record(app, session=session), has_draft_trigger=app.has_draft_trigger),
                         agent_id=agent.id if agent else None,
                         backing_app_id=(agent.backing_app_id or app.id) if agent else None,
                         role=(agent.role or "") if agent else None,

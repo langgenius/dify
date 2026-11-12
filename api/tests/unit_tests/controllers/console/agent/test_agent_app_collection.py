@@ -2,6 +2,8 @@
 
 import json
 from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -13,7 +15,9 @@ from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import TagType
 from models.model import App, AppMode, AppModelConfig, Tag, TagBinding
 from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
+from services.enterprise.base import EnterpriseRequest
 from services.entities.app_entities import AppListParams
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
@@ -40,6 +44,7 @@ def test_list_paginates_agents_and_counts_published_and_draft_apps(harness: Harn
     assert by_id[second_id]["app_id"] == second_app
     assert by_id[first_id]["active_config_is_published"] is True
     assert by_id[second_id]["active_config_is_published"] is False
+    assert all(item["has_draft_trigger"] is False for item in body["data"])
     assert by_id[first_id]["debug_conversation_id"]
     assert by_id[second_id]["debug_conversation_id"]
     assert "bound_agent_id" not in by_id[first_id]
@@ -80,6 +85,76 @@ def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Ha
     assert [item.agent_id for item in result.data] == [first_id]
     assert result.publication_counts.published == 1
     assert result.publication_counts.drafts == 0
+
+
+def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harness) -> None:
+    first_id, first_app = harness.create_agent()
+    with harness.sessions.begin() as session:
+        first = session.get(Agent, first_id)
+        assert first is not None
+        first.name = "First Agent"
+    second_id, second_app = harness.create_agent()
+    with harness.sessions.begin() as session:
+        for app_id in (first_app, second_app):
+            app = session.get(App, app_id)
+            assert app is not None
+            app.maintainer = str(uuid4())
+
+    whitelist: dict[str, object] = {"unrestricted": True, "resource_ids": []}
+    requests: list[tuple[str, str | None, str | None]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            path = self.path.split("?", 1)[0]
+            requests.append((path, self.headers.get("X-Inner-Tenant-Id"), self.headers.get("X-Inner-Account-Id")))
+            if path == "/rbac/my-permissions":
+                data = {"agent": {"overrides": [{"resource_id": first_id, "permission_keys": ["agent.acl.preview"]}]}}
+            elif path == "/rbac/agents/whitelist/resources":
+                data = whitelist
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            payload = json.dumps(data).encode()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    previous_url = EnterpriseRequest.rbac_base_url
+    EnterpriseRequest.rbac_base_url = f"http://127.0.0.1:{server.server_port}"
+    try:
+        response = harness.client.get("/console/api/agent", headers=harness.headers)
+        assert response.status_code == HTTPStatus.OK
+        assert {item["id"] for item in response.get_json()["data"]} == {first_id, second_id}
+        assert requests == []
+
+        with config_overrides_context(RBAC_ENABLED=True):
+            response = harness.client.get("/console/api/agent", headers=harness.headers)
+            assert response.status_code == HTTPStatus.OK
+            assert [item["id"] for item in response.get_json()["data"]] == [first_id]
+
+            whitelist.update(unrestricted=False, resource_ids=[second_id])
+            response = harness.client.get("/console/api/agent", headers=harness.headers)
+            assert response.status_code == HTTPStatus.OK
+            assert [item["id"] for item in response.get_json()["data"]] == [second_id]
+
+        assert requests == [
+            (path, harness.tenant_id, harness.account_id)
+            for _ in range(2)
+            for path in ("/rbac/my-permissions", "/rbac/agents/whitelist/resources")
+        ]
+    finally:
+        EnterpriseRequest.rbac_base_url = previous_url
+        server.shutdown()
+        thread.join()
+        server.server_close()
 
 
 def test_list_excludes_agents_from_another_workspace(harness: Harness) -> None:
