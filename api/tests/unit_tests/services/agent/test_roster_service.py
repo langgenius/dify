@@ -44,6 +44,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
+from repositories.agent_roster_repository import list_invite_options_in_session
 from repositories.agent_version_queries import visible_version_operations
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from services.agent import composer_service, roster_service
@@ -4043,11 +4044,13 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_
     monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {"agent-1": 1})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
-    invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
+    invited = list_invite_options_in_session(
+        session, tenant_id="tenant-1", page=1, limit=20, app_id="app-1", keyword=None, accessible_agent_ids=None
+    )
 
     assert [item["id"] for item in listed["data"]] == ["agent-1", "agent-2"]
-    assert [item["id"] for item in invited["data"]] == ["agent-1"]
-    assert invited["total"] == 1
+    assert [item.id for item in invited.data] == ["agent-1"]
+    assert invited.total == 1
     assert listed["data"][0]["active_config_snapshot"]["id"] == "version-1"
     assert listed["data"][0]["role"] == "researcher"
     assert listed["data"][0]["created_at"] == int(created_at.timestamp())
@@ -4056,11 +4059,11 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch, sqlite_
     assert listed["data"][0]["active_config_is_published"] is True
     assert listed["data"][0]["reference_count"] == 1
     assert listed["data"][1]["active_config_is_published"] is False
-    assert invited["data"][0]["is_in_current_workflow"] is True
-    assert invited["data"][0]["existing_node_ids"] == ["node-1"]
+    assert invited.data[0].is_in_current_workflow is True
+    assert invited.data[0].existing_node_ids == ("node-1",)
 
 
-def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_invite_options_uses_db_filtered_pagination(sqlite_session: Session):
     session = sqlite_session
     configured_agent = Agent(
         id="agent-2",
@@ -4091,15 +4094,14 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
     )
     session.add_all([configured_agent, version, publish_revision])
     session.commit()
-    service = AgentRosterService(session)
-    monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
-    monkeypatch.setattr(service, "_load_reference_counts_by_agent_id", lambda **kwargs: {})
 
-    result = service.list_invite_options(tenant_id="tenant-1", page=1, limit=1)
+    result = list_invite_options_in_session(
+        session, tenant_id="tenant-1", page=1, limit=1, app_id=None, keyword=None, accessible_agent_ids=None
+    )
 
-    assert result["total"] == 1
-    assert result["has_more"] is False
-    assert [item["id"] for item in result["data"]] == ["agent-2"]
+    assert result.total == 1
+    assert result.has_more is False
+    assert [item.id for item in result.data] == ["agent-2"]
 
 
 def test_active_config_is_published_flags_use_stored_agent_state(sqlite_session: Session):

@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
+from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.invite_options import AgentInviteOptionsService
-from services.agent.invite_options_gateway import AgentInviteOptionsGateway
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
@@ -98,6 +98,6 @@ def build_agent_invite_options_service(
 ) -> AgentInviteOptionsService:
     """Wire the Agent directory query and its shared workspace visibility rules."""
     return AgentInviteOptionsService(
-        store=AgentInviteOptionsGateway(session_factory=database_client),
+        store=SQLAlchemyAgentRosterRepository(session_factory=database_client),
         visibility=AgentListVisibilityGateway(members=rbac_members),
     )

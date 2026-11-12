@@ -3,13 +3,11 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
-from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from libs.datetime_utils import naive_utc_now
-from libs.helper import to_timestamp
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     WORKFLOW_ONLY_AGENT_SOURCES,
@@ -25,13 +23,19 @@ from models.agent import (
     AgentSource,
     AgentStatus,
     AgentWorkspaceOwnerType,
-    WorkflowAgentBindingType,
-    WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, InvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
-from models.workflow import Workflow
+from repositories.agent_roster_repository import (
+    build_roster_agents_stmt,
+    load_active_config_is_published_by_agent_id,
+    load_published_references_by_agent_id,
+    load_reference_counts_by_agent_id,
+    load_versions_by_id,
+    serialize_agent,
+    serialize_version,
+)
 from repositories.agent_version_queries import visible_version_ids, visible_version_operations
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -90,71 +94,18 @@ class AgentRosterService:
         active_config_is_published: bool | None = None,
         reference_count: int | None = None,
     ) -> dict[str, Any]:
-        published_references = published_references or []
-        return {
-            "id": agent.id,
-            "name": agent.name,
-            "description": agent.description,
-            "role": agent.role or "",
-            "icon_type": agent.icon_type.value if agent.icon_type else None,
-            "icon": agent.icon,
-            "icon_background": agent.icon_background,
-            "agent_kind": agent.agent_kind.value,
-            "scope": agent.scope.value,
-            "source": agent.source.value,
-            "app_id": agent.app_id,
-            "backing_app_id": agent.backing_app_id,
-            "hidden_app_backed": bool(agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
-            "debug_conversation_id": None,
-            "workflow_id": agent.workflow_id,
-            "workflow_node_id": agent.workflow_node_id,
-            "active_config_snapshot_id": agent.active_config_snapshot_id,
-            "active_config_snapshot": AgentRosterService.serialize_version(active_version) if active_version else None,
-            "active_config_is_published": agent.active_config_is_published
-            if active_config_is_published is None
-            else active_config_is_published,
-            "status": agent.status.value,
-            "created_by": agent.created_by,
-            "updated_by": agent.updated_by,
-            "archived_by": agent.archived_by,
-            "archived_at": to_timestamp(agent.archived_at),
-            "created_at": to_timestamp(agent.created_at),
-            "updated_at": to_timestamp(agent.updated_at),
-            "reference_count": len(published_references) if reference_count is None else reference_count,
-            "published_reference_count": len(published_references),
-            "published_node_reference_count": sum(len(item["node_ids"]) for item in published_references),
-            "published_references": published_references,
-        }
+        """Project a loaded Agent and optional related records for legacy callers."""
+        return serialize_agent(agent, active_version, published_references, active_config_is_published, reference_count)
 
     @staticmethod
     def serialize_version(version: AgentConfigSnapshot | None) -> dict[str, Any] | None:
-        if version is None:
-            return None
-        return {
-            "id": version.id,
-            "agent_id": version.agent_id,
-            "version": version.version,
-            "display_version": version.version,
-            "snapshot_version": version.version,
-            "summary": version.summary,
-            "version_note": version.version_note,
-            "created_by": version.created_by,
-            "created_at": to_timestamp(version.created_at),
-        }
+        """Project a loaded snapshot, or return None for an absent snapshot."""
+        return serialize_version(version)
 
     @staticmethod
-    def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
-        stmt = select(Agent).where(
-            Agent.tenant_id == tenant_id,
-            Agent.scope == AgentScope.ROSTER,
-            Agent.status == AgentStatus.ACTIVE,
-        )
-        if keyword:
-            from libs.helper import escape_like_pattern
-
-            escaped_keyword = escape_like_pattern(keyword)
-            stmt = stmt.where(Agent.name.ilike(f"%{escaped_keyword}%", escape="\\"))
-        return stmt.order_by(Agent.updated_at.desc())
+    def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None) -> Select[tuple[Agent]]:
+        """Build the active tenant roster query with its optional name filter."""
+        return build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
 
     def list_roster_agents(
         self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
@@ -194,89 +145,6 @@ class AgentRosterService:
                 )
             )
 
-        return {
-            "data": data,
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "has_more": page * limit < total,
-        }
-
-    def list_invite_options(
-        self,
-        *,
-        tenant_id: str,
-        page: int = 1,
-        limit: int = 20,
-        keyword: str | None = None,
-        app_id: str | None = None,
-        accessible_agent_ids: Sequence[str] | None = None,
-    ) -> dict[str, Any]:
-        """List active roster Agents whose published snapshot can be called by Workflow."""
-
-        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
-            Agent.active_config_has_model.is_(True),
-            workflow_callable_active_snapshot_filter(),
-        )
-        if accessible_agent_ids is not None:
-            stmt = stmt.where(Agent.id.in_(accessible_agent_ids))
-        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-        agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
-        versions_by_id = self._load_versions_by_id(
-            [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
-        )
-        published_references_by_agent_id = self._load_published_references_by_agent_id(
-            tenant_id=tenant_id,
-            agent_ids=[agent.id for agent in agents],
-        )
-        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
-            tenant_id=tenant_id,
-            agent_ids=[agent.id for agent in agents],
-        )
-        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
-            tenant_id=tenant_id,
-            agents=agents,
-        )
-        data = [
-            self.serialize_agent(
-                agent,
-                versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
-                published_references_by_agent_id.get(agent.id, []),
-                active_config_is_published_by_agent_id.get(agent.id, False),
-                reference_counts_by_agent_id.get(agent.id, 0),
-            )
-            for agent in agents
-        ]
-        usage_by_agent_id: dict[str, list[str]] = {}
-        if app_id:
-            draft_workflow = self._session.scalar(
-                select(Workflow)
-                .where(
-                    Workflow.tenant_id == tenant_id,
-                    Workflow.app_id == app_id,
-                    Workflow.version == Workflow.VERSION_DRAFT,
-                )
-                .limit(1)
-            )
-            if draft_workflow:
-                agent_ids = [item["id"] for item in data]
-                if agent_ids:
-                    bindings = self._session.scalars(
-                        select(WorkflowAgentNodeBinding).where(
-                            WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                            WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
-                            WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
-                        )
-                    ).all()
-                    for binding in bindings:
-                        if binding.agent_id:
-                            usage_by_agent_id.setdefault(binding.agent_id, []).append(binding.node_id)
-
-        for item in data:
-            existing_node_ids = usage_by_agent_id.get(item["id"], [])
-            item["is_in_current_workflow"] = bool(existing_node_ids)
-            item["in_current_workflow_count"] = len(existing_node_ids)
-            item["existing_node_ids"] = existing_node_ids
         return {
             "data": data,
             "page": page,
@@ -1271,20 +1139,8 @@ class AgentRosterService:
         )
 
     def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
-        """Return each Agent's stored normal-draft publish state.
-
-        The flag is maintained by write paths against the normal shared draft:
-        saves compare the draft content with the active snapshot, while publish
-        and version creation paths mark the new active snapshot clean.
-        User-scoped debug drafts intentionally do not affect this state.
-        """
-        agents = [agent for agent in agents if agent.id]
-        if not agents:
-            return {}
-
-        return {
-            agent.id: bool(agent.active_config_snapshot_id and agent.active_config_is_published) for agent in agents
-        }
+        """Return the normal draft's existing publication flags for the supplied Agents."""
+        return load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=agents)
 
     def get_visible_agent_version_snapshot(
         self, *, tenant_id: str, agent_id: str, version_id: UUID
@@ -1366,127 +1222,13 @@ class AgentRosterService:
     def _load_published_references_by_agent_id(
         self, *, tenant_id: str, agent_ids: list[str]
     ) -> dict[str, list[AgentReferencingWorkflow]]:
-        if not agent_ids:
-            return {}
-
-        bindings = list(
-            self._session.scalars(
-                select(WorkflowAgentNodeBinding).where(
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
-                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
-                    WorkflowAgentNodeBinding.workflow_version != Workflow.VERSION_DRAFT,
-                )
-            ).all()
-        )
-        if not bindings:
-            return {}
-
-        app_ids = {binding.app_id for binding in bindings}
-        apps = {
-            app.id: app
-            for app in self._session.scalars(
-                select(App).where(
-                    App.tenant_id == tenant_id,
-                    App.id.in_(app_ids),
-                    App.status == AppStatus.NORMAL,
-                )
-            ).all()
-        }
-
-        grouped: dict[str, dict[tuple[str, str], AgentReferencingWorkflow]] = {}
-        for binding in bindings:
-            if not binding.agent_id:
-                continue
-            app = apps.get(binding.app_id)
-            if app is None or app.workflow_id != binding.workflow_id:
-                continue
-            by_workflow = grouped.setdefault(binding.agent_id, {})
-            key = (binding.app_id, binding.workflow_id)
-            item = by_workflow.setdefault(
-                key,
-                AgentReferencingWorkflow(
-                    app_id=binding.app_id,
-                    app_name=app.name,
-                    app_icon_type=(icon_type.value if (icon_type := getattr(app, "icon_type", None)) else None),
-                    app_icon=getattr(app, "icon", None),
-                    app_icon_background=getattr(app, "icon_background", None),
-                    app_mode=str(app.mode),
-                    app_updated_at=to_timestamp(getattr(app, "updated_at", None)),
-                    workflow_id=binding.workflow_id,
-                    workflow_version=binding.workflow_version,
-                    node_ids=[],
-                ),
-            )
-            item["node_ids"].append(binding.node_id)
-
-        result: dict[str, list[AgentReferencingWorkflow]] = {}
-        for agent_id, by_workflow in grouped.items():
-            references = list(by_workflow.values())
-            for reference in references:
-                reference["node_ids"] = sorted(set(reference["node_ids"]))
-            references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
-            result[agent_id] = references
-        return result
+        """Load the tenant's current published references in this service's session."""
+        return load_published_references_by_agent_id(self._session, tenant_id=tenant_id, agent_ids=agent_ids)
 
     def _load_reference_counts_by_agent_id(self, *, tenant_id: str, agent_ids: list[str]) -> dict[str, int]:
-        if not agent_ids:
-            return {}
-
-        bindings = list(
-            self._session.scalars(
-                select(WorkflowAgentNodeBinding).where(
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
-                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
-                )
-            ).all()
-        )
-        if not bindings:
-            return {}
-
-        app_ids = {binding.app_id for binding in bindings}
-        apps = {
-            app.id: app
-            for app in self._session.scalars(
-                select(App).where(
-                    App.tenant_id == tenant_id,
-                    App.id.in_(app_ids),
-                    App.status == AppStatus.NORMAL,
-                )
-            ).all()
-        }
-        workflow_ids = {binding.workflow_id for binding in bindings}
-        workflows = {
-            workflow.id: workflow
-            for workflow in self._session.scalars(
-                select(Workflow).where(
-                    Workflow.tenant_id == tenant_id,
-                    Workflow.id.in_(workflow_ids),
-                )
-            ).all()
-        }
-
-        referenced_app_ids_by_agent_id: dict[str, set[str]] = {}
-        for binding in bindings:
-            if not binding.agent_id:
-                continue
-            app = apps.get(binding.app_id)
-            workflow = workflows.get(binding.workflow_id)
-            if app is None or workflow is None or workflow.app_id != binding.app_id:
-                continue
-            if workflow.version != binding.workflow_version:
-                continue
-            if workflow.version != Workflow.VERSION_DRAFT and app.workflow_id != workflow.id:
-                continue
-            referenced_app_ids_by_agent_id.setdefault(binding.agent_id, set()).add(binding.app_id)
-
-        return {agent_id: len(app_ids) for agent_id, app_ids in referenced_app_ids_by_agent_id.items()}
+        """Count the tenant's current workflow references in this service's session."""
+        return load_reference_counts_by_agent_id(self._session, tenant_id=tenant_id, agent_ids=agent_ids)
 
     def _load_versions_by_id(self, version_ids: list[str]) -> dict[str, AgentConfigSnapshot]:
-        if not version_ids:
-            return {}
-        versions = self._session.scalars(
-            select(AgentConfigSnapshot).where(AgentConfigSnapshot.id.in_(version_ids))
-        ).all()
-        return {version.id: version for version in versions}
+        """Load the requested snapshots in this service's session."""
+        return load_versions_by_id(self._session, version_ids)

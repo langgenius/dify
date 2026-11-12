@@ -7,7 +7,8 @@ from threading import Thread
 from typing import override
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -23,6 +24,8 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import TagType
 from models.model import App, AppMode, AppModelConfig, Tag, TagBinding
+from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
+from services.agent.invite_options_store import AgentInviteOptionsPage
 from services.app.agent_app_collection_gateway import AgentAppCollectionGateway
 from services.enterprise.base import EnterpriseRequest
 from services.entities.app_entities import AppListParams
@@ -246,6 +249,47 @@ def test_invite_options_includes_roster_agent_without_app(harness: Harness) -> N
     assert item["id"] == agent_id
     assert item["app_id"] is None
     assert item["backing_app_id"] is None
+
+
+def test_invite_repository_closes_its_session_before_returning_detached_records(
+    harness: Harness, sqlite_engine: Engine
+) -> None:
+    agent_id, _ = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        agent = session.get(Agent, agent_id)
+        assert agent is not None
+        assert agent.active_config_snapshot_id is not None
+        agent.active_config_has_model = True
+        session.add(
+            AgentConfigSnapshot(
+                id=agent.active_config_snapshot_id,
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                version=1,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+
+    closed: list[bool] = []
+
+    class TrackingSession(Session):
+        @override
+        def close(self) -> None:
+            super().close()
+            closed.append(not self.in_transaction())
+
+    repository = SQLAlchemyAgentRosterRepository(
+        session_factory=sessionmaker(bind=sqlite_engine, class_=TrackingSession)
+    )
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    page = repository.list_invite_options(
+        context, page=1, limit=20, keyword=None, app_id=None, accessible_agent_ids=None
+    )
+    assert closed == [True]
+    assert isinstance(page, AgentInviteOptionsPage)
+    assert page.data[0].id == agent_id
+    assert page.data[0].active_config_snapshot is not None
+    assert page.data[0].active_config_snapshot.version == 1
 
 
 def test_invite_options_filters_callable_agents_and_reports_workflow_usage(harness: Harness) -> None:
