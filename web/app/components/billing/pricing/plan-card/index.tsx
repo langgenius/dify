@@ -159,7 +159,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
       disabled={isPlanDisabled}
       loading={!confirmationOpen && (isPlanActionPending || isEducationDiscountLoading)}
       className={cn(
-        'h-auto min-h-15 w-full gap-1.5 rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default',
+        'h-auto min-h-15 w-full gap-2 rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default *:aria-hidden:size-5',
         isPrimaryAction
           ? 'border-saas-dify-blue-static bg-saas-dify-blue-static text-white not-data-disabled:hover:bg-saas-dify-blue-static-hover'
           : canManageBilling
