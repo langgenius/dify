@@ -26,6 +26,7 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentScope, AgentSource
@@ -214,6 +215,16 @@ def test_generated_template_uses_provided_column_names() -> None:
 
     assert worksheet is not None
     assert [cell.value for cell in worksheet[1]] == ["index", "customer_question"]
+
+
+def test_retrieval_dataset_template_has_query_and_reference_columns() -> None:
+    content, filename = EvaluationService.generate_retrieval_dataset_template()
+    worksheet = load_workbook(io.BytesIO(content)).active
+
+    assert filename == "retrieval-evaluation-dataset.xlsx"
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == ["index", "query", "expected_output"]
+    assert [cell.value for cell in worksheet[2]] == [1, None, None]
 
 
 def test_generated_template_includes_reference_columns_for_selected_metrics(
@@ -2193,6 +2204,90 @@ def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
         )
 
     assert generated_requests == []
+
+
+@pytest.mark.usefixtures("sqlite_session")
+def test_execute_targets_preserves_row_order_and_reports_target_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    items = [EvaluationDatasetInput(index=index, inputs={"prompt": str(index)}) for index in (10, 20, 30, 40)]
+    task_ids: dict[int, str] = {}
+
+    def run_target(**kwargs: object) -> dict[str, str]:
+        item = kwargs["item"]
+        assert isinstance(item, EvaluationDatasetInput)
+        task_id = kwargs["task_id"]
+        assert isinstance(task_id, str)
+        task_ids[item.index] = task_id
+        if item.index == 40:
+            raise RuntimeError("provider unavailable")
+        if item.index == 20:
+            return {}
+        return {"workflow_run_id": f"workflow-{item.index}"}
+
+    def query_results(**kwargs: object) -> dict[str, NodeRunResult]:
+        if kwargs["workflow_run_id"] == "workflow-30":
+            return {}
+        return {"llm": NodeRunResult(outputs={"answer": "ok"})}
+
+    monkeypatch.setattr(EvaluationService, "_run_single_target", staticmethod(run_target))
+    monkeypatch.setattr(EvaluationService, "_query_node_run_results", staticmethod(query_results))
+    completed: list[tuple[int, str | None, str | None]] = []
+    progress: list[tuple[int, int]] = []
+
+    results, workflow_run_ids, errors = EvaluationService.execute_targets(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        target_workflow_version_id="workflow-version-1",
+        input_list=items,
+        max_workers=2,
+        task_positions=[3, 4, 5, 6],
+        result_callback=lambda position, _result, workflow_run_id, error: completed.append(
+            (position, workflow_run_id, error)
+        ),
+        progress_callback=lambda done, total: progress.append((done, total)),
+    )
+
+    assert [bool(result) for result in results] == [True, False, False, False]
+    assert workflow_run_ids == ["workflow-10", None, "workflow-30", None]
+    assert errors[0] is None
+    assert "no workflow run ID" in (errors[1] or "")
+    assert "no successful node results" in (errors[2] or "")
+    assert errors[3] == "provider unavailable"
+    assert task_ids == {
+        index: EvaluationService.workflow_task_id("run-1", "target", position)
+        for index, position in zip((10, 20, 30, 40), (3, 4, 5, 6), strict=True)
+    }
+    assert sorted(position for position, _, _ in completed) == [0, 1, 2, 3]
+    assert sorted(progress) == [(1, 4), (2, 4), (3, 4), (4, 4)]
+
+
+@pytest.mark.usefixtures("sqlite_session")
+def test_execute_targets_propagates_missing_pinned_workflow_and_stops_tasks(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing_workflow(**_kwargs: object) -> dict[str, str]:
+        raise EvaluationWorkflowVersionNotFoundError("workflow-version-1")
+
+    stopped: list[tuple[str, list[int]]] = []
+    monkeypatch.setattr(EvaluationService, "_run_single_target", staticmethod(missing_workflow))
+    monkeypatch.setattr(
+        EvaluationService,
+        "_stop_workflow_task_positions",
+        lambda run_id, positions: stopped.append((run_id, list(positions))),
+    )
+
+    with pytest.raises(EvaluationWorkflowVersionNotFoundError):
+        EvaluationService.execute_targets(
+            evaluation_run_id="run-1",
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            target_workflow_version_id="workflow-version-1",
+            input_list=[EvaluationDatasetInput(index=1, inputs={"prompt": "test"})],
+            max_workers=1,
+            task_positions=[7],
+        )
+
+    assert stopped == [("run-1", [7])]
 
 
 def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(

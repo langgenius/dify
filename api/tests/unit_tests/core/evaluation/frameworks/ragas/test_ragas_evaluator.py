@@ -6,14 +6,21 @@ from types import ModuleType
 
 import pytest
 
+from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator
 from core.evaluation.entities.config_entity import RagasConfig
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     AgentToolCall,
     EvaluationCategory,
     EvaluationItemInput,
+    EvaluationItemResult,
+    EvaluationMetric,
 )
-from core.evaluation.frameworks.ragas.ragas_evaluator import RagasAgentComponents, RagasEvaluator
+from core.evaluation.frameworks.ragas.ragas_evaluator import (
+    RagasAgentComponents,
+    RagasEvaluator,
+    _import_ragas_metrics_module,
+)
 from core.plugin.impl.exc import PluginInvokeError
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
@@ -233,3 +240,102 @@ def test_tool_call_accuracy_requires_reference_tool_calls(monkeypatch: pytest.Mo
 
     assert results[0].metrics == []
     assert "requires non-empty expected_tool_calls" in (results[0].error or "")
+
+
+@pytest.mark.parametrize(
+    ("category", "expected_fields"),
+    [
+        (
+            EvaluationCategory.LLM,
+            {
+                "user_input": "question",
+                "response": "answer",
+                "reference": "expected",
+                "retrieved_contexts": ["context"],
+            },
+        ),
+        (
+            EvaluationCategory.RETRIEVAL,
+            {"user_input": "query", "reference": "expected", "retrieved_contexts": ["context"]},
+        ),
+        (EvaluationCategory.WORKFLOW, {"user_input": "question", "response": "answer"}),
+    ],
+)
+def test_build_sample_passes_category_fields_to_ragas(
+    monkeypatch: pytest.MonkeyPatch,
+    category: EvaluationCategory,
+    expected_fields: dict[str, object],
+) -> None:
+    ragas_module = ModuleType("ragas")
+    ragas_module.__path__ = []
+    schema_module = ModuleType("ragas.dataset_schema")
+    schema_module.__dict__["SingleTurnSample"] = _FakeRagasData
+    monkeypatch.setitem(sys.modules, "ragas", ragas_module)
+    monkeypatch.setitem(sys.modules, "ragas.dataset_schema", schema_module)
+
+    sample = RagasEvaluator._build_sample(
+        EvaluationItemInput(
+            index=1,
+            inputs={"prompt": "question", "query": "query"},
+            output="answer",
+            expected_output="expected",
+            context=["context"],
+        ),
+        category,
+    )
+
+    assert sample.__dict__ == expected_fields
+
+
+def test_import_ragas_metrics_falls_back_to_collections(monkeypatch: pytest.MonkeyPatch) -> None:
+    collections = ModuleType("ragas.metrics.collections")
+    requested: list[str] = []
+
+    def import_metric_module(name: str) -> ModuleType:
+        requested.append(name)
+        if name == "ragas.metrics":
+            raise ImportError("metric classes moved")
+        return collections
+
+    monkeypatch.setattr("core.evaluation.frameworks.ragas.ragas_evaluator.import_module", import_metric_module)
+
+    assert _import_ragas_metrics_module() is collections
+    assert requested == ["ragas.metrics", "ragas.metrics.collections"]
+
+
+def test_agent_evaluation_merges_native_judge_and_reference_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = RagasEvaluator(RagasConfig())
+    item = AgentEvaluationItem(
+        index=4,
+        inputs={"task": "Check Paris weather"},
+        output="Sunny",
+        tool_calls=[AgentToolCall(name="weather", arguments={"city": "Paris"})],
+        expected_tool_calls=[AgentToolCall(name="weather", arguments={"city": "Paris"})],
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.ragas.ragas_evaluator._load_ragas_agent_components",
+        _fake_agent_components,
+    )
+    monkeypatch.setattr(
+        AgentLLMJudgeEvaluator,
+        "evaluate",
+        lambda *_args: [
+            EvaluationItemResult(
+                index=4,
+                actual_output="Sunny",
+                metrics=[EvaluationMetric(name="task_completion", value=0.8)],
+            )
+        ],
+    )
+
+    results = evaluator.evaluate_agent(
+        [item],
+        ["task_completion", "tool_call_accuracy", "unsupported_metric"],
+        "unused-provider",
+        "unused-model",
+        "tenant-1",
+    )
+
+    assert [metric.name for metric in results[0].metrics] == ["task_completion", "tool_call_accuracy"]
+    assert [metric.value for metric in results[0].metrics] == [0.8, 1.0]
+    assert "unsupported_metric" in (results[0].error or "")

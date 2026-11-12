@@ -6,7 +6,8 @@ from types import ModuleType
 from unittest.mock import patch
 
 import pytest
-from langchain_core.prompt_values import StringPromptValue
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.prompt_values import ChatPromptValue, StringPromptValue
 
 from core.entities.embedding_type import EmbeddingInputType
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
@@ -108,10 +109,38 @@ def test_dify_model_wrapper_rounds_ragas_temperature_for_plugin(
             model_instance = _LLMModel()
             monkeypatch.setattr(wrapper, "_get_model_instance", lambda: model_instance)
 
-            wrapper.generate_text(StringPromptValue(text="judge this"))
+            generated = wrapper.generate_text(StringPromptValue(text="judge this"), n=2, temperature=0.743)
 
-            assert len(model_instance.invoke_calls) == 1
-            assert model_instance.invoke_calls[0]["model_parameters"] == {"temperature": 0.0}
+            assert len(generated.generations[0]) == 2
+            assert [generation.text for generation in generated.generations[0]] == ["response", "response"]
+            assert len(model_instance.invoke_calls) == 2
+            assert model_instance.invoke_calls[0]["model_parameters"] == {"temperature": 0.74}
+            assert wrapper.invoke("judge this") == "response"
+            assert model_instance.invoke_calls[2]["model_parameters"] == {"temperature": 0.0}
+            assert (
+                asyncio.run(wrapper.agenerate_text(StringPromptValue(text="async judge"), n=1, temperature=0.0))
+                .generations[0][0]
+                .text
+                == "response"
+            )
+            assert len(model_instance.invoke_calls) == 4
+            wrapper.generate_text(
+                ChatPromptValue(
+                    messages=[
+                        SystemMessage(content="rules"),
+                        HumanMessage(content=[{"type": "text", "text": "question"}]),
+                        AIMessage(content="earlier answer"),
+                    ]
+                )
+            )
+            prompt_messages = model_instance.invoke_calls[4]["prompt_messages"]
+            assert isinstance(prompt_messages, list)
+            assert [type(message).__name__ for message in prompt_messages] == [
+                "SystemPromptMessage",
+                "UserPromptMessage",
+                "AssistantPromptMessage",
+            ]
+            assert [message.content for message in prompt_messages] == ["rules", "question", "earlier answer"]
     finally:
         sys.modules.pop(wrapper_module_name, None)
         if previous_wrapper_module is not None:

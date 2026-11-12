@@ -16,12 +16,15 @@ from core.evaluation.agent.agent_judge_evaluator import (
     ToolArgumentJudgeOutput,
     ToolSelectionCriteria,
     ToolSelectionJudgeOutput,
+    TrajectoryQualityCriteria,
     TrajectoryQualityJudgeOutput,
     _sanitize_value,
     _strict_judge_json_schema,
+    _task_completion_payload,
     _tool_argument_batch_schema,
     _tool_selection_payload,
     _validated_success_criteria_assessments,
+    _weighted_score,
 )
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
 from core.evaluation.entities.evaluation_entity import (
@@ -628,3 +631,120 @@ def test_agent_judge_prompts_are_english_and_contain_injection_defenses() -> Non
     assert task_version == "agent.task_completion.v2"
     assert "exactly one success_criteria_assessment" in task_prompt
     assert "contains no matching successful call" in task_prompt
+
+
+def test_trajectory_quality_judge_bounds_long_traces_and_preserves_warnings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_model = _FakeJudgeModel(
+        TrajectoryQualityJudgeOutput(
+            score=0.95,
+            reason="Mostly coherent trajectory.",
+            criteria=TrajectoryQualityCriteria(
+                progress_and_coherence=_criterion(0.75),
+                efficiency=_criterion(0.75),
+                observation_usage=_criterion(0.75),
+                error_recovery=_criterion(0.75),
+            ),
+        )
+    )
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    steps = [
+        AgentTrajectoryStep(
+            step_id=f"message-{index}",
+            sequence=index,
+            step_type="agent_message",
+            content=f"step {index}",
+            status="succeeded",
+        )
+        for index in range(82)
+    ]
+    steps.append(
+        AgentTrajectoryStep(
+            step_id="tool-result",
+            sequence=82,
+            step_type="tool_result",
+            content="Weather observed.",
+            status="succeeded",
+        )
+    )
+    item = AgentEvaluationItem(
+        index=7,
+        inputs={"task": "Check the weather."},
+        output="Sunny.",
+        trajectory=AgentTrajectory(source="agent_v2", steps=steps, warnings=["trace gap"]),
+    )
+
+    result = AgentLLMJudgeEvaluator().evaluate([item], ["trajectory_quality"], "provider", "model", "tenant")[0]
+
+    assert result.metrics[0].value == 0.75
+    assert result.metrics[0].details["reported_score"] == 0.95
+    assert fake_model.payload is not None
+    trajectory = fake_model.payload["trajectory"]
+    assert isinstance(trajectory, dict)
+    bounded_steps = trajectory["steps"]
+    assert isinstance(bounded_steps, list)
+    assert len(bounded_steps) == 80
+    assert bounded_steps[-1]["content"] == "Weather observed."
+    assert trajectory["warnings"][0] == "trace gap"
+    assert "truncated from 83 to 80" in trajectory["warnings"][1]
+
+
+def test_task_completion_payload_uses_tool_calls_when_trace_is_unavailable() -> None:
+    tool = AgentToolDefinition(
+        tool_ref="core:weather",
+        name="weather",
+        display_name="Weather",
+        description="Look up weather.",
+        input_schema={"type": "object"},
+    )
+    item = AgentEvaluationItem(
+        index=1,
+        inputs={"task": "Check the weather."},
+        output="Sunny.",
+        tool_calls=[AgentToolCall(name="weather", call_id="call-1", tool_ref=tool.tool_ref, output="Sunny")],
+        available_tools=[tool],
+    )
+
+    payload = _task_completion_payload(item)
+
+    assert payload["observed_tool_calls"][0]["tool_display_name"] == "Weather"
+    assert payload["observed_tool_calls"][0]["tool_description"] == "Look up weather."
+    assert payload["evidence_observations"][0]["observation"] == "Sunny"
+
+
+def test_weighted_score_requires_at_least_one_applicable_criterion() -> None:
+    criteria = TaskCompletionCriteria(
+        goal_satisfaction=_criterion(None, applicable=False),
+        correctness_and_evidence_consistency=_criterion(None, applicable=False),
+        completeness=_criterion(None, applicable=False),
+    )
+    weights = {
+        "goal_satisfaction": 0.45,
+        "correctness_and_evidence_consistency": 0.35,
+        "completeness": 0.20,
+    }
+
+    with pytest.raises(ValueError, match="every rubric criterion"):
+        _weighted_score(criteria, weights)
+
+
+def test_sanitizer_bounds_nested_and_oversized_collections() -> None:
+    def wrap(value: object) -> object:
+        return {"child": value}
+
+    nested: object = "value"
+    for _ in range(15):
+        nested = wrap(nested)
+    warnings: list[str] = []
+
+    sanitized_nested = _sanitize_value(nested, warnings)
+    sanitized_list = _sanitize_value(list(range(100)), warnings)
+    sanitized_object = _sanitize_value({f"key-{index}": index for index in range(90)}, warnings)
+
+    assert "TRUNCATED" in str(sanitized_nested)
+    assert len(sanitized_list) == 80
+    assert len(sanitized_object) == 80
+    assert any("deeply nested" in warning for warning in warnings)
+    assert any("oversized list" in warning for warning in warnings)
+    assert any("oversized object" in warning for warning in warnings)

@@ -5,7 +5,15 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationDatasetInput,
     NodeInfo,
 )
-from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
+from core.evaluation.runners.agent_evaluation_runner import (
+    AgentEvaluationRunner,
+    _extract_agent_output,
+    _extract_agent_task_input,
+    _extract_agent_v2_runtime_task,
+    _localized_text,
+    _normalize_step_status,
+    _normalize_tool_arguments,
+)
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events import NodeRunResult
 from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
@@ -341,3 +349,82 @@ def test_agent_runner_prefers_captured_agent_v2_trace_snapshot() -> None:
     assert item.available_tools[0].name == "search"
     assert item.trajectory is not None
     assert item.trajectory.source == "agent_v2"
+
+
+def test_agent_runner_falls_back_when_captured_agent_v2_trace_is_invalid() -> None:
+    evaluation_instance = CapturingEvaluationInstance()
+    runner = AgentEvaluationRunner(evaluation_instance)
+    node_result = NodeRunResult(
+        inputs={"task": "Check status"},
+        outputs={"answer": "Done"},
+        metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: {"evaluation_trace": {"tool_calls": "invalid"}}},
+    )
+
+    runner.evaluate_metrics(
+        node_run_result_list=[node_result],
+        default_metric=DefaultMetric(metric="task_completion", node_info_list=[]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant-1",
+    )
+
+    item = evaluation_instance.agent_items[0]
+    assert item.output == "Done"
+    assert item.available_tools is None
+    assert item.trajectory is not None
+    assert "captured Agent V2 evaluation trace was invalid" in item.trajectory.warnings[1]
+    assert "runtime did not capture" in item.trajectory.warnings[0]
+
+
+def test_agent_runner_exposes_legacy_error_without_a_tool_call() -> None:
+    evaluation_instance = CapturingEvaluationInstance()
+    runner = AgentEvaluationRunner(evaluation_instance)
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                inputs={"question": "What happened?"},
+                outputs={
+                    "json": [
+                        {"id": "log-1", "error": "provider timed out", "data": {"message": "retry later"}},
+                        {"id": "log-2", "label": "CALL broken", "data": {"tool_call_args": "invalid json"}},
+                    ]
+                },
+            )
+        ],
+        default_metric=DefaultMetric(metric="task_completion", node_info_list=[]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant-1",
+    )
+
+    item = evaluation_instance.agent_items[0]
+    assert item.output == ""
+    assert item.tool_calls[0].arguments == {"value": "invalid json"}
+    assert item.trajectory is not None
+    assert item.trajectory.steps[0].step_type == "error"
+    assert item.trajectory.steps[0].content == "retry later"
+
+
+def test_agent_runtime_task_and_tool_value_helpers_handle_fallbacks() -> None:
+    assert _extract_agent_task_input({}, {"query": "fallback"}) == "fallback"
+    assert _extract_agent_task_input({}, {"query": "fallback", "city": "Paris"}) == (
+        '{"city": "Paris", "query": "fallback"}'
+    )
+    assert _extract_agent_v2_runtime_task({"agent_backend_request": "invalid"}) == ""
+    assert _extract_agent_v2_runtime_task({"agent_backend_request": {"composition": "invalid"}}) == ""
+    assert _extract_agent_v2_runtime_task({"agent_backend_request": {"composition": {"layers": "invalid"}}}) == ""
+    assert _extract_agent_output({"usage": 10, "files": []}) == ""
+    assert _extract_agent_output({"structured": {"ok": True}}) == '{"structured": {"ok": true}}'
+    assert _localized_text("Weather") == "Weather"
+    assert _localized_text({"zh_Hans": "天气"}) == "天气"
+    assert _localized_text(None) == ""
+    assert _normalize_step_status("completed", None) == "succeeded"
+    assert _normalize_step_status("cancelled", None) == "failed"
+    assert _normalize_step_status("pending", None) == "unknown"
+    assert _normalize_step_status("success", "tool error") == "failed"
+    assert _normalize_tool_arguments({"city": "Paris"}) == {"city": "Paris"}
+    assert _normalize_tool_arguments('{"city":"Paris"}') == {"city": "Paris"}
+    assert _normalize_tool_arguments("invalid json") == {"value": "invalid json"}
+    assert _normalize_tool_arguments("[1,2]") == {"value": [1, 2]}
+    assert _normalize_tool_arguments(None) == {}
+    assert _normalize_tool_arguments(7) == {"value": 7}

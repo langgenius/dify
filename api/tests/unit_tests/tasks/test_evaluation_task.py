@@ -64,6 +64,7 @@ from tasks.evaluation_task import (
     _execute_agent_target,
     _execute_evaluation,
     _execute_evaluation_runner,
+    _execute_running_evaluation,
     _finalize_results,
     _generate_result_xlsx,
     _merge_customized_results,
@@ -905,6 +906,75 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
         assert run is not None
         assert run.completed_items == 1
         assert run.failed_items == 0
+
+
+def test_completed_checkpoints_publish_result_file_and_finish_run(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000083"
+    lease = _lease(run_id)
+    item = EvaluationDatasetInput(index=7, inputs={"prompt": "What is the answer?"}, expected_output="42")
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[item],
+    )
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id=run_data.tenant_id,
+                target_type=EvaluationTargetType.APPS,
+                target_id=run_data.target_id,
+                target_workflow_version_id=run_data.target_workflow_version_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=lease.token,
+                total_items=1,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+        _persist_results(
+            session,
+            lease,
+            [EvaluationItemResult(index=7, actual_output="42", metrics=[EvaluationMetric(name="accuracy", value=1.0)])],
+            [item],
+        )
+
+    def resume_checkpointed_rows(*_args: object) -> None:
+        return None
+
+    saved: list[tuple[str, bytes]] = []
+    monkeypatch.setattr("tasks.evaluation_task._resume_workflow_rows", resume_checkpointed_rows)
+    monkeypatch.setattr("tasks.evaluation_task.storage.save", lambda key, content: saved.append((key, content)))
+    with sqlite_session_factory() as session:
+        _execute_running_evaluation(
+            session,
+            run_data,
+            CapturingEvaluationInstance(),
+            "30000000-0000-0000-0000-000000000006",
+            lease,
+        )
+
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.status == EvaluationRunStatus.COMPLETED
+        assert run.execution_token is None
+        assert run.completed_items == 1
+        assert run.failed_items == 0
+        assert run.result_file_id is not None
+        upload = session.get(UploadFile, run.result_file_id)
+        assert upload is not None
+        assert upload.key == saved[0][0]
+        assert load_workbook(io.BytesIO(saved[0][1])).active is not None
 
 
 def test_stale_execution_lease_cannot_write_progress_or_row_checkpoint(
