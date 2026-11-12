@@ -31,7 +31,7 @@ const shell = (messages: ChatItem[], sidebarCollapseState = true) => (
   </div>
 )
 
-// TODO: link the tracking issue created with this cleanup PR before closeout.
+// https://github.com/langgenius/dify/issues/46120: lazy Markdown expands after the initial scroll.
 it.fails('scrolls restored history above the composer after lazy Markdown content appears', async () => {
   await renderChatOwner(shell(history))
   const last = page.getByText(/^Message 16:/)
