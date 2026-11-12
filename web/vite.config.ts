@@ -79,7 +79,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [{ find: '~@', replacement: projectRoot }],
+      // Storybook's Next.js preset merges aliases as an object.
+      alias: { '~@': projectRoot },
     },
     // vinext related config
     ...(!isTest && !isStorybook

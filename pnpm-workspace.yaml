@@ -77,10 +77,16 @@ overrides:
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   # Older CLI consumers require CommonJS v4 or ESM v7; do not force them onto v8.
   string-width@>=8.0.0 <8.3.0: ~8.3.0
+  # The matching patch uses Vite 8's native TS path resolver exclusively.
+  'vite-plugin-storybook-nextjs@10.6.7>vite-tsconfig-paths': '-'
   vite@*: 'catalog:'
   vitest@*: 'catalog:'
   ws@>=8.0.0 <8.20.1: ^8.22.0
   yaml@>=2.0.0 <2.8.3: 2.9.1
+patchedDependencies:
+  # Vite 8 replaces the legacy path resolver. Reassess this patch and its paired
+  # dependency-removal override together when upgrading Storybook.
+  vite-plugin-storybook-nextjs@10.6.7: patches/vite-plugin-storybook-nextjs@10.6.7.patch
 catalog:
   '@amplitude/analytics-browser': 2.49.2
   '@amplitude/plugin-session-replay-browser': 1.36.7

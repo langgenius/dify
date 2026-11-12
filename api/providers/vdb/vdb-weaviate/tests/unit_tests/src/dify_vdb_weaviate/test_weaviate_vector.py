@@ -1,8 +1,9 @@
+import dataclasses
 import datetime
 import json
 import unittest
 from types import SimpleNamespace
-from typing import override
+from typing import Any, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,6 +42,28 @@ The fix:
    ``contains_any`` filter so the legacy UUID5 objects are reaped
    too -- backwards-compatible with the rows already in production.
 """
+
+
+@dataclasses.dataclass
+class _BM25Score:
+    """Concrete stand-in for Weaviate's ``MetadataReturn``.
+
+    ``score`` is typed ``float | None`` by the SDK, but some client
+    versions serialize it as a string, so the production code accepts
+    both. Keeping a real class here (instead of a mock) also satisfies
+    the repository's no-new-test-doubles guard.
+    """
+
+    score: float | str | None = None
+
+
+@dataclasses.dataclass
+class _BM25Hit:
+    """Minimal, real value object for a Weaviate query result object."""
+
+    properties: dict[str, Any]
+    vector: dict[str, list[float]] | None = None
+    metadata: _BM25Score | None = None
 
 
 class _FakeUnexpectedStatusCodeError(Exception):
@@ -911,6 +934,80 @@ class TestWeaviateVector(unittest.TestCase):
         # Verify doc_type is in result metadata
         assert len(docs) == 1
         assert docs[0].metadata.get("doc_type") == "image"
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_propagates_bm25_score(self, mock_weaviate_module):
+        """Regression test for #37045: BM25 hits must carry Weaviate's relevance score."""
+        from weaviate.classes.query import MetadataQuery
+
+        mock_client = mock_weaviate_module.connect_to_custom.return_value
+        mock_client.is_ready.return_value = True
+        mock_client.collections.exists.return_value = True
+        mock_col = mock_client.collections.use.return_value
+
+        scored = _BM25Hit(
+            properties={"text": "Zabbix agent is not available", "doc_id": "segment-1"},
+            vector={"default": [0.3, 0.4]},
+            # Weaviate may serialize the BM25 score as a string.
+            metadata=_BM25Score(score="10.297276"),
+        )
+        unscored = _BM25Hit(
+            properties={"text": "another bm25 hit", "doc_id": "segment-2"},
+            vector={"default": [0.5, 0.6]},
+        )
+        mock_col.query.bm25.return_value.objects = [scored, unscored]
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="Zabbix agent", top_k=2)
+
+        return_metadata = mock_col.query.bm25.call_args.kwargs.get("return_metadata")
+        assert isinstance(return_metadata, MetadataQuery)
+        assert return_metadata.score is True
+        assert len(docs) == 2
+        assert docs[0].metadata["score"] == pytest.approx(10.297276)
+        assert "score" not in docs[1].metadata
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_requests_score_on_retry(self, mock_weaviate_module):
+        """The property-migration retry must request BM25 scores too."""
+        from weaviate.classes.query import MetadataQuery
+        from weaviate.exceptions import WeaviateQueryError
+
+        mock_client = mock_weaviate_module.connect_to_custom.return_value
+        mock_client.is_ready.return_value = True
+        mock_client.collections.exists.return_value = True
+        mock_col = mock_client.collections.use.return_value
+
+        hit = _BM25Hit(
+            properties={"text": "retry bm25 result", "doc_id": "segment-1"},
+            vector={"default": [0.5, 0.6]},
+            metadata=_BM25Score(score=1.25),
+        )
+        result = mock_col.query.bm25.return_value
+        result.objects = [hit]
+        mock_col.query.bm25.side_effect = [WeaviateQueryError("missing property", "gRPC"), result]
+
+        # An empty schema makes _ensure_properties() rebuild the missing
+        # properties; config.add_property is a harmless mock on this path.
+        mock_col.config.get.return_value.properties = []
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="retry", top_k=1)
+
+        assert mock_col.query.bm25.call_count == 2
+        for call in mock_col.query.bm25.call_args_list:
+            return_metadata = call.kwargs.get("return_metadata")
+            assert isinstance(return_metadata, MetadataQuery)
+            assert return_metadata.score is True
+        assert docs[0].metadata["score"] == pytest.approx(1.25)
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_uses_document_filter(self, mock_weaviate_module):
