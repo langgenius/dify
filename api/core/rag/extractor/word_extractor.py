@@ -9,7 +9,8 @@ import os
 import re
 import tempfile
 import uuid
-from contextlib import closing
+from collections.abc import Generator
+from contextlib import closing, contextmanager
 from typing import override
 from urllib.parse import urlparse
 
@@ -22,10 +23,10 @@ from docx.text.run import Run
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -41,7 +42,9 @@ class WordExtractor(BaseExtractor):
 
     Args:
         file_path: Path to the file to load.
-        session: Session used to persist extracted images.
+        session: Optional caller-owned session used to persist extracted images.
+            The caller commits it. Without one, image records are written in a
+            short-lived session that commits on its own.
     """
 
     _closed: bool
@@ -125,7 +128,6 @@ class WordExtractor(BaseExtractor):
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     def _extract_images_from_docx(self, doc):
-        session = self._session or db.session
         image_count = 0
         image_map = {}
         upload_files: list[UploadFile] = []
@@ -200,10 +202,22 @@ class WordExtractor(BaseExtractor):
                     upload_files.append(upload_file)
                     image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
         if upload_files:
-            session.add_all(upload_files)
-        if self._session is None:
-            session.commit()
+            with self._session_scope() as session:
+                session.add_all(upload_files)
         return image_map
+
+    @contextmanager
+    def _session_scope(self) -> Generator[Session]:
+        """Yield the caller's session, or a short-lived one that commits on exit.
+
+        The short-lived session is only opened after images are downloaded and
+        stored, so it is never held across network or storage calls.
+        """
+        if self._session is not None:
+            yield self._session
+            return
+        with session_factory.create_session() as session, session.begin():
+            yield session
 
     def _table_to_markdown(self, table, image_map):
         markdown = []

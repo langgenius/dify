@@ -9,8 +9,8 @@ from uuid import uuid4
 import pypdfium2
 import pytest
 from PIL import Image
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.rag.extractor.pdf_extractor as pe
 from models.model import UploadFile
@@ -30,29 +30,46 @@ class _Storage:
         self.saves.append((key, data))
 
 
-@dataclass(eq=False, repr=False)
-class _DatabaseBinding:
-    session: Session
+@dataclass
+class _OwnedSessions:
+    """Counts the short-lived sessions the extractor opens from the session factory."""
+
+    opened: int = 0
+    commits: int = 0
 
 
 @dataclass(frozen=True)
 class _Dependencies:
     storage: _Storage
     session: Session
+    owned_sessions: _OwnedSessions
 
 
 @pytest.fixture
-def mock_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> _Dependencies:
+def mock_dependencies(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> _Dependencies:
     storage = _Storage()
+    owned_sessions = _OwnedSessions()
+
+    def _record_commit(_session: Session) -> None:
+        owned_sessions.commits += 1
+
+    def create_session() -> Session:
+        owned_sessions.opened += 1
+        session = sqlite_session_factory()
+        event.listen(session, "after_commit", _record_commit)
+        return session
+
     monkeypatch.setattr(pe, "storage", storage)
-    monkeypatch.setattr(pe, "db", _DatabaseBinding(sqlite_session))
+    monkeypatch.setattr(pe.session_factory, "create_session", create_session)
     apply_config_overrides(
         monkeypatch,
         FILES_URL="http://files.local",
         INTERNAL_FILES_URL=None,
         STORAGE_TYPE="local",
     )
-    return _Dependencies(storage=storage, session=sqlite_session)
+    return _Dependencies(storage=storage, session=sqlite_session, owned_sessions=owned_sessions)
 
 
 @pytest.mark.parametrize(
@@ -101,7 +118,10 @@ def test_extract_images_formats(
         mock_raw.FPDF_PAGEOBJ_IMAGE = 1
         result = extractor._extract_images(mock_page)
 
-    assert commit.called is not inject_session
+    # The caller commits an injected session; otherwise one owned session commits the rows.
+    assert not commit.called
+    assert mock_dependencies.owned_sessions.opened == (0 if inject_session else 1)
+    assert mock_dependencies.owned_sessions.commits == (0 if inject_session else 1)
     upload_file = mock_dependencies.session.scalar(select(UploadFile))
     assert upload_file is not None
     assert f"![image](http://files.local/files/{upload_file.id}/file-preview)" in result
@@ -274,6 +294,8 @@ def test_extract_images_with_source_file_id_reuses_existing_assets(
     expected_hash = hashlib.sha256(jpeg_bytes).hexdigest()
     assert upload_file.key == f"image_files/{TENANT_ID}/{source_file_id}/p2_0_{expected_hash}.jpg"
     assert upload_file.hash == expected_hash
+    # Without a caller session: lookup + insert for the first run, lookup only for the second.
+    assert mock_dependencies.owned_sessions.opened == (0 if inject_session else 3)
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
