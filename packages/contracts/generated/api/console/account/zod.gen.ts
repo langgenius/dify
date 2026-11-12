@@ -267,6 +267,7 @@ export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.an
  */
 export const zEducationStatusResponse = z.object({
   allow_refresh: z.boolean(),
+  can_redeem_discount: z.boolean(),
   expire_at: z.int().nullable(),
   is_student: z.boolean(),
   result: z.boolean(),

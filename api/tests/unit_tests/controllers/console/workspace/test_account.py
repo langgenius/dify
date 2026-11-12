@@ -208,6 +208,34 @@ class TestWorkspaceAccountCases:
         return app
 
     class TestEducationApi:
+        @pytest.mark.parametrize("can_redeem", [True, False])
+        def test_get_exposes_redemption_separately_from_student_status(
+            self, app: Flask, account_application_services: ApplicationServices, can_redeem: bool
+        ) -> None:
+            context = RequestContext(
+                request_id="request-1", trace_id=None, account_id="account-1", active_workspace_id="workspace-1"
+            )
+            upstream = billing.GetEducationIdentityStatusReply(
+                result=True,
+                is_student=True,
+                allow_refresh=False,
+                expire_at="2027-01-01T00:00:00Z",
+                can_redeem_discount=can_redeem,
+            )
+            with (
+                app.test_request_context("/account/education", method="GET"),
+                patch(
+                    "controllers.console.workspace.account.application_services",
+                    return_value=account_application_services,
+                ),
+                patch("services.account.adapters.BillingService.EducationIdentity.status", return_value=upstream),
+            ):
+                api = EducationApi()
+                result = inspect.unwrap(api.get)(api, context)
+
+            assert result["is_student"] is True
+            assert result["can_redeem_discount"] is can_redeem
+
         def test_post_activates_education_discount(self, app: Flask) -> None:
             education = MagicMock()
             education.activate.return_value = AccountEducationActivation(message="success")
