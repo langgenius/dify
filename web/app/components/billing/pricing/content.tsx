@@ -10,6 +10,7 @@ import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
 import { PricingFooter } from './footer'
 import Header from './header'
+import { PlanFeatureInfotip } from './plan-feature-infotip'
 import { CloudPlanItem } from './plans/cloud-plan-item'
 import styles from './pricing.module.css'
 
@@ -115,11 +116,17 @@ export function PricingContent() {
             </span>
           )
         )}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
-          <CloudPlanItem plan="professional" billingInterval={billingInterval} billing={billing} />
-          <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
-        </div>
+        <PlanFeatureInfotip>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
+            <CloudPlanItem
+              plan="professional"
+              billingInterval={billingInterval}
+              billing={billing}
+            />
+            <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
+          </div>
+        </PlanFeatureInfotip>
       </div>
       <PricingFooter />
     </div>

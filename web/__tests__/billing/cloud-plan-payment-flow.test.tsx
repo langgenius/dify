@@ -4,6 +4,7 @@ import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ALL_PLANS } from '@/app/components/billing/config'
+import { PlanFeatureInfotip } from '@/app/components/billing/pricing/plan-feature-infotip'
 import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -50,15 +51,17 @@ const renderPlan = ({
   return render(
     <>
       <AppToaster timeout={0} />
-      <CloudPlanItem
-        plan={plan}
-        billingInterval={billingInterval}
-        billing={{
-          currentPlan,
-          currentBillingInterval: 'month',
-          isEducationDiscountEligible: false,
-        }}
-      />
+      <PlanFeatureInfotip>
+        <CloudPlanItem
+          plan={plan}
+          billingInterval={billingInterval}
+          billing={{
+            currentPlan,
+            currentBillingInterval: 'month',
+            isEducationDiscountEligible: false,
+          }}
+        />
+      </PlanFeatureInfotip>
     </>,
     { wrapper },
   )

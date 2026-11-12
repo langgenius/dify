@@ -1,8 +1,10 @@
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { PlanFeatureInfotip } from '../plan-feature-infotip'
 import { CloudPlanItem } from '../plans/cloud-plan-item'
 
+// boundary: The education checkout requires a workspace manager with billing access.
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({ isCurrentWorkspaceManager: true }))
@@ -13,15 +15,17 @@ it('keeps both education checkout actions inside the dialog on a narrow phone', 
   const { wrapper: Provider } = createConsoleQueryWrapper()
   await render(
     <Provider>
-      <CloudPlanItem
-        plan="team"
-        billingInterval="month"
-        billing={{
-          currentPlan: 'sandbox',
-          currentBillingInterval: 'month',
-          isEducationDiscountEligible: true,
-        }}
-      />
+      <PlanFeatureInfotip>
+        <CloudPlanItem
+          plan="team"
+          billingInterval="month"
+          billing={{
+            currentPlan: 'sandbox',
+            currentBillingInterval: 'month',
+            isEducationDiscountEligible: true,
+          }}
+        />
+      </PlanFeatureInfotip>
     </Provider>,
   )
   await page.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' }).click()
