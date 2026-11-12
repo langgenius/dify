@@ -20,7 +20,7 @@ function PricingEntry() {
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockConsoleState: Record<string, unknown> = {}
-let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+let mockEducationStatus = { is_student: false, can_redeem_discount: false }
 let mockCurrentPlan: CloudPlan = 'sandbox'
 let mockEducationEnabled = false
 const navigateToCheckout = vi.fn()
@@ -85,7 +85,7 @@ const setupContexts = (
   planOverrides: { type?: CloudPlan } = {},
   appOverrides: Record<string, unknown> = {},
 ) => {
-  mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+  mockEducationStatus = { is_student: false, can_redeem_discount: false }
   mockCurrentPlan = planOverrides.type ?? 'sandbox'
   mockEducationEnabled = false
   mockConsoleState = {
@@ -162,7 +162,7 @@ describe('Pricing Modal Flow', () => {
     it('should default education account managers to yearly checkout', async () => {
       setupContexts()
       mockEducationEnabled = true
-      mockEducationStatus.is_student = true
+      mockEducationStatus = { is_student: true, can_redeem_discount: true }
       const user = userEvent.setup()
       await render(<Pricing />)
 
@@ -177,6 +177,34 @@ describe('Pricing Modal Flow', () => {
         )
         expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
+    })
+
+    it('offers ordinary checkout in Sandbox after a student redeems in another workspace', async () => {
+      mockEducationEnabled = true
+      mockEducationStatus = { is_student: true, can_redeem_discount: false }
+      const user = userEvent.setup()
+      await render(<Pricing />)
+
+      await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+      expect(screen.getByRole('radio', { name: 'billing.pricing.monthly' })).toBeChecked()
+      await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+      expect(
+        screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+      ).toBeEnabled()
+      expect(
+        screen.queryByText('education.planNotSupportEducationDiscount'),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' }))
+      expect(
+        screen.queryByRole('dialog', { name: 'education.educationPricingConfirm.title' }),
+      ).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com'),
+      )
+      expect(mockGetSubscription).toHaveBeenCalledWith(
+        { query: { plan: 'team', interval: 'year' } },
+        { context: { silent: true } },
+      )
     })
 
     it('should block non-manager members even when billing permission keys are present', async () => {
