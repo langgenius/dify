@@ -569,6 +569,44 @@ def test_app_configuration_and_metadata_routes_use_service_contracts(
     assert nodes["llm"][0]["node_id"] == "llm-1"
 
 
+def test_evaluation_configuration_routes_report_invalid_target_configuration(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = make_account()
+    app = make_app(app_id="target-1", mode=AppMode.WORKFLOW)
+    dataset = make_dataset(dataset_id=str(uuid4()))
+    sqlite_session.add_all([app, dataset])
+    sqlite_session.flush()
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(controller.dify_config, "RBAC_ENABLED", False)
+    monkeypatch.setattr(DatasetService, "check_dataset_permission", lambda *_args: None)
+
+    def invalid_config(*_args: object) -> None:
+        raise ValueError("invalid evaluation configuration")
+
+    monkeypatch.setattr(EvaluationService, "generate_dataset_template", invalid_config)
+    monkeypatch.setattr(EvaluationService, "save_evaluation_config", invalid_config)
+    monkeypatch.setattr(EvaluationService, "get_dataset_column_names", invalid_config)
+    flask_app = Flask(__name__)
+    with flask_app.test_request_context("/", json={}):
+        for route in (
+            lambda: unwrap(controller.EvaluationDatasetTemplateDownloadApi.post)(
+                controller.EvaluationDatasetTemplateDownloadApi(), sqlite_session, app, "apps"
+            ),
+            lambda: unwrap(controller.EvaluationDetailApi.put)(
+                controller.EvaluationDetailApi(), sqlite_session, app, "apps"
+            ),
+            lambda: unwrap(controller.EvaluationTemplateColumnsApi.post)(
+                controller.EvaluationTemplateColumnsApi(), sqlite_session, app, "apps"
+            ),
+            lambda: unwrap(controller.DatasetEvaluationDetailApi.put)(
+                controller.DatasetEvaluationDetailApi(), sqlite_session, UUID(dataset.id)
+            ),
+        ):
+            with pytest.raises(BadRequest, match="invalid evaluation configuration"):
+                route()
+
+
 def test_dataset_routes_scope_config_runs_and_files_to_the_dataset(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

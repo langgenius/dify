@@ -215,6 +215,81 @@ def test_collects_incremental_arguments_and_thinking_before_tool_result() -> Non
     assert trace.trajectory.warnings == []
 
 
+def test_matches_tool_result_by_unique_name_when_backend_omits_call_id() -> None:
+    collector = AgentV2TraceCollector(
+        [AgentToolDefinition(tool_ref="core:weather", name="weather", display_name="Weather", input_schema={})]
+    )
+    collector.consume(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={"event_kind": "part_start", "part": {"part_kind": "thinking", "content": "Check the weather."}},
+        )
+    )
+    collector.consume(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_start",
+                "index": 0,
+                "part": {"part_kind": "builtin-tool-call", "tool_name": "weather", "args": '{"city":"Paris"}'},
+            },
+        )
+    )
+    collector.consume(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "output_tool_result",
+                "result": {"part_kind": "builtin-tool-return", "tool_name": "weather", "result": "sunny"},
+            },
+        )
+    )
+
+    trace = collector.build_trace_snapshot(output=None)
+
+    assert trace.tool_calls[0].arguments == {"city": "Paris"}
+    assert trace.tool_calls[0].output == "sunny"
+    assert [step.step_type for step in trace.trajectory.steps] == [
+        "agent_message",
+        "tool_call",
+        "tool_result",
+        "final_output",
+    ]
+    assert trace.trajectory.steps[-1].content == ""
+
+
+def test_ambiguous_name_only_result_stays_orphaned() -> None:
+    collector = AgentV2TraceCollector([])
+    for index in (0, 1):
+        collector.consume(
+            AgentBackendStreamInternalEvent(
+                run_id="run-1",
+                data={
+                    "event_kind": "part_delta",
+                    "index": index,
+                    "delta": {
+                        "part_delta_kind": "tool_call",
+                        "tool_name_delta": "weather",
+                        "args_delta": {"index": index},
+                    },
+                },
+            )
+        )
+    collector.consume(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={"event_kind": "function_tool_result", "part": {"tool_name": "weather"}},
+        )
+    )
+
+    trace = collector.build_trace_snapshot(output={"answer": "unknown"})
+
+    assert [call.arguments for call in trace.tool_calls] == [{"index": 0}, {"index": 1}]
+    assert all(call.output is None for call in trace.tool_calls)
+    assert "could not be matched" in trace.trajectory.warnings[0]
+    assert trace.trajectory.steps[-2].content == {"tool_name": "weather"}
+
+
 def test_orphan_tool_result_and_terminal_errors_are_retained() -> None:
     collector = AgentV2TraceCollector([])
     collector.consume(AgentBackendStreamInternalEvent(run_id="run-1", data="invalid stream data"))

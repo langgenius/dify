@@ -15,7 +15,7 @@ from openpyxl import load_workbook
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from clients.agent_backend.fake_client import FakeAgentBackendRunClient
+from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
@@ -50,6 +50,7 @@ from models.workflow import WorkflowKind
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
+    EvaluationRunCancelledError,
     EvaluationRunLease,
     EvaluationRunOwnershipLostError,
     _apply_judgment,
@@ -58,6 +59,7 @@ from tasks.evaluation_task import (
     _compute_metrics_summary,
     _create_runner,
     _delete_stored_result_file,
+    _enqueue_retired_agent_binding,
     _evaluate_agent_row,
     _evaluate_retrieval_results,
     _evaluate_with_customized_workflow,
@@ -67,6 +69,7 @@ from tasks.evaluation_task import (
     _execute_running_evaluation,
     _finalize_results,
     _generate_result_xlsx,
+    _maintain_evaluation_run_heartbeat,
     _merge_customized_results,
     _merge_result,
     _persist_results,
@@ -76,6 +79,7 @@ from tasks.evaluation_task import (
     _resume_agent_rows,
     _resume_retrieval_rows,
     _resume_workflow_rows,
+    _retire_agent_binding,
     _stamp_and_merge,
     _store_result_file,
     _update_run_progress,
@@ -774,6 +778,118 @@ def test_execute_evaluation_does_not_run_duplicate_delivery(
         assert run.execution_token == current_lease.token
 
 
+@pytest.mark.parametrize(
+    ("failure", "expected_failure"),
+    [
+        (EvaluationRunCancelledError(), None),
+        (EvaluationRunOwnershipLostError("stale task"), None),
+        (ValueError("invalid payload"), "invalid payload"),
+        (RuntimeError("backend unavailable"), "Evaluation failed after 1 attempts: backend unavailable"),
+    ],
+)
+def test_run_evaluation_classifies_terminal_and_nonretryable_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    failure: Exception,
+    expected_failure: str | None,
+) -> None:
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        with sqlite_session_factory() as session:
+            yield session
+
+    def fail_execution(*_args: object) -> None:
+        raise failure
+
+    failures: list[str] = []
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr("tasks.evaluation_task._execute_evaluation", fail_execution)
+    monkeypatch.setattr(
+        "tasks.evaluation_task._mark_run_failed", lambda _session, _lease, error: failures.append(error)
+    )
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_MAX_RETRIES", 0)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="knowledge_base",
+        target_id="dataset-1",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[],
+    )
+
+    run_evaluation.push_request(retries=0)
+    try:
+        run_evaluation.run(run_data.model_dump(mode="json"))
+    finally:
+        run_evaluation.pop_request()
+
+    assert failures == ([expected_failure] if expected_failure else [])
+
+
+@pytest.mark.parametrize("persist_raises", [False, True])
+def test_run_evaluation_retries_when_state_persistence_loses_the_run(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], persist_raises: bool
+) -> None:
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        with sqlite_session_factory() as session:
+            yield session
+
+    def fail_execution(*_args: object) -> None:
+        raise RuntimeError("temporary outage")
+
+    def mark_pending(*_args: object) -> bool:
+        if persist_raises:
+            raise RuntimeError("retry state unavailable")
+        return False
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr("tasks.evaluation_task._execute_evaluation", fail_execution)
+    monkeypatch.setattr("tasks.evaluation_task._mark_run_pending_for_retry", mark_pending)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_MAX_RETRIES", 2)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_RETRY_DELAY", 1)
+    monkeypatch.setattr(run_evaluation, "retry", lambda **_kwargs: Retry("scheduled"))
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="knowledge_base",
+        target_id="dataset-1",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[],
+    )
+
+    run_evaluation.push_request(retries=0)
+    try:
+        if persist_raises:
+            with pytest.raises(Retry, match="scheduled"):
+                run_evaluation.run(run_data.model_dump(mode="json"))
+        else:
+            run_evaluation.run(run_data.model_dump(mode="json"))
+    finally:
+        run_evaluation.pop_request()
+
+
+def test_heartbeat_context_recovers_from_transient_renewal_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    renewed = Event()
+    attempts: list[int] = []
+
+    def renew(_lease: EvaluationRunLease) -> bool:
+        attempts.append(len(attempts))
+        if len(attempts) == 1:
+            raise RuntimeError("temporary database outage")
+        renewed.set()
+        return False
+
+    monkeypatch.setattr("tasks.evaluation_task._renew_evaluation_run_heartbeat", renew)
+    monkeypatch.setattr("tasks.evaluation_task.dify_config.EVALUATION_RUN_HEARTBEAT_INTERVAL", 0.001)
+    with _maintain_evaluation_run_heartbeat(_lease("run-1")):
+        assert renewed.wait(1)
+
+    assert len(attempts) == 2
+
+
 def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
@@ -1034,6 +1150,67 @@ def test_completed_checkpoints_publish_result_file_and_finish_run(
         assert load_workbook(io.BytesIO(saved[0][1])).active is not None
 
 
+def test_rejected_completion_removes_unpublished_result_file(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000084"
+    lease = _lease(run_id)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="",
+        evaluation_model="",
+        input_list=[],
+    )
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id=run_data.tenant_id,
+                target_type=EvaluationTargetType.APPS,
+                target_id=run_data.target_id,
+                target_workflow_version_id=run_data.target_workflow_version_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=lease.token,
+                total_items=0,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    saved_keys: list[str] = []
+    deleted_keys: list[str] = []
+    monkeypatch.setattr("tasks.evaluation_task._resume_workflow_rows", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._affected_rows", lambda _result: 0)
+    monkeypatch.setattr("tasks.evaluation_task.storage.save", lambda key, _content: saved_keys.append(key))
+    monkeypatch.setattr("tasks.evaluation_task.storage.delete", lambda key: deleted_keys.append(key))
+
+    with sqlite_session_factory() as session:
+        with pytest.raises(EvaluationRunOwnershipLostError, match="completion lease was rejected"):
+            _execute_running_evaluation(
+                session,
+                run_data,
+                CapturingEvaluationInstance(),
+                "30000000-0000-0000-0000-000000000006",
+                lease,
+            )
+
+    assert saved_keys == deleted_keys
+    assert len(saved_keys) == 1
+    with sqlite_session_factory() as session:
+        run = session.get(EvaluationRun, run_id)
+        assert run is not None
+        assert run.status == EvaluationRunStatus.RUNNING
+        assert run.result_file_id is None
+        assert session.scalar(select(UploadFile).where(UploadFile.key == saved_keys[0])) is None
+
+
 def test_stale_execution_lease_cannot_write_progress_or_row_checkpoint(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -1244,9 +1421,11 @@ def test_resume_workflow_rows_checkpoints_new_targets_and_persists_row_errors(
     ]
 
 
-def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
+@pytest.mark.parametrize("scenario", ["success", "failed", "stream_ended"])
+def test_execute_agent_target_persists_backend_checkpoint_and_terminal_result(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
+    scenario: str,
 ) -> None:
     run_id = "30000000-0000-0000-0000-000000000121"
     tenant_id = "30000000-0000-0000-0000-000000000002"
@@ -1308,7 +1487,12 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
         "tasks.evaluation_task.AgentEvaluationTargetService.build_runtime_request",
         lambda **_kwargs: runtime_request,
     )
-    client = FakeAgentBackendRunClient(run_id="backend-run-1")
+    client = FakeAgentBackendRunClient(
+        run_id="backend-run-1",
+        scenario=FakeAgentBackendScenario.FAILED if scenario == "failed" else FakeAgentBackendScenario.SUCCESS,
+    )
+    if scenario == "stream_ended":
+        monkeypatch.setattr(client, "stream_events", lambda *_args, **_kwargs: iter(()))
     monkeypatch.setattr("tasks.evaluation_task.create_agent_backend_run_client", lambda **_kwargs: client)
     retired_bindings: list[tuple[str, str]] = []
 
@@ -1346,17 +1530,31 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
     )
 
     with sqlite_session_factory() as session:
-        agent_item, target_error = _execute_agent_target(
-            session=session,
-            run_data=run_data,
-            dataset_item=dataset_item,
-            account_id="30000000-0000-0000-0000-000000000006",
-            lease=lease,
-        )
+        if scenario == "stream_ended":
+            with pytest.raises(RuntimeError, match="ended without a terminal event"):
+                _execute_agent_target(
+                    session=session,
+                    run_data=run_data,
+                    dataset_item=dataset_item,
+                    account_id="30000000-0000-0000-0000-000000000006",
+                    lease=lease,
+                )
+        else:
+            agent_item, target_error = _execute_agent_target(
+                session=session,
+                run_data=run_data,
+                dataset_item=dataset_item,
+                account_id="30000000-0000-0000-0000-000000000006",
+                lease=lease,
+            )
+            if scenario == "success":
+                assert target_error is None
+                assert agent_item is not None
+                assert agent_item.output == "hello agent"
+            else:
+                assert agent_item is None
+                assert target_error == "Agent execution failed: fake failure"
 
-    assert target_error is None
-    assert agent_item is not None
-    assert agent_item.output == "hello agent"
     assert client.request is runtime_request.request
     with sqlite_session_factory() as session:
         checkpoint = session.scalar(
@@ -1366,12 +1564,21 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
             )
         )
         assert checkpoint is not None
-        assert checkpoint.status == EvaluationRunItemStatus.TARGET_COMPLETED
+        assert checkpoint.status == (
+            EvaluationRunItemStatus.TARGET_RUNNING
+            if scenario == "stream_ended"
+            else EvaluationRunItemStatus.TARGET_COMPLETED
+        )
         assert checkpoint.agent_backend_run_id == "backend-run-1"
         assert checkpoint.agent_workspace_binding_id == binding_id
-        assert AgentEvaluationItem.model_validate_json(checkpoint.target_result_json or "{}").output == "hello agent"
-    assert retired_bindings == [(tenant_id, binding_id)]
-    assert enqueued_bindings == [(tenant_id, binding_id)]
+        if scenario == "success":
+            assert (
+                AgentEvaluationItem.model_validate_json(checkpoint.target_result_json or "{}").output == "hello agent"
+            )
+        else:
+            assert checkpoint.target_result_json is None
+    assert retired_bindings == ([] if scenario == "stream_ended" else [(tenant_id, binding_id)])
+    assert enqueued_bindings == ([] if scenario == "stream_ended" else [(tenant_id, binding_id)])
 
 
 def test_execute_agent_target_reuses_persisted_target_without_restarting_backend(
@@ -1451,6 +1658,45 @@ def test_execute_agent_target_reuses_persisted_target_without_restarting_backend
     assert error == "Agent evaluation row was already completed."
 
 
+@pytest.mark.parametrize("retire_result", ["binding-1", None, "failure"])
+def test_retire_agent_binding_enqueues_only_a_successful_retirement(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    retire_result: str | None,
+) -> None:
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        with sqlite_session_factory() as session:
+            yield session
+
+    def retire(*, session: Session, tenant_id: str, binding_id: str) -> str | None:
+        assert isinstance(session, Session)
+        assert (tenant_id, binding_id) == ("tenant-1", "binding-1")
+        if retire_result == "failure":
+            raise RuntimeError("cleanup unavailable")
+        return retire_result
+
+    enqueued: list[tuple[str, str]] = []
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr("tasks.evaluation_task.AgentWorkspaceService.retire_binding", retire)
+    monkeypatch.setattr(
+        "tasks.evaluation_task._enqueue_retired_agent_binding",
+        lambda tenant_id, binding_id: enqueued.append((tenant_id, binding_id)),
+    )
+
+    _retire_agent_binding("tenant-1", "binding-1")
+
+    assert enqueued == ([("tenant-1", "binding-1")] if retire_result == "binding-1" else [])
+
+
+def test_retired_agent_binding_enqueue_failure_is_contained(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_enqueue(**_kwargs: object) -> None:
+        raise RuntimeError("queue unavailable")
+
+    monkeypatch.setattr("tasks.evaluation_task.enqueue_agent_resource_collection", fail_enqueue)
+    _enqueue_retired_agent_binding("tenant-1", "binding-1")
+
+
 def test_resume_agent_rows_reuses_target_checkpoint(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
@@ -1522,6 +1768,90 @@ def test_resume_agent_rows_reuses_target_checkpoint(
     assert retired_bindings == [(tenant_id, "30000000-0000-0000-0000-000000000008")]
     assert evaluated_rows[0]["agent_item"] == checkpointed_item
     assert evaluated_rows[0]["target_error"] is None
+
+
+def test_resume_agent_rows_skips_completed_rows_and_reports_missing_target_checkpoint(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000132"
+    tenant_id = "30000000-0000-0000-0000-000000000002"
+    lease = _lease(run_id)
+    with sqlite_session_factory() as session:
+        session.add_all(
+            [
+                EvaluationRun(
+                    id=run_id,
+                    tenant_id=tenant_id,
+                    target_type=EvaluationTargetType.AGENTS,
+                    target_id="30000000-0000-0000-0000-000000000003",
+                    target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000004",
+                    evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                    config_snapshot="{}",
+                    status=EvaluationRunStatus.RUNNING,
+                    execution_token=lease.token,
+                    total_items=3,
+                    created_by="30000000-0000-0000-0000-000000000006",
+                ),
+                EvaluationRunItem(
+                    evaluation_run_id=run_id,
+                    item_index=1,
+                    status=EvaluationRunItemStatus.COMPLETED,
+                    inputs='{"query": "completed"}',
+                    agent_workspace_binding_id="binding-completed",
+                ),
+                EvaluationRunItem(
+                    evaluation_run_id=run_id,
+                    item_index=2,
+                    status=EvaluationRunItemStatus.TARGET_COMPLETED,
+                    inputs='{"query": "missing"}',
+                    agent_workspace_binding_id="binding-missing",
+                ),
+            ]
+        )
+        session.commit()
+
+    fresh_item = AgentEvaluationItem(index=3, inputs={"task": "new"}, output="new answer")
+    executed: list[int] = []
+
+    def execute_target(**kwargs: object) -> tuple[AgentEvaluationItem, None]:
+        dataset_item = kwargs["dataset_item"]
+        assert isinstance(dataset_item, EvaluationDatasetInput)
+        executed.append(dataset_item.index)
+        return fresh_item, None
+
+    evaluated: list[dict[str, object]] = []
+    retired: list[str] = []
+    progress: list[float] = []
+    monkeypatch.setattr("tasks.evaluation_task._execute_agent_target", execute_target)
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_agent_row", lambda **kwargs: evaluated.append(kwargs))
+    monkeypatch.setattr("tasks.evaluation_task._retire_agent_binding", lambda _tenant, binding: retired.append(binding))
+    monkeypatch.setattr(
+        "tasks.evaluation_task._update_run_progress", lambda _session, _lease, rate: progress.append(rate)
+    )
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id=tenant_id,
+        target_type="agents",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_agent_config_snapshot_id="30000000-0000-0000-0000-000000000004",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        input_list=[
+            EvaluationDatasetInput(index=1, inputs={"query": "completed"}),
+            EvaluationDatasetInput(index=2, inputs={"query": "missing"}),
+            EvaluationDatasetInput(index=3, inputs={"query": "new"}),
+        ],
+    )
+
+    with sqlite_session_factory() as session:
+        _resume_agent_rows(session, run_data, CapturingEvaluationInstance(), "account-1", lease)
+
+    assert executed == [3]
+    assert retired == ["binding-completed", "binding-missing"]
+    assert [row["task_position"] for row in evaluated] == [1, 2]
+    assert evaluated[0]["target_error"] == "Checkpointed Agent target result is missing."
+    assert evaluated[1]["agent_item"] == fresh_item
+    assert len(progress) == 2
 
 
 def test_evaluate_agent_row_uses_native_agent_evaluator(

@@ -10,6 +10,8 @@ from core.evaluation.runners.agent_evaluation_runner import (
     _extract_agent_output,
     _extract_agent_task_input,
     _extract_agent_v2_runtime_task,
+    _extract_agent_v2_trace_snapshot,
+    _extract_available_tools,
     _localized_text,
     _normalize_step_status,
     _normalize_tool_arguments,
@@ -428,3 +430,66 @@ def test_agent_runtime_task_and_tool_value_helpers_handle_fallbacks() -> None:
     assert _normalize_tool_arguments("[1,2]") == {"value": [1, 2]}
     assert _normalize_tool_arguments(None) == {}
     assert _normalize_tool_arguments(7) == {"value": 7}
+
+
+def test_runner_ignores_empty_results_and_malformed_runtime_prompt_layers() -> None:
+    evaluation_instance = CapturingEvaluationInstance()
+    runner = AgentEvaluationRunner(evaluation_instance)
+    assert runner.evaluate_metrics([], DefaultMetric(metric="task_completion", node_info_list=[]), "", "", "") == []
+    assert evaluation_instance.agent_items == []
+
+    malformed_layers = [
+        "not-a-layer",
+        {"name": "unrelated", "config": {"user": "ignore"}},
+        {"name": WORKFLOW_USER_PROMPT_LAYER_ID, "config": "invalid"},
+        {"name": WORKFLOW_NODE_JOB_PROMPT_LAYER_ID, "config": {"user": ["research", "weather"]}},
+    ]
+    assert (
+        _extract_agent_v2_runtime_task({"agent_backend_request": {"composition": {"layers": malformed_layers}}})
+        == '["research", "weather"]'
+    )
+    assert _extract_agent_task_input({}, {}) == ""
+    assert _extract_agent_task_input({"task": 42, "query": {"city": "Paris"}}, None) == (
+        'task: 42\nquery: {"city": "Paris"}'
+    )
+
+
+def test_legacy_tool_fallback_filters_missing_names_and_ignores_unrelated_lists() -> None:
+    node_result = NodeRunResult(
+        inputs={
+            "settings": [{"name": "not-a-tool"}],
+            "tools": [{}, {"identity": {"name": "weather", "provider": "builtin", "label": "Weather"}}],
+        },
+        outputs={},
+        metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: {}},
+    )
+
+    assert _extract_agent_v2_trace_snapshot(node_result) == (None, None)
+    tools, warning = _extract_available_tools(node_result)
+    assert tools is not None
+    assert [tool.tool_ref for tool in tools] == ["builtin/weather"]
+    assert warning is not None
+    assert "tool argument correctness" in warning
+
+
+def test_legacy_trace_ignores_non_mapping_entries_and_preserves_fallback_output() -> None:
+    evaluation_instance = CapturingEvaluationInstance()
+    runner = AgentEvaluationRunner(evaluation_instance)
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                inputs={},
+                outputs={"structured": {"ok": True}, "json": [42, {"label": "CALL hidden", "data": []}]},
+            )
+        ],
+        default_metric=DefaultMetric(metric="task_completion", node_info_list=[]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant-1",
+    )
+
+    item = evaluation_instance.agent_items[0]
+    assert item.output == '{"structured": {"ok": true}}'
+    assert item.tool_calls == []
+    assert item.trajectory is not None
+    assert [step.step_type for step in item.trajectory.steps] == ["final_output"]
