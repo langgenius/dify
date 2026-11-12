@@ -828,6 +828,56 @@ def test_stream_events_raises_when_reconnects_are_exhausted() -> None:
     assert calls == 2
 
 
+def test_stream_events_resets_reconnect_budget_after_each_delivered_event() -> None:
+    """A proxy that drops every connection must not fail a run that keeps resuming."""
+    seen_after: list[str] = []
+    progress_events = 5
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        index = len(seen_after)
+        if index <= progress_events:
+            return httpx.Response(
+                200,
+                stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id=f"{index}-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event(event_id=f"{index}-0")))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", max_reconnects=1, reconnect_delay_seconds=0))
+
+    assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
+    assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
+
+
+def test_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                200,
+                stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, stream=DisconnectingSyncStream())
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(DifyAgentStreamError, match="reconnect attempts exhausted"):
+        _ = list(client.stream_events_sync("run-1", max_reconnects=2, reconnect_delay_seconds=0))
+    # The progressing connection, then exactly two reconnects that deliver nothing.
+    assert calls == 3
+
+
 def test_stream_events_default_reconnect_budget_is_finite() -> None:
     calls = 0
 
@@ -1003,6 +1053,33 @@ def test_async_stream_events_reconnects_from_latest_event_after_transport_error(
 
         assert seen_after == ["0-0", "1-0"]
         assert [event.type for event in events] == ["run_started", "run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_resets_reconnect_budget_after_each_delivered_event() -> None:
+    seen_after: list[str] = []
+    progress_events = 5
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        index = len(seen_after)
+        if index <= progress_events:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id=f"{index}-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event(event_id=f"{index}-0")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", max_reconnects=1, reconnect_delay_seconds=0)]
+
+        assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
+        assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
         await http_client.aclose()
 
     asyncio.run(scenario())
