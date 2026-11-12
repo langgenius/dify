@@ -1,11 +1,10 @@
 """Unit tests for evaluation task result helpers."""
 
 import io
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
 from threading import Event
-from typing import cast
 from uuid import UUID
 
 import pytest
@@ -1115,13 +1114,19 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
     assert len(evaluator_calls) == 1
     call_kwargs = evaluator_calls[0]
     assert call_kwargs["evaluation_instance"] is evaluation_instance
-    synthetic_result = cast(list[dict[str, NodeRunResult]], call_kwargs["node_run_result_mapping_list"])[0]["agent"]
+    node_results = call_kwargs["node_run_result_mapping_list"]
+    assert isinstance(node_results, list)
+    first_result = node_results[0]
+    assert isinstance(first_result, dict)
+    synthetic_result = first_result["agent"]
+    assert isinstance(synthetic_result, NodeRunResult)
     assert synthetic_result.outputs["query"] == "hello"
     assert synthetic_result.outputs["output"] == "done"
     assert synthetic_result.outputs["expected_output"] == "expected"
     assert call_kwargs["customized_metrics"] == run_data.customized_metrics
     assert call_kwargs["tenant_id"] == "tenant-1"
-    task_id_factory = cast("Callable[[int], str]", call_kwargs["task_id_factory"])
+    task_id_factory = call_kwargs["task_id_factory"]
+    assert callable(task_id_factory)
     assert task_id_factory(0) == _workflow_task_id("run-1", "evaluator", 4)
     persisted_result = persisted_results[0][0]
     assert persisted_result.index == 7
@@ -1190,9 +1195,15 @@ def test_resume_retrieval_rows_skips_completed_checkpoint(
         _resume_retrieval_rows(session, run_data, CapturingEvaluationInstance(), "account-1", lease)
 
     assert len(retrieval_calls) == 1
-    assert cast(list[EvaluationDatasetInput], retrieval_calls[0]["input_list"])[0].index == 2
+    retrieved_items = retrieval_calls[0]["input_list"]
+    assert isinstance(retrieved_items, list)
+    assert len(retrieved_items) == 1
+    assert isinstance(retrieved_items[0], EvaluationDatasetInput)
+    assert retrieved_items[0].index == 2
     assert len(evaluation_calls) == 1
-    assert cast(EvaluationRunData, evaluation_calls[0]["run_data"]).input_list[0].index == 2
+    evaluated_run_data = evaluation_calls[0]["run_data"]
+    assert isinstance(evaluated_run_data, EvaluationRunData)
+    assert evaluated_run_data.input_list[0].index == 2
     assert evaluation_calls[0]["lease"] == lease
     assert evaluation_calls[0]["report_progress"] is False
 

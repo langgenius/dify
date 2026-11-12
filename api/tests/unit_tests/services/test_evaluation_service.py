@@ -2,7 +2,6 @@
 
 import io
 import json
-from typing import cast
 
 import pytest
 from openpyxl import load_workbook
@@ -48,6 +47,7 @@ from models.workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
 )
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
@@ -170,6 +170,26 @@ def _running_run(session: Session, target_type: EvaluationTargetType, target_id:
     session.add(run)
     session.commit()
     return run
+
+
+def _dispatched_payload(tasks: list[dict[str, object]]) -> dict[str, object]:
+    """Validate the Celery call shape before inspecting its payload."""
+    assert len(tasks) == 1
+    args = tasks[0]["args"]
+    assert isinstance(args, tuple)
+    assert len(args) == 1
+    payload = args[0]
+    assert isinstance(payload, dict)
+    return payload
+
+
+def _dispatched_inputs(payload: dict[str, object]) -> list[dict[str, object]]:
+    """Validate the dispatched dataset rows before inspecting their fields."""
+    value = payload["input_list"]
+    assert isinstance(value, list)
+    for item in value:
+        assert isinstance(item, dict)
+    return value
 
 
 class _RecordingCeleryControl:
@@ -1895,9 +1915,9 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
     assert retried.progress_rate == 0.5
     assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is not None
     assert len(dispatched_tasks) == 1
-    dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
+    dispatched_payload = _dispatched_payload(dispatched_tasks)
     assert dispatched_payload["evaluation_run_id"] == run.id
-    assert [item["inputs"] for item in dispatched_payload["input_list"]] == [
+    assert [item["inputs"] for item in _dispatched_inputs(dispatched_payload)] == [
         {"query": "first"},
         {"query": "second"},
     ]
@@ -1992,7 +2012,7 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
     assert retried.status == EvaluationRunStatus.PENDING
     assert sqlite_session.get(EvaluationRunItem, checkpoint.id) is None
     assert stopped_checkpoints == [(tenant.id, [("backend-run-old", "30000000-0000-0000-0000-000000000170")])]
-    dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
+    dispatched_payload = _dispatched_payload(dispatched_tasks)
     assert dispatched_payload["target_agent_config_snapshot_id"] == run.target_agent_config_snapshot_id
 
 
@@ -2044,10 +2064,10 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(
     assert run.config_snapshot_dict["dataset_input_types"] == {"query": "string", "enabled": "boolean"}
     dispatch_kwargs = dispatched_tasks[0]
     assert set(dispatch_kwargs) == {"args", "task_id"}
-    dispatched_payload = cast(tuple[dict[str, object]], dispatch_kwargs["args"])[0]
+    dispatched_payload = _dispatched_payload(dispatched_tasks)
     assert dispatched_payload["evaluation_framework"] == "deepeval"
     assert dispatched_payload["target_workflow_version_id"] == "workflow-version-7"
-    assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello", "enabled": True}
+    assert _dispatched_inputs(dispatched_payload)[0]["inputs"] == {"query": "hello", "enabled": True}
 
 
 def test_start_agent_run_persists_and_dispatches_agent_snapshot(
@@ -2089,11 +2109,11 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(
     assert run.target_workflow_version_id is None
     assert run.target_agent_config_snapshot_id == "snapshot-7"
     assert pinned_agents == ["agent-1"]
-    dispatched_payload = cast(tuple[dict[str, object]], dispatched_tasks[0]["args"])[0]
+    dispatched_payload = _dispatched_payload(dispatched_tasks)
     assert dispatched_payload["target_workflow_version_id"] is None
     assert dispatched_payload["target_agent_config_snapshot_id"] == "snapshot-7"
     assert dispatched_payload["evaluation_framework"] == "ragas"
-    assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello"}
+    assert _dispatched_inputs(dispatched_payload)[0]["inputs"] == {"query": "hello"}
 
 
 def test_run_single_app_target_loads_pinned_workflow_version(
@@ -2139,7 +2159,9 @@ def test_run_single_app_target_loads_pinned_workflow_version(
     assert generated_requests[0]["task_id"] == EvaluationService.workflow_task_id("run-1", "target", 0)
     assert generated_requests[0]["capture_agent_evaluation_trace"] is True
     assert execution_drivers == [WorkflowRunAgg.run]
-    assert generated_requests[0]["execution_identity"].user_id == account.id
+    identity = generated_requests[0]["execution_identity"]
+    assert isinstance(identity, WorkflowExecutionIdentity)
+    assert identity.user_id == account.id
 
 
 def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
