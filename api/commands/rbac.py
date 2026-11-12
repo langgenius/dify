@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import StrEnum
@@ -178,6 +178,7 @@ def _iter_tenant_member_batches(
     *,
     db_batch_size: int,
     api_batch_size: int,
+    on_missing_owner: Callable[[str], None],
 ) -> Iterator[tuple[str, str, list[tuple[str, str]]]]:
     """Yield legacy member roles in tenant-scoped API-sized batches.
 
@@ -185,6 +186,13 @@ def _iter_tenant_member_batches(
     the command never materializes every TenantAccountJoin ORM object. The
     iterator only keeps one tenant's API-sized batches in memory while it
     finds that tenant's owner account.
+
+    Preconditions: `on_missing_owner` must not raise and must tolerate being
+    called from inside the streamed iteration.
+    Postconditions: every yielded batch belongs to a tenant whose OWNER
+    membership was found; a tenant that has member rows but no OWNER row is
+    reported through `on_missing_owner` exactly once and skipped instead of
+    aborting the whole migration.
     """
     with session_factory.create_session() as session:
         stmt = (
@@ -206,7 +214,8 @@ def _iter_tenant_member_batches(
             if batch:
                 batches.append(batch.copy())
             if not owner_account_id:
-                raise ValueError(f"Workspace owner not found for tenant={current_tenant_id}")
+                on_missing_owner(current_tenant_id)
+                return
             for item in batches:
                 yield current_tenant_id, owner_account_id, item
 
@@ -268,7 +277,8 @@ def migrate_member_roles_to_rbac(
 
     This is an offline migration command for workspaces that already have
     members in the legacy role model but need matching records in the RBAC
-    member-role binding store.
+    member-role binding store. Workspaces whose members include no OWNER row
+    are reported and skipped; the rest of the migration continues.
     """
     click.echo(click.style("Starting RBAC member-role migration.", fg="green"))
     if workers < 1:
@@ -278,13 +288,20 @@ def migrate_member_roles_to_rbac(
     scanned_count = 0
     skipped_count = 0
     migrated_count = 0
+    skipped_tenant_count = 0
     current_tenant_id: str | None = None
     role_ids_by_legacy_role: dict[str, str] = {}
+
+    def on_missing_owner(workspace_id: str) -> None:
+        nonlocal skipped_tenant_count
+        skipped_tenant_count += 1
+        click.echo(f"Workspace owner not found, skipping tenant={workspace_id}", err=True)
 
     for workspace_id, owner_account_id, batch in _iter_tenant_member_batches(
         tenant_id,
         db_batch_size=db_batch_size,
         api_batch_size=api_batch_size,
+        on_missing_owner=on_missing_owner,
     ):
         scanned_count += len(batch)
         if workspace_id != current_tenant_id:
@@ -349,7 +366,15 @@ def migrate_member_roles_to_rbac(
             )
 
     if scanned_count == 0:
-        click.echo(click.style("No workspace members found for migration.", fg="yellow"))
+        if skipped_tenant_count > 0:
+            click.echo(
+                click.style(
+                    f"Skipped {skipped_tenant_count} workspace(s) without an owner. No members were migrated.",
+                    fg="yellow",
+                )
+            )
+        else:
+            click.echo(click.style("No workspace members found for migration.", fg="yellow"))
         return
 
     if dry_run:
@@ -366,6 +391,13 @@ def migrate_member_roles_to_rbac(
                 f"RBAC member-role migration completed. Scanned {scanned_count} members across {tenant_count} tenants, "
                 f"migrated {migrated_count}, skipped {skipped_count} already up-to-date.",
                 fg="green",
+            )
+        )
+    if skipped_tenant_count > 0:
+        click.echo(
+            click.style(
+                f"Skipped {skipped_tenant_count} workspace(s) without an owner (see warnings above).",
+                fg="yellow",
             )
         )
 
