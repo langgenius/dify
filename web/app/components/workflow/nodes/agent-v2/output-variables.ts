@@ -37,6 +37,9 @@ const arrayItemVarTypes: Record<DeclaredOutputConfig['type'], VarType> = {
   string: VarType.arrayString,
 }
 
+type DeclaredOutputChild = NonNullable<DeclaredOutputConfig['children']>[number]
+type DeclaredOutputField = DeclaredOutputConfig | DeclaredOutputChild
+
 export function getAgentV2DeclaredOutputs(data: AgentV2NodeType) {
   return normalizeAgentV2DeclaredOutputs(
     data.agent_declared_outputs ?? [],
@@ -63,16 +66,34 @@ export function normalizeAgentV2DeclaredOutputs(
   return [...systemOutputs, ...getAgentV2CustomDeclaredOutputs(outputs)]
 }
 
-function getDeclaredOutputVarType(output: DeclaredOutputConfig) {
+function getDeclaredOutputVarType(output: DeclaredOutputField) {
   if (output.type === 'array')
-    return output.array_item ? arrayItemVarTypes[output.array_item.type] : VarType.arrayObject
+    return output.array_item?.type ? arrayItemVarTypes[output.array_item.type] : VarType.arrayObject
 
   return outputVarTypes[output.type]
 }
 
+function isDeclaredOutputChild(child: unknown): child is DeclaredOutputChild {
+  return (
+    typeof child === 'object' &&
+    child !== null &&
+    'name' in child &&
+    typeof child.name === 'string' &&
+    'type' in child &&
+    typeof child.type === 'string' &&
+    Object.hasOwn(outputVarTypes, child.type)
+  )
+}
+
+function toDeclaredOutputVar(output: DeclaredOutputField): Var {
+  const variable: Var = { variable: output.name, type: getDeclaredOutputVarType(output) }
+  if (output.type === 'object' && Array.isArray(output.children)) {
+    const children = output.children.filter(isDeclaredOutputChild).map(toDeclaredOutputVar)
+    if (children.length) variable.children = children
+  }
+  return variable
+}
+
 export function getAgentV2OutputVars(data: AgentV2NodeType): Var[] {
-  return getAgentV2DeclaredOutputs(data).map((output) => ({
-    variable: output.name,
-    type: getDeclaredOutputVarType(output),
-  }))
+  return getAgentV2DeclaredOutputs(data).map(toDeclaredOutputVar)
 }
