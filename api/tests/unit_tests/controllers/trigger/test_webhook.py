@@ -514,3 +514,28 @@ def test_uploaded_files_use_real_tool_file_storage_and_detached_workflow_inputs(
         assert saved_file["size"] == len(content)
         assert saved_file["mime_type"] == tool_file.mimetype
     assert storage.load_once(file_key) == content
+
+
+def test_multipart_upload_keeps_original_filename_and_extension(
+    harness: _Harness, webhook: _Webhook, broker: SimpleQueue
+) -> None:
+    _configure(harness, webhook, content_type="multipart/form-data")
+    data = {"upload": (BytesIO(b"%PDF-1.4 webhook upload"), "report.pdf", "application/octet-stream")}
+
+    def send() -> TestResponse:
+        with use_workflow_file_runtime(create_dify_workflow_file_runtime()):
+            return harness.client.post(webhook.url, data=data, content_type="multipart/form-data")
+
+    response = Context().run(send)
+    assert response.status_code == HTTPStatus.OK
+    assert broker.qsize() == 1
+    with harness.session_factory() as session:
+        tool_file = session.scalar(select(ToolFile))
+        log = session.scalar(select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == webhook.app_id))
+        assert tool_file is not None
+        assert log is not None
+        assert tool_file.name == "report.pdf"
+        saved_file = json.loads(log.inputs)["webhook_data"]["files"]["upload"]
+    assert saved_file["filename"] == "report.pdf"
+    assert saved_file["extension"] == ".pdf"
+    assert saved_file["type"] == "document"
