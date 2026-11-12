@@ -16,7 +16,7 @@ import {
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
 
-export const EVALUATION_POLLING_INTERVAL = 2500
+const EVALUATION_POLLING_INTERVAL = 2500
 
 type EvaluationPagination = {
   page?: number
@@ -27,11 +27,11 @@ type EvaluationRunDetailParams = EvaluationPagination & {
   runId: string | null
 }
 
-export const isEvaluationRunActive = (status: string | null | undefined) => {
+const isEvaluationRunActive = (status: string | null | undefined) => {
   return status === 'pending' || status === 'running'
 }
 
-export const shouldPollEvaluationLogs = (statuses: Array<string | null | undefined>) => {
+const shouldPollEvaluationLogs = (statuses: Array<string | null | undefined>) => {
   return statuses.some(isEvaluationRunActive)
 }
 
@@ -94,12 +94,6 @@ export const useDefaultEvaluationMetrics = (
         refetchOnWindowFocus: false,
       },
     ),
-  )
-}
-
-export const useEvaluationNodeInfoMutation = () => {
-  return useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post.mutationOptions(),
   )
 }
 

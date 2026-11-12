@@ -10,7 +10,7 @@ export type AppPublisherPublishOptions = {
   showSuccessToast?: boolean
 }
 
-export type AppPublisherPublishHandler =
+type AppPublisherPublishHandler =
   | ((
       params?: AppPublisherPublishParams,
       options?: AppPublisherPublishOptions,
@@ -19,7 +19,7 @@ export type AppPublisherPublishHandler =
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
-export type AppPublisherWorkflowKindChangeHandler = (
+type AppPublisherWorkflowKindChangeHandler = (
   targetKind: WorkflowKind,
 ) => Promise<unknown> | unknown
 

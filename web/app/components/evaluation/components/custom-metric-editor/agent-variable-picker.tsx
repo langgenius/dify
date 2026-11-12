@@ -65,7 +65,7 @@ const AgentVariablePicker = ({
           <SelectItem key={variable.id} value={variable.id}>
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span className="truncate">{variable.id}</span>
-              <span className="ml-auto shrink-0 system-xs-medium text-text-quaternary">
+              <span className="ms-auto shrink-0 system-xs-medium text-text-quaternary">
                 {variable.valueType}
               </span>
             </div>

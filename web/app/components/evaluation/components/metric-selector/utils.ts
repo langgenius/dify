@@ -9,9 +9,7 @@ import { getDefaultMetricDescription } from '../../default-metric-descriptions'
 
 const defaultConditionMetricValueType: ConditionMetricValueType = 'number'
 
-export const normalizeMetricValueType = (
-  valueType: string | undefined,
-): ConditionMetricValueType => {
+const normalizeMetricValueType = (valueType: string | undefined): ConditionMetricValueType => {
   if (valueType === 'string' || valueType === 'number' || valueType === 'boolean') return valueType
 
   return defaultConditionMetricValueType

@@ -20,7 +20,7 @@ const FixedMetricItem = ({ metric, selected, onToggle }: FixedMetricItemProps) =
 
   return (
     <div className="flex h-8 items-center gap-3 px-1 py-1">
-      <label className="flex min-w-0 cursor-pointer items-center gap-2 text-left">
+      <label className="flex min-w-0 cursor-pointer items-center gap-2 text-start">
         <Checkbox checked={selected} onCheckedChange={onToggle} aria-labelledby={labelId} />
         <span id={labelId} className="truncate system-sm-medium text-text-secondary">
           {metric.label}

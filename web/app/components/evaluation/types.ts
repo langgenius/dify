@@ -14,7 +14,7 @@ export type NonPipelineEvaluationResourceProps = {
   resourceId: string
 }
 
-export type MetricKind = 'builtin' | 'custom-workflow'
+type MetricKind = 'builtin' | 'custom-workflow'
 
 export type EvaluationFramework = 'ragas' | 'deepeval'
 
@@ -55,7 +55,7 @@ export type CustomMetricMapping = {
   outputVariableId: string | null
 }
 
-export type CustomMetricConfig = {
+type CustomMetricConfig = {
   workflowId: string | null
   workflowAppId: string | null
   workflowName: string | null

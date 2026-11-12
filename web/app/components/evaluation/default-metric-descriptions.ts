@@ -95,7 +95,7 @@ export const getDefaultMetricDescriptionI18nKey = (metricId: string) => {
 }
 
 export const getTranslatedMetricDescription = (
-  t: TFunction<'evaluation'>,
+  t: TFunction<['evaluation']>,
   metricId: string,
   fallbackDescription = '',
 ) => {

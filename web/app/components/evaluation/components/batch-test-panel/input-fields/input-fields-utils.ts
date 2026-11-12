@@ -3,7 +3,7 @@ export type InputField = {
   type: string
 }
 
-export const INDEX_FIELD_NAME = 'index'
+const INDEX_FIELD_NAME = 'index'
 
 export const DATASET_TEMPLATE_FIELDS: InputField[] = [
   { name: INDEX_FIELD_NAME, type: 'number' },
