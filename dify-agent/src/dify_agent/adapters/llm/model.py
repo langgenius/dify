@@ -61,8 +61,8 @@ from pydantic_ai.messages import (
     TextContent,
     TextPart,
     ThinkingPart,
-    ToolCallPart,
     ToolAvailabilityDeltaPart,
+    ToolCallPart,
     ToolReturnPart,
     UploadedFile,
     UserContent,
@@ -86,14 +86,6 @@ _DETAIL_HIGH = "high"
 # ToolCallPart.provider_details key holding the plugin's own id when the adapter renamed a call.
 _PROVIDER_TOOL_CALL_ID_DETAIL = "dify_provider_tool_call_id"
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class _DifyRequestInput:
-    prompt_messages: list[PromptMessage]
-    model_parameters: dict[str, object]
-    tools: list[PromptMessageTool] | None
-    stop_sequences: list[str] | None
 
 
 @dataclass(slots=True)
@@ -151,22 +143,11 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
-        request_input = self._build_request_input(messages, prepared_settings, prepared_params)
-
-        response = DifyStreamedResponse(
-            model_request_parameters=prepared_params,
-            chunks=self.dify_provider.client.iter_llm_result_chunks(
-                provider=self.model_provider,
-                model=self.model_name,
-                prompt_messages=request_input.prompt_messages,
-                model_parameters=request_input.model_parameters,
-                tools=request_input.tools,
-                stop=request_input.stop_sequences,
-                stream=False,
-            ),
-            response_model_name=self.model_name,
-            provider_name_value=self.system,
+        response = self._build_streamed_response(
+            messages,
+            model_settings,
+            model_request_parameters,
+            stream=False,
         )
         async for _event in response:
             pass
@@ -184,22 +165,11 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         run_context: object | None = None,
     ) -> AsyncGenerator[StreamedResponse, None]:
         del run_context
-        prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
-        request_input = self._build_request_input(messages, prepared_settings, prepared_params)
-
-        response = DifyStreamedResponse(
-            model_request_parameters=prepared_params,
-            chunks=self.dify_provider.client.iter_llm_result_chunks(
-                provider=self.model_provider,
-                model=self.model_name,
-                prompt_messages=request_input.prompt_messages,
-                model_parameters=request_input.model_parameters,
-                tools=request_input.tools,
-                stop=request_input.stop_sequences,
-                stream=True,
-            ),
-            response_model_name=self.model_name,
-            provider_name_value=self.system,
+        response = self._build_streamed_response(
+            messages,
+            model_settings,
+            model_request_parameters,
+            stream=True,
         )
         yield response
         self._record_usage(response.dify_usage)
@@ -213,31 +183,52 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             return
         self._accumulated_usage = self._accumulated_usage.plus(usage)
 
-    def _build_request_input(
+    def _build_streamed_response(
         self,
         messages: Sequence[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
-    ) -> _DifyRequestInput:
-        return _DifyRequestInput(
-            prompt_messages=_map_messages_to_prompt_messages(messages, model_request_parameters),
-            model_parameters=_map_model_settings_to_parameters(model_settings),
-            tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
-            stop_sequences=_get_stop_sequences(model_settings),
+        *,
+        stream: bool,
+    ) -> DifyStreamedResponse:
+        prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
+        return DifyStreamedResponse(
+            model_request_parameters=prepared_params,
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
+                provider=self.model_provider,
+                model=self.model_name,
+                prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params),
+                model_parameters=_map_model_settings_to_parameters(prepared_settings),
+                tools=_map_tool_definitions_to_prompt_tools(prepared_params),
+                stop=_get_stop_sequences(prepared_settings),
+                stream=stream,
+            ),
+            response_model_name=self.model_name,
+            provider_name_value=self.system,
+            _reserved_tool_call_ids=_history_tool_call_ids(messages),
         )
 
 
 @dataclass
 class DifyStreamedResponse(StreamedResponse):
-    """Map one Dify response while retaining its latest complete usage payload.
+    """Map one Dify gateway stream into Pydantic AI events, usage, and unique tool-call IDs.
 
-    Some providers may repeat cumulative usage on more than one stream chunk. Keeping the latest
-    payload lets the owning model count each request exactly once instead of summing stream chunks.
+    Some providers repeat cumulative usage across stream chunks, so ``_dify_usage`` retains the
+    latest payload for the owning model to count once. ``_reserved_tool_call_ids`` (seeded from
+    prior ``ModelResponse`` messages in the conversation) and ``_assigned_tool_call_ids`` are
+    mutated by ``_allocate_chunk_tool_call_ids`` while iterating chunks so internal
+    ``tool_call_id`` values stay unique across parallel calls and multi-turn history.
     """
 
     chunks: AsyncIterator[LLMResultChunk]
     response_model_name: str
     provider_name_value: str
+    _reserved_tool_call_ids: set[str] = field(default_factory=set, repr=False)
+    _assigned_tool_call_ids: dict[tuple[str, int], tuple[str, str | None]] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+    )
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
     _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
@@ -275,18 +266,103 @@ class DifyStreamedResponse(StreamedResponse):
             if chunk.delta.finish_reason is not None:
                 self.finish_reason: FinishReason | None = _normalize_finish_reason(chunk.delta.finish_reason)
 
+            tool_call_ids = self._allocate_chunk_tool_call_ids(
+                chunk.delta.message.tool_calls,
+                chunk_sequence,
+            )
             for event in _chunk_to_stream_events(
                 self._parts_manager,
                 chunk,
                 self.provider_name_value,
                 self._embedded_thinking_parser,
-                chunk_sequence,
+                tool_call_ids,
             ):
                 yield event
             chunk_sequence += 1
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
+
+    def _allocate_chunk_tool_call_ids(
+        self,
+        tool_calls: Sequence[AssistantPromptMessage.ToolCall],
+        chunk_sequence: int,
+    ) -> list[tuple[str, str | None]]:
+        """Allocate ``(tool_call_id, renamed_provider_id)`` for one gateway chunk's tool calls.
+
+        Internal ``tool_call_id`` values must be unique both within a single response (Pydantic AI
+        overwrites matching ``vendor_part_id`` slots and rejects duplicate ``tool_call_id`` values)
+        and across conversation turns (``ClearToolResults`` compaction blanks every ``ToolReturnPart``
+        matching a cleared ``tool_call_id``, which would erase recent results inside ``keep_pairs`` if
+        later turns reused an earlier id). ``_reserved_tool_call_ids`` starts with all non-empty
+        ``ToolCallPart.tool_call_id`` values from prior ``ModelResponse`` history and grows with every
+        id allocated in this response.
+
+        ``_assigned_tool_call_ids`` keys slots by ``(provider_id, 1-based occurrence in chunk)``:
+        - Unclaimed raw plugin ids in the current chunk whose first slot is still free are reserved up
+          front so synthetic ``-<n>`` suffixes or ``None``-id fallbacks cannot collide with an explicit
+          id later in the same chunk.
+        - Re-visiting an already assigned ``(provider_id, occurrence)`` reuses its exact
+          ``(tool_call_id, renamed_provider_id)`` pair so ``ModelResponsePartsManager.handle_tool_call_part``
+          replaces the snapshot in place, matching Dify gateway plugins that emit full or cumulative
+          argument snapshots rather than deltas. Separate single-item chunks repeating the same
+          non-empty plugin id map to ``(provider_id, 1)`` and update that call in place rather than
+          guessing parallel boundaries from partial JSON arguments.
+        - Missing, blank, or ``"null"``/``"none"`` plugin ids allocate ``chunk-{chunk_sequence}-tool-{index}``
+          (with ``-<n>`` suffix on collision) and record ``renamed_provider_id=None``.
+        """
+        if not tool_calls:
+            return []
+
+        provider_ids = [_normalize_tool_call_id(tool_call.id) for tool_call in tool_calls]
+        claimable_raw_ids = {
+            provider_id
+            for provider_id in provider_ids
+            if provider_id is not None
+            and (provider_id, 1) not in self._assigned_tool_call_ids
+            and provider_id not in self._reserved_tool_call_ids
+        }
+        self._reserved_tool_call_ids.update(claimable_raw_ids)
+
+        occurrences: dict[str, int] = {}
+        allocated: list[tuple[str, str | None]] = []
+        for index, provider_id in enumerate(provider_ids):
+            if provider_id is None:
+                base = f"chunk-{chunk_sequence}-tool-{index}"
+                tool_call_id = _next_available_id(
+                    base,
+                    self._reserved_tool_call_ids,
+                    start_suffix=2,
+                    keep_base=True,
+                )
+                self._reserved_tool_call_ids.add(tool_call_id)
+                allocated.append((tool_call_id, None))
+                continue
+
+            occurrence = occurrences.get(provider_id, 0) + 1
+            occurrences[provider_id] = occurrence
+            slot = (provider_id, occurrence)
+            existing = self._assigned_tool_call_ids.get(slot)
+            if existing is not None:
+                allocated.append(existing)
+                continue
+
+            if occurrence == 1 and provider_id in claimable_raw_ids:
+                assignment: tuple[str, str | None] = (provider_id, None)
+            else:
+                tool_call_id = _next_available_id(
+                    provider_id,
+                    self._reserved_tool_call_ids,
+                    start_suffix=max(occurrence, 2),
+                    keep_base=False,
+                )
+                self._reserved_tool_call_ids.add(tool_call_id)
+                assignment = (tool_call_id, provider_id)
+
+            self._assigned_tool_call_ids[slot] = assignment
+            allocated.append(assignment)
+
+        return allocated
 
     def _observe_trace_usage(self, chunk: LLMResultChunk) -> None:
         """Attach gateway accounting to the real model span, without inventing usage.
@@ -360,13 +436,42 @@ class DifyStreamedResponse(StreamedResponse):
         return self._timestamp
 
 
+def _history_tool_call_ids(messages: Sequence[ModelMessage]) -> set[str]:
+    """Collect non-empty internal ``tool_call_id`` values already used in ``messages``."""
+    return {
+        part.tool_call_id
+        for message in messages
+        if isinstance(message, ModelResponse)
+        for part in message.tool_calls
+        if part.tool_call_id
+    }
+
+
+def _next_available_id(
+    base: str,
+    reserved_ids: set[str],
+    *,
+    start_suffix: int,
+    keep_base: bool,
+) -> str:
+    if keep_base and base not in reserved_ids:
+        return base
+    suffix = start_suffix
+    candidate = f"{base}-{suffix}"
+    while candidate in reserved_ids:
+        suffix += 1
+        candidate = f"{base}-{suffix}"
+    return candidate
+
+
 def _map_messages_to_prompt_messages(
     messages: Sequence[ModelMessage],
     model_request_parameters: ModelRequestParameters,
 ) -> list[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
-    # Renamed ids are only unique within one response, so restore them only for the tool
-    # returns and retry prompts that answer the latest response.
+    # Internal tool_call_ids are unique across turns, while each ModelResponse carries the
+    # original plugin ids for calls renamed in that turn. Refresh per response so following
+    # ToolReturnPart and RetryPromptPart messages restore the plugin id expected by that turn.
     provider_tool_call_ids: dict[str, str] = {}
 
     for message in messages:
@@ -420,18 +525,16 @@ def _order_system_messages_first(
 
 
 def _response_provider_tool_call_ids(message: ModelResponse) -> dict[str, str]:
-    """Map the tool call ids this adapter renamed in one response back to their plugin ids."""
-    provider_ids: dict[str, str] = {}
-    for part in message.parts:
-        if isinstance(part, ToolCallPart):
-            provider_id = _provider_tool_call_id(part)
-            if provider_id is not None:
-                provider_ids[part.tool_call_id] = provider_id
-    return provider_ids
+    """Map internal tool call ids renamed in ``message`` back to their plugin ids."""
+    return {
+        part.tool_call_id: provider_id
+        for part in message.tool_calls
+        if part.tool_call_id and (provider_id := _provider_tool_call_id(part)) is not None
+    }
 
 
 def _provider_tool_call_id(part: ToolCallPart) -> str | None:
-    """Return the plugin's original id when ``_chunk_tool_call_ids`` had to rename this call."""
+    """Return the plugin's original tool call id when inbound allocation renamed ``part``."""
     details = part.provider_details
     if details is None:
         return None
@@ -742,7 +845,7 @@ def _chunk_to_stream_events(
     chunk: LLMResultChunk,
     provider_name: str,
     embedded_thinking_parser: "_EmbeddedThinkingParser",
-    chunk_sequence: int,
+    tool_call_ids: Sequence[tuple[str, str | None]],
 ) -> list[ModelResponseStreamEvent]:
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
@@ -757,7 +860,6 @@ def _chunk_to_stream_events(
             else:
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
-    tool_call_ids = _chunk_tool_call_ids(message.tool_calls, chunk_sequence)
     for tool_call, (tool_call_id, provider_tool_call_id) in zip(message.tool_calls, tool_call_ids, strict=True):
         events.append(
             parts_manager.handle_tool_call_part(
@@ -775,46 +877,6 @@ def _chunk_to_stream_events(
         )
 
     return events
-
-
-def _chunk_tool_call_ids(
-    tool_calls: Sequence[AssistantPromptMessage.ToolCall],
-    chunk_sequence: int,
-) -> list[tuple[str, str | None]]:
-    """Return ``(tool_call_id, renamed_provider_id)`` for each tool call in one gateway chunk.
-
-    A non-empty plugin id names one call across chunks, so a later chunk repeating that id
-    updates the same part. Entries inside one chunk are always distinct calls, but some plugins
-    fall back to the function name as the id, so parallel calls of one tool can share it. Later
-    duplicates get a ``-<n>`` suffix: Pydantic AI overwrites parts that share a vendor id and
-    rejects duplicate ``tool_call_id`` values in one batch. Suffixes depend only on the order
-    within the chunk, so a plugin that re-emits its accumulated tool-call list keeps updating the
-    same parts. The second item is the plugin id for renamed calls (``None`` otherwise) so prompt
-    history can send that id back unchanged.
-    """
-    provider_ids = [_normalize_tool_call_id(tool_call.id) for tool_call in tool_calls]
-    reserved_ids = {provider_id for provider_id in provider_ids if provider_id is not None}
-    occurrences: dict[str, int] = {}
-    tool_call_ids: list[tuple[str, str | None]] = []
-
-    for index, provider_id in enumerate(provider_ids):
-        if provider_id is None:
-            tool_call_ids.append((f"chunk-{chunk_sequence}-tool-{index}", None))
-            continue
-        occurrence = occurrences.get(provider_id, 0) + 1
-        occurrences[provider_id] = occurrence
-        if occurrence == 1:
-            tool_call_ids.append((provider_id, None))
-            continue
-        suffix = occurrence
-        tool_call_id = f"{provider_id}-{suffix}"
-        while tool_call_id in reserved_ids:
-            suffix += 1
-            tool_call_id = f"{provider_id}-{suffix}"
-        reserved_ids.add(tool_call_id)
-        tool_call_ids.append((tool_call_id, provider_id))
-
-    return tool_call_ids
 
 
 def _map_assistant_content_to_response_parts(
