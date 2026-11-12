@@ -12,7 +12,7 @@ from libs.uuid_utils import uuidv7
 
 from .agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from .base import DefaultFieldsDCMixin, TypeBase
-from .types import EnumText, JSONModelColumn, LongText, StringUUID
+from .types import AdjustedJSON, EnumText, JSONModelColumn, LongText, StringUUID
 
 
 class AgentKind(StrEnum):
@@ -24,6 +24,8 @@ class AgentKind(StrEnum):
 
     # Native Agent backed by the Dify Agent runtime/protocol.
     DIFY_AGENT = "dify_agent"
+    # External A2A asset, without a Native Soul, runtime App or Sandbox.
+    EXTERNAL_A2A = "external_a2a"
 
 
 class AgentScope(StrEnum):
@@ -508,6 +510,10 @@ class WorkflowAgentNodeBinding(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True
     agent_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     node_job_config: Mapped[Any] = mapped_column(JSONModelColumn(WorkflowNodeJobConfig), nullable=False)
+    # External jobs never coerce through Native Soul/snapshot configuration.
+    binding_epoch: Mapped[str | None] = mapped_column(String(64), default=None)
+    external_job_config: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON(), default_factory=dict)
+    original_reference: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON(), default=None)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 

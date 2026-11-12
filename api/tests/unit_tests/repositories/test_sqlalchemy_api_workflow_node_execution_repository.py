@@ -302,6 +302,51 @@ def test_workflow_history_and_last_execution_exclude_recursive_tool_nodes(
     assert latest.id == root_id
 
 
+def test_last_run_keeps_durable_external_preview_identity_while_paused(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    ids = [str(uuid4()) for _ in range(4)]
+    with sqlite_session_factory.begin() as session:
+        for index, (record_id, origin, status, metadata) in enumerate(
+            (
+                (ids[0], "workflow-run", "succeeded", None),
+                (ids[1], "single-step", "paused", {"agent_log": {"external_wait": True, "invocation_id": "inv"}}),
+                (ids[2], "single-step", "paused", None),
+                (ids[3], "workflow-tool", "paused", {"agent_log": {"external_wait": True, "invocation_id": "tool"}}),
+            )
+        ):
+            row = WorkflowNodeExecutionModel(
+                id=record_id,
+                tenant_id="tenant",
+                app_id="app",
+                workflow_id="workflow",
+                node_execution_id=f"logical-{index}",
+                node_id="same-node",
+                node_type="agent",
+                title="External",
+                index=index,
+                status=WorkflowNodeExecutionStatus(status),
+                triggered_from=WorkflowNodeExecutionTriggeredFrom(origin),
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="account",
+                execution_metadata=json.dumps(metadata) if metadata else None,
+            )
+            row.created_at = datetime(2026, 1, 1) + timedelta(seconds=index)
+            session.add(row)
+    repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    latest = repository.get_node_last_execution("tenant", "app", "workflow", "same-node")
+    assert latest is not None
+    assert latest.id == ids[1]  # Return this exact pending caller, never the older successful full Run.
+    assert latest.node_execution_id == "logical-1"
+    with sqlite_session_factory.begin() as session:
+        current = session.get(WorkflowNodeExecutionModel, ids[1])
+        assert current is not None
+        current.status = WorkflowNodeExecutionStatus.SUCCEEDED
+    terminal = repository.get_node_last_execution("tenant", "app", "workflow", "same-node")
+    assert terminal is not None
+    assert terminal.id == ids[1]
+
+
 def test_workflow_tool_children_are_scoped_to_exact_parent_and_run(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

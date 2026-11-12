@@ -111,6 +111,9 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
+        from extensions.application_services.external_agent_lifecycle import fence_external_parent
+
+        fence_external_parent(tenant_id, "app", app_id)
         # AppService publishes this task after the App transaction commits.
         # Schedule the independent high-retry SaaS cleanup before legacy local
         # cleanup so a later local failure cannot strand the binding.

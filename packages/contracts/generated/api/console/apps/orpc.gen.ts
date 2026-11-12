@@ -478,6 +478,9 @@ import {
   zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesBody,
   zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesPath,
   zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse,
+  zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindBody,
+  zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindPath,
+  zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponse,
   zPostAppsByAppIdWorkflowsDraftFeaturesBody,
   zPostAppsByAppIdWorkflowsDraftFeaturesPath,
   zPostAppsByAppIdWorkflowsDraftFeaturesResponse,
@@ -3963,10 +3966,38 @@ export const environmentVariables = {
   post: post47,
 }
 
+export const post48 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebind',
+    path: '/apps/{app_id}/workflows/draft/external-agent-bindings/{node_id}/rebind',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindBody,
+      params: zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindPath,
+    }),
+  )
+  .output(zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponse)
+
+export const rebind = {
+  post: post48,
+}
+
+export const byNodeId5 = {
+  rebind,
+}
+
+export const externalAgentBindings = {
+  byNodeId: byNodeId5,
+}
+
 /**
  * Update draft workflow features
  */
-export const post48 = oc
+export const post49 = oc
   .route({
     description: 'Update draft workflow features',
     inputStructure: 'detailed',
@@ -3985,7 +4016,7 @@ export const post48 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const features = {
-  post: post48,
+  post: post49,
 }
 
 /**
@@ -3993,7 +4024,7 @@ export const features = {
  *
  * Test human input delivery for workflow
  */
-export const post49 = oc
+export const post50 = oc
   .route({
     description: 'Test human input delivery for workflow',
     inputStructure: 'detailed',
@@ -4013,7 +4044,7 @@ export const post49 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const deliveryTest = {
-  post: post49,
+  post: post50,
 }
 
 /**
@@ -4021,7 +4052,7 @@ export const deliveryTest = {
  *
  * Get human input form preview for workflow
  */
-export const post50 = oc
+export const post51 = oc
   .route({
     description: 'Get human input form preview for workflow',
     inputStructure: 'detailed',
@@ -4041,7 +4072,7 @@ export const post50 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview4 = {
-  post: post50,
+  post: post51,
 }
 
 /**
@@ -4049,7 +4080,7 @@ export const preview4 = {
  *
  * Submit human input form preview for workflow
  */
-export const post51 = oc
+export const post52 = oc
   .route({
     description: 'Submit human input form preview for workflow',
     inputStructure: 'detailed',
@@ -4069,7 +4100,7 @@ export const post51 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run5 = {
-  post: post51,
+  post: post52,
 }
 
 export const form2 = {
@@ -4077,7 +4108,7 @@ export const form2 = {
   run: run5,
 }
 
-export const post52 = oc
+export const post53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4095,21 +4126,21 @@ export const post52 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const test2 = {
-  post: post52,
+  post: post53,
 }
 
 export const messageTemplate2 = {
   test: test2,
 }
 
-export const byNodeId5 = {
+export const byNodeId6 = {
   deliveryTest,
   form: form2,
   messageTemplate: messageTemplate2,
 }
 
 export const nodes4 = {
-  byNodeId: byNodeId5,
+  byNodeId: byNodeId6,
 }
 
 export const humanInput2 = {
@@ -4121,7 +4152,7 @@ export const humanInput2 = {
  *
  * Run draft workflow iteration node
  */
-export const post53 = oc
+export const post54 = oc
   .route({
     description: 'Run draft workflow iteration node',
     inputStructure: 'detailed',
@@ -4141,15 +4172,15 @@ export const post53 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run6 = {
-  post: post53,
+  post: post54,
 }
 
-export const byNodeId6 = {
+export const byNodeId7 = {
   run: run6,
 }
 
 export const nodes5 = {
-  byNodeId: byNodeId6,
+  byNodeId: byNodeId7,
 }
 
 export const iteration2 = {
@@ -4161,7 +4192,7 @@ export const iteration2 = {
  *
  * Run draft workflow loop node
  */
-export const post54 = oc
+export const post55 = oc
   .route({
     description: 'Run draft workflow loop node',
     inputStructure: 'detailed',
@@ -4181,15 +4212,15 @@ export const post54 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run7 = {
-  post: post54,
+  post: post55,
 }
 
-export const byNodeId7 = {
+export const byNodeId8 = {
   run: run7,
 }
 
 export const nodes6 = {
-  byNodeId: byNodeId7,
+  byNodeId: byNodeId8,
 }
 
 export const loop2 = {
@@ -4214,7 +4245,7 @@ export const candidates = {
   get: get69,
 }
 
-export const post55 = oc
+export const post56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4238,10 +4269,10 @@ export const post55 = oc
   })
 
 export const copyFromRoster = {
-  post: post55,
+  post: post56,
 }
 
-export const post56 = oc
+export const post57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4259,10 +4290,10 @@ export const post56 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const impact = {
-  post: post56,
+  post: post57,
 }
 
-export const post57 = oc
+export const post58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4288,10 +4319,10 @@ export const post57 = oc
   })
 
 export const saveToRoster = {
-  post: post57,
+  post: post58,
 }
 
-export const post58 = oc
+export const post59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4314,7 +4345,7 @@ export const post58 = oc
   })
 
 export const validate = {
-  post: post58,
+  post: post59,
 }
 
 export const get70 = oc
@@ -4398,7 +4429,7 @@ export const lastRun = {
  *
  * Run draft workflow node
  */
-export const post59 = oc
+export const post60 = oc
   .route({
     description: 'Run draft workflow node',
     inputStructure: 'detailed',
@@ -4418,7 +4449,7 @@ export const post59 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run8 = {
-  post: post59,
+  post: post60,
 }
 
 /**
@@ -4426,7 +4457,7 @@ export const run8 = {
  *
  * Poll for trigger events and execute single node when event arrives
  */
-export const post60 = oc
+export const post61 = oc
   .route({
     description: 'Poll for trigger events and execute single node when event arrives',
     inputStructure: 'detailed',
@@ -4441,7 +4472,7 @@ export const post60 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run9 = {
-  post: post60,
+  post: post61,
 }
 
 export const trigger = {
@@ -4486,7 +4517,7 @@ export const variables = {
   get: get72,
 }
 
-export const byNodeId8 = {
+export const byNodeId9 = {
   agentComposer,
   lastRun,
   run: run8,
@@ -4495,7 +4526,7 @@ export const byNodeId8 = {
 }
 
 export const nodes7 = {
-  byNodeId: byNodeId8,
+  byNodeId: byNodeId9,
 }
 
 /**
@@ -4503,7 +4534,7 @@ export const nodes7 = {
  *
  * Run draft workflow
  */
-export const post61 = oc
+export const post62 = oc
   .route({
     description: 'Run draft workflow',
     inputStructure: 'detailed',
@@ -4526,7 +4557,7 @@ export const post61 = oc
   })
 
 export const run10 = {
-  post: post61,
+  post: post62,
 }
 
 /**
@@ -4605,7 +4636,7 @@ export const get75 = oc
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
-export const byNodeId9 = {
+export const byNodeId10 = {
   get: get75,
   byOutputName,
 }
@@ -4632,7 +4663,7 @@ export const get76 = oc
 export const nodeOutputs = {
   get: get76,
   events,
-  byNodeId: byNodeId9,
+  byNodeId: byNodeId10,
 }
 
 export const byRunId2 = {
@@ -4668,7 +4699,7 @@ export const systemVariables = {
  *
  * Poll for trigger events and execute full workflow when event arrives
  */
-export const post62 = oc
+export const post63 = oc
   .route({
     description: 'Poll for trigger events and execute full workflow when event arrives',
     inputStructure: 'detailed',
@@ -4691,7 +4722,7 @@ export const post62 = oc
   })
 
 export const run11 = {
-  post: post62,
+  post: post63,
 }
 
 /**
@@ -4699,7 +4730,7 @@ export const run11 = {
  *
  * Full workflow debug when the start node is a trigger
  */
-export const post63 = oc
+export const post64 = oc
   .route({
     description: 'Full workflow debug when the start node is a trigger',
     inputStructure: 'detailed',
@@ -4722,7 +4753,7 @@ export const post63 = oc
   })
 
 export const runAll = {
-  post: post63,
+  post: post64,
 }
 
 export const trigger2 = {
@@ -4888,7 +4919,7 @@ export const get80 = oc
  *
  * Sync draft workflow configuration
  */
-export const post64 = oc
+export const post65 = oc
   .route({
     description: 'Sync draft workflow configuration',
     inputStructure: 'detailed',
@@ -4912,9 +4943,10 @@ export const post64 = oc
 
 export const draft2 = {
   get: get80,
-  post: post64,
+  post: post65,
   conversationVariables: conversationVariables2,
   environmentVariables,
+  externalAgentBindings,
   features,
   humanInput: humanInput2,
   iteration: iteration2,
@@ -4949,7 +4981,7 @@ export const get81 = oc
 /**
  * Publish workflow
  */
-export const post65 = oc
+export const post66 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4969,7 +5001,7 @@ export const post65 = oc
 
 export const publish = {
   get: get81,
-  post: post65,
+  post: post66,
 }
 
 /**
@@ -5052,7 +5084,7 @@ export const get84 = oc
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
-export const byNodeId10 = {
+export const byNodeId11 = {
   get: get84,
   byOutputName: byOutputName2,
 }
@@ -5079,7 +5111,7 @@ export const get85 = oc
 export const nodeOutputs2 = {
   get: get85,
   events: events2,
-  byNodeId: byNodeId10,
+  byNodeId: byNodeId11,
 }
 
 export const byRunId3 = {
@@ -5129,7 +5161,7 @@ export const triggers2 = {
 /**
  * Restore a published workflow version into the draft workflow
  */
-export const post66 = oc
+export const post67 = oc
   .route({
     description: 'Restore a published workflow version into the draft workflow',
     inputStructure: 'detailed',
@@ -5143,7 +5175,7 @@ export const post66 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const restore = {
-  post: post66,
+  post: post67,
 }
 
 /**
@@ -5356,7 +5388,7 @@ export const get89 = oc
 /**
  * Create a new API key for an app
  */
-export const post67 = oc
+export const post68 = oc
   .route({
     description: 'Create a new API key for an app',
     inputStructure: 'detailed',
@@ -5375,7 +5407,7 @@ export const post67 = oc
 
 export const apiKeys = {
   get: get89,
-  post: post67,
+  post: post68,
   byApiKeyId,
 }
 
@@ -5401,7 +5433,7 @@ export const get90 = oc
 /**
  * Create a new application
  */
-export const post68 = oc
+export const post69 = oc
   .route({
     description: 'Create a new application',
     inputStructure: 'detailed',
@@ -5416,7 +5448,7 @@ export const post68 = oc
 
 export const apps = {
   get: get90,
-  post: post68,
+  post: post69,
   imports,
   recent,
   starred,

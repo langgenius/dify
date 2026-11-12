@@ -38,6 +38,9 @@ class ConversationService:
     @staticmethod
     def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
         """Dispatch resource collection only after the lifecycle transaction commits."""
+        from extensions.application_services.external_agent_lifecycle import fence_external_parent
+
+        fence_external_parent(tenant_id, "conversation", conversation_id)
         if retired_workspace_ids:
             enqueue_agent_resource_collection(
                 tenant_id=tenant_id,

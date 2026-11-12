@@ -193,6 +193,19 @@ class WorkflowEntry:
         self.graph_engine.add_layer(execution_context_layer)
         # Add execution limits layer
         self.graph_engine.add_layer(limits_layer)
+        # External waits release the Engine. Their run budget must survive a new
+        # Engine instance on resume, including time spent away from workers.
+        graph_nodes = graph_config.get("nodes", [])
+        if isinstance(graph_nodes, list) and any(
+            isinstance(node, Mapping)
+            and isinstance(node.get("data"), Mapping)
+            and node["data"].get("agent_node_kind") == "external_a2a"
+            for node in graph_nodes
+        ):
+            from extensions.ext_application_services import application_services
+            from providers.a2a.workflow_budget import ExternalWorkflowBudgetLayer
+
+            self.graph_engine.add_layer(ExternalWorkflowBudgetLayer(application_services().external_agents.repository))
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():

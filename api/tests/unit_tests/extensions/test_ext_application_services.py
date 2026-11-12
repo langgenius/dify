@@ -33,6 +33,7 @@ from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
 from models.enums import InvokeFrom as ModelInvokeFrom
+from models.external_agent_trace import ExternalAgentDataTombstone
 from models.model import (
     AccountTrialAppRecord,
     App,
@@ -1986,6 +1987,9 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
         initialization_password="",
         redis=_redis(),
     )
+    # The real lifecycle callback resolves the composition root lazily, as in
+    # application startup; direct construction must install that same root.
+    monkeypatch.setitem(naming_app.extensions, "application_services", services)
     admitted_app = services.installed_apps.access.get_access(
         installed_app_id=installed_app_ref.id,
         tenant_id=installed_app_ref.tenant_id,
@@ -2020,6 +2024,17 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]
+    with sqlite_session_factory() as session:
+        assert (
+            session.scalar(
+                select(ExternalAgentDataTombstone.id).where(
+                    ExternalAgentDataTombstone.tenant_id == owner_tenant_id,
+                    ExternalAgentDataTombstone.owner_kind == "conversation",
+                    ExternalAgentDataTombstone.owner_id == conversation_id,
+                )
+            )
+            is not None
+        )
     assert active_connections == 0
 
 

@@ -1473,7 +1473,11 @@ class AgentRosterService:
         }
 
     def _get_agent(self, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
-        stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+        # Native configuration/version mutations cannot bypass the External
+        # control plane's Owner/Admin, revision and test-generation rules.
+        stmt = select(Agent).where(
+            Agent.tenant_id == tenant_id, Agent.id == agent_id, Agent.agent_kind == AgentKind.DIFY_AGENT
+        )
         if roster_only:
             stmt = stmt.where(Agent.scope == AgentScope.ROSTER)
         agent = self._session.scalar(stmt.limit(1))
