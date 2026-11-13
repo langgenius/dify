@@ -30,7 +30,6 @@ from controllers.console.agent.roster import (
     AgentBuildDraftApplyApi,
     AgentBuildDraftCheckoutApi,
     AgentBuildDraftCheckoutPayload,
-    AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
     AgentPublishApi,
     AgentPublishPayload,
@@ -312,39 +311,6 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
     }
 
 
-def test_agent_debug_conversation_refresh_resets_build_for_current_user(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    account_id: str,
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    captured: dict[str, object] = {}
-
-    class FakeRosterService:
-        def reset_build_conversation(self, **kwargs: object) -> str:
-            captured.update(kwargs)
-            return "new-debug-conversation-id"
-
-    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda *_args: FakeRosterService())
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/debug-conversation/refresh",
-        method="POST",
-    ):
-        response = unwrap(AgentDebugConversationRefreshApi.post)(
-            AgentDebugConversationRefreshApi(), MagicMock(), "tenant-1", _account(account_id=account_id), agent_id
-        )
-    assert response == {
-        "debug_conversation_id": "new-debug-conversation-id",
-        "debug_conversation_has_messages": False,
-        "debug_conversation_message_count": 0,
-    }
-    assert captured == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "account_id": account_id,
-    }
-
-
 def test_agent_publish_and_build_draft_routes_call_composer_service(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
@@ -360,10 +326,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
         captured["checkout"] = kwargs
         return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
 
-    def load_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
-        captured["load"] = kwargs
-        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
-
     def save_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
         captured["save"] = kwargs
         return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
@@ -372,25 +334,15 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
         captured["apply"] = kwargs
         return {"result": "success", "draft": {"id": "draft-1"}}
 
-    def discard_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
-        captured["discard"] = kwargs
-        return {"result": "success"}
-
     monkeypatch.setattr(roster_controller.AgentComposerService, "publish_agent_app_draft", publish_agent_app_draft)
     monkeypatch.setattr(
         roster_controller.AgentComposerService, "checkout_agent_app_build_draft", checkout_agent_app_build_draft
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentComposerService, "load_agent_app_build_draft", load_agent_app_build_draft
     )
     monkeypatch.setattr(
         roster_controller.AgentComposerService, "save_agent_app_build_draft", save_agent_app_build_draft
     )
     monkeypatch.setattr(
         roster_controller.AgentComposerService, "apply_agent_app_build_draft", apply_agent_app_build_draft
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentComposerService, "discard_agent_app_build_draft", discard_agent_app_build_draft
     )
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/publish", json={"version_note": "publish v1"}
@@ -430,11 +382,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
         "account_id": account_id,
         "force": True,
     }
-    with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft"):
-        loaded = unwrap(AgentBuildDraftApi.get)(AgentBuildDraftApi(), MagicMock(), "tenant-1", current_user, agent_id)
-    assert loaded["draft"]["id"] == "build-draft-1"
-    captured["load"].pop("session", None)
-    assert captured["load"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
         json={"variant": "agent_app", "save_strategy": "save_to_current_version", "agent_soul": {}},
@@ -464,15 +411,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     assert applied == {"result": "success", "draft": {"id": "draft-1"}}
     captured["apply"].pop("session", None)
     assert captured["apply"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft", method="DELETE"
-    ):
-        discarded = unwrap(AgentBuildDraftApi.delete)(
-            AgentBuildDraftApi(), MagicMock(), "tenant-1", current_user, agent_id
-        )
-    assert discarded == {"result": "success"}
-    captured["discard"].pop("session", None)
-    assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
 
 
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(

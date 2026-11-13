@@ -1680,6 +1680,43 @@ ignore_imports =
     repositories.app.agent_app_repository -> services.agent.errors
     repositories.app.agent_app_repository -> services.agent.roster_service
 
+[importlinter:contract:agent-build-session-service-boundary]
+name = Agent Build session use cases and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app.agent_build_session_service
+    services.app.agent_build_session_store
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:console-agent-build-session-boundary]
+name = Agent Build session handlers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.agent.build_session
+forbidden_modules =
+    controllers.common.session
+    extensions.ext_database
+    models.agent
+    models.model
+    repositories
+    services.agent.composer_service
+    services.agent.roster_service
+    sqlalchemy
+    tasks
+allow_indirect_imports = True
+
 [importlinter:contract:agent-observability-query-boundary]
 name = Agent observability query contracts are framework and persistence neutral
 type = forbidden

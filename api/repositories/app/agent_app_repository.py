@@ -10,18 +10,33 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.agent.workspace import WorkspaceOwnerScope
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
+from libs.helper import to_timestamp
 from machinery.context import RequestContext
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentIconType, AgentScope, AgentStatus
+from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentIconType,
+    AgentScope,
+    AgentStatus,
+    AgentWorkspaceOwnerType,
+)
 from models.agent_soul_state import build_initial_agent_soul
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
-from repositories.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent_roster_queries import find_agent_draft, load_reference_counts_by_agent_id
 from repositories.agent_roster_repository import load_published_references_by_agent_id
+from repositories.agent_workspace_repository import AgentWorkspaceRepository, validate_binding_generation
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from repositories.app.agent_debug_conversations import (
     count_agent_debug_conversation_messages,
+    create_agent_debug_conversation,
     get_or_create_agent_debug_conversation,
 )
 from repositories.app.agent_runtime_app import (
@@ -44,6 +59,14 @@ from services.app.agent_app_contracts import (
     AgentAppNameConflictError,
     AgentAppNotFoundError,
     AgentReferencingWorkflow,
+)
+from services.app.agent_build_session_store import (
+    AgentBuildAgentNotFoundError,
+    AgentBuildBindingUnavailableError,
+    AgentBuildDraft,
+    AgentBuildDraftNotFoundError,
+    AgentBuildDraftSummary,
+    AgentBuildRefresh,
 )
 from services.entities.app_entities import (
     AppCreationSettings,
@@ -284,6 +307,151 @@ class AgentAppRepository:
                 draft_type=AgentConfigDraftType.DEBUG_BUILD,
             )
             return conversation_id, count_agent_debug_conversation_messages(session, conversation_id=conversation_id)
+
+    def refresh_build_conversation(self, *, tenant_id: str, agent_id: str, account_id: str) -> AgentBuildRefresh:
+        """Replace the active Agent's account-owned conversation and retire its Build binding in one commit."""
+        with self._session_factory.begin() as session:
+            agent = session.scalar(
+                select(Agent)
+                .where(Agent.tenant_id == tenant_id, Agent.id == agent_id, Agent.status == AgentStatus.ACTIVE)
+                .with_for_update()
+            )
+            if agent is None:
+                raise AgentBuildAgentNotFoundError
+            app_id = ensure_workflow_agent_backing_app(
+                session, agent=agent, account_id=agent.updated_by or agent.created_by
+            )
+            if not app_id:
+                raise AgentBuildAgentNotFoundError
+
+            draft = find_agent_draft(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+                for_update=True,
+            )
+            retired_binding_id = None
+            if draft is not None and draft.agent_workspace_binding_id is not None:
+                retired_binding_id = self._retire_build_binding(session, draft, app_id=app_id, require_generation=False)
+                draft.agent_workspace_binding_id = None
+
+            conversation_id = create_agent_debug_conversation(session, app_id=app_id, account_id=account_id)
+            mapping = session.scalar(
+                select(AgentDebugConversation).where(
+                    AgentDebugConversation.tenant_id == tenant_id,
+                    AgentDebugConversation.agent_id == agent_id,
+                    AgentDebugConversation.account_id == account_id,
+                    AgentDebugConversation.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                )
+            )
+            if mapping is None:
+                session.add(
+                    AgentDebugConversation(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        app_id=app_id,
+                        account_id=account_id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                        conversation_id=conversation_id,
+                    )
+                )
+            else:
+                mapping.app_id = app_id
+                mapping.conversation_id = conversation_id
+            return AgentBuildRefresh(conversation_id=conversation_id, retired_binding_id=retired_binding_id)
+
+    def get_build_draft(self, *, tenant_id: str, agent_id: str, account_id: str) -> AgentBuildDraft:
+        """Return the existing account-owned draft and its stored Soul without creating or changing rows."""
+        with self._session_factory() as session:
+            draft = find_agent_draft(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+            )
+            if draft is None:
+                raise AgentBuildDraftNotFoundError
+            return AgentBuildDraft(
+                summary=AgentBuildDraftSummary(
+                    id=draft.id,
+                    agent_id=draft.agent_id,
+                    draft_type=draft.draft_type.value,
+                    account_id=draft.account_id,
+                    base_snapshot_id=draft.base_snapshot_id,
+                    created_by=draft.created_by,
+                    updated_by=draft.updated_by,
+                    created_at=to_timestamp(draft.created_at),
+                    updated_at=to_timestamp(draft.updated_at),
+                ),
+                agent_soul=draft.config_snapshot_dict,
+            )
+
+    def discard_build_draft(self, *, tenant_id: str, agent_id: str, account_id: str) -> str | None:
+        """Discard only this account's draft. An existing Agent with no such draft is a no-op."""
+        with self._session_factory.begin() as session:
+            # Preserve the legacy discard behavior for archived Agents.
+            agent = session.scalar(
+                select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).with_for_update()
+            )
+            if agent is None:
+                raise AgentBuildAgentNotFoundError
+            draft = find_agent_draft(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+                for_update=True,
+            )
+            if draft is None:
+                return None
+            retired_binding_id = None
+            if draft.agent_workspace_binding_id is not None:
+                retired_binding_id = self._retire_build_binding(
+                    session, draft, app_id=agent.backing_app_id or agent.app_id, require_generation=True
+                )
+            session.delete(draft)
+            return retired_binding_id
+
+    @staticmethod
+    def _retire_build_binding(
+        session: Session, draft: AgentConfigDraft, *, app_id: str | None, require_generation: bool
+    ) -> str:
+        """Stage retirement of the exact draft-owned binding, failing if it cannot be retired.
+
+        Discard requires a matching generation. Refresh can reset an owned
+        binding from an older generation, as before.
+        """
+        binding_id = draft.agent_workspace_binding_id
+        if binding_id is None or app_id is None:
+            raise AgentBuildBindingUnavailableError
+        workspaces = AgentWorkspaceRepository(session=session)
+        binding = workspaces.get_active_binding(
+            tenant_id=draft.tenant_id,
+            binding_id=binding_id,
+            expected_owner_scope=WorkspaceOwnerScope(
+                tenant_id=draft.tenant_id,
+                app_id=app_id,
+                owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                owner_id=draft.id,
+            ),
+        )
+        if binding is None or binding.agent_id != draft.agent_id:
+            raise AgentBuildBindingUnavailableError
+        if require_generation:
+            validate_binding_generation(
+                binding,
+                base_home_snapshot_id=draft.home_snapshot_id,
+                agent_config_version_id=draft.id,
+                agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            )
+        retired_binding_id = workspaces.retire_binding(tenant_id=draft.tenant_id, binding_id=binding_id)
+        if retired_binding_id is None:
+            raise AgentBuildBindingUnavailableError
+        return retired_binding_id
 
     def update_agent(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> str:
         """Commit updates for the tenant's active roster Agent App and return its id."""

@@ -6,10 +6,39 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from libs.helper import escape_like_pattern, to_timestamp
-from models.agent import Agent, AgentScope, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+
+
+def find_agent_draft(
+    session: Session,
+    *,
+    tenant_id: str,
+    agent_id: str,
+    draft_type: AgentConfigDraftType,
+    account_id: str | None,
+    for_update: bool = False,
+) -> AgentConfigDraft | None:
+    """Load the latest owner-scoped draft. A locking read refreshes cached state without flushing it."""
+    stmt = select(AgentConfigDraft).where(
+        AgentConfigDraft.tenant_id == tenant_id,
+        AgentConfigDraft.agent_id == agent_id,
+        AgentConfigDraft.draft_type == draft_type,
+        AgentConfigDraft.account_id == (account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None),
+    )
+    if for_update:
+        stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
+    return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
 
 @dataclass(frozen=True)

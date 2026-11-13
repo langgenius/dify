@@ -9,7 +9,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
     Agent,
-    AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
@@ -48,7 +47,6 @@ from repositories.app.agent_runtime_app import (
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
-    AgentBuildSandboxNotFoundError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionNotFoundError,
@@ -513,107 +511,6 @@ class AgentRosterService:
                             raise AgentWorkspaceNotFoundError(
                                 "Agent debug Conversation participant Binding is unavailable"
                             )
-                mapping.app_id = backing_app_id
-                mapping.conversation_id = conversation_id
-            self._session.flush()
-            self._session.commit()
-        except Exception:
-            self._session.rollback()
-            raise
-        if retired_binding_id is not None:
-            enqueue_agent_resource_collection(
-                tenant_id=tenant_id,
-                binding_ids=(retired_binding_id,),
-            )
-        return conversation_id
-
-    def reset_build_conversation(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
-        """Reset Build and retire its exact DEBUG_BUILD Draft-owned Binding.
-
-        The mapping update, exact BUILD_DRAFT Binding retirement, and Draft
-        pointer clear commit in one transaction. Validation failures fail fast;
-        collection is enqueued only after commit.
-        """
-
-        agent = self._session.scalar(
-            select(Agent).where(
-                Agent.tenant_id == tenant_id,
-                Agent.id == agent_id,
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        )
-        if agent is None:
-            raise AgentNotFoundError()
-        backing_app_id = ensure_workflow_agent_backing_app(
-            self._session,
-            agent=agent,
-            account_id=agent.updated_by or agent.created_by,
-        )
-        if not backing_app_id:
-            raise AgentNotFoundError()
-
-        retired_binding_id: str | None = None
-        try:
-            conversation_id = create_agent_debug_conversation(
-                self._session,
-                app_id=backing_app_id,
-                account_id=account_id,
-            )
-            mapping = self._session.scalar(
-                select(AgentDebugConversation).where(
-                    AgentDebugConversation.tenant_id == tenant_id,
-                    AgentDebugConversation.agent_id == agent_id,
-                    AgentDebugConversation.account_id == account_id,
-                    AgentDebugConversation.draft_type == AgentConfigDraftType.DEBUG_BUILD,
-                )
-            )
-            build_draft = self._session.scalar(
-                select(AgentConfigDraft)
-                .where(
-                    AgentConfigDraft.tenant_id == tenant_id,
-                    AgentConfigDraft.agent_id == agent_id,
-                    AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
-                    AgentConfigDraft.account_id == account_id,
-                )
-                .order_by(AgentConfigDraft.updated_at.desc())
-                .limit(1)
-            )
-            if build_draft is not None and build_draft.agent_workspace_binding_id is not None:
-                binding_id = build_draft.agent_workspace_binding_id
-                binding = AgentWorkspaceService.get_active_binding(
-                    session=self._session,
-                    tenant_id=tenant_id,
-                    binding_id=binding_id,
-                    expected_owner_scope=WorkspaceOwnerScope(
-                        tenant_id=tenant_id,
-                        app_id=backing_app_id,
-                        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
-                        owner_id=build_draft.id,
-                    ),
-                )
-                if binding is None or binding.agent_id != agent_id:
-                    raise AgentBuildSandboxNotFoundError()
-                retired_binding_id = AgentWorkspaceService.retire_binding(
-                    session=self._session,
-                    tenant_id=tenant_id,
-                    binding_id=binding_id,
-                )
-                if retired_binding_id is None:
-                    raise AgentBuildSandboxNotFoundError()
-                build_draft.agent_workspace_binding_id = None
-
-            if mapping is None:
-                self._session.add(
-                    AgentDebugConversation(
-                        tenant_id=tenant_id,
-                        agent_id=agent_id,
-                        app_id=backing_app_id,
-                        account_id=account_id,
-                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
-                        conversation_id=conversation_id,
-                    )
-                )
-            else:
                 mapping.app_id = backing_app_id
                 mapping.conversation_id = conversation_id
             self._session.flush()
