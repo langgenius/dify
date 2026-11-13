@@ -1,7 +1,7 @@
 import { act, waitFor } from '@testing-library/react'
-import { createNodeTracing } from '../../../__tests__/fixtures'
+import { createEdge, createNode, createNodeTracing } from '../../../__tests__/fixtures'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
-import { NodeRunningStatus } from '../../../types'
+import { BlockEnum, NodeRunningStatus } from '../../../types'
 import { useWorkflowNodeFinished } from '../use-workflow-node-finished'
 import { useWorkflowNodeStarted } from '../use-workflow-node-started'
 import {
@@ -14,6 +14,54 @@ import {
 } from './test-helpers'
 
 describe('useWorkflowNodeStarted', () => {
+  it.each([
+    ['1', 'approve', 'approve'],
+    ['1', '', '__timeout'],
+    ['2', 'approve', 'approve'],
+    ['2', '', '__timeout'],
+  ])('highlights Human Input v%s for action output %j', async (version, action, handle) => {
+    const { result } = renderViewportHook(
+      () => ({ ...useWorkflowNodeStarted(), ...useWorkflowNodeFinished() }),
+      {
+        nodes: [
+          createNode({ id: 'approval', data: { type: BlockEnum.HumanInput, version } }),
+          createNode({ id: 'n1', width: 200, height: 80 }),
+        ],
+        edges: ['approve', '__timeout'].map((sourceHandle) =>
+          createEdge({
+            id: sourceHandle,
+            source: 'approval',
+            target: 'n1',
+            sourceHandle,
+            data: {},
+          }),
+        ),
+        initialStoreState: { workflowRunningData: baseRunningData() },
+      },
+    )
+
+    act(() => {
+      result.current.handleWorkflowNodeFinished(
+        createNodeFinishedResponse({
+          data: createNodeTracing({
+            node_id: 'approval',
+            node_type: BlockEnum.HumanInput,
+            status: NodeRunningStatus.Succeeded,
+            outputs: { __action_id: action },
+          }),
+        }),
+      )
+      result.current.handleWorkflowNodeStarted(createNodeStartedResponse(), containerParams)
+    })
+
+    await waitFor(() => {
+      const activeEdges = result.current.edges.filter(
+        (edge) => getEdgeRuntimeState(edge)._sourceRunningStatus === NodeRunningStatus.Succeeded,
+      )
+      expect(activeEdges.map((edge) => edge.id)).toEqual([handle])
+    })
+  })
+
   it('keeps one completed trace with execution data when the first node is replayed', () => {
     const { result, store } = renderViewportHook(
       () => ({ ...useWorkflowNodeStarted(), ...useWorkflowNodeFinished() }),
