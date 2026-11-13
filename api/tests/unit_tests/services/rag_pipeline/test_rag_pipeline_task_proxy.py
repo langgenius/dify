@@ -1,8 +1,9 @@
 import json
 import logging
+import threading
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from pytest_mock import MockerFixture
@@ -55,6 +56,51 @@ class TestRagPipelineTaskProxyCases:
         proxy.delay()
 
         dispatch_mock.assert_called_once()
+
+    @staticmethod
+    def test_concurrent_tenant_dispatches_only_start_one_task(mocker: MockerFixture) -> None:
+        """Concurrent first submissions must not both bypass the tenant queue."""
+        barrier = threading.Barrier(2)
+
+        class InterleavingQueue:
+            def try_set_task_waiting_time(self):
+                barrier.wait(timeout=5)
+                with lock:
+                    nonlocal claimed
+                    if claimed:
+                        return False
+                    claimed = True
+                    return True
+
+            def set_task_waiting_time(self):
+                return None
+
+            def push_tasks(self, tasks):
+                queued.extend(tasks)
+
+        queued = []
+        claimed = False
+        lock = threading.Lock()
+        queue = InterleavingQueue()
+        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue", return_value=queue)
+        proxies = [
+            RagPipelineTaskProxy("tenant-1", "user-1", [Mock()]),
+            RagPipelineTaskProxy("tenant-1", "user-2", [Mock()]),
+        ]
+        dispatches = [Mock(), Mock()]
+
+        threads = [
+            threading.Thread(target=proxy._send_to_tenant_queue, args=(f"file-{i}", dispatches[i]))
+            for i, proxy in enumerate(proxies)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+
+        assert not any(thread.is_alive() for thread in threads)
+        assert sum(dispatch.delay.call_count for dispatch in dispatches) == 1
+        assert len(queued) == 1
 
     # --- _dispatch ---
 
@@ -128,7 +174,7 @@ class TestRagPipelineTaskProxyCases:
 
     @staticmethod
     def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker: MockerFixture, proxy) -> None:
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = False
         task_func = Mock()
 
         proxy._send_to_tenant_queue("file-1", task_func)
@@ -138,12 +184,12 @@ class TestRagPipelineTaskProxyCases:
 
     @staticmethod
     def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFixture, proxy) -> None:
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = None
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = True
         task_func = Mock()
 
         proxy._send_to_tenant_queue("file-1", task_func)
 
-        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.assert_called_once()
         task_func.delay.assert_called_once_with(
             rag_pipeline_invoke_entities_file_id="file-1",
             tenant_id="tenant-1",
@@ -387,10 +433,10 @@ class TestRagPipelineTaskProxyCasesServices:
             )
 
         def test_send_to_tenant_queue_with_existing_task_key(self, tenant_queue_commands: MagicMock):
-            """Test _send_to_tenant_queue when task key exists."""
+            """Test _send_to_tenant_queue when another task owns the tenant slot."""
             # Arrange
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            tenant_queue_commands.return_value = "task_key"
+            tenant_queue_commands.return_value = None
             upload_file_id = "file-123"
             mock_task = Mock()
 
@@ -403,23 +449,17 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_task.delay.assert_not_called()
 
         def test_send_to_tenant_queue_without_task_key(self, tenant_queue_commands: MagicMock):
-            """Test _send_to_tenant_queue when no task key exists."""
+            """Test _send_to_tenant_queue when it atomically claims an idle tenant slot."""
             # Arrange
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            tenant_queue_commands.return_value = None
+            tenant_queue_commands.return_value = True
             upload_file_id = "file-123"
             mock_task = Mock()
 
             # Act
             proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
-            # If no task key, should set task waiting time key first
-            tenant_queue_commands.assert_has_calls(
-                [
-                    call("GET", "tenant_pipeline_task:tenant-123", keys=["tenant_pipeline_task:tenant-123"]),
-                    call("SETEX", "tenant_pipeline_task:tenant-123", 3600, 1),
-                ]
-            )
+            tenant_queue_commands.assert_called_once_with("SET", "tenant_pipeline_task:tenant-123", 1, "NX", "EX", 3600)
             mock_task.delay.assert_called_once_with(
                 rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
             )

@@ -57,7 +57,7 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
         logger.info(
             "tenant %s send documents %s to tenant queue %s", self._tenant_id, self._document_ids, self.QUEUE_NAME
         )
-        if self._tenant_isolated_task_queue.get_task_key():
+        if not self._tenant_isolated_task_queue.try_set_task_waiting_time():
             # Add to waiting queue using List operations (lpush)
             self._tenant_isolated_task_queue.push_tasks(
                 [
@@ -70,8 +70,7 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
             )
             logger.info("tenant %s push tasks: %s - %s", self._tenant_id, self._dataset_id, self._document_ids)
         else:
-            # Set flag and execute task
-            self._tenant_isolated_task_queue.set_task_waiting_time()
+            # Atomically claim the tenant queue before executing the task.
             task_func.delay(  # type: ignore
                 tenant_id=self._tenant_id, dataset_id=self._dataset_id, document_ids=self._document_ids
             )

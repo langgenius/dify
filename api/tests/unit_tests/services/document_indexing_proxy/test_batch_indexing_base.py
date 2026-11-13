@@ -130,6 +130,7 @@ class TestSendToDirectQueue:
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
         mock_queue.push_tasks.assert_not_called()
         mock_queue.set_task_waiting_time.assert_not_called()
+        mock_queue.try_set_task_waiting_time.assert_not_called()
 
     def test_should_forward_any_callable_when_sent_to_direct_queue(self) -> None:
         """Verify that different task functions are each called correctly."""
@@ -150,15 +151,15 @@ class TestSendToTenantQueue:
     """Tests for _send_to_tenant_queue — both branches."""
 
     # ------------------------------------------------------------------
-    # Branch 1: get_task_key() is truthy → push to waiting queue
+    # Branch 1: atomic claim fails → push to waiting queue
     # ------------------------------------------------------------------
 
     def test_should_push_task_to_queue_when_task_key_exists(self) -> None:
-        """When get_task_key() is truthy, tasks must be pushed via push_tasks()."""
+        """When the atomic claim fails, tasks must be pushed via push_tasks()."""
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = False
         task_func = MagicMock()
 
         # Act
@@ -174,7 +175,7 @@ class TestSendToTenantQueue:
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = False
         task_func = MagicMock()
 
         # Act
@@ -183,12 +184,12 @@ class TestSendToTenantQueue:
         # Assert
         cast(MagicMock, task_func.delay).assert_not_called()
 
-    def test_should_not_set_waiting_time_when_task_key_exists(self) -> None:
-        """When a key already exists, set_task_waiting_time must never be called."""
+    def test_should_only_attempt_atomic_claim_when_task_key_exists(self) -> None:
+        """When another task owns the queue, no second waiting flag is written."""
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = False
         task_func = MagicMock()
 
         # Act
@@ -197,13 +198,14 @@ class TestSendToTenantQueue:
         # Assert
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
         mock_queue.set_task_waiting_time.assert_not_called()
+        mock_queue.try_set_task_waiting_time.assert_called_once()
 
     def test_should_serialize_document_task_correctly_when_pushing_to_queue(self) -> None:
         """Verify the serialised payload matches asdict(DocumentTask(...))."""
         # Arrange
         proxy = make_proxy(document_ids=["doc-x"])
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = "k"
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = False
         task_func = MagicMock()
 
         # Act
@@ -219,15 +221,15 @@ class TestSendToTenantQueue:
         assert pushed_list[0]["document_ids"] == ["doc-x"]
 
     # ------------------------------------------------------------------
-    # Branch 2: get_task_key() is falsy → set flag + dispatch via delay
+    # Branch 2: atomic claim succeeds → dispatch via delay
     # ------------------------------------------------------------------
 
     def test_should_set_waiting_time_and_call_delay_when_no_task_key(self) -> None:
-        """When get_task_key() is falsy, set_task_waiting_time and task_func.delay are invoked."""
+        """When the atomic claim succeeds, task_func.delay is invoked."""
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = None
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = True
         task_func = MagicMock()
 
         # Act
@@ -235,7 +237,7 @@ class TestSendToTenantQueue:
 
         # Assert
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
-        mock_queue.set_task_waiting_time.assert_called_once()
+        mock_queue.try_set_task_waiting_time.assert_called_once()
         cast(MagicMock, task_func.delay).assert_called_once_with(
             tenant_id=TENANT_ID,
             dataset_id=DATASET_ID,
@@ -243,11 +245,11 @@ class TestSendToTenantQueue:
         )
 
     def test_should_not_push_tasks_when_no_task_key(self) -> None:
-        """When get_task_key() is falsy, push_tasks must never be called."""
+        """When the atomic claim succeeds, push_tasks must never be called."""
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = None
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = True
         task_func = MagicMock()
 
         # Act
@@ -257,13 +259,13 @@ class TestSendToTenantQueue:
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
         mock_queue.push_tasks.assert_not_called()
 
-    @pytest.mark.parametrize("falsy_key", [None, "", 0, False])
-    def test_should_init_task_when_key_is_any_falsy_value(self, falsy_key: object) -> None:
-        """Verify that any falsy return from get_task_key() triggers the init branch."""
+    @pytest.mark.parametrize("claimed", [True, False])
+    def test_branch_is_selected_by_atomic_claim_result(self, claimed: bool) -> None:
+        """Verify the atomic claim result selects the direct or queued branch."""
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = falsy_key
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = claimed
         task_func = MagicMock()
 
         # Act
@@ -271,8 +273,13 @@ class TestSendToTenantQueue:
 
         # Assert
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
-        mock_queue.set_task_waiting_time.assert_called_once()
-        cast(MagicMock, task_func.delay).assert_called_once()
+        mock_queue.try_set_task_waiting_time.assert_called_once()
+        if claimed:
+            cast(MagicMock, task_func.delay).assert_called_once()
+            mock_queue.push_tasks.assert_not_called()
+        else:
+            cast(MagicMock, task_func.delay).assert_not_called()
+            mock_queue.push_tasks.assert_called_once()
 
 
 class TestDispatchRouting:
@@ -289,7 +296,7 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
         # pyrefly: ignore [missing-attribute]
-        proxy._tenant_isolated_task_queue.get_task_key.return_value = None
+        proxy._tenant_isolated_task_queue.try_set_task_waiting_time.return_value = True
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
             mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)

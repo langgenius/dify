@@ -41,6 +41,10 @@ class TenantIsolatedTaskQueue:
     def set_task_waiting_time(self, ttl: int = _DEFAULT_TASK_TTL):
         redis_client.setex(self._task_key, ttl, 1)
 
+    def try_set_task_waiting_time(self, ttl: int = _DEFAULT_TASK_TTL) -> bool:
+        """Atomically claim an idle tenant queue before dispatching its first task."""
+        return bool(redis_client.set(self._task_key, 1, ex=ttl, nx=True))
+
     def delete_task_key(self):
         redis_client.delete(self._task_key)
 
