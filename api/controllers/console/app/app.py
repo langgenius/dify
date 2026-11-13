@@ -1,14 +1,12 @@
 import uuid
-from dataclasses import asdict
 from http import HTTPStatus
 from typing import Literal, Self, override
 
-from flask import request, send_file
+from flask import send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from configs import dify_config
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -28,6 +26,7 @@ from controllers.console.app.error import (
     TracingProviderUnavailableError,
     UnsupportedTracingProviderError,
 )
+from controllers.console.app.response import app_detail_response
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
@@ -57,7 +56,6 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
-from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models import DatasetPermissionEnum
 from models.account import TenantAccountRole
@@ -85,7 +83,6 @@ from services.entities.app_entities import (
     AppExportOptions,
     AppListParams,
     AppListSortBy,
-    AppRecord,
     CopyAppParams,
     CreateAppParams,
     StarredAppListParams,
@@ -315,16 +312,6 @@ _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, Tenan
 _ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 
-def _app_detail_response(app: AppRecord) -> AppDetailWithSite:
-    """Resolve transport URLs here so repositories work without a Flask request."""
-    data = asdict(app)
-    data["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
-    data["app_id"] = None
-    if data["site"] is not None:
-        data["site"]["app_base_url"] = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
-    return AppDetailWithSite.model_validate(data)
-
-
 class AppResource(Resource):
     """Translate application failures at the HTTP boundary for all app routes."""
 
@@ -374,7 +361,7 @@ class AppListApi(AppResource):
     def post(self, context: RequestContext):
         payload = validate_request(CreateAppPayload)
         params = CreateAppParams.model_validate(payload.model_dump())
-        response = _app_detail_response(application_services().apps.console.create(context, params))
+        response = app_detail_response(application_services().apps.console.create(context, params))
         return dump_response(AppDetailWithSite, response), HTTPStatus.CREATED
 
 
@@ -438,7 +425,7 @@ class AppApi(AppResource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AppDetailWithSite.__name__])
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, context: RequestContext, app_id: uuid.UUID):
-        response = _app_detail_response(application_services().apps.console.get(context, str(app_id)))
+        response = app_detail_response(application_services().apps.console.get(context, str(app_id)))
         return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("update_app")
@@ -466,7 +453,7 @@ class AppApi(AppResource):
             use_icon_as_answer_icon=payload.use_icon_as_answer_icon or False,
             max_active_requests=payload.max_active_requests or 0,
         )
-        response = _app_detail_response(application_services().apps.console.update(context, str(app_id), params))
+        response = app_detail_response(application_services().apps.console.update(context, str(app_id), params))
         return dump_response(AppDetailWithSite, response)
 
     @console_ns.doc("delete_app")
@@ -511,7 +498,7 @@ class AppCopyApi(AppResource):
         if result.status == ImportStatus.PENDING:
             return dump_response(AppImportResponse, result), HTTPStatus.ACCEPTED
         assert copied is not None
-        return dump_response(AppDetailWithSite, _app_detail_response(copied)), HTTPStatus.CREATED
+        return dump_response(AppDetailWithSite, app_detail_response(copied)), HTTPStatus.CREATED
 
 
 @console_ns.route("/apps/<uuid:app_id>/export")

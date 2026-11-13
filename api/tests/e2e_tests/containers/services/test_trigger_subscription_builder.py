@@ -2,19 +2,21 @@
 
 from contextvars import Context
 from http import HTTPStatus
+from threading import Thread
 from uuid import uuid4
 
 import pytest
-from flask import Flask, Response, request
+from flask import Response, request
 from sqlalchemy import select
+from werkzeug.test import TestResponse
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.entities import SubscriptionBuilder
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_application_services import application_services
-from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_redis import redis_client
 from models.trigger import TriggerSubscription
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from services.trigger.builder_entities import SubscriptionBuilder
 from tests.e2e_tests.containers.services import test_trigger_subscription_query
 from tests.e2e_tests.containers.services.test_trigger_subscription_query import _provider_with_secrets
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_subscription_builder
@@ -23,14 +25,9 @@ from tests.unit_tests.controllers.console.workspace.test_trigger_subscription_bu
 
 sqlite_engine = test_trigger_subscription_query.sqlite_engine
 sqlite_session_factory = test_trigger_subscription_query.sqlite_session_factory
+application_redis = test_trigger_subscription_query.application_redis
 harness = test_trigger_oauth_client.harness
 daemon = test_trigger_subscription_builder.daemon
-
-
-@pytest.fixture
-def application_redis(flask_app_with_containers: Flask) -> RedisClientWrapper:
-    assert flask_app_with_containers.extensions["redis"] is redis_client
-    return redis_client
 
 
 def _key(builder_id: str) -> str:
@@ -118,20 +115,8 @@ def test_update_masks_response_and_preserves_credentials_when_not_supplied(harne
     assert 0 < redis_client.ttl(_key(builder.id)) <= 1800
 
 
-@pytest.mark.parametrize(
-    ("field", "operation"),
-    [
-        ("id", "get"),
-        ("tenant_id", "get"),
-        ("user_id", "get"),
-        ("provider_id", "get"),
-        ("endpoint_id", "get"),
-        ("user_id", "update"),
-        ("tenant_id", "verify-and-update"),
-        ("provider_id", "logs"),
-        ("user_id", "build"),
-    ],
-)
+@pytest.mark.parametrize("field", ["id", "tenant_id", "user_id", "provider_id", "endpoint_id"])
+@pytest.mark.parametrize("operation", ["get", "update", "verify-and-update", "logs", "build"])
 def test_all_owned_builder_routes_reject_foreign_capabilities_without_changing_them(
     harness: _Harness, daemon: _Daemon, field: str, operation: str
 ) -> None:
@@ -140,6 +125,7 @@ def test_all_owned_builder_routes_reject_foreign_capabilities_without_changing_t
     redis_client.setex(_key(builder.id), 1800, foreign.model_dump_json())
     path = builder.id if operation == "get" else f"{operation}/{builder.id}"
     method = "GET" if operation in {"get", "logs"} else "POST"
+    daemon.requests.clear()
 
     response = Context().run(harness.call, method, url=f"{_BASE}/{path}", payload={"name": "Must not persist"})
 
@@ -147,7 +133,47 @@ def test_all_owned_builder_routes_reject_foreign_capabilities_without_changing_t
     assert response.get_json()["code"] == "invalid_param"
     assert "not found" in response.get_json()["message"]
     assert _stored(builder.id) == foreign
-    assert not any(sent.method == "POST" for sent in daemon.requests)
+    assert daemon.requests == []
+
+
+@pytest.mark.parametrize("operation", ["update", "verify-and-update", "build"])
+def test_builder_ownership_is_rechecked_after_provider_lookup(
+    harness: _Harness, daemon: _Daemon, operation: str
+) -> None:
+    builder = _create(harness, daemon, CredentialType.UNAUTHORIZED)
+    daemon.pause_path = next(sent.path for sent in daemon.requests if sent.method == "GET")
+    daemon.observed_lock_key = RedisTriggerSubscriptionBuilderRepository.encode_lock_key(builder.id)
+    daemon.requests.clear()
+    responses: list[TestResponse] = []
+
+    def update() -> None:
+        responses.append(
+            Context().run(
+                harness.call,
+                "POST",
+                url=f"{_BASE}/{operation}/{builder.id}",
+                payload={"name": "Must not persist"},
+            )
+        )
+
+    worker = Thread(target=update, daemon=True)
+    worker.start()
+    try:
+        assert daemon.request_started.wait(timeout=5)
+        foreign = builder.model_copy(update={"user_id": str(uuid4())})
+        redis_client.setex(_key(builder.id), 1800, foreign.model_dump_json())
+    finally:
+        daemon.resume_response.set()
+        worker.join(timeout=10)
+
+    assert not worker.is_alive()
+    assert len(responses) == 1
+    assert responses[0].status_code == HTTPStatus.BAD_REQUEST
+    assert "not found" in responses[0].get_json()["message"]
+    assert _stored(builder.id) == foreign
+    assert len(daemon.requests) == 1
+    assert daemon.requests[0].method == "GET"
+    assert daemon.requests[0].lock_held is False
 
 
 @pytest.mark.parametrize("operation", ["get", "update", "verify-and-update", "logs", "build"])
@@ -156,12 +182,14 @@ def test_missing_builder_does_not_recreate_a_draft(harness: _Harness, daemon: _D
     redis_client.delete(_key(builder.id))
     path = builder.id if operation == "get" else f"{operation}/{builder.id}"
     method = "GET" if operation in {"get", "logs"} else "POST"
+    daemon.requests.clear()
 
     response = Context().run(harness.call, method, url=f"{_BASE}/{path}", payload={"name": "Must not persist"})
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "not found" in response.get_json()["message"]
     assert redis_client.get(_key(builder.id)) is None
+    assert daemon.requests == []
 
 
 def test_logs_are_owned_and_keep_only_last_ten_requests(harness: _Harness, daemon: _Daemon) -> None:

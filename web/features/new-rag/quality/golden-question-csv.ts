@@ -1,8 +1,6 @@
 import type { KnowledgeFsGoldenQuestionBulkImportRowPayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { readString } from 'react-papaparse'
-
-export const maxGoldenQuestionCsvBytes = 1024 * 1024
-export const maxGoldenQuestionCsvRows = 500
+import { maxGoldenQuestionCsvRows } from './golden-question-csv-limits'
 
 const headerAliases = {
   evidence: new Set(['evidence', '证据']),

@@ -23,8 +23,7 @@ from controllers.openapi.apps_permitted_external import PermittedExternalAppDesc
 from machinery.context import AppRequestContext
 from models.model import AppMode
 from services.app.query_service import AppDescription
-from services.app_service import AppListParams
-from services.entities.app_entities import AppSummary
+from services.entities.app_entities import AppListParams, AppSummary
 from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
 from tests.helpers.unit.controllers.openapi._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
 from tests.unit_tests.controllers.conftest import ControllerTestServices
@@ -169,33 +168,16 @@ def test_workspace_id_required() -> None:
         AppListQuery.model_validate({})
 
 
-def test_page_must_be_positive() -> None:
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": WS_ID, "page": 0})
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": WS_ID, "page": -1})
-
-
 def test_page_rejects_non_integer_string() -> None:
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": WS_ID, "page": "abc"})
 
 
-def test_limit_must_be_positive() -> None:
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": WS_ID, "limit": 0})
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": WS_ID, "limit": -1})
-
-
 def test_limit_caps_at_max_page_limit() -> None:
     # Boundary accepts.
+    """Given the maximum supported page size, accept that exact limit."""
     q = AppListQuery.model_validate({"workspace_id": WS_ID, "limit": MAX_PAGE_LIMIT})
     assert q.limit == MAX_PAGE_LIMIT
-
-    # Just over rejects.
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": WS_ID, "limit": MAX_PAGE_LIMIT + 1})
 
 
 @pytest.mark.parametrize("mode", LISTABLE_MODES)

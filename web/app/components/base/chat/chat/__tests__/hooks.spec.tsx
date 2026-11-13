@@ -5,7 +5,6 @@ import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/t
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
-import { sseGet, ssePost } from '@/service/base'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   createHumanInputFormFixture,
@@ -13,9 +12,16 @@ import {
 } from '@/test/fixtures/workflow-process'
 import { useChat } from '../hooks'
 
+type SseTransportCall = (url: string, fetchOptions: unknown, otherOptions: unknown) => Promise<void>
+
+const { sseGet, ssePost } = vi.hoisted(() => ({
+  sseGet: vi.fn<SseTransportCall>(),
+  ssePost: vi.fn<SseTransportCall>(),
+}))
+
 vi.mock('@/service/base', () => ({
-  sseGet: vi.fn(),
-  ssePost: vi.fn(),
+  sseGet,
+  ssePost,
 }))
 
 const audio = vi.hoisted(() => ({
@@ -94,6 +100,7 @@ type HookCallbacks = {
   onLoopStart: (loopStarted: Record<string, unknown>) => void
   onLoopFinish: (loopFinished: Record<string, unknown>) => void
   onHumanInputRequired: (required: Record<string, unknown>) => void
+  onAgentLog: (agentLog: { data: Record<string, unknown> }) => void
   onHumanInputFormFilled: (filled: Record<string, unknown>) => void
   onHumanInputFormTimeout: (timeout: Record<string, unknown>) => void
   onWorkflowPaused: (workflowPaused: Record<string, unknown>) => void
@@ -542,6 +549,127 @@ describe('useChat', () => {
       expect(lastResponse!.agent_thoughts![0]!.thought).toBe('thinking... detailed updated')
       expect(lastResponse!.agent_thoughts![1]!.thought).toContain('second thought')
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
+    })
+
+    it('should fold workflow agent tool logs into the streamed answer on send', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHookWithConsoleQuery(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'run tools' }, {})
+      })
+
+      const toolLog = (status: string, output = '') => ({
+        task_id: 't-1',
+        event: 'agent_log',
+        data: {
+          id: 'run-1:call-1',
+          node_id: 'agent-node',
+          node_execution_id: 'exec-1',
+          parent_id: null,
+          label: 'shell_run',
+          error: null,
+          status,
+          data: {
+            tool_call_id: 'call-1',
+            tool_name: 'shell_run',
+            tool_input: '{"command":"ls"}',
+            tool_output: output,
+            node_title: 'Agent',
+          },
+          metadata: { agent_node_version: '2', kind: 'tool' },
+          children: [],
+        },
+      })
+
+      act(() => {
+        callbacks.onAgentLog(toolLog('started'))
+      })
+
+      let answer = result.current.chatList.at(-1)!
+      expect(answer.workflowAgentActivities).toHaveLength(1)
+      expect(answer.workflowAgentActivities![0]!.status).toBe('started')
+
+      act(() => {
+        callbacks.onAgentLog(toolLog('succeeded', 'a.txt'))
+        callbacks.onData('final answer', true, { messageId: 'm-1' })
+        callbacks.onMessageEnd({ metadata: { retriever_resources: [] } })
+        callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
+        callbacks.onCompleted()
+      })
+
+      answer = result.current.chatList.at(-1)!
+      expect(answer.workflowAgentActivities).toHaveLength(1)
+      expect(answer.workflowAgentActivities![0]!.status).toBe('succeeded')
+      expect(answer.workflowAgentActivities![0]!.data.tool_output).toBe('a.txt')
+      expect(answer.content).toBe('final answer')
+    })
+
+    it('should ignore agent logs from a superseded send request', async () => {
+      const callbacksList: HookCallbacks[] = []
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+
+      const { result } = renderHookWithConsoleQuery(() => useChat())
+
+      vi.useFakeTimers()
+      try {
+        act(() => {
+          result.current.handleSend('test-url', { query: 'first request' }, {})
+        })
+        await act(async () => {
+          await callbacksList[0]!.onCompleted(true)
+        })
+        vi.setSystemTime(Date.now() + 1000)
+        act(() => {
+          result.current.handleSend('test-url', { query: 'second request' }, {})
+        })
+      } finally {
+        vi.useRealTimers()
+      }
+
+      const staleLog = {
+        task_id: 't-1',
+        event: 'agent_log',
+        data: {
+          id: 'run-1:call-1',
+          node_id: 'agent-node',
+          node_execution_id: 'exec-1',
+          parent_id: null,
+          label: 'shell_run',
+          error: null,
+          status: 'started',
+          data: {
+            tool_call_id: 'call-1',
+            tool_name: 'shell_run',
+            tool_input: '{}',
+            tool_output: '',
+            node_title: 'Agent',
+          },
+          metadata: { agent_node_version: '2', kind: 'tool' },
+          children: [],
+        },
+      }
+
+      act(() => {
+        callbacksList[0]!.onAgentLog(staleLog)
+      })
+
+      expect(result.current.chatList.every((item) => !item.workflowAgentActivities?.length)).toBe(
+        true,
+      )
+
+      act(() => {
+        callbacksList[1]!.onAgentLog(staleLog)
+      })
+
+      const answers = result.current.chatList.filter((item) => item.isAnswer)
+      expect(answers.at(-1)!.workflowAgentActivities).toHaveLength(1)
     })
 
     it('should merge each parallel tool result into the thought that called the tool', async () => {
@@ -1765,6 +1893,138 @@ describe('useChat', () => {
       expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
       expect(lastResponse!.content).toBe('replaced resume')
       expect(sseGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('should fold workflow agent tool logs into the resumed answer', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      const agentLog = {
+        task_id: 't-1',
+        event: 'agent_log',
+        data: {
+          id: 'run-1:call-1',
+          node_id: 'agent-node',
+          node_execution_id: 'exec-1',
+          parent_id: null,
+          label: 'web_search',
+          error: null,
+          status: 'started',
+          data: {
+            tool_call_id: 'call-1',
+            tool_name: 'web_search',
+            tool_input: '{"q":"dify"}',
+            tool_output: '',
+            node_title: 'Agent',
+          },
+          metadata: { agent_node_version: '2', kind: 'tool' },
+          children: [],
+        },
+      }
+
+      act(() => {
+        callbacks.onAgentLog(agentLog)
+      })
+
+      const answer = result.current.chatList.at(-1)!
+      expect(answer.workflowAgentActivities).toHaveLength(1)
+      expect(answer.workflowAgentActivities![0]!.status).toBe('started')
+      expect(answer.workflowAgentActivities![0]!.data.tool_name).toBe('web_search')
+    })
+
+    it('should ignore agent logs from a superseded resume subscription', async () => {
+      const callbacksList: HookCallbacks[] = []
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacksList.push(options as HookCallbacks)
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: '',
+              isAnswer: true,
+              workflow_run_id: 'wr-1',
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        result.current.handleResume('m-1', 'wr-2', { isPublicAPI: true })
+      })
+
+      const staleLog = {
+        task_id: 't-1',
+        event: 'agent_log',
+        data: {
+          id: 'run-1:call-1',
+          node_id: 'agent-node',
+          node_execution_id: 'exec-1',
+          parent_id: null,
+          label: 'web_search',
+          error: null,
+          status: 'started',
+          data: {
+            tool_call_id: 'call-1',
+            tool_name: 'web_search',
+            tool_input: '{}',
+            tool_output: '',
+            node_title: 'Agent',
+          },
+          metadata: { agent_node_version: '2', kind: 'tool' },
+          children: [],
+        },
+      }
+
+      act(() => {
+        callbacksList[0]!.onAgentLog(staleLog)
+      })
+
+      const resumedAnswer = result.current.chatList.find((item) => item.id === 'm-1')!
+      expect(resumedAnswer.workflowAgentActivities).toBeUndefined()
+
+      act(() => {
+        callbacksList[1]!.onAgentLog(staleLog)
+      })
+
+      const updatedAnswer = result.current.chatList.find((item) => item.id === 'm-1')!
+      expect(updatedAnswer.workflowAgentActivities).toHaveLength(1)
     })
 
     it('should wait for the resumed event stream before allowing a restored form submission', async () => {

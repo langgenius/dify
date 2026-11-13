@@ -60,6 +60,7 @@ export type VariableBlockType = {
 
 export type RosterReferenceBlockType = {
   show?: boolean
+  getLabel?: (token: RosterReferenceToken) => string | undefined
   renderIcon?: (token: RosterReferenceToken) => React.ReactNode
   getWarning?: (token: RosterReferenceToken) => string | undefined
 }

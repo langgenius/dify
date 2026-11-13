@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           # Hash tracked build inputs, excluding generated files and backend-only changes.
-          source_hash=$(git ls-tree -r HEAD -- web packages e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/web-e2e.yml | sha256sum | cut -d ' ' -f 1)
+          source_hash=$(git ls-tree -r HEAD -- web packages patches e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/web-e2e.yml | sha256sum | cut -d ' ' -f 1)
           echo "hash=$source_hash" >> "$GITHUB_OUTPUT"
 
       - name: Setup web dependencies

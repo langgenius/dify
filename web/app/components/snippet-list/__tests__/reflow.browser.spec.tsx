@@ -1,64 +1,25 @@
-import type { SnippetListItem } from '@/types/snippet'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createStore, Provider } from 'jotai'
+import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { consoleQueryKey } from '@/test/console/operation-hooks'
-import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetList from '..'
 
-const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
-const mockQueryState = vi.hoisted(() => ({
-  creatorIDs: [] as string[],
-  keywords: '',
-  tagIDs: [] as string[],
-  publishStatus: 'all' as const,
-}))
+type ListSnippets = typeof consoleClient.workspaces.current.customizedSnippets.get
 
-vi.mock('@/service/use-snippets', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
-  useInfiniteSnippetList: (params: unknown, options: unknown) =>
-    mockUseInfiniteSnippetList(params, options),
-}))
+const api = vi.hoisted(() => ({ list: vi.fn<ListSnippets>() }))
 
-vi.mock('../hooks/use-snippets-query-state', () => ({
-  useSnippetsQueryState: () => ({
-    query: mockQueryState,
-    setCreatorIDs: vi.fn(),
-    setKeywords: vi.fn(),
-    setTagIDs: vi.fn(),
-    setPublishStatus: vi.fn(),
-    flush: vi.fn().mockResolvedValue(new URLSearchParams()),
-  }),
-}))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-  }))
-})
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: ['snippets.create_and_modify'],
-  }))
-})
-
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({
-    queryFn: async () => ({ profile: { id: 'creator-1' } }),
-    queryKey: consoleQueryKey('account.profile.get'),
-  }),
-}))
-
+// boundary: generated operation responses supply snippet pagination, member and tag data.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.get': api.list,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.members.get': async () => ({
         accounts: [{ avatar_url: null, id: 'creator-1', name: 'Alice', status: 'active' }],
@@ -68,22 +29,17 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+// boundary: Studio list navigation stops at the unavailable Next App Router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
-  TagManagementModal: () => null,
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-const snippet: SnippetListItem = {
+const snippet: Awaited<ReturnType<ListSnippets>>['data'][number] = {
   created_at: 1704067200,
   created_by: 'creator-1',
+  author_name: 'Alice',
+  icon_info: null,
   description: 'Builds a sales follow-up.',
   id: 'snippet-1',
   is_published: true,
@@ -105,19 +61,16 @@ const expectWithinHorizontalBounds = (element: Element, container: Element) => {
 }
 
 const renderSnippetList = async () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
+  onTestFinished(guardUnexpectedFetch())
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
+    workspacePermissionKeys: ['snippets.create_and_modify'],
   })
-  queryClient.setQueryData(consoleQueryKey('account.profile.get'), { profile: { id: 'creator-1' } })
-
-  const store = createStore()
-  seedRegisteredConsoleStateFixture(store)
+  const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <Provider store={store}>
+    <ConsoleProvider>
+      <UrlState>
         <main
           aria-label="Snippet list page"
           className="flex h-dvh w-full min-w-0 flex-col overflow-hidden"
@@ -125,34 +78,21 @@ const renderSnippetList = async () => {
         >
           <SnippetList />
         </main>
-      </Provider>
-    </QueryClientProvider>,
+      </UrlState>
+    </ConsoleProvider>,
   )
 }
 
 describe('Snippet list reflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseInfiniteSnippetList.mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: [snippet],
-            has_more: false,
-            limit: 30,
-            page: 1,
-            total: 1,
-          },
-        ],
-      },
-      error: null,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetching: false,
-      isFetchingNextPage: false,
-      isLoading: false,
-      refetch: vi.fn(),
-    })
+    api.list.mockImplementation(async (input: Parameters<ListSnippets>[0]) => ({
+      data: input?.query?.keyword ? [] : [snippet],
+      has_more: false,
+      limit: 30,
+      page: 1,
+      total: input?.query?.keyword ? 0 : 1,
+    }))
   })
 
   afterEach(async () => {
@@ -184,15 +124,19 @@ describe('Snippet list reflow', () => {
     await expect.element(search).toBeVisible()
     await expect.element(createAction).toBeVisible()
     await expect.element(card).toBeVisible()
-
+    await expect.poll(() => document.title).toContain('workflow.tabs.snippets')
     const mainElement = main.element()
-    const gridElement = card.element().closest('[aria-busy]')
-    if (!gridElement) throw new Error('Snippet card did not render inside the list grid')
-
     expect(mainElement.scrollWidth).toBe(mainElement.clientWidth)
-    expect(gridElement.scrollWidth).toBe(gridElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {
       expectWithinHorizontalBounds(locator.element(), mainElement)
     })
+
+    await search.fill('no matching snippet')
+    await expect
+      .element(screen.getByRole('status'))
+      .toHaveTextContent('workflow.tabs.noSnippetsFound')
+    await expect.element(card).not.toBeInTheDocument()
+    await search.clear()
+    await expect.element(card).toBeVisible()
   })
 })
