@@ -28,6 +28,26 @@ describe('variable-modal helpers', () => {
     ])
   })
 
+  it('should keep the type of object keys saved without a value', () => {
+    const value = formatObjectValueFromList([
+      { key: 'name', type: ChatVarType.String, value: undefined },
+      { key: 'count', type: ChatVarType.Number, value: undefined },
+    ])
+
+    expect(
+      buildObjectValueItems({
+        id: 'var-1',
+        name: 'config',
+        description: '',
+        value_type: ChatVarType.Object,
+        value,
+      }),
+    ).toEqual([
+      { key: 'name', type: ChatVarType.String, value: '' },
+      { key: 'count', type: ChatVarType.Number, value: null },
+    ])
+  })
+
   it('should format object and array values for saving', () => {
     expect(
       formatObjectValueFromList([
@@ -41,7 +61,7 @@ describe('variable-modal helpers', () => {
         { key: 'count', type: ChatVarType.Number, value: 0 },
         { key: 'label', type: ChatVarType.String, value: '' },
       ]),
-    ).toEqual({ count: 0, label: null })
+    ).toEqual({ count: 0, label: '' })
     expect(
       formatChatVariableValue({
         editInJSON: false,
