@@ -541,3 +541,176 @@ def test_parse_openapi_to_tool_bundle_keeps_server_url_without_trailing_slash(ap
 
     assert len(bundles) == 1
     assert bundles[0].server_url == "https://api.example.com/v1/items"
+
+
+def test_parse_openapi_to_tool_bundle_inherits_path_level_parameters(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "Users API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/users/{user_id}": {
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": True,
+                        "description": "User identifier",
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "get": {
+                    "operationId": "getUser",
+                    "summary": "Get user",
+                    "responses": {"200": {"description": "OK"}},
+                },
+                "delete": {
+                    "operationId": "deleteUser",
+                    "summary": "Delete user",
+                    "responses": {"204": {"description": "No Content"}},
+                },
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 2
+    get_bundle = next(b for b in bundles if b.operation_id == "getUser")
+    delete_bundle = next(b for b in bundles if b.operation_id == "deleteUser")
+
+    assert len(get_bundle.parameters) == 1
+    assert get_bundle.parameters[0].name == "user_id"
+    assert get_bundle.parameters[0].required is True
+    assert get_bundle.parameters[0].type == "string"
+    assert get_bundle.openapi["parameters"][0]["name"] == "user_id"
+
+    assert len(delete_bundle.parameters) == 1
+    assert delete_bundle.parameters[0].name == "user_id"
+    assert delete_bundle.parameters[0].required is True
+    assert delete_bundle.openapi["parameters"][0]["name"] == "user_id"
+
+
+def test_parse_openapi_to_tool_bundle_operation_overrides_path_level_parameters(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "Items API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/items": {
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Default limit",
+                        "schema": {"type": "integer", "default": 10},
+                    },
+                    {
+                        "name": "tenant_id",
+                        "in": "header",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    },
+                ],
+                "get": {
+                    "operationId": "listItems",
+                    "summary": "List items",
+                    "parameters": [
+                        {
+                            "name": "limit",
+                            "in": "query",
+                            "description": "Overridden limit",
+                            "schema": {"type": "integer", "default": 50},
+                        }
+                    ],
+                    "responses": {"200": {"description": "OK"}},
+                },
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    bundle = bundles[0]
+    param_map = {p.name: p for p in bundle.parameters}
+
+    assert len(bundle.parameters) == 2
+    assert "tenant_id" in param_map
+    assert "limit" in param_map
+    assert param_map["limit"].default == 50
+    assert param_map["limit"].llm_description == "Overridden limit"
+
+
+def test_parse_openapi_to_tool_bundle_resolves_path_level_parameter_refs(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "Org API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/orgs/{org_id}": {
+                "parameters": [
+                    {"$ref": "#/components/parameters/OrgId"},
+                ],
+                "get": {
+                    "operationId": "getOrg",
+                    "summary": "Get org",
+                    "responses": {"200": {"description": "OK"}},
+                },
+            }
+        },
+        "components": {
+            "parameters": {
+                "OrgId": {
+                    "name": "org_id",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string"},
+                    "description": "Organization id",
+                }
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    assert len(bundles[0].parameters) == 1
+    assert bundles[0].parameters[0].name == "org_id"
+    assert bundles[0].parameters[0].required is True
+    assert bundles[0].parameters[0].type == "string"
+
+
+def test_parse_swagger_to_openapi_merges_path_level_parameters_into_operations():
+    swagger = {
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/projects/{project_id}": {
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": True,
+                        "type": "string",
+                        "description": "Project ID",
+                    }
+                ],
+                "get": {
+                    "operationId": "getProject",
+                    "summary": "Get project",
+                    "responses": {"200": {"description": "OK"}},
+                },
+            }
+        },
+    }
+
+    converted = ApiBasedToolSchemaParser.parse_swagger_to_openapi(swagger)
+
+    assert "parameters" not in converted["paths"]["/projects/{project_id}"]
+    operation = converted["paths"]["/projects/{project_id}"]["get"]
+    assert len(operation["parameters"]) == 1
+    assert operation["parameters"][0]["name"] == "project_id"
+    assert operation["parameters"][0]["in"] == "path"

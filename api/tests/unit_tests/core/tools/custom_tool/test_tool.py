@@ -737,3 +737,87 @@ class TestApiToolPathParameterEncodingCases:
             tool.do_http_request(tool.api_bundle.server_url, "GET", {}, {"id": raw})
 
         assert captured[0].url.raw_path.decode() == expected_path
+
+    @staticmethod
+    def test_parsed_response_to_string_serializes_json_list() -> None:
+        response_list = [{"id": 1, "name": "Item 1"}]
+        parsed = ParsedResponse(content=response_list, is_json=True)
+        serialized = parsed.to_string()
+        assert serialized == json.dumps(response_list, ensure_ascii=False)
+        assert json.loads(serialized) == response_list
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "content_type",
+        [
+            "application/json; charset=utf-8",
+            "application/json;charset=UTF-8",
+            "application/problem+json",
+            "application/vnd.api+json",
+        ],
+    )
+    def test_do_http_request_serializes_json_body_with_content_type_params(
+        monkeypatch: pytest.MonkeyPatch, content_type: str
+    ) -> None:
+        tool = _build_tool(
+            openapi={
+                "requestBody": {
+                    "content": {
+                        content_type: {
+                            "schema": {
+                                "type": "object",
+                                "properties": {"name": {"type": "string"}},
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        captured: list[httpx.Request] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(200, json={"ok": True})
+
+        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            tool.do_http_request(tool.api_bundle.server_url, "POST", {}, {"name": "test-item"})
+
+        assert len(captured) == 1
+        assert json.loads(captured[0].content.decode()) == {"name": "test-item"}
+
+    @staticmethod
+    def test_do_http_request_omits_none_and_empty_headers_and_queries(monkeypatch: pytest.MonkeyPatch) -> None:
+        tool = _build_tool(
+            openapi={
+                "parameters": [
+                    {"in": "query", "name": "q_none", "required": False},
+                    {"in": "query", "name": "q_val", "required": False},
+                    {"in": "header", "name": "h_empty", "required": False},
+                    {"in": "header", "name": "h_none", "required": False},
+                    {"in": "header", "name": "h_val", "required": False},
+                ]
+            }
+        )
+        captured: list[httpx.Request] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(200, json={"ok": True})
+
+        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            tool.do_http_request(
+                tool.api_bundle.server_url,
+                "GET",
+                {},
+                {"q_none": None, "q_val": "active", "h_none": None, "h_val": "bearer-token"},
+            )
+
+        assert len(captured) == 1
+        request = captured[0]
+        assert "q_none" not in str(request.url)
+        assert "q_val=active" in str(request.url)
+        assert "h_empty" not in request.headers
+        assert "h_none" not in request.headers
+        assert request.headers.get("h_val") == "bearer-token"
