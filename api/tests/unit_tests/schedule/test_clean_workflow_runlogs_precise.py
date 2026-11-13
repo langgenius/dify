@@ -430,6 +430,7 @@ def test_delete_batch_retires_conversation_owned_agent_workspace(
 
 def test_cleanup_enqueues_retired_workspace_after_commit(
     cleanup_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     flask_app = Flask("test-clean-workflow-runlogs-precise")
     flask_app.config.update(SQLALCHEMY_DATABASE_URI="sqlite://", SQLALCHEMY_TRACK_MODIFICATIONS=False)
@@ -481,7 +482,7 @@ def test_cleanup_enqueues_retired_workspace_after_commit(
                 assert workspace.status == AgentWorkingResourceStatus.RETIRED
             enqueued.append(kwargs)
 
-        cleanup_module.enqueue_agent_resource_collection = enqueue_after_commit
+        monkeypatch.setattr(cleanup_module, "enqueue_agent_resource_collection", enqueue_after_commit)
         cleanup_module.clean_workflow_runlogs_precise()
 
         assert enqueued == [{"tenant_id": run.tenant_id, "workspace_ids": [workspace_id]}]
