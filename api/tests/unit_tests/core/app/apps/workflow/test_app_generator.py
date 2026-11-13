@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.workflow.app_generator as _workflow_app_generator
 from controllers.inner_api.plugin.wraps import get_user
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as _app_generator_extra_app_generator_module
@@ -26,7 +25,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
-from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
+from core.app.entities.queue_entities import QueueErrorEvent, QueueWorkflowSucceededEvent
 from core.app.file_access import DatabaseFileAccessController
 from core.app.layers.pause_state_persist_layer import (
     PauseStateLayerConfig,
@@ -400,6 +399,48 @@ class TestWorkflowAppGeneratorCases:
             WorkflowRunCompleted(workflow_run_id="worker-run", conversation_id=None, total_tokens=0)
         ]
         assert recorder.persisted_statuses == ["succeeded"]
+
+    @staticmethod
+    def test_worker_publishes_a_preparation_failure_to_the_waiting_caller(
+        app: Flask, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        """The caller blocks on the queue, so a failure before the run starts must reach it."""
+        app_model, workflow, end_user = _persist_generator_rows(sqlite_session)
+        recorder = _PersistedRunRecorder(sqlite_session_factory)
+        entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
+            task_id="worker-task",
+            app_config=_app_config(app_model, workflow),
+            inputs={},
+            files=[],
+            user_id=end_user.id,
+            stream=False,
+            invoke_from=InvokeFrom.SERVICE_API,
+            workflow_execution_id="worker-run",
+            trace_scope=_trace_scope(recorder, app=app_model, end_user=end_user),
+        )
+        # The workflow disappears after admission and before the worker loads it.
+        sqlite_session.delete(workflow)
+        sqlite_session.commit()
+        queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
+        execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
+
+        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
+            flask_app=app,
+            application_generate_entity=entity,
+            queue_manager=queue,
+            context=contextvars.copy_context(),
+            variable_loader=DUMMY_VARIABLE_LOADER,
+            workflow_execution_repository=execution_repository,
+            workflow_node_execution_repository=node_repository,
+        )
+
+        events = [message.event for message in queue.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "Workflow not found"
+        assert sqlite_session.get(WorkflowRun, entity.workflow_execution_id) is None
+        assert recorder.events == []
 
     @staticmethod
     def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
@@ -1693,73 +1734,6 @@ class TestAppGeneratorExtraCases:
             assert scope_requests == []
 
     class TestWorkflowAppGeneratorWorker:
-        def test_generate_worker_publishes_preparation_failure_instead_of_dying(
-            self,
-            monkeypatch: pytest.MonkeyPatch,
-        ):
-            """The caller blocks on the queue, so a failure before the run starts must reach it."""
-            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-            # No workflow row exists, so preparing the run fails before the execution driver starts.
-            published: list[tuple[BaseException, PublishFrom]] = []
-            runners_built: list[object] = []
-
-            class _RecordingQueueManager:
-                def publish_error(self, e: BaseException, pub_from: PublishFrom) -> None:
-                    published.append((e, pub_from))
-
-            class _Runner:
-                def __init__(self, **kwargs: object) -> None:
-                    runners_built.append(kwargs)
-
-            class _Unused:
-                """Stands in for collaborators the worker never reaches when preparation fails."""
-
-            monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.preserve_flask_contexts",
-                lambda flask_app, context_vars: contextlib.nullcontext(),
-            )
-            monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppRunner", _Runner)
-
-            app_config = WorkflowUIBasedAppConfig(
-                tenant_id=TENANT_ID,
-                app_id=APP_ID,
-                app_mode=AppMode.WORKFLOW,
-                additional_features=AppAdditionalFeatures(),
-                variables=[],
-                workflow_id=WORKFLOW_ID,
-            )
-            application_generate_entity = WorkflowAppGenerateEntity.model_construct(
-                user_from=UserFrom.END_USER,
-                task_id="task",
-                app_config=app_config,
-                inputs={},
-                files=[],
-                user_id=END_USER_ID,
-                stream=False,
-                invoke_from=InvokeFrom.SERVICE_API,
-                extras={},
-                trace_scope=None,
-                workflow_execution_id="run-id",
-                call_depth=0,
-            )
-
-            generator._generate_worker(
-                flask_app=_Unused(),
-                application_generate_entity=application_generate_entity,
-                queue_manager=_RecordingQueueManager(),
-                context=_Unused(),
-                variable_loader=_Unused(),
-                workflow_execution_repository=_Unused(),
-                workflow_node_execution_repository=_Unused(),
-            )
-
-            assert runners_built == []
-            assert len(published) == 1
-            error, pub_from = published[0]
-            assert isinstance(error, ValueError)
-            assert str(error) == "Workflow not found"
-            assert pub_from is PublishFrom.APPLICATION_MANAGER
-
         def test_generate_worker_uses_end_user_session_for_external_invocation(
             self,
             monkeypatch: pytest.MonkeyPatch,

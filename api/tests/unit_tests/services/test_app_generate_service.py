@@ -533,7 +533,7 @@ class TestAppGenerateServiceCases:
 
         def test_workflow_blocking_releases_caller_session_before_the_run(
             self, mocker: MockerFixture, sqlite_session: Session
-        ):
+        ) -> None:
             """A blocking run lasts as long as the workflow; the caller session must not pin a connection for it."""
             workflow = _make_workflow()
             workflow._features = "{}"
