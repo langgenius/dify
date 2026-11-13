@@ -3,6 +3,7 @@ import type { AgentLogResponse } from '@/types/workflow'
 
 const WORKFLOW_TOOL_ACTIVITY_STATUSES = new Set<WorkflowAgentToolActivityStatus>([
   'started',
+  'running',
   'succeeded',
   'failed',
   'cancelled',

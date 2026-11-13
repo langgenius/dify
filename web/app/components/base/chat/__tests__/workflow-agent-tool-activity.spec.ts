@@ -85,6 +85,35 @@ describe('upsertWorkflowToolActivity', () => {
     expect(item.workflowAgentActivities![1]!.status).toBe('started')
   })
 
+  it('accepts the running phase and keeps one snapshot per call', () => {
+    const item = chatItem()
+    const data = toolLog().data as Record<string, unknown>
+
+    upsertWorkflowToolActivity(item, toolLog({ status: 'started' }))
+    upsertWorkflowToolActivity(
+      item,
+      toolLog({
+        status: 'running',
+        data: { ...data, tool_input: '{"script":"ls -la"}' },
+      }),
+    )
+
+    expect(item.workflowAgentActivities).toHaveLength(1)
+    expect(item.workflowAgentActivities![0]!.status).toBe('running')
+    expect(item.workflowAgentActivities![0]!.data.tool_input).toBe('{"script":"ls -la"}')
+
+    upsertWorkflowToolActivity(
+      item,
+      toolLog({
+        status: 'succeeded',
+        data: { ...data, tool_output: 'a.txt' },
+      }),
+    )
+
+    expect(item.workflowAgentActivities).toHaveLength(1)
+    expect(item.workflowAgentActivities![0]!.status).toBe('succeeded')
+  })
+
   it('keeps same-name parallel calls and different executions distinct', () => {
     const item = chatItem()
     const base = toolLog().data as Record<string, unknown>

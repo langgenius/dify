@@ -23,13 +23,14 @@ const WorkflowToolActivity: FC<WorkflowToolActivityProps> = ({ item, responding 
       }
       groups.set(activity.node_execution_id, group)
     }
-    const finished = activity.status !== 'started' || !responding
+    const active = activity.status === 'started' || activity.status === 'running'
+    const finished = !active || !responding
     const status =
       activity.status === 'failed' || activity.status === 'cancelled'
         ? activity.status
-        : finished && activity.status === 'started'
+        : active && !responding
           ? 'interrupted'
-          : undefined
+          : activity.status
     group.tools.push({
       kind: SHELL_TOOL_NAMES.has(activity.data.tool_name) ? 'shell' : 'tool',
       key: activity.id,

@@ -26,6 +26,7 @@ from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     PartDeltaEvent,
+    PartStartEvent,
     TextPartDelta,
     ToolCallPart,
     ToolReturnPart,
@@ -310,41 +311,69 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
 class ToolActivityBackendClient(FakeAgentBackendRunClient):
     """Streams one tool call/result pair; optionally an agent message delta."""
 
-    def __init__(self, *, output: object = "hello agent", include_delta: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        output: object = "hello agent",
+        include_delta: bool = True,
+        early_start: bool = False,
+    ) -> None:
         super().__init__(scenario=FakeAgentBackendScenario.SUCCESS)
         self._output = output
         self._include_delta = include_delta
+        self._early_start = early_start
 
     def _events(self, run_id: str):
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        call_args = {"script": "ls -la", "timeout": 30} if self._early_start else {"command": "ls"}
         events: list[RunEvent] = [
             RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
-            PydanticAIStreamRunEvent(
-                id="2-0",
-                run_id=run_id,
-                created_at=created_at,
-                data=FunctionToolCallEvent(
-                    part=ToolCallPart(
-                        tool_name="shell_run",
-                        args={"command": "ls"},
-                        tool_call_id="call-1",
-                    )
-                ),
-            ),
-            PydanticAIStreamRunEvent(
-                id="3-0",
-                run_id=run_id,
-                created_at=created_at,
-                data=FunctionToolResultEvent(
-                    part=ToolReturnPart(
-                        tool_name="shell_run",
-                        content="a.txt",
-                        tool_call_id="call-1",
-                        outcome="success",
-                    )
-                ),
-            ),
         ]
+        if self._early_start:
+            events.append(
+                PydanticAIStreamRunEvent(
+                    id="1-5",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=PartStartEvent(
+                        index=0,
+                        part=ToolCallPart(
+                            tool_name="shell_run",
+                            args={"script": "ls"},
+                            tool_call_id="call-1",
+                        ),
+                    ),
+                )
+            )
+        events.extend(
+            [
+                PydanticAIStreamRunEvent(
+                    id="2-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=FunctionToolCallEvent(
+                        part=ToolCallPart(
+                            tool_name="shell_run",
+                            args=call_args,
+                            tool_call_id="call-1",
+                        )
+                    ),
+                ),
+                PydanticAIStreamRunEvent(
+                    id="3-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=FunctionToolResultEvent(
+                        part=ToolReturnPart(
+                            tool_name="shell_run",
+                            content="a.txt",
+                            tool_call_id="call-1",
+                            outcome="success",
+                        )
+                    ),
+                ),
+            ]
+        )
         if self._include_delta:
             events.append(
                 PydanticAIStreamRunEvent(
@@ -1224,19 +1253,19 @@ def test_agent_node_projects_tool_activity_into_agent_log_events():
     events = list(node._run())
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["started", "succeeded"]
-    started, finished = agent_logs
-    assert started.message_id == finished.message_id == "fake-run-1:call-1"
-    assert started.node_id == "agent-node"
-    assert started.node_execution_id == finished.node_execution_id == node.execution_id
-    assert started.parent_id is None
-    assert started.label == "shell_run"
-    assert started.metadata == {"agent_node_version": "2", "kind": "tool"}
-    assert started.data["tool_call_id"] == "call-1"
-    assert started.data["tool_name"] == "shell_run"
-    assert json.loads(started.data["tool_input"]) == {"command": "ls"}
-    assert started.data["tool_output"] == ""
-    assert isinstance(started.data["node_title"], str)
+    assert [log.status for log in agent_logs] == ["running", "succeeded"]
+    running, finished = agent_logs
+    assert running.message_id == finished.message_id == "fake-run-1:call-1"
+    assert running.node_id == "agent-node"
+    assert running.node_execution_id == finished.node_execution_id == node.execution_id
+    assert running.parent_id is None
+    assert running.label == "shell_run"
+    assert running.metadata == {"agent_node_version": "2", "kind": "tool"}
+    assert running.data["tool_call_id"] == "call-1"
+    assert running.data["tool_name"] == "shell_run"
+    assert json.loads(running.data["tool_input"]) == {"command": "ls"}
+    assert running.data["tool_output"] == ""
+    assert isinstance(running.data["node_title"], str)
     assert finished.error is None
     assert finished.data["tool_output"] == "a.txt"
 
@@ -1248,6 +1277,23 @@ def test_agent_node_projects_tool_activity_into_agent_log_events():
     result = cast(StreamCompletedEvent, events[-1]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
+
+
+def test_agent_node_projects_early_started_running_and_succeeded_tool_activity():
+    events = list(_node(agent_backend_client=ToolActivityBackendClient(early_start=True))._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [log.status for log in agent_logs] == ["started", "running", "succeeded"]
+    previewed, running, finished = agent_logs
+    assert previewed.message_id == running.message_id == finished.message_id == "fake-run-1:call-1"
+    assert json.loads(previewed.data["tool_input"]) == {"script": "ls"}
+    assert json.loads(running.data["tool_input"]) == {"script": "ls -la", "timeout": 30}
+    assert finished.data["tool_output"] == "a.txt"
+
+    final_chunk_index = next(
+        index for index, event in enumerate(events) if isinstance(event, StreamChunkEvent) and event.is_final
+    )
+    assert all(events.index(log) < final_chunk_index for log in agent_logs)
 
 
 def test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event():
@@ -1287,20 +1333,20 @@ def test_agent_node_structured_run_still_emits_tool_activity_logs():
     )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["started", "succeeded"]
+    assert [log.status for log in agent_logs] == ["running", "succeeded"]
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
     result = cast(StreamCompletedEvent, events[-1]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
 
 
-def test_agent_node_transport_failure_closes_started_tool_calls():
+def test_agent_node_transport_failure_closes_unfinished_tool_calls():
     events, (terminal, failure) = _collect_event_stream(
         _node(agent_backend_client=ToolCallThenFailingStreamBackendClient())
     )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["started", "failed"]
+    assert [log.status for log in agent_logs] == ["running", "failed"]
     assert agent_logs[1].error == "stream failed mid-tool"
     assert agent_logs[1].data["tool_call_id"] == "call-1"
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
@@ -1308,13 +1354,13 @@ def test_agent_node_transport_failure_closes_started_tool_calls():
     assert failure.node_run_result.error == "stream failed mid-tool"
 
 
-def test_agent_node_cancelled_run_closes_started_tool_calls():
+def test_agent_node_cancelled_run_closes_unfinished_tool_calls():
     events, (terminal, failure) = _collect_event_stream(
         _node(agent_backend_client=ToolCallThenCancelledBackendClient())
     )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["started", "cancelled"]
+    assert [log.status for log in agent_logs] == ["running", "cancelled"]
     assert agent_logs[1].error == "user_stop"
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None

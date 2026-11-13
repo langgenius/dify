@@ -23,8 +23,10 @@ _TOOL_FIELD_LIMIT = 16 * 1024
 
 _UNFINISHED_TOOL_ERROR = "Tool call did not return a result."
 
-ActivityStatus = Literal["started", "succeeded", "failed", "cancelled"]
+ActivityStatus = Literal["started", "running", "succeeded", "failed", "cancelled"]
 FinishStatus = Literal["succeeded", "failed", "cancelled"]
+
+_EARLY_TOOL_NAMES = frozenset({"shell_run", "shell_wait", "shell_input", "shell_interrupt"})
 
 
 class WorkflowAgentToolActivityData(BaseModel):
@@ -119,9 +121,10 @@ class WorkflowAgentToolActivityProjector:
     adapted from public ``dify-agent`` run events for a single backend run.
     Postcondition: every returned snapshot is JSON-safe, carries the
     ``agent_node_version=2``/``kind=tool`` metadata marker, and preserves the
-    invariant that a tool call transitions ``started`` at most once and reaches
-    a terminal status at most once. ``finish`` closes only calls still in
-    ``started`` state; terminal calls are never regressed.
+    invariant that a tool call emits at most one ``started`` preview and one
+    ``running`` transition before reaching a terminal status at most once.
+    ``finish`` closes calls still in ``started`` or ``running`` state;
+    terminal calls are never regressed.
     """
 
     def __init__(self, *, node_id: str, node_execution_id: str, node_title: str) -> None:
@@ -144,8 +147,10 @@ class WorkflowAgentToolActivityProjector:
         if part is None:
             return []
         if event.event_kind == "function_tool_call" and part.part_kind == "tool-call":
-            return self._start_call(event.run_id, part)
+            return self._run_call(event.run_id, part)
         if event.event_kind == "part_start" and part.part_kind == "builtin-tool-call":
+            return self._run_call(event.run_id, part)
+        if event.event_kind == "part_start" and part.part_kind == "tool-call":
             return self._start_call(event.run_id, part)
         if event.event_kind == "function_tool_result":
             return self._finish_call(event.run_id, part, retry_is_failure=True)
@@ -158,7 +163,7 @@ class WorkflowAgentToolActivityProjector:
         status: FinishStatus,
         error: str | None = None,
     ) -> list[WorkflowAgentToolActivity]:
-        """Close every still-started call when the backend run terminates.
+        """Close every still-active call when the backend run terminates.
 
         ``cancelled`` runs close calls as ``cancelled``; ``failed`` and
         ``succeeded`` runs close leftovers as ``failed`` because an unfinished
@@ -168,7 +173,7 @@ class WorkflowAgentToolActivityProjector:
         bounded_error = _bounded_text(error) or None
         activities: list[WorkflowAgentToolActivity] = []
         for (run_id, _tool_call_id), state in self._calls.items():
-            if state.status == "started":
+            if state.status in {"started", "running"}:
                 if status == "cancelled":
                     state.status = "cancelled"
                     state.error = bounded_error
@@ -206,13 +211,19 @@ class WorkflowAgentToolActivityProjector:
         return parsed
 
     def _start_call(self, run_id: str, part: _ToolStreamPart) -> list[WorkflowAgentToolActivity]:
-        """Start a tool call once complete arguments are available.
+        """Emit an early ``started`` preview for known shell tool calls only.
 
-        A second start for the same ``(run_id, tool_call_id)`` — including one
-        arriving after a terminal result — is ignored so terminal state never
-        regresses.
+        Ordinary ``tool-call`` part starts may carry partially streamed
+        arguments and fire for every tool, including structured-output
+        preambles, so only the shell tool names get an early preview; other
+        calls first appear at ``function_tool_call`` in ``running`` state with
+        complete arguments. A second start for the same
+        ``(run_id, tool_call_id)`` — including one arriving after promotion or
+        a terminal result — is ignored so state never regresses.
         """
         if not part.tool_call_id or not part.tool_name:
+            return []
+        if part.tool_name not in _EARLY_TOOL_NAMES:
             return []
         key = (run_id, part.tool_call_id)
         if key in self._calls:
@@ -225,6 +236,35 @@ class WorkflowAgentToolActivityProjector:
         self._calls[key] = state
         return [self._snapshot(run_id, state)]
 
+    def _run_call(self, run_id: str, part: _ToolStreamPart) -> list[WorkflowAgentToolActivity]:
+        """Mark a tool call ``running`` with its complete arguments.
+
+        ``function_tool_call`` and ``builtin-tool-call`` events mean the tool
+        is actually executing. A call first seen here is created in
+        ``running`` state; a call already previewed as ``started`` is promoted
+        and its partial arguments replaced by the complete ones. Duplicate
+        running starts and starts after a terminal result return no snapshot.
+        """
+        if not part.tool_call_id or not part.tool_name:
+            return []
+        key = (run_id, part.tool_call_id)
+        state = self._calls.get(key)
+        if state is None:
+            state = _ToolCallState(
+                tool_call_id=part.tool_call_id,
+                tool_name=part.tool_name,
+                tool_input=_bounded_text(part.args),
+                status="running",
+            )
+            self._calls[key] = state
+            return [self._snapshot(run_id, state)]
+        if state.status != "started":
+            return []
+        state.tool_name = part.tool_name
+        state.tool_input = _bounded_text(part.args)
+        state.status = "running"
+        return [self._snapshot(run_id, state)]
+
     def _finish_call(
         self,
         run_id: str,
@@ -232,7 +272,7 @@ class WorkflowAgentToolActivityProjector:
         *,
         retry_is_failure: bool,
     ) -> list[WorkflowAgentToolActivity]:
-        """Complete a started call, or emit one completed snapshot when unmatched.
+        """Complete an active call, or emit one completed snapshot when unmatched.
 
         ``retry-prompt`` results mark the call ``failed`` because the model
         rejected the arguments and will issue a new call. ``tool-return``
@@ -261,7 +301,7 @@ class WorkflowAgentToolActivityProjector:
                 tool_input="",
             )
             self._calls[key] = state
-        if state.status != "started":
+        if state.status not in {"started", "running"}:
             return []
         if state.tool_name == "" and part.tool_name:
             state.tool_name = part.tool_name

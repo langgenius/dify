@@ -25,14 +25,14 @@ const toolActivity = (
   data: {
     tool_call_id: 'call-1',
     tool_name: 'shell_run',
-    tool_input: '{"command":"ls"}',
+    tool_input: '{"script":"ls"}',
     tool_output: '',
     node_title: 'Research agent',
   },
   ...overrides,
 })
 
-it('shows live tool activity before answer text and expands request/response', async () => {
+it('shows started, running, and completed phases before the final answer', async () => {
   const screen = await renderChatOwner(
     <Answer
       item={chatItem({ content: '', workflowAgentActivities: [toolActivity()] })}
@@ -42,13 +42,41 @@ it('shows live tool activity before answer text and expands request/response', a
     />,
   )
 
-  await expect.element(page.getByText('Running commands')).toBeVisible()
+  await expect.element(page.getByText('Starting commands')).toBeVisible()
   await expect.element(page.getByText('Research agent')).toBeVisible()
   await expect.element(page.getByText('An answer')).not.toBeInTheDocument()
 
-  await userEvent.click(page.getByRole('button', { name: /Running commands/ }))
+  await userEvent.click(page.getByRole('button', { name: /Starting commands/ }))
   await expect.element(page.getByText('Request', { exact: true })).toBeVisible()
-  await expect.element(page.getByText('{"command":"ls"}', { exact: true })).toBeVisible()
+  await expect.element(page.getByText('{"script":"ls"}', { exact: true })).toBeVisible()
+
+  await screen.rerender(
+    <Answer
+      item={chatItem({
+        content: '',
+        workflowAgentActivities: [
+          toolActivity({
+            status: 'running',
+            data: {
+              tool_call_id: 'call-1',
+              tool_name: 'shell_run',
+              tool_input: '{"script":"ls -la"}',
+              tool_output: '',
+              node_title: 'Research agent',
+            },
+          }),
+        ],
+      })}
+      question="Question"
+      index={0}
+      responding
+    />,
+  )
+
+  await expect.element(page.getByRole('button', { name: /Running commands/ })).toBeVisible()
+  await expect.element(page.getByText('Starting commands')).not.toBeInTheDocument()
+  await expect.element(page.getByText('Response', { exact: true })).not.toBeInTheDocument()
+  await expect.element(page.getByText('{"script":"ls -la"}', { exact: true })).toBeVisible()
 
   await screen.rerender(
     <Answer
@@ -60,7 +88,7 @@ it('shows live tool activity before answer text and expands request/response', a
             data: {
               tool_call_id: 'call-1',
               tool_name: 'shell_run',
-              tool_input: '{"command":"ls"}',
+              tool_input: '{"script":"ls -la"}',
               tool_output: 'a.txt',
               node_title: 'Research agent',
             },
@@ -87,7 +115,7 @@ it('shows live tool activity before answer text and expands request/response', a
             data: {
               tool_call_id: 'call-1',
               tool_name: 'shell_run',
-              tool_input: '{"command":"ls"}',
+              tool_input: '{"script":"ls -la"}',
               tool_output: 'a.txt',
               node_title: 'Research agent',
             },
@@ -119,8 +147,8 @@ it('updates same-name parallel calls out of order and keeps per-call request/res
     })
 
   const running = [
-    searchActivity('run-1:a', 'a', 'started'),
-    searchActivity('run-1:b', 'b', 'started'),
+    searchActivity('run-1:a', 'a', 'running'),
+    searchActivity('run-1:b', 'b', 'running'),
   ]
   const screen = await renderChatOwner(
     <Answer
@@ -139,7 +167,7 @@ it('updates same-name parallel calls out of order and keeps per-call request/res
       item={chatItem({
         content: '',
         workflowAgentActivities: [
-          searchActivity('run-1:a', 'a', 'started'),
+          searchActivity('run-1:a', 'a', 'running'),
           searchActivity('run-1:b', 'b', 'succeeded', 'result-b'),
         ],
       })}
@@ -172,13 +200,11 @@ it('updates same-name parallel calls out of order and keeps per-call request/res
   await expect.element(page.getByText('result-a', { exact: true })).toBeVisible()
   await expect.element(page.getByText('result-b', { exact: true })).toBeVisible()
 
-  const values = [
-    ...page
-      .getByTestId('workflow-tool-activity')
-      .element()
-      .querySelectorAll('.whitespace-pre-wrap'),
-  ].map((element) => element.textContent)
-  expect(values).toEqual(['{"q":"a"}', 'result-a', '{"q":"b"}', 'result-b'])
+  const expectedValues = ['{"q":"a"}', 'result-a', '{"q":"b"}', 'result-b']
+  const values = [...page.getByTestId('workflow-tool-activity').element().querySelectorAll('div')]
+    .map((element) => element.textContent?.trim())
+    .filter((text): text is string => expectedValues.includes(text ?? ''))
+  expect(values).toEqual(expectedValues)
 })
 
 it('shows readable failed, cancelled, and interrupted statuses with the original tool label', async () => {
@@ -218,12 +244,24 @@ it('shows readable failed, cancelled, and interrupted statuses with the original
       node_title: 'Research agent',
     },
   })
+  const runningUnfinished = toolActivity({
+    id: 'run-1:call-4',
+    label: 'web_search',
+    status: 'running',
+    data: {
+      tool_call_id: 'call-4',
+      tool_name: 'web_search',
+      tool_input: '{"q":"streaming"}',
+      tool_output: '',
+      node_title: 'Research agent',
+    },
+  })
 
   const screen = await renderChatOwner(
     <Answer
       item={chatItem({
         content: '',
-        workflowAgentActivities: [failed, cancelled, unfinished],
+        workflowAgentActivities: [failed, cancelled, unfinished, runningUnfinished],
       })}
       question="Question"
       index={0}
@@ -244,12 +282,12 @@ it('shows readable failed, cancelled, and interrupted statuses with the original
     <Answer
       item={chatItem({
         content: '',
-        workflowAgentActivities: [failed, cancelled, unfinished],
+        workflowAgentActivities: [failed, cancelled, unfinished, runningUnfinished],
       })}
       question="Question"
       index={0}
     />,
   )
 
-  await expect.poll(() => page.getByText('Stopped', { exact: true }).elements().length).toBe(2)
+  await expect.poll(() => page.getByText('Stopped', { exact: true }).elements().length).toBe(3)
 })

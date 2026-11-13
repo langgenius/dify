@@ -13,7 +13,7 @@ type ToolLogOptions = {
   executionId: string
   nodeTitle: string
   label: string
-  status: 'started' | 'succeeded' | 'failed' | 'cancelled'
+  status: 'started' | 'running' | 'succeeded' | 'failed' | 'cancelled'
   error?: string | null
   toolCallId: string
   toolName: string
@@ -122,7 +122,7 @@ function WorkflowToolActivityDemoInner({ scenario }: { scenario: Scenario }) {
             ...searchA,
             id: 'run-demo:call-a',
             label: 'web_search',
-            status: 'started',
+            status: 'running',
             toolCallId: 'call-a',
           }),
         ),
@@ -155,7 +155,7 @@ function WorkflowToolActivityDemoInner({ scenario }: { scenario: Scenario }) {
           ...searchA,
           id: 'run-demo:call-a',
           label: 'web_search',
-          status: 'started',
+          status: 'running',
           toolCallId: 'call-a',
         }),
       ),
@@ -166,7 +166,7 @@ function WorkflowToolActivityDemoInner({ scenario }: { scenario: Scenario }) {
           ...searchB,
           id: 'run-demo:call-b',
           label: 'web_search',
-          status: 'started',
+          status: 'running',
           toolCallId: 'call-b',
         }),
       ),
@@ -196,42 +196,49 @@ function WorkflowToolActivityDemoInner({ scenario }: { scenario: Scenario }) {
         }),
       ),
     )
+    const shell = {
+      executionId: 'exec-shell',
+      nodeTitle: 'Shell agent',
+      toolName: 'shell_run',
+      id: 'run-demo:call-shell',
+      label: 'shell_run',
+      toolCallId: 'call-shell',
+    }
     schedule(generation, 2600, () =>
       emitLog(
         toolLog({
-          executionId: 'exec-shell',
-          nodeTitle: 'Shell agent',
-          toolName: 'shell_run',
-          toolInput: '{"command":"ls -la"}',
-          id: 'run-demo:call-shell',
-          label: 'shell_run',
+          ...shell,
+          toolInput: '{"script":"ls"}',
           status: 'started',
-          toolCallId: 'call-shell',
         }),
       ),
     )
     schedule(generation, 3200, () =>
       emitLog(
         toolLog({
-          executionId: 'exec-shell',
-          nodeTitle: 'Shell agent',
-          toolName: 'shell_run',
-          toolInput: '{"command":"ls -la"}',
-          id: 'run-demo:call-shell',
-          label: 'shell_run',
+          ...shell,
+          toolInput: '{"script":"ls -la && wc -l notes.txt","timeout":30}',
+          status: 'running',
+        }),
+      ),
+    )
+    schedule(generation, 4200, () =>
+      emitLog(
+        toolLog({
+          ...shell,
+          toolInput: '{"script":"ls -la && wc -l notes.txt","timeout":30}',
           status: 'succeeded',
-          toolCallId: 'call-shell',
           toolOutput:
-            'total 8\ndrwxr-xr-x  2 demo  staff  64 Jan  1 00:00 .\n-rw-r--r--  1 demo  staff  21 Jan  1 00:00 notes.txt',
+            'total 8\ndrwxr-xr-x  2 demo  staff  64 Jan  1 00:00 .\n-rw-r--r--  1 demo  staff  21 Jan  1 00:00 notes.txt\n      42 notes.txt',
         }),
       ),
     )
     const answerText =
       'I searched the Dify documentation twice and listed the workspace files. Both tool calls completed successfully.'
     answerText.split(' ').forEach((word, index) => {
-      schedule(generation, 3800 + index * 140, () => appendText(`${index === 0 ? '' : ' '}${word}`))
+      schedule(generation, 4600 + index * 140, () => appendText(`${index === 0 ? '' : ' '}${word}`))
     })
-    schedule(generation, 3800 + answerText.split(' ').length * 140 + 300, finishReplay)
+    schedule(generation, 4600 + answerText.split(' ').length * 140 + 300, finishReplay)
   }
 
   const stopReplay = () => {

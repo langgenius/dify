@@ -43,7 +43,12 @@ export type WorkflowProcess = {
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
-export type WorkflowAgentToolActivityStatus = 'started' | 'succeeded' | 'failed' | 'cancelled'
+export type WorkflowAgentToolActivityStatus =
+  | 'started'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
 
 export type WorkflowAgentToolActivity = {
   id: string

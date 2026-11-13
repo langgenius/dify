@@ -8,7 +8,13 @@ export const SHELL_TOOL_NAMES = new Set([
   'shell_interrupt',
 ])
 
-export type ToolActivityStatus = 'failed' | 'cancelled' | 'interrupted'
+export type ToolActivityStatus =
+  | 'started'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'interrupted'
 
 export type ToolActivity = {
   kind: 'shell' | 'tool'
@@ -25,18 +31,28 @@ export type ToolActivity = {
 export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
   const { t } = useTranslation(['agentV2', 'tools', 'workflow'])
   const hasDetails = !!tool.input || !!tool.output || !!tool.error
-  const statusText = tool.status
+  const hasStatusBadge =
+    tool.status === 'failed' || tool.status === 'cancelled' || tool.status === 'interrupted'
+  const statusText = hasStatusBadge
     ? tool.status === 'failed'
       ? t(($) => $['tracing.status.failed'], { ns: 'workflow' })
       : t(($) => $['tracing.status.stopped'], { ns: 'workflow' })
     : ''
+  const resolvedPhase =
+    tool.status ?? (tool.isFinished ? ('succeeded' as const) : ('running' as const))
   const label =
-    !tool.status && tool.name === 'shell_run' && tool.label === tool.name
-      ? tool.isFinished
-        ? t(($) => $['agentDetail.configure.answer.activity.ranCommands'], { ns: 'agentV2' })
-        : t(($) => $['agentDetail.configure.answer.activity.runningCommands'], {
+    tool.name === 'shell_run' &&
+    tool.label === tool.name &&
+    (resolvedPhase === 'started' || resolvedPhase === 'running' || resolvedPhase === 'succeeded')
+      ? resolvedPhase === 'started'
+        ? t(($) => $['agentDetail.configure.answer.activity.startingCommands'], {
             ns: 'agentV2',
           })
+        : resolvedPhase === 'running'
+          ? t(($) => $['agentDetail.configure.answer.activity.runningCommands'], {
+              ns: 'agentV2',
+            })
+          : t(($) => $['agentDetail.configure.answer.activity.ranCommands'], { ns: 'agentV2' })
       : tool.label
 
   const content = (
@@ -56,7 +72,7 @@ export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
           )}
         </span>
         <span className="min-w-0 wrap-break-word text-text-secondary">{label}</span>
-        {!!tool.status && (
+        {!!hasStatusBadge && statusText && (
           <span
             role="status"
             className="shrink-0 rounded-[4px] bg-state-base-hover px-1 py-0.5 system-xs-medium text-text-tertiary"
@@ -82,7 +98,7 @@ export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
-            <div className="w-full max-w-full min-w-0 space-y-1 pb-1">
+            <div className="w-full max-w-full min-w-0 space-y-2 pt-2 pb-2">
               {!!tool.error && (
                 <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
                   <div className="mt-1 max-w-full min-w-0 code-xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
