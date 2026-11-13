@@ -145,7 +145,11 @@ def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutio
 
 
 def _build_resumption_context(
-    task_id: str, *, select_options: list[str] | None = None, pause_reasons: Sequence[HumanInputRequired] | None = None
+    task_id: str,
+    *,
+    select_options: list[str] | None = None,
+    pause_reasons: Sequence[HumanInputRequired] | None = None,
+    invoke_from: InvokeFrom = InvokeFrom.EXPLORE,
 ) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant-1",
@@ -154,14 +158,14 @@ def _build_resumption_context(
         workflow_id="workflow-1",
     )
     generate_entity = WorkflowAppGenerateEntity(
-        user_from=UserFrom.ACCOUNT,
+        user_from=UserFrom.ACCOUNT if invoke_from.runs_as_account() else UserFrom.END_USER,
         task_id=task_id,
         app_config=app_config,
         inputs={},
         files=[],
         user_id="user-1",
         stream=True,
-        invoke_from=InvokeFrom.EXPLORE,
+        invoke_from=invoke_from,
         call_depth=0,
         workflow_execution_id="run-1",
     )
@@ -830,6 +834,7 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
             **({"include_node_details": True} if include_node_details else {}),
         )
     )
@@ -909,6 +914,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=session_maker,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -984,6 +990,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=unbound_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     conversation_lookup.assert_not_called()
     app_lookup.assert_not_called()
@@ -1021,6 +1028,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         tenant_id="tenant-1",
         app_id="app-1",
         session_maker=session_maker,
+        human_input_surface=HumanInputSurface.CONSOLE,
     )
 
     # Assert
@@ -1080,6 +1088,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
             idle_timeout=20.0,
             ping_interval=5.0,
         )
@@ -1126,6 +1135,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -1170,6 +1180,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -1217,6 +1228,7 @@ def test_build_snapshot_events_preserves_public_form_token(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 
@@ -1233,15 +1245,17 @@ def test_build_snapshot_events_preserves_public_form_token(
 def _build_recipient_snapshot_events(
     session_maker: sessionmaker[Session],
     recipients: Sequence[HumanInputFormRecipient],
+    *,
+    surface: HumanInputSurface,
 ) -> list[Mapping[str, Any]]:
-    """Drive the reconnect snapshot pause path for the OPENAPI surface.
+    """Replay a Web App run through the requested response surface.
 
     Persisting the recipients lets the real disposition query derive the same token
     and approval channels as the live path for the same recipient set.
     """
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
-    resumption_context = _build_resumption_context("task-ctx")
+    resumption_context = _build_resumption_context("task-ctx", invoke_from=InvokeFrom.WEB_APP)
     expiration_time = _persist_human_input_form(session_maker, recipients=recipients)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
@@ -1257,16 +1271,20 @@ def _build_recipient_snapshot_events(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=session_maker,
-        human_input_surface=HumanInputSurface.OPENAPI,
+        human_input_surface=surface,
         node_executions={},
     )
 
 
+@pytest.mark.parametrize("surface", [HumanInputSurface.SERVICE_API, HumanInputSurface.OPENAPI])
 def test_reconnect_pause_without_web_app_recipient_emits_approval_channels(
     sqlite_session_factory: sessionmaker[Session],
+    surface: HumanInputSurface,
 ) -> None:
+    """Given only internal/email recipients, replay channels without an actionable API token."""
     events = _build_recipient_snapshot_events(
         sqlite_session_factory,
+        surface=surface,
         recipients=[
             HumanInputFormRecipient(
                 form_id="form-1",
@@ -1295,11 +1313,15 @@ def test_reconnect_pause_without_web_app_recipient_emits_approval_channels(
     assert pause_data["reasons"][0]["approval_channels"] == ["console", "email"]
 
 
+@pytest.mark.parametrize("surface", [HumanInputSurface.SERVICE_API, HumanInputSurface.OPENAPI])
 def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
     sqlite_session_factory: sessionmaker[Session],
+    surface: HumanInputSurface,
 ) -> None:
+    """Given web and backstage recipients, replay the stored web token on either API surface."""
     events = _build_recipient_snapshot_events(
         sqlite_session_factory,
+        surface=surface,
         recipients=[
             HumanInputFormRecipient(
                 form_id="form-1",
@@ -1326,6 +1348,48 @@ def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
     pause_data = events[-1]["data"]
     assert pause_data["reasons"][0]["form_token"] == "web-app-token"
     assert pause_data["reasons"][0]["approval_channels"] == ["console"]
+
+
+@pytest.mark.parametrize(
+    ("surface", "include_web_recipient", "expected_token", "expected_channels"),
+    [
+        (HumanInputSurface.WEB_APP, True, "web-app-token", ["console", "email"]),
+        (HumanInputSurface.WEB_APP, False, None, ["console", "email"]),
+        (HumanInputSurface.CONSOLE, True, "backstage-token", ["email", "web_app"]),
+    ],
+)
+def test_reconnect_uses_current_surface_for_web_app_run(
+    sqlite_session_factory: sessionmaker[Session],
+    surface: HumanInputSurface,
+    include_web_recipient: bool,
+    expected_token: str | None,
+    expected_channels: list[str],
+) -> None:
+    recipient_tokens = [
+        (RecipientType.BACKSTAGE, "backstage-token"),
+        (RecipientType.EMAIL_MEMBER, "email-token"),
+    ]
+    if include_web_recipient:
+        recipient_tokens.append((RecipientType.STANDALONE_WEB_APP, "web-app-token"))
+    events = _build_recipient_snapshot_events(
+        sqlite_session_factory,
+        recipients=[
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id=f"delivery-{index}",
+                recipient_type=recipient_type,
+                recipient_payload="{}",
+                access_token=token,
+            )
+            for index, (recipient_type, token) in enumerate(recipient_tokens)
+        ],
+        surface=surface,
+    )
+
+    human_input_data = events[-2]["data"]
+    pause_reason = events[-1]["data"]["reasons"][0]
+    assert human_input_data["form_token"] == pause_reason["form_token"] == expected_token
+    assert human_input_data["approval_channels"] == pause_reason["approval_channels"] == expected_channels
 
 
 def test_build_snapshot_events_resolves_pause_reason_select_options(
@@ -1369,6 +1433,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 
@@ -1418,6 +1483,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -1459,6 +1525,7 @@ def _build_paused_snapshot_events(
         pause_entity=pause_entity,
         resumption_context=_build_resumption_context("task-ctx", pause_reasons=pause_entity.pause_reasons),
         session_maker=session_maker,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 
@@ -1562,6 +1629,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
             close_on_pause=True,
         )
     )
@@ -1618,6 +1686,7 @@ def test_authorized_snapshot_indexes_legacy_pause_for_stop(
         tenant_id=run.tenant_id,
         app_id=run.app_id,
         session_maker=sqlite_session_factory,
+        human_input_surface=HumanInputSurface.CONSOLE,
     )
     stream.close()
     sqlite_session.expire_all()
