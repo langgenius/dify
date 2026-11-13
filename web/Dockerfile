@@ -1,5 +1,5 @@
 # base image
-ARG NODE_VERSION=24.22.1
+ARG NODE_VERSION=24.22.3
 FROM node:${NODE_VERSION}-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
