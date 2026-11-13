@@ -26,6 +26,7 @@ from models.account import (
 from models.dataset import Dataset
 from models.enums import ProviderQuotaType
 from models.model import App
+from models.skill import Skill
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
@@ -76,6 +77,14 @@ class WorkspaceRepository(
         with self._session_factory() as session:
             rows = session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids)))
             return dict(rows.tuples().all())
+
+    def get_skill_creator_id(self, workspace_id: str, skill_id: str) -> str | None:
+        """Read a valid Skill UUID's creator in this workspace, closing the session before return.
+
+        Missing resources and unset creators return None; no row is created or changed.
+        """
+        with self._session_factory() as session:
+            return session.scalar(select(Skill.created_by).where(Skill.tenant_id == workspace_id, Skill.id == skill_id))
 
     def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
         """Read the current membership role without loading or mutating an Account."""

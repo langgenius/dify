@@ -1,5 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { hasPermission } from '@/utils/permission'
 
 const SkillPermission = {
@@ -18,10 +21,17 @@ export function useCanViewSkills() {
 export function useSkillPermissions() {
   const permissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
+  const { data: profile } = useQuery(userProfileQueryOptions())
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const canEdit = hasPermission(permissionKeys, SkillPermission.Edit)
+  const canDelete = hasPermission(permissionKeys, SkillPermission.Delete)
+
   return {
     canView: hasPermission(permissionKeys, SkillPermission.View),
-    canEdit: hasPermission(permissionKeys, SkillPermission.Edit),
+    canEdit,
     canPublish: hasPermission(permissionKeys, SkillPermission.Publish),
-    canDelete: hasPermission(permissionKeys, SkillPermission.Delete),
+    canDeleteSkill: (createdBy: string | null | undefined) =>
+      canDelete ||
+      (systemFeatures?.rbac_enabled === true && !!createdBy && createdBy === profile?.profile.id),
   }
 }

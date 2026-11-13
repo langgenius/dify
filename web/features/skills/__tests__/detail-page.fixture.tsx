@@ -21,6 +21,8 @@ import { SkillDetailPage } from '../detail/page'
 export const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
 const mocks = vi.hoisted(() => ({
+  canEdit: true,
+  canDeleteSkill: vi.fn<(_creator: string | null | undefined) => boolean>(),
   request:
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
   deleteSkillMutationFn: vi.fn(),
@@ -318,7 +320,11 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 vi.mock('../permissions', () => ({
-  useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
+  useSkillPermissions: () => ({
+    canDeleteSkill: mocks.canDeleteSkill,
+    canEdit: mocks.canEdit,
+    canPublish: true,
+  }),
 }))
 
 vi.mock('../client', () => ({
@@ -706,6 +712,8 @@ export function getMocks() {
 export function resetDetailPageFixture() {
   vi.useRealTimers()
   vi.resetAllMocks()
+  mocks.canEdit = true
+  mocks.canDeleteSkill.mockReturnValue(true)
   mocks.request.mockImplementation(async (_url, _init, options) => {
     const req = options.request
     const pathname = new URL(req.url).pathname
