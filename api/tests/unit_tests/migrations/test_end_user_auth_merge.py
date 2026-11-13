@@ -29,3 +29,19 @@ def test_personal_token_merge_preserves_file_index_history_without_schema_operat
     assert set(migration.down_revision) == {"f8c2a6d4e901", "b2e4c6d8a013"}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
+
+
+def test_file_scan_merge_preserves_both_histories_without_schema_operations() -> None:
+    """Require both parent revisions and verify a single head without schema side effects."""
+    migration = import_module("migrations.versions.2026_11_13_1800-9f2c7a6e4b31_merge_end_user_auth_and_file_scan")
+    configuration = Config()
+    configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
+    scripts = ScriptDirectory.from_config(configuration)
+
+    head = scripts.get_current_head()
+    assert head is not None
+    assert migration.revision in {revision.revision for revision in scripts.iterate_revisions(head, "base")}
+    assert set(migration.down_revision) == {"7d4b1c8e6a20", "8c2f5d7a1e30"}
+    assert all(scripts.get_revision(parent) is not None for parent in migration.down_revision)
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None

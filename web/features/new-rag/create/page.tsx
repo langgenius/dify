@@ -10,6 +10,7 @@ import type {
 import type { QueuedUpload } from './upload-queue'
 import type { CreationModelSelections } from './use-creation-models'
 import type { KnowledgeVisibility } from './workflow'
+import type { FileScanFailure } from '@/features/file-scan/scan-failure'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -57,6 +58,7 @@ import {
 import { createNewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import {
   discardKnowledgeFsStagedUpload,
+  isKnowledgeFsUploadSettled,
   stageKnowledgeFsDocument,
   uploadKnowledgeFsDocuments,
 } from '../upload/knowledge-fs-upload'
@@ -101,6 +103,7 @@ function CreateKnowledgeSession() {
   const { t: tWorkflow } = useTranslation(['workflow'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tDocuments } = useTranslation(['knowledgeDocuments'])
+  const { t: tFileScan } = useTranslation(['fileScan'])
   const supportBatchUpload = useKnowledgeBatchUpload()
   useDocumentTitle(t(($) => $.createTitle, { ns: 'knowledgeCreate' }))
   const router = useRouter()
@@ -141,6 +144,9 @@ function CreateKnowledgeSession() {
   const [stagingCount, setStagingCount] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [uploadPhases, setUploadPhases] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
+    () => new Map(),
+  )
+  const [uploadFailures, setUploadFailures] = useState<ReadonlyMap<File, FileScanFailure>>(
     () => new Map(),
   )
   const [uploadError, setUploadError] = useState<string>()
@@ -337,9 +343,12 @@ function CreateKnowledgeSession() {
         }
         setUploading(true)
         setUploadError(undefined)
+        const hadUnsettledUploads = validUploads.some(
+          ({ id }) => !isKnowledgeFsUploadSettled(uploadProgressRef.current, id),
+        )
         try {
           await waitForKnowledgeSpaceReady(created.control_space_id)
-          await uploadKnowledgeFsDocuments(
+          const result = await uploadKnowledgeFsDocuments(
             created.control_space_id,
             validUploads.map(({ file, id, stagedUploadId }) => ({
               file,
@@ -355,6 +364,15 @@ function CreateKnowledgeSession() {
               })
             },
           )
+          setUploadFailures(
+            new Map(result.failures.map(({ failure, upload }) => [upload.file, failure])),
+          )
+          // Stay so each rejected file can be read, retried or removed. Once only final
+          // rejections are left, submitting again opens the new knowledge base.
+          if (result.failures.length && hadUnsettledUploads) {
+            setUploadError(tFileScan(($) => $['upload.someFilesNotAdded']))
+            return
+          }
         } catch (error) {
           const messageKey = await knowledgeFsRequestFailureMessageKey(error)
           const reason = messageKey
@@ -376,7 +394,10 @@ function CreateKnowledgeSession() {
         } finally {
           setUploading(false)
           setUploadPhases(
-            (current) => new Map([...current].filter(([, phase]) => phase === 'completed')),
+            (current) =>
+              new Map(
+                [...current].filter(([, phase]) => phase === 'completed' || phase === 'failed'),
+              ),
           )
           if (
             deploymentEdition === 'CLOUD' &&
@@ -609,6 +630,7 @@ function CreateKnowledgeSession() {
                               disabled={submissionPending}
                               fileSizeLimitMb={fileSizeLimitMb}
                               uploads={uploads}
+                              uploadFailures={uploadFailures}
                               uploadPhases={uploadPhases}
                               uploading={uploading || stagingCount > 0}
                               onChange={handleUploadsChange}

@@ -4,6 +4,7 @@ import type {
   KnowledgeFsUploadPhase,
   KnowledgeFsUploadProgress,
 } from '../../upload/knowledge-fs-upload'
+import type { FileScanFailure } from '@/features/file-scan/scan-failure'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createRequestId } from '../../request-id'
@@ -16,6 +17,12 @@ import { documentUploadFingerprint } from '../../upload/policy'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentUploadingAtom } from '../state/upload'
 import { DocumentStagingCanceledError } from './model'
+
+/**
+ * `partial` means the request finished but the malware scan rejected some files, or files that
+ * were not part of this run are still waiting; the form stays open in that case.
+ */
+type DocumentUploadOutcome = 'canceled' | 'completed' | 'partial'
 
 export function useDocumentUploadSession() {
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
@@ -30,6 +37,9 @@ export function useDocumentUploadSession() {
   const [progress, setProgress] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
     () => new Map(),
   )
+  const failuresRef = useRef(new Map<File, FileScanFailure>())
+  const [failures, setFailures] = useState<ReadonlyMap<File, FileScanFailure>>(() => new Map())
+  const publishFailures = useCallback(() => setFailures(new Map(failuresRef.current)), [])
 
   const stageFiles = useCallback(
     async (files: File[], prepare?: (isActive: () => boolean) => Promise<boolean>) => {
@@ -104,12 +114,23 @@ export function useDocumentUploadSession() {
     [],
   )
 
-  const discardStagedFile = useCallback((file: File) => {
-    stagingControllersRef.current.get(file)?.abort(new DocumentStagingCanceledError())
-    const uploadId = stagedUploadIdsRef.current.get(file)
-    stagedUploadIdsRef.current.delete(file)
-    if (uploadId) void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
-  }, [])
+  const discardStagedFile = useCallback(
+    (file: File) => {
+      stagingControllersRef.current.get(file)?.abort(new DocumentStagingCanceledError())
+      const uploadId = stagedUploadIdsRef.current.get(file)
+      stagedUploadIdsRef.current.delete(file)
+      if (failuresRef.current.delete(file)) {
+        // Selecting the same file again must start a new claim instead of repeating the rejection.
+        const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
+        const requestId = uploadRequestIdsRef.current.get(fingerprint)
+        if (requestId) uploadProgress.delete(requestId)
+        uploadRequestIdsRef.current.delete(fingerprint)
+        publishFailures()
+      }
+      if (uploadId) void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+    },
+    [knowledgeSpaceId, publishFailures, uploadProgress],
+  )
 
   const discardStagedUploadObjects = useCallback(() => {
     const uploadIds = [...stagedUploadIdsRef.current.values()]
@@ -118,6 +139,7 @@ export function useDocumentUploadSession() {
     stagingControllersRef.current.clear()
     stagingPromisesRef.current.clear()
     stagedUploadIdsRef.current.clear()
+    failuresRef.current.clear()
     uploadProgress.clear()
     uploadRequestIdsRef.current.clear()
     for (const uploadId of uploadIds)
@@ -127,17 +149,18 @@ export function useDocumentUploadSession() {
   const discardAllStagedFiles = useCallback(() => {
     discardStagedUploadObjects()
     setProgress(new Map())
-  }, [discardStagedUploadObjects])
+    publishFailures()
+  }, [discardStagedUploadObjects, publishFailures])
 
   useEffect(() => discardStagedUploadObjects, [discardStagedUploadObjects])
 
   const uploadFiles = useCallback(
-    async (files: File[], prepare: () => Promise<boolean>) => {
-      if (uploadPendingRef.current) return false
+    async (files: File[], prepare: () => Promise<boolean>): Promise<DocumentUploadOutcome> => {
+      if (uploadPendingRef.current) return 'canceled'
       uploadPendingRef.current = true
       setUploading(true)
       try {
-        if (!(await prepare())) return false
+        if (!(await prepare())) return 'canceled'
         const uploads = files.map((file) => {
           const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
           const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
@@ -146,7 +169,7 @@ export function useDocumentUploadSession() {
           if (!uploadId) throw new Error('KnowledgeFS file was not staged')
           return { file, id, uploadId }
         })
-        await uploadKnowledgeFsDocuments(
+        const result = await uploadKnowledgeFsDocuments(
           knowledgeSpaceId,
           uploads,
           uploadProgress,
@@ -158,21 +181,41 @@ export function useDocumentUploadSession() {
             })
           },
         )
+        for (const { file } of uploads) failuresRef.current.delete(file)
+        for (const { failure, upload } of result.failures)
+          failuresRef.current.set(upload.file, failure)
+        publishFailures()
+        // A single-file retry must not end the session while other files still need attention.
+        const everyStagedFileCompleted = [...stagedUploadIdsRef.current.keys()].every((file) => {
+          const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
+          const requestId = uploadRequestIdsRef.current.get(fingerprint)
+          return requestId !== undefined && uploadProgress.get(requestId)?.phase === 'completed'
+        })
+        if (failuresRef.current.size || !everyStagedFileCompleted) return 'partial'
         uploadProgress.clear()
         uploadRequestIdsRef.current.clear()
         stagedUploadIdsRef.current.clear()
         setProgress(new Map())
-        return true
+        return 'completed'
       } finally {
         uploadPendingRef.current = false
         setUploading(false)
-        setProgress((current) => new Map([...current].filter(([, phase]) => phase === 'completed')))
+        setProgress(
+          (current) =>
+            new Map(
+              [...current].filter(([, phase]) => phase === 'completed' || phase === 'failed'),
+            ),
+        )
       }
     },
-    [knowledgeSpaceId, setUploading, uploadProgress],
+    [knowledgeSpaceId, publishFailures, setUploading, uploadProgress],
   )
 
-  const resetProgress = useCallback(() => setProgress(new Map()), [])
+  const resetProgress = useCallback(() => {
+    setProgress(new Map())
+    failuresRef.current.clear()
+    publishFailures()
+  }, [publishFailures])
   const completedUploadCount = useCallback(
     (files: File[]) =>
       files.filter((file) => {
@@ -187,6 +230,7 @@ export function useDocumentUploadSession() {
     completedUploadCount,
     discardAllStagedFiles,
     discardStagedFile,
+    failures,
     progress,
     resetProgress,
     stageFiles,
