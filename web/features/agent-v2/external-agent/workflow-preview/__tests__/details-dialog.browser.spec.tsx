@@ -2,9 +2,12 @@ import type { ExternalAgentWorkflowPreviewNodeData } from '../types'
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { page } from 'vite-plus/test/browser'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
+  createExternalAgentWorkflowGraph,
   createSerializedWorkflowDraftStorage,
   renderExternalAgentWorkflow,
 } from './preview-browser-fixture'
@@ -47,8 +50,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-async function setup() {
-  const rendered = await renderExternalAgentWorkflow()
+async function setup(options: Parameters<typeof renderExternalAgentWorkflow>[0] = {}) {
+  const rendered = await renderExternalAgentWorkflow(options)
   onTestFinished(() => {
     rendered.workflowStore.getState().debouncedSyncWorkflowDraft.cancel?.()
     rendered.queryClient.clear()
@@ -188,7 +191,14 @@ it('keeps Change as an agent picker and opens the selected Document Review ident
 })
 
 it('uses the shared picker to replace an external agent with a Dify agent', async () => {
-  const { panel } = await setup()
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: {
+        agent_task: 'Keep this task',
+        agent_declared_outputs: [{ name: 'external_summary', type: 'string', required: false }],
+      },
+    }),
+  })
   await panel.getByRole('button', { name: 'Change', exact: true }).click()
   const picker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
   await expect.element(picker.getByRole('tab', { name: 'Dify', exact: true })).toBeVisible()
@@ -206,9 +216,91 @@ it('uses the shared picker to replace an external agent with a Dify agent', asyn
   await saveDraft({
     agent_node_kind: 'dify_agent',
     agent_binding: { binding_type: 'roster_agent', agent_id: 'dify-agent-1' },
+    agent_task: 'Keep this task',
+    agent_declared_outputs: [],
   })
+  const difyNode = ((await readDraft()).graph as WorkflowDataUpdater).nodes.find(
+    (node) => node.id === 'external-agent',
+  )!
+  expect(difyNode.data).not.toHaveProperty('external_wait')
+  expect(difyNode.data).not.toHaveProperty('error_strategy')
   expect(draftApi.rebind).not.toHaveBeenCalled()
   await expect.element(picker).not.toBeInTheDocument()
+})
+
+it('uses the same Change picker on a Dify node to select an external agent', async () => {
+  const graph = createExternalAgentWorkflowGraph()
+  const node = graph.nodes.find((node) => node.id === 'external-agent')!
+  const difyData: AgentV2NodeType = {
+    type: BlockEnum.Agent,
+    title: 'Research Agent',
+    desc: '',
+    selected: true,
+    agent_node_kind: 'dify_agent',
+    version: '2',
+    agent_binding: { binding_type: 'roster_agent', agent_id: 'dify-agent-1' },
+    agent_task: 'Keep this task',
+    agent_declared_outputs: [{ name: 'internal_summary', type: 'string', required: false }],
+    agent_output_routes: {
+      enabled: true,
+      routes: [
+        { id: 'accepted', name: 'Accepted' },
+        { id: 'rejected', name: 'Rejected' },
+      ],
+    },
+    _targetBranches: [
+      { id: 'accepted', name: 'Accepted' },
+      { id: 'rejected', name: 'Rejected' },
+    ],
+  }
+  node.data = difyData
+  graph.nodes.push(
+    createNode({ id: 'downstream', data: { type: BlockEnum.End, title: 'Downstream' } }),
+  )
+  graph.edges.push(
+    createEdge({
+      id: 'routed-connection',
+      source: 'external-agent',
+      sourceHandle: 'accepted',
+      target: 'downstream',
+    }),
+  )
+  const { panel: difyPanel } = await setup({ graph })
+  await expect.element(difyPanel).toBeVisible()
+  await difyPanel.getByRole('button', { name: 'Change', exact: true }).click()
+  const difyPicker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
+  await expect.element(difyPicker.getByRole('tab', { name: 'Dify', exact: true })).toBeVisible()
+  await expect.element(difyPicker.getByRole('tab', { name: 'External', exact: true })).toBeVisible()
+  await difyPicker.getByRole('tab', { name: 'External', exact: true }).click()
+  await difyPicker.getByRole('button', { name: /Document Review Agent/ }).click()
+  await expect
+    .element(
+      page.getByRole('region', {
+        name: 'Document Review Agent Node configuration panel',
+        exact: true,
+      }),
+    )
+    .toBeVisible()
+  const saved = await saveDraft({
+    agent_node_kind: 'external_a2a',
+    agent_binding: {
+      binding_type: 'roster_agent',
+      agent_id: '44444444-4444-4444-8444-444444444444',
+    },
+    agent_task: 'Keep this task',
+    agent_declared_outputs: [{ name: 'text', type: 'string', required: true }],
+    external_wait: expect.objectContaining({ enabled: true, wait_seconds: 600 }),
+    error_strategy: 'fail-branch',
+  })
+  const externalNode = (saved.graph as WorkflowDataUpdater).nodes.find(
+    (node) => node.id === 'external-agent',
+  )!
+  expect(externalNode.data).not.toHaveProperty('agent_output_routes')
+  expect(externalNode.data).not.toHaveProperty('_targetBranches')
+  expect((saved.graph as WorkflowDataUpdater).edges).not.toContainEqual(
+    expect.objectContaining({ id: 'routed-connection' }),
+  )
+  expect(draftApi.rebind).not.toHaveBeenCalled()
 })
 
 it('creates an inline Dify agent from the Change picker', async () => {
@@ -234,4 +326,28 @@ it('creates an inline Dify agent from the Change picker', async () => {
       agent_node_kind: 'dify_agent',
       agent_binding: { binding_type: 'inline_agent' },
     })
+})
+
+it('restores external settings when inline Dify agent creation fails', async () => {
+  draftApi.createInline.mockRejectedValue(new Error('Unable to create agent'))
+  const originalOutputs = [{ name: 'external_summary', type: 'string' as const, required: false }]
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: { agent_task: 'Keep this task', agent_declared_outputs: originalOutputs },
+    }),
+  })
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Select an agent', exact: true })
+    .getByRole('button', { name: 'Start from Scratch', exact: true })
+    .click()
+  await expect.poll(() => draftApi.createInline.mock.calls.length).toBe(1)
+  await expect.element(panel).toBeVisible()
+  await saveDraft({
+    agent_node_kind: 'external_a2a',
+    agent_task: 'Keep this task',
+    agent_declared_outputs: originalOutputs,
+    external_wait: expect.objectContaining({ enabled: true, wait_seconds: 600 }),
+    error_strategy: 'fail-branch',
+  })
 })

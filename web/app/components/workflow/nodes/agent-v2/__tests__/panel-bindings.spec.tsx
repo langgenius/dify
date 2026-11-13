@@ -24,9 +24,18 @@ const api = vi.hoisted(() => ({
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { createExternalAgentAsset, createExternalAgentCapabilities } =
+    await import('@/test/console/external-agents')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'externalAgents.capabilities.get': () => createExternalAgentCapabilities(),
+      'externalAgents.get': () => ({
+        items: [createExternalAgentAsset()],
+        total: 1,
+        limit: 20,
+        page: 1,
+      }),
       'apps.byAppId.trace.get': async () => ({ enabled: false, tracing_provider: null }),
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
@@ -185,7 +194,7 @@ describe('Agent panel bindings', () => {
     env.render()
     expect(screen.getByText(/^workflow.errorMsg.fieldRequired/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: `${rosterPrefix}.change` }))
-    await user.click(await screen.findByRole('menuitem', { name: /Mara/ }))
+    await user.click(await screen.findByRole('button', { name: /Mara/ }))
     await waitFor(() =>
       expect(env.getNodeData().agent_binding).toEqual({
         binding_type: 'roster_agent',
@@ -234,7 +243,7 @@ describe('Agent panel bindings', () => {
     })
     env.render()
     await user.click(screen.getByRole('button', { name: `${rosterPrefix}.change` }))
-    await user.click(await screen.findByRole('menuitem', { name: /startFromScratch/ }))
+    await user.click(await screen.findByRole('button', { name: /startFromScratch/ }))
     await waitFor(() =>
       expect(env.getNodeData().agent_binding).toEqual({ binding_type: 'inline_agent' }),
     )
@@ -337,8 +346,8 @@ describe('Agent panel bindings', () => {
     seedInline(env)
     env.render()
     await user.click(screen.getByRole('button', { name: `${rosterPrefix}.change` }))
-    await screen.findByRole('menuitem', { name: /Mara/ })
-    expect(screen.queryByRole('menuitem', { name: /startFromScratch/ })).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: /Mara/ })
+    expect(screen.queryByRole('button', { name: /startFromScratch/ })).not.toBeInTheDocument()
   })
 
   it('saves an inline agent to the roster through the workspace menu and rebinds the node', async () => {

@@ -20,7 +20,7 @@ type AgentSource = 'all' | 'dify' | 'external'
 type WorkflowAgentSelectorContentProps = {
   onSelect: (agent: AgentRosterNodeData) => void
   onSelectExternal?: (agent: ExternalAgentWorkflowPreviewAgent) => void | Promise<boolean>
-  onStartFromScratch: () => void
+  onStartFromScratch?: () => void
   onRequestClose: () => void
 }
 
@@ -174,7 +174,7 @@ export function WorkflowAgentSelectorContent({
           </TabsPanel>
         ))}
       </Tabs>
-      {source !== 'external' && !search.trim() && (
+      {onStartFromScratch && source !== 'external' && !search.trim() && (
         <div className="border-t border-divider-subtle p-1">
           <Button
             variant="ghost"

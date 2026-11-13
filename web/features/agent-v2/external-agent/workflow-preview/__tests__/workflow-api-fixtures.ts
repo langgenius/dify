@@ -39,6 +39,7 @@ export const workflowExternalAgents = [
 
 export function createWorkflowExternalResponses() {
   return {
+    'apps.byAppId.trace.get': () => ({ enabled: false, tracing_provider: null }),
     'agent.inviteOptions.get': (
       input: Parameters<typeof consoleClient.agent.inviteOptions.get>[0],
     ) => {

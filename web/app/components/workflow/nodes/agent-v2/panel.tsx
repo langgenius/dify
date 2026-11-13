@@ -7,6 +7,7 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
+import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
@@ -22,7 +23,10 @@ import {
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
+import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import { useStore } from '@/app/components/workflow/store'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { consoleQuery } from '@/service/console'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -136,6 +140,8 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   } | null>(null)
   const [isOutputVariablesCollapsed, setIsOutputVariablesCollapsed] = useState(true)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { removeBranchEdges } = useEdgesInteractions()
+  const { removeUsedVarInNodes } = useWorkflow()
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const resource = useAtomValue(editorResourceAtom)
@@ -297,6 +303,46 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       )
     },
     [handleNodeDataUpdateWithSyncDraft, id, inputs, setOpenInlineAgentPanelNodeId],
+  )
+
+  const handleExternalChange = useCallback(
+    (agent: ExternalAgentWorkflowPreviewAgent) => {
+      if (resource.kind !== 'app') return
+      setIsRosterAgentPanelOpen(false)
+      setOpenInlineAgentPanelNodeId(undefined)
+      const current = inputsRef.current
+      const external = createExternalAgentWorkflowPreviewData(agent)
+      if (current.agent_output_routes?.enabled) {
+        removeUsedVarInNodes([id, 'switch'])
+        removeBranchEdges(id, current.agent_output_routes.routes?.map((route) => route.id) ?? [])
+      }
+      handleNodeDataUpdateWithSyncDraft(
+        {
+          id,
+          data: {
+            ...external,
+            agent_task: current.agent_task ?? '',
+            agent_output_routes: undefined,
+            _targetBranches: [],
+            default_value: undefined,
+            retry_config: undefined,
+            agent_roster: undefined,
+            _openInlineAgentPanel: undefined,
+            _singleRunningStatus: undefined,
+            _isSingleRun: undefined,
+          },
+        },
+        { sync: true, notRefreshWhenSyncError: true },
+      )
+    },
+    [
+      handleNodeDataUpdateWithSyncDraft,
+      id,
+      removeBranchEdges,
+      removeUsedVarInNodes,
+      resource,
+      setOpenInlineAgentPanelNodeId,
+    ],
   )
 
   const handleRosterCopySuccess = useCallback(
@@ -707,6 +753,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           portalContainerRef={drawerPortalContainerRef}
           showPanelDetailActions={!isInlineAgentReady && !isInlineAgentPending}
           onChange={handleRosterChange}
+          onSelectExternal={resource.kind === 'app' ? handleExternalChange : undefined}
           onMakeCopy={rosterAgentId ? handleMakeRosterCopy : undefined}
           onPanelOpenChange={handleAgentPanelOpenChange}
           onRetry={isInlineAgentLoadError ? () => void inlineAgentQuery.refetch() : undefined}

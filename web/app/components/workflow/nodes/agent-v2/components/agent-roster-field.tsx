@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
+import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,14 +22,11 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import {
-  AgentSelectorMenu,
-  AgentSelectorMenuContent,
-  AgentSelectorMenuTrigger,
-} from '@/app/components/workflow/block-selector/agent-selector'
+import { WorkflowAgentSelectorContent } from '@/app/components/workflow/block-selector/workflow-agent-selector'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
@@ -342,6 +340,7 @@ export function AgentRosterField({
   showPanelDetailActions = true,
   portalContainerRef,
   onChange,
+  onSelectExternal,
   onMakeCopy,
   onPanelOpenChange,
   onRetry,
@@ -363,6 +362,7 @@ export function AgentRosterField({
   showPanelDetailActions?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
+  onSelectExternal?: (agent: ExternalAgentWorkflowPreviewAgent) => void
   onMakeCopy?: () => void
   onPanelOpenChange?: (open: boolean) => void
   onRetry?: () => void
@@ -372,6 +372,7 @@ export function AgentRosterField({
   const { t } = useTranslation(['common', 'workflow', 'workflowAgent', 'agentRoster'])
   const labelId = useId()
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
   const inlineSetupName = t(($) => $[`${i18nPrefix}.roster.inlineSetup.name`], {
@@ -430,8 +431,8 @@ export function AgentRosterField({
         >
           {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
         </span>
-        <AgentSelectorMenu>
-          <AgentSelectorMenuTrigger
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+          <PopoverTrigger
             render={
               <Button
                 variant="ghost"
@@ -442,9 +443,19 @@ export function AgentRosterField({
             }
           >
             {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
-          </AgentSelectorMenuTrigger>
-          <AgentSelectorMenuContent onSelect={onChange} onStartFromScratch={onStartFromScratch} />
-        </AgentSelectorMenu>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-92 max-w-[calc(100vw-2rem)] overflow-hidden">
+            <PopoverTitle className="sr-only">
+              {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
+            </PopoverTitle>
+            <WorkflowAgentSelectorContent
+              onSelect={onChange}
+              onSelectExternal={onSelectExternal}
+              onStartFromScratch={onStartFromScratch}
+              onRequestClose={() => setPickerOpen(false)}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
       {errorMessage ? (
         <div
