@@ -5,6 +5,7 @@ Unit tests for Service API wraps (authentication decorators)
 import uuid
 from dataclasses import dataclass
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import Mock, patch
 
 import pytest
@@ -64,6 +65,7 @@ class _SessionStateRecordingEndUserCommands(_RecordingEndUserCommands):
         self._request_session = request_session
         self.in_transaction_during_calls: list[bool] = []
 
+    @override
     def get_or_create_end_user(self, tenant_id: str, app_id: str, user_id: str | None = None) -> EndUser:
         self.in_transaction_during_calls.append(self._request_session.in_transaction())
         return super().get_or_create_end_user(tenant_id, app_id, user_id)
