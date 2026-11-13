@@ -134,6 +134,7 @@ class HumanInputContactSummary(BaseModel):
 
     id: ContactId = Field(description="Unique contact identifier.")
     name: str = Field(description="Display name shown in the contact directory.")
+    email: str | None = Field(default=None, description="Primary contact email if one exists.")
     avatar_url: str = Field(default="", description="URL of the contact's avatar.")
     created_at: Timestamp = Field(description="Timestamp when the contact was created.")
 
@@ -279,12 +280,15 @@ class IMSyncRunResultCounts(ResponseModel):
 class IMSyncRun(ResponseModel):
     """One IM sync run snapshot.
 
-    The latest-only UI displays ``finished_at`` as the explicit sync time. The
-    transport contract intentionally does not expose a ``started_by`` actor.
+    The latest-only UI displays ``finished_at`` as the explicit sync time.
+    The initiator display name is resolved from the initiating Dify Account.
     """
 
     id: IMSyncRunId = Field(description="Unique sync run identifier.")
     status: IMSyncRunStatus = Field(description="Current lifecycle state of the sync run.")
+    initiator_display_name: str = Field(
+        description="Current initiating Account name; empty for EE administrators or an unavailable Account."
+    )
     started_at: Timestamp | None = Field(
         default=None, description="Unix timestamp in seconds when the sync run started."
     )

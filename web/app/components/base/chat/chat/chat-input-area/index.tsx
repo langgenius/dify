@@ -335,7 +335,7 @@ const ChatInputArea = ({
                           ($) =>
                             $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'],
                           { ns: 'common', botName: botName ?? '' },
-                        ) || '',
+                        ),
                       )
                 }
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- Existing chat behavior focuses the composer as soon as it opens.

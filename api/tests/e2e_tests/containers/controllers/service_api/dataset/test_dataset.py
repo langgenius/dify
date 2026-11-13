@@ -1,6 +1,6 @@
 """Container integration coverage for Service API dataset controllers."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -23,7 +23,7 @@ class TestDatasetTagsApiGet:
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_list_tags_from_db(
         self,
-        mock_current_user,
+        mock_current_user: MagicMock,
         app: Flask,
         db_session_with_containers: Session,
     ) -> None:
@@ -46,6 +46,7 @@ class TestDatasetTagsApiGet:
             response, status = DatasetTagsApi().get(_=None)
 
         assert status == 200
+        assert isinstance(response, list)
         assert any(item["name"] == "Integration Tag" for item in response)
         assert all(set(item) == {"id", "name", "type", "binding_count"} for item in response)
         assert all(isinstance(item["binding_count"], str) for item in response)

@@ -95,7 +95,7 @@ def naming_plugin(config_overrides: Callable[..., None]) -> Iterator[NamingPlugi
             self.wfile.write(body)
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = Thread(target=server.serve_forever, daemon=True)
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     original_url = plugin_http.plugin_daemon_inner_api_baseurl
     # Change real connection settings, preserving every production client and method.
     plugin_http.plugin_daemon_inner_api_baseurl = URL(f"http://127.0.0.1:{server.server_port}")

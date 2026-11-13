@@ -15,7 +15,9 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpacePermission,
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpacePermissionStatus,
+    KnowledgeFSControlSpaceState,
 )
+from services.knowledge_fs.greenfield_anchor import greenfield_activation_identity
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
 
 _MAX_SAFE_INTEGER = 2**53 - 1
@@ -146,12 +148,22 @@ def _lock_workspace_authorization(
     session: Session,
     tenant_id: str,
 ) -> tuple[tuple[KnowledgeFSControlSpace, ...], dict[str, KnowledgeFSAuthorizationRevision]]:
+    anchor_id, anchor_key = greenfield_activation_identity(tenant_id)
+    # The greenfield activation anchor is an audit record, not an authorizable Space.
     spaces = tuple(
-        session.scalars(
+        space
+        for space in session.scalars(
             sa.select(KnowledgeFSControlSpace)
             .where(KnowledgeFSControlSpace.tenant_id == tenant_id)
             .order_by(KnowledgeFSControlSpace.id)
             .with_for_update()
+        )
+        if not (
+            space.id == anchor_id
+            and space.provisioning_key == anchor_key
+            and space.state is KnowledgeFSControlSpaceState.DELETED
+            and space.knowledge_space_id is None
+            and space.lifecycle_operation_id == anchor_id
         )
     )
     if not spaces:

@@ -4,10 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { createPlugin } from '@/app/components/workflow/block-selector/__tests__/factories'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { runDebouncedUserInteraction } from '@/test/debounce'
 import { createDeferred } from '@/test/deferred'
 import { createInstalledPluginFixture } from '@/test/fixtures/plugin'
 import { createProvider, createStrategy } from '../../../agent/__tests__/strategy-fixture'
 import { AgentStrategySelector } from '../agent-strategy-selector'
+
+const MARKETPLACE_SEARCH_DEBOUNCE_MS = 500
 
 const { request, marketplace, install, manifest } = vi.hoisted(() => ({
   request: vi.fn(),
@@ -45,17 +48,6 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
-
-function searchUser() {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  vi.stubGlobal('jest', { advanceTimersByTime: vi.advanceTimersByTime })
-  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-}
-async function finishSearch() {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(500)
-  })
-}
 
 function namedProvider(name: string, label: string, author: string): AgentProviderResponse {
   const provider = createProvider()
@@ -217,12 +209,12 @@ it('keeps marketplace search and its category link alongside the installed catal
     '/plugins/agent-strategy',
   )
   await screen.findByRole('button', { name: 'Agent provider' })
-  const search = searchUser()
-  await search.type(
-    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
-    'react',
-  )
-  await finishSearch()
+  await runDebouncedUserInteraction(MARKETPLACE_SEARCH_DEBOUNCE_MS, async (search) => {
+    await search.type(
+      screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
+      'react',
+    )
+  })
   expect(await screen.findByText('Marketplace strategy')).toBeInTheDocument()
   expect(marketplace).toHaveBeenCalledWith(
     '/plugins/search/advanced',
@@ -251,12 +243,12 @@ it('shows installed strategies once and keeps other marketplace results availabl
 
   await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   expect(await screen.findByRole('button', { name: 'Agent provider' })).toBeInTheDocument()
-  const search = searchUser()
-  await search.type(
-    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
-    'agent',
-  )
-  await finishSearch()
+  await runDebouncedUserInteraction(MARKETPLACE_SEARCH_DEBOUNCE_MS, async (search) => {
+    await search.type(
+      screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
+      'agent',
+    )
+  })
   await screen.findByText('Available Marketplace')
   expect(screen.queryByText('Installed Marketplace')).not.toBeInTheDocument()
   expect(await screen.findByText('Available Marketplace')).toBeInTheDocument()

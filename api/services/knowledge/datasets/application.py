@@ -21,6 +21,7 @@ class DatasetListFilter:
     ids: Sequence[str] = ()
     tag_ids: Sequence[str] = ()
     creator_ids: Sequence[str] = ()
+    for_selection: bool = False
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,8 @@ class DatasetApplicationService:
         visibility = self._operations.visibility(context)
         ids = visibility.list_scope(rbac_enabled=self._rbac_enabled)
         result = self._operations.list_datasets(context, query, ids)
+        if query.for_selection:
+            return result
         for item in result["data"]:
             item["permission_keys"] = list(visibility.overrides.get(item["id"], visibility.default_permissions))
         self._model_availability(context, result["data"], listing=True)

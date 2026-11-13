@@ -86,6 +86,12 @@ describe('MailAndPasswordAuth', () => {
     }
   })
 
+  it('shows forgot password as plain text when email is not set up', () => {
+    render(<MailAndPasswordAuth isEmailSetup={false} />)
+    expect(screen.queryByRole('link', { name: 'login.forget' })).not.toBeInTheDocument()
+    expect(screen.getByText('login.forget')).toBeVisible()
+  })
+
   it('submits native autofill values without input events', async () => {
     const user = userEvent.setup()
     render(<MailAndPasswordAuth isEmailSetup />)
@@ -157,17 +163,20 @@ describe('MailAndPasswordAuth', () => {
     await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
   })
 
-  it('names the password visibility action for its current state', async () => {
+  it('toggles password visibility with a constant action name', async () => {
     const user = userEvent.setup()
     render(<MailAndPasswordAuth isEmailSetup />)
 
     const passwordInput = screen.getByLabelText('login.password')
     expect(passwordInput).toHaveAttribute('type', 'password')
 
-    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    const toggle = screen.getByRole('button', { name: 'login.showPassword' })
+    await user.click(toggle)
     expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    await user.click(toggle)
     expect(passwordInput).toHaveAttribute('type', 'password')
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
   })
 })

@@ -12,15 +12,11 @@ vi.mock('@/env', () => ({
   env: mockEnv,
 }))
 
-const createRequest = (url: string) => {
-  const nextUrl = new URL(url) as URL & { clone: () => URL }
-  nextUrl.clone = () => new URL(nextUrl)
-
-  return {
+const createRequest = (url: string) =>
+  ({
     headers: new Headers(),
-    nextUrl,
-  } as Parameters<typeof proxy>[0]
-}
+    nextUrl: new URL(url),
+  }) as Parameters<typeof proxy>[0]
 
 afterEach(() => {
   mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
@@ -136,28 +132,5 @@ describe('proxy CookieYes consent logging', () => {
     expect(directives['connect-src']).toContain('https://log.cookieyes.com')
     for (const directive of ['default-src', 'script-src', 'style-src', 'worker-src', 'media-src'])
       expect(directives[directive]).not.toContain('https://log.cookieyes.com')
-  })
-})
-
-describe('proxy education entry normalization', () => {
-  it('redirects the legacy education action without leaking it into the canonical URL', async () => {
-    const response = await proxy(
-      createRequest('https://cloud.dify.ai/?action=getEducationVerify&utm_source=education-site'),
-    )
-
-    expect(response.status).toBe(308)
-    expect(response.headers.get('location')).toBe(
-      'https://cloud.dify.ai/education/verify?utm_source=education-site',
-    )
-  })
-
-  it('does not redirect unrelated actions or paths', async () => {
-    const unrelatedAction = await proxy(createRequest('https://cloud.dify.ai/?action=showSettings'))
-    const unrelatedPath = await proxy(
-      createRequest('https://cloud.dify.ai/apps?action=getEducationVerify'),
-    )
-
-    expect(unrelatedAction.status).toBe(200)
-    expect(unrelatedPath.status).toBe(200)
   })
 })

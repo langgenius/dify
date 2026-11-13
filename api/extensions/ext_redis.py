@@ -531,8 +531,13 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
     return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
-def init_app(app: DifyApp):
-    """Initialize Redis client and attach it to the app."""
+def init_app(app: DifyApp) -> None:
+    """Attach the cache client and select the global event-transport client.
+
+    Requires valid settings for the selected cache topology. Explicit PubSub
+    URLs take precedence; otherwise Sentinel is reused without requiring
+    standalone Redis host settings.
+    """
     global redis_client
 
     # Determine Redis mode and create appropriate client
@@ -551,7 +556,8 @@ def init_app(app: DifyApp):
 
     global _pubsub_redis_client
     _pubsub_redis_client = client
-    if dify_config.normalized_pubsub_redis_url:
+    pubsub_redis_url = (dify_config.PUBSUB_REDIS_URL or "").strip()
+    if pubsub_redis_url or not dify_config.REDIS_USE_SENTINEL:
         _pubsub_redis_client = _create_pubsub_client(
             dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
         )

@@ -11,10 +11,10 @@ PIP_MIRROR_URL=${PIP_MIRROR_URL:-}
 SANDBOX_API_KEY=${SANDBOX_API_KEY:-dify-sandbox}
 SANDBOX_GIN_MODE=${SANDBOX_GIN_MODE:-release}
 SANDBOX_WORKER_TIMEOUT=${SANDBOX_WORKER_TIMEOUT:-15}
-# Dify's code executor requests networking; false rejects those requests.
-# Sandbox 0.2.15 on ARM64 can also fail with "operation not permitted" for
-# requests with enable_network=false, even without network operations:
-# the runtime needs epoll_pwait, which is only allowed with networking enabled.
+# Dify's code executor requests networking for Code, Template, Jinja2 prompts and the Code tool.
+# Setting false rejects those requests on every architecture.
+# Sandbox 0.2.15 only allows epoll_pwait with networking enabled on both ARM64 and AMD64;
+# network-disabled Python requests can fail with "operation not permitted" (observed on ARM64).
 SANDBOX_ENABLE_NETWORK=${SANDBOX_ENABLE_NETWORK:-true}
 
 # Container variable mappings; keep these expressions unchanged in the copy.

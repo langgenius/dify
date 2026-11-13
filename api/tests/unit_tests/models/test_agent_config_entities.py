@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from core.workflow.file_reference import build_file_reference
 from models.agent_config_entities import (
     AgentKnowledgeSpaceConfig,
+    AgentSoulAppFeaturesConfig,
     AgentSoulConfig,
     AgentSoulKnowledgeConfig,
     AgentSoulModelSettings,
@@ -14,6 +15,23 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
     effective_declared_outputs,
 )
+
+
+@pytest.mark.parametrize("payload", [{}, {"show_thoughts": None}, {"show_thoughts": {}}])
+def test_show_thoughts_defaults_to_disabled(payload: dict[str, object]) -> None:
+    features = AgentSoulAppFeaturesConfig.model_validate(payload)
+
+    assert features.show_thoughts is None or features.show_thoughts.enabled is False
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_show_thoughts_round_trips_in_agent_soul(enabled: bool) -> None:
+    soul = AgentSoulConfig.model_validate({"app_features": {"show_thoughts": {"enabled": enabled}}})
+
+    restored = AgentSoulConfig.model_validate_json(soul.model_dump_json())
+
+    assert restored.app_features.show_thoughts is not None
+    assert restored.app_features.show_thoughts.enabled is enabled
 
 
 def test_agent_soul_model_settings_preserves_plugin_declared_parameters() -> None:

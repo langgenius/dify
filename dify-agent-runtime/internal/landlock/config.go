@@ -8,6 +8,9 @@ import (
 )
 
 // Config holds the path lists for Landlock filesystem restrictions.
+// Home and Cwd are required per-job trees (when Cwd is nonempty); they remain
+// unfiltered so invalid paths fail setup, and they alone receive REFER.
+// Optional extra paths are filtered for existence and RWPaths receive no REFER.
 type Config struct {
 	Home       string   // Agent's home directory (always RW).
 	Cwd        string   // Working directory (always RW, may differ from Home).

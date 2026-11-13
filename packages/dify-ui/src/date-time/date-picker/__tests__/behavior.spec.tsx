@@ -268,7 +268,7 @@ describe('DatePicker keyboard and form contract', () => {
     },
   )
 
-  it('keeps read-only values in form data while preventing edits', async () => {
+  it('keeps read-only values in form data while allowing browsing without edits', async () => {
     const onChange = vi.fn()
     const screen = await render(
       <form id="readonly-form">
@@ -279,10 +279,17 @@ describe('DatePicker keyboard and form contract', () => {
       </form>,
     )
     const trigger = screen.getByRole('button', { name: /^Date Jan/ })
+    await expect.element(trigger).toHaveAttribute('data-readonly')
+    await expect.element(trigger).not.toHaveAttribute('aria-disabled')
+    await expect.element(screen.getByRole('button', { name: 'Clear date' })).not.toBeInTheDocument()
     await userEvent.tab()
     await expect.element(trigger).toHaveFocus()
     await userEvent.keyboard('{Enter}')
-    await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('grid')).toHaveAttribute('aria-readonly', 'true')
+    await screen.getByRole('button', { name: /January 20th/ }).click()
+    await expect.element(screen.getByRole('dialog')).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(trigger).toHaveAccessibleName(/Jan 15, 2025/)
     expect(
       new FormData(document.querySelector<HTMLFormElement>('#readonly-form')!).get('date'),
     ).toBe('2025-01-15')

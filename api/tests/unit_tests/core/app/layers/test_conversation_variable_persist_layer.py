@@ -47,7 +47,7 @@ def _build_variable_updated_event(variable: StringVariable) -> NodeRunVariableUp
     )
 
 
-def test_persists_conversation_variables_from_variable_update_event():
+def test_persists_conversation_variables_from_variable_update_event() -> None:
     conversation_id = "conv-123"
     variable = StringVariable(
         id="var-1",
@@ -65,7 +65,7 @@ def test_persists_conversation_variables_from_variable_update_event():
     updater.update.assert_called_once_with(conversation_id=conversation_id, variable=variable)
 
 
-def test_skips_non_variable_update_events():
+def test_skips_non_variable_update_events() -> None:
     conversation_id = "conv-456"
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
@@ -77,7 +77,7 @@ def test_skips_non_variable_update_events():
     updater.update.assert_not_called()
 
 
-def test_skips_non_conversation_variables():
+def test_skips_non_conversation_variables() -> None:
     conversation_id = "conv-789"
     non_conversation_variable = StringVariable(
         id="var-3",

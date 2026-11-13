@@ -178,7 +178,7 @@ function Session() {
     labels,
     hourCycle,
   } = useContext()
-  const { close, canEdit } = usePickerContext()
+  const { close, canEdit, readOnly } = usePickerContext()
   const [draft, setDraft] = React.useState(() => getZonedWallTime(value ?? new Date(), timeZone))
   const [displayMonth, setDisplayMonth] = React.useState(() =>
     getInitialMonth(draft.date, minDate, maxDate),
@@ -256,7 +256,9 @@ function Session() {
       {view === 'date' ? (
         <CalendarPanel
           value={draft.date}
-          onSelect={(date) => setDraft({ ...draft, date })}
+          onSelect={(date) => {
+            if (!readOnly) setDraft({ ...draft, date })
+          }}
           displayMonth={displayMonth}
           onDisplayMonthChange={setDisplayMonth}
           locale={locale}
@@ -265,6 +267,7 @@ function Session() {
           maxDate={maxDate}
           isDateUnavailable={isDateUnavailable}
           labels={labels}
+          readOnly={readOnly}
           footer={
             <React.Fragment>
               <Button
@@ -280,12 +283,14 @@ function Session() {
                 />
                 {timeText}
               </Button>
-              <div className="flex gap-1">
-                <Button size="small" variant="ghost-accent" onClick={setNow}>
-                  {labels.now}
-                </Button>
-                {apply}
-              </div>
+              {!readOnly && (
+                <div className="flex gap-1">
+                  <Button size="small" variant="ghost-accent" onClick={setNow}>
+                    {labels.now}
+                  </Button>
+                  {apply}
+                </div>
+              )}
             </React.Fragment>
           }
         />
@@ -306,12 +311,14 @@ function Session() {
                 />
                 {labels.backToDate}
               </Button>
-              <div className="flex gap-1">
-                <Button size="small" variant="ghost-accent" onClick={setNow}>
-                  {labels.now}
-                </Button>
-                {apply}
-              </div>
+              {!readOnly && (
+                <div className="flex gap-1">
+                  <Button size="small" variant="ghost-accent" onClick={setNow}>
+                    {labels.now}
+                  </Button>
+                  {apply}
+                </div>
+              )}
             </React.Fragment>
           }
         >
@@ -324,6 +331,7 @@ function Session() {
             labels={labels}
             locale={locale.code}
             hourCycle={hourCycle}
+            readOnly={readOnly}
           />
         </PickerPanel>
       )}

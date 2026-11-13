@@ -10,7 +10,7 @@ from services.workflow.scheduler import SchedulerCommand
 
 
 class TestTimeSliceLayer:
-    def test_init_starts_scheduler_when_not_running(self):
+    def test_init_starts_scheduler_when_not_running(self) -> None:
         scheduler = Mock()
         scheduler.running = False
 
@@ -19,7 +19,7 @@ class TestTimeSliceLayer:
 
         scheduler.start.assert_called_once()
 
-    def test_on_graph_start_adds_job_for_time_slice(self):
+    def test_on_graph_start_adds_job_for_time_slice(self) -> None:
         scheduler = Mock()
         scheduler.running = True
         plan = WorkflowScheduleCFSPlanEntity(
@@ -39,7 +39,7 @@ class TestTimeSliceLayer:
         assert layer.schedule_id == "job-1"
         scheduler.add_job.assert_called_once()
 
-    def test_on_graph_end_removes_job(self):
+    def test_on_graph_end_removes_job(self) -> None:
         scheduler = Mock()
         scheduler.running = True
         plan = WorkflowScheduleCFSPlanEntity(
@@ -55,7 +55,7 @@ class TestTimeSliceLayer:
 
         scheduler.remove_job.assert_called_once_with("job-1")
 
-    def test_checker_job_removes_when_stopped(self):
+    def test_checker_job_removes_when_stopped(self) -> None:
         scheduler = Mock()
         scheduler.running = True
         cfs_plan_scheduler = Mock(plan=Mock())
@@ -67,7 +67,7 @@ class TestTimeSliceLayer:
 
         scheduler.remove_job.assert_called_once_with("job-1")
 
-    def test_checker_job_handles_resource_limit_without_command_channel(self, caplog: pytest.LogCaptureFixture):
+    def test_checker_job_handles_resource_limit_without_command_channel(self, caplog: pytest.LogCaptureFixture) -> None:
         scheduler = Mock()
         scheduler.running = True
         cfs_plan_scheduler = Mock(plan=Mock())
@@ -81,7 +81,7 @@ class TestTimeSliceLayer:
         scheduler.remove_job.assert_called_once_with("job-1")
         assert any(record.levelno == logging.ERROR for record in caplog.records)
 
-    def test_checker_job_sends_pause_command(self):
+    def test_checker_job_sends_pause_command(self) -> None:
         scheduler = Mock()
         scheduler.running = True
         cfs_plan_scheduler = Mock(plan=Mock())

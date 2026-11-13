@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode, Ref } from 'react'
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -24,6 +25,7 @@ import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
+import ContactSupport from './components/contact-support'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
@@ -32,12 +34,34 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
 const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
-export function MainNav({ className, initialPlatform }: MainNavProps) {
+export function MainNavLogo() {
+  const { data: branding } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (data) => data.branding,
+  })
+  const appTitle =
+    branding.enabled && branding.application_title ? branding.application_title : 'Dify'
+
+  return (
+    <Link
+      href="/"
+      className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      aria-label={appTitle}
+    >
+      {branding.enabled && branding.workspace_logo ? (
+        <img src={branding.workspace_logo} className="block h-5.5 w-auto object-contain" alt="" />
+      ) : (
+        <DifyLogo alt="" />
+      )}
+    </Link>
+  )
+}
+
+export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
   const { t } = useTranslation(['common', 'navigation', 'contacts'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const marketplaceEnabled = useMarketplace() !== null
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -52,7 +76,6 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
     }),
   )
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
-  const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
@@ -94,30 +117,72 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
     ],
   )
 
-  const renderLogo = () => {
-    const appTitle =
-      systemFeatures.branding.enabled && systemFeatures.branding.application_title
-        ? systemFeatures.branding.application_title
-        : 'Dify'
-
-    return (
-      <Link
-        href="/"
-        className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        aria-label={appTitle}
+  return (
+    <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
+      <div className="flex items-center justify-between ps-4 pe-2 pt-3 pb-2">
+        <MainNavLogo />
+        {headerAction}
+      </div>
+      <div className="p-2">
+        <WorkspaceCard />
+      </div>
+      <nav
+        aria-label={t(($) => $['navigation.primary'], { ns: 'common' })}
+        className="isolate flex flex-col gap-px p-2"
       >
-        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
-          <img
-            src={systemFeatures.branding.workspace_logo}
-            className="block h-5.5 w-auto object-contain"
-            alt=""
-          />
-        ) : (
-          <DifyLogo alt="" />
-        )}
-      </Link>
-    )
-  }
+        {navItems.map((item) => (
+          <MainNavLink key={item.href} item={item} pathname={pathname}>
+            {item.href === '/agents' && (
+              <Badge
+                size="xs"
+                variant="dimm"
+                text={t(($) => $['menus.status'], { ns: 'navigation' })}
+                className="ms-auto shrink-0"
+              />
+            )}
+          </MainNavLink>
+        ))}
+      </nav>
+      {!isCurrentWorkspaceDatasetOperator && (
+        <Suspense fallback={null}>
+          <WebAppsSection />
+        </Suspense>
+      )}
+      {showEnvTag && (
+        <div className="mt-auto shrink-0 px-3 pb-2">
+          <EnvNav />
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function MainNavFooter({
+  helpMenuTriggerRef,
+}: {
+  helpMenuTriggerRef?: Ref<HTMLButtonElement>
+}) {
+  return (
+    <div className="w-60">
+      <ContactSupport placement="sidebar" />
+      <div className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
+        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+          <AccountSection />
+        </div>
+        <div className="flex shrink-0 items-center justify-center rounded-full p-1">
+          <HelpMenu triggerRef={helpMenuTriggerRef} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function MainNav({ className, initialPlatform }: MainNavProps) {
+  const { data: brandingEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (data) => data.branding.enabled,
+  })
+  const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
   return (
     <aside
@@ -126,55 +191,13 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
         className,
       )}
     >
-      <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between ps-4 pe-2 pt-3 pb-2">
-          {renderLogo()}
-          <MainNavSearchButton initialPlatform={initialPlatform} />
-        </div>
-        <div className="p-2">
-          <WorkspaceCard />
-        </div>
-        <nav
-          aria-label={t(($) => $['navigation.primary'], { ns: 'common' })}
-          className="isolate flex flex-col gap-px p-2"
-        >
-          {navItems.map((item) => (
-            <MainNavLink key={item.href} item={item} pathname={pathname}>
-              {item.href === '/agents' && (
-                <Badge
-                  size="xs"
-                  variant="dimm"
-                  text={t(($) => $['menus.status'], { ns: 'navigation' })}
-                  className="ms-auto shrink-0"
-                />
-              )}
-            </MainNavLink>
-          ))}
-        </nav>
-        {!isCurrentWorkspaceDatasetOperator && (
-          <Suspense fallback={null}>
-            <WebAppsSection />
-          </Suspense>
-        )}
-        {showEnvTag && (
-          <div className="mt-auto shrink-0 px-3 pb-2">
-            <EnvNav />
-          </div>
-        )}
-      </div>
+      <MainNavPanel headerAction={<MainNavSearchButton initialPlatform={initialPlatform} />} />
       <div className="isolate w-60 shrink-0">
         <StepByStepTourMount
-          recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
+          recoveryAnchorRef={brandingEnabled ? undefined : helpMenuTriggerRef}
           className="relative z-1 ms-2.5 -mb-1 h-8 w-45.75 overflow-visible"
         />
-        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
-          <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-            <AccountSection />
-          </div>
-          <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-            <HelpMenu triggerRef={helpMenuTriggerRef} />
-          </div>
-        </div>
+        <MainNavFooter helpMenuTriggerRef={helpMenuTriggerRef} />
       </div>
     </aside>
   )

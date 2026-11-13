@@ -5,8 +5,10 @@ import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Lock
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, create_autospec, patch
+from weakref import WeakKeyDictionary
 
 # Ensure OpenDAL fs writes to tmp to avoid polluting workspace
 os.environ.setdefault("OPENDAL_SCHEME", "fs")
@@ -17,14 +19,13 @@ import pytest
 from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from redis import Redis
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.rbac_fakes import RBACDomain, build_rbac_domain
 from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
@@ -132,7 +133,10 @@ def _patch_redis_clients() -> Iterator[None]:
 @pytest.fixture(autouse=True)
 def reset_redis_mock(_patch_redis_clients: None) -> None:
     """Reset the shared Redis mock after per-test client rebinding."""
-    redis_mock.reset_mock()
+    # ``mock_calls`` records calls on every attached child and return value, so when it is empty the
+    # recursive reset has nothing to clear. Most tests never touch Redis; skip walking ~370 child mocks.
+    if redis_mock.mock_calls:
+        redis_mock.reset_mock()
     # Restoring a monkeypatched method can leave it detached from the parent's reset traversal.
     redis_mock.delete.reset_mock()
     redis_mock.get.reset_mock()
@@ -178,6 +182,21 @@ def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
     return apply
 
 
+# The callable that materializes each live ``_sqlite_engine``'s database file.
+_sqlite_copiers: WeakKeyDictionary[Engine, Callable[[], None]] = WeakKeyDictionary()
+
+
+def _copy_sqlite_template(template: Path, database_path: Path, lock: Lock) -> None:
+    """Create ``database_path`` as a copy of ``template`` unless it already exists.
+
+    Idempotent and safe across threads sharing ``lock``: the copy happens at most once, so an
+    open connection never sees its file overwritten.
+    """
+    with lock:
+        if not database_path.exists():
+            shutil.copyfile(template, database_path)
+
+
 @pytest.fixture
 def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
     """Copy the schema into an isolated directory without pytest's numbered scan.
@@ -185,29 +204,25 @@ def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
     ``tmp_path`` searches all preceding test directories for a free number. This
     autouse dependency needs only a unique, disposable directory, including any
     SQLite journal files, so keep it separate from test-owned ``tmp_path`` data.
+
+    Most tests never connect, so the schema is copied on the engine's first connection
+    rather than for every test. Code that opens the file without this engine must go
+    through ``sqlite_engine``, which copies it up front.
     """
     with TemporaryDirectory(prefix="case-", dir=_sqlite_database_template.parent) as directory:
         database_path = Path(directory) / "unit-tests.sqlite3"
-        shutil.copyfile(_sqlite_database_template, database_path)
         engine = create_engine(URL.create("sqlite", database=str(database_path)))
+        lock = Lock()
 
+        def copy() -> None:
+            _copy_sqlite_template(_sqlite_database_template, database_path, lock)
+
+        event.listen(engine, "do_connect", lambda *_args: copy())
+        _sqlite_copiers[engine] = copy
         try:
             yield engine
         finally:
             engine.dispose()
-
-
-@pytest.fixture(scope="session")
-def _sqlite_database_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Create one empty full-schema SQLite database per pytest worker."""
-
-    database_path = tmp_path_factory.mktemp("sqlite-template") / "unit-tests.sqlite3"
-    engine = create_engine(URL.create("sqlite", database=str(database_path)))
-    try:
-        TypeBase.metadata.create_all(engine)
-    finally:
-        engine.dispose()
-    return database_path
 
 
 @pytest.fixture(autouse=True)
@@ -236,8 +251,13 @@ def _unbound_session_factory(
 
 @pytest.fixture
 def sqlite_engine(_sqlite_engine: Engine) -> Engine:
-    """Expose the pristine full-schema SQLite engine to tests."""
+    """Expose the pristine full-schema SQLite engine to tests.
 
+    The database file exists on return, so tests may hand ``sqlite_engine.url`` to code
+    that opens it with an engine of its own.
+    """
+
+    _sqlite_copiers[_sqlite_engine]()
     return _sqlite_engine
 
 

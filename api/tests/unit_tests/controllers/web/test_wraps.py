@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Never
@@ -374,46 +375,54 @@ class TestPublicAppAdmissionCases:
 class TestWrapsCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def _reset_logging_context():
+    def _reset_logging_context() -> Generator[None]:
         clear_request_context()
         yield
         clear_request_context()
 
     @staticmethod
-    def test_validate_jwt_token_sets_logging_identity_before_view() -> None:
+    def test_validate_jwt_token_sets_logging_identity_before_view(app: Flask) -> None:
         from controllers.web import wraps
+        from libs.external_api import ExternalApi
 
         app_model = _wraps_App(id="app-id", tenant_id="tenant-id")
-        end_user = _wraps_EndUser(id="end-user-id", tenant_id="tenant-id", type=None)
+        end_user = _wraps_EndUser(id="end-user-id", tenant_id="tenant-id", type=EndUserType.BROWSER)
         clear_request_context()
+        received: list[tuple[_wraps_App, _wraps_EndUser]] = []
 
-        @wraps.validate_jwt_token
-        def protected_view(received_app, received_user):
-            assert get_identity_context() == ("tenant-id", "end-user-id", "end_user")
-            return received_app, received_user
+        class ProtectedApi(wraps.WebApiResource):
+            def get(self, received_app: _wraps_App, received_user: _wraps_EndUser) -> None:
+                assert get_identity_context() == ("tenant-id", "end-user-id", "browser")
+                received.append((received_app, received_user))
 
+        api = ExternalApi(app)
+        api.add_resource(ProtectedApi, "/protected")
         with mock.patch.object(wraps, "decode_jwt_token", return_value=(app_model, end_user)):
-            result = protected_view()
+            response = app.test_client().get("/protected")
 
-        assert result == (app_model, end_user)
+        assert response.status_code == 200
+        assert received == [(app_model, end_user)]
 
     @staticmethod
-    def test_validate_jwt_token_does_not_set_identity_when_authentication_fails() -> None:
+    def test_validate_jwt_token_does_not_set_identity_when_authentication_fails(app: Flask) -> None:
         from controllers.web import wraps
+        from libs.external_api import ExternalApi
 
         clear_request_context()
+        calls: list[str] = []
 
-        @wraps.validate_jwt_token
-        def protected_view(_app, _user):
-            raise AssertionError("view must not be called")
+        class ProtectedApi(wraps.WebApiResource):
+            def get(self, _app: _wraps_App, _user: _wraps_EndUser) -> None:
+                calls.append("view")
 
-        with (
-            mock.patch.object(wraps, "decode_jwt_token", side_effect=Unauthorized()),
-            pytest.raises(Unauthorized),
-        ):
-            protected_view()
+        api = ExternalApi(app)
+        api.add_resource(ProtectedApi, "/protected")
+        with mock.patch.object(wraps, "decode_jwt_token", side_effect=Unauthorized()):
+            response = app.test_client().get("/protected")
 
+        assert response.status_code == 401
         assert get_identity_context() == ("", "", "")
+        assert calls == []
 
     @staticmethod
     def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -> None:
@@ -424,7 +433,7 @@ class TestWrapsCases:
         tenant_id = str(uuid4())
         app_model = _wraps_App(
             tenant_id=tenant_id,
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT,
             name="test-app",
             enable_site=True,
             enable_api=True,
@@ -575,15 +584,17 @@ class TestWrapsCases:
     @staticmethod
     @pytest.mark.usefixtures("app_query_services")
     @pytest.mark.parametrize("token", [None, "expired-token"])
-    def test_web_auth_rejects_unknown_app_code_with_http_not_found(app, monkeypatch, token):
+    def test_web_auth_rejects_unknown_app_code_with_http_not_found(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, token: str | None
+    ) -> None:
         from controllers.web import wraps
         from libs.external_api import ExternalApi
 
         class ProtectedApi(wraps.WebApiResource):
-            def get(self, _app, _user):
+            def get(self, _app: _wraps_App, _user: _wraps_EndUser) -> None:
                 pytest.fail("An unknown WebApp must not reach the protected resource")
 
-        def reject_token(_self, _token):
+        def reject_token(_self: object, _token: str) -> None:
             raise Unauthorized("Authentication has expired.")
 
         monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", staticmethod(lambda: True))

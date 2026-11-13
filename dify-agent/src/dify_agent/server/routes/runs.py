@@ -1,11 +1,13 @@
 """FastAPI routes for asynchronous agent runs.
 
-Controllers translate shutdown errors into HTTP status codes. Runtime request
-failures are intentionally not pre-mapped here: once a request passes DTO
+Controllers translate shutdown and admission-conflict errors into HTTP status
+codes. Runtime request failures are intentionally not pre-mapped here: once a request passes DTO
 validation it is accepted for background execution, and bad compositions or
 snapshots fail later through normal run events/status. Unexpected scheduler or
 storage failures are intentionally left for FastAPI's server-error handling so
-infrastructure problems are not reported as client input errors. Created runs
+infrastructure problems are not reported as client input errors. Blank keys fail
+DTO validation with HTTP 422. Keyed replays return HTTP 202 with the original id
+and current status; mismatched normalized payloads return HTTP 409. Created runs
 are scheduled in the current process and observed through status polling or SSE
 replay backed by Redis event streams.
 """
@@ -26,7 +28,7 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
-from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore, RunNotFoundError
 
 
 def create_runs_router(
@@ -46,10 +48,13 @@ def create_runs_router(
         request: CreateRunRequest,
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CreateRunResponse:
+        """Return HTTP 202 for a new run or exact replay; conflicting keyed requests get 409."""
         try:
             record = await scheduler.create_run(request)
         except SchedulerStoppingError as exc:
             raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
+        except IdempotencyConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)
 
     @router.get("/{run_id}", response_model=RunStatusResponse)

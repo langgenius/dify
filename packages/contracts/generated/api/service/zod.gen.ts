@@ -3339,6 +3339,7 @@ export const zKnowledgeFsSourceImportResponse = z.object({
  * KnowledgeFSSourcePageResponse
  */
 export const zKnowledgeFsSourcePageResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   page_id: z.string(),
   page_name: z.string(),
@@ -3352,6 +3353,8 @@ export const zKnowledgeFsSourcePageResponse = z.object({
 export const zKnowledgeFsSourcePagesQuery = z.object({
   cursor: z.string().min(1).max(4096).nullish(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).nullish(),
+  view: z.literal('tree').nullish(),
 })
 
 /**
@@ -4804,7 +4807,7 @@ export const zSegmentUpdatePayload = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
@@ -4968,6 +4971,11 @@ export const zParameters = z.object({
   sensitive_word_avoidance: z.object({
     enabled: z.boolean().optional(),
   }),
+  show_thoughts: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   speech_to_text: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -5715,7 +5723,7 @@ export const zDocumentTextUpdate = z.intersection(
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -7785,6 +7793,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
   cursor: z.string().min(1).max(4096).optional(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).optional(),
+  view: z.string().optional(),
 })
 
 /**

@@ -1,7 +1,6 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/utils/access-point'
 import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,18 +16,19 @@ import {
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
-import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
+import {
+  createAppDetailFixture,
+  createAppModelConfigFixture,
+  createAppSiteFixture,
+} from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
+import { seedAccessPointQueries } from './access-point-query-fixtures'
 
 let appMode: AppMode = 'workflow'
 let appPublished = false
 let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
-const accessPointMocks = vi.hoisted(() => ({
-  builtIn: vi.fn(),
-  deployed: vi.fn(),
-}))
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
@@ -48,31 +48,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-
-vi.mock('@/app/components/app/access-point/built-in-access-points', () => ({
-  BuiltInAccessPoints: (props: {
-    appId: string
-    canDeploy: boolean
-    canManageAccessPoint: boolean
-    canReleaseAndVersion: boolean
-    highlightedAccessPoint?: AccessPointType
-  }) => {
-    accessPointMocks.builtIn(props)
-    return null
-  },
-}))
-
-vi.mock('@/app/components/app/access-point/deployed-environment-access-points', () => ({
-  DeployedEnvironmentAccessPoints: (props: {
-    appId: string
-    canManageAccessPoint: boolean
-    environmentId: string
-    highlightedAccessPoint?: AccessPointType
-  }) => {
-    accessPointMocks.deployed(props)
-    return null
-  },
-}))
 
 const appEnvironments: AppEnvironment[] = [
   {
@@ -108,6 +83,7 @@ const renderAccessPoint = ({
   cloud?: boolean
 } = {}) => {
   const queryClient = createTestQueryClient()
+  seedAccessPointQueries(queryClient, 'app-1', ['staging', 'canary'])
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   seedCurrentWorkspaceQuery(queryClient)
   seedSystemFeatures(queryClient, { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY' })
@@ -120,6 +96,7 @@ const renderAccessPoint = ({
     createAppDetailFixture({
       id: 'app-1',
       mode: appMode,
+      site: createAppSiteFixture(),
       workflow: appPublished ? { id: 'published-workflow' } : null,
       model_config: appPublished ? createAppModelConfigFixture() : null,
       maintainer: 'user-2',
@@ -153,7 +130,6 @@ const renderAccessPoint = ({
 
 describe('AccessPoint', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     appMode = 'workflow'
     appPublished = false
     appPermissionKeys = [AppACLPermission.AccessPointView]
@@ -171,9 +147,7 @@ describe('AccessPoint', () => {
     renderAccessPoint()
 
     expect(screen.getByRole('heading', { name: 'common.appMenus.accessPoint' })).toBeInTheDocument()
-    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
-      expect.objectContaining({ appId: 'app-1' }),
-    )
+    expect(screen.getByText('No published versions yet')).toBeInTheDocument()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Built-in',
       'Staging',
@@ -223,31 +197,6 @@ describe('AccessPoint', () => {
     )
   })
 
-  it('selects the target environment and highlights its access point from the URL', () => {
-    renderAccessPoint({
-      searchParams: '?environment=canary&accessPoint=serviceApi',
-    })
-
-    expect(screen.getByRole('tab', { name: 'Canary' })).toHaveAttribute('aria-selected', 'true')
-    expect(accessPointMocks.deployed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        environmentId: 'canary',
-        highlightedAccessPoint: 'serviceApi',
-      }),
-    )
-  })
-
-  it('highlights a built-in access point from the URL', () => {
-    renderAccessPoint({
-      searchParams: '?environment=built-in&accessPoint=mcp',
-    })
-
-    expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
-    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
-      expect.objectContaining({ highlightedAccessPoint: 'mcp' }),
-    )
-  })
-
   it('clears the access point highlight when switching environment tabs', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderAccessPoint({
@@ -261,14 +210,7 @@ describe('AccessPoint', () => {
         queryString: '?environment=staging',
       }),
     )
-    await waitFor(() => {
-      expect(accessPointMocks.deployed).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          environmentId: 'staging',
-          highlightedAccessPoint: null,
-        }),
-      )
-    })
+    expect(await screen.findByText('https://staging.api.example.com/v1')).toBeInTheDocument()
   })
 
   it('shows the selected deployed environment with Access Point view permission', () => {
@@ -276,14 +218,9 @@ describe('AccessPoint', () => {
       searchParams: '?environment=canary',
     })
 
-    expect(accessPointMocks.deployed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appId: 'app-1',
-        canManageAccessPoint: false,
-        environmentId: 'canary',
-      }),
-    )
-    expect(accessPointMocks.builtIn).not.toHaveBeenCalled()
+    expect(screen.getByText('https://canary.api.example.com/v1')).toBeInTheDocument()
+    for (const control of screen.getAllByRole('switch'))
+      expect(control).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('falls back to Built-in when the URL targets an unused environment', () => {
@@ -293,10 +230,7 @@ describe('AccessPoint', () => {
 
     expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByRole('tab', { name: 'Quality Assurance' })).not.toBeInTheDocument()
-    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
-      expect.objectContaining({ highlightedAccessPoint: null }),
-    )
-    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+    expect(screen.queryByText('https://canary.api.example.com/v1')).not.toBeInTheDocument()
   })
 
   it('hides environment tabs for app types without multi-environment support', () => {
@@ -307,8 +241,7 @@ describe('AccessPoint', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'common.appMenus.accessPoint' })).toBeInTheDocument()
-    expect(accessPointMocks.builtIn).toHaveBeenCalledTimes(1)
-    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+    expect(screen.queryByText('https://canary.api.example.com/v1')).not.toBeInTheDocument()
   })
 
   it('hides environment tabs without Access Point view permission', () => {
@@ -319,22 +252,18 @@ describe('AccessPoint', () => {
     })
 
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-    expect(accessPointMocks.builtIn).toHaveBeenCalledTimes(1)
-    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+    expect(screen.queryByText('https://canary.api.example.com/v1')).not.toBeInTheDocument()
   })
 
   it('does not grant Access Point view from management permission', () => {
+    appPublished = true
     appPermissionKeys = [AppACLPermission.AccessPointManage]
 
     renderAccessPoint({ searchParams: '?environment=canary' })
 
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        canManageAccessPoint: true,
-      }),
-    )
-    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+    expect(screen.queryByText('https://canary.api.example.com/v1')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /navigation.settings.settings/ })).toBeEnabled()
   })
 
   it('does not grant Access Point management from release permission', () => {
@@ -342,12 +271,9 @@ describe('AccessPoint', () => {
 
     renderAccessPoint({ searchParams: '?environment=canary' })
 
-    expect(accessPointMocks.deployed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        canManageAccessPoint: false,
-        environmentId: 'canary',
-      }),
-    )
+    expect(screen.getByText('https://canary.api.example.com/v1')).toBeInTheDocument()
+    for (const control of screen.getAllByRole('switch'))
+      expect(control).toHaveAttribute('aria-disabled', 'true')
   })
 
   it.each(['workflow', 'advanced-chat', 'chat', 'agent-chat', 'completion'] as const)(
