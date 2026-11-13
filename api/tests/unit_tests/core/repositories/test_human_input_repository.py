@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import Engine, event, select
+from sqlalchemy import Engine, Table, event, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -337,7 +337,7 @@ class TestHumanInputFormRepositoryImplCases:
             sqlite_session.refresh(form)
             assert form.status == HumanInputFormStatus.WAITING
 
-        def test_get_form_returns_entity_and_recipients(self, sqlite_session: Session):
+        def test_get_form_returns_entity_and_recipients(self, sqlite_session: Session) -> None:
             form = _make_form()
             recipient = _make_recipient(form.id)
             other_tenant_form = _make_form(form_id="form-2", tenant_id="other-tenant")
@@ -353,12 +353,12 @@ class TestHumanInputFormRepositoryImplCases:
             assert len(entity.recipients) == 1
             assert entity.recipients[0].token == "token-123"
 
-        def test_get_form_returns_none_when_missing(self):
+        def test_get_form_returns_none_when_missing(self) -> None:
             repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id="run-1")
 
             assert repo.get_form("node-1") is None
 
-        def test_get_form_returns_unsubmitted_state(self, sqlite_session: Session):
+        def test_get_form_returns_unsubmitted_state(self, sqlite_session: Session) -> None:
             form = _make_form()
             _human_input_form_repository_impl_persist_form(sqlite_session, form)
             repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
@@ -370,7 +370,7 @@ class TestHumanInputFormRepositoryImplCases:
             assert entity.selected_action_id is None
             assert entity.submitted_data is None
 
-        def test_get_form_returns_submission_when_completed(self, sqlite_session: Session):
+        def test_get_form_returns_submission_when_completed(self, sqlite_session: Session) -> None:
             form = _make_form(
                 selected_action_id="approve",
                 submitted_data='{"field": "value"}',
@@ -387,7 +387,7 @@ class TestHumanInputFormRepositoryImplCases:
             assert entity.submitted_data == {"field": "value"}
 
     class TestHumanInputFormSubmissionRepository:
-        def test_get_by_token_returns_record(self, sqlite_session: Session):
+        def test_get_by_token_returns_record(self, sqlite_session: Session) -> None:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
@@ -400,7 +400,7 @@ class TestHumanInputFormRepositoryImplCases:
             assert record.recipient_type == RecipientType.STANDALONE_WEB_APP
             assert record.submitted is False
 
-        def test_get_by_form_id_and_recipient_type_uses_recipient(self, sqlite_session: Session):
+        def test_get_by_form_id_and_recipient_type_uses_recipient(self, sqlite_session: Session) -> None:
             form = _make_form(tenant_id="tenant-1")
             recipient = _make_recipient(form.id)
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
@@ -419,7 +419,7 @@ class TestHumanInputFormRepositoryImplCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_session: Session,
-        ):
+        ) -> None:
             fixed_now = datetime(2024, 1, 1, 0, 0, 0)
             monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
 
@@ -459,7 +459,7 @@ class TestHumanInputFormRepositoryImplCases:
             _human_input_form_repository_impl_persist_form(sqlite_session, form, [recipient])
             repo = HumanInputFormSubmissionRepository()
 
-            def fail_form_update(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+            def fail_form_update(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
                 if statement.lstrip().upper().startswith("UPDATE HUMAN_INPUT_FORMS"):
                     raise SQLAlchemyError("forced update failure")
 
@@ -632,7 +632,7 @@ class TestHumanInputRepositoryCases:
     @staticmethod
     def test_create_email_recipients_from_resolved_dedupes_and_skips_blank() -> None:
         repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-        recipients = repo._create_email_recipients_from_resolved(  # type: ignore[attr-defined]
+        recipients = repo._create_email_recipients_from_resolved(
             form_id="f",
             delivery_id="d",
             members=[
@@ -1091,7 +1091,7 @@ class TestHumanInputRepositoryCases:
         form = _human_input_repository_persist_form(repository_session, form_id="f", workflow_run_id=None)
         repo = HumanInputFormSubmissionRepository()
         with pytest.raises(_InvalidTimeoutStatusError, match="invalid timeout status"):
-            repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.SUBMITTED)  # type: ignore[arg-type]
+            repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.SUBMITTED)
         repository_session.expire_all()
         persisted = repository_session.get(HumanInputForm, form.id)
         assert persisted is not None
@@ -1260,13 +1260,17 @@ def test_build_email_recipients_uses_all_members_when_whole_workspace(
 def repository_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
     """Bind repository-owned sessions to an isolated SQLite database."""
 
-    tables = [
-        HumanInputForm.__table__,
-        HumanInputDelivery.__table__,
-        HumanInputFormRecipient.__table__,
-        _human_input_repository_Account.__table__,
-        _human_input_repository_TenantAccountJoin.__table__,
-    ]
+    tables: list[Table] = []
+    for model in (
+        HumanInputForm,
+        HumanInputDelivery,
+        HumanInputFormRecipient,
+        _human_input_repository_Account,
+        _human_input_repository_TenantAccountJoin,
+    ):
+        table = model.__table__
+        assert isinstance(table, Table)
+        tables.append(table)
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     repository_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(
