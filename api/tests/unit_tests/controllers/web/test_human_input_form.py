@@ -134,7 +134,13 @@ def _public_form(recipient_type: RecipientType) -> Form:
 
 
 @pytest.mark.parametrize(
-    "recipient_type", [RecipientType.STANDALONE_WEB_APP, RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL]
+    "recipient_type",
+    [
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.EMAIL_MEMBER,
+        RecipientType.EMAIL_EXTERNAL,
+        RecipientType.BACKSTAGE,
+    ],
 )
 def test_get_form_includes_site(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, recipient_type: RecipientType
@@ -310,7 +316,13 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
 
 
 @pytest.mark.parametrize(
-    "recipient_type", [RecipientType.STANDALONE_WEB_APP, RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL]
+    "recipient_type",
+    [
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.EMAIL_MEMBER,
+        RecipientType.EMAIL_EXTERNAL,
+        RecipientType.BACKSTAGE,
+    ],
 )
 def test_create_upload_token_returns_token_and_form_expiration(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, recipient_type: RecipientType
@@ -348,11 +360,10 @@ def test_create_upload_token_returns_token_and_form_expiration(
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-@pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE])
-def test_get_form_rejects_internal_tokens(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, recipient_type: RecipientType
+def test_get_form_rejects_console_tokens(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
 ) -> None:
-    """Internal approval tokens cannot disclose a form through the public Web API."""
+    """Console tokens cannot disclose a form through the public Web API."""
 
     expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
     _, app_model, _ = _persist_app_site(database_session)
@@ -373,7 +384,7 @@ def test_get_form_rejects_internal_tokens(
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
-            self.recipient_type = recipient_type
+            self.recipient_type = RecipientType.CONSOLE
 
         def get_definition(self):
             return _FakeDefinition()
@@ -494,12 +505,18 @@ def test_get_form_raises_forbidden_when_tenant_archived(
 
 
 @pytest.mark.parametrize(
-    "recipient_type", [RecipientType.STANDALONE_WEB_APP, RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL]
+    "recipient_type",
+    [
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.EMAIL_MEMBER,
+        RecipientType.EMAIL_EXTERNAL,
+        RecipientType.BACKSTAGE,
+    ],
 )
 def test_submit_form_accepts_public_tokens(
     monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine, recipient_type: RecipientType
 ) -> None:
-    """Web and email approval links can still submit through the public API."""
+    """Web, email, and temporary Backstage links can submit through the public API."""
 
     form = _public_form(recipient_type)
     limiter_mock = MagicMock()
@@ -602,26 +619,24 @@ def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sq
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-@pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE])
 @pytest.mark.parametrize("endpoint", ["submit", "upload-token"])
-def test_public_mutations_reject_internal_tokens(
+def test_public_mutations_reject_console_tokens(
     monkeypatch: pytest.MonkeyPatch,
     app: Flask,
     database_session: Session,
-    recipient_type: RecipientType,
     endpoint: str,
 ) -> None:
-    form = _public_form(recipient_type)
+    form = _public_form(RecipientType.CONSOLE)
     monkeypatch.setattr(human_input_module.HumanInputService, "get_form_by_token", lambda self, token: form)
     monkeypatch.setattr(
         human_input_module.HumanInputService,
         "submit_form_by_token",
-        lambda *args, **kwargs: pytest.fail("Internal tokens must not reach form submission"),
+        lambda *args, **kwargs: pytest.fail("Console tokens must not reach form submission"),
     )
     monkeypatch.setattr(
         human_input_module,
         "application_services",
-        lambda: pytest.fail("Internal tokens must not reach upload-token issuance"),
+        lambda: pytest.fail("Console tokens must not reach upload-token issuance"),
     )
     for limiter in [human_input_module._FORM_SUBMIT_RATE_LIMITER, human_input_module._FORM_UPLOAD_TOKEN_RATE_LIMITER]:
         monkeypatch.setattr(limiter, "is_rate_limited", lambda address: False)
