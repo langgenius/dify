@@ -15,6 +15,13 @@ from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
+from models.agent import (
+    AgentConfigVersionKind,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
@@ -69,6 +76,8 @@ SQLITE_MODELS = (
     AppAnnotationHitHistory,
     SavedMessage,
     WorkflowAppLog,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
 )
 
 pytestmark = [
@@ -123,6 +132,35 @@ def _create_conversation(
     conversation._inputs = {}
     conversation.updated_at = updated_at
     return conversation
+
+
+def _create_conversation_workspace(workspace_id: str, app_id: str, conversation_id: str) -> AgentWorkspace:
+    return AgentWorkspace(
+        id=workspace_id,
+        tenant_id="tenant-1",
+        app_id=app_id,
+        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+        owner_id=conversation_id,
+        owner_scope_key="root",
+        backend_workspace_ref=f"backend-{workspace_id}",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+
+
+def _create_conversation_workspace_binding(binding_id: str, app_id: str, workspace_id: str) -> AgentWorkspaceBinding:
+    return AgentWorkspaceBinding(
+        id=binding_id,
+        tenant_id="tenant-1",
+        app_id=app_id,
+        workspace_id=workspace_id,
+        agent_id="agent-1",
+        base_home_snapshot_id=None,
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref=f"backend-{binding_id}",
+        status=AgentWorkingResourceStatus.ACTIVE,
+    )
 
 
 def _create_message(
@@ -459,6 +497,8 @@ def test_process_tenant_processes_and_persists_all_batches(
             _create_conversation("conversation-recent", "app-1", updated_at=recent),
             _create_conversation("conversation-other", "app-2", updated_at=old),
             _create_message("message-old", "app-1", "conversation-old", created_at=old),
+            _create_conversation_workspace("workspace-old", "app-1", "conversation-old"),
+            _create_conversation_workspace_binding("binding-old", "app-1", "workspace-old"),
             _create_message("message-recent", "app-1", "conversation-recent", created_at=recent),
             _create_message("message-other", "app-2", "conversation-other", created_at=old),
             _create_workflow_app_log("log-old", "tenant-1", "app-1", created_at=old),
@@ -474,6 +514,16 @@ def test_process_tenant_processes_and_persists_all_batches(
     monkeypatch.setattr(service_module.click, "style", lambda message, **_kwargs: message)
     clear_related = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", clear_related)
+    enqueue_collection = MagicMock()
+
+    def enqueue_and_verify_commit(**kwargs: object) -> None:
+        with Session(sqlite_engine) as verification_session:
+            workspace = verification_session.get(AgentWorkspace, "workspace-old")
+            assert workspace is not None
+            assert workspace.status == AgentWorkingResourceStatus.RETIRED
+        enqueue_collection(**kwargs)
+
+    monkeypatch.setattr(service_module, "enqueue_agent_resource_collection", enqueue_and_verify_commit)
 
     node_execution = _create_workflow_node_execution("node-execution-1")
     node_repo = MagicMock()
@@ -513,6 +563,12 @@ def test_process_tenant_processes_and_persists_all_batches(
     with Session(sqlite_engine) as verification_session:
         assert verification_session.get(Message, "message-old") is None
         assert verification_session.get(Conversation, "conversation-old") is None
+        workspace = verification_session.get(AgentWorkspace, "workspace-old")
+        binding = verification_session.get(AgentWorkspaceBinding, "binding-old")
+        assert workspace is not None
+        assert workspace.status == AgentWorkingResourceStatus.RETIRED
+        assert binding is not None
+        assert binding.status == AgentWorkingResourceStatus.RETIRED
         assert verification_session.get(WorkflowAppLog, "log-old") is None
         assert verification_session.get(Message, "message-recent") is not None
         assert verification_session.get(Message, "message-other") is not None
@@ -520,6 +576,7 @@ def test_process_tenant_processes_and_persists_all_batches(
         assert verification_session.get(Conversation, "conversation-other") is not None
         assert verification_session.get(WorkflowAppLog, "log-recent") is not None
         assert verification_session.get(WorkflowAppLog, "log-other") is not None
+    enqueue_collection.assert_called_once_with(tenant_id="tenant-1", workspace_ids=["workspace-old"])
 
 
 def test_serialize_record_falls_back_to_table_columns() -> None:
