@@ -4,6 +4,7 @@ import threading
 from collections.abc import Sequence
 from datetime import datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -67,7 +68,8 @@ class TestRagPipelineTaskProxyCases:
             def __init__(self) -> None:
                 super().__init__("tenant-1", "pipeline")
 
-            def try_set_task_waiting_time(self) -> bool:
+            @override
+            def try_set_task_waiting_time(self, ttl: int = 3600) -> bool:
                 barrier.wait(timeout=5)
                 with lock:
                     nonlocal claimed
@@ -76,9 +78,11 @@ class TestRagPipelineTaskProxyCases:
                     claimed = True
                     return True
 
+            @override
             def set_task_waiting_time(self, ttl: int = 3600) -> None:
                 return None
 
+            @override
             def push_tasks(self, tasks: Sequence[object]) -> None:
                 queued.extend(tasks)
 
