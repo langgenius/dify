@@ -425,15 +425,16 @@ class App(Base):
 
     @property
     def is_agent(self) -> bool:
+        """Migrate enabled string strategies to Agent mode; ignore malformed strategies without writes."""
         app_model_config = self.app_model_config
         if not app_model_config:
             return False
         if not app_model_config.agent_mode:
             return False
 
-        if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
-            "strategy", ""
-        ) in {"function_call", "react"}:
+        agent_mode = app_model_config.agent_mode_dict
+        strategy = agent_mode.get("strategy", "")
+        if agent_mode.get("enabled", False) and isinstance(strategy, str) and strategy in {"function_call", "react"}:
             self.mode = AppMode.AGENT_CHAT
             db.session.commit()
             return True
