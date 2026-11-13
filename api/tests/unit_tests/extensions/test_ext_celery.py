@@ -349,6 +349,8 @@ class TestCelerySslCases:
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
+            mock_config.ENABLE_AGENT_RESOURCE_RECONCILE_TASK = False
+            mock_config.AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
             mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
@@ -407,6 +409,8 @@ class TestCelerySslCases:
             mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
+            mock_config.ENABLE_AGENT_RESOURCE_RECONCILE_TASK = False
+            mock_config.AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
             mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
