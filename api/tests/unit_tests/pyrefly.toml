@@ -134,7 +134,6 @@ project-excludes = [
   "core/test_provider_manager.py",
   "core/tools/__base/test_tool.py",
   "core/tools/builtin_tool/test_tool.py",
-  "core/tools/builtin_tool/test_provider.py",
   "core/tools/builtin_tool/providers/time/tools/test_localtime_to_timestamp.py",
   "core/tools/mcp_tool/test_tool.py",
   "core/tools/test_tool_manager.py",
