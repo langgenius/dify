@@ -10,13 +10,13 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, TextPromptMessageContent
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UserError
+from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
     ModelMessage,
@@ -87,7 +87,7 @@ def _tool_chunk(
 
 
 class _TrackingResponseBody(httpx.AsyncByteStream):
-    def __init__(self, payloads: list[bytes], *, close_error: BaseException | None = None) -> None:
+    def __init__(self, payloads: list[bytes], *, close_error: Exception | None = None) -> None:
         self.payloads = payloads
         self.close_error = close_error
         self.close_count = 0
@@ -102,12 +102,13 @@ class _TrackingResponseBody(httpx.AsyncByteStream):
             raise self.close_error
 
 
-def _stream_lifecycle_payloads() -> list[bytes]:
+def _stream_lifecycle_payloads(*, usage_in_first_chunk: bool = False) -> list[bytes]:
     first_chunk = LLMResultChunk(
         model="demo-model",
         delta=LLMResultChunkDelta(
             index=0,
             message=AssistantPromptMessage(content="hello ", tool_calls=[]),
+            usage=make_usage(prompt_tokens=6, completion_tokens=4) if usage_in_first_chunk else None,
         ),
     )
     final_chunk = LLMResultChunk(
@@ -158,6 +159,8 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def make_streaming_adapter(self, body: _TrackingResponseBody) -> DifyLLMAdapterModel:
+        """Exercise HTTPX's real stream cleanup, which mock_gateway_stream bypasses."""
+
         async def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 200,
@@ -888,7 +891,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_request_stream_closes_gateway_body_after_consumer_error_without_masking_it(self) -> None:
         body = _TrackingResponseBody(
-            _stream_lifecycle_payloads(),
+            _stream_lifecycle_payloads(usage_in_first_chunk=True),
             close_error=RuntimeError("gateway response close failed"),
         )
         adapter = self.make_streaming_adapter(body)
@@ -905,6 +908,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                     event_count += 1
                     break
                 self.assertEqual(event_count, 1)
+                self.assertEqual(stream.usage.input_tokens, 6)
                 raise original_error
 
         self.assertIs(context.exception, original_error)
@@ -913,35 +917,45 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(adapter.accumulated_usage)
 
     async def test_request_stream_closes_gateway_body_when_cancelled(self) -> None:
-        body = _TrackingResponseBody(_stream_lifecycle_payloads())
-        adapter = self.make_streaming_adapter(body)
-        started = asyncio.Event()
-        held_streams: list[object] = []
+        for close_error in (None, RuntimeError("gateway response close failed")):
+            with self.subTest(close_error=close_error):
+                body = _TrackingResponseBody(
+                    _stream_lifecycle_payloads(usage_in_first_chunk=True),
+                    close_error=close_error,
+                )
+                adapter = self.make_streaming_adapter(body)
+                started = asyncio.Event()
+                # Keep a strong reference so CPython GC cannot hide missing deterministic cleanup.
+                held_streams: list[object] = []
 
-        async def consume_until_cancelled() -> None:
-            async with adapter.request_stream(
-                [ModelRequest(parts=[UserPromptPart("hello")])],
-                model_settings=None,
-                model_request_parameters=ModelRequestParameters(),
-            ) as stream:
-                held_streams.append(stream)
-                event_count = 0
-                async for _event in stream:
-                    event_count += 1
-                    break
-                self.assertEqual(event_count, 1)
-                started.set()
-                await asyncio.Event().wait()
+                async def consume_until_cancelled() -> None:
+                    async with adapter.request_stream(
+                        [ModelRequest(parts=[UserPromptPart("hello")])],
+                        model_settings=None,
+                        model_request_parameters=ModelRequestParameters(),
+                    ) as stream:
+                        held_streams.append(stream)
+                        event_count = 0
+                        async for _event in stream:
+                            event_count += 1
+                            break
+                        self.assertEqual(event_count, 1)
+                        self.assertEqual(stream.usage.input_tokens, 6)
+                        started.set()
+                        await asyncio.Event().wait()
 
-        task = asyncio.create_task(consume_until_cancelled())
-        await asyncio.wait_for(started.wait(), timeout=1)
-        task.cancel()
-        with self.assertRaises(asyncio.CancelledError):
-            await task
+                task = asyncio.create_task(consume_until_cancelled())
+                await asyncio.wait_for(started.wait(), timeout=1)
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError) as context:
+                    await task
 
-        self.assertTrue(held_streams)
-        self.assertEqual(body.close_count, 1)
-        self.assertIsNone(adapter.accumulated_usage)
+                self.assertTrue(task.cancelled())
+                self.assertTrue(held_streams)
+                self.assertEqual(body.close_count, 1)
+                self.assertIsNone(adapter.accumulated_usage)
+                if close_error is not None:
+                    self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
     async def test_request_stream_closes_gateway_body_after_caller_breaks(self) -> None:
         body = _TrackingResponseBody(_stream_lifecycle_payloads())
@@ -962,25 +976,182 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(adapter.accumulated_usage)
 
     async def test_request_stream_propagates_gateway_close_error_after_caller_breaks(self) -> None:
-        close_error = RuntimeError("gateway response close failed on caller break")
-        body = _TrackingResponseBody(_stream_lifecycle_payloads(), close_error=close_error)
-        adapter = self.make_streaming_adapter(body)
+        close_errors = [
+            (RuntimeError("gateway response close failed on caller break"), RuntimeError, None),
+            (httpx.ReadError("gateway response close failed on caller break"), ModelHTTPError, 503),
+            (httpx.ReadTimeout("gateway response close timed out on caller break"), ModelHTTPError, 504),
+        ]
+        for close_error, error_type, status_code in close_errors:
+            with self.subTest(close_error=close_error):
+                body = _TrackingResponseBody(
+                    _stream_lifecycle_payloads(usage_in_first_chunk=True),
+                    close_error=close_error,
+                )
+                adapter = self.make_streaming_adapter(body)
 
-        with self.assertRaises(RuntimeError) as context:
-            async with adapter.request_stream(
-                [ModelRequest(parts=[UserPromptPart("hello")])],
-                model_settings=None,
-                model_request_parameters=ModelRequestParameters(),
-            ) as stream:
-                event_count = 0
-                async for _event in stream:
-                    event_count += 1
-                    break
-                self.assertEqual(event_count, 1)
+                with self.assertRaises(error_type) as context:
+                    async with adapter.request_stream(
+                        [ModelRequest(parts=[UserPromptPart("hello")])],
+                        model_settings=None,
+                        model_request_parameters=ModelRequestParameters(),
+                    ) as stream:
+                        event_count = 0
+                        async for _event in stream:
+                            event_count += 1
+                            break
+                        self.assertEqual(event_count, 1)
+                        self.assertEqual(stream.usage.input_tokens, 6)
 
-        self.assertIs(context.exception, close_error)
-        self.assertEqual(body.close_count, 1)
-        self.assertIsNone(adapter.accumulated_usage)
+                if isinstance(context.exception, ModelHTTPError):
+                    self.assertEqual(context.exception.status_code, status_code)
+                    self.assertIs(context.exception.__cause__, close_error)
+                else:
+                    self.assertIs(context.exception, close_error)
+                self.assertEqual(body.close_count, 1)
+                self.assertIsNone(adapter.accumulated_usage)
+
+    async def test_request_closes_gateway_body_after_mapping_error_without_masking_it(self) -> None:
+        chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(
+                    content=[
+                        ImagePromptMessageContent(
+                            format="png",
+                            mime_type="image/png",
+                            url="https://example.com/assistant.png",
+                        )
+                    ],
+                ),
+                usage=make_usage(),
+            ),
+        )
+        for close_error in (None, RuntimeError("gateway response close failed")):
+            with self.subTest(close_error=close_error):
+                body = _TrackingResponseBody([build_stream_response(chunk).content], close_error=close_error)
+                adapter = self.make_streaming_adapter(body)
+
+                with self.assertRaisesRegex(UnexpectedModelBehavior, "URL-based assistant multimodal") as context:
+                    await adapter.request(
+                        [ModelRequest(parts=[UserPromptPart("hello")])],
+                        model_settings=None,
+                        model_request_parameters=ModelRequestParameters(),
+                    )
+
+                self.assertEqual(body.close_count, 1)
+                self.assertIsNone(adapter.accumulated_usage)
+                if close_error is not None:
+                    self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
+
+    async def test_request_preserves_cancellation_while_waiting_for_gateway_data(self) -> None:
+        for stream_response in (False, True):
+            for close_error in (None, RuntimeError("gateway response close failed")):
+                with self.subTest(stream=stream_response, close_error=close_error):
+                    read_started = asyncio.Event()
+
+                    class WaitingResponseBody(_TrackingResponseBody):
+                        async def __aiter__(self) -> AsyncGenerator[bytes, None]:
+                            async for payload in super().__aiter__():
+                                yield payload
+                            read_started.set()
+                            await asyncio.Event().wait()
+
+                    body = WaitingResponseBody(
+                        _stream_lifecycle_payloads(usage_in_first_chunk=True)[:1],
+                        close_error=close_error,
+                    )
+                    adapter = self.make_streaming_adapter(body)
+                    # Keep a strong reference so CPython GC cannot hide missing deterministic cleanup.
+                    held_streams: list[object] = []
+
+                    async def consume_until_cancelled() -> None:
+                        messages = [ModelRequest(parts=[UserPromptPart("hello")])]
+                        if stream_response:
+                            async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                                held_streams.append(stream)
+                                async for _event in stream:
+                                    self.assertEqual(stream.usage.input_tokens, 6)
+                        else:
+                            await adapter.request(messages, None, ModelRequestParameters())
+
+                    task = asyncio.create_task(consume_until_cancelled())
+                    await asyncio.wait_for(read_started.wait(), timeout=1)
+                    task.cancel()
+                    with self.assertRaises(asyncio.CancelledError) as context:
+                        await task
+
+                    self.assertTrue(task.cancelled())
+                    self.assertEqual(body.close_count, 1)
+                    self.assertIsNone(adapter.accumulated_usage)
+                    if close_error is not None:
+                        self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
+
+    async def test_request_preserves_gateway_error_when_closing_also_fails(self) -> None:
+        payloads = [
+            (build_stream_error("UnknownProviderError", "gateway failed").content, ModelAPIError, "gateway failed"),
+            (build_stream_error("InvokeRateLimitError", "too many").content, ModelHTTPError, "too many"),
+            (b'data: {"code": 0, "message": "", "data": null}\n\n', UnexpectedModelBehavior, "empty stream item"),
+        ]
+        for payload, error_type, message in payloads:
+            with self.subTest(error_type=error_type):
+                close_error = RuntimeError("gateway response close failed")
+                body = _TrackingResponseBody(
+                    [_stream_lifecycle_payloads(usage_in_first_chunk=True)[0], payload],
+                    close_error=close_error,
+                )
+                adapter = self.make_streaming_adapter(body)
+
+                with self.assertRaisesRegex(error_type, message) as context:
+                    await adapter.request(
+                        [ModelRequest(parts=[UserPromptPart("hello")])],
+                        None,
+                        ModelRequestParameters(),
+                    )
+
+                self.assertEqual(body.close_count, 1)
+                self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
+                self.assertIsNone(adapter.accumulated_usage)
+
+    async def test_request_stream_propagates_cancellation_arriving_during_cleanup(self) -> None:
+        for failure_source in ("consumer", "gateway"):
+            with self.subTest(failure_source=failure_source):
+                close_started = asyncio.Event()
+
+                class ClosingResponseBody(_TrackingResponseBody):
+                    async def aclose(self) -> None:
+                        self.close_count += 1
+                        close_started.set()
+                        await asyncio.Event().wait()
+
+                payloads = _stream_lifecycle_payloads(usage_in_first_chunk=True)
+                if failure_source == "gateway":
+                    payloads[1] = build_stream_error("UnknownProviderError", "gateway failed").content
+                body = ClosingResponseBody(payloads)
+                adapter = self.make_streaming_adapter(body)
+                # Keep a strong reference so CPython GC cannot hide missing deterministic cleanup.
+                held_streams: list[object] = []
+
+                async def consume_until_cleanup() -> None:
+                    async with adapter.request_stream(
+                        [ModelRequest(parts=[UserPromptPart("hello")])], None, ModelRequestParameters()
+                    ) as stream:
+                        held_streams.append(stream)
+                        async for _event in stream:
+                            self.assertEqual(stream.usage.input_tokens, 6)
+                            if failure_source == "consumer":
+                                raise RuntimeError("consumer failed")
+
+                task = asyncio.create_task(consume_until_cleanup())
+                await asyncio.wait_for(close_started.wait(), timeout=1)
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+
+                self.assertTrue(task.cancelled())
+                self.assertTrue(held_streams)
+                self.assertEqual(body.close_count, 1)
+                self.assertIsNone(adapter.accumulated_usage)
 
     async def test_request_stream_splits_embedded_thinking_tags_from_text_content_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
