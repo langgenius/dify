@@ -291,7 +291,7 @@ class TestMcpServerResponseCases:
         response = method(None, CONTEXT, _MCP_SERVER_RESPONSE_APP_ID)
         assert response["parameters"] == {"timeout": 30}
         assert response["created_at"] == 1704067200
-        servers.result = None
+        servers.result = None  # pyrefly: ignore[implicit-any-attribute]
         assert method(None, CONTEXT, _MCP_SERVER_RESPONSE_APP_ID) == {}
 
     @staticmethod
@@ -307,7 +307,7 @@ class TestMcpServerResponseCases:
     @staticmethod
     @pytest.mark.parametrize("candidate", [SERVER_ID, SERVER_ID.upper(), UUID(SERVER_ID).hex, "{" + SERVER_ID + "}"])
     def test_put_normalizes_server_id_and_passes_status(app: Flask, servers: Servers, candidate: str) -> None:
-        body = {"id": candidate, "parameters": {}, "description": "updated", "status": "inactive"}
+        body: dict[str, object] = {"id": candidate, "parameters": {}, "description": "updated", "status": "inactive"}
         with app.test_request_context(method="PUT", json=body):
             unwrap(module.AppMCPServerController.put)(None, CONTEXT, _MCP_SERVER_RESPONSE_APP_ID)
         assert servers.calls == [

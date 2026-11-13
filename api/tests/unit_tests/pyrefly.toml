@@ -13,7 +13,6 @@ project-excludes = [
   "controllers/console/app/test_app.py",
   "controllers/console/app/test_audio.py",
   "controllers/console/app/test_generator.py",
-  "controllers/console/app/test_mcp_server.py",
   "controllers/console/app/test_model_config.py",
   "controllers/console/app/test_workflow.py",
   "controllers/console/app/test_workflow_node_output_inspector.py",
