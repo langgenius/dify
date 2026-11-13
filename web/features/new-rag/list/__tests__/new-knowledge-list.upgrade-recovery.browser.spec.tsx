@@ -71,6 +71,8 @@ describe('NewKnowledgeList upgrade recovery', () => {
     api.datasets.mockResolvedValue(datasetsPage([]))
   })
 
+  afterEach(() => vi.useRealTimers())
+
   describe('upgrade recovery', () => {
     it('restores upgrade cards from exact legacy dataset lookups', async () => {
       const failed = job({ status: 'failed' })
@@ -171,6 +173,7 @@ describe('NewKnowledgeList upgrade recovery', () => {
     })
 
     it('keeps server retry eligibility authoritative over a stale local upgrade', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
       const running = job()
       const failed = job({ status: 'failed', last_error_message: 'The import failed' })
       api.upgradeJobs.mockResolvedValue({ data: [running] })
@@ -182,6 +185,7 @@ describe('NewKnowledgeList upgrade recovery', () => {
       api.upgradeJobs.mockResolvedValue({ data: [failed] })
       api.datasets.mockResolvedValue(datasetsPage([legacyDataset(failed)]))
       detail.resolve(failed)
+      await vi.advanceTimersByTimeAsync(2000)
       await expect.element(page.getByText('The import failed')).toBeVisible()
       await refresh(...recoveryKeys())
       await expect.poll(() => upgradeCards('Support knowledge').elements().length).toBe(1)
@@ -202,6 +206,7 @@ describe('NewKnowledgeList upgrade recovery', () => {
     })
 
     it('dismisses a completed local upgrade only after its space is visible and the job leaves recovery', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
       const running = job()
       const succeeded = job({
         completed_documents: 10,
@@ -213,6 +218,8 @@ describe('NewKnowledgeList upgrade recovery', () => {
       api.datasets.mockResolvedValue(datasetsPage([legacyDataset(running)]))
       api.upgradeJob.mockResolvedValue(succeeded)
       const { refresh } = await setup()
+      await expect.element(upgradeCards('Support knowledge')).toBeVisible()
+      await vi.advanceTimersByTimeAsync(2000)
       await expect
         .element(page.getByRole('link', { name: 'Support knowledge' }))
         .toHaveAttribute('href', '/datasets/new/space-1')

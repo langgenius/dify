@@ -190,6 +190,8 @@ it('retains the loaded page and its selection while retrying the failed next pag
   await product.click()
   const alert = dialog.getByRole('alert')
   await expect.element(alert).toBeVisible()
+  await alert.getByRole('button', { name: 'common.operation.retry' }).hover()
+  expect(api.list.mock.calls.filter(([input]) => input?.query?.page === 2)).toHaveLength(1)
   api.list.mockImplementation(
     async (input: Parameters<typeof consoleClient.knowledgeFs.spaces.get>[0]) => {
       if (input?.query?.page !== 2) throw new Error('The retry must request the failed second page')
@@ -199,6 +201,7 @@ it('retains the loaded page and its selection while retrying the failed next pag
   await alert.getByRole('button', { name: 'common.operation.retry' }).click()
   const later = dialog.getByRole('checkbox', { name: 'Later docs' })
   await expect.element(later).toBeVisible()
+  expect(api.list.mock.calls.filter(([input]) => input?.query?.page === 2)).toHaveLength(2)
   await expect.element(product).toBeChecked()
   await later.click()
   await dialog.getByRole('button', { name: 'common.operation.add', exact: true }).click()

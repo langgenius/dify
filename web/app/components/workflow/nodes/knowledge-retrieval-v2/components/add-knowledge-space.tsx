@@ -78,7 +78,13 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
 
   useInfiniteScroll(
     async () => {
-      if (!spacesQuery.hasNextPage || spacesQuery.isFetchingNextPage) return { list: [] }
+      if (
+        !spacesQuery.hasNextPage ||
+        spacesQuery.isFetchingNextPage ||
+        spacesQuery.isFetchNextPageError
+      ) {
+        return { list: [] }
+      }
       await spacesQuery.fetchNextPage()
       return { list: [] }
     },
@@ -192,7 +198,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                           disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
                         )}
                       >
-                        <span aria-hidden className="mr-2 shrink-0">
+                        <span aria-hidden className="me-2 shrink-0">
                           {summary.icon || '📗'}
                         </span>
                         <span
@@ -204,7 +210,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                         {unavailable && (
                           <span
                             id={`${rowId}-status`}
-                            className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 text-text-tertiary"
+                            className="ms-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 text-text-tertiary"
                           >
                             {t(($) => $['nodes.knowledgeRetrievalV2.unavailable'], {
                               ns: 'workflow',
@@ -213,7 +219,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                         )}
                         <Checkbox
                           id={rowId}
-                          className="ml-2 shrink-0"
+                          className="ms-2 shrink-0"
                           aria-labelledby={`${rowId}-name`}
                           aria-describedby={unavailable ? `${rowId}-status` : undefined}
                           checked={selected}

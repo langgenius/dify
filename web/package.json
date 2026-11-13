@@ -38,6 +38,7 @@
     "storybook:build": "storybook build",
     "test": "vp test --project unit",
     "test:browser": "vp test --project browser",
+    "test:browser-traces": "node test/verify-browser-traces.mjs",
     "type-check": "tsrs --runExternalCode --noEmit",
     "uglify-embed": "node ./bin/uglify-embed"
   },

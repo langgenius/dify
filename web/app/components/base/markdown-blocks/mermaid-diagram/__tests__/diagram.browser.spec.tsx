@@ -248,6 +248,7 @@ it('copies a complete PNG after zooming and resets the success feedback', async 
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.zoomIn' }))
     await userEvent.hover(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
     await expect.element(page.getByText('common.operation.copyImage')).toBeVisible()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
     await expect
       .element(dialog.getByRole('button', { name: 'common.operation.imageCopied' }))
@@ -264,6 +265,7 @@ it('copies a complete PNG after zooming and resets the success feedback', async 
     context.drawImage(bitmap, 0, 0)
     expect([...context.getImageData(0, 0, 1, 1).data]).toEqual([255, 255, 255, 255])
     bitmap.close()
+    await vi.advanceTimersByTimeAsync(2000)
     await expect
       .element(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
       .toBeEnabled()
@@ -279,6 +281,7 @@ it('copies a complete PNG after zooming and resets the success feedback', async 
       .element(dialog.getByRole('button', { name: 'common.operation.copyImage' }))
       .toBeEnabled()
   } finally {
+    vi.useRealTimers()
     write.mockRestore()
   }
 })

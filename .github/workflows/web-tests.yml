@@ -96,6 +96,8 @@ jobs:
     name: Web Browser Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
+    env:
+      VITEST_EXP_UNBUFFERED_INPUT: 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -125,7 +127,12 @@ jobs:
         env:
           # Unit uploads already include all authored sources, including untested modules.
           DIFY_TEST_COVERAGE_ONLY_EXECUTED: 'true'
+          VITEST_EXP_V8_PERSISTENT: 'true'
         run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+
+      - name: Verify retained browser traces
+        if: matrix.shardIndex == 1
+        run: vp run test:browser-traces
 
       - name: Report browser coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

@@ -84,6 +84,10 @@ overrides:
   ws@>=8.0.0 <8.20.1: ^8.22.0
   yaml@>=2.0.0 <2.8.3: 2.9.1
 patchedDependencies:
+  # Deferred failure-trace export, opt-in unbuffered Chromium input and persistent
+  # V8 coverage. Revalidate these patches together when upgrading Vitest.
+  '@vitest/browser-playwright@5.1.0': patches/@vitest__browser-playwright@5.1.0.patch
+  '@vitest/coverage-v8@5.1.0': patches/@vitest__coverage-v8@5.1.0.patch
   # Vite 8 replaces the legacy path resolver. Reassess this patch and its paired
   # dependency-removal override together when upgrading Storybook.
   vite-plugin-storybook-nextjs@10.6.7: patches/vite-plugin-storybook-nextjs@10.6.7.patch

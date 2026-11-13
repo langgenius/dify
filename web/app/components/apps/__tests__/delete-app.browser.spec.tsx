@@ -153,6 +153,7 @@ it('keeps the delete dialog pending after its starred source unmounts until both
     await screen.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect.poll(() => nextDialog.isConnected).toBe(false)
     await expect.element(actions('Starred', next.name)).toHaveFocus()
+    await screen.unmount()
   } finally {
     refresh.resolve(appPage([next]))
     queryClient.clear()
@@ -195,6 +196,7 @@ it.each(['pointer', 'keyboard'] as const)(
       await userEvent.keyboard('{Enter}')
       await expect.element(screen.getByRole('menu')).toBeVisible()
       expect(api.delete).not.toHaveBeenCalled()
+      await screen.unmount()
     } finally {
       queryClient.clear()
     }
@@ -218,6 +220,7 @@ it('hands focus from the card context menu to deletion and restores the card lin
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.element(link).toHaveFocus()
     expect(api.delete).not.toHaveBeenCalled()
+    await screen.unmount()
   } finally {
     queryClient.clear()
   }
@@ -247,6 +250,7 @@ it('focuses the next card after deletion without moving the catalog scroll posit
       .toHaveFocus()
     expect(element.scrollTop).toBe(scrollTopBefore)
     expect(element.scrollTop).toBeGreaterThan(0)
+    await screen.unmount()
   } finally {
     queryClient.clear()
   }
@@ -268,6 +272,7 @@ it('returns focus to the empty catalog when its last app is deleted without an e
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.element(screen.getByRole('link', { name: target.name })).not.toBeInTheDocument()
     await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
+    await screen.unmount()
   } finally {
     noMotionStyle.remove()
     queryClient.clear()
@@ -295,6 +300,7 @@ it.each([
     await expect
       .element(screen.getByRole('button', { name: `Star app: ${apps[focused]!.name}` }))
       .toHaveFocus()
+    await screen.unmount()
   } finally {
     queryClient.clear()
   }
@@ -312,6 +318,7 @@ it('falls back to the viewport when the source starred section disappears', asyn
     await expect.element(screen.getByRole('list', { name: 'Starred' })).not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: remaining.name })).toBeVisible()
     await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
+    await screen.unmount()
   } finally {
     queryClient.clear()
   }
@@ -332,6 +339,7 @@ it('focuses the next card primary control when that card has no actions', async 
     await expect
       .element(screen.getByRole('button', { name: remaining.name, exact: true }))
       .toHaveFocus()
+    await screen.unmount()
   } finally {
     queryClient.clear()
   }

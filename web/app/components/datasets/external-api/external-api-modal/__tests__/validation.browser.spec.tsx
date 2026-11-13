@@ -73,7 +73,9 @@ it('reports a short key without discarding the draft or sending a request', asyn
   await expect
     .element(screen.getByText('API-key length cannot be less than 5 characters'))
     .toBeVisible()
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await expect
+    .element(screen.getByRole('dialog', { name: 'Add an External Knowledge API' }))
+    .toBeVisible()
   await expect.element(screen.getByLabelText(/Name/)).toHaveValue('Product API')
   expect(api.create).not.toHaveBeenCalled()
 })
@@ -90,5 +92,7 @@ it('focuses and describes the invalid endpoint, then clears the error when corre
   await endpoint.fill('https://api.example.com')
   await expect.element(screen.getByText('Enter a valid http(s) URL.')).not.toBeInTheDocument()
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: 'Add an External Knowledge API' }))
+    .not.toBeInTheDocument()
 })

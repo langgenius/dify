@@ -27,6 +27,20 @@ Run the full `unit` project before using coverage to identify untested modules. 
 
 Browser CI sets `DIFY_TEST_COVERAGE_ONLY_EXECUTED=true` so its report includes loaded source files without generating zero-coverage entries for every other Web module. The unit uploads retain the complete authored-source denominator, and Codecov combines both reports. Leave this variable unset when collecting the full unit diagnostic report.
 
+The pinned Vitest packages have Browser Mode patches for deferred export of failure traces and opt-in reuse of Chromium's precise-coverage session. Web Browser CI enables the coverage patch with `VITEST_EXP_V8_PERSISTENT=true`; watch mode retains the per-file coverage lifecycle. Revalidate the dependency patches together when upgrading Vitest, including retained failure artifacts, coverage maps, and run and watch behavior. Run `vp run test:browser-traces` from `web/` to verify trace retention and ZIP integrity with Chromium and `unzip` installed; CI runs this check in the first browser shard.
+
+### Experimental Chromium input buffering
+
+`VITEST_EXP_UNBUFFERED_INPUT=true` enables Chromium's DevTools unbuffered input setting through `Overlay.enable`, without drawing an overlay. It applies only to headless Chromium run mode; interactive UI and watch mode retain normal input buffering. Web Browser CI enables it, including for the trace verifier.
+
+For a local comparison, run the same suite and worker limit with the switch on or off:
+
+```sh
+VITEST_EXP_UNBUFFERED_INPUT=true vp test run --project browser --maxWorkers=2
+```
+
+Unset this variable or set it to `false` to use normal input buffering. The patch does not advance browser time, reduce animation duration or force interactions. Playwright retains its original actionability checks and retry schedule. Recheck native input, coverage, retained traces and watch behavior when upgrading Vitest or Playwright. File-count experiments must hold this switch fixed and are separate from comparisons of the switch itself.
+
 ## Choose the Right Boundary
 
 Use the smallest boundary that includes the behavior owner and proves the product contract without coupling the test to implementation:

@@ -93,7 +93,9 @@ it('preserves entered settings after a failed creation and lets the user retry',
   await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
   await expect.element(screen.getByLabelText(/API Endpoint/)).toHaveValue(data.settings.endpoint)
   await save(screen).click()
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: 'dataset.createExternalAPI' }))
+    .not.toBeInTheDocument()
   await expect.element(screen.getByText('Saved Product API')).toBeVisible()
 })
 

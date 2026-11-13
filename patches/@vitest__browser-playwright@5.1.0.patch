@@ -1,0 +1,88 @@
+diff --git a/dist/index.js b/dist/index.js
+index 08671d52813ae3435b09a60ac5bdac3c6867d117..d3049062b348f40beb321de8c8c645b04575805d 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -715,19 +715,28 @@ const startTracing = async ({ context, project, provider, sessionId }) => {
+ 	}
+ 	throw new TypeError(`The ${provider.name} provider does not support tracing.`);
+ };
++const deferredTraceChunks = new WeakMap();
++const finishDeferredTrace = async (command, discard = false) => {
++	const pending = deferredTraceChunks.get(command.context);
++	if (!pending) return;
++	await command.context.tracing.stopChunk(discard ? {} : { path: pending });
++	deferredTraceChunks.delete(command.context);
++	command.provider.pendingTraces.delete(pending);
++};
+ const startChunkTrace = async (command, { name, title }) => {
+ 	const { provider, sessionId, testPath, context } = command;
+ 	if (!testPath) {
+ 		throw new Error(`stopChunkTrace cannot be called outside of the test file.`);
+ 	}
+ 	if (isPlaywrightProvider(provider)) {
++		await finishDeferredTrace(command);
+ 		if (!provider.tracingContexts.has(sessionId)) {
+ 			await startTracing(command);
+ 		}
+ 		const path = resolveTracesPath(command, name);
+ 		provider.pendingTraces.set(path, sessionId);
+ 		await context.tracing.startChunk({
+-			name,
++			...(command.project.config.browser.trace.mode === "retain-on-failure" ? {} : { name }),
+ 			title
+ 		});
+ 		return;
+@@ -739,8 +748,12 @@ const stopChunkTrace = async (context, { name }) => {
+ 		const path = resolveTracesPath(context, name);
+ 		assertBrowserApiWrite(context.project, path);
+ 		assertBrowserFileAccess(context.project, path);
+-		context.provider.pendingTraces.delete(path);
+-		await context.context.tracing.stopChunk({ path });
++		if (context.project.config.browser.trace.mode === "retain-on-failure") {
++			deferredTraceChunks.set(context.context, path);
++		} else {
++			context.provider.pendingTraces.delete(path);
++			await context.context.tracing.stopChunk({ path });
++		}
+ 		return { tracePath: path };
+ 	}
+ 	throw new TypeError(`The ${context.provider.name} provider does not support tracing.`);
+@@ -829,6 +842,8 @@ const deleteTracing = async (context, { traces }) => {
+ 			assertBrowserApiWrite(context.project, trace);
+ 			assertBrowserFileAccess(context.project, trace);
+ 		}
++		const pending = deferredTraceChunks.get(context.context);
++		if (pending && traces.includes(pending)) await finishDeferredTrace(context, true);
+ 		return Promise.all(traces.map((trace) => unlink(trace).catch((err) => {
+ 			if (err.code === "ENOENT") {
+ 				// Ignore the error if the file doesn't exist
+@@ -840,7 +855,10 @@ const deleteTracing = async (context, { traces }) => {
+ 	}
+ 	throw new Error(`provider ${context.provider.name} is not supported`);
+ };
+-const annotateTraces = async ({ project }, { testId, traces }) => {
++const annotateTraces = async (command, { testId, traces }) => {
++	const pending = deferredTraceChunks.get(command.context);
++	if (pending && traces.includes(pending)) await finishDeferredTrace(command);
++	const { project } = command;
+ 	const vitest = project.vitest;
+ 	await Promise.all(traces.map((trace) => {
+ 		assertBrowserApiWrite(project, trace);
+@@ -1468,6 +1486,17 @@ class PlaywrightBrowserProvider {
+ 		debug?.("[%s][%s] the page is ready", sessionId, this.browserName);
+ 		await this._throwIfClosing(page);
+ 		this.pages.set(sessionId, page);
++		if (process.env.VITEST_EXP_UNBUFFERED_INPUT === "true" && this.browserName === "chromium" && !this.project.vitest.config.watch && this.project.config.browser.headless && !this.project.config.browser.ui) {
++			const session = await context.newCDPSession(page);
++			const enable = async () => {
++				await session.send("DOM.enable");
++				await session.send("Overlay.enable");
++			};
++			await enable();
++			page.on("framenavigated", (frame) => {
++				if (frame === page.mainFrame()) enable().catch((error) => debug?.("Failed to restore unbuffered input: %s", error));
++			});
++		}
+ 		// fail the run immediately with an attributed error; otherwise the crash
+ 		// is only visible as a websocket disconnect, if the browser closes it at all
+ 		page.on("crash", () => {
