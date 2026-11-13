@@ -5,8 +5,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode, get_current_span, get_tracer
 from sqlalchemy.orm import Session
