@@ -29,7 +29,7 @@
   "account.deletePrivacyLink": "Gizlilik Politikası.",
   "account.deletePrivacyLinkTip": "Verilerinizi nasıl işlediğimiz hakkında daha fazla bilgi için lütfen ",
   "account.deleteSuccessTip": "Hesabınızın silme işleminin tamamlanması için zamana ihtiyacı var. Her şey bittiğinde size e-posta göndereceğiz.",
-  "account.deleteTip": "Hesabınızı silmek tüm verilerinizi kalıcı olarak siler ve geri alınamaz.",
+  "account.deleteTip": "Lütfen dikkat: onayladığınızda, sahibi olduğunuz tüm çalışma alanları kalıcı olarak silinmek üzere sıraya alınır ve tüm kullanıcı verileriniz de kalıcı olarak silinmek üzere sıraya alınır.",
   "account.editName": "İsmi Düzenle",
   "account.editWorkspaceInfo": "Çalışma Alanı Bilgilerini Düzenle",
   "account.email": "E-posta",
