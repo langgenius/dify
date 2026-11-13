@@ -1,0 +1,18 @@
+{
+  "init": {
+    "darwin": "curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh",
+    "linux": "curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh",
+    "win32": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex\""
+  },
+  "status": {
+    "darwin": "difyctl login --resume --json",
+    "linux": "difyctl login --resume --json",
+    "win32": "difyctl login --resume --json"
+  },
+  "statusMatch": "\"email\"",
+  "unAuth": {
+    "darwin": "difyctl logout --json || true",
+    "linux": "difyctl logout --json || true",
+    "win32": "powershell -NoProfile -Command \"difyctl logout --json; exit 0\""
+  }
+}
