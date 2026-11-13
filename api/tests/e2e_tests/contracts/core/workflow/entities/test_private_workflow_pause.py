@@ -1,7 +1,7 @@
 """Tests for _PrivateWorkflowPauseEntity implementation."""
 
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from repositories.sqlalchemy_api_workflow_run_repository import _PrivateWorkflowPauseEntity
@@ -27,7 +27,7 @@ def _make_workflow_pause(
 class TestPrivateWorkflowPauseEntity:
     """Test _PrivateWorkflowPauseEntity implementation."""
 
-    def test_entity_initialization(self):
+    def test_entity_initialization(self) -> None:
         """Test entity initialization with required parameters."""
         pause_model = _make_workflow_pause()
 
@@ -38,7 +38,7 @@ class TestPrivateWorkflowPauseEntity:
         assert entity._pause_model is pause_model
         assert entity._cached_state is None
 
-    def test_id_property(self):
+    def test_id_property(self) -> None:
         """Test id property returns pause model ID."""
         pause_model = _make_workflow_pause()
 
@@ -46,7 +46,7 @@ class TestPrivateWorkflowPauseEntity:
 
         assert entity.id == "pause-123"
 
-    def test_workflow_execution_id_property(self):
+    def test_workflow_execution_id_property(self) -> None:
         """Test workflow_execution_id property returns workflow run ID."""
         pause_model = _make_workflow_pause()
 
@@ -54,7 +54,7 @@ class TestPrivateWorkflowPauseEntity:
 
         assert entity.workflow_execution_id == "execution-456"
 
-    def test_resumed_at_property(self):
+    def test_resumed_at_property(self) -> None:
         """Test resumed_at property returns pause model resumed_at."""
         resumed_at = datetime(2023, 12, 25, 15, 30, 45)
 
@@ -64,7 +64,7 @@ class TestPrivateWorkflowPauseEntity:
 
         assert entity.resumed_at == resumed_at
 
-    def test_resumed_at_property_none(self):
+    def test_resumed_at_property_none(self) -> None:
         """Test resumed_at property returns None when not set."""
         pause_model = _make_workflow_pause()
 
@@ -73,7 +73,7 @@ class TestPrivateWorkflowPauseEntity:
         assert entity.resumed_at is None
 
     @patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True)
-    def test_get_state_first_call(self, mock_storage):
+    def test_get_state_first_call(self, mock_storage: MagicMock) -> None:
         """Test get_state loads from storage on first call."""
         state_data = b'{"test": "data", "step": 5}'
         mock_storage.load.return_value = state_data
@@ -90,7 +90,7 @@ class TestPrivateWorkflowPauseEntity:
         assert entity._cached_state == state_data
 
     @patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True)
-    def test_get_state_cached_call(self, mock_storage):
+    def test_get_state_cached_call(self, mock_storage: MagicMock) -> None:
         """Test get_state returns cached data on subsequent calls."""
         state_data = b'{"test": "data", "step": 5}'
         mock_storage.load.return_value = state_data
@@ -110,7 +110,7 @@ class TestPrivateWorkflowPauseEntity:
         mock_storage.load.assert_called_once_with("test-state-key")
 
     @patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True)
-    def test_get_state_with_pre_cached_data(self, mock_storage):
+    def test_get_state_with_pre_cached_data(self, mock_storage: MagicMock) -> None:
         """Test get_state returns pre-cached data."""
         state_data = b'{"test": "data", "step": 5}'
 
@@ -127,7 +127,7 @@ class TestPrivateWorkflowPauseEntity:
         assert result == state_data
         mock_storage.load.assert_not_called()
 
-    def test_entity_with_binary_state_data(self):
+    def test_entity_with_binary_state_data(self) -> None:
         """Test entity with binary state data."""
         # Test with binary data that's not valid JSON
         binary_data = b"\x00\x01\x02\x03\x04\x05\xff\xfe"
