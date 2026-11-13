@@ -498,6 +498,74 @@ class TestNotionExtractorCases:
 
             assert extractor._read_block("root") == ""
 
+        def test_read_block_rejects_a_failed_child_fetch(self, mocker: MockerFixture) -> None:
+            """A non-200 child fetch must not pass as "no more children".
+
+            The error body has no "results" key, which the loop reads as the
+            end of the block. The subtree then disappears from the document
+            while extract() still reports success.
+            """
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type="page",
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+            mocker.patch(
+                "httpx.request",
+                return_value=_notion_extractor_mock_response(
+                    {"message": "forbidden"},
+                    status_code=403,
+                    text='{"message":"forbidden"}',
+                ),
+            )
+
+            with pytest.raises(ValueError, match="block children"):
+                extractor._read_block("root")
+
+        def test_read_block_loses_nothing_when_a_child_fetch_fails(self, mocker: MockerFixture) -> None:
+            """A failure on a later page must not return the partial text.
+
+            The first page succeeds and carries a cursor, so the reader has
+            already collected content when the second page fails. Returning
+            what it has would index a silently truncated page.
+            """
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type="page",
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+            first_page = {
+                "results": [
+                    {
+                        "type": "paragraph",
+                        "id": "para-1",
+                        "has_children": False,
+                        "paragraph": {"rich_text": [{"plain_text": "Intro paragraph"}]},
+                    },
+                ],
+                "next_cursor": "cursor-1",
+            }
+            mocker.patch(
+                "httpx.request",
+                side_effect=[
+                    _notion_extractor_mock_response(first_page),
+                    _notion_extractor_mock_response(
+                        {"message": "server error"},
+                        status_code=500,
+                        text="server error",
+                    ),
+                ],
+            )
+
+            with pytest.raises(ValueError, match="block children"):
+                extractor._read_block("root")
+
         def test_read_table_rows_formats_markdown_with_pagination(self, mocker: MockerFixture) -> None:
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",

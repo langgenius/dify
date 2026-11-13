@@ -245,6 +245,12 @@ class NotionExtractor(BaseExtractor):
                 params=query_dict,
                 timeout=_REQUEST_TIMEOUT,
             )
+            # A failed nested fetch returns an error body without "results",
+            # which the loop below would read as "no more children" and stop:
+            # the subtree would be missing from the document with no error.
+            # Surface the failure instead, as the page-level fetch does.
+            if res.status_code != 200:
+                raise ValueError(f"Error fetching Notion block children: {res.text}")
             data = res.json()
             if "results" not in data or data["results"] is None:
                 break
