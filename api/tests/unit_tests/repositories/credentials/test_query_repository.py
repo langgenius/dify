@@ -3,12 +3,14 @@
 Tests visibility filtering and complete domain reads against real SQLite rows.
 """
 
+from dataclasses import replace
 from datetime import datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import Engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core.plugin.entities.plugin_daemon import CredentialType as TriggerCredentialType
 from models.account import Account, TenantAccountRole
@@ -221,6 +223,107 @@ def test_tool_borrowing_members_and_default_do_not_escape_scope_or_write_state(
     assert records[1].from_other_member is True
     sqlite_session.refresh(visible)
     assert visible.is_default is False
+
+
+@pytest.mark.parametrize("credential_id", [None, ""])
+@pytest.mark.parametrize("has_default", [False, True])
+def test_tool_lookup_prefers_configured_default_then_oldest_credential(
+    sqlite_session_factory: sessionmaker[Session],
+    repository: CredentialQueryRepository,
+    credential_id: str | None,
+    has_default: bool,
+) -> None:
+    tenant, actor = str(uuid4()), str(uuid4())
+    rows = [
+        BuiltinToolProvider(
+            name=name,
+            tenant_id=owner,
+            user_id=actor,
+            provider=provider,
+            is_default=default,
+        )
+        for name, owner, provider, default in [
+            ("foreign", str(uuid4()), "tool", True),
+            ("other-provider", tenant, "other", True),
+            ("oldest", tenant, "tool", False),
+            ("newer", tenant, "tool", has_default),
+            ("newest", tenant, "tool", has_default),
+        ]
+    ]
+    for index, row in enumerate(rows):
+        row.created_at = datetime(2026, 1, index + 1)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(rows)
+
+    result = repository.get_tool(workspace_id=tenant, provider="tool", credential_id=credential_id)
+
+    assert result is not None
+    assert result.id == rows[3 if has_default else 2].id
+
+
+@pytest.mark.parametrize("requested", ["target", "foreign", "other-provider", "missing"])
+def test_tool_lookup_requires_matching_id_tenant_and_provider(
+    sqlite_session_factory: sessionmaker[Session],
+    repository: CredentialQueryRepository,
+    requested: str,
+) -> None:
+    tenant, actor = str(uuid4()), str(uuid4())
+    rows = {
+        name: BuiltinToolProvider(name=name, tenant_id=owner, user_id=actor, provider=provider)
+        for name, owner, provider in [
+            ("target", tenant, "tool"),
+            ("foreign", str(uuid4()), "tool"),
+            ("other-provider", tenant, "other"),
+        ]
+    }
+    with sqlite_session_factory.begin() as session:
+        session.add_all(rows.values())
+    credential_id = str(uuid4()) if requested == "missing" else rows[requested].id
+
+    result = repository.get_tool(workspace_id=tenant, provider="tool", credential_id=credential_id)
+
+    if requested == "target":
+        assert result is not None
+        assert result.id == rows[requested].id
+    else:
+        assert result is None
+
+
+def test_tool_lookup_returns_detached_values_without_writes_or_held_connections(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    repository: CredentialQueryRepository,
+) -> None:
+    tenant = str(uuid4())
+    row = BuiltinToolProvider(
+        name="stored",
+        tenant_id=tenant,
+        user_id=str(uuid4()),
+        provider="tool",
+        encrypted_credentials='{"api_key": "ciphertext", "nested": {"values": [0, false, ""]}}',
+        credential_type=TriggerCredentialType.OAUTH2,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(row)
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+
+    result = repository.get_tool(workspace_id=tenant, provider="tool", credential_id=row.id)
+
+    assert pool.checkedout() == 0
+    assert result is not None
+    assert result.credential_type == "oauth2"
+    assert result.credentials == {"api_key": "ciphertext", "nested": {"values": [0, False, ""]}}
+    nested = result.credentials["nested"]
+    assert isinstance(nested, dict)
+    nested["values"].append("caller-only")
+    with sqlite_session_factory() as session:
+        stored = session.get(BuiltinToolProvider, row.id)
+        assert stored is not None
+        assert stored.encrypted_credentials == row.encrypted_credentials
+        assert stored.is_default is False
+    assert repository.get_tool(workspace_id=str(uuid4()), provider="tool", credential_id=row.id) is None
+    assert pool.checkedout() == 0
 
 
 def test_trigger_visibility_and_usage_counts_are_tenant_scoped(
@@ -449,3 +552,107 @@ class TestApplyVisibilityFilter:
         )
 
         assert sqlite_session.scalars(query).all() == []
+
+
+@pytest.fixture
+def runtime_repository(sqlite_session_factory: sessionmaker[Session]) -> CredentialQueryRepository:
+    with sqlite_session_factory.begin() as session:
+        for index, (identity, provider, default) in enumerate(
+            [
+                ("oldest", "provider", False),
+                ("default", "org/plugin/provider", True),
+                ("other", "other", True),
+            ]
+        ):
+            row = BuiltinToolProvider(
+                tenant_id="workspace",
+                user_id="owner",
+                provider=provider,
+                name=identity,
+                credential_type=TriggerCredentialType.OAUTH2,
+                encrypted_credentials='{"token":"old"}',
+                expires_at=1,
+                is_default=default,
+            )
+            row.id = identity
+            row.created_at = datetime(2026, 1, index + 1)
+            row.updated_at = datetime(2026, 1, 1)
+            session.add(row)
+    return CredentialQueryRepository(session_factory=sqlite_session_factory)
+
+
+def test_lookup_is_scoped_and_prefers_default(runtime_repository: CredentialQueryRepository) -> None:
+    providers = ("org/plugin/provider", "provider")
+    record = runtime_repository.get_tool_credential(workspace_id="workspace", providers=providers, credential_id=None)
+    assert record is not None
+    assert record.id == "default"
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="other", providers=providers, credential_id="default")
+        is None
+    )
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="workspace", providers=providers, credential_id="other")
+        is None
+    )
+    oldest = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert oldest is not None
+    assert oldest.id == "oldest"
+
+
+def test_refresh_commits_for_a_detached_snapshot(
+    runtime_repository: CredentialQueryRepository, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id="oldest"
+    )
+    assert record is not None
+    assert runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials='{"token":"new"}', expires_at=500
+    )
+    with sqlite_session_factory() as session:
+        persisted = session.get(BuiltinToolProvider, record.id)
+        assert persisted is not None
+        assert persisted.encrypted_credentials == '{"token":"new"}'
+        assert persisted.expires_at == 500
+        assert persisted.updated_at > datetime(2026, 1, 1)
+    assert record.encrypted_credentials == '{"token":"old"}'
+    assert not runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials="stale", expires_at=600
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tenant_id", "other"),
+        ("provider", "other"),
+        ("user_id", "other"),
+        ("credential_type", TriggerCredentialType.API_KEY),
+        ("encrypted_credentials", "reauthorized"),
+        ("expires_at", 2),
+        ("deleted", None),
+    ],
+)
+def test_refresh_preserves_concurrent_changes(
+    runtime_repository: CredentialQueryRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    field: str,
+    value: object,
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id="oldest"
+    )
+    assert record is not None
+    with sqlite_session_factory.begin() as session:
+        statement = (
+            delete(BuiltinToolProvider) if field == "deleted" else update(BuiltinToolProvider).values({field: value})
+        )
+        session.execute(statement.where(BuiltinToolProvider.id == record.id))
+    assert not runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials="refresh", expires_at=500
+    )
+    assert not runtime_repository.update_tool_credential_if_unchanged(
+        record=replace(record, workspace_id="foreign"), encrypted_credentials="refresh", expires_at=500
+    )

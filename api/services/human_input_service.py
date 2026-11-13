@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, cast, override
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from sqlalchemy import Engine, select
@@ -519,3 +519,20 @@ class HumanInputService:
             allowed_file_upload_methods=list(form_input.allowed_file_upload_methods),
             number_limits=number_limits,
         )
+
+
+class ServiceAPIHumanInputService(HumanInputService):
+    """Preserve legacy JSON paragraph values for app-token form submissions."""
+
+    @classmethod
+    @override
+    def _normalize_input_value(
+        cls,
+        *,
+        tenant_id: str,
+        form_input: FormInputConfig,
+        value: Any,
+    ) -> JsonValue:
+        if isinstance(form_input, ParagraphInputConfig):
+            return _JsonValueAdapter.validate_python(value)
+        return super()._normalize_input_value(tenant_id=tenant_id, form_input=form_input, value=value)

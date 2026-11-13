@@ -1,7 +1,7 @@
 import type { CommandContext } from '@/plugins/base'
 import { z } from 'zod'
 import { assertNotEnvLogin } from '@/auth/logout'
-import { readLocalFile } from '@/call/files'
+import { LOCAL_FILES } from '@/call/files'
 import { parseJsonBody } from '@/call/json-body'
 import { buildRequest } from '@/call/request'
 import { BaseError } from '@/errors/base'
@@ -42,7 +42,7 @@ export default class WorkspaceUse extends Command<typeof INPUT> {
       buildRequest(
         cat.opOrThrow(WORKSPACE_DESCRIBE_OP),
         { workspace_id: input.workspace_id },
-        { readFile: readLocalFile },
+        LOCAL_FILES,
       ),
     )
     const workspace = WORKSPACE.safeParse(await parseJsonBody(res))

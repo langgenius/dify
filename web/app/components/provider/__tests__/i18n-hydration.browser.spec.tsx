@@ -1,19 +1,19 @@
 import type { ReactNode } from 'react'
 import { Suspense, useState } from 'react'
-import { hydrateRoot } from 'react-dom/client'
+import { createRoot, hydrateRoot } from 'react-dom/client'
 import { renderToReadableStream } from 'react-dom/server.browser'
 import { useTranslation } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
-import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
+import { CreateAppMenu } from '@/app/components/app/create-app-menu'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { serializeResourceUpdate } from '@/i18n/streamed-resources'
 
-vi.mock('react-i18next', async (importOriginal) => await importOriginal())
+vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({
-  load: vi.fn(),
   callbacks: [] as (() => ReactNode)[],
   server: true,
 }))
+// boundary: server resource flushing is provided only by the Next App Router runtime.
 vi.mock('next/navigation', () => ({
   useParams: () => ({}),
   useRouter: () => ({}),
@@ -21,7 +21,6 @@ vi.mock('next/navigation', () => ({
     if (mocks.server) mocks.callbacks.push(callback)
   },
 }))
-vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.load }))
 
 function DeferredFeature() {
   const { t } = useTranslation(['login'])
@@ -32,7 +31,7 @@ function FeaturePage() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <CreateAppDropdown onCreateBlank={() => {}} />
+      <CreateAppMenu onCreateBlank={() => {}} />
       <button onClick={() => setOpen(true)}>Show deferred feature</button>
       {open && <DeferredFeature />}
     </>
@@ -52,10 +51,6 @@ it('hydrates the menu from automatically collected SSR resources before the firs
   mocks.server = true
   mocks.callbacks = []
   delete window.__difyI18nResources
-  const app = { 'newApp.startFromBlank': 'Create from Blank' }
-  mocks.load.mockImplementation(async (_locale: string, namespace: string) => ({
-    default: namespace === 'common' ? { 'operation.create': 'Create' } : app,
-  }))
   const view = (
     <I18nClientProvider locale="en-US" resource={{}}>
       <Suspense fallback={<span>Loading</span>}>
@@ -83,13 +78,10 @@ it('hydrates the menu from automatically collected SSR resources before the firs
     executeResourceScript(source.textContent ?? '')
   }
   mocks.server = false
-  mocks.load.mockClear()
-  mocks.load.mockImplementation(() => new Promise(() => {}))
-  const root = hydrateRoot(container, view)
+  let root = hydrateRoot(container, view)
   try {
     await page.getByRole('button', { name: 'Create', exact: true }).click()
     await expect.element(page.getByRole('menuitem', { name: 'Create from Blank' })).toBeVisible()
-    expect(mocks.load).not.toHaveBeenCalled()
     // A later server flush reaches the already-mounted provider. It must be
     // available before its feature renders, without a second backend request.
     const [id] = Object.keys(window.__difyI18nResources ?? {})
@@ -98,7 +90,11 @@ it('hydrates the menu from automatically collected SSR resources before the firs
     )
     await page.getByRole('button', { name: 'Show deferred feature' }).click()
     await expect.element(page.getByText('Sign in', { exact: true })).toBeVisible()
-    expect(mocks.load).not.toHaveBeenCalled()
+    // A client rebuild must also find the translations sent with this document.
+    root.unmount()
+    root = createRoot(container)
+    root.render(view)
+    await expect.element(page.getByRole('button', { name: 'Create', exact: true })).toBeVisible()
   } finally {
     root.unmount()
     container.remove()

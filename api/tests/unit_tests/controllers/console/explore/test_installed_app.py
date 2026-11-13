@@ -146,11 +146,11 @@ def _publish(session: Session, app: App) -> None:
             kind=WorkflowKind.STANDARD,
             version="1",
             graph='{"nodes":[],"edges":[]}',
-            features="{}",
+            _features="{}",
             created_by=str(uuid4()),
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         session.flush()
@@ -739,6 +739,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     method: str,
     item: bool,
 ) -> None:
+    """Given a failed management dependency, retain its exception and log the request identifiers."""
     failure = WebAppAccessUnavailableError("private upstream response containing credentials")
     if item:
         management.harness.state.permission_error = failure
@@ -772,7 +773,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     management.assert_sessions_closed()
     records = [record for record in caplog.records if record.name.startswith("controllers.console.explore.")]
     assert len(records) == 1
-    assert records[0].exc_info is not None
+    assert isinstance(records[0].exc_info, tuple)
     assert records[0].exc_info[1] is failure
     assert management.harness.installed_app.tenant_id in records[0].getMessage()
     assert management.harness.account.id in records[0].getMessage()

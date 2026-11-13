@@ -601,10 +601,16 @@ describe('SkillDetailPage builder', () => {
         { timeout: 5000 },
       ),
     )
-    const dialog = await screen.findByRole('dialog', {
-      name: 'modelProvider.modelProvider.modelSettings',
-    })
-    const temperature = await within(dialog).findByRole('spinbutton', { name: 'Temperature' })
+    const dialog = await screen.findByRole(
+      'dialog',
+      { name: 'modelProvider.modelProvider.modelSettings' },
+      { timeout: 5000 },
+    )
+    const temperature = await within(dialog).findByRole(
+      'spinbutton',
+      { name: 'Temperature' },
+      { timeout: 5000 },
+    )
     await user.clear(temperature)
     await user.type(temperature, '1.2')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
@@ -827,7 +833,7 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -860,7 +866,7 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -1008,7 +1014,7 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -1088,7 +1094,7 @@ describe('SkillDetailPage builder', () => {
     await user.click(await screen.findByText('references'))
     await user.click(await screen.findByText('refund-policy.md'))
     await user.click(
-      screen.getByRole('button', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
+      screen.getByRole('radio', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
     )
     expect(getSourceEditor()).toHaveValue('# Refund Policy\n')
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from '../external-trace-row'
 import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -34,9 +35,16 @@ type Props = {
   readonly onBack: () => void
   readonly loopDurationMap?: LoopDurationMap
   readonly loopVariableMap?: LoopVariableMap
+  readonly externalTraceRun?: ExternalTraceRun
 }
 
-const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariableMap }) => {
+const LoopResultPanel: FC<Props> = ({
+  list,
+  onBack,
+  loopDurationMap,
+  loopVariableMap,
+  externalTraceRun,
+}) => {
   const { t } = useTranslation(['workflow', 'workflowLogic'])
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
 
@@ -160,7 +168,11 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
                   />
                 </div>
               )}
-              <TracingPanel list={loop} className="bg-background-section-burn" />
+              <TracingPanel
+                list={loop}
+                className="bg-background-section-burn"
+                externalTraceRun={externalTraceRun}
+              />
             </div>
           </div>
         ))}

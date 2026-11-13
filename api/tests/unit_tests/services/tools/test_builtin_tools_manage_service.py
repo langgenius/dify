@@ -480,7 +480,7 @@ class TestGetOauthClientSchema:
         monkeypatch.setattr(BuiltinToolManageService, "is_oauth_custom_client_enabled", MagicMock(return_value=True))
         monkeypatch.setattr(BuiltinToolManageService, "is_oauth_system_client_exists", MagicMock(return_value=False))
         monkeypatch.setattr(BuiltinToolManageService, "get_custom_oauth_client_params", MagicMock(return_value={}))
-        from tests.unit_tests.config_override import apply_config_overrides
+        from tests.helpers.unit.config_override import apply_config_overrides
 
         apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://api.example.com")
 

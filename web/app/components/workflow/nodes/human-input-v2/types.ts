@@ -1,0 +1,71 @@
+import type { HumanInputSharedNodeType } from '../human-input/shared/types'
+import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+
+type ContactRecipient = {
+  type: 'contact'
+  contact_id: string
+}
+
+type DynamicEmailRecipient = {
+  type: 'dynamic_email'
+  selector: ValueSelector
+}
+
+type OnetimeEmailRecipient = {
+  type: 'onetime_email'
+  email: string
+}
+
+type InitiatorRecipient = {
+  type: 'initiator'
+}
+
+type AllWorkspaceContactsRecipient = {
+  type: 'all_workspace_contacts'
+}
+
+export type HumanInputV2Recipient =
+  | ContactRecipient
+  | DynamicEmailRecipient
+  | OnetimeEmailRecipient
+  | InitiatorRecipient
+  | AllWorkspaceContactsRecipient
+
+export const HUMAN_INPUT_V2_DEBUG_CHANNELS = [
+  'email',
+  'feishu',
+  'lark',
+  'slack',
+  'ding_talk',
+  'ms_teams',
+  'we_com',
+] as const
+
+export type HumanInputV2DebugChannel = (typeof HUMAN_INPUT_V2_DEBUG_CHANNELS)[number]
+
+export type HumanInputV2MessageTemplate = {
+  subject: string
+  body: string
+}
+
+export type HumanInputV2DebugMode = {
+  enabled: boolean
+  channels: HumanInputV2DebugChannel[]
+}
+
+export type HumanInputV2NodeType = HumanInputSharedNodeType & {
+  type: typeof BlockEnum.HumanInput
+  version: '2'
+  recipients_spec: HumanInputV2Recipient[]
+  message_template: HumanInputV2MessageTemplate
+  debug_mode: HumanInputV2DebugMode
+}
+
+export function isHumanInputV2NodeData(data: CommonNodeType): data is HumanInputV2NodeType {
+  return data.type === BlockEnum.HumanInput && (data as { version?: unknown }).version === '2'
+}
+
+export function isHumanInputV2DebugChannel(value: string): value is HumanInputV2DebugChannel {
+  return HUMAN_INPUT_V2_DEBUG_CHANNELS.includes(value as HumanInputV2DebugChannel)
+}

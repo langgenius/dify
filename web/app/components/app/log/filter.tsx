@@ -1,4 +1,5 @@
 'use client'
+import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
@@ -10,7 +11,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
+import { Sort } from '@/app/components/base/sort'
 import { consoleQuery } from '@/service/console'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
@@ -22,7 +23,12 @@ import {
 
 dayjs.extend(quarterOfYear)
 
-const today = dayjs()
+// Count the days when the value is read, so a page left open past midnight still uses the current date.
+// Round the result, because a daylight saving change makes some days 23 or 25 hours long.
+const daysSince = (getStart: (today: Dayjs) => Dayjs) => {
+  const today = dayjs().startOf('day')
+  return Math.round(today.diff(getStart(today).startOf('day'), 'day', true))
+}
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -30,11 +36,36 @@ export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePe
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
-  4: { value: today.diff(today.subtract(3, 'month'), 'day'), name: 'last3months' },
-  5: { value: today.diff(today.subtract(12, 'month'), 'day'), name: 'last12months' },
-  6: { value: today.diff(today.startOf('month'), 'day'), name: 'monthToDate' },
-  7: { value: today.diff(today.startOf('quarter'), 'day'), name: 'quarterToDate' },
-  8: { value: today.diff(today.startOf('year'), 'day'), name: 'yearToDate' },
+  4: {
+    get value() {
+      return daysSince((today) => today.subtract(3, 'month'))
+    },
+    name: 'last3months',
+  },
+  5: {
+    get value() {
+      return daysSince((today) => today.subtract(12, 'month'))
+    },
+    name: 'last12months',
+  },
+  6: {
+    get value() {
+      return daysSince((today) => today.startOf('month'))
+    },
+    name: 'monthToDate',
+  },
+  7: {
+    get value() {
+      return daysSince((today) => today.startOf('quarter'))
+    },
+    name: 'quarterToDate',
+  },
+  8: {
+    get value() {
+      return daysSince((today) => today.startOf('year'))
+    },
+    name: 'yearToDate',
+  },
   9: { value: -1, name: 'allTime' },
 }
 
@@ -124,8 +155,10 @@ const Filter: FC<IFilterProps> = ({
         <>
           <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
-            order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
-            value={queryParams.sort_by?.replace('-', '') || 'created_at'}
+            value={{
+              field: queryParams.sort_by?.endsWith('updated_at') ? 'updated_at' : 'created_at',
+              order: queryParams.sort_by?.startsWith('-') ? 'desc' : 'asc',
+            }}
             items={[
               { value: 'created_at', name: t(($) => $['table.header.time'], { ns: 'appLog' }) },
               {
@@ -133,8 +166,8 @@ const Filter: FC<IFilterProps> = ({
                 name: t(($) => $['table.header.updatedTime'], { ns: 'appLog' }),
               },
             ]}
-            onSelect={(value) => {
-              setQueryParams({ ...queryParams, sort_by: value as QueryParam['sort_by'] })
+            onValueChange={({ field, order }) => {
+              setQueryParams({ ...queryParams, sort_by: order === 'desc' ? `-${field}` : field })
             }}
           />
         </>

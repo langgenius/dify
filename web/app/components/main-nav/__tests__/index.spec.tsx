@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
@@ -19,10 +20,10 @@ import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-di
 import { GotoAnything } from '@/app/components/goto-anything'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
+  stepByStepTourChecklistMinimizedAtom,
   stepByStepTourSessionAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
 } from '@/app/components/step-by-step-tour/state'
-import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -37,6 +38,7 @@ import { MainNav } from '../index'
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
+const mockConfig = vi.hoisted(() => ({ ENABLE_HITL_IM: true }))
 
 const { mockInstalledAppsRequest, mockIsAgentV2Enabled, mockSwitchWorkspace, mockUpdatePinStatus } =
   vi.hoisted(() => ({
@@ -89,7 +91,6 @@ vi.mock('react-i18next', async () => {
       'onboarding.stepByStepTour.duration': 'A quick tour — about 5 minutes',
       'onboarding.stepByStepTour.skip': 'Skip tour',
       'onboarding.stepByStepTour.minimize': 'Minimize tour',
-      'onboarding.stepByStepTour.restore': 'Open step-by-step tour',
       'onboarding.stepByStepTour.learnMore': 'Learn more',
       'onboarding.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
       'onboarding.stepByStepTour.skipRecovery.message':
@@ -134,8 +135,11 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
+    get ENABLE_HITL_IM() {
+      return mockConfig.ENABLE_HITL_IM
+    },
     SUPPORT_EMAIL_ADDRESS: '',
-    ZENDESK_WIDGET_KEY: '',
+    ZENDESK_WIDGET_KEY: 'test-key',
   }
 })
 
@@ -277,6 +281,7 @@ const renderMainNav = (
     extra?: ReactNode
     educationStatus?: NonNullable<Parameters<typeof renderWithoutPricing>[1]>['educationStatus']
     skipRecoveryVisible?: boolean
+    plan?: CloudPlan
   } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
@@ -332,7 +337,7 @@ const renderMainNav = (
     {
       systemFeatures: resolvedSystemFeatures,
       features: {
-        billing: { subscription: { plan: 'sandbox' } },
+        billing: { subscription: { plan: options.plan ?? 'sandbox' } },
         enable_skill: skillEnabled,
         education: { enabled: educationEnabled },
       },
@@ -351,6 +356,7 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
 describe('MainNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfig.ENABLE_HITL_IM = true
     mockInstalledAppsRequest.mockReset()
     mockUpdatePinStatus.mockReset()
     mockSwitchWorkspace.mockReset()
@@ -444,6 +450,28 @@ describe('MainNav', () => {
     expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
     const marketplaceLink = screen.getByRole('link', { name: /navigation.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
+    expect(
+      within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/',
+      '/apps',
+      '/agents',
+      '/datasets',
+      '/contacts',
+      '/skills',
+      '/integrations/model-provider',
+      '/marketplace',
+    ])
+  })
+
+  it('hides Contacts while keeping other navigation available when HITL IM is not released', () => {
+    mockConfig.ENABLE_HITL_IM = false
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(
       within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
         .getAllByRole('link')
@@ -571,6 +599,7 @@ describe('MainNav', () => {
       'href',
       '/datasets',
     )
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /navigation.mainNav.integrations/ })).toHaveAttribute(
       'href',
       '/integrations/model-provider',
@@ -603,6 +632,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /navigation.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: /navigation.mainNav.integrations/ }),
     ).toBeInTheDocument()
@@ -654,23 +684,20 @@ describe('MainNav', () => {
     )
   })
 
-  it.each([
-    '/datasets/create',
-    '/datasets/create-from-pipeline',
-    '/datasets/connect',
-    '/datasets/dataset-1/documents/create',
-    '/datasets/dataset-1/documents/create-from-pipeline',
-  ])('keeps global navigation on dataset creation route %s', (pathname) => {
-    mockPathname = pathname
+  it.each(['/datasets/create', '/datasets/create-from-pipeline', '/datasets/connect'])(
+    'keeps global navigation on dataset creation route %s',
+    (pathname) => {
+      mockPathname = pathname
 
-    renderMainNav()
+      renderMainNav()
 
-    expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toHaveAttribute(
-      'href',
-      '/datasets',
-    )
-  })
+      expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toHaveAttribute(
+        'href',
+        '/datasets',
+      )
+    },
+  )
 
   it.each(['/marketplace', '/plugins', '/templates', '/templates/marketing'])(
     'marks marketplace active on route %s',
@@ -787,14 +814,15 @@ describe('MainNav', () => {
 
   it('closes the help menu and opens Step-by-step Tour when enabling it', async () => {
     const user = userEvent.setup()
-    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+    const store = createStore()
+    store.set(stepByStepTourChecklistMinimizedAtom, true)
     mockStepByStepTour.setState({
       first_workspace_id: null,
       manually_enabled_workspace_ids: [],
       manually_disabled_workspace_ids: [],
     })
 
-    renderMainNav({ enable_learn_app: true })
+    renderMainNav({ enable_learn_app: true }, { store })
 
     await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
@@ -808,7 +836,7 @@ describe('MainNav', () => {
       expect(mockStepByStepTour.patchState.mock.lastCall?.[0]).toEqual({
         body: { action: 'enable_current_workspace' },
       })
-      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
+      expect(store.get(stepByStepTourChecklistMinimizedAtom)).toBe(false)
     })
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
     await waitFor(() => {
@@ -929,16 +957,17 @@ describe('MainNav', () => {
   it('closes the help menu from the support upgrade action', async () => {
     const user = userEvent.setup()
     renderMainNav()
+    expect(screen.queryByRole('link', { name: 'common.userProfile.contactSupport' })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
-    const contactUsItem = await screen.findByRole('menuitem', {
-      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+    const contactSupportItem = await screen.findByRole('menuitem', {
+      name: 'common.userProfile.contactSupport billing.upgradeBtn.encourageShort',
     })
     expect(
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     ).not.toBeInTheDocument()
 
-    await user.click(contactUsItem)
+    await user.click(contactSupportItem)
 
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
@@ -948,12 +977,30 @@ describe('MainNav', () => {
     )
   })
 
+  it('places paid contact support above the account and removes it from Help', async () => {
+    const user = userEvent.setup()
+    renderMainNav(defaultMainNavSystemFeatures, { plan: 'professional' })
+
+    const contact = screen.getByRole('button', { name: 'common.userProfile.contactSupport' })
+    const account = screen.getByRole('button', { name: accountMenuAccessibleName })
+    expect(contact.compareDocumentPosition(account)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.userProfile.contactSupport' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('hides the help menu when branding is enabled', () => {
-    renderMainNav({ branding: { enabled: true } }, { skipRecoveryVisible: true })
+    renderMainNav(
+      { branding: { enabled: true } },
+      { skipRecoveryVisible: true, plan: 'professional' },
+    )
 
     expect(
       screen.queryByRole('button', { name: 'navigation.mainNav.help.openMenu' }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.userProfile.contactSupport' })).toBeNull()
     expect(
       screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).not.toBeInTheDocument()

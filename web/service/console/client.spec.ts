@@ -1,3 +1,4 @@
+import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
@@ -372,6 +373,37 @@ describe('consoleQuery transport context', () => {
     )
   })
 
+  it('should not report query cancellation as a transport error', async () => {
+    const request = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: { query: { limit: 30, page: 1 } },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  it('should continue reporting non-cancellation transport errors', async () => {
+    const networkError = new TypeError('Network failed')
+    const request = vi.fn().mockRejectedValue(networkError)
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: { query: { limit: 30, page: 1 } },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(errorSpy).toHaveBeenCalledWith(networkError)
+  })
+
   it('should serialize trial app dataset ids as repeated query params', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
@@ -411,10 +443,124 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
+
+  it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1 }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.knowledgeFs.spaces.get.queryOptions({
+      input: {
+        query: {
+          creator_ids: ['creator-1', 'creator-2'],
+          limit: 30,
+          page: 1,
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('creator_ids')).toEqual(['creator-1', 'creator-2'])
+    expect(requestURL.searchParams.has('creator_ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('creator_ids[1]')).toBe(false)
+  })
+
+  it('should serialize dataset filters as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1, total: 0 }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: {
+        query: {
+          creator_ids: ['creator-1', 'creator-2'],
+          limit: 30,
+          page: 1,
+          tag_ids: ['tag-1', 'tag-2'],
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('creator_ids')).toEqual(['creator-1', 'creator-2'])
+    expect(requestURL.searchParams.getAll('tag_ids')).toEqual(['tag-1', 'tag-2'])
+    expect(requestURL.searchParams.has('creator_ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('tag_ids[0]')).toBe(false)
+  })
+
+  it('should request KnowledgeFS documents through the control-space contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [], next_cursor: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.queryOptions({
+        input: {
+          params: {
+            control_space_id: 'space-1',
+          },
+          query: { cursor: 'cursor-1' },
+        },
+      })
+
+    const result = await queryOptions.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expect(result).toEqual({ data: [], next_cursor: null })
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/knowledge-fs/spaces/space-1/documents?cursor=cursor-1'),
+      expect.any(Object),
+      expect.objectContaining({ fetchCompat: true }),
+    )
+  })
 })
 
 // Scenario: console OpenAPI query arrays follow backend parser expectations.
 describe('normalizeConsoleOpenAPIURL', () => {
+  it.each(['contact-options', 'contacts'])(
+    'serializes %s batch IDs as repeated parameters for the backend getlist parser',
+    (resource) => {
+      const url = normalizeConsoleOpenAPIURL(
+        `https://example.com/console/api/workspaces/current/human-input/v2/${resource}/batch?contact_ids%5B1%5D=contact-2&contact_ids%5B0%5D=contact-1&keyword=kept`,
+      )
+      const searchParams = new URL(url).searchParams
+
+      expect(searchParams.getAll('contact_ids')).toEqual(['contact-1', 'contact-2'])
+      expect(searchParams.has('contact_ids[0]')).toBe(false)
+      expect(searchParams.has('contact_ids[1]')).toBe(false)
+      expect(searchParams.get('keyword')).toBe('kept')
+    },
+  )
+
+  it('does not rewrite contact IDs on other endpoints', () => {
+    const url =
+      'https://example.com/console/api/workspaces/current/human-input/v2/contacts?contact_ids%5B0%5D=contact-1'
+
+    expect(normalizeConsoleOpenAPIURL(url)).toBe(url)
+  })
+
   it('should serialize repeated-only query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/agent/agent-1/logs?sources%5B1%5D=debug&sources%5B0%5D=api&statuses%5B0%5D=success&keyword=test',
@@ -431,6 +577,30 @@ describe('normalizeConsoleOpenAPIURL', () => {
   it('should serialize app list query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/apps?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
+  it('should serialize KnowledgeFS list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/knowledge-fs/spaces?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
+  it('should serialize dataset list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/datasets?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
     )
     const searchParams = new URL(url).searchParams
 
@@ -519,7 +689,13 @@ describe('consoleQuery education defaults', () => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
       const key = consoleQuery.account.education.get.queryKey()
-      const cached = { is_student: false, allow_refresh: false, expire_at: null }
+      const cached = {
+        is_student: false,
+        allow_refresh: false,
+        can_redeem_discount: false,
+        expire_at: null,
+        result: false,
+      }
       queryClient.setQueryData(key, cached)
       const unrelatedKey = ['unrelated-account-data']
       queryClient.setQueryData(unrelatedKey, { name: 'User' })
@@ -884,6 +1060,7 @@ describe('consoleQuery app mutation defaults', () => {
           token: 'app-token',
           type: 'app',
           dataset_ids: [],
+          knowledge_space_ids: [],
         },
         { params: { resource_id: 'app-1' } },
         undefined,
@@ -895,6 +1072,7 @@ describe('consoleQuery app mutation defaults', () => {
           token: 'dataset-token',
           type: 'dataset',
           dataset_ids: [],
+          knowledge_space_ids: [],
         },
         { body: {} },
         undefined,
@@ -946,7 +1124,13 @@ describe('consoleQuery agent mutation defaults', () => {
       const context = createMutationContext(queryClient)
       if (operation === 'creation') {
         await consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions().onSuccess!(
-          { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+          {
+            id: 'key-1',
+            token: 'app-secret',
+            type: 'app',
+            dataset_ids: [],
+            knowledge_space_ids: [],
+          },
           { params: { agent_id: 'agent-1' } },
           undefined,
           context,
@@ -1298,6 +1482,72 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it.each([true, false])(
+    'preserves roster publication and reference data when renaming an agent with published state %s',
+    async (isPublished) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = createQueryClient()
+      const agent = {
+        ...createAgent(),
+        active_config_is_published: isPublished,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 1,
+        published_references: [{ app_id: 'workflow-1', app_name: 'Research Workflow' }],
+      }
+      const otherAgent = {
+        ...createAgent({ id: 'agent-2', name: 'Other Agent' }),
+        active_config_is_published: false,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 0,
+      }
+      const rosterPage = {
+        data: [agent, otherAgent],
+        has_more: false,
+        limit: 30,
+        page: 1,
+        publication_counts: { drafts: isPublished ? 1 : 2, published: isPublished ? 1 : 0 },
+        total: 2,
+      } satisfies AgentAppPagination
+      const listQueryKey = consoleQuery.agent.get.queryKey({
+        input: { query: { page: 1, limit: 30 } },
+      })
+      const infiniteQueryKey = consoleQuery.agent.get.infiniteOptions({
+        input: (pageParam) => ({ query: { page: Number(pageParam), limit: 30 } }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      }).queryKey
+      queryClient.setQueryData(listQueryKey, rosterPage)
+      queryClient.setQueryData(infiniteQueryKey, { pages: [rosterPage], pageParams: [1] })
+      const updatedAgent = createAgent({ name: 'Updated Agent' })
+
+      await consoleQuery.agent.byAgentId.put.mutationOptions().onSuccess!(
+        updatedAgent,
+        { params: { agent_id: agent.id }, body: { name: updatedAgent.name } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+      const expectedPage = {
+        ...rosterPage,
+        data: [{ ...agent, name: updatedAgent.name }, otherAgent],
+      }
+      expect(queryClient.getQueryData(listQueryKey)).toEqual(expectedPage)
+      expect(queryClient.getQueryData(infiniteQueryKey)).toEqual({
+        pages: [expectedPage],
+        pageParams: [1],
+      })
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.agent.byAgentId.get.queryKey({
+            input: { params: { agent_id: agent.id } },
+          }),
+        ),
+      ).toEqual(updatedAgent)
+    },
+  )
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
@@ -1608,6 +1858,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const staging = {
+        deployment_id: 'deployment-staging',
         environment: {
           id: 'staging',
           display_name: 'Staging',
@@ -1616,7 +1867,11 @@ describe('consoleQuery App Deploy cache behavior', () => {
         },
         access: { enable_api: true, enable_site: true },
       }
-      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const production = {
+        ...staging,
+        deployment_id: 'deployment-production',
+        environment: { ...staging.environment, id: 'production' },
+      }
       const deployments = consoleQuery.enterprise.appDeploy.deploymentService
       const list = deployments.listEnvironmentDeployments.queryOptions({
         input: { params: { app_id: params.app_id } },

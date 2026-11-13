@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "məsələn, tədqiqat köməkçisi",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Bu əməliyyat {{name}} agentini həmişəlik silir. Onun veb tətbiqi, API girişi və ondan istifadə edən iş axınları dərhal fəaliyyətini dayandırır.",
+  "roster.deleteDialog.inputLabel": "Təsdiqləmək üçün <name>{{name}}</name> yazın",
+  "roster.deleteDialog.inputPlaceholder": "Agentin adını daxil edin",
   "roster.deleteDialog.title": "{{name}} silinsin?",
   "roster.deleteFailed": "Agenti silmək mümkün olmadı.",
   "roster.duplicateDialog.description": "{{name}} agentinin surətini yaradın və onun agent kimliyini fərdiləşdirin.",

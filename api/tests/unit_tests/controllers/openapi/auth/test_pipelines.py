@@ -9,12 +9,15 @@ from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException, Unauthorized
+from werkzeug.exceptions import Forbidden, HTTPException, Unauthorized
 
+from constants.oauth_bearer import TokenType
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import CatalogStale, ServiceApiDisabled
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.personal_access import CheckPersonalAccess
 from controllers.openapi.auth.pipelines import (
     _PIPELINES,
     AccountPipeline,
@@ -37,14 +40,14 @@ from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from machinery.context import AppRequestContext, RequestContext
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
-
-from ._world import (
+from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
     APP_ID,
     TENANT_ID,
     account_subject,
     make_account,
     make_app,
+    make_auth,
     make_ctx,
     make_membership,
     make_tenant,
@@ -371,3 +374,29 @@ def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_sess
 
     with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
         _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+@pytest.mark.parametrize("policy", [None, *PersonalAccessTokenPolicy])
+def test_personal_access_check_skips_oauth_without_loading_resources(
+    sqlite_session: Session, policy: PersonalAccessTokenPolicy | None
+) -> None:
+    subject = account_subject()
+    ctx = Context(subject, sqlite_session, {}, pat_policy=policy)
+
+    # No Flask request, account, or resource is needed for a non-PAT credential.
+    CheckPersonalAccess().run(subject, ctx, sqlite_session)
+
+    assert ctx.personal_workspace_ids is None
+    assert ctx.personal_app_ids is None
+
+
+def test_account_pipeline_denies_pat_without_policy_before_loading_resources(
+    app: Flask, sqlite_session: Session
+) -> None:
+    subject = AccountSubject(make_auth(TokenType.PERSONAL_ACCESS))
+    ctx = make_ctx(sqlite_session, subject)
+    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
+        with pytest.raises(Forbidden, match="personal_access_token_not_supported"):
+            _run(AccountPipeline(), subject, ctx, sqlite_session, call=never_reached)
+
+    assert try_get_auth_ctx() is None

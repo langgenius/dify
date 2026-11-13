@@ -45,7 +45,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
-from tests.unit_tests.model_factories import make_app, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
 def _file_data():

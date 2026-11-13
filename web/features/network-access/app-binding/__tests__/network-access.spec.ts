@@ -1,5 +1,4 @@
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { getNetworkAccessErrorStatus } from '@/features/network-access/errors'
 import {
   accessPointsFromScopes,
   draftFromBinding,
@@ -15,11 +14,6 @@ describe('network access mappers', () => {
     expect(toApiAccessPoint('serviceApi')).toBe('service_api')
     expect(toUiAccessPoint('webapp')).toBe('webApp')
     expect(toUiAccessPoint('service_api')).toBe('serviceApi')
-  })
-
-  it('reads HTTP status from Response and nested response objects', () => {
-    expect(getNetworkAccessErrorStatus(new Response(null, { status: 409 }))).toBe(409)
-    expect(getNetworkAccessErrorStatus({ response: { status: 409 } })).toBe(409)
   })
 
   it('builds scopes from selected API access points', () => {

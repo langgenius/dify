@@ -20,11 +20,15 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorAppIdAtom,
+  editorResourceKindAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import TipPopup from '../operator/tip-popup'
 import { useStore } from '../store'
 import { BlockEnum, isTriggerNode } from '../types'
@@ -33,7 +37,7 @@ import { BlockSelectorPanels } from './tabs'
 
 export type BlockSelectorProps = Pick<
   PopoverPositionerProps,
-  'alignOffset' | 'placement' | 'sideOffset'
+  'alignOffset' | 'side' | 'align' | 'sideOffset'
 > & {
   finalFocus?: PopoverPopupProps['finalFocus']
   triggerRef?: Ref<HTMLButtonElement>
@@ -69,7 +73,8 @@ function BlockSelector({
   triggerTooltip,
   triggerRef,
   finalFocus,
-  placement = 'right',
+  side = 'right',
+  align,
   sideOffset,
   alignOffset,
   triggerClassName,
@@ -94,15 +99,21 @@ function BlockSelector({
   const { t } = useTranslation(['common', 'workflow'])
   const [localOpen, setLocalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const appId = useAtomValue(editorAppIdAtom)
+  const [isGraphReady, setIsGraphReady] = useState(() =>
+    collaborationManager.canApplyLocalGraphMutation(),
+  )
+  const selectorDisabled = disabled || (appId !== undefined && !isGraphReady)
+  useEffect(() => collaborationManager.onGraphReadyChange(setIsGraphReady), [])
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback(
     (newOpen: boolean, details?: PopoverChangeEventDetails) => {
-      if (newOpen && disabled) return
+      if (newOpen && selectorDisabled) return
 
       setLocalOpen(newOpen)
       if (onOpenChange) onOpenChange(newOpen, details)
     },
-    [disabled, onOpenChange],
+    [selectorDisabled, onOpenChange],
   )
 
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
@@ -114,11 +125,11 @@ function BlockSelector({
 
   const handleSelect = useCallback<OnSelectBlock>(
     (type, pluginDefaultValue) => {
-      if (disabled) return
+      if (selectorDisabled) return
       handleOpenChange(false)
       onSelect(type, pluginDefaultValue)
     },
-    [disabled, handleOpenChange, onSelect],
+    [selectorDisabled, handleOpenChange, onSelect],
   )
 
   const handlePopupKeyDown = useCallback(
@@ -132,7 +143,7 @@ function BlockSelector({
     <PopoverTrigger
       ref={triggerRef}
       aria-label={triggerAriaLabel}
-      disabled={disabled}
+      disabled={selectorDisabled}
       className={triggerClassName}
       render={trigger}
       onClick={handleTrigger}
@@ -140,7 +151,7 @@ function BlockSelector({
   ) : (
     <PopoverTrigger
       ref={triggerRef}
-      disabled={disabled}
+      disabled={selectorDisabled}
       render={
         <IconButton
           aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
@@ -166,7 +177,8 @@ function BlockSelector({
       {triggerWithTooltip}
       <PopoverPortal>
         <PopoverPositioner
-          placement={placement}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
           positionMethod="fixed"

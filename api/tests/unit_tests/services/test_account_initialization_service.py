@@ -19,7 +19,7 @@ from services.account_initialization_service import AccountInitializationService
 from services.entities.account_entities import (
     AccountInitialization,
 )
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _context() -> RequestContext:

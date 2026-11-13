@@ -33,6 +33,7 @@ from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunEventSink,
     RunFinalizationResult,
+    RunStreamSealedError,
     TerminalRunEvent,
     terminal_event_status_fields,
 )
@@ -69,21 +70,6 @@ redis.call("SET", KEYS[1], value, "EX", ARGV[4])
 redis.call("SET", KEYS[2], ARGV[3], "EX", ARGV[4])
 redis.call("SET", KEYS[3], index_value, "EX", ARGV[4])
 return {1, ARGV[1], ARGV[3]}
-"""
-
-
-_APPEND_EVENT_SCRIPT = """
-local event_id = redis.call("XADD", KEYS[1], "MAXLEN", "~", ARGV[1], "*", "payload", ARGV[2])
-local ttl = tonumber(ARGV[3])
-redis.call("EXPIRE", KEYS[1], ttl)
-redis.call("EXPIRE", KEYS[2], ttl)
-local index_value = redis.call("GET", KEYS[3])
-if index_value then
-    local index = cjson.decode(index_value)
-    redis.call("SET", index.claim_key, index.claim_value, "EX", ttl)
-    redis.call("EXPIRE", KEYS[3], ttl)
-end
-return event_id
 """
 
 
@@ -135,6 +121,31 @@ if index_value then
     redis.call("EXPIRE", KEYS[4], ttl)
 end
 return {1, ARGV[1], event_id}
+"""
+
+
+_APPEND_EVENT_SCRIPT = """
+local record_json = redis.call("GET", KEYS[1])
+if not record_json then
+    return {-1, ""}
+end
+
+local record = cjson.decode(record_json)
+if record.status ~= "running" then
+    return {0, tostring(record.status)}
+end
+
+local ttl = tonumber(ARGV[3])
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[2], "*", "payload", ARGV[1])
+redis.call("EXPIRE", KEYS[2], ttl)
+redis.call("EXPIRE", KEYS[1], ttl)
+local index_value = redis.call("GET", KEYS[3])
+if index_value then
+    local index = cjson.decode(index_value)
+    redis.call("SET", index.claim_key, index.claim_value, "EX", ttl)
+    redis.call("EXPIRE", KEYS[3], ttl)
+end
+return {1, "running", event_id}
 """
 
 
@@ -198,8 +209,7 @@ record.error_type = cjson.null
 
 local ttl = tonumber(ARGV[5])
 local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
-redis.call("DEL", KEYS[2])
-redis.call("EXPIRE", KEYS[3], ttl)
+redis.call("DEL", KEYS[2])\nredis.call("EXPIRE", KEYS[3], ttl)
 redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
 local index_value = redis.call("GET", KEYS[4])
 if index_value then
@@ -300,23 +310,34 @@ class RedisRunStore(RunEventSink):
 
     @override
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Append a non-terminal event JSON payload with refreshed TTLs."""
+        """Append a non-terminal event while the durable run status is still ``running``.
+
+        The status check and the write share one linearization point with
+        ``finalize_run``/``finalize_cancellation``: once a terminal transition
+        wins, late non-terminal appends are rejected without consuming a
+        cursor or refreshing retention.
+        """
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        result = await cast(
+        evaluation = cast(
             Awaitable[object],
             self.redis.eval(
                 _APPEND_EVENT_SCRIPT,
                 3,
-                run_events_key(self.prefix, event.run_id),
                 run_record_key(self.prefix, event.run_id),
+                run_events_key(self.prefix, event.run_id),
                 run_idempotency_index_key(self.prefix, event.run_id),
-                str(self.run_event_stream_max_length),
                 payload,
+                str(self.run_event_stream_max_length),
                 str(self.run_retention_seconds),
             ),
         )
-        event_id = result
-        return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+        result = cast(list[object], await evaluation)
+        applied = int(cast(int | bytes | str, result[0]))
+        if applied == -1:
+            raise RunNotFoundError(event.run_id)
+        if applied == 0:
+            raise RunStreamSealedError(event.run_id, cast(RunStatus, _decode_redis_text(result[1])))
+        return _decode_redis_text(result[2])
 
     @override
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:

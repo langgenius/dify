@@ -67,7 +67,7 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
                 assistant_prefix: e.target.value,
               })
             }
-            placeholder={t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''}
+            placeholder={t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' })}
           />
         </DialogBody>
 

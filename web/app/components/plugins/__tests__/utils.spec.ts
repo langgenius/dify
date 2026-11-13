@@ -1,6 +1,7 @@
 import type { Plugin } from '../types'
 import { describe, expect, it } from 'vite-plus/test'
-import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { getPluginCardIconUrl } from '../utils'
 
 const createPlugin = (

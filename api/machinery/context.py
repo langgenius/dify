@@ -17,6 +17,7 @@ class RequestContext(NamedTuple):
 
     Anonymous admission uses empty ``account_id`` and ``active_workspace_id`` values.
     ``resource_app_ids`` is absent for account callers; an empty set admits no apps.
+    ``personal_app_ids`` limits account visibility to PAT selections; None adds no restriction.
     """
 
     request_id: str
@@ -25,6 +26,22 @@ class RequestContext(NamedTuple):
     active_workspace_id: str
     remote_ip: str | None = None
     resource_app_ids: frozenset[str] | None = None
+    personal_app_ids: frozenset[str] | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ServiceApiEndUserContext(AppRequestContext):
+    """Validated application mode and end-user identity for a Service API request."""
+
+    app_mode: str
+    end_user_id: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ServiceApiAccountRequestContext(AppRequestContext):
+    """App scope and its workspace owner admitted for account-backed Service APIs."""
+
+    account_id: str
 
 
 class AccountRequestContext(NamedTuple):

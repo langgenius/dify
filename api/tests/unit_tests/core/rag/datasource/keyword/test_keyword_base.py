@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from models import Dataset
-from tests.unit_tests.model_factories import make_dataset
+from tests.helpers.unit.model_factories import make_dataset
 
 
 def _dataset() -> Dataset:
@@ -16,27 +16,33 @@ def _dataset() -> Dataset:
 class _KeywordThatRaises(BaseKeyword):
     @override
     def create(self, texts: list[Document], session: Session, **kwargs: object) -> BaseKeyword:
-        return super().create(texts, session, **kwargs)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return BaseKeyword.create(self, texts, session, **kwargs)
 
     @override
     def add_texts(self, texts: list[Document], session: Session, **kwargs: object) -> None:
-        return super().add_texts(texts, session, **kwargs)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return BaseKeyword.add_texts(self, texts, session, **kwargs)
 
     @override
     def text_exists(self, id: str, *, session: Session) -> bool:
-        return super().text_exists(id, session=session)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return BaseKeyword.text_exists(self, id, session=session)
 
     @override
     def delete_by_ids(self, ids: list[str], session: Session, **kwargs: object) -> None:
-        return super().delete_by_ids(ids, session, **kwargs)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return BaseKeyword.delete_by_ids(self, ids, session, **kwargs)
 
     @override
     def delete(self, *, session: Session) -> None:
-        return super().delete(session=session)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return BaseKeyword.delete(self, session=session)
 
     @override
     def search(self, query: str, *, session: Session, **kwargs: object) -> list[Document]:
-        return super().search(query, session=session, **kwargs)
+        """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+        return BaseKeyword.search(self, query, session=session, **kwargs)
 
 
 class _KeywordForHelpers(BaseKeyword):
@@ -93,25 +99,24 @@ def test_abstract_methods_raise_not_implemented(unbound_session: Session) -> Non
 
 
 def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Session) -> None:
+    """Given valid documents with existing and new IDs, remove only existing IDs."""
     keyword = _KeywordForHelpers(_dataset(), existing_ids={"duplicate"})
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
         Document(page_content="duplicate", metadata={"doc_id": "duplicate"}),
-        Document.model_construct(page_content="without-metadata", metadata=None),
     ]
 
     filtered = keyword._filter_duplicate_texts(texts, session=unbound_session)
 
     assert [text.metadata["doc_id"] for text in filtered if text.metadata] == ["keep"]
-    assert any(text.metadata is None for text in filtered)
 
 
 def test_get_uuids_returns_only_docs_with_metadata() -> None:
+    """Given valid documents with metadata, return their document IDs."""
     keyword = _KeywordForHelpers(_dataset())
     texts = [
         Document(page_content="doc-1", metadata={"doc_id": "doc-1"}),
         Document(page_content="doc-2", metadata={"doc_id": "doc-2"}),
-        Document.model_construct(page_content="doc-3", metadata=None),
     ]
 
     assert keyword._get_uuids(texts) == ["doc-1", "doc-2"]

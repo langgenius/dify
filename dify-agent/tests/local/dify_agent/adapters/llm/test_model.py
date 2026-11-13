@@ -5,13 +5,21 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import cast
 from unittest.mock import patch
+from uuid import uuid4
 
 import httpx
 import pytest
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import StatusCode
+from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
+    ModelMessage,
+    ModelMessagesTypeAdapter,
     ModelRequest,
     ModelResponse,
     RetryPromptPart,
@@ -25,10 +33,13 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models.instrumented import InstrumentationSettings, InstrumentedModel
 from pydantic_ai.tools import ToolDefinition
 
 from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
+from dify_agent.runtime.compaction import build_compaction_capability
+from dify_agent.runtime.context import Deps, Services
 
 from ._test_support import (
     AssistantPromptMessage,
@@ -40,6 +51,38 @@ from ._test_support import (
     make_usage,
     single_text_chunk,
 )
+
+_OMIT_ID = object()
+
+
+def _tool_call(
+    tool_name: str,
+    arguments: str,
+    *,
+    call_id: str | None | object = _OMIT_ID,
+) -> AssistantPromptMessage.ToolCall:
+    """Build a gateway tool call, defaulting ``id`` to ``tool_name`` like name-based plugins."""
+    resolved_id = tool_name if call_id is _OMIT_ID else cast(str | None, call_id)
+    return AssistantPromptMessage.ToolCall(
+        id=resolved_id,  # pyright: ignore[reportArgumentType]
+        type="function",
+        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name=tool_name, arguments=arguments),
+    )
+
+
+def _tool_chunk(
+    *tool_calls: AssistantPromptMessage.ToolCall,
+    index: int = 0,
+    finish_reason: str | None = None,
+) -> LLMResultChunk:
+    return LLMResultChunk(
+        model="demo-model",
+        delta=LLMResultChunkDelta(
+            index=index,
+            message=AssistantPromptMessage(content="", tool_calls=list(tool_calls)),
+            finish_reason=finish_reason,
+        ),
+    )
 
 
 class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
@@ -96,6 +139,32 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         with patch.object(httpx.AsyncClient, "stream", new=mock_stream):
             yield
+
+    async def invoke_adapter(
+        self,
+        messages: list[ModelMessage],
+        *,
+        stream: bool,
+        model_provider: str = "ollama",
+    ) -> ModelResponse:
+        adapter = DifyLLMAdapterModel(
+            "demo-model",
+            self.make_provider(),
+            model_provider=model_provider,
+        )
+        if not stream:
+            return await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+        async with adapter.request_stream(
+            messages,
+            model_settings=None,
+            model_request_parameters=ModelRequestParameters(),
+        ) as response_stream:
+            _ = [event async for event in response_stream]
+            return response_stream.get()
 
     async def test_request_uses_api_gateway_contract(self) -> None:
         messages = [
@@ -158,6 +227,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
             payload = json.loads(request.content.decode("utf-8"))
             self.assertEqual(payload["caller"]["user_id"], "user-123")
+            self.assertNotIn("tracing", payload["caller"])
             data = payload["target"]
             self.assertEqual(data["provider"], "langgenius/openai/openai")
             self.assertEqual(data["model"], "demo-model")
@@ -208,6 +278,152 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.usage.output_tokens, 7)
         self.assertEqual(response.parts[0].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_application_tracing_policy_is_excluded_from_gateway_caller(self) -> None:
+        provider = self.make_provider()
+        provider.execution_context.tracing = ApplicationTracingContext(
+            run_id=uuid4(),
+            invocation_id=uuid4(),
+            trace_id=uuid4().hex,
+            parent_span_id=uuid4().hex[:16],
+            session_id="test-session",
+            capture_content=True,
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content)
+            self.assertNotIn("tracing", payload["caller"])
+            self.assertEqual(payload["caller"]["tenant_id"], "tenant-1")
+            return build_stream_response(*single_text_chunk("hello"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel("demo-model", provider, model_provider="openai")
+            await adapter.request([ModelRequest(parts=[UserPromptPart("hello")])], None, ModelRequestParameters())
+
+    async def test_real_model_span_records_gateway_accounting_on_streaming_and_nonstreaming_requests(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+        usage = make_usage(
+            prompt_tokens=17,
+            completion_tokens=9,
+            total_price=Decimal("0.001234"),
+            currency="CNY",
+            time_to_first_token=0.125,
+        )
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="hello"),
+                        usage=usage,
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content=" world"),
+                    ),
+                ),
+            )
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                messages = [ModelRequest(parts=[UserPromptPart("test")])]
+                await adapter.request(messages, None, ModelRequestParameters())
+                async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                    async for _ in stream:
+                        pass
+            spans = exporter.get_finished_spans()
+            self.assertEqual(len(spans), 2)
+            for span in spans:
+                attributes = span.attributes or {}
+                self.assertEqual(attributes["gen_ai.operation.name"], "chat")
+                self.assertEqual(attributes["dify.llm.total_price"], "0.001234")
+                self.assertEqual(attributes["dify.llm.currency"], "CNY")
+                self.assertEqual(attributes["gen_ai.response.time_to_first_token"], 0.125)
+                self.assertEqual(attributes["dify.llm.time_to_first_token_unit"], "s")
+                self.assertEqual(attributes["dify.llm.time_to_first_token_source"], "gateway_usage")
+                self.assertEqual(attributes["gen_ai.usage.input_tokens"], 17)
+                self.assertEqual(attributes["gen_ai.usage.output_tokens"], 9)
+                self.assertEqual(attributes["gen_ai.usage.total_tokens"], 26)
+                self.assertNotIn("gen_ai.usage.cache_read.input_tokens", attributes)
+        finally:
+            tracer_provider.shutdown()
+
+    async def test_streaming_gateway_failure_marks_the_real_chat_span_as_error(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_error("EndpointSetupFailedError", "sensitive-provider-detail")
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                with self.assertRaises(UserError):
+                    async with adapter.request_stream(
+                        [ModelRequest(parts=[UserPromptPart("test")])], None, ModelRequestParameters()
+                    ) as stream:
+                        async for _ in stream:
+                            pass
+            spans = exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+            self.assertEqual((spans[0].attributes or {}).get("error.type"), "UserError")
+            self.assertNotIn("dify.llm.total_price", spans[0].attributes or {})
+        finally:
+            tracer_provider.shutdown()
+
+    async def test_model_span_measures_first_content_without_inventing_missing_cost(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content=""),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content="hello"),
+                    ),
+                ),
+            )
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                await adapter.request([ModelRequest(parts=[UserPromptPart("test")])], None, ModelRequestParameters())
+            attributes = exporter.get_finished_spans()[0].attributes or {}
+            self.assertGreaterEqual(attributes["gen_ai.response.time_to_first_token"], 0)
+            self.assertEqual(attributes["dify.llm.time_to_first_token_source"], "gateway_first_content")
+            self.assertNotIn("dify.llm.total_price", attributes)
+            self.assertNotIn("dify.llm.currency", attributes)
+        finally:
+            tracer_provider.shutdown()
 
     async def test_request_accumulates_complete_dify_usage_across_model_rounds(self) -> None:
         usages = [
@@ -290,6 +506,42 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(usage.latency, 1.2)
         self.assertEqual(usage.time_to_first_token, 0.2)
         self.assertEqual(usage.time_to_generate, 0.6)
+
+    async def test_request_falls_back_to_tool_name_when_description_is_missing(self) -> None:
+        """Some providers (e.g. Bedrock's Converse API) reject an empty toolSpec description."""
+        messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
+        request_parameters = ModelRequestParameters(
+            function_tools=[
+                ToolDefinition(
+                    name="weather",
+                    description=None,
+                    parameters_json_schema={"type": "object", "properties": {}},
+                )
+            ],
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            tools_by_name = {tool["name"]: tool for tool in payload["target"]["tools"]}
+            self.assertEqual(tools_by_name["weather"]["description"], "weather")
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="ok", tool_calls=[]),
+                        usage=make_usage(prompt_tokens=1, completion_tokens=1),
+                    ),
+                )
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            await adapter.request(messages, model_settings=None, model_request_parameters=request_parameters)
 
     async def test_request_merges_system_messages_before_history(self) -> None:
         messages = [
@@ -626,25 +878,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                         message=AssistantPromptMessage(content="hello ", tool_calls=[]),
                     ),
                 ),
-                LLMResultChunk(
-                    model="demo-model",
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=AssistantPromptMessage(
-                            content="",
-                            tool_calls=[
-                                AssistantPromptMessage.ToolCall(
-                                    id="call-1",
-                                    type="function",
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                        name="weather",
-                                        arguments='{"city":"Paris"}',
-                                    ),
-                                )
-                            ],
-                        ),
-                    ),
-                ),
+                _tool_chunk(_tool_call("weather", '{"city":"Paris"}', call_id="call-1")),
                 LLMResultChunk(
                     model="demo-model",
                     delta=LLMResultChunkDelta(
@@ -675,54 +909,16 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.usage.input_tokens, 6)
         self.assertEqual(response.usage.output_tokens, 4)
         self.assertEqual(response.finish_reason, "tool_call")
-        self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual([part.part_kind for part in response.parts], ["text", "tool-call", "text"])
         self.assertEqual(cast(TextPart, response.parts[0]).content, "hello ")
-        self.assertEqual(response.parts[1].part_kind, "tool-call")
-        self.assertEqual(cast(ToolCallPart, response.parts[1]).tool_name, "weather")
-        self.assertEqual(response.parts[2].part_kind, "text")
+        self.assertEqual(response.tool_calls[0].tool_name, "weather")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "world")
 
     async def test_request_stream_assigns_fallback_ids_to_tool_calls_without_ids(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_stream_response(
-                LLMResultChunk(
-                    model="demo-model",
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=AssistantPromptMessage(
-                            content="",
-                            tool_calls=[
-                                AssistantPromptMessage.ToolCall(
-                                    id=None,  # pyright: ignore[reportArgumentType]
-                                    type="function",
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                        name="shell_run",
-                                        arguments='{"script":"lookup find"}',
-                                    ),
-                                )
-                            ],
-                        ),
-                    ),
-                ),
-                LLMResultChunk(
-                    model="demo-model",
-                    delta=LLMResultChunkDelta(
-                        index=1,
-                        message=AssistantPromptMessage(
-                            content="",
-                            tool_calls=[
-                                AssistantPromptMessage.ToolCall(
-                                    id=None,  # pyright: ignore[reportArgumentType]
-                                    type="function",
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                        name="shell_run",
-                                        arguments='{"script":"lookup out"}',
-                                    ),
-                                )
-                            ],
-                        ),
-                    ),
-                ),
+                _tool_chunk(_tool_call("shell_run", '{"script":"lookup find"}', call_id=None), index=0),
+                _tool_chunk(_tool_call("shell_run", '{"script":"lookup out"}', call_id=None), index=1),
             )
 
         async with self.mock_gateway_stream(httpx.MockTransport(handler)):
@@ -742,10 +938,534 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(events)
         self.assertEqual([part.part_kind for part in response.parts], ["tool-call", "tool-call"])
-        self.assertEqual(cast(ToolCallPart, response.parts[0]).tool_call_id, "chunk-0-tool-0")
-        self.assertEqual(cast(ToolCallPart, response.parts[1]).tool_call_id, "chunk-1-tool-0")
-        self.assertEqual(cast(ToolCallPart, response.parts[0]).args, '{"script":"lookup find"}')
-        self.assertEqual(cast(ToolCallPart, response.parts[1]).args, '{"script":"lookup out"}')
+        self.assertEqual([part.tool_call_id for part in response.tool_calls], ["chunk-0-tool-0", "chunk-1-tool-0"])
+        self.assertEqual(
+            [part.args for part in response.tool_calls],
+            ['{"script":"lookup find"}', '{"script":"lookup out"}'],
+        )
+        self.assertEqual([part.provider_details for part in response.tool_calls], [None, None])
+
+    async def test_request_stream_keeps_parallel_tool_calls_that_share_a_plugin_id(self) -> None:
+        # Some plugins (e.g. Tongyi, or Ollama when the server omits ids) use the function name as the id.
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                _tool_chunk(
+                    _tool_call("lookup", '{"query":"first"}'),
+                    _tool_call("lookup", '{"query":"second"}'),
+                    _tool_call("lookup", '{"query":"third"}'),
+                ),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            response = await self.invoke_adapter([ModelRequest(parts=[UserPromptPart("hello")])], stream=True)
+
+        self.assertEqual([part.part_kind for part in response.parts], ["tool-call", "tool-call", "tool-call"])
+        self.assertEqual([part.tool_call_id for part in response.tool_calls], ["lookup", "lookup-2", "lookup-3"])
+        self.assertEqual(
+            [part.args for part in response.tool_calls],
+            ['{"query":"first"}', '{"query":"second"}', '{"query":"third"}'],
+        )
+        self.assertEqual(
+            [part.provider_details for part in response.tool_calls],
+            [
+                None,
+                {"dify_provider_tool_call_id": "lookup"},
+                {"dify_provider_tool_call_id": "lookup"},
+            ],
+        )
+
+    async def test_request_stream_updates_reemitted_tool_call_lists_in_place(self) -> None:
+        # Cumulative list plugins re-send every call seen so far on each chunk, updating arguments in place.
+        scenarios: list[
+            tuple[
+                str,
+                list[ModelMessage],
+                list[str],
+                list[dict[str, object] | None],
+            ]
+        ] = [
+            (
+                "fresh_history",
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                ["plugin-call", "plugin-call-2"],
+                [None, {"dify_provider_tool_call_id": "plugin-call"}],
+            ),
+            (
+                "history_occupies_first_slot",
+                [
+                    ModelRequest(parts=[UserPromptPart("earlier")]),
+                    ModelResponse(
+                        parts=[
+                            ToolCallPart(tool_name="search_docs", args='{"query":"old"}', tool_call_id="plugin-call")
+                        ]
+                    ),
+                    ModelRequest(
+                        parts=[
+                            ToolReturnPart(tool_name="search_docs", content="old result", tool_call_id="plugin-call"),
+                            UserPromptPart("follow up"),
+                        ]
+                    ),
+                ],
+                ["plugin-call-2", "plugin-call-3"],
+                [
+                    {"dify_provider_tool_call_id": "plugin-call"},
+                    {"dify_provider_tool_call_id": "plugin-call"},
+                ],
+            ),
+        ]
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                _tool_chunk(_tool_call("search_docs", '{"query":"first-draft"}', call_id="plugin-call"), index=0),
+                _tool_chunk(
+                    _tool_call("search_docs", '{"query":"first-v2"}', call_id="plugin-call"),
+                    _tool_call("search_docs", '{"query":"second-draft"}', call_id="plugin-call"),
+                    index=1,
+                ),
+                _tool_chunk(
+                    _tool_call("search_docs", '{"query":"first-final"}', call_id="plugin-call"),
+                    _tool_call("search_docs", '{"query":"second-final"}', call_id="plugin-call"),
+                    index=2,
+                ),
+            )
+
+        for label, messages, expected_ids, expected_details in scenarios:
+            with self.subTest(case=label):
+                async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                    response = await self.invoke_adapter(messages, stream=True)
+
+                self.assertEqual(len(response.tool_calls), 2)
+                self.assertEqual([part.tool_call_id for part in response.tool_calls], expected_ids)
+                self.assertEqual(
+                    [part.args for part in response.tool_calls],
+                    ['{"query":"first-final"}', '{"query":"second-final"}'],
+                )
+                self.assertEqual([part.provider_details for part in response.tool_calls], expected_details)
+
+    async def test_tool_call_id_allocation_avoids_single_and_cross_chunk_suffix_collisions(self) -> None:
+        scenarios: list[
+            tuple[
+                str,
+                list[LLMResultChunk],
+                list[str],
+                list[str | dict[str, object] | None],
+                list[dict[str, object] | None],
+            ]
+        ] = [
+            (
+                "single_chunk_trailing_explicit_suffix",
+                [
+                    _tool_chunk(
+                        _tool_call("search_docs", '{"query":"first"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"second"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"third"}', call_id="call-a-2"),
+                    )
+                ],
+                ["call-a", "call-a-3", "call-a-2"],
+                ['{"query":"first"}', '{"query":"second"}', '{"query":"third"}'],
+                [None, {"dify_provider_tool_call_id": "call-a"}, None],
+            ),
+            (
+                "single_chunk_leading_explicit_suffix",
+                [
+                    _tool_chunk(
+                        _tool_call("search_docs", '{"query":"first"}', call_id="call-a-2"),
+                        _tool_call("search_docs", '{"query":"second"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"third"}', call_id="call-a"),
+                    )
+                ],
+                ["call-a-2", "call-a", "call-a-3"],
+                ['{"query":"first"}', '{"query":"second"}', '{"query":"third"}'],
+                [None, None, {"dify_provider_tool_call_id": "call-a"}],
+            ),
+            (
+                "cross_chunk_independent_explicit_suffix",
+                [
+                    _tool_chunk(
+                        _tool_call("search_docs", '{"query":"first"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"second"}', call_id="call-a"),
+                        index=0,
+                    ),
+                    _tool_chunk(_tool_call("search_docs", '{"query":"third-draft"}', call_id="call-a-2"), index=1),
+                    _tool_chunk(_tool_call("search_docs", '{"query":"third"}', call_id="call-a-2"), index=2),
+                ],
+                ["call-a", "call-a-2", "call-a-2-2"],
+                ['{"query":"first"}', '{"query":"second"}', '{"query":"third"}'],
+                [
+                    None,
+                    {"dify_provider_tool_call_id": "call-a"},
+                    {"dify_provider_tool_call_id": "call-a-2"},
+                ],
+            ),
+            (
+                "cross_chunk_cumulative_explicit_suffix",
+                [
+                    _tool_chunk(
+                        _tool_call("search_docs", '{"query":"first-v1"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"second-v1"}', call_id="call-a"),
+                        index=0,
+                    ),
+                    _tool_chunk(
+                        _tool_call("search_docs", '{"query":"first-v2"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"second-v2"}', call_id="call-a"),
+                        _tool_call("search_docs", '{"query":"third"}', call_id="call-a-2"),
+                        index=1,
+                    ),
+                ],
+                ["call-a", "call-a-2", "call-a-2-2"],
+                ['{"query":"first-v2"}', '{"query":"second-v2"}', '{"query":"third"}'],
+                [
+                    None,
+                    {"dify_provider_tool_call_id": "call-a"},
+                    {"dify_provider_tool_call_id": "call-a-2"},
+                ],
+            ),
+        ]
+
+        for label, chunks, expected_ids, expected_args, expected_details in scenarios:
+            for stream in (False, True):
+                with self.subTest(case=label, stream=stream):
+
+                    def handler(
+                        _request: httpx.Request, *, response_chunks: list[LLMResultChunk] = chunks
+                    ) -> httpx.Response:
+                        return build_stream_response(*response_chunks)
+
+                    async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                        response = await self.invoke_adapter(
+                            [ModelRequest(parts=[UserPromptPart("hello")])], stream=stream
+                        )
+
+                    self.assertEqual([part.tool_call_id for part in response.tool_calls], expected_ids)
+                    self.assertEqual([part.args for part in response.tool_calls], expected_args)
+                    self.assertEqual([part.provider_details for part in response.tool_calls], expected_details)
+
+    async def test_tool_call_id_allocation_avoids_missing_id_and_history_collisions(self) -> None:
+        prior_history: list[ModelMessage] = [
+            ModelRequest(parts=[UserPromptPart("first turn")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="shell_run", args='{"script":"old"}', tool_call_id="chunk-0-tool-0"),
+                    ToolCallPart(tool_name="search_docs", args='{"query":"old-1"}', tool_call_id="call-a"),
+                    ToolCallPart(
+                        tool_name="search_docs",
+                        args='{"query":"old-2"}',
+                        tool_call_id="call-a-2",
+                        provider_details={"dify_provider_tool_call_id": "call-a"},
+                    ),
+                ]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(tool_name="shell_run", content="ok", tool_call_id="chunk-0-tool-0"),
+                    ToolReturnPart(tool_name="search_docs", content="r1", tool_call_id="call-a"),
+                    ToolReturnPart(tool_name="search_docs", content="r2", tool_call_id="call-a-2"),
+                    UserPromptPart("second turn"),
+                ]
+            ),
+        ]
+
+        for stream in (False, True):
+            with self.subTest(case="same_chunk_fallback_collision", stream=stream):
+
+                def same_chunk_handler(_request: httpx.Request) -> httpx.Response:
+                    return build_stream_response(
+                        _tool_chunk(
+                            _tool_call("shell_run", '{"script":"first"}', call_id=None),
+                            _tool_call("shell_run", '{"script":"second"}', call_id="chunk-0-tool-0"),
+                        )
+                    )
+
+                async with self.mock_gateway_stream(httpx.MockTransport(same_chunk_handler)):
+                    response = await self.invoke_adapter([ModelRequest(parts=[UserPromptPart("hello")])], stream=stream)
+
+                self.assertEqual(
+                    [part.tool_call_id for part in response.tool_calls],
+                    ["chunk-0-tool-0-2", "chunk-0-tool-0"],
+                )
+                self.assertEqual([part.provider_details for part in response.tool_calls], [None, None])
+
+            with self.subTest(case="history_fallback_and_plugin_id_collision", stream=stream):
+
+                def history_handler(_request: httpx.Request) -> httpx.Response:
+                    return build_stream_response(
+                        _tool_chunk(
+                            _tool_call("shell_run", '{"script":"next"}', call_id=None),
+                            _tool_call("search_docs", '{"query":"next"}', call_id="call-a"),
+                        )
+                    )
+
+                async with self.mock_gateway_stream(httpx.MockTransport(history_handler)):
+                    response = await self.invoke_adapter(prior_history, stream=stream)
+
+                self.assertEqual(
+                    [part.tool_call_id for part in response.tool_calls],
+                    ["chunk-0-tool-0-2", "call-a-3"],
+                )
+                self.assertEqual(
+                    [part.provider_details for part in response.tool_calls],
+                    [None, {"dify_provider_tool_call_id": "call-a"}],
+                )
+
+    async def test_request_restores_and_scopes_renamed_plugin_ids_across_turns(self) -> None:
+        # Keep tool_name, dify_provider_tool_call_id, and internal renamed tool_call_id distinct,
+        # and verify a later unrenamed response reusing the same string is not rewritten by earlier state.
+        messages: list[ModelMessage] = [
+            ModelRequest(parts=[UserPromptPart("hello")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="search_docs", args='{"query":"first"}', tool_call_id="plugin-call"),
+                    ToolCallPart(
+                        tool_name="search_docs",
+                        args='{"query":"second"}',
+                        tool_call_id="plugin-call-2",
+                        provider_name="dify",
+                        provider_details={"dify_provider_tool_call_id": "plugin-call"},
+                    ),
+                    ToolCallPart(
+                        tool_name="search_docs",
+                        args='{"query":"third"}',
+                        tool_call_id="plugin-call-3",
+                        provider_name="dify",
+                        provider_details={"dify_provider_tool_call_id": "plugin-call"},
+                    ),
+                ]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(tool_name="search_docs", content="first result", tool_call_id="plugin-call"),
+                    ToolReturnPart(tool_name="search_docs", content="second result", tool_call_id="plugin-call-2"),
+                    RetryPromptPart(content="bad query", tool_name="search_docs", tool_call_id="plugin-call-3"),
+                ]
+            ),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        tool_name="fetch_page",
+                        args='{"url":"https://example.com"}',
+                        tool_call_id="plugin-call-2",
+                    )
+                ]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(tool_name="fetch_page", content="page body", tool_call_id="plugin-call-2"),
+                    RetryPromptPart(content="retry fetch", tool_name="fetch_page", tool_call_id="plugin-call-2"),
+                ]
+            ),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+
+            self.assertEqual(
+                [message["role"] for message in prompt_messages],
+                ["user", "assistant", "tool", "tool", "tool", "assistant", "tool", "tool"],
+            )
+            self.assertEqual(
+                [call["id"] for call in prompt_messages[1]["tool_calls"]],
+                ["plugin-call", "plugin-call", "plugin-call"],
+            )
+            self.assertEqual(
+                [call["function"]["name"] for call in prompt_messages[1]["tool_calls"]],
+                ["search_docs", "search_docs", "search_docs"],
+            )
+            self.assertEqual(
+                [call["function"]["arguments"] for call in prompt_messages[1]["tool_calls"]],
+                ['{"query":"first"}', '{"query":"second"}', '{"query":"third"}'],
+            )
+            self.assertEqual(
+                [message["tool_call_id"] for message in prompt_messages[2:5]],
+                ["plugin-call", "plugin-call", "plugin-call"],
+            )
+            self.assertEqual(
+                [message["name"] for message in prompt_messages[2:5]],
+                ["search_docs", "search_docs", "search_docs"],
+            )
+            self.assertEqual([call["id"] for call in prompt_messages[5]["tool_calls"]], ["plugin-call-2"])
+            self.assertEqual([call["function"]["name"] for call in prompt_messages[5]["tool_calls"]], ["fetch_page"])
+            self.assertEqual(
+                [message["tool_call_id"] for message in prompt_messages[6:]],
+                ["plugin-call-2", "plugin-call-2"],
+            )
+
+            return build_stream_response(*single_text_chunk("adapter response"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            response = await self.invoke_adapter(messages, stream=False)
+
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_tool_call_id_metadata_survives_model_messages_json_round_trip(self) -> None:
+        requests: list[dict[str, object]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(json.loads(request.content.decode("utf-8")))
+            if len(requests) == 1:
+                return build_stream_response(
+                    _tool_chunk(
+                        _tool_call("search_docs", '{"query":"first"}', call_id="plugin-call"),
+                        _tool_call("search_docs", '{"query":"second"}', call_id="plugin-call"),
+                        _tool_call("search_docs", '{"query":"third"}', call_id="plugin-call"),
+                    )
+                )
+            return build_stream_response(
+                _tool_chunk(_tool_call("search_docs", '{"query":"fourth"}', call_id="plugin-call"))
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            first_response = await self.invoke_adapter([ModelRequest(parts=[UserPromptPart("hello")])], stream=False)
+            history: list[ModelMessage] = [
+                ModelRequest(parts=[UserPromptPart("hello")]),
+                first_response,
+                ModelRequest(
+                    parts=[
+                        ToolReturnPart(tool_name="search_docs", content="r1", tool_call_id="plugin-call"),
+                        ToolReturnPart(tool_name="search_docs", content="r2", tool_call_id="plugin-call-2"),
+                        RetryPromptPart(content="bad query", tool_name="search_docs", tool_call_id="plugin-call-3"),
+                        UserPromptPart("continue"),
+                    ]
+                ),
+            ]
+            restored_history = ModelMessagesTypeAdapter.validate_json(ModelMessagesTypeAdapter.dump_json(history))
+            second_response = await self.invoke_adapter(restored_history, stream=False)
+
+        prompt_messages = cast(
+            list[dict[str, object]],
+            cast(dict[str, object], requests[1]["target"])["prompt_messages"],
+        )
+        assistant_calls = cast(list[dict[str, object]], prompt_messages[1]["tool_calls"])
+        self.assertEqual([call["id"] for call in assistant_calls], ["plugin-call", "plugin-call", "plugin-call"])
+        self.assertEqual(
+            [message["tool_call_id"] for message in prompt_messages[2:5]],
+            ["plugin-call", "plugin-call", "plugin-call"],
+        )
+        self.assertEqual([part.tool_call_id for part in second_response.tool_calls], ["plugin-call-4"])
+        self.assertEqual(
+            [part.provider_details for part in second_response.tool_calls],
+            [{"dify_provider_tool_call_id": "plugin-call"}],
+        )
+
+    async def test_agent_runs_every_parallel_tool_call_that_shares_a_plugin_id(self) -> None:
+        requests: list[dict[str, object]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(json.loads(request.content.decode("utf-8")))
+            if len(requests) == 1:
+                return build_stream_response(
+                    _tool_chunk(
+                        _tool_call("lookup", '{"query":"first"}'),
+                        _tool_call("lookup", '{"query":"second"}'),
+                        finish_reason="tool_calls",
+                    )
+                )
+            return build_stream_response(*single_text_chunk("done"))
+
+        seen_queries: list[str] = []
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="ollama",
+            )
+            agent = Agent(adapter)
+
+            @agent.tool_plain
+            async def lookup(query: str) -> str:
+                seen_queries.append(query)
+                return f"result for {query}"
+
+            result = await agent.run("look up both")
+
+        self.assertEqual(result.output, "done")
+        self.assertEqual(sorted(seen_queries), ["first", "second"])
+        follow_up = cast(list[dict[str, object]], cast(dict[str, object], requests[1]["target"])["prompt_messages"])
+        tool_messages = [message for message in follow_up if message["role"] == "tool"]
+        self.assertEqual([message["tool_call_id"] for message in tool_messages], ["lookup", "lookup"])
+        self.assertEqual(
+            [message["content"] for message in tool_messages],
+            ["result for first", "result for second"],
+        )
+
+    async def test_agent_compaction_preserves_recent_tool_results_across_repeated_plugin_ids(self) -> None:
+        requests: list[dict[str, object]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            step = len(requests)
+            requests.append(json.loads(request.content.decode("utf-8")))
+            if step < 4:
+                return build_stream_response(
+                    _tool_chunk(
+                        _tool_call("lookup", json.dumps({"query": f"q{step}"})),
+                        finish_reason="tool_calls",
+                    )
+                )
+            return build_stream_response(*single_text_chunk("done"))
+
+        capability = build_compaction_capability(context_window_tokens=4_100, model_settings=None)
+        assert capability is not None
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            provider = self.make_provider()
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                provider,
+                model_provider="ollama",
+            )
+            agent = Agent[Deps, str](adapter, deps_type=Deps, capabilities=[capability])
+
+            @agent.tool_plain
+            async def lookup(query: str) -> str:
+                return f"{query}-" + ("x" * 4_000)
+
+            deps = Deps(
+                layers={},
+                services=Services(
+                    plugin_daemon_http_client=provider.client.http_client,
+                    dify_api_http_client=provider.client.http_client,
+                ),
+                run_id="run-1",
+            )
+            result = await agent.run("run four steps", deps=deps)
+
+        self.assertEqual(result.output, "done")
+        self.assertEqual(len(requests), 5)
+
+        internal_ids = [
+            part.tool_call_id
+            for message in result.all_messages()
+            if isinstance(message, ModelResponse)
+            for part in message.tool_calls
+        ]
+        self.assertEqual(internal_ids, ["lookup", "lookup-2", "lookup-3", "lookup-4"])
+
+        final_prompt_messages = cast(
+            list[dict[str, object]],
+            cast(dict[str, object], requests[4]["target"])["prompt_messages"],
+        )
+        assistant_ids = [
+            call["id"]
+            for message in final_prompt_messages
+            if message["role"] == "assistant"
+            for call in cast(list[dict[str, object]], message.get("tool_calls", []))
+        ]
+        tool_messages = [message for message in final_prompt_messages if message["role"] == "tool"]
+
+        self.assertEqual(assistant_ids, ["lookup", "lookup", "lookup", "lookup"])
+        self.assertEqual(
+            [message["tool_call_id"] for message in tool_messages], ["lookup", "lookup", "lookup", "lookup"]
+        )
+        self.assertEqual(
+            [message["content"] for message in tool_messages],
+            [
+                "[tool result cleared]",
+                "q1-" + ("x" * 4_000),
+                "q2-" + ("x" * 4_000),
+                "q3-" + ("x" * 4_000),
+            ],
+        )
 
     async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:

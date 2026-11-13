@@ -4,9 +4,9 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
-import { stylingContractRules } from '../../lint.config'
+import { storyStylingContractRules, stylingContractRules } from '../../lint.config'
 
-function lintFixture(source: string) {
+function lintFixture(source: string, rules = stylingContractRules) {
   const require = createRequire(import.meta.url)
   const viteRequire = createRequire(require.resolve('vite-plus/package.json'))
   const oxlintBin = join(dirname(dirname(viteRequire.resolve('oxlint'))), 'bin', 'oxlint')
@@ -17,7 +17,7 @@ function lintFixture(source: string) {
       JSON.stringify({
         categories: { correctness: 'off' },
         jsPlugins: [require.resolve('@shadcn/lint')],
-        rules: stylingContractRules,
+        rules,
       }),
     )
     writeFileSync(join(directory, 'fixture.tsx'), source)
@@ -198,13 +198,45 @@ it('keeps centered dialogs on DialogContent while DialogPopup places custom surf
   const diagnostics = lintFixture(`
     import { DialogContent, DialogPopup } from '@langgenius/dify-ui/dialog'
     const examples = <>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160 overflow-hidden" />
+      <DialogContent className="w-160 overflow-hidden" />
       <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 flex-col overflow-hidden rounded-xl" />
       <DialogPopup className="fixed top-1/2 left-1/2 w-120 -translate-x-1/2 -translate-y-1/2" />
     </>
   `)
   expect(diagnostics).toHaveLength(4)
   for (const className of ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('keeps dialog sizes within the viewport bound owned by the surface', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <DialogContent className="h-170 w-285 xl:h-170 sm:w-132" />
+      <DialogContent className="h-dvh w-full max-h-[calc(100dvh-1rem)] max-w-[calc(100vw-1rem)]" />
+      <DialogContent className="h-[85dvh] max-h-[80dvh]" />
+      <DialogContent className="max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)]" />
+      <DialogContent className="max-h-[min(44rem,calc(100dvh-2rem))] min-h-[min(22.5rem,calc(100dvh-2rem))]" />
+      <DialogContent className="max-w-120 max-h-200 min-w-140 min-h-90 max-h-[80%]" />
+      <AlertDialogContent className="w-[min(960px,calc(100vw-2rem))] h-[min(680px,calc(100dvh-2rem))] h-[calc(100dvh-16px)]" />
+      <DialogContent className="max-w-[calc(100vw-32px)] max-h-[min(44rem,32rem)]" />
+    </>
+  `)
+  const rejected = [
+    'max-w-120',
+    'max-h-200',
+    'min-w-140',
+    'min-h-90',
+    'max-h-[80%]',
+    'w-[min(960px,calc(100vw-2rem))]',
+    'h-[min(680px,calc(100dvh-2rem))]',
+    'h-[calc(100dvh-16px)]',
+    'max-w-[calc(100vw-32px)]',
+    'max-h-[min(44rem,32rem)]',
+  ]
+  expect(diagnostics).toHaveLength(rejected.length)
+  for (const className of rejected)
     expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
 })
 
@@ -248,5 +280,107 @@ it('allows disabling dialog transitions without allowing surface or animation re
     'transition-all',
     'data-open:opacity-0',
   ])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('keeps focus styling owned by scroll areas, buttons and visible input surfaces', () => {
+  const diagnostics = lintFixture(`
+    import { ScrollArea, ScrollAreaViewport as Viewport } from '@langgenius/dify-ui/scroll-area'
+    import { Button } from '@langgenius/dify-ui/button'
+    import { IconButton } from '@langgenius/dify-ui/icon-button'
+    import { Input } from '@langgenius/dify-ui/input'
+    import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
+    import { Textarea } from '@langgenius/dify-ui/textarea'
+    import { MenuTrigger } from '@langgenius/dify-ui/menu'
+    const examples = <>
+      <ScrollArea className="rounded-lg ring-2" />
+      <Viewport className="focus-visible:ring-2 dark:focus-visible:ring-red-500! outline-hidden focus-visible:inset-ring-2" />
+      <Button className="focus-visible:ring-0 focus-visible:inset-ring-0" />
+      <MenuTrigger render={<IconButton aria-label="Open" />} className="focus-visible:outline-2" />
+      <Input className="focus:ring-0" />
+      <InputGroup className="has-[>input:focus]:ring-2" />
+      <InputGroupInput className="focus-visible:ring-2" />
+      <Textarea className="focus:outline-none" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(12)
+  for (const component of [
+    'ScrollArea',
+    'ScrollAreaViewport',
+    'Button',
+    'IconButton',
+    'Input',
+    'InputGroup',
+    'InputGroupInput',
+    'Textarea',
+  ])
+    expect(diagnostics.some(({ message }) => message.includes(component))).toBe(true)
+})
+
+it('allows focus placement, state visibility and decoration without adding an indicator', () => {
+  const diagnostics = lintFixture(`
+    import { ScrollArea, ScrollAreaViewport } from '@langgenius/dify-ui/scroll-area'
+    import { Button } from '@langgenius/dify-ui/button'
+    import { IconButton } from '@langgenius/dify-ui/icon-button'
+    import { Input } from '@langgenius/dify-ui/input'
+    import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
+    import { TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+    const examples = <>
+      <ScrollArea className="min-h-0 flex-1 rounded-lg overflow-hidden" />
+      <ScrollAreaViewport className="overscroll-contain" />
+      <Button className="w-full focus-visible:ring-inset inset-ring-1 inset-ring-transparent focus-visible:shadow-sm" />
+      <IconButton aria-label="Open" className="opacity-0 focus-visible:opacity-100 focus-visible:z-1 data-popup-open:bg-state-base-hover" />
+      <Input className="ring-inset" />
+      <InputGroup className="max-w-80" ><InputGroupInput className="px-0" /></InputGroup>
+      <TooltipTrigger className="focus-visible:ring-2" />
+      <button className="focus-visible:ring-2" />
+    </>
+  `)
+  expect(diagnostics).toEqual([])
+})
+
+it('rejects nested focus variants while keeping relative feature imports outside the web contract', () => {
+  const diagnostics = lintFixture(`
+    import { Button as Action } from '@langgenius/dify-ui/button'
+    import { Input } from './feature'
+    const examples = <>
+      <Action className="focus-visible:hover:inset-ring-0 dark:focus-within:inset-ring-red-500! focus:hover:inset-ring-2" />
+      <Input className="focus:ring-0" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(3)
+})
+
+it('enforces the same contracts for relative imports in design system stories', () => {
+  const diagnostics = lintFixture(
+    `
+    import { Button as Action } from '.'
+    import { Input } from '../input'
+    import { ScrollAreaViewport } from '../scroll-area'
+    const examples = <>
+      <Action className="focus-visible:ring-0" />
+      <Input className="focus:outline-hidden" />
+      <ScrollAreaViewport className="focus-visible:ring-2" />
+    </>
+  `,
+    storyStylingContractRules,
+  )
+  expect(diagnostics).toHaveLength(3)
+})
+
+it('allows segmented control layout and reserves the selection surface for the primitive', () => {
+  const diagnostics = lintFixture(`
+    import { SegmentedControl, SegmentedControlItem, SegmentedControlDivider } from '@langgenius/dify-ui/segmented-control'
+    import { RadioItem } from '@langgenius/dify-ui/radio-group'
+    const example = <>
+      <SegmentedControl className="mt-2 w-full bg-transparent">
+        <SegmentedControlItem className="grow w-7 focus-visible:ring-inset data-checked:shadow-none focus-visible:ring-0" />
+        <SegmentedControlDivider className="bg-transparent" />
+      </SegmentedControl>
+      <RadioItem className="data-checked:shadow-none" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of ['bg-transparent', 'data-checked:shadow-none', 'focus-visible:ring-0'])
     expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
 })

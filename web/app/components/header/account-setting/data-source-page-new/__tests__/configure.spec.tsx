@@ -3,56 +3,26 @@ import type {
   DatasourceProviderAuthResponse,
   ProviderConfig,
 } from '@dify/contracts/api/console/auth/types.gen'
-import type {
-  AddApiKeyButtonProps,
-  AddOAuthButtonProps,
-  PluginPayload,
-} from '@/app/components/plugins/plugin-auth/types'
-import { render, screen } from '@testing-library/react'
+import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Configure from '../configure'
 
-// Mock plugin auth components to isolate the unit test for Configure.
-vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  AddApiKeyButton: vi.fn(
-    ({ onUpdate, disabled, buttonText }: AddApiKeyButtonProps & { onUpdate: () => void }) => (
-      <button onClick={onUpdate} disabled={disabled}>
-        {buttonText}
-      </button>
-    ),
-  ),
-  AddOAuthButton: vi.fn(
-    ({ onUpdate, disabled, buttonText, renderTrigger }: AddOAuthButtonProps) => {
-      const [permissionOpen, setPermissionOpen] = React.useState(false)
-      const handleSaveAndAuthorize = () => {
-        onUpdate?.()
-        setPermissionOpen(true)
-      }
-      const trigger = (
-        <button onClick={handleSaveAndAuthorize} disabled={disabled}>
-          {buttonText}
-        </button>
-      )
-
-      return (
-        <>
-          {renderTrigger
-            ? renderTrigger({
-                disabled,
-                isConfigured: false,
-                onClick: handleSaveAndAuthorize,
-                trigger,
-              })
-            : trigger}
-          {permissionOpen && <div role="dialog" aria-label="Who can use" />}
-        </>
-      )
-    },
-  ),
-}))
+const service = vi.hoisted(() => ({ addCredential: vi.fn(), saveOAuthClient: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.byProviderId.post': service.addCredential,
+      'auth.plugin.datasource.byProviderId.customClient.post': service.saveOAuthClient,
+    }),
+  }
+})
 
 describe('Configure Component', () => {
   const mockOnUpdate = vi.fn()
@@ -95,7 +65,8 @@ describe('Configure Component', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    service.addCredential.mockResolvedValue({ result: 'success' })
+    service.saveOAuthClient.mockResolvedValue({ result: 'success' })
   })
 
   describe('Open State Management', () => {
@@ -133,7 +104,9 @@ describe('Configure Component', () => {
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render AddOAuthButton when oauth_schema with client_schema is non-empty', async () => {
@@ -148,7 +121,7 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
-      expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
     })
 
@@ -166,7 +139,7 @@ describe('Configure Component', () => {
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' })).toBeInTheDocument()
       expect(screen.getByText('OR')).toBeInTheDocument()
     })
   })
@@ -189,11 +162,26 @@ describe('Configure Component', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
-      await user.click(screen.getByRole('button', { name: 'plugin.auth.addOAuth' }))
+      await user.click(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' }))
+      const settings = screen.getByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+      expect(mockOnUpdate).not.toHaveBeenCalled()
+      await user.type(within(settings).getByRole('textbox', { name: /API Key/ }), 'client-secret')
+      await user.click(within(settings).getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
 
+      expect(
+        await screen.findByRole('dialog', { name: 'plugin.auth.whoCanUse' }),
+      ).toBeInTheDocument()
+      expect(service.saveOAuthClient).toHaveBeenCalledExactlyOnceWith({
+        params: { provider_id: 'test-provider' },
+        body: { client_params: { api_key: 'client-secret' }, enable_oauth_custom_client: true },
+      })
       expect(mockOnUpdate).toHaveBeenCalledOnce()
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
-      expect(screen.getByRole('dialog', { name: 'Who can use' })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'plugin.auth.oauthClientSettings' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should call onUpdate and close the portal when an update is triggered', async () => {
@@ -212,7 +200,19 @@ describe('Configure Component', () => {
 
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       await user.click(screen.getByRole('button', { name: 'plugin.auth.addApi' }))
+      expect(mockOnUpdate).not.toHaveBeenCalled()
+      await user.type(screen.getByRole('textbox', { name: /API Key/ }), 'datasource-key')
+      await user.type(
+        screen.getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+        'Team source',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
+      expect(service.addCredential).toHaveBeenCalledExactlyOnceWith({
+        params: { provider_id: 'test-provider' },
+        body: { credentials: { api_key: 'datasource-key' }, name: 'Team source' },
+      })
       expect(mockOnUpdate).toHaveBeenCalledTimes(1)
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
     })
@@ -233,7 +233,7 @@ describe('Configure Component', () => {
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' })).toBeDisabled()
     })
 
     it('should handle edge cases for missing, empty, or partial item data', async () => {
@@ -243,7 +243,9 @@ describe('Configure Component', () => {
       )
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+      ).not.toBeInTheDocument()
 
       const itemEmpty: DatasourceProviderAuthResponse = {
         ...mockItemBase,
@@ -254,7 +256,9 @@ describe('Configure Component', () => {
       rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
 
       expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+      ).not.toBeInTheDocument()
 
       const itemPartialOAuth: DatasourceProviderAuthResponse = {
         ...mockItemBase,
@@ -265,7 +269,9 @@ describe('Configure Component', () => {
 
       rerender(<Configure item={itemPartialOAuth} pluginPayload={mockPluginPayload} />)
 
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

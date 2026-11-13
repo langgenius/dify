@@ -46,7 +46,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.model_provider.service import ModelProviderService
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
 def _model(

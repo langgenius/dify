@@ -5,8 +5,8 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createQueryBlockNode, QueryBlockNode } from './node'
 
-export const INSERT_QUERY_BLOCK_COMMAND = createCommand('INSERT_QUERY_BLOCK_COMMAND')
-export const DELETE_QUERY_BLOCK_COMMAND = createCommand('DELETE_QUERY_BLOCK_COMMAND')
+export const INSERT_QUERY_BLOCK_COMMAND = createCommand<void>('INSERT_QUERY_BLOCK_COMMAND')
+export const DELETE_QUERY_BLOCK_COMMAND = createCommand<void>('DELETE_QUERY_BLOCK_COMMAND')
 const QueryBlock = memo(({ onInsert, onDelete }: QueryBlockType) => {
   const [editor] = useLexicalComposerContext()
 

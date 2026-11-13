@@ -37,10 +37,10 @@ export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props
       {hasBack && (
         <button
           type="button"
-          className="relative -left-1 mb-1 flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-1 text-left text-text-accent"
+          className="relative -inset-s-1 mb-1 flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-1 text-start text-text-accent"
           onClick={onBack}
         >
-          <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
+          <span className="i-ri-arrow-left-line size-4 rtl:rotate-180" aria-hidden="true" />
           <span className="system-xs-semibold-uppercase">
             {t(($) => $[`${i18nPrefix}.back`], { ns: 'dataset' })}
           </span>
@@ -99,7 +99,7 @@ export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props
         </div>
       </div>
       <div className="mt-4 flex justify-end">
-        <Button className="mr-2" onClick={onClose}>
+        <Button className="me-2" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button onClick={handleSave} variant="primary">

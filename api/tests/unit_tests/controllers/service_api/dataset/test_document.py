@@ -20,6 +20,8 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from io import BytesIO
+from typing import cast
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
@@ -49,7 +51,7 @@ from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from enums import DeploymentEdition
 from libs.pagination import PaginatedResult, clamp_pagination
-from models.account import Account
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import (
     ApiTokenType,
@@ -64,8 +66,8 @@ from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -184,7 +186,11 @@ def make_serializable_document(**overrides: object) -> Document:
         "word_count": None,
     }
     attrs.update(overrides)
+    created_at = cast(datetime, attrs.pop("created_at"))
+    updated_at = cast(datetime, attrs.pop("updated_at"))
     document = Document(**attrs)
+    document.created_at = created_at
+    document.updated_at = updated_at
     document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
 
@@ -1025,6 +1031,32 @@ class SQLiteControllerTest:
     def _persist_dataset(self, dataset: Dataset) -> None:
         self.session.add(dataset)
         self.session.commit()
+
+
+class TestFileDocumentAccount(SQLiteControllerTest):
+    @pytest.mark.parametrize("creator_is_member", [True, False])
+    def test_creator_attribution_requires_tenant_membership(self, service_api_identity, creator_is_member: bool):
+        creator = make_account(
+            account_id=str(uuid.uuid4()),
+            email=f"dataset-creator-{uuid.uuid4()}@example.com",
+        )
+        self.session.add(creator)
+        if creator_is_member:
+            self.session.add(
+                TenantAccountJoin(
+                    tenant_id=service_api_identity.tenant.id,
+                    account_id=creator.id,
+                    role=TenantAccountRole.NORMAL,
+                )
+            )
+        self.session.commit()
+        dataset = make_dataset(tenant_id=service_api_identity.tenant.id, created_by=creator.id)
+
+        with patch.object(document_module, "current_user", service_api_identity.account):
+            account = document_module._file_document_account(dataset, session=self.session)
+
+        assert account.id == (creator.id if creator_is_member else service_api_identity.account.id)
+        assert account.current_tenant_id == dataset.tenant_id
 
 
 class TestDocumentApiDelete(SQLiteControllerTest):
@@ -1918,6 +1950,9 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-file"},
             200,
         )
+        account = mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["account"]
+        assert isinstance(account, Account)
+        assert account.id == "user-1"
 
     @patch(
         "controllers.service_api.dataset.document.FeatureService.get_knowledge_file_size_limit",
@@ -2264,3 +2299,103 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-1"},
             200,
         )
+        account = mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["account"]
+        assert isinstance(account, Account)
+        assert account.id == "user-1"
+
+
+class TestDocumentTextDefaultDocForm(SQLiteControllerTest):
+    @pytest.mark.parametrize("entry", ["create", "update"])
+    @pytest.mark.parametrize(
+        ("existing_doc_form", "sent_doc_form", "expected"),
+        [
+            ("hierarchical_model", None, "hierarchical_model"),
+            (None, None, "text_model"),
+            ("hierarchical_model", "text_model", "text_model"),
+        ],
+    )
+    def test_omitted_doc_form_defaults_to_dataset_doc_form(
+        self,
+        app: Flask,
+        entry: str,
+        existing_doc_form: str | None,
+        sent_doc_form: str | None,
+        expected: str,
+    ) -> None:
+        dataset = make_dataset()
+        self._persist_dataset(dataset)
+
+        if existing_doc_form is not None:
+            document = make_serializable_document(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                doc_form=existing_doc_form,
+            )
+            self.session.add(document)
+            self.session.commit()
+
+        body = {"name": "a.txt", "text": "hello", "indexing_technique": "economy"}
+        if sent_doc_form is not None:
+            body["doc_form"] = sent_doc_form
+
+        with (
+            patch.object(document_module.FileService, "upload_text", autospec=True, return_value=_upload_file()),
+            patch.object(
+                DocumentService,
+                "save_document_with_dataset_id",
+                autospec=True,
+                return_value=([make_serializable_document()], "batch-1"),
+            ) as save,
+            app.test_request_context("/", method="POST", json=body),
+        ):
+            if entry == "create":
+                document_module._create_document_by_text(self.session, dataset.tenant_id, uuid.UUID(dataset.id))
+            else:
+                document_module._update_document_by_text(
+                    self.session, dataset.tenant_id, uuid.UUID(dataset.id), uuid.uuid4()
+                )
+
+        assert save.call_args.kwargs["knowledge_config"].doc_form == expected
+
+
+class TestDocumentFileDefaultDocForm(SQLiteControllerTest):
+    @pytest.mark.parametrize("entry", ["create", "update"])
+    def test_omitted_doc_form_defaults_to_dataset_doc_form(self, app: Flask, entry: str) -> None:
+        dataset = make_dataset()
+        self._persist_dataset(dataset)
+
+        document = make_serializable_document(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            doc_form="hierarchical_model",
+        )
+        self.session.add(document)
+        self.session.commit()
+        data = {
+            "file": (BytesIO(b"content"), "a.txt", "text/plain"),
+            "data": json.dumps({"process_rule": {"mode": "automatic", "rules": None}}),
+        }
+        with (
+            patch.object(
+                document_module.FeatureService, "get_knowledge_file_size_limit", autospec=True, return_value=15
+            ),
+            patch.object(document_module.FileService, "upload_file", autospec=True, return_value=_upload_file()),
+            patch.object(
+                DocumentService,
+                "save_document_with_dataset_id",
+                autospec=True,
+                return_value=([make_serializable_document()], "batch-1"),
+            ) as save,
+            app.test_request_context("/", method="POST", content_type="multipart/form-data", data=data),
+        ):
+            if entry == "create":
+                api = DocumentAddByFileApi()
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, self.session, tenant_id=dataset.tenant_id, dataset_id=dataset.id
+                )
+            else:
+                document_module._update_document_by_file(
+                    self.session, dataset.tenant_id, uuid.UUID(dataset.id), uuid.uuid4()
+                )
+
+        assert save.call_args.kwargs["knowledge_config"].doc_form == "hierarchical_model"

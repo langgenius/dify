@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 6,
+  "sourceCommit": "f88a8953b4eb37a3c603e680c59791b92a21284d",
+  "sourceTree": "8a751445a672119dd0a09376912b89873adf58da",
+  "sourceProvenanceSha256": "c0824f71af3cef5f1850aa3877b51f7f80d045b3144f6de3416911ad0092756a",
+  "openapiSha256": "38d419a21f358a50d1eda438fba03c9ea3b4fce23d41890bd73b38caaeaa5cf4",
+  "capabilityPolicySha256": "7237036877eefd3ff5a983fc5f8c93d949c64ffd969c82b54ceefd0e6f9170ed",
+  "capabilityV2AuthManifestSha256": "e322a2fa779d1f40b95c54c1021cffecaec77abbd7b34899573dcdf4ff353109",
+  "capabilityV2AuthTestVectorSha256": "ae0de37b1ff05c40f905cf17a7b410d8971acacf64db07d5ee3d6fecfa559ce3",
+  "productOperationManifestSha256": "03c346e3386179b6dfe0466cfdd44065bfb38c38fc9cb1e306a8165e0b0d3757",
+  "productOperationGapManifestSha256": "332c80165bd5cf8e79bc511374dde771a8175510404db603a8067f1a22d36df8"
+}

@@ -53,18 +53,16 @@ class WatercrawlAuth:
             raise DataSourceApiKeyAuthProviderUnavailableError("watercrawl", response.status_code)
 
         if response.status_code in {402, 409}:
-            try:
-                error_message = response.json().get("error", "Unknown error occurred")
-            except json.JSONDecodeError:
+            error_message = _error_field(response.text)
+            if error_message is None:
                 error_message = response.text or "Unknown error occurred"
             raise DataSourceApiKeyAuthCredentialValidationError(
                 f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"
             )
         else:
             if response.text:
-                try:
-                    error_message = json.loads(response.text).get("error", "Unknown error occurred")
-                except json.JSONDecodeError:
+                error_message = _error_field(response.text)
+                if error_message is None:
                     error_message = response.text
                 raise DataSourceApiKeyAuthCredentialValidationError(
                     f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"
@@ -72,3 +70,14 @@ class WatercrawlAuth:
             raise DataSourceApiKeyAuthCredentialValidationError(
                 f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}"
             )
+
+
+def _error_field(body: str) -> str | None:
+    """The `error` field of a JSON object body, or None when the body is not a JSON object."""
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload.get("error", "Unknown error occurred")

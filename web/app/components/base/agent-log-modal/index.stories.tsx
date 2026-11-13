@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useEffect, useRef } from 'react'
 import { fn } from 'storybook/test'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import AgentLogModal from '.'
 
 const MOCK_RESPONSE: AgentLogResponse = {
@@ -96,7 +96,7 @@ const AgentLogModalDemo = ({ width = 960, onCancel }: { width?: number; onCancel
 
   return (
     <>
-      <AppToastHost />
+      <AppToaster />
       <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
           appId="app-1"

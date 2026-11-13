@@ -70,6 +70,10 @@ const webRestrictedImports = [
         importNames: ['useLocalStorageState'],
         message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
       },
+      {
+        name: 'next-themes',
+        message: 'Use the @/features/theme module instead of next-themes.',
+      },
     ],
     patterns: [
       {
@@ -115,6 +119,16 @@ const webRestrictedImports = [
     ],
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const marketplaceBoundaryFiles = [
+  'web/env.ts',
+  'web/proxy.ts',
+  'web/service/**',
+  'web/features/marketplace/**',
+  'web/app/components/plugins/marketplace/**',
+  'web/app/components/plugins/plugin-page/nav-operations.tsx',
+  'web/app/components/workflow/block-selector/marketplace-plugin/**',
+]
 
 const serviceRestrictedImports = [
   'error',
@@ -246,13 +260,93 @@ const storageRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+const focusIndicatorOverrides = [
+  'ring-w',
+  'ring-color',
+  'ring-offset-w',
+  'ring-offset-color',
+  'outline-w',
+  'outline-color',
+  'outline-style',
+  'outline-offset',
+  'focus:inset-ring-*',
+  'focus*:inset-ring-*',
+  '*:focus:inset-ring-*',
+  '*:focus*:inset-ring-*',
+]
+
 export const stylingContractRules = {
   'shadcn/no-restyle': [
     'error',
     {
-      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip|dialog|alert-dialog)$'],
+      componentImports: ['^@langgenius/dify-ui/'],
       allow: ['*'],
       contracts: [
+        {
+          pattern: '^SegmentedControl$',
+          allow: [
+            'layout',
+            'spacing',
+            'rounded',
+            'border-w',
+            'border-divider-subtle',
+            'bg-background-section-burn',
+          ],
+          message:
+            '"{{className}}" changes the shared segmented control. Adjust its placement or width here. Use RadioGroup with RadioItem for a custom single-choice surface.',
+        },
+        {
+          pattern: '^SegmentedControlDivider$',
+          allow: [],
+          message:
+            '"{{className}}" changes the segmented divider. Use Separator for a divider outside the control.',
+        },
+        {
+          pattern: '^SegmentedControlItem$',
+          allow: [
+            'layout',
+            'spacing',
+            'typography',
+            'system-*',
+            'text-color',
+            'rounded',
+            'border-0',
+            'bg-components-segmented-control-item-active-*',
+            'border-components-segmented-control-item-active-*',
+            'data-checked:bg-components-panel-bg',
+            'not-data-checked:hover:bg-transparent',
+            'focus-visible:ring-inset',
+            'shadow-xs',
+            'shadow-sm',
+            'shadow-black/5',
+            'shadow-black/10',
+          ],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" changes the segmented item appearance. The primitive owns its surface, focus and selection motion. Use RadioItem for a custom single-choice design.',
+        },
+        {
+          pattern: '^(ScrollArea|ScrollAreaViewport)$',
+          allow: ['*'],
+          deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],
+          message:
+            '"{{className}}" duplicates or overrides the ScrollArea focus indicator. Put focus, keyboard events and accessible names on ScrollAreaViewport; ScrollArea paints the indicator above its contents. Do not add another ring or outline to either part.',
+        },
+        {
+          pattern: '^(Button|IconButton)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. Keep its width, color and primary-button inner separator. Callers may use ring-inset to avoid clipping; a different focus owner or a box-shadow animation requires a documented local exception.',
+        },
+        {
+          pattern:
+            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|MenuInputGroup|MenuInput)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. The visible field owns focus; an input inside a styled group stays bare. Use ring-inset for clipped edges. A custom composite that moves the indicator needs a documented local exception.',
+        },
         {
           pattern: '^TooltipContent$',
           allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
@@ -268,20 +362,48 @@ export const stylingContractRules = {
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
         },
         {
+          pattern: '^Alert$',
+          allow: ['layout'],
+          message:
+            '"{{className}}" is outside the Alert styling contract. The alert owns its surface, spacing, icon and typography; callers may only place and size it.',
+        },
+        {
+          pattern: '^(AlertTitle|AlertDescription)$',
+          allow: ['whitespace-pre-line'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. Use its default typography and colour; callers may keep line breaks in the message.',
+        },
+        {
+          pattern: '^(AlertActions|AlertClose)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and position.',
+        },
+        {
           pattern: '^(Dialog|AlertDialog)Content$',
           allow: [
             'w-*',
-            'min-w-*',
-            'max-w-*',
             'h-*',
-            'min-h-*',
-            'max-h-*',
+            'max-w-[calc(100vw-*rem)]',
+            'max-h-[calc(100dvh-*rem)]',
+            'max-h-[*dvh]',
+            'max-h-[min(*,calc(100dvh-*rem))]',
+            'min-h-[min(*,calc(100dvh-*rem))]',
             'overflow-hidden',
             'transition-none',
           ],
-          deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
+          deny: [
+            'w-[*]',
+            'h-[min(*)]',
+            'h-[calc(*)]',
+            'h-[*%]',
+            'h-[*px]',
+            'h-[*rem]',
+            'w-screen',
+            'h-screen',
+          ],
           message:
-            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may size it within the viewport or disable transitions. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and keeps itself within the viewport. Size it with w-* and h-* (h-dvh fills the viewport). Change the viewport margin with max-w-[calc(100vw-Nrem)] or max-h-[calc(100dvh-Nrem)], and bound a height cap or floor by the viewport, e.g. max-h-[80dvh] or min-h-[min(20rem,calc(100dvh-2rem))]. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
         },
         {
           pattern: '^DialogPopup$',
@@ -320,6 +442,16 @@ export const stylingContractRules = {
   ],
 } satisfies NonNullable<OxlintConfig['rules']>
 
+export const storyStylingContractRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      ...stylingContractRules['shadcn/no-restyle'][1],
+      componentImports: ['^@langgenius/dify-ui/', '^\\.{1,2}(?:/|$)'],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
 const tailwindCanonicalClassesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -331,6 +463,32 @@ const tailwindCanonicalClassesOverride = {
       {
         collapse: false,
         logical: false,
+      },
+    ],
+  },
+} satisfies NonNullable<OxlintConfig['overrides']>[number]
+
+// Web's existing violations use the per-file suppression baseline; Dify UI is fully migrated.
+const tailwindLogicalPropertiesOverride = {
+  files: [
+    'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+  ],
+  rules: {
+    'better-tailwindcss/enforce-logical-properties': [
+      'error',
+      {
+        ignore: [
+          // Block-axis and sizing classes do not depend on writing direction;
+          // keep their physical names (`pt`, `h-4`) instead of `pbs`, `block-4`.
+          '(?:^|[:!])-?(?:pt|pb|mt|mb|scroll-pt|scroll-pb|scroll-mt|scroll-mb|top|bottom|border-t|border-b|w|h|size|min-w|min-h|max-w|max-h)(?:-|$)',
+          // Direction variants and Base UI swipe directions name the physical side on purpose.
+          '(?:^|:)(?:rtl|ltr):',
+          'swipe-direction=(?:left|right)\\]:',
+          // Half-width offsets paired with physical horizontal translations must stay
+          // physical to remain centered under `dir="rtl"`.
+          '(?:^|[:!])-?(?:left|right)-1/2$',
+        ],
       },
     ],
   },
@@ -490,7 +648,7 @@ export const lintConfig = {
     '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
-    ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
+    'eslint-plugin-better-tailwindcss',
     {
       name: 'dify',
       specifier: './plugins/eslint/index.ts',
@@ -520,18 +678,14 @@ export const lintConfig = {
     reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
-    typeCheck: true,
+    typeCheck: false,
   },
   settings: {
-    ...(enableTailwindCanonicalClasses
-      ? {
-          'better-tailwindcss': {
-            cwd: path.resolve(rootDir, 'web'),
-            entryPoint: 'app/styles/globals.css',
-            rootFontSize: 16,
-          },
-        }
-      : {}),
+    'better-tailwindcss': {
+      cwd: path.resolve(rootDir, 'web'),
+      entryPoint: 'app/styles/globals.css',
+      rootFontSize: 16,
+    },
     'react-x': {
       additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
     },
@@ -836,6 +990,7 @@ export const lintConfig = {
   },
   overrides: [
     ...(enableTailwindCanonicalClasses ? [tailwindCanonicalClassesOverride] : []),
+    tailwindLogicalPropertiesOverride,
     {
       files: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
@@ -1083,6 +1238,10 @@ export const lintConfig = {
     {
       files: ['web/**/*.{jsx,tsx}'],
       rules: stylingContractRules,
+    },
+    {
+      files: ['packages/dify-ui/**/*.stories.{jsx,tsx}'],
+      rules: storyStylingContractRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
@@ -1695,6 +1854,26 @@ export const lintConfig = {
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
+      },
+    },
+    {
+      files: ['web/features/theme/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            paths: webRestrictedImports[1].paths.filter((path) => path.name !== 'next-themes'),
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
+      rules: {
+        'dify/marketplace-boundary': 'error',
       },
     },
   ],

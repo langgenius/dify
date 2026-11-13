@@ -106,6 +106,7 @@ export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
   BlockEnum.LLM,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
   BlockEnum.Code,
   BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest,
@@ -122,6 +123,7 @@ export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.AgentV2,
   BlockEnum.DataSource,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [

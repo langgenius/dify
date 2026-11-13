@@ -209,7 +209,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             ))}
           </div>
         </div>
-        <div className="absolute right-0 bottom-0 left-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
+        <div className="absolute inset-x-0 bottom-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
           {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
               ref={collapsedButtonRef}
@@ -226,10 +226,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                   : t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               </span>
               {!loading && (
-                <span aria-hidden className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0" />
+                <span
+                  aria-hidden
+                  className="ms-1 i-ri-arrow-right-s-line size-4 shrink-0 rtl:rotate-180"
+                />
               )}
               {loading && (
-                <span aria-hidden className="ml-1 i-ri-loader-2-line size-3 animate-spin" />
+                <span aria-hidden className="ms-1 i-ri-loader-2-line size-3 animate-spin" />
               )}
             </button>
           )}
@@ -237,7 +240,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg bg-background-default-subtle px-2">
               <span
                 aria-hidden
-                className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent"
+                className="me-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent"
               />
               <span className="truncate system-xs-medium text-text-secondary">
                 {t(($) => $['modelProvider.configureTip'], { ns: 'modelProvider' })}
@@ -275,7 +278,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           'bg-third-party-model-bg-anthropic',
       )}
     >
-      <div className="flex rounded-t-xl py-2 pr-2 pl-3">
+      <div className="flex rounded-t-xl py-2 ps-3 pe-2">
         <div className="grow px-1 pt-1 pb-0.5">
           <div className="mb-2 flex items-center gap-1">
             <ProviderIcon provider={provider} />
@@ -296,12 +299,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         {showCredential && <CredentialPanel provider={provider} />}
       </div>
       {showCollapsedSection && (
-        <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-2.75 pl-2 system-xs-medium text-text-tertiary">
+        <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 ps-2 pe-2.75 system-xs-medium text-text-tertiary">
           {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
               ref={collapsedButtonRef}
               type="button"
-              className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-6 items-center rounded-lg border-none bg-transparent ps-1 pe-1.5 text-start outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={handleOpenModelList}
             >
               {hasModelList
@@ -310,13 +313,15 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                     num: modelList.length,
                   })
                 : t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
-              {!loading && <div className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
-              {loading && <div className="ml-0.5 i-ri-loader-2-line size-3 animate-spin" />}
+              {!loading && (
+                <div className="i-ri-arrow-right-s-line size-4 rtl:rotate-180" aria-hidden="true" />
+              )}
+              {loading && <div className="ms-0.5 i-ri-loader-2-line size-3 animate-spin" />}
             </button>
           )}
           {!showModelProvider && notConfigured && (
-            <div className="flex h-6 items-center pr-1.5 pl-1">
-              <div className="mr-1 i-ri-information-2-fill size-4 text-text-accent" />
+            <div className="flex h-6 items-center ps-1 pe-1.5">
+              <div className="me-1 i-ri-information-2-fill size-4 text-text-accent" />
               <span className="system-xs-medium text-text-secondary">
                 {t(($) => $['modelProvider.configureTip'], { ns: 'modelProvider' })}
               </span>

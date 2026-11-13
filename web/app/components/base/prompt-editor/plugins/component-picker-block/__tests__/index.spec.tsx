@@ -12,7 +12,6 @@ import type {
 } from '../../../types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -32,9 +31,11 @@ import { GeneratorType } from '@/app/components/app/configuration/config/automat
 import { VarType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { TestLexicalComposer } from '@/test/lexical'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../../agent-output-block/commands'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../../current-block'
+import { CustomTextNode } from '../../custom-text/node'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../../last-run-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../../variable-block'
@@ -174,6 +175,7 @@ const MinimalEditor: React.FC<{
   const initialConfig = React.useMemo(
     () => ({
       namespace: 'component-picker-test',
+      nodes: [CustomTextNode],
       onError: (e: Error) => {
         throw e
       },
@@ -183,7 +185,7 @@ const MinimalEditor: React.FC<{
 
   return (
     <EventEmitterContextProvider>
-      <LexicalComposer initialConfig={initialConfig}>
+      <TestLexicalComposer initialConfig={initialConfig}>
         <RichTextPlugin
           contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_TEST_ID} />}
           placeholder={null}
@@ -203,7 +205,7 @@ const MinimalEditor: React.FC<{
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
         />
-      </LexicalComposer>
+      </TestLexicalComposer>
     </EventEmitterContextProvider>
   )
 }
@@ -274,6 +276,32 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
     })
   })
+
+  it.each(['{[', '[Open manual]({source_url})'])(
+    'keeps the add-variable action usable after entering "%s"',
+    async (text) => {
+      const user = userEvent.setup()
+      const captures: Captures = { editor: null, eventEmitter: null }
+      render(
+        <MinimalEditor
+          triggerString="{"
+          variableBlock={{ show: true, variables: [] }}
+          captures={captures}
+        />,
+      )
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, text, true)
+
+      const addVariable = await screen.findByRole('option', {
+        name: 'common.promptEditor.variable.modal.add',
+      })
+      expect(readEditorText(editor)).toBe(text)
+      await user.click(addVariable)
+
+      await waitFor(() => expect(readEditorText(editor)).toContain('{{}}'))
+    },
+  )
 
   it('renders prompt options in a portal and removes the trigger TextNode when selecting a normal option', async () => {
     const user = userEvent.setup()
@@ -377,7 +405,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(currentLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_CURRENT_BLOCK_COMMAND, GeneratorType.prompt)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_CURRENT_BLOCK_COMMAND, undefined)
 
     // Re-open menu and select error_message (flat).
     await setEditorText(editor, '{', true)
@@ -387,7 +415,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(errorMessageLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
 
     // Re-open menu and select last_run (flat).
     await setEditorText(editor, '{', true)
@@ -397,7 +425,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(lastRunLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
 
     // Re-open menu and press Escape in the VarReferenceVars search input to exercise handleClose().
     await setEditorText(editor, '{', true)

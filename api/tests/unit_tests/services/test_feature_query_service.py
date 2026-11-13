@@ -43,7 +43,9 @@ def test_workspace_queries_use_workspace_from_request_context() -> None:
 
 def test_deployment_queries_delegate_without_request_context() -> None:
     gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
-    system_features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+    system_features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.COMMUNITY
+    )
     license_model = LicenseModel()
     gateway.get_public_system_features.return_value = system_features
     gateway.get_license.return_value = license_model
@@ -83,6 +85,7 @@ def test_workspace_id_queries_delegate_without_request_context() -> None:
 def test_enterprise_license_admission(status: LicenseStatus, expected: bool) -> None:
     gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
     gateway.get_public_system_features.return_value = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False,
         deployment_edition=DeploymentEdition.ENTERPRISE,
         license={"status": status},
     )

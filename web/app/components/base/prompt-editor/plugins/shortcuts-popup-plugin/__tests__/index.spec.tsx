@@ -1,6 +1,5 @@
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from '../index'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -17,6 +16,7 @@ import {
 } from 'lexical'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
+import { TestLexicalComposer } from '@/test/lexical'
 import ShortcutsPopupPlugin, { SHORTCUTS_EMPTY_CONTENT } from '../index'
 import '@testing-library/jest-dom'
 
@@ -107,7 +107,7 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null)
 
   return (
-    <LexicalComposer initialConfig={initialConfig}>
+    <TestLexicalComposer initialConfig={initialConfig}>
       <InsertTextPlugin />
       <div
         data-testid={CONTAINER_ID}
@@ -130,7 +130,7 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
           {children}
         </ShortcutsPopupPlugin>
       </div>
-    </LexicalComposer>
+    </TestLexicalComposer>
   )
 }
 

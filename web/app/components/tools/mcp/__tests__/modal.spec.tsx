@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -43,7 +43,7 @@ const setup = (
     wrapper: ({ children }) => (
       <ConsoleWrapper>
         {children}
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ConsoleWrapper>
     ),
   })

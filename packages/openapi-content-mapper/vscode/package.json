@@ -1,0 +1,35 @@
+{
+  "name": "openapi-backend-navigation",
+  "displayName": "OpenAPI Backend Navigation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Navigate typed OpenAPI client operations to their backend implementation.",
+  "categories": [
+    "Programming Languages"
+  ],
+  "license": "SEE LICENSE IN ../LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/langgenius/dify.git"
+  },
+  "publisher": "dify-local",
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "preview": true,
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  }
+}

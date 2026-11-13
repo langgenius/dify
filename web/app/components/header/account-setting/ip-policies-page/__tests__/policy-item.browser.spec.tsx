@@ -2,11 +2,11 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { PolicyItem } from '../policy-item'
 
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-
 async function renderPolicy(canMutate = true) {
+  onTestFinished(guardUnexpectedFetch())
   const group = createNetworkAccessGroupFixture()
   const onView = vi.fn()
   const onEdit = vi.fn()
@@ -15,7 +15,9 @@ async function renderPolicy(canMutate = true) {
     <ConsoleProvider>
       <button type="button">Before policy</button>
       <section aria-label="IP policy row" style={{ width: 800 }}>
-        <PolicyItem group={group} canMutate={canMutate} onView={onView} onEdit={onEdit} />
+        <div role="table" aria-label="IP policies">
+          <PolicyItem group={group} canMutate={canMutate} onView={onView} onEdit={onEdit} />
+        </div>
       </section>
     </ConsoleProvider>,
   )

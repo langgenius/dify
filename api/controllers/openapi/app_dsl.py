@@ -11,7 +11,7 @@ from constants.oauth_bearer import Scope
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, ErrorDetail, VersionNotFound
 from controllers.openapi._models import (
     AppDslExportQuery,
@@ -114,6 +114,7 @@ class AppDslImportApi(Resource):
         context="workspace",
         op="import.console_app.dsl",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Import an app from DSL text or URL",
         examples=(
             Example(
@@ -175,6 +176,7 @@ class AppDslCheckApi(Resource):
         context="workspace",
         op="check.console_app.dsl",
         kind=Kind.OBJECT,
+        effect=Effect.READ,
         summary="Check a DSL without importing it: every problem with its node and field",
         examples=(Example(title="Check a DSL (pipe the YAML)", input={"yaml_content": "<yaml text of the app DSL>"}),),
         requirements=_DSL_WRITE_GUARDS,
@@ -212,6 +214,7 @@ class AppDslImportConfirmApi(Resource):
         context="workspace",
         op="confirm.console_app.dsl_import",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Confirm a pending DSL import",
         examples=(Example(title="Confirm an import that is pending confirmation", input={"import_id": "<import_id>"}),),
         requirements=_DSL_WRITE_GUARDS,

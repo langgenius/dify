@@ -4,12 +4,12 @@ import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl } from './types'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSearchParams } from '@/next/navigation'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
 import { useTextGenerationBatch } from './hooks/use-text-generation-batch'
@@ -21,9 +21,8 @@ type IMainProps = {
   isWorkflow?: boolean
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
-  const { t } = useTranslation(['share', 'appDebug', 'common'])
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
+  const isBelowMd = useMediaQuery('(width < 48rem)', {})
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
   const [currentTab, setCurrentTab] = useState<string>(
@@ -123,7 +122,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     <div
       className={cn(
         'bg-background-default-burn',
-        isPC ? 'flex' : 'flex-col',
+        isBelowMd ? 'flex-col' : 'flex',
         isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
       )}
     >
@@ -135,7 +134,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         inputs={inputs}
         inputsRef={inputsRef}
         isInstalledApp={isInstalledApp}
-        isPC={isPC}
+        isBelowMd={isBelowMd}
         isWorkflow={isWorkflow}
         onBatchSend={handleRunBatch}
         onInputsChange={updateInputs}
@@ -168,7 +167,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         handleSaveMessage={handleSaveMessage}
         inputs={inputs}
         isCallBatchAPI={isCallBatchAPI}
-        isPC={isPC}
+        isBelowMd={isBelowMd}
         isShowResultPanel={isShowResultPanel}
         isWorkflow={isWorkflow}
         moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
