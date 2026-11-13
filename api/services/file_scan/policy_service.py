@@ -1,9 +1,10 @@
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
 from models.dataset import Dataset
 from models.file_scan import FileScanFallbackAction, FileScanPolicy, FileScanProvider
+from repositories.file_scan_policy_repository import delete_file_scan_policy
 from services.file_scan.entities import SCOPE_DATASET, ScanPolicy, ScanScope
 from services.file_scan.errors import FileScanValidationError
 
@@ -56,12 +57,11 @@ class FileScanPolicyService:
     def delete_scope(self, *, tenant_id: str, scope: ScanScope) -> None:
         """Forget the policy of a deleted resource."""
         with self._session_maker() as session:
-            session.execute(
-                delete(FileScanPolicy).where(
-                    FileScanPolicy.tenant_id == tenant_id,
-                    FileScanPolicy.scope_type == scope.type,
-                    FileScanPolicy.scope_id == scope.id,
-                )
+            delete_file_scan_policy(
+                session,
+                tenant_id=tenant_id,
+                scope_type=scope.type,
+                scope_id=scope.id,
             )
             session.commit()
 
