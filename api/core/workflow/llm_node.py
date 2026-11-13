@@ -59,6 +59,12 @@ class DifyParameterExtractorNode(ParameterExtractorNode):
 
     _moderation_error_type: str = ""
 
+    @classmethod
+    @override
+    def version(cls) -> str:
+        """Return the explicit registry version required for every Dify node implementation."""
+        return "1"
+
     @override
     def _run(self) -> NodeRunResult:
         """Run normal extraction, preserving a caught moderation type without changing its verdict or outputs."""
