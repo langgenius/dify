@@ -11,6 +11,8 @@ can persist the run record. Request-shaped execution failures are left to
 ``AgentRunRunner`` so bad compositions, prompts,
 structured-output schemas, or session snapshots become asynchronous
 ``run_failed`` outcomes instead of synchronous HTTP rejections.
+Keyed admission delegates atomic claim/replay to storage across processes;
+only newly created runs start a local task. Replays return the retained status.
 """
 
 import asyncio
@@ -53,7 +55,13 @@ class RunStore(RunEventSink, Protocol):
         ...
 
     async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
-        """Atomically persist a run unless the key already claims one."""
+        """Atomically return ``(record, created)`` across clients sharing storage.
+
+        A retained matching request replays its current record without extending
+        retention. A different fingerprint raises ``IdempotencyConflictError``
+        from the storage adapter. Persist only digests and run metadata; active
+        writes refresh absent or same-run claims without overwriting a new owner.
+        """
         ...
 
     async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
@@ -156,14 +164,15 @@ class RunScheduler:
         self._lifecycle_lock = asyncio.Lock()
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist and schedule one run in the current process.
+        """Admit a new run or replay a retained run with its current status.
 
-        The returned record is already ``running``. The background task is removed
-        from ``active_tasks`` when it finishes, regardless of success or failure.
+        New records are ``running`` and scheduled locally. Their background task
+        is removed from ``active_tasks`` on completion, regardless of outcome.
         Request-shaped runtime failures are intentionally deferred to the runner so
         callers can observe them through the normal event/status stream. A request
         with an idempotency key reuses the original record without scheduling a
-        second task.
+        second task or refreshing retention; a normalized payload mismatch raises
+        the store's ``IdempotencyConflictError``.
         """
         async with self._lifecycle_lock:
             if self.stopping:

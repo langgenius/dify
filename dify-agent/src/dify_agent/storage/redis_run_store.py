@@ -1,13 +1,14 @@
-"""Redis-backed run records, event streams, and private cancellation intents.
+"""Redis-backed run admission, records, event streams, and cancellation intents.
 
-The store writes status-only run records as JSON strings and events as Redis
-streams. HTTP event cursors are Redis stream ids; ``0-0`` means replay from the
-beginning for polling and SSE. Records, event streams, and intents share one retention window
-that is refreshed when status or event data is written. Execution is scheduled
+The store writes run metadata as JSON strings and events as Redis streams.
+HTTP event cursors are Redis stream ids; ``0-0`` means replay from the beginning
+for polling and SSE. Records, event streams, and intents share one retention
+window that is refreshed when status or event data is written. Execution is scheduled
 in-process by ``dify_agent.runtime.run_scheduler``; Redis is not a job queue, and
 create-run payloads are never persisted because layer config may include
-sensitive runtime configuration. Idempotency claims persist only a hashed key,
-a request fingerprint, and the run id.
+sensitive runtime configuration. Admission stores only key/request digests and
+run ids. Active writes refresh an unowned or same-run claim; passive replays
+never extend retention. Multi-key Lua coordination requires non-Cluster Redis.
 """
 
 from collections.abc import AsyncIterator, Awaitable
@@ -42,7 +43,6 @@ from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFA
 from dify_agent.storage.redis_keys import (
     run_cancel_intent_key,
     run_events_key,
-    run_idempotency_index_key,
     run_idempotency_key,
     run_record_key,
 )
@@ -50,26 +50,39 @@ from dify_agent.storage.redis_keys import (
 _TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 
 
+_REFRESH_IDEMPOTENCY_CLAIM = """
+-- Legacy/unkeyed records omit the digest or decode it as cjson.null.
+if type(record.idempotency_key_digest) == "string" then
+    local prefix = string.sub(KEYS[1], 1, #KEYS[1] - #(":runs:" .. record.run_id .. ":record"))
+    local claim_key = prefix .. ":idempotency:" .. record.idempotency_key_digest
+    local owner = redis.call("GET", claim_key)
+    -- An expired claim may already belong to a newer run; never overwrite it.
+    if not owner or owner == record.run_id then
+        redis.call("SET", claim_key, record.run_id, "EX", ttl)
+    end
+end
+"""
+
+
 _CREATE_RUN_IDEMPOTENT_SCRIPT = """
-local claim = redis.call("GET", KEYS[1])
-if claim then
-    local existing = cjson.decode(claim)
-    local existing_record_key = ARGV[5] .. ":runs:" .. existing.run_id .. ":record"
+-- KEYS: claim, candidate record. ARGV: run id, fingerprint, record JSON, TTL, prefix.
+-- Return {1, ""} on creation, {0, record JSON} on replay, {-1, ""} on conflict.
+local existing_run_id = redis.call("GET", KEYS[1])
+if existing_run_id then
+    local existing_record_key = ARGV[5] .. ":runs:" .. existing_run_id .. ":record"
     local existing_record = redis.call("GET", existing_record_key)
     if existing_record then
-        if existing.fingerprint ~= ARGV[2] then
-            return {-1, existing.run_id, ""}
+        if cjson.decode(existing_record).idempotency_fingerprint ~= ARGV[2] then
+            return {-1, ""}
         end
-        return {0, existing.run_id, existing_record}
+        -- Reading a retained run does not extend its record or claim TTL.
+        return {0, existing_record}
     end
 end
 
-local value = cjson.encode({run_id = ARGV[1], fingerprint = ARGV[2]})
-local index_value = cjson.encode({claim_key = KEYS[1], claim_value = value})
-redis.call("SET", KEYS[1], value, "EX", ARGV[4])
+redis.call("SET", KEYS[1], ARGV[1], "EX", ARGV[4])
 redis.call("SET", KEYS[2], ARGV[3], "EX", ARGV[4])
-redis.call("SET", KEYS[3], index_value, "EX", ARGV[4])
-return {1, ARGV[1], ARGV[3]}
+return {1, ""}
 """
 
 
@@ -81,7 +94,11 @@ class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
 
 
-_FINALIZE_RUN_SCRIPT = """
+_FINALIZE_RUN_SCRIPT = (
+    """
+-- KEYS: record, events, cancel intent. ARGV: status, updated time, error flag/text,
+-- error-type flag/text, event JSON, TTL, max stream length.
+-- Return {code, status, event id}: -1 missing, -2 cancellation won, 0 sealed, 1 applied.
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
     return {-1, "", ""}
@@ -114,17 +131,18 @@ local updated_record_json = cjson.encode(record)
 local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", ARGV[7])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
-local index_value = redis.call("GET", KEYS[4])
-if index_value then
-    local index = cjson.decode(index_value)
-    redis.call("SET", index.claim_key, index.claim_value, "EX", ttl)
-    redis.call("EXPIRE", KEYS[4], ttl)
-end
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return {1, ARGV[1], event_id}
 """
+)
 
 
-_APPEND_EVENT_SCRIPT = """
+_APPEND_EVENT_SCRIPT = (
+    """
+-- KEYS: record, events. ARGV: event JSON, max stream length, TTL.
+-- Return {-1, ""} if missing, {0, status} if sealed, {1, "running", event id} if appended.
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
     return {-1, ""}
@@ -139,17 +157,18 @@ local ttl = tonumber(ARGV[3])
 local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[2], "*", "payload", ARGV[1])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("EXPIRE", KEYS[1], ttl)
-local index_value = redis.call("GET", KEYS[3])
-if index_value then
-    local index = cjson.decode(index_value)
-    redis.call("SET", index.claim_key, index.claim_value, "EX", ttl)
-    redis.call("EXPIRE", KEYS[3], ttl)
-end
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return {1, "running", event_id}
 """
+)
 
 
-_REQUEST_CANCELLATION_SCRIPT = """
+_REQUEST_CANCELLATION_SCRIPT = (
+    """
+-- KEYS: record, cancel intent, events. ARGV: intent JSON, TTL.
+-- Return {code, status}: -1 missing, 0 success/failure won, 1 accepted/already cancelled.
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
     return {-1, ""}
@@ -171,17 +190,19 @@ redis.call("XADD", KEYS[2], "MAXLEN", "1", "*", "payload", ARGV[1])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("EXPIRE", KEYS[1], ttl)
 redis.call("EXPIRE", KEYS[3], ttl)
-local index_value = redis.call("GET", KEYS[4])
-if index_value then
-    local index = cjson.decode(index_value)
-    redis.call("SET", index.claim_key, index.claim_value, "EX", ttl)
-    redis.call("EXPIRE", KEYS[4], ttl)
-end
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return {1, "running"}
 """
+)
 
 
-_FINALIZE_CANCELLATION_SCRIPT = """
+_FINALIZE_CANCELLATION_SCRIPT = (
+    """
+-- KEYS: record, cancel intent, events. ARGV: updated time, error flag/text,
+-- event JSON, TTL, max stream length.
+-- Return {code, status, event id}: -1 missing, -2 no intent, 0 sealed, 1 applied.
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
     return {-1, "", ""}
@@ -209,16 +230,15 @@ record.error_type = cjson.null
 
 local ttl = tonumber(ARGV[5])
 local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
-redis.call("DEL", KEYS[2])\nredis.call("EXPIRE", KEYS[3], ttl)
+redis.call("DEL", KEYS[2])
+redis.call("EXPIRE", KEYS[3], ttl)
 redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
-local index_value = redis.call("GET", KEYS[4])
-if index_value then
-    local index = cjson.decode(index_value)
-    redis.call("SET", index.claim_key, index.claim_value, "EX", ttl)
-    redis.call("EXPIRE", KEYS[4], ttl)
-end
+"""
+    + _REFRESH_IDEMPOTENCY_CLAIM
+    + """
 return {1, "cancelled", event_id}
 """
+)
 
 
 class RedisRunStore(RunEventSink):
@@ -231,7 +251,9 @@ class RedisRunStore(RunEventSink):
     trimming. The transaction also ensures a newly created stream is not left
     without expiration if the client is interrupted between commands.
     Event writes refresh the record TTL so long-running runs that keep producing
-    events do not lose their status record mid-run.
+    events do not lose their status record mid-run. Active writes also refresh
+    the admission claim when it is absent or still owned by that run. A newer
+    owner is preserved, and passive admission replays do not refresh any TTL.
     """
 
     redis: Redis
@@ -271,19 +293,26 @@ class RedisRunStore(RunEventSink):
         """Atomically claim a key and persist its run, returning ``(record, created)``.
 
         The Lua script serializes admission across Redis clients, so concurrent
-        requests cannot both schedule work. Only hashes and a run id are stored;
-        the request may contain sensitive model configuration.
+        requests cannot both schedule work. A live matching record is returned
+        with its current status without refreshing TTLs; a fingerprint mismatch
+        raises ``IdempotencyConflictError``. Missing claims or expired records
+        allow a new run. Only digests and a run id are stored for admission.
         """
-        record = RunRecord(run_id=new_run_id(), status="running")
-        claim_key = run_idempotency_key(self.prefix, hashlib.sha256(idempotency_key.encode()).hexdigest())
+        key_digest = hashlib.sha256(idempotency_key.encode()).hexdigest()
+        record = RunRecord(
+            run_id=new_run_id(),
+            status="running",
+            idempotency_key_digest=key_digest,
+            idempotency_fingerprint=request_fingerprint,
+        )
+        claim_key = run_idempotency_key(self.prefix, key_digest)
         raw_result = await cast(
             Awaitable[object],
             self.redis.eval(
                 _CREATE_RUN_IDEMPOTENT_SCRIPT,
-                3,
+                2,
                 claim_key,
                 run_record_key(self.prefix, record.run_id),
-                run_idempotency_index_key(self.prefix, record.run_id),
                 record.run_id,
                 request_fingerprint,
                 record.model_dump_json(),
@@ -295,9 +324,9 @@ class RedisRunStore(RunEventSink):
         status = int(cast(int | bytes | str, result[0]))
         if status == -1:
             raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
-        record_json = _decode_redis_text(result[2])
-        persisted_record = RunRecord.model_validate_json(record_json)
-        return persisted_record, status == 1
+        if status == 1:
+            return record, True
+        return RunRecord.model_validate_json(_decode_redis_text(result[1])), False
 
     async def get_run(self, run_id: str) -> RunRecord:
         """Return one run record or raise ``RunNotFoundError``."""
@@ -322,10 +351,9 @@ class RedisRunStore(RunEventSink):
             Awaitable[object],
             self.redis.eval(
                 _APPEND_EVENT_SCRIPT,
-                3,
+                2,
                 run_record_key(self.prefix, event.run_id),
                 run_events_key(self.prefix, event.run_id),
-                run_idempotency_index_key(self.prefix, event.run_id),
                 payload,
                 str(self.run_event_stream_max_length),
                 str(self.run_retention_seconds),
@@ -348,11 +376,10 @@ class RedisRunStore(RunEventSink):
             Awaitable[object],
             self.redis.eval(
                 _FINALIZE_RUN_SCRIPT,
-                4,
+                3,
                 run_record_key(self.prefix, event.run_id),
                 run_events_key(self.prefix, event.run_id),
                 run_cancel_intent_key(self.prefix, event.run_id),
-                run_idempotency_index_key(self.prefix, event.run_id),
                 status,
                 event.created_at.isoformat(),
                 "1" if error is not None else "0",
@@ -389,11 +416,10 @@ class RedisRunStore(RunEventSink):
             Awaitable[object],
             self.redis.eval(
                 _REQUEST_CANCELLATION_SCRIPT,
-                4,
+                3,
                 run_record_key(self.prefix, run_id),
                 run_cancel_intent_key(self.prefix, run_id),
                 run_events_key(self.prefix, run_id),
-                run_idempotency_index_key(self.prefix, run_id),
                 intent.model_dump_json(),
                 str(self.run_retention_seconds),
             ),
@@ -444,11 +470,10 @@ class RedisRunStore(RunEventSink):
             Awaitable[object],
             self.redis.eval(
                 _FINALIZE_CANCELLATION_SCRIPT,
-                4,
+                3,
                 run_record_key(self.prefix, run_id),
                 run_cancel_intent_key(self.prefix, run_id),
                 run_events_key(self.prefix, run_id),
-                run_idempotency_index_key(self.prefix, run_id),
                 event.created_at.isoformat(),
                 "1" if error is not None else "0",
                 error or "",

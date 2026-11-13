@@ -1,4 +1,4 @@
-"""Real-Redis contracts for terminal finalization and cancellation observation."""
+"""Real-Redis contracts for idempotent admission, retention, and terminal coordination."""
 
 import asyncio
 from collections.abc import Iterator
@@ -77,6 +77,20 @@ def test_idempotent_run_admission_is_atomic_across_redis_clients(redis_url: str)
                     idempotency_key="same-request",
                     request_fingerprint="fingerprint-b",
                 )
+            claim_key = run_idempotency_key(prefix, hashlib.sha256(b"same-request").hexdigest())
+            record_key = run_record_key(prefix, record.run_id)
+            assert await first_client.get(claim_key) == record.run_id.encode()
+            for key in (claim_key, record_key):
+                assert await first_client.expire(key, 30)
+            previous_ttls = [await first_client.pttl(key) for key in (claim_key, record_key)]
+
+            replay, created = await stores[1].create_run_idempotent(
+                idempotency_key="same-request", request_fingerprint="fingerprint-a"
+            )
+
+            assert (replay, created) == (record, False)
+            for key, previous_ttl in zip((claim_key, record_key), previous_ttls, strict=True):
+                assert 0 < await first_client.pttl(key) <= previous_ttl
         finally:
             await first_client.aclose()
             await second_client.aclose()
@@ -85,7 +99,10 @@ def test_idempotent_run_admission_is_atomic_across_redis_clients(redis_url: str)
 
 
 @pytest.mark.parametrize("refresh_path", ["event", "cancel_intent", "finalize", "finalize_cancel"])
-def test_active_run_refresh_restores_expired_idempotency_claim(redis_url: str, refresh_path: str) -> None:
+@pytest.mark.parametrize("claim_state", ["decaying", "expired", "reclaimed"])
+def test_active_run_refresh_preserves_idempotency_claim_ownership(
+    redis_url: str, refresh_path: str, claim_state: str
+) -> None:
     async def scenario() -> None:
         client = Redis.from_url(redis_url)
         prefix = f"idempotency-retention-{uuid4().hex}"
@@ -100,10 +117,19 @@ def test_active_run_refresh_restores_expired_idempotency_claim(redis_url: str, r
 
             if refresh_path == "finalize_cancel":
                 await store.request_cancellation(original.run_id, CancelRunRequest(reason="test"))
-            # Model the idempotency claim expiring while its active run and
-            # per-run metadata remain live due to a refreshed run-retention TTL.
             claim_key = run_idempotency_key(prefix, hashlib.sha256(key.encode()).hexdigest())
-            await client.delete(claim_key)
+            replacement = None
+            if claim_state == "decaying":
+                assert await client.expire(claim_key, 1)
+            else:
+                # Expire the claim while the original record remains live.
+                assert await client.expire(claim_key, 0)
+                if claim_state == "reclaimed":
+                    replacement, created = await store.create_run_idempotent(
+                        idempotency_key=key, request_fingerprint="fingerprint-b"
+                    )
+                    assert created
+                    assert await client.expire(claim_key, 30)
 
             if refresh_path == "event":
                 _ = await store.append_event(RunStartedEvent(run_id=original.run_id))
@@ -121,13 +147,18 @@ def test_active_run_refresh_restores_expired_idempotency_claim(redis_url: str, r
                 assert intent is not None
                 await store.finalize_cancellation(original.run_id, intent)
 
-            retried, created = await store.create_run_idempotent(
-                idempotency_key=key,
-                request_fingerprint="fingerprint-a",
-            )
+            if replacement is not None:
+                assert await client.get(claim_key) == replacement.run_id.encode()
+                assert 0 < await client.ttl(claim_key) <= 30
+                expected, fingerprint = replacement, "fingerprint-b"
+            else:
+                assert await client.get(claim_key) == original.run_id.encode()
+                assert (1 if claim_state == "decaying" else 0) < await client.ttl(claim_key) <= 60
+                expected, fingerprint = await store.get_run(original.run_id), "fingerprint-a"
+            retried, created = await store.create_run_idempotent(idempotency_key=key, request_fingerprint=fingerprint)
 
             assert created is False
-            assert retried.run_id == original.run_id
+            assert retried == expected
         finally:
             await client.aclose()
 

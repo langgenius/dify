@@ -1,6 +1,8 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, RunFailureType
+from dify_agent.protocol.schemas import CreateRunRequest, RunStatus
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
@@ -31,6 +33,8 @@ def test_get_run_status_returns_failure_type() -> None:
                 status="failed",
                 error="run limit reached",
                 error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                idempotency_key_digest="key-digest",
+                idempotency_fingerprint="request-fingerprint",
             )
 
     app = FastAPI()
@@ -42,6 +46,8 @@ def test_get_run_status_returns_failure_type() -> None:
     assert response.status_code == 200
     assert response.json()["error"] == "run limit reached"
     assert response.json()["error_type"] == "agent_run_limit_exceeded"
+    assert "idempotency_key_digest" not in response.json()
+    assert "idempotency_fingerprint" not in response.json()
 
 
 def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:
@@ -117,6 +123,67 @@ def test_create_run_maps_idempotency_conflict_to_409() -> None:
 
     assert response.status_code == 409
     assert "different create-run request" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("key", ["", "   ", "\t\n"])
+def test_create_run_rejects_blank_idempotency_key_before_scheduling(key: str) -> None:
+    from fastapi import FastAPI
+
+    class UncalledScheduler(FakeScheduler):
+        async def create_run(self, request: object) -> object:
+            pytest.fail("blank idempotency keys must fail validation before scheduling")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: UncalledScheduler())  # pyright: ignore[reportArgumentType]
+    )
+
+    response = TestClient(app).post("/runs", json={"composition": {"layers": []}, "idempotency_key": key})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "idempotency_key"]
+
+
+@pytest.mark.parametrize("key", [None, "retry-1", "  retry-1\t\n"])
+def test_create_run_preserves_nonblank_idempotency_keys(key: str | None) -> None:
+    from fastapi import FastAPI
+
+    received: list[CreateRunRequest] = []
+
+    class CapturingScheduler(FakeScheduler):
+        async def create_run(self, request: CreateRunRequest) -> RunRecord:
+            received.append(request)
+            return RunRecord(run_id="run-1", status="running")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: CapturingScheduler())  # pyright: ignore[reportArgumentType]
+    )
+
+    response = TestClient(app).post("/runs", json={"composition": {"layers": []}, "idempotency_key": key})
+
+    assert response.status_code == 202
+    assert len(received) == 1
+    assert received[0].idempotency_key == key
+
+
+@pytest.mark.parametrize("status", ["succeeded", "failed", "cancelled"])
+def test_create_run_returns_current_terminal_status_for_idempotent_replay(status: RunStatus) -> None:
+    from fastapi import FastAPI
+
+    class ReplayScheduler(FakeScheduler):
+        async def create_run(self, request: object) -> RunRecord:
+            return RunRecord(run_id="original-run", status=status)
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: ReplayScheduler())  # pyright: ignore[reportArgumentType]
+    )
+
+    response = TestClient(app).post("/runs", json={"composition": {"layers": []}, "idempotency_key": "retry-1"})
+
+    assert response.status_code == 202
+    assert response.json() == {"run_id": "original-run", "status": status}
 
 
 def test_cancel_run_endpoint_returns_scheduler_result() -> None:
