@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
@@ -53,6 +54,19 @@ class _RecordingEndUserCommands:
     def get_or_create_end_user(self, tenant_id: str, app_id: str, user_id: str | None = None) -> EndUser:
         self.calls.append((tenant_id, app_id, user_id))
         return self._result
+
+
+class _SessionStateRecordingEndUserCommands(_RecordingEndUserCommands):
+    """Record whether the request-scoped session is inside a transaction when provisioning runs."""
+
+    def __init__(self, result: EndUser, request_session: Session) -> None:
+        super().__init__(result)
+        self._request_session = request_session
+        self.in_transaction_during_calls: list[bool] = []
+
+    def get_or_create_end_user(self, tenant_id: str, app_id: str, user_id: str | None = None) -> EndUser:
+        self.in_transaction_during_calls.append(self._request_session.in_transaction())
+        return super().get_or_create_end_user(tenant_id, app_id, user_id)
 
 
 @dataclass(eq=False, repr=False)
@@ -354,6 +368,93 @@ class TestValidateAppToken:
         assert commands.calls == [(tenant.id, app_model.id, expected_user_id)]
         assert login_manager.users == [end_user]
         assert signal.calls == [(app, end_user)]
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_fetch_user_arg_releases_request_session_before_provisioning_end_user(
+        self,
+        mock_validate_token,
+        app: Flask,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Admission must not hold a pooled connection while end-user provisioning opens its own session."""
+        tenant = Tenant(name="Workspace")
+        app_model = _app_model(tenant_id=tenant.id)
+        sqlite_session.add_all([tenant, app_model])
+        sqlite_session.commit()
+        tenant_id, app_id = tenant.id, app_model.id
+        # Admission must read the app and workspace from the database, as it does on a fresh request.
+        sqlite_session.expunge_all()
+        mock_validate_token.return_value = _api_token(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            token_type=ApiTokenType.APP,
+        )
+        end_user = EndUser(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=EndUserType.SERVICE_API,
+            session_id="query-user",
+        )
+        commands = _SessionStateRecordingEndUserCommands(end_user, sqlite_session)
+        app.login_manager = _RecordingLoginManager()  # type: ignore[attr-defined]
+        monkeypatch.setattr(wraps_module, "application_services", lambda: _ApplicationServicesStub(commands))
+        monkeypatch.setattr(wraps_module, "user_logged_in", _RecordingSignal())
+        expire_on_commit = sqlite_session.expire_on_commit
+
+        @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+        def protected_view(*, app_model: App, end_user: EndUser) -> App:
+            return app_model
+
+        with (
+            app.test_request_context("/?user=query-user", method="GET"),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            injected_app = protected_view()
+
+        assert commands.calls == [(tenant_id, app_id, "query-user")]
+        assert commands.in_transaction_during_calls == [False]
+        assert injected_app in sqlite_session
+        assert sa_inspect(injected_app).expired_attributes == set()
+        # Reading the admitted app must not send a refresh query that takes the connection back.
+        assert injected_app.id == app_id
+        assert not sqlite_session.in_transaction()
+        assert sqlite_session.expire_on_commit is expire_on_commit
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.current_app")
+    def test_account_admission_releases_request_session_before_handler(
+        self,
+        mock_current_app,
+        mock_validate_token,
+        mock_user_logged_in,
+        app: Flask,
+        sqlite_session: Session,
+    ) -> None:
+        """Account-backed handlers start without the request-scoped session holding a connection."""
+        _configure_current_app_mock(mock_current_app)
+        tenant, account, _ = _persist_workspace(sqlite_session)
+        app_model = _app_model(tenant_id=tenant.id)
+        api_token = _api_token(tenant_id=tenant.id, app_id=app_model.id, token_type=ApiTokenType.APP)
+        sqlite_session.add_all([app_model, api_token])
+        sqlite_session.commit()
+        mock_validate_token.return_value = api_token
+
+        @validate_app_token
+        def protected_view(app_model: App) -> tuple[bool, str, bool]:
+            in_transaction_on_entry = sqlite_session.in_transaction()
+            return in_transaction_on_entry, app_model.id, sqlite_session.in_transaction()
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            result = protected_view()
+
+        assert result == (False, app_model.id, False)
+        assert account.current_tenant_id == tenant.id
 
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
