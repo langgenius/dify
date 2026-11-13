@@ -30,6 +30,7 @@ export const contractLoaders = {
     import('./email-register/orpc.gen.ts').then(({ emailRegister }) => ({ emailRegister })),
   explore: () => import('./explore/orpc.gen.ts').then(({ explore }) => ({ explore })),
   features: () => import('./features/orpc.gen.ts').then(({ features }) => ({ features })),
+  fileScan: () => import('./file-scan/orpc.gen.ts').then(({ fileScan }) => ({ fileScan })),
   files: () => import('./files/orpc.gen.ts').then(({ files }) => ({ files })),
   forgotPassword: () =>
     import('./forgot-password/orpc.gen.ts').then(({ forgotPassword }) => ({ forgotPassword })),

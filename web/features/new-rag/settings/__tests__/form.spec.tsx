@@ -350,6 +350,8 @@ async function renderForm({
         timezone: 'Asia/Shanghai',
         ...accountProfile,
       },
+      // The form reads the workspace features to decide whether to offer the malware scan.
+      features: {},
       queryClient,
     },
   )
