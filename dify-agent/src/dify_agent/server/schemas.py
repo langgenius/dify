@@ -23,8 +23,11 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    Only status metadata is persisted. Create-run requests can contain sensitive
-    layer configuration and must remain in scheduler memory rather than Redis.
+    Status metadata and optional admission digests are persisted; legacy records
+    without digests remain valid. The digests let active writes refresh only
+    their own idempotency claim and are excluded from public status responses.
+    Raw keys and create-run requests can contain sensitive data and remain in
+    scheduler memory rather than Redis.
     """
 
     run_id: str
@@ -33,6 +36,8 @@ class RunRecord(BaseModel):
     updated_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     error: str | None = None
     error_type: _protocol_schemas.RunFailureType | None = None
+    idempotency_key_digest: str | None = None
+    idempotency_fingerprint: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
