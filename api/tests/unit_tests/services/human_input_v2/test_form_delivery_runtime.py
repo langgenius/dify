@@ -1085,7 +1085,7 @@ def test_repeated_timeout_task_requests_only_one_resume(context: Context, monkey
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
         session.get_one(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
-    resume_calls: list[dict[str, str]] = []
+    resume_calls: list[dict[str, dict[str, dict[str, str]]]] = []
     monkeypatch.setattr(
         human_input_timeout_tasks.resume_app_execution, "apply_async", lambda **kwargs: resume_calls.append(kwargs)
     )
