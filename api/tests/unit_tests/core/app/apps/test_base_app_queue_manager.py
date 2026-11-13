@@ -137,7 +137,7 @@ class TestBaseAppQueueManager:
             assert manager._execution_coordinator.request_abort("stream closed") is True
             assert manager._execution_coordinator.request_abort("duplicate") is False
 
-        execution_redis.setex.assert_called_once_with("generate_task_stopped:t1", 600, 1)
+        execution_redis.setex.assert_called_once_with("generate_task_stopped:t1", 600, "stream closed")
         redis_channel.assert_called_once_with(execution_redis, "workflow:t1:commands")
         redis_channel.return_value.send_command.assert_called_once()
         command = redis_channel.return_value.send_command.call_args.args[0]

@@ -5,13 +5,16 @@ from unittest.mock import patch
 
 import pytest
 
-from core.app.apps.execution_coordinator import send_abort_command
+from core.app.apps.execution_coordinator import AppExecutionCoordinator, send_abort_command
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
     StopFlagCommandChannel,
 )
 from graphon.engine.command import AbortCommand, Command, PauseCommand, RedisChannel
+from graphon.engine.command.processor import CommandProcessor
+from graphon.engine.frame import FrameRegistry
+from graphon.runtime.execution import GraphExecution
 
 
 class _CommandChannelStub:
@@ -122,12 +125,12 @@ def test_celery_signal_command_channel_emits_abort_once_per_instance() -> None:
 
 
 def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
-    channel = StopFlagCommandChannel(task_id="task-1", abort_reason="User requested stop")
+    channel = StopFlagCommandChannel(task_id="task-1")
 
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=False):
+    with patch("core.app.apps.workflow.command_channels.get_app_task_stop_reason", return_value=None):
         assert channel.fetch_commands() == []
 
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
+    with patch("core.app.apps.workflow.command_channels.get_app_task_stop_reason", return_value="User requested stop"):
         commands = channel.fetch_commands()
 
     assert len(commands) == 1
@@ -138,6 +141,80 @@ def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
 def test_stop_flag_command_channel_emits_abort_once_per_instance() -> None:
     channel = StopFlagCommandChannel(task_id="task-1")
 
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
+    with patch("core.app.apps.workflow.command_channels.get_app_task_stop_reason", return_value="User requested stop"):
         assert len(channel.fetch_commands()) == 1
         assert channel.fetch_commands() == []
+
+
+@pytest.mark.parametrize("command_delivered", [False, True], ids=["flag-only", "with-command"])
+def test_legacy_manual_stop_flag_preserves_reason_through_command_processor(command_delivered: bool) -> None:
+    reason = "User requested stop"
+    primary = _CommandChannelStub([AbortCommand(reason=reason)] if command_delivered else [])
+    combined = CombinedCommandChannel((primary, StopFlagCommandChannel(task_id="task")))
+    execution = GraphExecution(workflow_id="workflow")
+    processor = CommandProcessor(combined, execution, FrameRegistry())
+
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        redis_client.get.return_value = b"1"
+
+        processor.process_commands()
+        assert execution.aborted is True
+        assert str(execution.error) == f"Aborted: {reason}"
+
+        assert combined.fetch_commands() == []
+        redis_client.get.assert_called_once_with("generate_task_stopped:task")
+
+
+@pytest.mark.parametrize("poll_after_flag", [False, True], ids=["same-poll", "flag-first"])
+@pytest.mark.parametrize("command_failure", [False, True], ids=["command-delivered", "command-unavailable"])
+def test_timeout_reason_survives_both_cancellation_channels(poll_after_flag: bool, command_failure: bool) -> None:
+    reason = "App execution exceeded 1800 seconds"
+    primary = _CommandChannelStub()
+    combined = CombinedCommandChannel((primary, StopFlagCommandChannel(task_id="task")))
+    execution = GraphExecution(workflow_id="workflow")
+    processor = CommandProcessor(combined, execution, FrameRegistry())
+    observed_errors: list[str] = []
+    stored_flags: list[tuple[str, int, str | int]] = []
+
+    with (
+        patch("core.app.apps.execution_coordinator.redis_client") as redis_client,
+        patch.object(RedisChannel, "send_command") as send,
+    ):
+        redis_client.get.return_value = None
+        send.side_effect = RuntimeError("command channel unavailable") if command_failure else primary.commands.append
+
+        def store_flag(key: str, ttl: int, value: str | int) -> None:
+            stored_flags.append((key, ttl, value))
+            redis_client.get.return_value = str(value).encode()
+            if poll_after_flag:
+                processor.process_commands()
+                observed_errors.append(str(execution.error))
+
+        redis_client.setex.side_effect = store_flag
+        coordinator = AppExecutionCoordinator(task_id="task", on_timeout=lambda _: None, timeout_seconds=1800)
+        coordinator._handle_timeout()
+        processor.process_commands()
+        processor.process_commands()
+
+    assert execution.aborted is True
+    assert str(execution.error) == f"Aborted: {reason}"
+    assert all(error == f"Aborted: {reason}" for error in observed_errors)
+    assert stored_flags == [("generate_task_stopped:task", 600, reason)]
+    send.assert_called_once_with(AbortCommand(reason=reason))
+
+
+def test_stop_flag_preserves_reason_after_abort_command_was_processed() -> None:
+    reason = "App execution exceeded 1800 seconds"
+    primary = _CommandChannelStub([AbortCommand(reason=reason)])
+    combined = CombinedCommandChannel((primary, StopFlagCommandChannel(task_id="task")))
+    execution = GraphExecution(workflow_id="workflow")
+    processor = CommandProcessor(combined, execution, FrameRegistry())
+
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        redis_client.get.return_value = None
+        processor.process_commands()
+        assert str(execution.error) == f"Aborted: {reason}"
+
+        redis_client.get.return_value = reason.encode()
+        processor.process_commands()
+        assert str(execution.error) == f"Aborted: {reason}"

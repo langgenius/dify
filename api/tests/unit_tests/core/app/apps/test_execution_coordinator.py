@@ -8,7 +8,9 @@ from core.app.apps.execution_coordinator import (
     app_task_command_channel_key,
     app_task_stop_flag_key,
     clear_app_task_cancellation_signals,
+    get_app_task_stop_reason,
     is_app_task_stop_flag_set,
+    set_app_task_stop_flag,
 )
 
 
@@ -59,7 +61,7 @@ def test_watchdog_aborts_and_notifies_response_pipeline() -> None:
         coordinator.start_watchdog()
 
     assert coordinator.state is AppExecutionState.ABORTING
-    redis_client.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
+    redis_client.setex.assert_called_once_with("generate_task_stopped:task", 600, "App execution exceeded 0 seconds")
     send_abort_command.assert_called_once_with(
         "task",
         reason="App execution exceeded 0 seconds",
@@ -148,9 +150,10 @@ def test_stop_flag_key_matches_legacy_redis_flag() -> None:
     assert app_task_stop_flag_key("task") == "generate_task_stopped:task"
 
 
-def test_is_app_task_stop_flag_set_reads_redis() -> None:
+@pytest.mark.parametrize("value", [b"1", b"App execution exceeded 1800 seconds"])
+def test_is_app_task_stop_flag_set_reads_redis(value: bytes) -> None:
     with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
-        redis_client.get.return_value = b"1"
+        redis_client.get.return_value = value
         assert is_app_task_stop_flag_set("task") is True
         redis_client.get.assert_called_once_with("generate_task_stopped:task")
 
@@ -161,3 +164,36 @@ def test_is_app_task_stop_flag_set_is_false_when_missing_or_empty() -> None:
         assert is_app_task_stop_flag_set("task") is False
         assert is_app_task_stop_flag_set("") is False
         redis_client.get.assert_called_once_with("generate_task_stopped:task")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, None),
+        (b"1", "User requested stop"),
+        (b"App execution exceeded 1800 seconds", "App execution exceeded 1800 seconds"),
+        (b"App task was stopped", "App task was stopped"),
+    ],
+)
+def test_get_app_task_stop_reason(value: bytes | None, expected: str | None) -> None:
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        redis_client.get.return_value = value
+
+        assert get_app_task_stop_reason("task") == expected
+
+        redis_client.get.assert_called_once_with("generate_task_stopped:task")
+
+
+def test_get_app_task_stop_reason_ignores_empty_task_id() -> None:
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        assert get_app_task_stop_reason("") is None
+
+        redis_client.get.assert_not_called()
+
+
+@pytest.mark.parametrize("reason", [None, "App execution exceeded 1800 seconds"])
+def test_set_app_task_stop_flag_stores_reason(reason: str | None) -> None:
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        set_app_task_stop_flag("task", reason=reason)
+
+        redis_client.setex.assert_called_once_with("generate_task_stopped:task", 600, reason or 1)
