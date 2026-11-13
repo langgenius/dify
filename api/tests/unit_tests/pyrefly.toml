@@ -186,7 +186,6 @@ project-excludes = [
   "core/workflow/test_human_input_forms.py",
   "core/workflow/test_workflow_entry.py",
   "dev/test_generate_knowledge_fs_contract.py",
-  "enterprise/telemetry/test_contracts.py",
   "enterprise/telemetry/test_enterprise_trace.py",
   "events/test___init__.py",
   "extensions/logstore/repositories/test_logstore_api_workflow_node_execution_repository.py",
