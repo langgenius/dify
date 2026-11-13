@@ -27,23 +27,19 @@ Run the full `unit` project before using coverage to identify untested modules. 
 
 Browser CI sets `DIFY_TEST_COVERAGE_ONLY_EXECUTED=true` so its report includes loaded source files without generating zero-coverage entries for every other Web module. The unit uploads retain the complete authored-source denominator, and Codecov combines both reports. Leave this variable unset when collecting the full unit diagnostic report.
 
-The pinned Vitest packages have Browser Mode patches for run-only source caching, deferred export of failure traces, and opt-in reuse of Chromium's precise-coverage session. Web Browser CI enables the coverage patch with `VITEST_EXP_V8_PERSISTENT=true`; watch mode retains the per-file coverage lifecycle. Revalidate the dependency patches together when upgrading Vitest, including retained failure artifacts, coverage maps, and run and watch behavior. Run `vp run test:browser-traces` from `web/` to verify trace retention and ZIP integrity with Chromium and `unzip` installed; CI runs this check in the first browser shard.
+The pinned Vitest packages have Browser Mode patches for deferred export of failure traces and opt-in reuse of Chromium's precise-coverage session. Web Browser CI enables the coverage patch with `VITEST_EXP_V8_PERSISTENT=true`; watch mode retains the per-file coverage lifecycle. Revalidate the dependency patches together when upgrading Vitest, including retained failure artifacts, coverage maps, and run and watch behavior. Run `vp run test:browser-traces` from `web/` to verify trace retention and ZIP integrity with Chromium and `unzip` installed; CI runs this check in the first browser shard.
 
-### Experimental Browser runtime switches
+### Experimental Chromium input buffering
 
-Three pinned dependency patches are opt-in and enabled for the Web Browser CI job, including its trace verifier:
+`VITEST_EXP_UNBUFFERED_INPUT=true` enables Chromium's DevTools unbuffered input setting through `Overlay.enable`, without drawing an overlay. It applies only to headless Chromium run mode; interactive UI and watch mode retain normal input buffering. Web Browser CI enables it, including for the trace verifier.
 
-- `VITEST_EXP_MUTATION_WAKE=true` retries locator lookup after a DOM mutation without advancing the original fallback deadline. Fake timers keep their original polling behavior; watch mode ignores this switch.
-- `VITEST_EXP_STABLE_RETRY=true` removes the extra Playwright retry sleep only after an unstable bounding box. Visibility, enablement, hit testing and the original two-frame stability check remain intact.
-- `VITEST_EXP_UNBUFFERED_INPUT=true` enables Chromium's DevTools unbuffered input setting through `Overlay.enable`, without drawing an overlay. It applies only to headless Chromium run mode; interactive UI and watch mode retain normal input buffering.
-
-For a local experiment, run the same suite and worker limit with the switches on or off:
+For a local comparison, run the same suite and worker limit with the switch on or off:
 
 ```sh
-VITEST_EXP_MUTATION_WAKE=true VITEST_EXP_STABLE_RETRY=true VITEST_EXP_UNBUFFERED_INPUT=true vp test run --project browser --maxWorkers=2
+VITEST_EXP_UNBUFFERED_INPUT=true vp test run --project browser --maxWorkers=2
 ```
 
-Unset these variables or set them to `false` to use the original runtime paths. These switches do not advance browser time, reduce animation duration or force interactions. Recheck native input, coverage, retained traces and watch behavior when upgrading Vitest or Playwright. File-count experiments must hold these switches fixed and are separate from comparisons of the switches themselves.
+Unset this variable or set it to `false` to use normal input buffering. The patch does not advance browser time, reduce animation duration or force interactions. Playwright retains its original actionability checks and retry schedule. Recheck native input, coverage, retained traces and watch behavior when upgrading Vitest or Playwright. File-count experiments must hold this switch fixed and are separate from comparisons of the switch itself.
 
 ## Choose the Right Boundary
 
