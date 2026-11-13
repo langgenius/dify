@@ -1031,6 +1031,11 @@ export type TraceConfigAlreadyExistsError = ErrorResponse & {
   status: 409
 }
 
+export type TraceAppConfigListResponse = {
+  configs?: Array<TraceAppConfigResponse> | null
+  configured_providers?: Array<string>
+}
+
 export type TraceRunStatusResponse = {
   accepted_at?: string | null
   attempts?: number | null
@@ -7589,6 +7594,33 @@ export type PostAppsByAppIdTraceConfigResponses = {
 
 export type PostAppsByAppIdTraceConfigResponse =
   PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
+
+export type GetAppsByAppIdTraceConfigsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    include_config?: boolean
+  }
+  url: '/apps/{app_id}/trace-configs'
+}
+
+export type GetAppsByAppIdTraceConfigsErrors = {
+  404: AppNotFoundError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceConfigsError =
+  GetAppsByAppIdTraceConfigsErrors[keyof GetAppsByAppIdTraceConfigsErrors]
+
+export type GetAppsByAppIdTraceConfigsResponses = {
+  200: TraceAppConfigListResponse
+}
+
+export type GetAppsByAppIdTraceConfigsResponse =
+  GetAppsByAppIdTraceConfigsResponses[keyof GetAppsByAppIdTraceConfigsResponses]
 
 export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdData = {
   body?: never
