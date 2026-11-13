@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -1461,11 +1462,11 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         captured["resolve_debug_conversation"] = kwargs
         return "debug-conversation-1"
 
-    def generate(**kwargs: object) -> object:
+    def generate(**kwargs: object) -> Generator[str]:
         captured["generate"] = kwargs
-        return iter(
-            ["event: ping\n\n", 'data: {"event":"message","answer":"working"}\n\n', 'data: {"event":"message_end"}\n\n']
-        )
+        yield "event: ping\n\n"
+        yield 'data: {"event":"message","answer":"working"}\n\n'
+        yield 'data: {"event":"message_end"}\n\n'
 
     monkeypatch.setattr(
         completion_controller, "_resolve_current_user_agent_debug_conversation_id", resolve_debug_conversation

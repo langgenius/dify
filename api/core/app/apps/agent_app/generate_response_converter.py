@@ -43,8 +43,6 @@ class AgentAppGenerateResponseConverter(AgentChatAppGenerateResponseConverter):
                 details["error_type"] = error_type if error_type and error_type != "unknown" else type(e).__name__
             elif isinstance(e, AgentBackendError):
                 details["error_source"] = "agent_backend"
-                if e.reason:
-                    details["reason"] = e.reason
                 if isinstance(e, AgentBackendRunFailedError) and e.error_type:
                     details["error_type"] = e.error_type.value
         for error in iter_error_causes(e):

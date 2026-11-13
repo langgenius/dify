@@ -1174,25 +1174,28 @@ def test_daemon_http_failures_are_classified_only_for_gateway_invocations(
         assert type(error.__cause__) is ValueError
     else:
         assert type(error) is ValueError
+        assert str(error).startswith(message_prefix)
         if failure in {"connect", "inner-error"}:
             assert isinstance(error.__cause__, PluginDaemonInnerError)
             assert str(error) == message_prefix + "-500"
 
 
 @pytest.mark.parametrize("source", [None, "workflow", "agent_llm_gateway"])
+@pytest.mark.parametrize(
+    "error", [PluginDaemonInnerError(code=-500, message="daemon unavailable"), ValueError("invalid model")]
+)
 def test_client_generator_creation_failure_respects_gateway_marker(
-    monkeypatch: pytest.MonkeyPatch, source: str | None
+    monkeypatch: pytest.MonkeyPatch, source: str | None, error: Exception
 ) -> None:
+    """Only daemon failures on gateway calls change type; ordinary model errors retain identity."""
     runtime = create_plugin_model_runtime(tenant_id="tenant")
-    error = PluginDaemonInnerError(code=-500, message="daemon unavailable")
 
     def fail_invoke(**_kwargs: object) -> Generator[LLMResultChunk]:
         raise error
 
     monkeypatch.setattr(runtime.client, "invoke_llm", fail_invoke)
-    with pytest.raises(
-        PluginDaemonInternalError if source == "agent_llm_gateway" else PluginDaemonInnerError
-    ) as caught:
+    normalize = source == "agent_llm_gateway" and isinstance(error, PluginDaemonInnerError)
+    with pytest.raises(PluginDaemonInternalError if normalize else type(error)) as caught:
         runtime.invoke_llm(
             provider="langgenius/openai/openai",
             model="gpt-test",
@@ -1204,7 +1207,7 @@ def test_client_generator_creation_failure_respects_gateway_marker(
             stream=True,
             request_metadata={"source": source} if source else None,
         )
-    if source == "agent_llm_gateway":
+    if normalize:
         assert isinstance(caught.value, PluginDaemonInternalError)
         assert caught.value.description == "daemon unavailable"
         assert caught.value.__cause__ is error

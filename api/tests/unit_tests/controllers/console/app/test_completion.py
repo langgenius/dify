@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import wraps
 from inspect import unwrap
-from typing import cast, override
+from typing import override
 from uuid import UUID, uuid4
 
 import httpx
@@ -203,7 +203,7 @@ class _GenerationObservation:
 
     calls: list[dict[str, object]] = field(default_factory=list)
     consumed_events: list[str] = field(default_factory=list)
-    stream: Generator[str] | None = None
+    stream: RateLimitGenerator | Generator[str] | None = None
     closed: bool = False
 
 
@@ -270,54 +270,61 @@ def _post_agent_stream_outcome(
         pipeline = BasedGenerateTaskPipeline(entity, queue, stream=True)
 
         def stream() -> Generator[AppStreamResponse]:
-            observation.consumed_events.append("ping")
-            yield ChatbotAppStreamResponse(
-                conversation_id=conversation_id,
-                message_id="message-1",
-                created_at=1,
-                stream_response=PingStreamResponse(task_id=entity.task_id),
-            )
-            if emit_partial_message or incomplete:
-                observation.consumed_events.append("message")
+            try:
+                observation.consumed_events.append("ping")
                 yield ChatbotAppStreamResponse(
                     conversation_id=conversation_id,
                     message_id="message-1",
                     created_at=1,
-                    stream_response=MessageStreamResponse(task_id=entity.task_id, id="message-1", answer="working"),
+                    stream_response=PingStreamResponse(task_id=entity.task_id),
                 )
-            if error is not None:
-                observation.consumed_events.append("error")
-                failure = pipeline.handle_error(event=QueueErrorEvent(error=error))
-                yield ChatbotAppStreamResponse(
-                    conversation_id=conversation_id,
-                    message_id="message-1",
-                    created_at=1,
-                    stream_response=pipeline.error_to_stream_response(failure),
-                )
-            elif not incomplete:
-                observation.consumed_events.append("message_end")
-                yield ChatbotAppStreamResponse(
-                    conversation_id=conversation_id,
-                    message_id="message-1",
-                    created_at=1,
-                    stream_response=MessageEndStreamResponse(task_id=entity.task_id, id="message-1", metadata={}),
-                )
+                if emit_partial_message or incomplete:
+                    observation.consumed_events.append("message")
+                    yield ChatbotAppStreamResponse(
+                        conversation_id=conversation_id,
+                        message_id="message-1",
+                        created_at=1,
+                        stream_response=MessageStreamResponse(task_id=entity.task_id, id="message-1", answer="working"),
+                    )
+                if error is not None:
+                    observation.consumed_events.append("error")
+                    failure = pipeline.handle_error(event=QueueErrorEvent(error=error))
+                    yield ChatbotAppStreamResponse(
+                        conversation_id=conversation_id,
+                        message_id="message-1",
+                        created_at=1,
+                        stream_response=pipeline.error_to_stream_response(failure),
+                    )
+                elif not incomplete:
+                    observation.consumed_events.append("message_end")
+                    yield ChatbotAppStreamResponse(
+                        conversation_id=conversation_id,
+                        message_id="message-1",
+                        created_at=1,
+                        stream_response=MessageEndStreamResponse(task_id=entity.task_id, id="message-1", metadata={}),
+                    )
+            finally:
+                observation.closed = True
 
         return AgentAppGenerateResponseConverter.convert_stream_full_response(stream())
 
     monkeypatch.setattr(AgentAppGenerator, "generate", generate)
-    original_generate = cast(Callable[..., RateLimitGenerator], completion_module.AppGenerateService.generate)
+    original_generate: Callable[..., object] = completion_module.AppGenerateService.generate
 
-    def generate_response(**kwargs: object) -> Generator[str]:
-        source = iter(wire_chunks) if wire_chunks is not None else original_generate(**kwargs)
+    def generate_response(**kwargs: object) -> RateLimitGenerator | Generator[str]:
+        if wire_chunks is None:
+            response = original_generate(**kwargs)
+            assert isinstance(response, RateLimitGenerator)
+            observation.stream = response
+        else:
 
-        def observed_stream() -> Generator[str]:
-            try:
-                yield from source
-            finally:
-                observation.closed = True
+            def wire_stream() -> Generator[str]:
+                try:
+                    yield from wire_chunks
+                finally:
+                    observation.closed = True
 
-        observation.stream = observed_stream()
+            observation.stream = wire_stream()
         return observation.stream
 
     monkeypatch.setattr(completion_module.AppGenerateService, "generate", generate_response)
@@ -327,7 +334,7 @@ def _post_agent_stream_outcome(
         "app_chat": completion_module.ChatMessageApi,
     }[route]
 
-    handler = cast(Callable[..., ResponseReturnValue], resource_type.post)
+    handler: Callable[..., ResponseReturnValue] = resource_type.post
 
     class AgentHttpResource(Resource):
         @wraps(handler)
@@ -532,11 +539,60 @@ def test_chat_keeps_successful_stream_chunks_in_order(
     assert observation.closed
 
 
+@pytest.mark.parametrize("route", ["agent_chat", "app_chat"])
+@pytest.mark.parametrize("frames_read", [1, 2, 3], ids=["buffered-ping", "first-message", "forwarded-message-end"])
+def test_chat_response_close_releases_rate_limit_and_underlying_generation_stream(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    route: str,
+    frames_read: int,
+) -> None:
+    """A client disconnect at any replay stage closes the retained production rate-limit stream."""
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, APP_DEFAULT_ACTIVE_REQUESTS=0, APP_MAX_ACTIVE_REQUESTS=0
+    )
+    response, observation = _post_agent_stream_outcome(
+        sqlite_session, monkeypatch, route=route, error=None, emit_partial_message=True
+    )
+    assert response.status_code == 200
+    assert isinstance(observation.stream, RateLimitGenerator)
+    chunks = iter(response.response)
+    received = [next(chunks) for _ in range(frames_read)]
+    assert received[0] == b"event: ping\n\n"
+    assert not observation.stream.closed
+    assert not observation.closed
+
+    response.close()
+
+    assert observation.stream.closed
+    assert observation.closed
+
+
+@pytest.mark.parametrize("wire_chunks", [(), ("event: ping\n\n",)], ids=["empty", "ping-only"])
+def test_chat_preflight_exhaustion_preserves_buffered_frames_and_closes_stream(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    wire_chunks: tuple[str, ...],
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, APP_DEFAULT_ACTIVE_REQUESTS=0, APP_MAX_ACTIVE_REQUESTS=0
+    )
+    response, observation = _post_agent_stream_outcome(
+        sqlite_session, monkeypatch, route="agent_chat", error=None, wire_chunks=wire_chunks
+    )
+    assert response.status_code == 200
+    assert response.get_data(as_text=True) == "".join(wire_chunks)
+    assert observation.closed
+
+
 @pytest.mark.parametrize(
     ("chunk", "status", "code"),
     [
         (
-            'event: error\r\ndata: {"status": 429,\r\ndata: "code": "rate_limit_error"}\r\n\r\n',
+            ": keepalive\r\nid: event-1\r\nevent: error\r\n"
+            'data: {"status": 429,\r\ndata: "code": "rate_limit_error"}\r\n\r\n',
             429,
             "rate_limit_error",
         ),

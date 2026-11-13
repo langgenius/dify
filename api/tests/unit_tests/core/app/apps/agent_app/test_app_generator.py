@@ -1,9 +1,15 @@
+"""Agent generation, worker diagnostics, input guards and persisted Agent resolution contracts.
+
+Orchestration tests replace worker dependencies at their boundaries. Guard and diagnostic
+tests use real generation entities and message queues; resolution tests use persisted SQLite rows.
+"""
+
 from __future__ import annotations
 
 import contextlib
 import contextvars
 import inspect
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from decimal import Decimal
 from threading import Event
 from types import SimpleNamespace
@@ -30,10 +36,12 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
+    AppQueueEvent,
     MessageQueueMessage,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
@@ -61,6 +69,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
 from services.agent.workspace_service import (
     AgentWorkspaceBindingGenerationMismatchError,
@@ -68,16 +77,6 @@ from services.agent.workspace_service import (
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
-
-"""Unit tests for AgentAppGenerator.generate() and its worker thread.
-
-Mirrors the agent_chat generator tests: every collaborator (config manager,
-model converter, queue manager, thread, response converter, the agent backend
-client stack) is patched at the module level, the generate entity class is
-patched so no real pydantic entity is built, and the worker's flask-context
-manager is replaced with a no-op so the thread body can run inline.
-"""
-
 
 MODULE = "core.app.apps.agent_app.app_generator"
 
@@ -164,7 +163,7 @@ def _conversation(*, invoke_from: InvokeFrom = InvokeFrom.WEB_APP) -> Conversati
         app_id="app1",
         mode=AppMode.AGENT,
         name="Conversation",
-        invoke_from=invoke_from,
+        invoke_from=ModelInvokeFrom(invoke_from.value),
         from_source=ConversationFromSource.CONSOLE,
         from_account_id="user",
         is_deleted=False,
@@ -200,17 +199,17 @@ def _session() -> Session:
 
 
 class TestAppGeneratorCases:
-    @staticmethod
     @pytest.fixture(autouse=True)
-    def _bind_real_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+    @staticmethod
+    def _bind_real_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
         global _CURRENT_SESSION
         _CURRENT_SESSION = sqlite_session
         monkeypatch.setattr(module.db, "session", sqlite_session)
         yield
         _CURRENT_SESSION = None
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def generator(mocker: MockerFixture) -> AgentAppGenerator:
         gen = AgentAppGenerator()
         mocker.patch(f"{MODULE}.current_app", new=mocker.MagicMock(_get_current_object=mocker.MagicMock()))
@@ -218,7 +217,7 @@ class TestAppGeneratorCases:
         return gen
 
     class TestGenerateGuards:
-        def test_rejects_blocking_mode(self, generator: AgentAppGenerator):
+        def test_rejects_blocking_mode(self, generator: AgentAppGenerator) -> None:
             with pytest.raises(AgentAppGeneratorError, match="only supports streaming"):
                 generator.generate(
                     app_model=_app_generator_app(),
@@ -229,7 +228,7 @@ class TestAppGeneratorCases:
                     streaming=False,
                 )
 
-        def test_requires_query(self, generator: AgentAppGenerator):
+        def test_requires_query(self, generator: AgentAppGenerator) -> None:
             with pytest.raises(AgentAppGeneratorError, match="query is required"):
                 generator.generate(
                     app_model=_app_generator_app(),
@@ -239,7 +238,7 @@ class TestAppGeneratorCases:
                     session=_session(),
                 )
 
-        def test_rejects_blank_query(self, generator: AgentAppGenerator):
+        def test_rejects_blank_query(self, generator: AgentAppGenerator) -> None:
             with pytest.raises(AgentAppGeneratorError, match="query is required"):
                 generator.generate(
                     app_model=_app_generator_app(),
@@ -250,7 +249,7 @@ class TestAppGeneratorCases:
                 )
 
     class TestGenerateSuccess:
-        def test_session_scope_config_version_id_preserves_draft_or_snapshot_id(self):
+        def test_session_scope_config_version_id_preserves_draft_or_snapshot_id(self) -> None:
             assert (
                 AgentAppGenerator._session_scope_config_version_id(
                     invoke_from=InvokeFrom.DEBUGGER, config_version_id="draft-1"
@@ -277,10 +276,13 @@ class TestAppGeneratorCases:
             app_model = _app_generator_app(app_model_config_id=config.id)
             user = _app_generator_account()
 
-            generator._resolve_agent = mocker.MagicMock(return_value=(_agent(), "snap1", "snapshot", AgentSoulConfig()))
-            generator._prepare_user_inputs = mocker.MagicMock(return_value={"x": 1})
-            generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
-            generator._handle_response = mocker.MagicMock(return_value="raw-response")
+            resolve_agent = mocker.MagicMock(return_value=(_agent(), "snap1", "snapshot", AgentSoulConfig()))
+            monkeypatch.setattr(generator, "_resolve_agent", resolve_agent)
+            monkeypatch.setattr(generator, "_prepare_user_inputs", mocker.MagicMock(return_value={"x": 1}))
+            monkeypatch.setattr(
+                generator, "_init_generate_records", mocker.MagicMock(return_value=(_conversation(), _message()))
+            )
+            monkeypatch.setattr(generator, "_handle_response", mocker.MagicMock(return_value="raw-response"))
 
             mocker.patch(
                 f"{MODULE}.AgentAppConfigManager.get_app_config",
@@ -320,7 +322,7 @@ class TestAppGeneratorCases:
             thread_obj.start.assert_called_once()
             worker_call = thread_constructor.call_args
             inspect.signature(worker_call.kwargs["target"]).bind(**worker_call.kwargs["kwargs"])
-            generator._resolve_agent.assert_called_once_with(
+            resolve_agent.assert_called_once_with(
                 app_model,
                 invoke_from=InvokeFrom.WEB_APP,
                 draft_type=None,
@@ -340,14 +342,18 @@ class TestAppGeneratorCases:
                 {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
             ]
 
-        def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
+        def test_generate_loads_existing_conversation(
+            self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             app_model = _app_generator_app()
-            generator._resolve_agent = mocker.MagicMock(
+            resolve_agent = mocker.MagicMock(
                 return_value=(_agent(agent_id="a"), "snap1", "snapshot", AgentSoulConfig())
             )
-            generator._prepare_user_inputs = mocker.MagicMock(return_value={})
-            generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
-            generator._handle_response = mocker.MagicMock(return_value="raw")
+            init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
+            monkeypatch.setattr(generator, "_resolve_agent", resolve_agent)
+            monkeypatch.setattr(generator, "_prepare_user_inputs", mocker.MagicMock(return_value={}))
+            monkeypatch.setattr(generator, "_init_generate_records", init_generate_records)
+            monkeypatch.setattr(generator, "_handle_response", mocker.MagicMock(return_value="raw"))
             get_conv = mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=_conversation())
             mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
             mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
@@ -374,8 +380,8 @@ class TestAppGeneratorCases:
                 user=user,
                 session=session,
             )
-            assert generator._resolve_agent.call_args.kwargs["conversation"].id == "conv"
-            assert generator._init_generate_records.call_args.kwargs["session"] is session
+            assert resolve_agent.call_args.kwargs["conversation"].id == "conv"
+            assert init_generate_records.call_args.kwargs["session"] is session
 
         def test_generate_propagates_trace_ids_into_real_scope_and_worker_entity(
             self, monkeypatch: pytest.MonkeyPatch
@@ -465,9 +471,9 @@ class TestAppGeneratorCases:
 
     class TestGenerateWorker:
         @pytest.fixture(autouse=True)
-        def patch_context(self, mocker: MockerFixture):
+        def patch_context(self, mocker: MockerFixture) -> None:
             @contextlib.contextmanager
-            def ctx_manager[**P](*args: P.args, **kwargs: P.kwargs):
+            def ctx_manager[**P](*args: P.args, **kwargs: P.kwargs) -> Generator[None]:
                 yield
 
             mocker.patch("libs.flask_utils.preserve_flask_contexts", ctx_manager)
@@ -477,24 +483,30 @@ class TestAppGeneratorCases:
             generator: AgentAppGenerator,
             mocker: MockerFixture,
             *,
-            run_side_effect=None,
-            handled=False,
-            guard_query="query",
-            real_guards=False,
-        ):
-            generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-            generator._get_message = mocker.MagicMock(return_value=_message())
+            run_side_effect: Exception | None = None,
+            handled: bool = False,
+            guard_query: str = "query",
+            real_guards: bool = False,
+        ) -> tuple[MagicMock, list[Session]]:
+            mocker.patch.object(generator, "_get_conversation", new=mocker.MagicMock(return_value=_conversation()))
+            mocker.patch.object(generator, "_get_message", new=mocker.MagicMock(return_value=_message()))
             if not real_guards:
-                generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
+                mocker.patch.object(
+                    generator, "_run_input_guards", new=mocker.MagicMock(return_value=(handled, guard_query, None))
+                )
             resolved_agent = _agent(agent_id="a")
             resolved_config = _app_generator_snapshot(snapshot_id="s", agent_id="a")
             resolver_sessions: list[Session] = []
 
-            def resolve_agent_by_id(**kwargs):
-                resolver_sessions.append(kwargs["session"])
+            def resolve_agent_by_id(**kwargs: object) -> tuple[Agent, AgentConfigSnapshot, AgentSoulConfig]:
+                session = kwargs["session"]
+                assert isinstance(session, Session)
+                resolver_sessions.append(session)
                 return resolved_agent, resolved_config, AgentSoulConfig()
 
-            generator._resolve_agent_by_id = mocker.MagicMock(side_effect=resolve_agent_by_id)
+            mocker.patch.object(
+                generator, "_resolve_agent_by_id", new=mocker.MagicMock(side_effect=resolve_agent_by_id)
+            )
             session = _session()
             if session.get(App, "app1") is None:
                 session.add(_app_generator_app())
@@ -512,15 +524,15 @@ class TestAppGeneratorCases:
 
         def _call(
             self,
-            generator,
+            generator: AgentAppGenerator,
             mocker: MockerFixture,
-            queue_manager,
+            queue_manager: AppQueueManager,
             *,
-            query="query",
-            session_scope_config_version_id="s",
-            files=(),
-            file_upload_config=None,
-        ):
+            query: str = "query",
+            session_scope_config_version_id: str | None = "s",
+            files: Sequence[object] = (),
+            file_upload_config: object | None = None,
+        ) -> None:
             generator._generate_worker(
                 flask_app=mocker.MagicMock(),
                 context=mocker.MagicMock(),
@@ -540,19 +552,25 @@ class TestAppGeneratorCases:
                 user_from=UserFrom.END_USER,
             )
 
-        def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
+        def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture) -> None:
             runner, resolver_sessions = self._wire(generator, mocker)
             queue_manager = mocker.MagicMock()
             self._call(generator, mocker, queue_manager)
             runner.run.assert_called_once()
-            assert resolver_sessions == [generator._resolve_agent_by_id.call_args.kwargs["session"]]
+            assert len(resolver_sessions) == 1
             assert resolver_sessions[0].get_bind() is not None
             assert runner.run.call_args.kwargs["home_snapshot_id"] == "home-1"
             assert "home_snapshot_ref" not in runner.run.call_args.kwargs
             queue_manager.publish_error.assert_not_called()
 
         @pytest.mark.parametrize("overridden", [False, True])
-        def test_worker_passes_moderated_inputs_to_runner(self, generator, mocker, monkeypatch, overridden):
+        def test_worker_passes_moderated_inputs_to_runner(
+            self,
+            generator: AgentAppGenerator,
+            mocker: MockerFixture,
+            monkeypatch: pytest.MonkeyPatch,
+            overridden: bool,
+        ) -> None:
             runner, _ = self._wire(generator, mocker, real_guards=True)
             entity = _make_entity("query")
             entity.app_config.app_id = "app1"
@@ -565,7 +583,7 @@ class TestAppGeneratorCases:
                 flask_app=Flask(__name__),
                 context=contextvars.copy_context(),
                 application_generate_entity=entity,
-                queue_manager=_FakeQueueManager(),
+                queue_manager=_queue_manager(),
                 conversation_id="conv",
                 message_id="msg",
                 user_from=UserFrom.END_USER,
@@ -575,7 +593,9 @@ class TestAppGeneratorCases:
             runner.run.assert_called_once()
             assert runner.run.call_args.kwargs["inputs"] == expected
 
-        def test_worker_passes_session_scope_config_version_to_runner(self, generator, mocker: MockerFixture):
+        def test_worker_passes_session_scope_config_version_to_runner(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
             runner, _ = self._wire(generator, mocker)
             queue_manager = mocker.MagicMock()
 
@@ -584,7 +604,9 @@ class TestAppGeneratorCases:
             assert runner.run.call_args.kwargs["agent_config_snapshot_id"] == "s"
             assert runner.run.call_args.kwargs["session_scope_snapshot_id"] is None
 
-        def test_worker_passes_files_to_backend_runner_without_rewriting_query(self, generator, mocker: MockerFixture):
+        def test_worker_passes_files_to_backend_runner_without_rewriting_query(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
             runner, _ = self._wire(generator, mocker, guard_query="你看得见这张图片吗")
             queue_manager = mocker.MagicMock()
             files = [mocker.MagicMock(), mocker.MagicMock()]
@@ -601,13 +623,17 @@ class TestAppGeneratorCases:
             assert runner.run.call_args.kwargs["files"] == files
             assert runner.run.call_args.kwargs["image_detail_config"] is None
 
-        def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):
+        def test_input_guard_short_circuit_skips_backend(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
             runner, _ = self._wire(generator, mocker, handled=True)
             queue_manager = mocker.MagicMock()
             self._call(generator, mocker, queue_manager)
             runner.run.assert_not_called()
 
-        def test_annotation_reply_publishes_after_guard_transaction_commits(self, generator, mocker: MockerFixture):
+        def test_annotation_reply_publishes_after_guard_transaction_commits(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
             runner, _ = self._wire(generator, mocker, handled=True)
             annotation_reply = MessageAnnotation(
                 app_id="app1",
@@ -615,14 +641,18 @@ class TestAppGeneratorCases:
                 content="annotated answer",
                 account_id="user",
             )
-            generator._run_input_guards.return_value = (True, "query", annotation_reply)
+
+            def annotated_reply(**_kwargs: object) -> tuple[bool, str, MessageAnnotation]:
+                return True, "query", annotation_reply
+
+            mocker.patch.object(generator, "_run_input_guards", new=annotated_reply)
             events: list[str] = []
             queue_manager = mocker.MagicMock()
 
             def record_commit(_session: Session) -> None:
                 events.append("commit")
 
-            def publish(event, *_args):
+            def publish(event: AppQueueEvent, *_args: object) -> None:
                 if isinstance(event, QueueAnnotationReplyEvent):
                     events.append("publish")
 
@@ -652,7 +682,7 @@ class TestAppGeneratorCases:
             self._call(generator, mocker, queue_manager)
             queue_manager.publish_error.assert_not_called()
 
-        def test_unexpected_error_is_published(self, generator: AgentAppGenerator, mocker: MockerFixture):
+        def test_unexpected_error_is_published(self, generator: AgentAppGenerator, mocker: MockerFixture) -> None:
             self._wire(generator, mocker, run_side_effect=ValueError("boom"))
             queue_manager = mocker.MagicMock()
             self._call(generator, mocker, queue_manager)
@@ -668,12 +698,21 @@ answer, or pass through a possibly moderation-sanitized query.
 """
 
 
-class _FakeQueueManager:
-    def __init__(self) -> None:
-        self.events: list[Any] = []
+def _queue_manager() -> MessageBasedAppQueueManager:
+    return MessageBasedAppQueueManager(
+        task_id="task-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.WEB_APP,
+        conversation_id="conv",
+        app_mode=AppMode.AGENT,
+        message_id="msg",
+    )
 
-    def publish(self, event: Any, _from: Any) -> None:
-        self.events.append(event)
+
+def _queued_events(queue_manager: MessageBasedAppQueueManager) -> list[AppQueueEvent]:
+    """Snapshot real queued events without consuming the terminal sentinel."""
+    with queue_manager._q.mutex:
+        return [message.event for message in queue_manager._q.queue if isinstance(message, MessageQueueMessage)]
 
 
 def _make_entity(query: str) -> AgentAppGenerateEntity:
@@ -802,7 +841,7 @@ def _patch_moderation(
     calls: list[dict[str, Any]] = []
 
     class _FakeModeration:
-        def check(self, **kwargs: Any):
+        def check(self, **kwargs: Any) -> tuple[bool, dict[str, Any], str] | None:
             calls.append(kwargs)
             if raises is not None:
                 raise raises
@@ -812,32 +851,38 @@ def _patch_moderation(
     return calls
 
 
-def _patch_annotation(monkeypatch: pytest.MonkeyPatch, *, reply=None) -> None:
+def _patch_annotation(monkeypatch: pytest.MonkeyPatch, *, reply: MessageAnnotation | None = None) -> None:
     class _FakeAnnotation:
-        def query(self, **kwargs: Any):
+        def query(self, **kwargs: Any) -> MessageAnnotation | None:
             return reply
 
     monkeypatch.setattr(annotation_mod, "AnnotationReplyFeature", _FakeAnnotation)
 
 
-def _answer_text(events: list[Any]) -> str:
+def _answer_text(events: list[AppQueueEvent]) -> str:
     end = next(e for e in events if isinstance(e, QueueMessageEndEvent))
-    return end.llm_result.message.content
+    assert end.llm_result is not None
+    content = end.llm_result.message.content
+    assert isinstance(content, str)
+    return content
 
 
-def _saved_user_query(events: list[Any]) -> str:
+def _saved_user_query(events: list[AppQueueEvent]) -> str:
     end = next(e for e in events if isinstance(e, QueueMessageEndEvent))
+    assert end.llm_result is not None
     prompt_messages = end.llm_result.prompt_messages
     assert len(prompt_messages) == 1
-    return prompt_messages[0].content
+    content = prompt_messages[0].content
+    assert isinstance(content, str)
+    return content
 
 
 class TestInputGuardsCases:
     class TestRunInputGuards:
-        def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+        def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
             moderation_calls = _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
             _patch_annotation(monkeypatch, reply=None)
-            qm = _FakeQueueManager()
+            qm = _queue_manager()
             entity = _make_entity("hello")
 
             handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
@@ -851,15 +896,17 @@ class TestInputGuardsCases:
             assert handled is False
             assert query == "hello"
             assert annotation_reply is None
-            assert qm.events == []
+            assert _queued_events(qm) == []
             assert len(moderation_calls) == 1
             assert moderation_calls[0]["message_id"] == "msg-1"
             assert moderation_calls[0]["trace_scope"] is entity.trace_scope
 
-        def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+        def test_moderation_override_sanitizes_query(
+            self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        ) -> None:
             _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))
             _patch_annotation(monkeypatch, reply=None)
-            qm = _FakeQueueManager()
+            qm = _queue_manager()
 
             handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
                 session=sqlite_session,
@@ -872,12 +919,14 @@ class TestInputGuardsCases:
             assert handled is False
             assert query == "[redacted]"
             assert annotation_reply is None
-            assert qm.events == []
+            assert _queued_events(qm) == []
 
-        def test_moderation_block_short_circuits(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+        def test_moderation_block_short_circuits(
+            self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        ) -> None:
             _patch_moderation(monkeypatch, raises=ModerationError("blocked preset answer"))
             _patch_annotation(monkeypatch, reply=None)
-            qm = _FakeQueueManager()
+            qm = _queue_manager()
 
             handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
                 session=sqlite_session,
@@ -889,11 +938,12 @@ class TestInputGuardsCases:
 
             assert handled is True
             assert annotation_reply is None
-            assert any(isinstance(e, QueueLLMChunkEvent) for e in qm.events)
-            assert _answer_text(qm.events) == "blocked preset answer"
-            assert _saved_user_query(qm.events) == "forbidden"
+            events = _queued_events(qm)
+            assert any(isinstance(e, QueueLLMChunkEvent) for e in events)
+            assert _answer_text(events) == "blocked preset answer"
+            assert _saved_user_query(events) == "forbidden"
 
-        def test_annotation_hit_short_circuits(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+        def test_annotation_hit_short_circuits(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
             _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
             annotation = MessageAnnotation(
                 app_id="app-1",
@@ -903,7 +953,7 @@ class TestInputGuardsCases:
             )
             annotation.id = "anno-1"
             _patch_annotation(monkeypatch, reply=annotation)
-            qm = _FakeQueueManager()
+            qm = _queue_manager()
 
             handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
                 session=sqlite_session,
@@ -914,8 +964,9 @@ class TestInputGuardsCases:
             )
 
             assert handled is True
+            assert annotation_reply is not None
             assert annotation_reply.id == "anno-1"
-            assert qm.events == []
+            assert _queued_events(qm) == []
 
 
 """Unit tests for AgentAppGenerator agent/snapshot resolution.
@@ -1020,7 +1071,7 @@ def _persist(session: Session, *models: object) -> None:
 
 class TestResolveAgentCases:
     class TestResolveAgentById:
-        def test_success_returns_agent_snapshot_soul(self, sqlite_session: Session):
+        def test_success_returns_agent_snapshot_soul(self, sqlite_session: Session) -> None:
             agent = _resolve_agent_agent()
             snapshot = _resolve_agent_snapshot()
             sqlite_session.add_all([agent, snapshot])
@@ -1036,13 +1087,13 @@ class TestResolveAgentCases:
             assert soul.model is not None
             assert soul.model.model == "gpt-4o-mini"
 
-        def test_agent_missing_raises(self, sqlite_session: Session):
+        def test_agent_missing_raises(self, sqlite_session: Session) -> None:
             with pytest.raises(AgentAppGeneratorError, match="Agent not found"):
                 AgentAppGenerator._resolve_agent_by_id(
                     tenant_id="t1", agent_id="x", snapshot_id="snap-1", session=sqlite_session
                 )
 
-        def test_no_published_version_raises(self, sqlite_session: Session):
+        def test_no_published_version_raises(self, sqlite_session: Session) -> None:
             sqlite_session.add(_resolve_agent_agent(active_snapshot_id=None))
             sqlite_session.commit()
             with pytest.raises(AgentAppGeneratorError, match="no published version"):
@@ -1050,7 +1101,7 @@ class TestResolveAgentCases:
                     tenant_id="t1", agent_id="agent-1", snapshot_id=None, session=sqlite_session
                 )
 
-        def test_snapshot_missing_raises(self, sqlite_session: Session):
+        def test_snapshot_missing_raises(self, sqlite_session: Session) -> None:
             sqlite_session.add(_resolve_agent_agent())
             sqlite_session.commit()
             with pytest.raises(AgentAppGeneratorError, match="published version not found"):
@@ -1062,7 +1113,7 @@ class TestResolveAgentCases:
                 )
 
     class TestResolveDebugDraft:
-        def test_missing_shared_draft_is_created_with_supplied_session(self, sqlite_session: Session):
+        def test_missing_shared_draft_is_created_with_supplied_session(self, sqlite_session: Session) -> None:
             agent = _resolve_agent_agent()
             sqlite_session.add_all([agent, _resolve_agent_snapshot()])
             sqlite_session.commit()
@@ -1088,7 +1139,7 @@ class TestResolveAgentCases:
             assert sqlite_session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.id == draft.id)) is draft
             assert flush_count == 1
 
-        def test_stale_workflow_only_shared_draft_is_rebased_to_active_snapshot(self, sqlite_session: Session):
+        def test_stale_workflow_only_shared_draft_is_rebased_to_active_snapshot(self, sqlite_session: Session) -> None:
             agent = _resolve_agent_agent(scope=AgentScope.WORKFLOW_ONLY, active_snapshot_id="snap-2")
             draft = AgentConfigDraft(
                 id="draft-1",
@@ -1135,7 +1186,7 @@ class TestResolveAgentCases:
             assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "new"
             assert flush_count == 1
 
-        def test_build_draft_is_not_rebased_to_active_snapshot(self, sqlite_session: Session):
+        def test_build_draft_is_not_rebased_to_active_snapshot(self, sqlite_session: Session) -> None:
             agent = _resolve_agent_agent(scope=AgentScope.WORKFLOW_ONLY, active_snapshot_id="snap-2")
             draft = AgentConfigDraft(
                 id="build-draft-1",
@@ -1164,7 +1215,7 @@ class TestResolveAgentCases:
             assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "build edit"
             assert not sqlite_session.dirty
 
-        def test_build_draft_uses_exact_draft_id(self, sqlite_session: Session):
+        def test_build_draft_uses_exact_draft_id(self, sqlite_session: Session) -> None:
             agent = _resolve_agent_agent(scope=AgentScope.WORKFLOW_ONLY, active_snapshot_id="snap-2")
             draft = AgentConfigDraft(
                 id="exact-build-draft",
@@ -1215,7 +1266,7 @@ class TestResolveAgentCases:
                 is_publish_visible,
             )
 
-        def test_success_chains_to_resolve_by_id(self, sqlite_session: Session):
+        def test_success_chains_to_resolve_by_id(self, sqlite_session: Session) -> None:
             bound_agent = _resolve_agent_agent()
             snapshot = _resolve_agent_snapshot()
             _persist(sqlite_session, bound_agent, snapshot)
@@ -1236,7 +1287,7 @@ class TestResolveAgentCases:
 
         def test_unpublished_draft_still_resolves_active_snapshot(
             self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-        ):
+        ) -> None:
             bound_agent = _resolve_agent_agent(published=False)
             snapshot = _resolve_agent_snapshot()
             _persist(sqlite_session, bound_agent, snapshot)
@@ -1258,7 +1309,7 @@ class TestResolveAgentCases:
 
         def test_existing_conversation_resolves_binding_snapshot_instead_of_latest_active_snapshot(
             self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-        ):
+        ) -> None:
             bound_agent = _resolve_agent_agent(active_snapshot_id="snap-2")
             pinned_snapshot = _resolve_agent_snapshot()
             _persist(sqlite_session, bound_agent, pinned_snapshot)
@@ -1292,7 +1343,7 @@ class TestResolveAgentCases:
 
         def test_existing_conversation_rejects_unavailable_binding(
             self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-        ):
+        ) -> None:
             bound_agent = _resolve_agent_agent(active_snapshot_id="snap-active")
             _persist(sqlite_session, bound_agent)
             conversation = _resolve_agent_conversation(binding_id="binding-missing")
@@ -1322,7 +1373,7 @@ class TestResolveAgentCases:
             binding_home_id: str,
             binding_version_kind: AgentConfigVersionKind,
             snapshot_home_id: str,
-        ):
+        ) -> None:
             bound_agent = _resolve_agent_agent(active_snapshot_id="snap-active")
             conversation = _resolve_agent_conversation(binding_id="binding-1")
             binding = _binding(
@@ -1344,7 +1395,7 @@ class TestResolveAgentCases:
                     conversation=conversation,
                 )
 
-        def test_unpublished_imported_agent_is_not_available_to_public_runtime(self, sqlite_session: Session):
+        def test_unpublished_imported_agent_is_not_available_to_public_runtime(self, sqlite_session: Session) -> None:
             bound_agent = _resolve_agent_agent(source=AgentSource.IMPORTED, published=False)
             _persist(sqlite_session, bound_agent)
             app_model = _resolve_agent_app()
@@ -1358,7 +1409,7 @@ class TestResolveAgentCases:
                     session=sqlite_session,
                 )
 
-        def test_never_published_agent_app_is_not_available_to_public_runtime(self, sqlite_session: Session):
+        def test_never_published_agent_app_is_not_available_to_public_runtime(self, sqlite_session: Session) -> None:
             bound_agent = _resolve_agent_agent(published=False)
             _persist(sqlite_session, bound_agent)
 
@@ -1371,7 +1422,7 @@ class TestResolveAgentCases:
                     session=sqlite_session,
                 )
 
-        def test_unpublished_imported_agent_remains_available_to_debugger(self, sqlite_session: Session):
+        def test_unpublished_imported_agent_remains_available_to_debugger(self, sqlite_session: Session) -> None:
             bound_agent = _resolve_agent_agent(source=AgentSource.IMPORTED, published=False)
             draft = AgentConfigDraft(
                 id="draft-1",
@@ -1400,7 +1451,7 @@ class TestResolveAgentCases:
             assert config_version_kind == "draft"
             assert soul.prompt.system_prompt == "You are Iris."
 
-        def test_agent_without_active_snapshot_raises_before_model_resolution(self, sqlite_session: Session):
+        def test_agent_without_active_snapshot_raises_before_model_resolution(self, sqlite_session: Session) -> None:
             bound_agent = _resolve_agent_agent(active_snapshot_id=None, published=False)
             _persist(sqlite_session, bound_agent)
             app_model = _resolve_agent_app()
@@ -1414,7 +1465,7 @@ class TestResolveAgentCases:
                     session=sqlite_session,
                 )
 
-        def test_unbound_app_raises(self, sqlite_session: Session):
+        def test_unbound_app_raises(self, sqlite_session: Session) -> None:
             app_model = _resolve_agent_app()
             with pytest.raises(AgentAppGeneratorError, match="has no bound Agent"):
                 AgentAppGenerator()._resolve_agent(

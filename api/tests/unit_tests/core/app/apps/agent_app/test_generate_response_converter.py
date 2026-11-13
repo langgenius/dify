@@ -59,6 +59,7 @@ def test_provider_failure_stream_preserves_task_and_backend_context(full_respons
             AgentBackendError("lost", run_id="run-1", reason="binding_lost"),
             {"error_source": "agent_backend", "agent_run_id": "run-1", "reason": "binding_lost"},
         ),
+        (AgentBackendError("request failed before a run existed"), {"error_source": "agent_backend"}),
         (
             AgentBackendRunFailedError("run-1", {}, error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED),
             {"error_source": "agent_backend", "agent_run_id": "run-1", "error_type": "agent_run_limit_exceeded"},
@@ -77,6 +78,7 @@ def test_provider_failure_stream_preserves_task_and_backend_context(full_respons
             {"error_source": "plugin_daemon", "error_type": "PluginInvokeError"},
         ),
         (InvokeError(), {"error_source": "model_provider"}),
+        (ValueError("invalid input"), {"error_source": "internal"}),
         (RuntimeError("private detail"), {"error_source": "internal"}),
     ],
 )

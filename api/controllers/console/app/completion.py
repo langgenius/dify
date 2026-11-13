@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Iterator, Mapping
-from typing import Any, Literal, NoReturn, Protocol, runtime_checkable
+from typing import Any, Literal, NoReturn
 from uuid import UUID
 
 from flask import request
@@ -62,11 +62,6 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
-
-
-@runtime_checkable
-class _ClosableStream(Protocol):
-    def close(self) -> None: ...
 
 
 def _resolve_debugger_chat_streaming(
@@ -566,8 +561,7 @@ def _drain_streaming_generate_response(
                         if payload.get(key):
                             details[key] = payload[key]
     finally:
-        if isinstance(response, _ClosableStream):
-            response.close()
+        response.close()
 
     _raise_http_error_from_sse_error(
         {
@@ -681,7 +675,9 @@ def _raise_agent_stream_error_before_response(response, *, context_details: Mapp
     created. Agent v2 configuration errors, such as an invalid model API key,
     can be the first real stream event after the initial ping; pre-reading that
     first non-ping event lets the console API relay the stream's status/code and
-    diagnostics as an HTTP error. Successful streams replay every buffered chunk.
+    diagnostics as an HTTP error. Streaming inputs are closable generation iterators;
+    successful streams replay every buffered chunk and close their source on exhaustion
+    or a downstream close, including while replaying buffered chunks.
     """
     if isinstance(response, Mapping):
         return response
@@ -692,6 +688,7 @@ def _raise_agent_stream_error_before_response(response, *, context_details: Mapp
         try:
             chunk = next(iterator)
         except StopIteration:
+            response.close()
             return iter(buffered)
 
         if not isinstance(chunk, str):
@@ -702,18 +699,27 @@ def _raise_agent_stream_error_before_response(response, *, context_details: Mapp
         else:
             error_payload = _extract_sse_error_payload(chunk)
             if error_payload is not None:
-                if isinstance(response, _ClosableStream):
-                    response.close()
+                response.close()
                 _raise_http_error_from_sse_error(
                     error_payload, fallback_message="Agent App chat failed.", context_details=context_details
                 )
             return _prepend_stream_chunks(buffered, chunk, iterator)
 
 
-def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any]:
-    yield from buffered
-    yield first
-    yield from iterator
+def _prepend_stream_chunks(
+    buffered: list[Any], first: Any, response: RateLimitGenerator | Generator[Any]
+) -> Generator[Any]:
+    """Replay pre-read chunks from a generation iterator, closing it on every exit.
+
+    The source is already positioned after ``first``. Exhaustion, iteration errors and
+    downstream close release it even when replay has not yet delegated to the source.
+    """
+    try:
+        yield from buffered
+        yield first
+        yield from response
+    finally:
+        response.close()
 
 
 def _is_sse_ping(chunk: str) -> bool:
@@ -797,8 +803,7 @@ def _raise_http_error_from_sse_error(
     )
     if status == 400 and code == "completion_request_error":
         exc = CompletionRequestError(message)
-        if details:
-            assert exc.data is not None
-            exc.data["details"] = details
+        assert exc.data is not None
+        exc.data["details"] = details
         raise exc
     raise RelayedHTTPError(status=status, error_code=code, message=message, details=details or None)

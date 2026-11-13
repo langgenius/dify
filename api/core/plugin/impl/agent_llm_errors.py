@@ -4,10 +4,8 @@ The clients keep their ValueError contract for other callers. Gateway invocation
 daemon failures before Graphon re-raises that same ValueError from itself and loses its cause.
 """
 
-import httpx
-
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
-from core.plugin.impl.exc import PluginDaemonError, PluginDaemonInternalError
+from core.plugin.impl.exc import PluginDaemonInternalError
 
 _PLUGIN_DAEMON_FAILURE_PREFIXES = (
     "Failed to request plugin daemon,",
@@ -24,7 +22,9 @@ def normalize_agent_llm_plugin_error(
     """Return a classified daemon failure, or None to preserve the original exception.
 
     Call only from the Agent LLM gateway or its marked runtime invocation. Exact ValueError
-    wrappers are recognized by daemon/HTTP causes or the clients' fixed failure messages.
+    wrappers are recognized by daemon causes or the clients' fixed failure messages.
+    BasePluginClient translates HTTP transport errors to PluginDaemonInnerError before
+    PluginModelClient wraps them; classified plugin errors already propagate unchanged.
     At the plugin stream boundary, a ValueError caused by deserialization errors is also a
     protocol failure. Named ValueError subclasses retain their own classification. Traversal
     stops on repeated causes, and daemon messages omit legacy appended numeric error codes.
@@ -42,10 +42,6 @@ def normalize_agent_llm_plugin_error(
         seen.add(id(cause))
         if isinstance(cause, PluginDaemonInnerError):
             return PluginDaemonInternalError(cause.message or fallback)
-        if isinstance(cause, PluginDaemonError):
-            return PluginDaemonInternalError(cause.description or fallback)
-        if isinstance(cause, httpx.RequestError):
-            return PluginDaemonInternalError(fallback)
         cause = cause.__cause__
 
     message = str(error)

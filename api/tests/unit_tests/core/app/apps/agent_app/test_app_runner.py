@@ -72,7 +72,8 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
-from core.plugin.impl.exc import PluginRuntimeError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.plugin.impl.exc import PluginDaemonInternalError, PluginRuntimeError
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
@@ -1572,6 +1573,30 @@ def test_empty_provider_failure_keeps_default_description_and_backend_cause() ->
     assert err.__cause__.run_id == "run-1"
     assert err.__cause__.reason == "InvokeRateLimitError"
     assert err.__cause__.source_event_id == "event-1"
+
+
+@pytest.mark.parametrize(
+    ("reason", "message", "error_type", "description"),
+    [
+        ("ProviderTokenNotInitError", "", ProviderTokenNotInitError, "Provider Token Not Init"),
+        ("ModelCurrentlyNotSupportError", "", ModelCurrentlyNotSupportError, "Model Currently Not Support"),
+        ("PluginDaemonInnerError", "daemon unavailable", PluginDaemonInternalError, "daemon unavailable"),
+        ("PluginDaemonInnerError", "", PluginDaemonInternalError, "Agent LLM invocation failed."),
+    ],
+)
+def test_gateway_failure_keeps_classification_defaults_and_backend_context(
+    reason: str, message: str, error_type: type[Exception], description: str
+) -> None:
+    """Known gateway failures keep usable descriptions even when the backend message is empty."""
+    error = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(run_id="run-1", error=message, reason=reason)
+    )
+    assert isinstance(error, error_type)
+    assert isinstance(error, ProviderTokenNotInitError | ModelCurrentlyNotSupportError | PluginDaemonInternalError)
+    assert error.description == description
+    assert isinstance(error.__cause__, AgentBackendRunFailedError)
+    assert error.__cause__.run_id == "run-1"
+    assert error.__cause__.reason == reason
 
 
 @pytest.mark.parametrize("prefix", ["", "model_name: gpt-test, "])

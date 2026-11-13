@@ -388,3 +388,33 @@ def test_http_error_without_backend_message_does_not_echo_a_dictionary_repr() ->
             DifyAgentBackendRunClient(sdk).cancel_run("run-1")
     assert str(raised.value) == "Agent backend HTTP 503"
     assert raised.value.error_code == "backend_overloaded"
+
+
+def test_stream_reconnect_exhaustion_without_http_rejection_keeps_transport_classification() -> None:
+    """An explicit cause is also the implicit context; searching both links must terminate."""
+
+    class DisconnectedClient(_SuccessfulClient):
+        @override
+        def stream_events_sync(
+            self,
+            run_id: str,
+            *,
+            after: str | None = None,
+            max_reconnects: int | None = None,
+            timeout_seconds: float | None = None,
+            should_stop: Callable[[], bool] | None = None,
+        ) -> Iterator[RunEvent]:
+            try:
+                raise DifyAgentClientError("connection reset")
+            except DifyAgentClientError as error:
+                raise DifyAgentStreamError("reconnect attempts exhausted") from error
+
+    with pytest.raises(AgentBackendStreamError) as caught:
+        list(DifyAgentBackendRunClient(DisconnectedClient()).stream_events("run-1"))
+
+    assert str(caught.value) == "reconnect attempts exhausted"
+    assert caught.value.run_id == "run-1"
+    sdk_error = caught.value.__cause__
+    assert isinstance(sdk_error, DifyAgentStreamError)
+    assert isinstance(sdk_error.__cause__, DifyAgentClientError)
+    assert sdk_error.__cause__ is sdk_error.__context__
