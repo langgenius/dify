@@ -211,7 +211,6 @@ class EnterpriseExecutionBindingBackend:
                 "\n".join(
                     [
                         "set -eu",
-                        "exec 2>&1",
                         f"mkdir -p {shlex.quote(self.layout.home_dir)}",
                         f"find {shlex.quote(self.layout.workspace_dir)} -mindepth 1 -maxdepth 1 -exec rm -rf -- {{}} +",
                         f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
