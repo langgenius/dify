@@ -140,7 +140,9 @@ class NotionSourceResolver:
         token = self._stored_token(source, credential_id)
         return self._prepared(
             tenant_id=document_ref.dataset.tenant_id,
-            notion_workspace_id=_required_string(info, "notion_workspace_id"),
+            # The Notion plugin returns an empty workspace id for API-key credentials, and
+            # extraction does not use it, so only the page id is required.
+            notion_workspace_id=_string_value(info, "notion_workspace_id") or "",
             page_id=_required_string(info, "notion_page_id"),
             page_type=_notion_page_type(info),
             document_model=source.document_model,
