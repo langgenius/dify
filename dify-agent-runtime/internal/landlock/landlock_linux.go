@@ -9,6 +9,9 @@ import (
 )
 
 // Restrict applies Landlock V2 filesystem restrictions for the current process.
+// Keep this strict: go-landlock v0.9.0 BestEffort downgrades WithRefer rules to
+// v0 (no isolation) on ABI < 2. A V1 fallback would still break cross-directory
+// rename/link. Return setup errors so the runner fails closed before script exec.
 func Restrict(cfg *Config) error {
 	rules := buildRules(cfg)
 
@@ -25,6 +28,8 @@ func buildRules(cfg *Config) []golandlock.Rule {
 		roPaths = append(roPaths, cfg.JobDir)
 	}
 
+	// Keep primary paths unfiltered so invalid Home/Cwd fail closed. Only these
+	// per-job trees receive REFER for cross-directory rename/link operations.
 	rwDirs := []string{cfg.Home}
 	if cfg.Cwd != "" && cfg.Cwd != cfg.Home {
 		rwDirs = append(rwDirs, cfg.Cwd)
@@ -38,6 +43,8 @@ func buildRules(cfg *Config) []golandlock.Rule {
 		golandlock.RWDirs(rwDirs...).WithRefer(),
 	}
 	if len(extraRWDirs) > 0 {
+		// Shared writable paths must not gain REFER, including across the
+		// boundary with Home/Cwd, so keep them in a separate rule.
 		rules = append(rules, golandlock.RWDirs(extraRWDirs...))
 	}
 	if len(roPaths) > 0 {

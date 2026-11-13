@@ -112,7 +112,13 @@ async def run_shellctl_control_command(
     *,
     timeout: float = 30.0,
 ) -> CompleteShellCommandResult:
-    """Merge stderr into stdout-only stdio for a bounded control command and delete its transient job."""
+    """Run a bounded POSIX sh snippet and delete its transient job.
+
+    ``script`` must not start with a shebang: the prepended ``exec 2>&1``
+    makes the runner select sh. This in-shell redirection preserves stderr
+    diagnostics in the stdout-only result before transient job cleanup.
+    Ordinary stdio callers retain separate stdout and stderr streams.
+    """
     result = await commands.run("exec 2>&1\n" + script, cwd=None, env=None, timeout=timeout, mode="stdio")
     job_id = result.job_id
     output_parts = [result.output]
