@@ -416,6 +416,35 @@ def test_infected_verdict_is_reused_forever_and_clean_verdict_until_it_expires(
     assert len(scanner.external_ids) == 2
 
 
+def test_provider_update_invalidates_verdicts_from_its_previous_configuration(
+    sqlite_session_factory: sessionmaker[Session],
+    storage: _Storage,
+    monkeypatch: pytest.MonkeyPatch,
+    checked_scanner: "type[_CheckedScanner]",
+) -> None:
+    scanner = _use_scanner(monkeypatch, ScanVerdict.clean(), ScanVerdict.infected(["Late.Detection"]))
+    provider_id, first = _seed(sqlite_session_factory, storage)
+    _, second = _seed(sqlite_session_factory, storage, upload_file_id="55555555-5555-4555-8555-555555555556")
+    service, _ = _service(sqlite_session_factory)
+
+    assert _scan(service, first).status == "clean"
+    assert len(scanner.external_ids) == 1
+
+    FileScanProviderService(sqlite_session_factory).update(
+        tenant_id=TENANT_ID,
+        provider_id=provider_id,
+        config={"endpoint": "https://new-scanner.example"},
+        credentials={"api_key": "new-key"},
+    )
+
+    outcome = _scan(service, second)
+
+    assert (outcome.allowed, outcome.code) == (False, ScanErrorCode.MALWARE_DETECTED)
+    assert outcome.threats == ("Late.Detection",)
+    assert len(scanner.external_ids) == 2
+    assert checked_scanner.checks == 1
+
+
 def test_file_without_a_hash_is_always_scanned(
     sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
 ) -> None:

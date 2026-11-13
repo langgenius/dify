@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -192,7 +192,13 @@ class FileScanService:
                 )
             provider_id, provider_name, provider_type = provider.id, provider.name, provider.provider_type
 
-            reused = _reusable_record(session, tenant_id=tenant_id, provider_id=provider_id, file_hash=target.file_hash)
+            reused = _reusable_record(
+                session,
+                tenant_id=tenant_id,
+                provider_id=provider_id,
+                file_hash=target.file_hash,
+                provider_last_tested_at=provider.last_tested_at,
+            )
             if reused is not None:
                 return _outcome_from_record(reused, file_name=target.file_name)
 
@@ -361,7 +367,14 @@ def _with_record(outcome: ScanOutcome, record_id: str | None) -> ScanOutcome:
     return replace(outcome, record_id=record_id)
 
 
-def _reusable_record(session: Session, *, tenant_id: str, provider_id: str, file_hash: str) -> FileScanRecord | None:
+def _reusable_record(
+    session: Session,
+    *,
+    tenant_id: str,
+    provider_id: str,
+    file_hash: str,
+    provider_last_tested_at: datetime | None,
+) -> FileScanRecord | None:
     """An earlier verdict for the same content under the same provider.
 
     Infected verdicts are reused forever. Clean verdicts expire because signatures are updated.
@@ -380,6 +393,10 @@ def _reusable_record(session: Session, *, tenant_id: str, provider_id: str, file
         .limit(1)
     )
     if latest is None:
+        return None
+    # A provider update or connectivity test can point the same provider ID at a different
+    # scanner. Verdicts from before that verification must not be reused with its new settings.
+    if provider_last_tested_at is not None and latest.created_at <= provider_last_tested_at:
         return None
     if latest.status == FileScanRecordStatus.INFECTED:
         return latest
