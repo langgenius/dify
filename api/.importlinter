@@ -1604,3 +1604,29 @@ source_modules =
 forbidden_modules =
     services.trigger.trigger_subscription_builder_service
 allow_indirect_imports = True
+
+[importlinter:contract:agent-version-service-boundary]
+name = Agent version use cases and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.agent.version_service
+    services.agent.version_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-version-repository-boundary]
+name = Agent version persistence depends on its contract rather than the service
+type = forbidden
+source_modules =
+    repositories.agent_version_repository
+forbidden_modules =
+    services.agent.version_service
+allow_indirect_imports = True

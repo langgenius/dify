@@ -927,14 +927,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 91
-    }
-  },
   "web/app/components/base/chat/chat/answer/more.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     SelectInputConfig,
@@ -177,6 +178,7 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
         pause_entity=pause_entity,
         resumption_context=_build_resumption_context(workflow_run_id, form.id),
         session_maker=session_maker,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 

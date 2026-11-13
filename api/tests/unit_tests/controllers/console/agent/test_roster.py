@@ -3,12 +3,12 @@ from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, Self, cast
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
@@ -24,12 +24,10 @@ from controllers.console.agent.composer import (
     WorkflowAgentComposerValidateApi,
 )
 from controllers.console.agent.roster import (
-    AgentAppApi,
     AgentAppCopyApi,
     AgentAppCopyPayload,
     AgentAppCreatePayload,
     AgentAppListApi,
-    AgentAppUpdatePayload,
     AgentBuildDraftApi,
     AgentBuildDraftApplyApi,
     AgentBuildDraftCheckoutApi,
@@ -42,18 +40,14 @@ from controllers.console.agent.roster import (
     AgentLogSourcesApi,
     AgentPublishApi,
     AgentPublishPayload,
-    AgentRosterVersionDetailApi,
-    AgentRosterVersionRestoreApi,
-    AgentRosterVersionsApi,
     AgentStatisticsQuery,
     AgentStatisticsSummaryApi,
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
 from controllers.console.app.error import CompletionRequestError
-from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
-from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
+from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.enums import CustomizeTokenStrategy, TagType
 from models.model import App, AppMode, IconType, Site, Tag, TagBinding
 from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
@@ -547,110 +541,6 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
     assert create_params.agent_role == ""
 
 
-def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    tenant_id = "00000000-0000-0000-0000-000000000002"
-    app_id = "00000000-0000-0000-0000-000000000003"
-    app_model = _app_detail_obj(id=app_id, tenant_id=tenant_id, bound_agent_id=agent_id)
-    agent = Agent(
-        tenant_id=tenant_id,
-        name="Resolved agent",
-        description="",
-        role="Resolved role",
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        app_id=app_id,
-        status=AgentStatus.ACTIVE,
-    )
-    agent.id = agent_id
-    sqlite_session.add(agent)
-    sqlite_session.flush()
-    captured: dict[str, object] = {}
-    monkeypatch.setattr(roster_controller.AgentRosterService, "get_agent_app_model", lambda _self, **kwargs: app_model)
-    monkeypatch.setattr(roster_controller, "_resolve_agent_runtime_app_model", lambda _session, **kwargs: app_model)
-    monkeypatch.setattr(roster_controller.AgentRosterService, "get_app_backing_agent", lambda _self, **kwargs: agent)
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_or_create_build_conversation",
-        lambda _self, **kwargs: "debug-conversation-detail",
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 2
-    )
-    monkeypatch.setattr(
-        roster_controller.SystemFeatureService,
-        "is_webapp_auth_enabled",
-        lambda: False,
-    )
-    monkeypatch.setattr(
-        roster_controller,
-        "agent_has_workflow_callable_active_snapshot",
-        lambda **_kwargs: False,
-    )
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-    monkeypatch.setattr(
-        RBACService.MyPermissions,
-        "get",
-        lambda *_args, **_kwargs: roster_controller.rbac_contracts.MyPermissionsResponse(
-            agent=roster_controller.rbac_contracts.ResourcePermissionSnapshot(
-                default_permission_keys=["agent.acl.preview"]
-            )
-        ),
-    )
-
-    class FakeAppService:
-        def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
-            captured["update"] = {"app": app_obj, "args": args}
-            return _app_detail_obj(id=app_id, tenant_id=tenant_id, name=args["name"], bound_agent_id=agent_id)
-
-        def delete_app(self, app_obj: object, *, session: object) -> None:
-            captured["delete"] = app_obj
-
-    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
-    session = sqlite_session
-    with app.test_request_context():
-        detail = unwrap(AgentAppApi.get)(AgentAppApi(), session, tenant_id, _account(account_id=account_id), agent_id)
-    assert detail["id"] == agent_id
-    assert detail["app_id"] == app_id
-    assert detail["debug_conversation_id"] == "debug-conversation-detail"
-    assert detail["debug_conversation_has_messages"] is True
-    assert detail["debug_conversation_message_count"] == 2
-    assert detail["role"] == "Resolved role"
-    assert detail["permission_keys"] == ["agent.acl.preview"]
-    assert detail["access_ready"] is False
-    assert "active_config_is_published" not in detail
-    assert "bound_agent_id" not in detail
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001",
-        json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
-    ):
-        updated = unwrap(AgentAppApi.put)(
-            AgentAppApi(),
-            AgentAppUpdatePayload(name="Renamed", description="", role="Reviewer", icon_type="emoji", icon="R"),
-            session,
-            tenant_id,
-            _account(account_id=account_id),
-            agent_id,
-        )
-    assert updated["name"] == "Renamed"
-    assert updated["id"] == agent_id
-    assert updated["app_id"] == app_id
-    assert updated["debug_conversation_id"] == "debug-conversation-detail"
-    assert updated["debug_conversation_has_messages"] is True
-    assert updated["debug_conversation_message_count"] == 2
-    assert updated["role"] == "Resolved role"
-    assert "active_config_is_published" not in updated
-    assert "bound_agent_id" not in updated
-    update_call = cast(dict[str, object], captured["update"])
-    assert update_call["app"] is app_model
-    assert cast(dict[str, object], update_call["args"])["role"] == "Reviewer"
-    deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), session, tenant_id, agent_id)
-    assert (deleted, status) == ("", 204)
-    assert captured["delete"] is app_model
-
-
 def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
@@ -874,65 +764,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
 
 
-def test_agent_app_update_allows_empty_role(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
-    captured: dict[str, object] = {}
-    monkeypatch.setattr(roster_controller.AgentRosterService, "get_agent_app_model", lambda _self, **kwargs: app_model)
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_app_backing_agent",
-        lambda _self, **kwargs: Agent(
-            tenant_id="tenant-1",
-            name="Agent",
-            scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
-            id=agent_id,
-            app_id="app-1",
-            backing_app_id=None,
-            role="",
-            active_config_snapshot_id=None,
-        ),
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_or_create_build_conversation",
-        lambda _self, **kwargs: "debug-conversation-detail",
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
-    )
-    monkeypatch.setattr(
-        roster_controller.SystemFeatureService,
-        "is_webapp_auth_enabled",
-        lambda: False,
-    )
-
-    class FakeAppService:
-        def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
-            captured["update"] = {"app": app_obj, "args": args}
-            return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
-
-    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001",
-        json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
-    ):
-        updated = unwrap(AgentAppApi.put)(
-            AgentAppApi(),
-            AgentAppUpdatePayload(name="Renamed", description="", role="", icon_type="emoji", icon="R"),
-            sqlite_session,
-            "tenant-1",
-            _account(),
-            agent_id,
-        )
-    assert updated["role"] == ""
-    update_call = cast(dict[str, object], captured["update"])
-    assert cast(dict[str, object], update_call["args"])["role"] == ""
-
-
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
@@ -996,103 +827,6 @@ def test_invite_options_get_applies_resource_visibility(
         )
 
     assert captured["accessible_agent_ids"] == ["agent-1", "agent-2"]
-
-
-def test_agent_version_queries_do_not_require_paid_plan(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    version_id = "00000000-0000-0000-0000-000000000002"
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    get_plan = Mock(return_value=CloudPlan.SANDBOX)
-    monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService, "list_agent_versions", lambda _self, **kwargs: [_version_response()]
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_agent_version_detail",
-        lambda _self, **kwargs: {
-            **_version_response(cast(str, kwargs["version_id"])),
-            "agent_id": kwargs["agent_id"],
-            "config_snapshot": {},
-            "revisions": [
-                {
-                    "id": "revision-1",
-                    "previous_snapshot_id": None,
-                    "current_snapshot_id": kwargs["version_id"],
-                    "revision": 1,
-                    "operation": "create_version",
-                    "summary": None,
-                    "version_note": None,
-                    "created_by": "account-1",
-                    "created_at": None,
-                }
-            ],
-        },
-    )
-    assert (
-        unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), MagicMock(), "tenant-1", agent_id)["data"][0]["id"]
-        == "version-1"
-    )
-    version_detail = unwrap(AgentRosterVersionDetailApi.get)(
-        AgentRosterVersionDetailApi(), MagicMock(), "tenant-1", agent_id, version_id
-    )
-    assert version_detail["id"] == version_id
-    assert version_detail["agent_id"] == agent_id
-    get_plan.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    ("edition", "plan", "allowed"),
-    [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
-        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True),
-        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True),
-        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True),
-    ],
-)
-def test_agent_version_restore_requires_cloud_paid_plan(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-    edition: DeploymentEdition,
-    plan: CloudPlan,
-    allowed: bool,
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    version_id = "00000000-0000-0000-0000-000000000002"
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
-    get_plan = Mock(return_value=plan)
-    monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
-    restore = Mock(return_value={"result": "success", "active_config_snapshot_id": version_id})
-    monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore)
-    session = sqlite_session
-    api = AgentRosterVersionRestoreApi()
-
-    if not allowed:
-        with pytest.raises(Forbidden, match="This feature requires a paid plan.") as exc_info:
-            unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
-        assert exc_info.value.code == 403
-        restore.assert_not_called()
-        assert not session.in_transaction()
-    else:
-        restored = unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
-        assert restored == {
-            "result": "success",
-            "active_config_snapshot_id": version_id,
-            "draft_config_id": None,
-            "restored_version_id": None,
-        }
-        restore.assert_called_once_with(
-            tenant_id="tenant-1",
-            agent_id=agent_id,
-            version_id=version_id,
-            account_id="account-1",
-        )
-
-    if edition == DeploymentEdition.CLOUD:
-        get_plan.assert_called_once_with("tenant-1")
-    else:
-        get_plan.assert_not_called()
 
 
 def test_agent_observability_routes_resolve_app_from_agent_id(

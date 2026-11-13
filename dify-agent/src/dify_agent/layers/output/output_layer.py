@@ -32,6 +32,12 @@ _FINAL_OUTPUT_TOOL_NAME: Final[str] = "final_output"
 _VALIDATED_OUTPUT_TYPE_NAME: Final[str] = f"DifyValidatedOutput_{_FINAL_OUTPUT_TOOL_NAME}"
 _LOCAL_DEFS_REF_PREFIX: Final[str] = "#/$defs/"
 _NON_SCHEMA_VALUE_KEYWORDS: Final[frozenset[str]] = frozenset({"const", "default", "enum", "example", "examples"})
+# Keywords whose values are name-to-schema maps. Entry names inside these maps
+# are user-chosen data (property names, definition names, ...), never keywords,
+# so every entry value is traversed as a schema.
+_SCHEMA_MAP_KEYWORDS: Final[frozenset[str]] = frozenset(
+    {"$defs", "definitions", "dependencies", "dependentSchemas", "patternProperties", "properties"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,7 +219,9 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
     ``jsonschema`` can validate a schema that keeps local refs, but Pydantic's
     JSON schema generation cannot safely preserve custom root ``$defs`` in this
     integration. Inlining keeps the model-facing schema equivalent while still
-    letting runtime validation use the original schema document.
+    letting runtime validation use the original schema document. Schema
+    containers are rebuilt and literal keyword values are deep-copied, so the
+    exposed schema stays independent of the validation schema.
     """
     root_defs = schema.get("$defs")
     if not isinstance(root_defs, dict):
@@ -229,38 +237,40 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
                 target = root_defs.get(ref_name)
                 if not isinstance(target, dict):
                     raise ValueError(f"Local $ref {ref!r} could not be resolved from $defs.")
-                resolved_target = resolve(deepcopy(target), ref_stack=(*ref_stack, ref_name))
-                merged = cast(dict[str, JsonValue], deepcopy(resolved_target))
+                resolved_target = resolve(target, ref_stack=(*ref_stack, ref_name))
+                merged = cast(dict[str, JsonValue], resolved_target)
                 for key, value in node.items():
                     if key == "$ref":
                         continue
-                    if key in _NON_SCHEMA_VALUE_KEYWORDS:
-                        merged[key] = deepcopy(value)
-                    else:
-                        merged[key] = _resolve_or_copy(value, ref_stack=ref_stack)
+                    merged[key] = _resolve_schema_keyword(key, value, ref_stack=ref_stack)
                 return merged
 
             resolved_node: dict[str, JsonValue] = {}
             for key, value in node.items():
                 if key == "$defs":
                     continue
-                if key in _NON_SCHEMA_VALUE_KEYWORDS:
-                    resolved_node[key] = deepcopy(value)
-                else:
-                    resolved_node[key] = _resolve_or_copy(value, ref_stack=ref_stack)
+                resolved_node[key] = _resolve_schema_keyword(key, value, ref_stack=ref_stack)
             return resolved_node
 
         if isinstance(node, list):
-            return [_resolve_or_copy(item, ref_stack=ref_stack) for item in node]
+            return [resolve(item, ref_stack=ref_stack) for item in node]
 
-        return deepcopy(node)
+        return node
 
-    def _resolve_or_copy(value: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
-        if isinstance(value, dict | list):
-            return resolve(value, ref_stack=ref_stack)
-        return deepcopy(value)
+    def _resolve_schema_keyword(key: str, value: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
+        """Resolve one keyword value of a schema object according to its position.
 
-    resolved_schema = resolve(deepcopy(schema), ref_stack=())
+        Values of literal-data keywords stay untouched. Values of name-to-schema
+        map keywords are resolved entry by entry, so an entry named like a
+        keyword (for example a property named ``default``) is still a schema.
+        """
+        if key in _NON_SCHEMA_VALUE_KEYWORDS:
+            return deepcopy(value)
+        if key in _SCHEMA_MAP_KEYWORDS and isinstance(value, dict):
+            return {name: resolve(entry, ref_stack=ref_stack) for name, entry in value.items()}
+        return resolve(value, ref_stack=ref_stack)
+
+    resolved_schema = resolve(schema, ref_stack=())
     return cast(dict[str, JsonValue], resolved_schema)
 
 
@@ -271,12 +281,16 @@ def _iter_schema_refs(schema: JsonValue) -> Iterable[str]:
                 yield value
             elif key in _NON_SCHEMA_VALUE_KEYWORDS:
                 continue
-            elif isinstance(value, dict | list):
+            elif key in _SCHEMA_MAP_KEYWORDS and isinstance(value, dict):
+                # Map entry names are user data, not keywords, so every entry
+                # value is a schema regardless of what the entry is called.
+                for entry in value.values():
+                    yield from _iter_schema_refs(entry)
+            else:
                 yield from _iter_schema_refs(value)
     elif isinstance(schema, list):
         for item in schema:
-            if isinstance(item, dict | list):
-                yield from _iter_schema_refs(item)
+            yield from _iter_schema_refs(item)
     elif isinstance(schema, str | int | float | bool) or schema is None:
         return
     else:  # pragma: no cover - JsonValue exhaustiveness guard
