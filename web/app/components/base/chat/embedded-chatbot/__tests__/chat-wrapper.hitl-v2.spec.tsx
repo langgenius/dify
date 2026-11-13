@@ -9,7 +9,6 @@ import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/t
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
 import { sseGet } from '@/service/base'
 import { AppSourceType, submitHumanInputForm } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitInstalledHumanInput } from '@/service/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
@@ -45,9 +44,6 @@ vi.mock('@/service/share', async (importOriginal) => ({
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: vi.fn().mockResolvedValue(undefined),
-}))
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: vi.fn().mockResolvedValue(undefined),
 }))
 
 const createForm = (formVersion: HumanInputFormData['form_version']): HumanInputFormData =>
@@ -151,7 +147,6 @@ describe('EmbeddedChatbot human-input submission', () => {
         ),
       )
       expect(submitHumanInputForm).not.toHaveBeenCalled()
-      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
     },
   )
 
@@ -171,7 +166,6 @@ describe('EmbeddedChatbot human-input submission', () => {
         ),
       )
       expect(submitInstalledHumanInput).not.toHaveBeenCalled()
-      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
     },
   )
 
@@ -181,17 +175,15 @@ describe('EmbeddedChatbot human-input submission', () => {
       const user = renderSubject(formVersion, { appSourceType: AppSourceType.webApp })
       await submitVisibleForm(user)
 
-      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
       await confirmWorkflowReady()
       await waitFor(() =>
-        expect(submitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+        expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
           'form-token',
           { inputs: { review: 'Approved' }, action: 'approve' },
           formVersion,
         ),
       )
       expect(submitInstalledHumanInput).not.toHaveBeenCalled()
-      expect(submitHumanInputForm).not.toHaveBeenCalled()
     },
   )
 })

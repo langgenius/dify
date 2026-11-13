@@ -16,13 +16,13 @@ import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchMoreLikeThis,
   submitHumanInputForm,
   updateFeedback,
 } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import GenerationActionGroups from './action-groups'
 import {
@@ -52,7 +52,7 @@ type IGenerationItemProps = {
   feedback?: FeedbackType
   onFeedback?: (feedback: FeedbackType) => void
   onSave?: (messageId: string) => void
-  isMobile?: boolean
+  isBelowMd?: boolean
   appSourceType: AppSourceType
   installedAppId?: string
   taskId?: string
@@ -82,7 +82,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   onFeedback,
   onSave,
   depth = 1,
-  isMobile,
+  isBelowMd,
   appSourceType,
   installedAppId,
   taskId,
@@ -127,7 +127,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     feedback: childFeedback,
     onSave,
     isShowTextToSpeech,
-    isMobile,
+    isBelowMd,
     appSourceType,
     installedAppId,
     controlClearMoreLikeThis,
@@ -195,17 +195,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      const form = workflowProcessData?.humanInputFormDataList?.find(
-        (item) => item.form_token === formToken,
-      )
+      const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
-        await submitHumanInputFormService(formToken, formData, form?.form_version)
-      } else if (appSourceType === AppSourceType.webApp) {
-        if (prepareHumanInputSubmission && !(await prepareHumanInputSubmission())) return
-        await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
-      } else await submitHumanInputForm(formToken, formData)
+        await submitHumanInputFormService(formToken, submission, formVersion)
+      } else {
+        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+        await submitHumanInputForm(formToken, submission, formVersion)
+      }
     },
-    [appSourceType, prepareHumanInputSubmission, workflowProcessData?.humanInputFormDataList],
+    [appSourceType, prepareHumanInputSubmission],
   )
 
   return (
@@ -271,7 +270,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div
               className={cn(
                 'relative mt-1 h-4 px-4 system-xs-regular text-text-quaternary',
-                isMobile &&
+                isBelowMd &&
                   (childMessageId || isQuerying) &&
                   depth < MAX_GENERATION_DEPTH &&
                   'ps-10',
@@ -313,14 +312,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               <div
                 className={cn(
                   'absolute -top-8 flex h-8.25 w-4 justify-center',
-                  isMobile ? 'inset-s-4.25' : 'inset-s-[50%] translate-x-[-50%]',
+                  isBelowMd ? 'inset-s-4.25' : 'inset-s-[50%] translate-x-[-50%]',
                 )}
               >
                 <div className="h-full w-0.5 bg-divider-regular"></div>
                 <div
                   className={cn(
                     'absolute inset-s-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
-                    isMobile ? 'top-[3.5px]' : 'top-2',
+                    isBelowMd ? 'top-[3.5px]' : 'top-2',
                   )}
                 >
                   <RiSparklingFill className="size-3 text-text-primary-on-surface" />

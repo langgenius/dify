@@ -27,5 +27,6 @@ export type {
   DevProxyCorsConfig,
   DevProxyRoute,
   DevProxyServerConfig,
+  DevProxySessionImportConfig,
   ResolvedDevProxyServerOptions,
 } from './types'

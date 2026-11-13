@@ -10,6 +10,7 @@ from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
@@ -17,7 +18,6 @@ from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -38,7 +38,6 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -56,6 +55,7 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated

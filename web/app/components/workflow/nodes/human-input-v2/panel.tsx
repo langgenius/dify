@@ -4,7 +4,9 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import HumanInputSharedPanelSections from '@/app/components/workflow/nodes/human-input/shared/panel-sections'
+import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { VarType } from '@/app/components/workflow/types'
+import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { ENABLE_HITL_IM } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import DebugMode from './components/debug-mode'
@@ -15,6 +17,7 @@ import useHumanInputV2Config from './use-config'
 
 const HumanInputV2PanelContent = ({ id, data }: NodePanelProps<HumanInputV2NodeType>) => {
   const config = useHumanInputV2Config(id, data)
+  const nodes = useWorkflowNodes()
   const { data: email } = useQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -40,6 +43,7 @@ const HumanInputV2PanelContent = ({ id, data }: NodePanelProps<HumanInputV2NodeT
           value={config.inputs.recipients_spec}
           onChange={config.handleRecipientsChange}
           readonly={config.readOnly}
+          isTriggerMode={isTriggerWorkflow(nodes)}
           availableNodes={availableNodesWithParent}
         />
         <div className="px-4 py-2">
@@ -63,7 +67,12 @@ const HumanInputV2PanelContent = ({ id, data }: NodePanelProps<HumanInputV2NodeT
       <div className="px-4 py-2">
         <Separator className="my-0 bg-divider-subtle" />
       </div>
-      <HumanInputSharedPanelSections id={id} config={config} />
+      <HumanInputSharedPanelSections
+        id={id}
+        config={config}
+        availableVars={availableVars}
+        availableNodes={availableNodesWithParent}
+      />
     </div>
   )
 }

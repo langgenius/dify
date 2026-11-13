@@ -32,6 +32,7 @@ export function RecipientAvatar({ identity, avatar, name, size, className }: Rec
 
   return (
     <Avatar
+      aria-hidden="true"
       size={size}
       className={cn(
         'inset-ring-[0.5px] inset-ring-divider-regular',
@@ -39,7 +40,7 @@ export function RecipientAvatar({ identity, avatar, name, size, className }: Rec
         className,
       )}
     >
-      {avatar && <AvatarImage key={avatar.split('?')[0]} keepMounted src={avatar} alt={name} />}
+      {avatar && <AvatarImage key={avatar.split('?')[0]} keepMounted src={avatar} alt="" />}
       <AvatarFallback
         className={cn(
           'bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 leading-[1.2]',

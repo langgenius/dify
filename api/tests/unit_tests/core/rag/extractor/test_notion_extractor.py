@@ -6,6 +6,7 @@ from unittest import mock
 
 import httpx
 import pytest
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -839,6 +840,240 @@ class TestNotionPageRichTextCases:
             content = extractor._read_block("child-block-id", num_tabs=1)
 
         assert content == "\tSee \n\tProject Alpha\n\tE = mc^2\n\n"
+
+
+def _table_extractor() -> notion_extractor.NotionExtractor:
+    """Return a page extractor with a synthetic access token and no external state."""
+    return notion_extractor.NotionExtractor(
+        notion_workspace_id="workspace",
+        notion_obj_id="page",
+        notion_page_type="page",
+        tenant_id="tenant",
+        notion_token_loader=lambda: "synthetic-token",
+    )
+
+
+def _table_page(header: str, next_cursor: str | None = None) -> dict[str, object]:
+    """Build one valid table page whose cursor controls whether another request is required."""
+    return {
+        "results": [{"table_row": {"cells": [[{"plain_text": header}]]}}],
+        "next_cursor": next_cursor,
+    }
+
+
+def test_table_rows_empty_response_returns_empty_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A valid terminal page without rows produces empty content after one request."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Record the synthetic table request and return a valid empty terminal page."""
+        requests.append(request)
+        return httpx.Response(200, json={"results": [], "next_cursor": None})
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        content = _table_extractor()._read_table_rows("table")
+
+    assert content == ""
+    assert len(requests) == 1
+    assert requests[0].url.params.get("start_cursor") is None
+
+
+def test_table_rows_empty_page_advances_to_the_next_cursor(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An empty nonterminal page advances its cursor and returns the later page's Markdown."""
+    cursors: list[str | None] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Return an empty first page followed by one table page for the supplied cursor."""
+        cursor = request.url.params.get("start_cursor")
+        cursors.append(cursor)
+        if cursor is None:
+            return httpx.Response(200, json={"results": [], "next_cursor": "next-page"})
+        return httpx.Response(200, json=_table_page("Header"))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        content = _table_extractor()._read_table_rows("table")
+
+    assert content == "| Header |\n| --- |\n"
+    assert cursors == [None, "next-page"]
+
+
+def test_table_rows_empty_final_page_preserves_prior_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A terminal empty page leaves successfully rendered prior pages intact."""
+    cursors: list[str | None] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Return one rendered page followed by an empty terminal page."""
+        cursor = request.url.params.get("start_cursor")
+        cursors.append(cursor)
+        if cursor is None:
+            return httpx.Response(200, json=_table_page("Header", "next-page"))
+        return httpx.Response(200, json={"results": [], "next_cursor": None})
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        content = _table_extractor()._read_table_rows("table")
+
+    assert content == "| Header |\n| --- |\n"
+    assert cursors == [None, "next-page"]
+
+
+@pytest.mark.parametrize("status", [401, 403, 429, 500, 503])
+@pytest.mark.parametrize("after_first_page", [False, True], ids=["first-page", "later-page"])
+def test_table_rows_http_errors_do_not_return_empty_or_partial_content(
+    monkeypatch: pytest.MonkeyPatch, status: int, after_first_page: bool
+) -> None:
+    """Any failed table page raises HTTPStatusError before empty or partial content can return."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Optionally return one valid page, then a synthetic Notion HTTP error."""
+        requests.append(request)
+        if after_first_page and len(requests) == 1:
+            return httpx.Response(200, json=_table_page("Header", "next-page"))
+        return httpx.Response(
+            status,
+            json={"object": "error", "status": status, "code": "synthetic_error", "message": "Synthetic failure"},
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            _table_extractor()._read_table_rows("table")
+
+    assert caught.value.response.status_code == status
+    assert len(requests) == (2 if after_first_page else 1)
+
+
+def test_table_rows_http_errors_are_checked_before_decoding_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failed non-JSON response raises for its HTTP status before body decoding."""
+
+    def respond(_request: httpx.Request) -> httpx.Response:
+        """Return a synthetic HTML service failure for any table request."""
+        return httpx.Response(503, text="<html>Service unavailable</html>")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            _table_extractor()._read_table_rows("table")
+
+    assert caught.value.response.status_code == 503
+
+
+@pytest.mark.parametrize("after_first_page", [False, True], ids=["first-page", "later-page"])
+def test_table_rows_success_with_invalid_json_does_not_return_partial_content(
+    monkeypatch: pytest.MonkeyPatch, after_first_page: bool
+) -> None:
+    """A 200 response with invalid JSON propagates decoding failure, including after prior pages."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Optionally return one valid page, then a successful response with invalid JSON."""
+        requests.append(request)
+        if after_first_page and len(requests) == 1:
+            return httpx.Response(200, json=_table_page("Header", "next-page"))
+        return httpx.Response(200, text="not-json")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        with pytest.raises(json.JSONDecodeError):
+            _table_extractor()._read_table_rows("table")
+
+    assert len(requests) == (2 if after_first_page else 1)
+
+
+@pytest.mark.parametrize(
+    "invalid_page",
+    [
+        {"next_cursor": None},
+        {"results": []},
+        {"results": None, "next_cursor": None},
+        {"results": "not-a-list", "next_cursor": None},
+        {"results": ["not-an-object"], "next_cursor": None},
+        [],
+        {"results": [], "next_cursor": 42},
+    ],
+    ids=[
+        "missing-results",
+        "missing-next-cursor",
+        "null-results",
+        "non-list-results",
+        "non-object-result",
+        "non-object-page",
+        "invalid-cursor",
+    ],
+)
+@pytest.mark.parametrize("after_first_page", [False, True], ids=["first-page", "later-page"])
+def test_table_rows_reject_malformed_success_responses(
+    monkeypatch: pytest.MonkeyPatch, invalid_page: object, after_first_page: bool
+) -> None:
+    """Malformed successful pages fail validation before empty or partial content can return."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Optionally return one valid page, then the supplied malformed success payload."""
+        requests.append(request)
+        if after_first_page and len(requests) == 1:
+            return httpx.Response(200, json=_table_page("Header", "next-page"))
+        return httpx.Response(200, json=invalid_page)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        with pytest.raises(ValidationError):
+            _table_extractor()._read_table_rows("table")
+
+    assert len(requests) == (2 if after_first_page else 1)
+
+
+def test_table_rows_network_errors_propagate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A table transport failure propagates without producing content."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Raise a synthetic connection failure for the accepted table request."""
+        raise httpx.ConnectError("Synthetic connection failure", request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        with pytest.raises(httpx.ConnectError, match="Synthetic connection failure"):
+            _table_extractor()._read_table_rows("table")
+
+
+def test_page_import_does_not_return_a_partial_document_when_table_loading_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Page extraction fails when one table request fails, even after other blocks were read."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        """Return a mixed page root, then rate-limit its nested table request."""
+        if request.url.path.endswith("/page/children"):
+            return httpx.Response(
+                200,
+                json={
+                    "results": [
+                        {
+                            "type": "paragraph",
+                            "id": "paragraph",
+                            "has_children": False,
+                            "paragraph": {"rich_text": [{"plain_text": "Retained paragraph"}]},
+                        },
+                        {"type": "table", "id": "table", "has_children": True, "table": {}},
+                    ],
+                    "next_cursor": None,
+                },
+            )
+        assert request.url.path.endswith("/table/children")
+        return httpx.Response(
+            429,
+            json={"object": "error", "status": 429, "code": "rate_limited", "message": "Synthetic failure"},
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "request", client.request)
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            _table_extractor()._load_data_as_documents("page", "page")
+
+    assert caught.value.response.status_code == 429
 
 
 def _database_extractor() -> notion_extractor.NotionExtractor:

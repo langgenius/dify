@@ -1030,6 +1030,7 @@ export const zTraceProviderCapabilitiesResponse = z.object({
  */
 export const zTraceAppConfigResponse = z.object({
   app_id: z.string().nullish(),
+  configured_secrets: z.array(z.string()).nullish(),
   created_at: z.string().nullish(),
   error: z.string().nullish(),
   has_not_configured: z.boolean().nullish(),
@@ -6089,6 +6090,7 @@ export const zAgentSoulAppFeaturesConfig = z.object({
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+  show_thoughts: zAgentFeatureToggleConfig.nullish(),
   speech_to_text: zAgentFeatureToggleConfig.nullish(),
   suggested_questions: z.array(z.string()).nullish(),
   suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),

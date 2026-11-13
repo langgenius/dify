@@ -1,5 +1,5 @@
-import { createHumanInputV2MockScenario } from '../mock-transport'
 import { humanInputV2SessionReducer, initialHumanInputV2SessionState } from '../session-reducer'
+import { createHumanInputV2MockScenario } from './fixtures/mock-transport'
 
 describe('Human Input v2 session reducer', () => {
   const definition = createHumanInputV2MockScenario().definition
@@ -136,4 +136,33 @@ describe('Human Input v2 session reducer', () => {
     })
     expect(terminalState.challenge).toBeUndefined()
   })
+
+  it.each(['already-submitted', 'form-expired'] as const)(
+    'keeps %s terminal until an explicit reset',
+    (error) => {
+      const terminalState = humanInputV2SessionReducer(
+        { ...initialHumanInputV2SessionState, definition },
+        { type: 'submit-terminal-failed', error },
+      )
+      expect(
+        humanInputV2SessionReducer(terminalState, { type: 'access-succeeded', challenge }),
+      ).toBe(terminalState)
+      expect(
+        humanInputV2SessionReducer(terminalState, {
+          type: 'access-failed',
+          error: 'network',
+          preserveChallenge: false,
+        }),
+      ).toBe(terminalState)
+      expect(
+        humanInputV2SessionReducer(terminalState, { type: 'otp-changed', otpCode: '246810' }),
+      ).toBe(terminalState)
+      expect(humanInputV2SessionReducer(terminalState, { type: 'challenge-expired' })).toBe(
+        terminalState,
+      )
+      expect(humanInputV2SessionReducer(terminalState, { type: 'reset' })).toBe(
+        initialHumanInputV2SessionState,
+      )
+    },
+  )
 })

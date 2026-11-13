@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,24 +13,6 @@ import { seedToolProviders } from '@/test/console/tool-providers'
 import NodePreview from '../node'
 import Panel from '../panel'
 import { AssignerNodeInputType, WriteMode } from '../types'
-
-// Monaco is a browser-owned editor; exercise the surrounding assignment flow with its input contract.
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    readOnly,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/editor/code-editor').default
-  >) => (
-    <textarea
-      aria-label="JSON assignment"
-      value={typeof value === 'object' ? JSON.stringify(value) : value}
-      readOnly={readOnly}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
-  ),
-}))
 
 const operation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
   variable_selector: ['conversation', 'greeting'],
@@ -198,7 +179,7 @@ describe('Assigner panel integration', () => {
     const { getData } = renderPanel([
       operation({ variable_selector: ['conversation', 'settings'], value: '{"a":1}' }),
     ])
-    const editor = screen.getByRole('textbox', { name: 'JSON assignment' })
+    const editor = screen.getByTestId('monaco-editor')
     await user.clear(editor)
     await user.paste('{"a":2}')
     expect(getData().items[0]?.value).toBe('{"a":2}')

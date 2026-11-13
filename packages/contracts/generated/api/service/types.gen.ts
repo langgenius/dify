@@ -2881,6 +2881,7 @@ export type KnowledgeFsSourceListResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -2891,6 +2892,8 @@ export type KnowledgeFsSourcePageResponse = {
 export type KnowledgeFsSourcePagesQuery = {
   cursor?: string | null
   limit?: number
+  parentId?: string | null
+  view?: 'tree' | null
 }
 
 export type KnowledgeFsSourcePagesResponse = {
@@ -3482,6 +3485,9 @@ export type Parameters = {
     enabled?: boolean
   }
   sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
     enabled?: boolean
   }
   speech_to_text: {
@@ -8619,6 +8625,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }

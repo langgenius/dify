@@ -1,514 +1,240 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleClient } from '@/service/console'
-import { ContactsManagementProvider } from '../composition'
+import { useState } from 'react'
+import { createDeferred } from '@/test/deferred'
 import { ExternalContactDialog } from '../external-contact-dialog'
-import { createContactsApiRepository } from '../repository'
-import { ContactsManagementMockProvider } from './fixtures/composition'
-import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
+import { alice } from './fixtures/data'
 
-const { uploadAvatar } = vi.hoisted(() => ({ uploadAvatar: vi.fn() }))
+const api = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), upload: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.humanInput.v2.contacts.external.post': api.create,
+      'workspaces.current.humanInput.v2.contacts.external.byContactId.patch': api.update,
+      'files.upload.post': api.upload,
+    }),
+  }
+})
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleQuery: {
-    files: {
-      upload: { post: { mutationOptions: () => ({ mutationFn: uploadAvatar }) } },
-    },
-  },
-  consoleClient: {
-    workspaces: {
-      current: {
-        humanInput: {
-          v2: {
-            contacts: {
-              get: vi.fn(),
-              byContactId: { get: vi.fn() },
-              external: { post: vi.fn(), byContactId: { patch: vi.fn() } },
-              remove: { post: vi.fn() },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
-
-function renderAvatarDialog(contact?: ComponentProps<typeof ExternalContactDialog>['contact']) {
-  const scenario = createContactsMockScenario(ContactsMockScenario.CeMixed)
-  const queryClient = new QueryClient({
-    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-  })
-  function Wrapper({ children }: { children: ReactNode }) {
+function setup(contact?: ComponentProps<typeof ExternalContactDialog>['contact']) {
+  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  const onCreated = vi.fn()
+  function Host() {
+    const [open, setOpen] = useState(false)
     return (
-      <QueryClientProvider client={queryClient}>
-        <ContactsManagementProvider
-          context={{
-            deployment: scenario.deployment,
-            imCentrallyManaged: scenario.imCentrallyManaged,
-            permissions: scenario.permissions,
-            workspaceId: scenario.workspaceId,
-          }}
-          repository={createContactsApiRepository()}
-        >
-          {children}
-        </ContactsManagementProvider>
-      </QueryClientProvider>
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Open contact
+        </button>
+        <ExternalContactDialog
+          open={open}
+          onOpenChange={setOpen}
+          contact={contact}
+          onCreated={onCreated}
+        />
+      </>
     )
   }
-  return render(
-    <ExternalContactDialog open contact={contact} onCreated={vi.fn()} onOpenChange={vi.fn()} />,
-    { wrapper: Wrapper },
+  render(
+    <QueryClientProvider client={queryClient}>
+      <Host />
+    </QueryClientProvider>,
   )
+  return { onCreated, queryClient }
 }
+async function open(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Open contact' }))
+  return screen.findByRole('dialog')
+}
+async function fill(
+  user: ReturnType<typeof userEvent.setup>,
+  name = 'Alice',
+  email = 'alice@example.com',
+) {
+  await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), name)
+  await user.type(screen.getByRole('textbox', { name: 'contacts.external.email' }), email)
+}
+beforeEach(() => {
+  api.create.mockReset().mockResolvedValue({ contact: alice })
+  api.update.mockReset().mockResolvedValue({ contact: alice })
+  api.upload.mockReset().mockResolvedValue({ id: 'avatar-file' })
+})
 
-describe('ExternalContactDialog pending state', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    uploadAvatar.mockReset()
-  })
+it('validates required fields and malformed email before calling the generated mutation', async () => {
+  const user = userEvent.setup()
+  setup()
+  await open(user)
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  expect(await screen.findByText('contacts.external.validation.name_required')).toBeInTheDocument()
+  expect(api.create).not.toHaveBeenCalled()
+  await fill(user, 'Alice', 'john..doe@example.com')
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  expect(await screen.findByText('contacts.external.validation.email_invalid')).toBeInTheDocument()
+  expect(api.create).not.toHaveBeenCalled()
+})
 
-  it.each([
-    ['external@example.com', 'duplicate_external_contact'],
-    ['owner@example.com', 'matches_workspace_contact'],
-    ['platform@example.com', 'matches_platform_contact'],
-  ] as const)('renders the typed %s conflict result', async (email, resultKind) => {
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-    })
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ContactsManagementMockProvider
-          scenario={createContactsMockScenario(ContactsMockScenario.EeMixed)}
-        >
-          <ExternalContactDialog open onCreated={vi.fn()} onOpenChange={vi.fn()} />
-        </ContactsManagementMockProvider>
-      </QueryClientProvider>,
-    )
+it.each(['john<doe>@example.com', 'john@example..com'])(
+  'preserves browser email validation for %s through the Field owner',
+  async (email) => {
     const user = userEvent.setup()
-    const dialog = screen.getByRole('dialog', { name: 'contacts.external.title' })
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'contacts.external.name' }),
-      'Conflict',
-    )
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'contacts.external.email' }),
-      email.toUpperCase(),
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.external.add' }))
-
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      `contacts.external.result.${resultKind}`,
-    )
-  })
-
-  it('prevents duplicate submission and never issues a real request', async () => {
-    let resolveCreate: (() => void) | undefined
-    const wait = () =>
-      new Promise<void>((resolve) => {
-        resolveCreate = resolve
-      })
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-    })
-    const onCreated = vi.fn()
-    const onOpenChange = vi.fn()
-    vi.mocked(globalThis.fetch).mockClear()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ContactsManagementMockProvider
-          scenario={createContactsMockScenario(ContactsMockScenario.CeMixed)}
-          wait={wait}
-        >
-          <ExternalContactDialog open onCreated={onCreated} onOpenChange={onOpenChange} />
-        </ContactsManagementMockProvider>
-      </QueryClientProvider>,
-    )
-    const user = userEvent.setup()
-    const dialog = screen.getByRole('dialog', { name: 'contacts.external.title' })
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'contacts.external.name' }),
-      'Partner',
-    )
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'contacts.external.email' }),
-      'new@example.com',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.external.add' }))
-
+    setup()
+    await open(user)
+    await fill(user, 'Alice', email)
+    await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
     expect(
-      within(dialog).getByRole('button', { name: 'contacts.external.adding' }),
-    ).toHaveAttribute('aria-disabled', 'true')
-    expect(onCreated).not.toHaveBeenCalled()
-    expect(globalThis.fetch).not.toHaveBeenCalled()
-    await act(async () => resolveCreate?.())
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('contact-external-created-1'))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+      await screen.findByText('contacts.external.validation.email_invalid'),
+    ).toBeInTheDocument()
+    expect(api.create).not.toHaveBeenCalled()
+  },
+)
+
+it('uses one field error for the duplicate-email 409 and keeps the draft for correction', async () => {
+  const user = userEvent.setup()
+  api.create.mockRejectedValueOnce(Object.assign(new Error('Conflict'), { status: 409 }))
+  setup()
+  await open(user)
+  await fill(user)
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  const duplicate = await screen.findByText('contacts.external.result.duplicate_external_contact')
+  const email = screen.getByRole('textbox', { name: 'contacts.external.email' })
+  expect(email).toHaveAttribute('aria-invalid', 'true')
+  expect(email).toHaveAccessibleDescription('contacts.external.result.duplicate_external_contact')
+  expect(screen.getAllByText(duplicate.textContent!)).toHaveLength(1)
+  expect(email).toHaveValue('alice@example.com')
+  await user.clear(email)
+  await user.type(email, 'corrected@example.com')
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(api.create).toHaveBeenLastCalledWith({
+    body: { name: 'Alice', email: 'corrected@example.com' },
   })
+})
 
-  it('retains the draft after an API failure and closes only after a successful retry', async () => {
-    const createContact = vi.mocked(
-      consoleClient.workspaces.current.humanInput.v2.contacts.external.post,
-    )
-    createContact.mockRejectedValueOnce(
-      Object.assign(new Error('Service unavailable'), { status: 503 }),
-    )
-    createContact.mockResolvedValueOnce({
-      contact: {
-        avatar_url: '',
-        created_at: 1_778_000_000,
-        email: 'partner@example.com',
-        id: 'server-created-contact',
-        name: 'Partner',
-        type: 'external',
-      },
-    })
-    const scenario = createContactsMockScenario(ContactsMockScenario.CeMixed)
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-    })
-    const onCreated = vi.fn()
-    const onOpenChange = vi.fn()
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ContactsManagementProvider
-          context={{
-            deployment: scenario.deployment,
-            imCentrallyManaged: scenario.imCentrallyManaged,
-            permissions: scenario.permissions,
-            workspaceId: scenario.workspaceId,
-          }}
-          repository={createContactsApiRepository()}
-        >
-          <ExternalContactDialog open onCreated={onCreated} onOpenChange={onOpenChange} />
-        </ContactsManagementProvider>
-      </QueryClientProvider>,
-    )
-    const user = userEvent.setup()
-    const dialog = screen.getByRole('dialog', { name: 'contacts.external.title' })
-    const name = within(dialog).getByRole('textbox', { name: 'contacts.external.name' })
-    const email = within(dialog).getByRole('textbox', { name: 'contacts.external.email' })
-    await user.type(name, 'Partner')
-    await user.type(email, 'partner@example.com')
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.external.add' }))
+it('prevents repeated submission and dismissal while pending, then closes on success', async () => {
+  const user = userEvent.setup()
+  const request = createDeferred<{ contact: typeof alice }>()
+  api.create.mockReturnValueOnce(request.promise)
+  const { onCreated } = setup()
+  await open(user)
+  await fill(user)
+  const submit = screen.getByRole('button', { name: 'contacts.external.add' })
+  await user.click(submit)
+  await user.click(submit)
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(api.create).toHaveBeenCalledOnce()
+  await act(async () => request.resolve({ contact: alice }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(onCreated).toHaveBeenCalledWith(alice.id)
+})
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'contacts.external.result.failed',
-    )
-    expect(name).toHaveValue('Partner')
-    expect(email).toHaveValue('partner@example.com')
-    expect(onCreated).not.toHaveBeenCalled()
-    expect(onOpenChange).not.toHaveBeenCalled()
+it('retains the draft through a failed save and starts a new form only after close', async () => {
+  const user = userEvent.setup()
+  api.create.mockRejectedValueOnce(new Error('Service unavailable'))
+  setup()
+  await open(user)
+  await fill(user)
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('contacts.external.result.failed')
+  expect(screen.getByRole('textbox', { name: 'contacts.external.name' })).toHaveValue('Alice')
+  await user.click(screen.getByRole('button', { name: 'contacts.action.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await open(user)
+  expect(screen.getByRole('textbox', { name: 'contacts.external.name' })).toHaveValue('')
+  expect(screen.getByRole('textbox', { name: 'contacts.external.email' })).toHaveValue('')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
 
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.external.add' }))
-
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('server-created-contact'))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-    expect(createContact).toHaveBeenCalledTimes(2)
+it('edits through the generated PATCH and preserves an intentional empty name as a validation failure', async () => {
+  const user = userEvent.setup()
+  setup(alice)
+  await open(user)
+  const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
+  await user.clear(name)
+  await user.click(screen.getByRole('button', { name: 'contacts.external.save' }))
+  expect(api.update).not.toHaveBeenCalled()
+  await user.type(name, 'Alice Updated')
+  await user.click(screen.getByRole('button', { name: 'contacts.external.save' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(api.update).toHaveBeenCalledWith({
+    params: { contact_id: alice.id },
+    body: { name: 'Alice Updated', email: alice.email },
   })
+})
 
-  it.each(['create', 'edit'] as const)(
-    'uploads an avatar before %s and saves its file ID after retrying a failed upload',
-    async (mode) => {
-      let rejectUpload: ((error: Error) => void) | undefined
-      uploadAvatar.mockImplementationOnce(
-        () =>
-          new Promise((_resolve, reject) => {
-            rejectUpload = reject
-          }),
-      )
-      uploadAvatar.mockResolvedValueOnce({ id: 'uploaded-avatar-id' })
-      const savedContact = {
-        id: 'avatar-contact',
-        name: 'Partner',
-        email: 'partner@example.com',
-        avatar_url: 'https://example.com/existing-avatar.png',
-        created_at: 1,
-        type: 'external' as const,
-      }
-      const contactsClient = consoleClient.workspaces.current.humanInput.v2.contacts
-      vi.mocked(contactsClient.external.post).mockResolvedValue({ contact: savedContact })
-      vi.mocked(contactsClient.external.byContactId.patch).mockResolvedValue({
-        contact: savedContact,
-      })
-      const scenario = createContactsMockScenario(ContactsMockScenario.CeMixed)
-      render(
-        <QueryClientProvider
-          client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}
-        >
-          <ContactsManagementProvider
-            context={{
-              deployment: scenario.deployment,
-              imCentrallyManaged: scenario.imCentrallyManaged,
-              permissions: scenario.permissions,
-              workspaceId: scenario.workspaceId,
-            }}
-            repository={createContactsApiRepository()}
-          >
-            <ExternalContactDialog
-              open
-              contact={mode === 'edit' ? savedContact : undefined}
-              onCreated={vi.fn()}
-              onOpenChange={vi.fn()}
-            />
-          </ContactsManagementProvider>
-        </QueryClientProvider>,
-      )
-      const user = userEvent.setup()
-      if (mode === 'create') {
-        await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Partner')
-        await user.type(
-          screen.getByRole('textbox', { name: 'contacts.external.email' }),
-          'partner@example.com',
-        )
-      }
-      const input = screen.getByLabelText('common.imageUploader.imageUpload')
-      const file = new File(['avatar'], 'avatar.png', { type: 'image/png' })
-      await user.upload(input, file)
-      expect(uploadAvatar).toHaveBeenCalledWith({ body: { file } }, expect.anything())
-      const save = screen.getByRole('button', {
-        name: `contacts.external.${mode === 'edit' ? 'save' : 'add'}`,
-      })
-      expect(save).toBeDisabled()
-      await act(async () => rejectUpload?.(new Error('Upload failed')))
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'common.imageUploader.uploadFromComputerUploadError',
-      )
-      await user.click(save)
-      expect(contactsClient.external.post).not.toHaveBeenCalled()
-      expect(contactsClient.external.byContactId.patch).not.toHaveBeenCalled()
-
-      await user.upload(input, file)
-      await waitFor(() => expect(save).toBeEnabled())
-      await user.click(save)
-      const expectedBody = {
-        name: 'Partner',
-        email: 'partner@example.com',
-        avatar: 'uploaded-avatar-id',
-      }
-      await waitFor(() => {
-        if (mode === 'create')
-          expect(contactsClient.external.post).toHaveBeenCalledWith(
-            { body: expectedBody },
-            expect.anything(),
-          )
-        else
-          expect(contactsClient.external.byContactId.patch).toHaveBeenCalledWith(
-            { params: { contact_id: savedContact.id }, body: expectedBody },
-            expect.anything(),
-          )
-      })
-      expect(uploadAvatar).toHaveBeenCalledTimes(2)
-    },
-  )
-
-  it('updates the initial avatar while editing the name without overwriting the saved avatar', async () => {
-    const contact = {
-      id: 'existing-contact',
-      name: 'Alice',
-      email: 'alice@example.com',
-      avatar_url: '',
-    }
-    const updateContact = vi.mocked(
-      consoleClient.workspaces.current.humanInput.v2.contacts.external.byContactId.patch,
-    )
-    updateContact.mockResolvedValue({
-      contact: { ...contact, name: 'Evan', created_at: 1, type: 'external' },
-    })
-    renderAvatarDialog(contact)
+it.each(['create', 'edit'] as const)(
+  'rejects an overlong name before %s and allows correcting the Unicode boundary',
+  async (mode) => {
     const user = userEvent.setup()
-    const avatar = screen.getByRole('button', { name: 'common.avatar.editAction' })
-    expect(within(avatar).getByText('A')).toBeInTheDocument()
-    expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
-
+    setup(mode === 'edit' ? alice : undefined)
+    await open(user)
     const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
-    await user.clear(name)
-    await user.type(name, 'Evan')
-    expect(within(avatar).getByText('E')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'contacts.external.save' }))
-
-    await waitFor(() =>
-      expect(updateContact).toHaveBeenCalledWith(
-        {
-          params: { contact_id: contact.id },
-          body: { name: 'Evan', email: contact.email },
-        },
-        expect.anything(),
-      ),
-    )
-    expect(uploadAvatar).not.toHaveBeenCalled()
-  })
-
-  it('derives a new contact avatar from the name and restores the portrait when cleared', async () => {
-    renderAvatarDialog()
-    const user = userEvent.setup()
-    const avatar = screen.getByRole('button', { name: 'common.avatar.editAction' })
-    expect(within(avatar).getByRole('presentation')).toHaveAttribute(
-      'src',
-      expect.stringMatching(/^data:image\/svg\+xml;base64,/),
-    )
-    const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
-    await user.type(name, '  Evan')
-    expect(within(avatar).getByText('E')).toBeInTheDocument()
-    expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
-    await user.clear(name)
-    expect(within(avatar).getByRole('presentation')).toBeInTheDocument()
-  })
-
-  it.each(['create', 'edit'] as const)(
-    'rejects an overlong name before %s and allows correcting the Unicode boundary',
-    async (mode) => {
-      const contacts = consoleClient.workspaces.current.humanInput.v2.contacts
-      const contact = {
-        id: 'name-boundary-contact',
-        name: 'Partner',
-        email: 'partner@example.com',
-        avatar_url: '',
-        created_at: 1,
-        type: 'external' as const,
-      }
-      vi.mocked(contacts.external.post).mockResolvedValue({ contact })
-      vi.mocked(contacts.external.byContactId.patch).mockResolvedValue({ contact })
-      renderAvatarDialog(mode === 'edit' ? contact : undefined)
-      const user = userEvent.setup()
-      const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
-      const email = screen.getByRole('textbox', { name: 'contacts.external.email' })
-      const save = screen.getByRole('button', {
-        name: `contacts.external.${mode === 'edit' ? 'save' : 'add'}`,
-      })
-      if (mode === 'create') await user.type(email, contact.email)
-      await user.clear(name)
-      await user.click(name)
-      await user.paste('中'.repeat(256))
-      await user.click(save)
-
-      await waitFor(() => expect(name).toHaveFocus())
-      expect(name).toHaveAccessibleDescription(/contacts\.external\.validation\.name_too_long/)
-      expect(name).toHaveAttribute('aria-invalid', 'true')
-      expect(contacts.external.post).not.toHaveBeenCalled()
-      expect(contacts.external.byContactId.patch).not.toHaveBeenCalled()
-
-      const validName = '😀'.repeat(255)
-      await user.clear(name)
-      await user.click(name)
-      await user.paste(`  ${validName}  `)
-      await user.click(save)
-      const body = { name: validName, email: contact.email }
-      await waitFor(() => {
-        if (mode === 'create')
-          expect(contacts.external.post).toHaveBeenCalledWith({ body }, expect.anything())
-        else
-          expect(contacts.external.byContactId.patch).toHaveBeenCalledWith(
-            { params: { contact_id: contact.id }, body },
-            expect.anything(),
-          )
-      })
-    },
-  )
-
-  it.each(['john..doe@example.com', '.evan@example.com', 'evan.@example.com'])(
-    'rejects malformed local parts without sending %s to the server',
-    async (email) => {
-      renderAvatarDialog()
-      const user = userEvent.setup()
-      await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Evan')
-      const emailInput = screen.getByRole<HTMLInputElement>('textbox', {
-        name: 'contacts.external.email',
-      })
-      await user.type(emailInput, email)
-      // Chrome accepts these local parts; happy-dom would otherwise bypass our form validation.
-      const validity = vi.spyOn(emailInput, 'validity', 'get').mockReturnValue({
-        valid: true,
-        badInput: false,
-        customError: false,
-        patternMismatch: false,
-        rangeOverflow: false,
-        rangeUnderflow: false,
-        stepMismatch: false,
-        tooLong: false,
-        tooShort: false,
-        typeMismatch: false,
-        valueMissing: false,
-      })
-      try {
-        await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
-        expect(await screen.findByText('contacts.external.validation.email_invalid')).toBeVisible()
-        expect(
-          consoleClient.workspaces.current.humanInput.v2.contacts.external.post,
-        ).not.toHaveBeenCalled()
-      } finally {
-        validity.mockRestore()
-      }
-    },
-  )
-
-  it.each(['evan+qa@example.com', 'evan@xn--bcher-kva.de'])(
-    'keeps accepting the valid email %s',
-    async (email) => {
-      const contacts = consoleClient.workspaces.current.humanInput.v2.contacts
-      vi.mocked(contacts.external.post).mockResolvedValue({
-        contact: {
-          id: 'valid-email-contact',
-          name: 'Evan',
-          email,
-          avatar_url: '',
-          created_at: 1,
-          type: 'external',
-        },
-      })
-      renderAvatarDialog()
-      const user = userEvent.setup()
-      await user.type(screen.getByRole('textbox', { name: 'contacts.external.name' }), 'Evan')
-      await user.type(screen.getByRole('textbox', { name: 'contacts.external.email' }), email)
-      await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
-
-      await waitFor(() =>
-        expect(contacts.external.post).toHaveBeenCalledWith(
-          { body: { name: 'Evan', email } },
-          expect.anything(),
-        ),
+    const save = screen.getByRole('button', {
+      name: `contacts.external.${mode === 'edit' ? 'save' : 'add'}`,
+    })
+    if (mode === 'create')
+      await user.type(
+        screen.getByRole('textbox', { name: 'contacts.external.email' }),
+        alice.email!,
       )
-    },
+    await user.clear(name)
+    await user.click(name)
+    await user.paste('中'.repeat(256))
+    await user.click(save)
+
+    await waitFor(() => expect(name).toHaveFocus())
+    expect(name).toHaveAccessibleDescription(/contacts\.external\.validation\.name_too_long/)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(api.create).not.toHaveBeenCalled()
+    expect(api.update).not.toHaveBeenCalled()
+
+    const validName = '😀'.repeat(255)
+    await user.clear(name)
+    await user.click(name)
+    await user.paste(`  ${validName}  `)
+    await user.click(save)
+
+    const body = { name: validName, email: alice.email }
+    await waitFor(() => {
+      if (mode === 'create') expect(api.create).toHaveBeenCalledWith({ body })
+      else expect(api.update).toHaveBeenCalledWith({ params: { contact_id: alice.id }, body })
+    })
+  },
+)
+
+it('uploads a valid avatar and submits its file ID without exposing the blob URL', async () => {
+  const user = userEvent.setup()
+  setup()
+  const dialog = await open(user)
+  await fill(user)
+  const upload = within(dialog).getByLabelText('common.imageUploader.imageUpload')
+  await user.upload(upload, new File(['image'], 'avatar.png', { type: 'image/png' }))
+  await waitFor(() => expect(api.upload).toHaveBeenCalledOnce())
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  await waitFor(() =>
+    expect(api.create).toHaveBeenCalledWith({
+      body: { name: 'Alice', email: 'alice@example.com', avatar: 'avatar-file' },
+    }),
   )
+})
 
-  it.each(['load', 'error'] as const)(
-    'shows no fallback while the existing avatar loads, then handles its %s result',
-    async (result) => {
-      const complete = vi
-        .spyOn(HTMLImageElement.prototype, 'complete', 'get')
-        .mockReturnValue(false)
-      try {
-        const contact = {
-          id: 'existing-contact',
-          name: 'Alice',
-          email: 'alice@example.com',
-          avatar_url: 'https://example.com/alice.png',
-        }
-        renderAvatarDialog(contact)
-        const avatar = screen.getByRole('button', { name: 'common.avatar.editAction' })
-        const photo = within(avatar).getByAltText('Alice')
-        expect(within(avatar).queryByText('A')).not.toBeInTheDocument()
-        expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
-
-        if (result === 'load') fireEvent.load(photo)
-        else fireEvent.error(photo)
-
-        if (result === 'load') {
-          expect(await within(avatar).findByRole('img', { name: 'Alice' })).toHaveAttribute(
-            'src',
-            contact.avatar_url,
-          )
-          expect(within(avatar).queryByText('A')).not.toBeInTheDocument()
-        } else {
-          expect(await within(avatar).findByText('A')).toBeInTheDocument()
-          expect(within(avatar).queryByRole('img', { name: 'Alice' })).not.toBeInTheDocument()
-          expect(within(avatar).queryByRole('presentation')).not.toBeInTheDocument()
-        }
-      } finally {
-        complete.mockRestore()
-      }
-    },
-  )
+it('keeps invalid avatar files local and blocks submit until reset', async () => {
+  const user = userEvent.setup()
+  setup()
+  await open(user)
+  await fill(user)
+  const file = new File(['bad'], 'avatar.exe', { type: 'application/octet-stream' })
+  fireEvent.change(screen.getByLabelText('common.imageUploader.imageUpload'), {
+    target: { files: [file] },
+  })
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.imageInput.supportedFormats')
+  expect(api.upload).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.reset' }))
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  await waitFor(() => expect(api.create).toHaveBeenCalledOnce())
 })

@@ -52,7 +52,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
       <div className="px-4 py-2">
         <Separator className="my-0 bg-divider-subtle" />
       </div>
-      <HumanInputSharedPanelSections id={id} config={config} />
+      <HumanInputSharedPanelSections
+        id={id}
+        config={config}
+        availableVars={availableVars}
+        availableNodes={availableNodesWithParent}
+      />
     </div>
   )
 }

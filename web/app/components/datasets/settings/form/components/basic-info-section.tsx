@@ -112,7 +112,7 @@ const BasicInfoSection = ({
             aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}
             className="resize-none"
-            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' })}
             value={description}
             onValueChange={(value) => setDescription(value)}
           />

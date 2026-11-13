@@ -273,18 +273,39 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     const user = userEvent.setup()
     render(<FormContent />)
     const approve = await screen.findByRole('button', { name: 'Approve' })
-    expect(approve).toBeDisabled()
+    await user.click(approve)
+    expect(mockSubmitForm).not.toHaveBeenCalled()
+    if (enabled)
+      expect(
+        screen.getByText('common.errorMsg.fieldRequired:{"field":"attachments"}'),
+      ).toBeInTheDocument()
 
     const upload = await uploadLocalAttachment(user)
     act(() => upload.onProgressCallback(50))
-    expect(approve).toBeDisabled()
+    await user.click(approve)
+    expect(mockSubmitForm).not.toHaveBeenCalled()
     await completeUpload()
     expect(approve).toBeEnabled()
-    await user.clear(screen.getByRole('textbox', { name: 'summary' }))
-    expect(approve).toBeDisabled()
-    await user.type(screen.getByRole('textbox', { name: 'summary' }), 'ready')
-    expect(approve).toBeEnabled()
+    const summary = screen.getByRole('textbox', { name: 'summary' })
+    await user.clear(summary)
+    await user.click(approve)
     expect(mockSubmitForm).not.toHaveBeenCalled()
+    if (enabled)
+      expect(summary).toHaveAccessibleDescription(
+        'common.errorMsg.fieldRequired:{"field":"summary"}',
+      )
+
+    await user.type(summary, 'ready')
+    await user.click(approve)
+    await waitFor(() =>
+      expect(mockSubmitForm).toHaveBeenCalledExactlyOnceWith(
+        'token-123',
+        expect.objectContaining({
+          action: 'approve',
+          inputs: expect.objectContaining({ summary: 'ready' }),
+        }),
+      ),
+    )
   })
 
   it('hides branding when removal is enabled', async () => {

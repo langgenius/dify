@@ -24,14 +24,14 @@ export const getHumanInputSharedValidationError = (
     return t(($) => $['nodes.humanInput.errorMsg.noUserActions'], { ns: 'workflow' })
   if (new Set(payload.user_actions.map((action) => action.id)).size !== payload.user_actions.length)
     return t(($) => $['nodes.humanInput.errorMsg.duplicateActionId'], { ns: 'workflow' })
-  if (payload.user_actions.some((action) => !action.id.trim()))
+  if (payload.user_actions.some((action) => !action.id?.trim()))
     return t(($) => $['nodes.humanInput.errorMsg.emptyActionId'], { ns: 'workflow' })
   if (payload.user_actions.some((action) => action.id === HUMAN_INPUT_TIMEOUT_HANDLE))
     return t(($) => $['nodes.humanInput.errorMsg.reservedActionId'], {
       ns: 'workflow',
       id: HUMAN_INPUT_TIMEOUT_HANDLE,
     })
-  if (payload.user_actions.some((action) => !action.title.trim()))
+  if (payload.user_actions.some((action) => !action.title?.trim()))
     return t(($) => $['nodes.humanInput.errorMsg.emptyActionTitle'], { ns: 'workflow' })
   return ''
 }

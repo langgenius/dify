@@ -17,11 +17,13 @@ stop server-side runs and notifications that are already in progress.
 - `types.ts` owns the exact frontend wire contract and version guard.
 - `default.ts` owns catalog metadata, creation defaults, validation and outputs.
 - `recipient-utils.ts` owns pure recipient validation and immutable list operations.
-- UI components edit local drafts and write the complete affected DSL field atomically.
+- Recipients and DebugMode write the affected DSL field immediately. MessageTemplate keeps a mounted dialog draft until Save or Save and test. All updates preserve unrelated node configuration.
 
 ## External modules
 
 - Reuses only the narrow shared form/action/timeout types and components from `human-input/shared`.
 - Uses existing workflow variable and edge utilities for selectors and action handles.
-- Contact options come through the local typed provider boundary; this feature does not call a Contact API.
+- Contact selection and node summaries use generated `contactOptions` queries. The publish checklist shares the authoritative batch lookup; loading or failed lookups are not proof that a contact was deleted.
+- The picker paginates explicitly. Source filtering applies to loaded records because the current editor-safe endpoint does not expose a source filter. It never loops through all pages to find a match.
+- Message-template tests save the current draft before sending through a configured channel; the dialog owns draft and mutation state for its mounted session.
 - No graphon, backend, runtime or simulated execution dependency is introduced.

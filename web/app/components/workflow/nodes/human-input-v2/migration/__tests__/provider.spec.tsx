@@ -165,9 +165,7 @@ it('migrates the real graph through one shared dialog and updates the insertion 
   const edges = view.graph().edges
   expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
   expect(
-    screen.getByRole('complementary', {
-      name: 'workflow.nodes.humanInputMigration.banner.ariaLabel',
-    }),
+    screen.getByText('workflow.nodes.humanInputMigration.banner.description'),
   ).toBeInTheDocument()
   await confirmMigration(user)
   expect(await screen.findByText('insertion-enabled')).toBeInTheDocument()
@@ -254,7 +252,10 @@ it('starts only one migration when confirmation is double-clicked during a draft
   await user.dblClick(
     screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
   )
-  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+  ).toHaveAttribute('aria-disabled', 'true')
   expect(view.graph().nodes[0]!.data.version).toBe('2')
   expect(postMigration).toHaveBeenCalledTimes(1)
   expect(sync).toHaveBeenCalledTimes(1)

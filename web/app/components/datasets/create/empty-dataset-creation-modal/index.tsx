@@ -88,9 +88,7 @@ const EmptyDatasetCreationContent = ({
             </FieldLabel>
             <Input
               value={inputValue}
-              placeholder={
-                t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''
-              }
+              placeholder={t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' })}
               onValueChange={setInputValue}
             />
           </Field>

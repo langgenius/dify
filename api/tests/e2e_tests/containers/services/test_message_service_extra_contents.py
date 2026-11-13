@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.helper import to_timestamp
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import Message
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
@@ -41,7 +41,7 @@ def test_message_details_include_serialized_extra_contents(db_session_with_conta
         provider_response_latency=0,
         total_price=Decimal(0),
         currency="USD",
-        status="normal",
+        status=MessageStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=fixture.account.id,
     )

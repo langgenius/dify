@@ -1,6 +1,10 @@
 import type { HumanInputV2ErrorCategory } from './types'
 
 const CATEGORY_BY_CODE: Record<string, HumanInputV2ErrorCategory> = {
+  expired: 'form-expired',
+  already_submitted: 'already-submitted',
+  workflow_not_active: 'unavailable',
+  not_found: 'not-found',
   human_input_form_not_found: 'not-found',
   human_input_form_expired: 'form-expired',
   human_input_form_submitted: 'already-submitted',
@@ -51,12 +55,6 @@ type ErrorLike = {
   data?: { code?: unknown; body?: { code?: unknown } }
 }
 
-export const createHumanInputV2Error = (
-  category: HumanInputV2ErrorCategory,
-  code = `human_input_${category.replaceAll('-', '_')}`,
-  status?: number,
-) => new HumanInputV2TransportError(category, code, status)
-
 export const normalizeHumanInputV2Error = (error: unknown): HumanInputV2TransportError => {
   if (error instanceof HumanInputV2TransportError) return error
 
@@ -68,6 +66,7 @@ export const normalizeHumanInputV2Error = (error: unknown): HumanInputV2Transpor
     CATEGORY_BY_CODE[code] ??
     (candidate?.name === 'AbortError' ? 'network' : undefined) ??
     (status === 404 ? 'not-found' : undefined) ??
+    (status === 410 ? 'form-expired' : undefined) ??
     (status === 429 ? 'form-rate-limit' : undefined) ??
     (status === 501 ? 'unavailable' : undefined) ??
     (candidate instanceof TypeError ? 'network' : undefined) ??

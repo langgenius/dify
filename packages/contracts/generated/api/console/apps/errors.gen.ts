@@ -907,6 +907,7 @@ export const post37Errors = {
 }
 
 export const get46Errors = {
+  tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 

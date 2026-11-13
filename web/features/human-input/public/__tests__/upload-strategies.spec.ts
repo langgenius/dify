@@ -1,6 +1,6 @@
 import { createLegacyFormUploadStrategy } from '../legacy-upload'
-import { createMockHumanInputV2FormTransport } from '../mock-transport'
 import { createHumanInputV2UploadStrategy } from '../upload'
+import { createMockHumanInputV2FormTransport } from './fixtures/mock-transport'
 
 const legacyUploads = vi.hoisted(() => ({
   local: vi.fn(),

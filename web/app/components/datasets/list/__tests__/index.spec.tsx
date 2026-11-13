@@ -432,6 +432,21 @@ describe('KnowledgeFS view', () => {
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe('creator-1')
   })
 
+  it('keeps focus on the view switcher when switching with the keyboard', async () => {
+    const { user } = setup({ features: { enable_knowledge_fs: true } })
+    const classic = screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })
+
+    act(() => classic.focus())
+    await user.keyboard('{ArrowRight}')
+    expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', agentView)).toHaveFocus()
+
+    await user.keyboard('{ArrowLeft}')
+    expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toBe(classic)
+    expect(classic).toHaveFocus()
+  })
+
   it('restores the Agent view from the URL', async () => {
     setup({ features: { enable_knowledge_fs: true } }, undefined, '?view=agent')
 

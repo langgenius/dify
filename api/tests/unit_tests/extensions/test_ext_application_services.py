@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
-from typing import Never, cast
+from typing import cast
 from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
-from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.impl import base as plugin_http
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -28,6 +27,7 @@ from extensions import ext_application_services
 from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
+from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -107,7 +107,6 @@ from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavaila
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.billing_portal_service import BillingPortalService
@@ -142,6 +141,8 @@ from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapte
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.application import DatasetSegmentApplicationService
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.feature_service import KnowledgeFSFeatures
 from services.message_file_preview_service import MessageFilePreviewService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
@@ -149,13 +150,20 @@ from services.network_access_group_gateway import (
 )
 from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
-from services.tracing import runtime_bridge
+from services.tracing.adapters import CeleryTraceEmitter
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.oauth_gateway import PluginTriggerOAuthGateway, TriggerOAuthBuilderGateway
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -170,6 +178,7 @@ from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_app
 from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
@@ -281,9 +290,33 @@ def test_init_app_registers_services_for_the_current_app(
         assert creators._oauth is services.oauth_server
 
 
-def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_services(
+@pytest.mark.parametrize("enabled", [True, False])
+def test_init_app_registers_knowledge_fs_tool_only_when_knowledge_fs_is_enabled(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
+    enabled: bool,
+) -> None:
+    app = Flask(__name__)
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    monkeypatch.setattr(
+        ext_application_services,
+        "get_knowledge_fs_features",
+        lambda: KnowledgeFSFeatures(enabled=enabled, upload_enabled=False, agent_enabled=False),
+    )
+    monkeypatch.setattr(ext_application_services.ToolManager, "_external_hardcoded_provider_classes", [])
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
+
+    ext_application_services.init_app(app)
+
+    registered = ext_application_services.ToolManager._external_hardcoded_provider_classes
+    assert (KnowledgeFSProvider in registered) is enabled
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_init_app_binds_each_apps_agent_hooks_only_when_agent_tracing_is_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    enabled: bool,
 ) -> None:
     first_app, second_app = Flask("first"), Flask("second")
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
@@ -291,28 +324,60 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
         INIT_PASSWORD="",
-        OPS_AGENT_TRACE_ENABLED=True,
+        OPS_AGENT_TRACE_ENABLED=enabled,
     )
-    construction_calls: list[bool] = []
-
-    def construct_trace_service() -> Never:
-        construction_calls.append(True)
-        raise AssertionError("Composition must not construct a trace service")
-
-    monkeypatch.setattr(runtime_bridge, "_service", construct_trace_service)
 
     ext_application_services.init_app(first_app)
     ext_application_services.init_app(second_app)
 
     with first_app.app_context():
         first_hooks = application_tracing_hooks()
-        assert isinstance(first_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
+        first_services = ext_application_services.application_services()
         with second_app.app_context():
             second_hooks = application_tracing_hooks()
-            assert isinstance(second_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
-            assert second_hooks is not first_hooks
         assert application_tracing_hooks() is first_hooks
-    assert construction_calls == []
+    if not enabled:
+        assert first_hooks is None
+        assert second_hooks is None
+        return
+    assert isinstance(first_hooks, RuntimeApplicationTracingHooks)
+    assert isinstance(second_hooks, RuntimeApplicationTracingHooks)
+    assert second_hooks is not first_hooks
+    assert first_hooks is first_services.tracing.hooks
+
+
+def test_init_app_binds_trace_scopes_to_the_apps_tracing_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app = Flask(__name__)
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                make_app(
+                    app_id="traced-app",
+                    tenant_id="tenant-1",
+                    tracing=json.dumps({"enabled": True, "tracing_provider": "langfuse"}),
+                ),
+                make_app(app_id="untraced-app", tenant_id="tenant-1"),
+            ]
+        )
+
+    ext_application_services.init_app(app)
+
+    with app.app_context():
+        scope = create_trace_scope_for_app(
+            tenant_id="tenant-1", app_id="traced-app", user_id="user-1", extras={"external_trace_id": "external-1"}
+        )
+        assert scope is not None
+        assert isinstance(scope.emitter, CeleryTraceEmitter)
+        assert (scope.tenant_id, scope.app_id, scope.user_id) == ("tenant-1", "traced-app", "user-1")
+        assert scope.correlation.external_trace_id == "external-1"
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="untraced-app", user_id=None, extras={}) is None
+    with Flask("unbound").app_context():
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="traced-app", user_id=None, extras={}) is None
 
 
 def test_build_application_services_preserves_composed_boundaries(
@@ -643,7 +708,7 @@ def test_build_application_services_wires_app_tracing_config_boundary(
     assert isinstance(services.app_tracing_configs, AppTracingConfigService)
     assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
     assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
-    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
+    assert services.app_tracing_configs._provider is services.tracing.provider_configs
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(
@@ -1059,6 +1124,54 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
+    assert services.triggers.subscriptions._credentials is services.credential_queries
+    assert services.triggers.events._subscriptions is services.triggers.subscriptions
+    assert services.triggers.binding_queries is services.triggers.subscription_management._subscriptions
+    assert services.triggers.events._requests is services.triggers.endpoints._requests
+    assert services.workspaces.plugin_parameters._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._builders is services.triggers.builders
+    assert (
+        services.workspaces.plugin_parameters._subscriptions is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscriptions._schemas is services.triggers.providers
+    assert services.triggers.subscriptions._subscriptions is services.triggers.subscription_management._subscriptions
+    gateway = services.triggers.oauth._builders
+    assert isinstance(gateway, TriggerOAuthBuilderGateway)
+    assert gateway._builders is services.triggers.builders
+    assert services.triggers.builders._create_subscription == services.triggers.subscription_management.create
+    assert services.triggers.endpoints._subscriptions is services.triggers.subscription_management._subscriptions
+    assert (
+        services.triggers.subscription_renewal._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._providers is services.triggers.subscription_management._providers
+    assert services.triggers.subscription_refresh._renewal is services.triggers.subscription_renewal
+    assert (
+        services.triggers.subscription_refresh._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._locks is services.triggers.subscription_management._locks
+    assert services.triggers.subscription_renewal._codec is services.triggers.subscription_management._codec
+    assert services.triggers.subscription_renewal._clients is services.triggers.oauth_clients
+    assert services.triggers.subscription_renewal._oauth is services.triggers.oauth._providers
+    provider_query = services.triggers.providers
+    events_gateway = services.triggers.events._plugins
+    endpoint_gateway = services.triggers.endpoints._provider
+    subscription_gateway = services.triggers.subscription_management._providers
+    oauth_gateway = services.triggers.oauth._providers
+    parameter_gateway = services.workspaces.plugin_parameters._plugins
+    assert isinstance(provider_query, PluginTriggerProviderQuery)
+    assert isinstance(events_gateway, PluginTriggerEventGateway)
+    assert isinstance(endpoint_gateway, PluginTriggerEndpointGateway)
+    assert isinstance(subscription_gateway, PluginTriggerSubscriptionGateway)
+    assert isinstance(oauth_gateway, PluginTriggerOAuthGateway)
+    assert isinstance(parameter_gateway, DaemonPluginParameterGateway)
+    provider_loader = provider_query._providers
+    assert events_gateway._providers is provider_loader
+    assert endpoint_gateway._providers is provider_loader
+    assert subscription_gateway._providers is provider_loader
+    assert oauth_gateway._providers is provider_loader
+    assert parameter_gateway._providers is provider_loader
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

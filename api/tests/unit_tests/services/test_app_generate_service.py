@@ -50,14 +50,11 @@ Covers:
 # Helpers / Fakes
 # ---------------------------------------------------------------------------
 class _DummyRateLimit:
-    """Minimal stand-in for RateLimit that never touches Redis."""
+    """Minimal stand-in for RateLimit that never touches Redis.
 
-    _instance_dict: dict[str, "_DummyRateLimit"] = {}
-
-    def __new__(cls, client_id: str, max_active_requests: int):
-        # avoid singleton caching across tests
-        instance = object.__new__(cls)
-        return instance
+    Unlike the real RateLimit, it has no per-client singleton logic, so each
+    call constructs a fresh instance.
+    """
 
     def __init__(self, client_id: str, max_active_requests: int) -> None:
         self.client_id = client_id

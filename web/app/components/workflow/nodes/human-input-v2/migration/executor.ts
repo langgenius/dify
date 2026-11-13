@@ -24,16 +24,12 @@ import {
 } from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
 
-/** The backend owns legacy alias handling and recipient conversion. */
 export const createHumanInputMigrationApi = (
   client: typeof consoleClient.workspaces.current.humanInput.v2.nodeDataMigration = consoleClient
     .workspaces.current.humanInput.v2.nodeDataMigration,
 ): HumanInputMigrationApi => ({
   async migrate(request) {
     try {
-      // The HTTP compatibility DTO accepts raw historical delivery JSON, while its
-      // generated schema documents canonical methods only. Preserve aliases and
-      // unsupported methods here so backend preflight can report precise blockers.
       const body = request as Parameters<typeof client.post>[0]['body']
       const response = zNodeDataMigrationResponse.parse(
         await client.post({ body }, { context: { silent: true } }),
@@ -43,8 +39,6 @@ export const createHumanInputMigrationApi = (
         data: response.data.map(({ node_id, node_data }) => {
           if (node_data.version !== '2') throw new Error('human-input-migration-invalid-response')
           const inputs = (node_data.inputs ?? []).map(normalizeHumanInputFormInput)
-          // The editor uses TS enums for common node fields whose generated DTO
-          // counterparts are string literals. All remote fields were validated above.
           const data = {
             ...node_data,
             type: BlockEnum.HumanInput,
@@ -59,18 +53,8 @@ export const createHumanInputMigrationApi = (
         }),
       }
     } catch (error) {
-      const status =
-        error instanceof Response || error instanceof ORPCError ? error.status : undefined
-      if (status !== 400) throw error
-      const data: unknown =
-        error instanceof Response
-          ? await error
-              .clone()
-              .json()
-              .catch(() => undefined)
-          : error instanceof ORPCError
-            ? error.data
-            : undefined
+      if (!(error instanceof ORPCError) || error.status !== 400) throw error
+      const data: unknown = error.data
       const body = data && typeof data === 'object' && 'body' in data ? data.body : data
       const failure = zNodeDataMigrationFailureResponse.safeParse(body)
       if (!failure.success || !failure.data.blockers.length) throw error
@@ -191,7 +175,6 @@ export const executeHumanInputV2Migration = async ({
       return { ...node, data: { ...extensions, ...cloneDeep(data) } }
     }),
   }
-  // Capture exactly what was applied so rollback never overwrites later edits.
   const appliedData = new Map(
     migratedGraph.nodes
       .filter((node) => originalData.has(node.id))

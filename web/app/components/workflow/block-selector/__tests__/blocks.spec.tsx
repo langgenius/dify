@@ -220,7 +220,7 @@ describe('Blocks', () => {
       </HumanInputMigrationContext>,
     )
 
-    const humanInputButton = screen.getByRole('button', { name: 'Human Input' })
+    const humanInputButton = screen.getByRole('button', { name: /^Human Input/ })
     expect(humanInputButton).toHaveAttribute('aria-disabled', 'true')
     expect(humanInputButton).toHaveAccessibleDescription(
       expect.stringContaining('workflow.nodes.humanInputMigration.disabledReason'),
@@ -234,7 +234,7 @@ describe('Blocks', () => {
       name: /workflow.nodes.humanInputMigration.action.migrateNow/,
     })
     expect(
-      screen.getByText('workflow.nodes.humanInputMigration.preview.author'),
+      await screen.findByText('workflow.nodes.humanInputMigration.preview.author'),
     ).toBeInTheDocument()
     expect(
       screen.getByText('workflow.nodes.humanInputMigration.preview.description'),
@@ -253,7 +253,7 @@ describe('Blocks', () => {
         />
       </HumanInputMigrationContext>,
     )
-    const enabledButton = screen.getByRole('button', { name: 'Human Input' })
+    const enabledButton = screen.getByRole('button', { name: /^Human Input/ })
     expect(enabledButton).toHaveAttribute('aria-disabled', 'false')
     await user.click(enabledButton)
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.HumanInputV2)
@@ -292,7 +292,7 @@ describe('Blocks', () => {
       </HumanInputMigrationContext>,
     )
 
-    await user.hover(screen.getByRole('button', { name: 'Human Input' }))
+    await user.hover(screen.getByRole('button', { name: /^Human Input/ }))
     expect(
       await screen.findByText('workflow.nodes.humanInputMigration.preview.description'),
     ).toBeInTheDocument()
@@ -576,7 +576,9 @@ function ReadyBlocks({ children }: { children: ReactNode }) {
 function render(ui: ReactElement) {
   return baseRender(ui, {
     wrapper: ({ children }) => (
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+      >
         <ReactFlowProvider>
           <ReactFlow nodes={runtimeState.nodes} edges={[]} />
           <ReadyBlocks>{children}</ReadyBlocks>

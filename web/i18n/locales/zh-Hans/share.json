@@ -79,7 +79,6 @@
   "humanInputV2.otpPlaceholder": "输入 6 位验证码",
   "humanInputV2.requestingCode": "正在发送验证码…",
   "humanInputV2.resendCode": "重新发送",
-  "humanInputV2.resendIn": "{{seconds}} 秒后可重新发送",
   "humanInputV2.retry": "重试",
   "humanInputV2.sendCode": "发送新验证码",
   "humanInputV2.unavailable": "此表单暂时不可用。",

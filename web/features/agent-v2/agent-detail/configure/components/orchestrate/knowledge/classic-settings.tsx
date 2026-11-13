@@ -27,8 +27,8 @@ import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/co
 import {
   comparisonOperatorNotRequireValue,
   getOperators,
+  VARIABLE_REGEX,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
 import {
   ComparisonOperator,
@@ -44,9 +44,11 @@ import {
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { consoleQuery } from '@/service/console'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { AgentMetadataFilter } from './metadata-filter'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type Props = {
+  workflowNodeId?: string
   item: AgentKnowledgeRetrievalItem
   onChange: (patch: Partial<AgentKnowledgeRetrievalItem>) => void
   errors?: KnowledgeValidationResult['byId'][string]
@@ -93,6 +95,12 @@ const isMetadataConditionCompatible = (
   if (!getOperators(type).some((operator) => operator === condition.comparison_operator))
     return false
   if (comparisonOperatorNotRequireValue(condition.comparison_operator)) return true
+  if (
+    type === MetadataFilteringVariableType.number &&
+    typeof condition.value === 'string' &&
+    condition.value.match(VARIABLE_REGEX)?.[0] === condition.value
+  )
+    return true
   if (type === MetadataFilteringVariableType.number || type === MetadataFilteringVariableType.time)
     return typeof condition.value === 'number' && Number.isFinite(condition.value)
   if (
@@ -145,6 +153,7 @@ const createMetadataCondition = ({
 })
 
 function ClassicSettingsFields({
+  workflowNodeId,
   item,
   onChange,
   errors,
@@ -374,7 +383,8 @@ function ClassicSettingsFields({
       {/* The shared workflow filter brings its own px-4 gutter; cancel it to line up with the fields above. */}
       <div className="-mx-4 py-2">
         {/* Keep saved conditions until an explicit edit; catalog loading must not prune them. */}
-        <MetadataFilter
+        <AgentMetadataFilter
+          workflowNodeId={workflowNodeId}
           metadataList={metadataList}
           metadataFilterMode={metadataFilterMode}
           metadataFilteringConditions={metadataFilteringConditions}
@@ -437,7 +447,7 @@ function ClassicSettingsFields({
 }
 
 /** Only mounted inside the shared binding dialog's advanced settings. */
-export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
+export function ClassicKnowledgeSettings({ item, onChange, errors, workflowNodeId }: Props) {
   const { t } = useTranslation(['common'])
   const ids = item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
   const queries = useQueries({
@@ -515,6 +525,7 @@ export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
     )
   return (
     <ClassicSettingsFields
+      workflowNodeId={workflowNodeId}
       item={item}
       onChange={onChange}
       errors={errors}

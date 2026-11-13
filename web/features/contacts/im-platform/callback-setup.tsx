@@ -1,11 +1,10 @@
 import type { resolveContactImCallbackSetup } from './provider-form-adapters'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import copy from 'copy-to-clipboard'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 
 type ContactImCallbackSetupProps = {
   callbackUrl: string
@@ -26,7 +25,6 @@ export function ContactImCallbackSetup({
 }: ContactImCallbackSetupProps) {
   const { t } = useTranslation(['contacts'])
   const inputRef = useRef<HTMLInputElement>(null)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -40,26 +38,13 @@ export function ContactImCallbackSetup({
           <InputGroup>
             <InputGroupInput ref={inputRef} readOnly value={callbackUrl} />
             <InputGroupAddon align="inline-end">
-              <IconButton
-                aria-label={t(($) => $['imPlatform.action.copyCallback'])}
-                onClick={async () => {
-                  try {
-                    setCopied(await copy(callbackUrl))
-                  } catch {
-                    setCopied(false)
-                  }
-                }}
-              >
-                <span
-                  aria-hidden
-                  className={copied ? 'i-ri-check-line size-4' : 'i-ri-file-copy-line size-4'}
-                />
-              </IconButton>
+              <CopyFeedback
+                content={callbackUrl}
+                copyLabel={t(($) => $['imPlatform.action.copyCallback'])}
+                copiedLabel={t(($) => $['imPlatform.action.copied'])}
+              />
             </InputGroupAddon>
           </InputGroup>
-          <span role="status" className="sr-only">
-            {copied ? t(($) => $['imPlatform.action.copied']) : ''}
-          </span>
         </Field>
 
         {setup && (

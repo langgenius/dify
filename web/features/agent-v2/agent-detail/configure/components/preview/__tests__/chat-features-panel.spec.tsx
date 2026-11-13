@@ -58,6 +58,36 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
 }
 
 describe('AgentChatFeaturesPanel', () => {
+  it('defaults thinking display off and saves toggles without changing citations', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel({ retriever_resource: { enabled: true } })
+    const toggle = screen.getByRole('switch', { name: 'appDebug.feature.showThoughts.title' })
+
+    expect(toggle).not.toBeChecked()
+    await user.click(toggle)
+    expect(toggle).toBeChecked()
+    expect(store.get(agentComposerAppFeaturesAtom)?.show_thoughts).toEqual({ enabled: true })
+    expect(store.get(agentComposerAppFeaturesAtom)?.retriever_resource).toEqual({ enabled: true })
+    await user.click(toggle)
+    expect(toggle).not.toBeChecked()
+    expect(store.get(agentComposerAppFeaturesAtom)?.show_thoughts).toEqual({ enabled: false })
+  })
+
+  it('shows the published thinking setting read-only without changing the draft', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel(
+      { show_thoughts: { enabled: true } },
+      { show_thoughts: { enabled: false } },
+      true,
+    )
+    const toggle = screen.getByRole('switch', { name: 'appDebug.feature.showThoughts.title' })
+
+    expect(toggle).toBeChecked()
+    expect(toggle).toHaveAttribute('aria-disabled', 'true')
+    await user.click(toggle)
+    expect(store.get(agentComposerAppFeaturesAtom)?.show_thoughts).toEqual({ enabled: false })
+  })
+
   it('keeps a newly saved opener enabled before the server snapshot catches up', async () => {
     const user = userEvent.setup({ skipHover: true })
     const { updateSnapshot, store } = renderPanel({ opening_statement: '' })

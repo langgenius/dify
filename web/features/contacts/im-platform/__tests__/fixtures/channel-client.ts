@@ -1,52 +1,8 @@
-import type { ChannelSummary } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { createContactImApiRepository } from '../../repository'
-
-type ChannelApiClient = NonNullable<Parameters<typeof createContactImApiRepository>[1]>
-type EmailDetail = Awaited<ReturnType<ChannelApiClient['channels']['email']['byChannelId']['get']>>
-type ImDetail = Awaited<ReturnType<ChannelApiClient['channels']['im']['byChannelId']['get']>>
-
-export function createChannelClient() {
-  const client = {
-    channelProviders: { get: vi.fn<ChannelApiClient['channelProviders']['get']>() },
-    channels: {
-      get: vi.fn<ChannelApiClient['channels']['get']>(),
-      email: {
-        post: vi.fn<ChannelApiClient['channels']['email']['post']>(),
-        test: { post: vi.fn<ChannelApiClient['channels']['email']['test']['post']>() },
-        byChannelId: {
-          get: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['get']>(),
-          put: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['put']>(),
-          delete: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['delete']>(),
-          test: {
-            post: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['test']['post']>(),
-          },
-        },
-      },
-      im: {
-        post: vi.fn<ChannelApiClient['channels']['im']['post']>(),
-        test: { post: vi.fn<ChannelApiClient['channels']['im']['test']['post']>() },
-        byChannelId: {
-          get: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['get']>(),
-          put: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['put']>(),
-          delete: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['delete']>(),
-          test: {
-            post: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['test']['post']>(),
-          },
-          replacement: {
-            post: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['replacement']['post']>(),
-          },
-        },
-      },
-    },
-  } satisfies ChannelApiClient
-  client.channels.email.byChannelId.get.mockImplementation(async ({ params }) =>
-    emailDetail(channelSummary({ id: params.channel_id, kind: 'email', provider: 'resend' })),
-  )
-  client.channels.im.byChannelId.get.mockImplementation(async ({ params }) =>
-    imDetail(channelSummary({ id: params.channel_id })),
-  )
-  return client
-}
+import type {
+  ChannelSummary,
+  EmailChannelDetailResponse as EmailDetail,
+  ImChannelDetailResponse as ImDetail,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 
 export function channelSummary(overrides: Partial<ChannelSummary> = {}): ChannelSummary {
   return {
