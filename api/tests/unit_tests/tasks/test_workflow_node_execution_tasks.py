@@ -437,14 +437,15 @@ def test_task_out_of_order_live_delivery_does_not_revive_finished_node(
     ],
 )
 def test_task_applies_delivery_as_update_when_concurrent_delivery_inserts_first(
-    monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     competing_status: WorkflowNodeExecutionStatus,
     delivered_status: WorkflowNodeExecutionStatus,
 ) -> None:
-    """Two deliveries for one execution can both miss the row and both try to insert it."""
-    retry = MagicMock(side_effect=RuntimeError("retry requested"))
-    monkeypatch.setattr(save_workflow_node_execution_task, "retry", retry)
+    """Two deliveries for one execution can both miss the row and both try to insert it.
+
+    The task is called directly, so a delivery that still fell back to a Celery retry would
+    raise here instead of returning ``True``.
+    """
     created_at = datetime(2026, 8, 12, 1, tzinfo=UTC)
     finished_at = created_at + timedelta(seconds=5)
 
@@ -492,7 +493,6 @@ def test_task_applies_delivery_as_update_when_concurrent_delivery_inserts_first(
 
     assert result is True
     assert competing_inserts == [EXECUTION_ID]
-    retry.assert_not_called()
     with sqlite_session_factory() as observer:
         assert observer.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 1
         persisted = observer.get(WorkflowNodeExecutionModel, EXECUTION_ID)
