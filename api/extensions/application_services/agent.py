@@ -57,7 +57,8 @@ def build_agent_app_services(
     *, database_client: sessionmaker[Session], rbac_members: MemberService
 ) -> AgentAppServices:
     apps = AgentAppRepository(session_factory=database_client)
-    lifecycle = AppLifecycleGateway(session_factory=database_client)
+    app_lifecycle_gateway = AppLifecycleGateway(session_factory=database_client)
+    deletion_service = AgentAppDeletionService(store=apps, notify_deleted=app_lifecycle_gateway.deleted)
     detail = AgentAppDetailService(
         store=apps,
         presentation=AgentAppDetailPresentationGateway(members=rbac_members),
@@ -66,12 +67,12 @@ def build_agent_app_services(
     return AgentAppServices(
         access=AgentAppAccessService(references=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
-        lifecycle=AgentAppDeletionService(store=apps, notify_deleted=lifecycle.deleted),
+        lifecycle=deletion_service,
         detail=detail,
         collection=AgentAppCollectionService(
             store=apps,
             access=AgentListVisibilityGateway(members=rbac_members),
-            creator=lifecycle,
+            creator=app_lifecycle_gateway,
             detail=detail,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
