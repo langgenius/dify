@@ -352,9 +352,11 @@ def test_delete_batch_keeps_cascade_in_caller_transaction(
         assert _row_ids(session) == (retained_rows if outcome == "commit" else original_rows)
 
 
+@pytest.mark.parametrize("fail_run_deletion", [False, True], ids=["commit", "rollback"])
 def test_delete_batch_retires_conversation_owned_agent_workspace(
     cleanup_module: ModuleType,
     session_maker: sessionmaker[Session],
+    fail_run_deletion: bool,
 ) -> None:
     with session_maker.begin() as session:
         run = _seed_batch(session)
@@ -392,20 +394,38 @@ def test_delete_batch_retires_conversation_owned_agent_workspace(
     repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     retired_workspace_ids_by_tenant: dict[str, list[str]] = {}
     with session_maker() as session:
-        assert cleanup_module._delete_batch(
-            session,
-            repository,
-            [run],
-            attempt_count=0,
-            retired_workspace_ids_by_tenant=retired_workspace_ids_by_tenant,
+        if fail_run_deletion:
+
+            @event.listens_for(session, "do_orm_execute")
+            def fail_run_delete(state: ORMExecuteState) -> None:
+                if state.is_delete and state.bind_mapper is not None and state.bind_mapper.class_ is WorkflowRun:
+                    raise RuntimeError("Fail after retiring related workspace")
+
+        assert (
+            cleanup_module._delete_batch(
+                session,
+                repository,
+                [run],
+                attempt_count=0,
+                retired_workspace_ids_by_tenant=retired_workspace_ids_by_tenant,
+            )
+            is not fail_run_deletion
         )
         workspace = session.get(AgentWorkspace, workspace_id)
         binding = session.get(AgentWorkspaceBinding, binding_id)
         assert workspace is not None
         assert binding is not None
-        assert workspace.status == AgentWorkingResourceStatus.RETIRED
-        assert binding.status == AgentWorkingResourceStatus.RETIRED
-    assert retired_workspace_ids_by_tenant == {run.tenant_id: [workspace_id]}
+        if fail_run_deletion:
+            assert workspace.status == AgentWorkingResourceStatus.ACTIVE
+            assert binding.status == AgentWorkingResourceStatus.ACTIVE
+            assert session.get(Conversation, conversation_id) is not None
+            assert retired_workspace_ids_by_tenant == {}
+        else:
+            assert workspace.status == AgentWorkingResourceStatus.RETIRED
+            assert binding.status == AgentWorkingResourceStatus.RETIRED
+            assert session.get(Conversation, conversation_id) is None
+            assert retired_workspace_ids_by_tenant == {run.tenant_id: [workspace_id]}
+        session.commit()
 
 
 def test_cleanup_enqueues_retired_workspace_after_commit(
