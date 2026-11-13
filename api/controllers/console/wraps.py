@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate, Protocol, cast, overload
+from uuid import uuid4
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
@@ -266,7 +267,7 @@ def check_knowledge_rate_limit() -> None:
 
     current_time = int(time.time() * 1000)
     key = f"rate_limit_{current_tenant_id}"
-    redis_client.zadd(key, {current_time: current_time})
+    redis_client.zadd(key, {uuid4().hex: current_time})
     redis_client.zremrangebyscore(key, 0, current_time - 60000)
 
     if redis_client.zcard(key) > knowledge_rate_limit.limit:
