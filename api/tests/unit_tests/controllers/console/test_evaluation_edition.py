@@ -44,7 +44,7 @@ def test_all_evaluation_methods_check_plan_after_account_initialization() -> Non
         wrapper = method
         while isinstance(wrapper, FunctionType):
             wrapper_names.append(wrapper.__code__.co_qualname)
-            wrapper = getattr(wrapper, "__wrapped__", None)
+            wrapper = vars(wrapper).get("__wrapped__")
 
         account_index = next(
             index
