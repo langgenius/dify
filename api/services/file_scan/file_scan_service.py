@@ -173,6 +173,10 @@ class FileScanService:
         upload_file_id: str | None,
         wait_for_result: bool,
     ) -> ScanOutcome:
+        # Capture the scan's configuration epoch before reading the provider. If an update commits
+        # while the external scan is in flight, this record must remain older than that update so
+        # it cannot be reused under the new configuration.
+        scan_started_at = naive_utc_now()
         with self._session_maker() as session:
             provider = (
                 session.scalar(
@@ -237,6 +241,7 @@ class FileScanService:
             outcome=outcome,
             scope=scope,
             upload_file_id=upload_file_id,
+            created_at=scan_started_at,
         )
         return _with_record(outcome, record_id)
 
@@ -319,6 +324,7 @@ class FileScanService:
         outcome: ScanOutcome,
         scope: ScanScope | None,
         upload_file_id: str | None,
+        created_at: datetime,
     ) -> str | None:
         """Store the verdict and keep the provider's health in step with it."""
         try:
@@ -343,6 +349,7 @@ class FileScanService:
                     external_id=verdict.external_id,
                     size_limit=verdict.size_limit,
                 )
+                record.created_at = created_at
                 session.add(record)
                 provider = session.get(FileScanProvider, provider_id)
                 if provider is not None:

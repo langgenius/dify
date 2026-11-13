@@ -877,3 +877,39 @@ def test_custom_endpoint_keeps_its_own_address_and_key(
     with pytest.raises(FileScanValidationError, match="Enter the credentials again"):
         providers.update(tenant_id=TENANT_ID, provider_id=created.id, config={"endpoint": "https://collector.example"})
     assert len(calls) == 1
+
+
+def test_provider_update_racing_with_an_inflight_scan_does_not_reuse_old_verdict(
+    sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    provider_id, first = _seed(sqlite_session_factory, storage)
+    _, second = _seed(sqlite_session_factory, storage, upload_file_id="55555555-5555-4555-8555-555555555556")
+    calls = 0
+
+    def verify(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(FileScanProviderService, "_verify", verify)
+
+    class UpdatingScanner(_Scanner):
+        @override
+        def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+            nonlocal calls
+            calls += 1
+            target.load()
+            if calls == 1:
+                FileScanProviderService(sqlite_session_factory).update(
+                    tenant_id=TENANT_ID,
+                    provider_id=provider_id,
+                    config={"endpoint": "https://new-scanner.example"},
+                    credentials={"api_key": "new-key"},
+                )
+            return ScanVerdict.clean()
+
+    scanner = UpdatingScanner(ScanVerdict.clean())
+    monkeypatch.setattr(service_module, "build_scanner", lambda _tenant_id, _provider: scanner)
+    service, _ = _service(sqlite_session_factory)
+
+    assert _scan(service, first).status == "clean"
+    assert _scan(service, second).status == "clean"
+    assert calls == 2
