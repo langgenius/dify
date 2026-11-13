@@ -159,7 +159,8 @@ class MCPTool(Tool):
         """Process a list of JSON items."""
         if any(not isinstance(item, dict) for item in json_list):
             # If the list contains any non-dict item, treat the entire list as a text message.
-            yield self.create_text_message(str(json_list))
+            # Serialize it back to JSON: str() would give Python syntax ('a', True, None).
+            yield self.create_text_message(json.dumps(json_list, ensure_ascii=False))
             return
 
         # Otherwise, process each dictionary as a separate JSON message.

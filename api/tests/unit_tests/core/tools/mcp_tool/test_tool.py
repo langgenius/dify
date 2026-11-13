@@ -118,6 +118,13 @@ class TestMcpToolCases:
         assert len(mixed_list_messages) == 1
         assert mixed_list_messages[0].type == ToolInvokeMessage.MessageType.TEXT
 
+        scalar_list_messages = list(
+            tool._process_text_content(TextContent(type="text", text='["a", true, null, 1.5, "é"]'))
+        )
+        assert len(scalar_list_messages) == 1
+        assert scalar_list_messages[0].type == ToolInvokeMessage.MessageType.TEXT
+        assert scalar_list_messages[0].message.text == '["a", true, null, 1.5, "é"]'
+
         primitive_messages = list(tool._process_json_content(123))
         assert primitive_messages[0].message.text == "123"
 
