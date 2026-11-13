@@ -586,6 +586,43 @@ class TestPluginManagerCases:
             # Assert: Verify minimum version is set correctly
             assert declaration.meta.minimum_dify_version == "0.6.0"
 
+        @pytest.mark.parametrize("version", ["0.3.7-fix1", "1.2.3-beta_2", "1.0.0rc1", "0.3.7.post1"])
+        def test_plugin_manifest_accepts_daemon_compatible_versions(self, version: str):
+            """Versions the plugin daemon accepts (e.g. 0.3.7-fix1) must also pass API validation."""
+            declaration = PluginDeclaration(
+                version=version,
+                author="test-author",
+                name="test-plugin",
+                description=I18nObject(en_US="Test", zh_Hans="测试"),
+                icon="icon.png",
+                label=I18nObject(en_US="Test", zh_Hans="测试"),
+                category=PluginCategory.Tool,
+                created_at=datetime.datetime.now(),
+                resource=PluginResourceRequirements(memory=512, permission=None),
+                plugins=PluginDeclaration.Plugins(),
+                meta=PluginDeclaration.Meta(version="1.0.0"),
+            )
+
+            assert declaration.version == version
+
+        @pytest.mark.parametrize("version", ["\uff10.3.7", "0.3.7-\u4fee", "0.3.7-fix1\n"])
+        def test_plugin_manifest_rejects_versions_the_daemon_rejects(self, version: str):
+            """Non-ASCII digits/word chars and trailing newlines are rejected by the Go daemon pattern."""
+            with pytest.raises(ValueError, match="Invalid version format"):
+                PluginDeclaration(
+                    version=version,
+                    author="test-author",
+                    name="test-plugin",
+                    description=I18nObject(en_US="Test", zh_Hans="测试"),
+                    icon="icon.png",
+                    label=I18nObject(en_US="Test", zh_Hans="测试"),
+                    category=PluginCategory.Tool,
+                    created_at=datetime.datetime.now(),
+                    resource=PluginResourceRequirements(memory=512, permission=None),
+                    plugins=PluginDeclaration.Plugins(),
+                    meta=PluginDeclaration.Meta(version="1.0.0"),
+                )
+
         def test_invalid_minimum_dify_version(self):
             """Test that invalid minimum Dify version format raises error."""
             # Arrange & Act & Assert: Invalid minimum version should raise ValueError
