@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -9,7 +10,16 @@ import core.app.apps.completion.app_config_manager as module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from models.enums import PromptType
-from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig
+from models.model import (
+    AnnotationReplyConfig,
+    AnnotationReplyDisabledConfig,
+    App,
+    AppMode,
+    AppModelConfig,
+    AppModelConfigDict,
+)
+
+_DISABLED_ANNOTATION_REPLY: AnnotationReplyDisabledConfig = {"enabled": False}
 
 
 def _app() -> App:
@@ -28,12 +38,20 @@ def _config() -> AppModelConfig:
     return AppModelConfig(app_id="app1")
 
 
+def _override_config() -> AppModelConfigDict:
+    """Materialize a complete config dict, the only shape ``override_config_dict`` accepts."""
+    return AppModelConfig(
+        app_id="app1",
+        model=json.dumps({"provider": "override", "name": "override", "mode": "completion"}),
+    ).to_dict(annotation_reply=_DISABLED_ANNOTATION_REPLY)
+
+
 class TestCompletionAppConfigManager:
-    def test_get_app_config_with_override(self, mocker: MockerFixture):
+    def test_get_app_config_with_override(self, mocker: MockerFixture) -> None:
         app_model = _app()
         app_model_config = _config()
 
-        override_config = {"model": {"provider": "override"}}
+        override_config = _override_config()
 
         mocker.patch.object(module.ModelConfigManager, "convert", return_value="model")
         mocker.patch.object(module.PromptTemplateConfigManager, "convert", return_value="prompt")
@@ -56,10 +74,10 @@ class TestCompletionAppConfigManager:
         assert result.external_data_variables == ["ext1"]
         assert result.app_mode == AppMode.COMPLETION
 
-    def test_get_app_config_without_override_uses_model_config(self, mocker: MockerFixture):
+    def test_get_app_config_without_override_uses_model_config(self, mocker: MockerFixture) -> None:
         app_model = _app()
         app_model_config = _config()
-        annotation_reply = {"enabled": False}
+        annotation_reply: AnnotationReplyDisabledConfig = {"enabled": False}
         to_dict = mocker.patch.object(
             AppModelConfig,
             "to_dict",
@@ -84,7 +102,7 @@ class TestCompletionAppConfigManager:
         assert result.app_model_config_dict == {"model": {"provider": "x"}}
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
-    def test_get_app_config_requires_annotation_reply_without_override(self):
+    def test_get_app_config_requires_annotation_reply_without_override(self) -> None:
         with pytest.raises(ValueError, match="Annotation reply config is required"):
             CompletionAppConfigManager.get_app_config(
                 app_model=_app(),
@@ -92,7 +110,7 @@ class TestCompletionAppConfigManager:
                 annotation_reply=None,
             )
 
-    def test_config_validate_filters_related_keys(self, mocker: MockerFixture, unbound_session: Session):
+    def test_config_validate_filters_related_keys(self, mocker: MockerFixture, unbound_session: Session) -> None:
         config = {
             "model": {"provider": "x"},
             "variables": ["v"],
