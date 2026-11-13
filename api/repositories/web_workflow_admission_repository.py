@@ -47,9 +47,17 @@ class WebWorkflowAdmissionRepository:
         account_id: str | None,
         conversation_id: str | None,
         upload_ids: frozenset[str],
+        granted_upload_ids: frozenset[str],
         tool_ids: frozenset[str],
         resume: bool,
     ) -> None:
+        """Register or resume a server-selected Web Run under the identity fence.
+
+        Upload grants come only from the execution-local file scope; request-owned
+        identifiers are never grants. Recheck current resource access, including
+        Tenant scope for granted uploads, before committing the admission. Invalid
+        resources raise and roll back without registering or resuming the Run.
+        """
         if run.created_by_role != CreatorUserRole.END_USER:
             raise WebExecutionResourcesChangedError()
         with self._sessions.begin() as session:
@@ -105,6 +113,7 @@ class WebWorkflowAdmissionRepository:
                 user=user,
                 upload_ids=upload_ids,
                 tool_ids=tool_ids,
+                granted_upload_ids=granted_upload_ids,
             )
             if run.connection_context is not None:
                 context = ConnectionExecutionContext.model_validate_json(run.connection_context)

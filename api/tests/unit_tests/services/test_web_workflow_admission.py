@@ -11,11 +11,20 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
-from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
+from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
+from core.app.file_access import get_current_file_access_scope
 from core.workflow.file_reference import build_file_reference
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
 from models.enums import CreatorUserRole, CustomizeTokenStrategy, EndUserType
@@ -23,8 +32,9 @@ from models.model import App, AppMode, EndUser, Site, UploadFile
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.entities.web_execution import WebExecutionResourcesChangedError
 from repositories.web_migration_repository import WebMigrationRepository
+from services.app.file_input_defaults import grant_file_default_access
 from services.web_migration_service import GuestMigrationNotReadyError
-from services.web_workflow_admission import web_workflow_launch, web_workflow_worker
+from services.web_workflow_admission import WebWorkflowEntity, web_workflow_launch, web_workflow_worker
 from tests.helpers.unit.model_factories import make_upload_file
 
 
@@ -130,6 +140,251 @@ def admission(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest
         entity,
         WebMigrationRepository(session_factory=sqlite_session_factory),
     )
+
+
+@pytest.fixture(params=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT], ids=["workflow", "chatflow"])
+def file_entity(admission: Admission, request: pytest.FixtureRequest) -> WebWorkflowEntity:
+    """Provide each Web execution type over a published workflow and real caller."""
+    if request.param == AppMode.WORKFLOW:
+        return admission.entity
+
+    admission.workflow.type = WorkflowType.CHAT
+    with admission.sessions.begin() as session:
+        session.execute(sa.update(App).where(App.id == admission.workflow.app_id).values(mode=AppMode.ADVANCED_CHAT))
+        session.execute(sa.update(Workflow).where(Workflow.id == admission.workflow.id).values(type=WorkflowType.CHAT))
+    entity = AdvancedChatAppGenerateEntity(
+        task_id=str(uuid4()),
+        workflow_run_id=str(uuid4()),
+        app_config=admission.entity.app_config.model_copy(
+            update={"app_mode": AppMode.ADVANCED_CHAT, "additional_features": AppAdditionalFeatures()}
+        ),
+        inputs={},
+        query="hello",
+        files=[],
+        user_id=admission.guest.id,
+        invoke_from=InvokeFrom.WEB_APP,
+        stream=False,
+    )
+    with admission.sessions() as session:
+        MessageBasedAppGenerator()._init_generate_records(entity, session=session)
+    return entity
+
+
+@pytest.fixture
+def default_file(admission: Admission, file_entity: WebWorkflowEntity) -> UploadFile:
+    """Parse an Account-owned author default through the existing file access rules."""
+    upload = make_upload_file(tenant_id=admission.guest.tenant_id, created_by=admission.workflow.created_by)
+    with admission.sessions.begin() as session:
+        session.add(upload)
+        session.flush()
+    file_entity.app_config.variables = [
+        VariableEntity(
+            variable="document",
+            label="Document",
+            type=VariableEntityType.FILE,
+            required=True,
+            default={
+                "transferMethod": FileTransferMethod.LOCAL_FILE,
+                "uploadedId": upload.id,
+                "supportFileType": FileType.DOCUMENT,
+            },
+            allowed_file_types=[FileType.DOCUMENT],
+            allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE],
+        )
+    ]
+    generator = BaseAppGenerator()
+    with generator._bind_file_access_scope(
+        tenant_id=admission.guest.tenant_id, user=admission.guest, invoke_from=InvokeFrom.WEB_APP
+    ):
+        file_entity.inputs = generator._prepare_user_inputs(
+            user_inputs={}, variables=file_entity.app_config.variables, tenant_id=admission.guest.tenant_id
+        )
+    assert isinstance(file_entity.inputs["document"], File)
+    return upload
+
+
+@pytest.mark.parametrize("variable_type", [VariableEntityType.FILE, VariableEntityType.FILE_LIST])
+@pytest.mark.parametrize("resume", [False, True])
+def test_author_file_defaults_are_admitted_with_trusted_execution_grants(
+    admission: Admission,
+    file_entity: WebWorkflowEntity,
+    default_file: UploadFile,
+    variable_type: VariableEntityType,
+    resume: bool,
+) -> None:
+    conversation_id = file_entity.conversation_id if isinstance(file_entity, AdvancedChatAppGenerateEntity) else None
+    if resume:
+        original_inputs = file_entity.inputs
+        file_entity.inputs = {}
+        with web_workflow_launch(
+            file_entity,
+            workflow=admission.workflow,
+            user=admission.guest,
+            conversation_id=conversation_id,
+            resume=False,
+        ):
+            pass
+        file_entity.inputs = original_inputs
+        with admission.sessions.begin() as session:
+            session.execute(sa.update(WorkflowRun).values(status=WorkflowExecutionStatus.PAUSED))
+
+    variable = file_entity.app_config.variables[0]
+    if variable_type == VariableEntityType.FILE_LIST:
+        variable.type = variable_type
+        variable.default = [variable.default]
+    generator = BaseAppGenerator()
+    with generator._bind_file_access_scope(
+        tenant_id=admission.guest.tenant_id, user=admission.guest, invoke_from=InvokeFrom.WEB_APP
+    ):
+        file_entity.inputs = generator._prepare_user_inputs(
+            user_inputs={}, variables=file_entity.app_config.variables, tenant_id=admission.guest.tenant_id
+        )
+        # _generate binds a fresh scope and restores the same author-selected defaults.
+        with generator._bind_file_access_scope(
+            tenant_id=admission.guest.tenant_id, user=admission.guest, invoke_from=InvokeFrom.WEB_APP
+        ):
+            grant_file_default_access(file_entity.app_config.variables)
+            assert file_entity.connection_context is None
+            with web_workflow_launch(
+                file_entity,
+                workflow=admission.workflow,
+                user=admission.guest,
+                conversation_id=conversation_id,
+                resume=resume,
+            ):
+                with admission.sessions() as session:
+                    run = session.scalar(sa.select(WorkflowRun).where(WorkflowRun.task_id == file_entity.task_id))
+                    assert run is not None
+                    assert run.status == WorkflowExecutionStatus.RUNNING
+                    assert run.type == admission.workflow.type
+                    assert session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun)) == 1
+                    upload = session.get(UploadFile, default_file.id)
+                    assert upload is not None
+                    assert (upload.created_by_role, upload.created_by) == (
+                        CreatorUserRole.ACCOUNT,
+                        admission.workflow.created_by,
+                    )
+
+
+@pytest.mark.parametrize("file_change", ["other-tenant", "deleted"])
+def test_granted_default_files_still_require_current_tenant_scoped_records(
+    admission: Admission, file_entity: WebWorkflowEntity, default_file: UploadFile, file_change: str
+) -> None:
+    with admission.sessions.begin() as session:
+        if file_change == "deleted":
+            session.execute(sa.delete(UploadFile).where(UploadFile.id == default_file.id))
+        else:
+            session.execute(
+                sa.update(UploadFile).where(UploadFile.id == default_file.id).values(tenant_id=str(uuid4()))
+            )
+    with BaseAppGenerator._bind_file_access_scope(
+        tenant_id=admission.guest.tenant_id, user=admission.guest, invoke_from=InvokeFrom.WEB_APP
+    ):
+        grant_file_default_access(file_entity.app_config.variables)
+        with (
+            pytest.raises(WebExecutionResourcesChangedError),
+            web_workflow_launch(
+                file_entity,
+                workflow=admission.workflow,
+                user=admission.guest,
+                conversation_id=file_entity.conversation_id
+                if isinstance(file_entity, AdvancedChatAppGenerateEntity)
+                else None,
+                resume=False,
+            ),
+        ):
+            pytest.fail("A grant must not bypass persistent Tenant scope or file existence")
+    with admission.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun)) == 0
+
+
+@pytest.mark.parametrize("owner_role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
+def test_request_file_ids_cannot_extend_trusted_default_grants(
+    admission: Admission, file_entity: WebWorkflowEntity, default_file: UploadFile, owner_role: CreatorUserRole
+) -> None:
+    upload = make_upload_file(
+        tenant_id=admission.guest.tenant_id,
+        created_by_role=owner_role,
+        created_by=admission.workflow.created_by if owner_role == CreatorUserRole.ACCOUNT else admission.target.id,
+    )
+    with admission.sessions.begin() as session:
+        session.add(upload)
+        session.flush()
+    default_input = file_entity.inputs["document"]
+    assert isinstance(default_input, File)
+    file_entity.files = [default_input.model_copy(update={"reference": build_file_reference(record_id=upload.id)})]
+    file_entity.inputs = {**file_entity.inputs, "granted_upload_file_ids": [upload.id]}
+    file_entity.extras["granted_upload_file_ids"] = [upload.id]
+    with BaseAppGenerator._bind_file_access_scope(
+        tenant_id=admission.guest.tenant_id, user=admission.guest, invoke_from=InvokeFrom.WEB_APP
+    ):
+        grant_file_default_access(file_entity.app_config.variables)
+        scope = get_current_file_access_scope()
+        assert scope is not None
+        assert scope.granted_upload_file_ids == {default_file.id}
+        with (
+            pytest.raises(WebExecutionResourcesChangedError),
+            web_workflow_launch(
+                file_entity,
+                workflow=admission.workflow,
+                user=admission.guest,
+                conversation_id=file_entity.conversation_id
+                if isinstance(file_entity, AdvancedChatAppGenerateEntity)
+                else None,
+                resume=False,
+            ),
+        ):
+            pytest.fail("Request-owned file IDs must never become trusted grants")
+    with admission.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun)) == 0
+        persisted = session.get(UploadFile, upload.id)
+        assert persisted is not None
+        assert (persisted.created_by_role, persisted.created_by) == (owner_role, upload.created_by)
+
+
+def test_end_user_owned_files_are_admitted_without_execution_grants(
+    admission: Admission, file_entity: WebWorkflowEntity
+) -> None:
+    file_entity.app_config.variables = [
+        VariableEntity(
+            variable="document",
+            label="Document",
+            type=VariableEntityType.FILE,
+            allowed_file_types=[FileType.DOCUMENT],
+            allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE],
+        )
+    ]
+    generator = BaseAppGenerator()
+    with generator._bind_file_access_scope(
+        tenant_id=admission.guest.tenant_id, user=admission.guest, invoke_from=InvokeFrom.WEB_APP
+    ):
+        file_entity.inputs = generator._prepare_user_inputs(
+            user_inputs={
+                "document": {
+                    "transfer_method": FileTransferMethod.LOCAL_FILE,
+                    "upload_file_id": admission.file_id,
+                    "type": FileType.DOCUMENT,
+                }
+            },
+            variables=file_entity.app_config.variables,
+            tenant_id=admission.guest.tenant_id,
+        )
+        scope = get_current_file_access_scope()
+        assert scope is not None
+        assert not scope.granted_upload_file_ids
+        with web_workflow_launch(
+            file_entity,
+            workflow=admission.workflow,
+            user=admission.guest,
+            conversation_id=file_entity.conversation_id
+            if isinstance(file_entity, AdvancedChatAppGenerateEntity)
+            else None,
+            resume=False,
+        ):
+            with admission.sessions() as session:
+                run = session.scalar(sa.select(WorkflowRun).where(WorkflowRun.task_id == file_entity.task_id))
+                assert run is not None
+                assert run.status == WorkflowExecutionStatus.RUNNING
 
 
 @pytest.mark.parametrize("resource", ["upload", "connection"])
