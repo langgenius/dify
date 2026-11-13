@@ -1537,6 +1537,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Maximum soft-deleted conversations dispatched per cleanup sweep",
         default=100,
     )
+    ENABLE_AGENT_RESOURCE_RECONCILE_TASK: bool = Field(
+        description="Enable periodic recovery of retired Agent workspace cleanup deliveries",
+        default=True,
+    )
+    AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES: PositiveInt = Field(
+        description="Interval between retries for retired Agent workspace cleanup deliveries",
+        default=5,
+    )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",
         default=False,

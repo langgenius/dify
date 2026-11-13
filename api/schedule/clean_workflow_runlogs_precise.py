@@ -23,8 +23,10 @@ from models.model import (
 )
 from models.web import SavedMessage
 from models.workflow import ConversationVariable, WorkflowRun
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +78,21 @@ def clean_workflow_runlogs_precise() -> None:
             last_seen = (run_rows[-1].created_at, run_rows[-1].id)
             batch_count += 1
             with session_factory.begin() as session:
-                success = _delete_batch(session, workflow_run_repo, run_rows, failed_batches)
+                retired_workspace_ids_by_tenant: dict[str, list[str]] = {}
+                success = _delete_batch(
+                    session,
+                    workflow_run_repo,
+                    run_rows,
+                    failed_batches,
+                    retired_workspace_ids_by_tenant,
+                )
 
             if success:
+                for tenant_id, workspace_ids in retired_workspace_ids_by_tenant.items():
+                    enqueue_agent_resource_collection(
+                        tenant_id=tenant_id,
+                        workspace_ids=workspace_ids,
+                    )
                 total_deleted += len(run_rows)
                 failed_batches = 0
             else:
@@ -109,9 +123,11 @@ def _delete_batch(
     workflow_run_repo,
     workflow_runs: Sequence[WorkflowRun],
     attempt_count: int,
+    retired_workspace_ids_by_tenant: dict[str, list[str]],
 ) -> bool:
     """Delete a single batch of workflow runs and all related data within a nested transaction."""
     try:
+        batch_retired_workspace_ids_by_tenant: dict[str, list[str]] = {}
         with session.begin_nested():
             workflow_run_ids = [run.id for run in workflow_runs]
             message_data = session.execute(
@@ -138,6 +154,21 @@ def _delete_batch(
                 session.execute(delete(Message).where(Message.workflow_run_id.in_(workflow_run_ids)))
 
             if conversation_id_list:
+                conversations = session.scalars(
+                    select(Conversation).where(Conversation.id.in_(conversation_id_list))
+                ).all()
+                workspace_repository = AgentWorkspaceRepository(session=session)
+                tenant_ids_by_app_id = {run.app_id: run.tenant_id for run in workflow_runs}
+                for conversation in conversations:
+                    tenant_id = tenant_ids_by_app_id.get(conversation.app_id)
+                    if tenant_id is not None:
+                        batch_retired_workspace_ids_by_tenant.setdefault(tenant_id, []).extend(
+                            workspace_repository.retire_all_for_conversation(
+                                tenant_id=tenant_id,
+                                app_id=conversation.app_id,
+                                conversation_id=conversation.id,
+                            )
+                        )
                 session.execute(
                     delete(ConversationVariable).where(ConversationVariable.conversation_id.in_(conversation_id_list))
                 )
@@ -162,7 +193,9 @@ def _delete_batch(
                 delete_trigger_logs=_delete_trigger_logs,
             )
 
-            return True
+        for tenant_id, workspace_ids in batch_retired_workspace_ids_by_tenant.items():
+            retired_workspace_ids_by_tenant.setdefault(tenant_id, []).extend(workspace_ids)
+        return True
 
     except Exception:
         logger.exception("Batch deletion failed (attempt %s)", attempt_count + 1)

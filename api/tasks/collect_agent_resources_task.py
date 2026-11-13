@@ -12,12 +12,16 @@ import logging
 from collections.abc import Iterable
 
 from celery import shared_task
+from sqlalchemy import select
 
+from core.db.session_factory import session_factory
+from models.agent import AgentWorkingResourceStatus, AgentWorkspace
 from services.agent.deletion_service import AgentDeletionService
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
 
 logger = logging.getLogger(__name__)
+_RECONCILE_BATCH_SIZE = 100
 
 
 @shared_task(queue="retention")
@@ -99,4 +103,49 @@ def enqueue_agent_resource_collection(
         raise
 
 
-__all__ = ["collect_agent_resources", "enqueue_agent_resource_collection"]
+@shared_task(queue="retention")
+def reconcile_retired_agent_workspaces() -> int:
+    """Retry delivery for workspaces retired before a broker publish failed.
+
+    RETIRED workspace rows are the durable cleanup intent. The periodic sweep
+    finds them without relying on the Conversation or WorkflowRun that caused
+    retirement, so a failed one-shot enqueue cannot strand the backend resource.
+    Duplicate deliveries are safe: the collector is idempotent for missing rows.
+
+    The database must be available. This task returns the number of workspaces
+    whose collection messages were accepted by the broker; publish failures are
+    logged and left for a later sweep, while database query failures propagate.
+    """
+    with session_factory.create_session() as session:
+        rows = session.execute(
+            select(AgentWorkspace.tenant_id, AgentWorkspace.id)
+            .where(AgentWorkspace.status == AgentWorkingResourceStatus.RETIRED)
+            .order_by(AgentWorkspace.tenant_id, AgentWorkspace.id)
+            .execution_options(yield_per=_RECONCILE_BATCH_SIZE)
+        )
+        workspaces_by_tenant: dict[str, list[str]] = {}
+        for tenant_id, workspace_id in rows:
+            workspaces_by_tenant.setdefault(tenant_id, []).append(workspace_id)
+
+    enqueued = 0
+    for tenant_id, workspace_ids in workspaces_by_tenant.items():
+        for offset in range(0, len(workspace_ids), _RECONCILE_BATCH_SIZE):
+            batch = workspace_ids[offset : offset + _RECONCILE_BATCH_SIZE]
+            try:
+                enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=batch)
+            except Exception:
+                # The RETIRED rows remain queryable, so the next beat run retries.
+                logger.exception(
+                    "Failed to enqueue reconciliation for retired Agent workspaces",
+                    extra={"tenant_id": tenant_id, "workspace_ids": batch},
+                )
+            else:
+                enqueued += len(batch)
+    return enqueued
+
+
+__all__ = [
+    "collect_agent_resources",
+    "enqueue_agent_resource_collection",
+    "reconcile_retired_agent_workspaces",
+]

@@ -294,6 +294,13 @@ def init_app(app: DifyApp) -> Celery:
             "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
             "schedule": timedelta(minutes=dify_config.CONVERSATION_CLEANUP_TASK_INTERVAL),
         }
+    if dify_config.ENABLE_AGENT_RESOURCE_RECONCILE_TASK:
+        interval = dify_config.AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES
+        beat_schedule["reconcile_retired_agent_workspaces"] = {
+            "task": "tasks.collect_agent_resources_task.reconcile_retired_agent_workspaces",
+            "schedule": timedelta(minutes=interval),
+            "options": {"expires": interval * 60},
+        }
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {

@@ -312,6 +312,8 @@ class TestCelerySslCases:
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
+            mock_config.ENABLE_AGENT_RESOURCE_RECONCILE_TASK = False
+            mock_config.AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
             mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
@@ -369,6 +371,8 @@ class TestCelerySslCases:
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
+            mock_config.ENABLE_AGENT_RESOURCE_RECONCILE_TASK = False
+            mock_config.AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
             mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
@@ -499,6 +503,8 @@ class TestKnowledgeFsCeleryCases:
             KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS=2,
             ENABLE_CONVERSATION_CLEANUP_TASK=True,
             CONVERSATION_CLEANUP_TASK_INTERVAL=5,
+            ENABLE_AGENT_RESOURCE_RECONCILE_TASK=True,
+            AGENT_RESOURCE_RECONCILE_INTERVAL_MINUTES=7,
             ENABLE_CLEAN_EMBEDDING_CACHE_TASK=False,
             ENABLE_CLEAN_UNUSED_DATASETS_TASK=False,
             ENABLE_CREATE_TIDB_SERVERLESS_TASK=False,
@@ -537,6 +543,11 @@ class TestKnowledgeFsCeleryCases:
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"] == {
             "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
             "schedule": timedelta(minutes=5),
+        }
+        assert celery_app.conf["beat_schedule"]["reconcile_retired_agent_workspaces"] == {
+            "task": "tasks.collect_agent_resources_task.reconcile_retired_agent_workspaces",
+            "schedule": timedelta(minutes=7),
+            "options": {"expires": 7 * 60},
         }
         assert celery_app.conf["beat_schedule"]["knowledge_fs_staged_upload_cleanup"] == {
             "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
