@@ -13,7 +13,7 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { omit } from 'es-toolkit/object'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -91,6 +91,16 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       input: { params: { app_id: appDetail.id }, query },
     }),
   )
+  const handleQueryParamsChange = useCallback((next: QueryParam) => {
+    setCurrPage(0)
+    setQueryParams(next)
+  }, [])
+
+  const handleLimitChange = useCallback((next: number) => {
+    setCurrPage(0)
+    setLimit(next)
+  }, [])
+
   const total = workflowLogs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   const showArchivedLogsNotice = shouldShowArchivedLogsNotice(
@@ -105,7 +115,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         description={t(($) => $.workflowSubtitle, { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
-        <Filter queryParams={effectiveQueryParams} setQueryParams={setQueryParams} />
+        <Filter queryParams={effectiveQueryParams} setQueryParams={handleQueryParamsChange} />
         <RetentionUpgradeNotice />
         {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {/* workflow log */}
@@ -132,7 +142,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             pageSize={{
               value: limit,
               options: [10, 25, 50],
-              onValueChange: setLimit,
+              onValueChange: handleLimitChange,
               label: t(($) => $['pagination.perPage'], { ns: 'common' }),
               ariaLabel: t(($) => $['pagination.perPage'], { ns: 'common' }),
             }}
