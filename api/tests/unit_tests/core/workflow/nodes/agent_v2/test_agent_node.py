@@ -2,7 +2,7 @@ import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -22,6 +22,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from pydantic import JsonValue
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -43,12 +44,12 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
-from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_adapter import STREAM_EXHAUSTED_ERROR, WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -314,7 +315,7 @@ class ToolActivityBackendClient(FakeAgentBackendRunClient):
     def __init__(
         self,
         *,
-        output: object = "hello agent",
+        output: JsonValue = "hello agent",
         include_delta: bool = True,
         early_start: bool = False,
     ) -> None:
@@ -323,6 +324,7 @@ class ToolActivityBackendClient(FakeAgentBackendRunClient):
         self._include_delta = include_delta
         self._early_start = early_start
 
+    @override
     def _events(self, run_id: str):
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         call_args = {"script": "ls -la", "timeout": 30} if self._early_start else {"command": "ls"}
@@ -399,6 +401,7 @@ class ToolActivityBackendClient(FakeAgentBackendRunClient):
 
 
 class ToolCallThenCancelledBackendClient(FakeAgentBackendRunClient):
+    @override
     def _events(self, run_id: str):
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         return (
@@ -425,6 +428,7 @@ class ToolCallThenCancelledBackendClient(FakeAgentBackendRunClient):
 
 
 class ToolCallThenFailingStreamBackendClient(FakeAgentBackendRunClient):
+    @override
     def stream_events(
         self,
         run_id: str,
@@ -448,6 +452,40 @@ class ToolCallThenFailingStreamBackendClient(FakeAgentBackendRunClient):
             ),
         )
         raise AgentBackendStreamError("stream failed mid-tool")
+
+
+class ToolCallThenUncancellableStreamEndBackendClient(FakeAgentBackendRunClient):
+    """Stream ends after a tool call and the cleanup cancel request fails."""
+
+    @override
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolCallEvent(
+                    part=ToolCallPart(
+                        tool_name="shell_run",
+                        args={"command": "ls"},
+                        tool_call_id="call-1",
+                    )
+                ),
+            ),
+        )
+
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        del run_id, request, after
+        raise RuntimeError("cancel request failed")
 
 
 class FailingStreamBackendClient(FakeAgentBackendRunClient):
@@ -1440,6 +1478,37 @@ def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool
         assert agent_logs == []
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
+
+
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls(stream_text: bool):
+    events, (terminal, failure) = _collect_event_stream(
+        _node(agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient()),
+        stream_text=stream_text,
+    )
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    if stream_text:
+        assert [log.status for log in agent_logs] == ["running", "failed"]
+        assert agent_logs[1].error == STREAM_EXHAUSTED_ERROR
+    else:
+        assert agent_logs == []
+    assert terminal is None
+    assert failure is None
+
+
+def test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_error():
+    events = list(_node(agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient())._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [log.status for log in agent_logs] == ["running", "failed"]
+    assert agent_logs[-1].error == STREAM_EXHAUSTED_ERROR
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == STREAM_EXHAUSTED_ERROR
+    assert result.error_type == "agent_backend_stream_error"
 
 
 @pytest.mark.parametrize(

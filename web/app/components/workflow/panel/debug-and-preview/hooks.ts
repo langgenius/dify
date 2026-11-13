@@ -18,7 +18,10 @@ import {
 } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getProcessedInputs, processOpeningStatement } from '@/app/components/base/chat/chat/utils'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
-import { upsertWorkflowToolActivity } from '@/app/components/base/chat/workflow-agent-tool-activity'
+import {
+  isWorkflowAgentToolLog,
+  upsertWorkflowToolActivity,
+} from '@/app/components/base/chat/workflow-agent-tool-activity'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
@@ -34,6 +37,7 @@ import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import { useHooksStore } from '../../hooks-store'
 import { useSetWorkflowVarsWithValue } from '../../hooks/use-set-workflow-vars-with-value'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
+import { agentLogItemFromStream } from '../../hooks/use-workflow-run-event/use-workflow-agent-log'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
@@ -594,36 +598,39 @@ export const useChat = (
         },
         onAgentLog: ({ data }) => {
           upsertWorkflowToolActivity(responseItem, data)
-          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(
-            (item) => item.node_id === data.node_id,
-          )
-          if (currentNodeIndex > -1) {
-            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]!
+          if (!isWorkflowAgentToolLog(data)) {
+            const item = agentLogItemFromStream(data)
+            const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(
+              (tracing) => tracing.node_id === item.node_id,
+            )
+            if (currentNodeIndex > -1) {
+              const current = responseItem.workflowProcess!.tracing![currentNodeIndex]!
 
-            if (current!.execution_metadata) {
-              if (current!.execution_metadata.agent_log) {
-                const currentLogIndex = current!.execution_metadata.agent_log.findIndex(
-                  (log) => log.message_id === data.message_id,
-                )
-                if (currentLogIndex > -1) {
-                  current!.execution_metadata.agent_log[currentLogIndex] = {
-                    ...current!.execution_metadata.agent_log[currentLogIndex],
-                    ...data,
+              if (current!.execution_metadata) {
+                if (current!.execution_metadata.agent_log) {
+                  const currentLogIndex = current!.execution_metadata.agent_log.findIndex(
+                    (log) => log.message_id === item.message_id,
+                  )
+                  if (currentLogIndex > -1) {
+                    current!.execution_metadata.agent_log[currentLogIndex] = {
+                      ...current!.execution_metadata.agent_log[currentLogIndex],
+                      ...item,
+                    }
+                  } else {
+                    current!.execution_metadata.agent_log.push(item)
                   }
                 } else {
-                  current!.execution_metadata.agent_log.push(data)
+                  current!.execution_metadata.agent_log = [item]
                 }
               } else {
-                current!.execution_metadata.agent_log = [data]
+                current!.execution_metadata = {
+                  agent_log: [item],
+                } as any
               }
-            } else {
-              current!.execution_metadata = {
-                agent_log: [data],
-              } as any
-            }
 
-            responseItem.workflowProcess!.tracing[currentNodeIndex] = {
-              ...current,
+              responseItem.workflowProcess!.tracing[currentNodeIndex] = {
+                ...current,
+              }
             }
           }
 

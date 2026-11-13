@@ -1,5 +1,5 @@
 import type { ChatItem, WorkflowAgentToolActivity, WorkflowAgentToolActivityStatus } from './types'
-import type { AgentLogResponse } from '@/types/workflow'
+import type { AgentLogStreamData } from '@/types/workflow'
 
 const WORKFLOW_TOOL_ACTIVITY_STATUSES = new Set<WorkflowAgentToolActivityStatus>([
   'started',
@@ -14,13 +14,16 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined =>
 
 const asString = (value: unknown): string => (typeof value === 'string' ? value : '')
 
-export function upsertWorkflowToolActivity(item: ChatItem, event: AgentLogResponse['data']): void {
+export function isWorkflowAgentToolLog(event: AgentLogStreamData): boolean {
   const metadata = asRecord(event.metadata)
-  if (metadata?.agent_node_version !== '2' || metadata?.kind !== 'tool') return
+  return metadata?.agent_node_version === '2' && metadata?.kind === 'tool'
+}
 
-  const record = event as unknown as Record<string, unknown>
-  const id = asString(record.id) || asString(record.message_id)
-  const nodeExecutionId = asString(event.node_execution_id)
+export function upsertWorkflowToolActivity(item: ChatItem, event: AgentLogStreamData): void {
+  if (!isWorkflowAgentToolLog(event)) return
+
+  const id = event.id
+  const nodeExecutionId = event.node_execution_id
   const status = WORKFLOW_TOOL_ACTIVITY_STATUSES.has(
     event.status as WorkflowAgentToolActivityStatus,
   )

@@ -32,25 +32,22 @@ const toolLog = ({
   toolName,
   toolInput,
   toolOutput = '',
-}: ToolLogOptions): AgentLogResponse['data'] =>
-  ({
-    id,
-    message_id: id,
-    node_id: 'agent-node',
-    node_execution_id: executionId,
-    label,
-    error,
-    status,
-    data: {
-      tool_call_id: toolCallId,
-      tool_name: toolName,
-      tool_input: toolInput,
-      tool_output: toolOutput,
-      node_title: nodeTitle,
-    },
-    metadata: { agent_node_version: '2', kind: 'tool' },
-    children: [],
-  }) as AgentLogResponse['data']
+}: ToolLogOptions): AgentLogResponse['data'] => ({
+  id,
+  node_id: 'agent-node',
+  node_execution_id: executionId,
+  label,
+  error,
+  status,
+  data: {
+    tool_call_id: toolCallId,
+    tool_name: toolName,
+    tool_input: toolInput,
+    tool_output: toolOutput,
+    node_title: nodeTitle,
+  },
+  metadata: { agent_node_version: '2', kind: 'tool' },
+})
 
 const EMPTY_ITEM: ChatItem = { id: 'demo-answer', content: '', isAnswer: true }
 const DEMO_QUESTION = 'Research Dify and list the files in the workspace'

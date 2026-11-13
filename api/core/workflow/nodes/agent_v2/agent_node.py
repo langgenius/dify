@@ -24,8 +24,12 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.agent_log_events import (
+    AgentLogEvent,
+    NodeRunAgentLogEvent,
+    node_run_agent_log_event,
+)
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
-from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.engine_events import NodeEvent, NodeRunPauseRequestedEvent
 from graphon.enums import (
@@ -51,7 +55,7 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
-from .output_adapter import WorkflowAgentOutputAdapter
+from .output_adapter import STREAM_EXHAUSTED_ERROR, WorkflowAgentOutputAdapter
 from .output_failure_orchestrator import (
     FailedOutput,
     OutputFailureDecision,
@@ -150,18 +154,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
     @_dispatch.register
     def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
-        return NodeRunAgentLogEvent(
-            id=self.execution_id,
+        return node_run_agent_log_event(
+            event,
+            execution_id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            message_id=event.message_id,
-            label=event.label,
-            node_execution_id=event.node_execution_id,
-            parent_id=event.parent_id,
-            error=event.error,
-            status=event.status,
-            data=event.data,
-            metadata=event.metadata,
         )
 
     @override
@@ -788,9 +785,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         """Map the stream outcome to the projector's terminal status and error.
 
         A transport failure wins over any accompanying cancellation terminal
-        because it carries the real stream error; a bare cancellation or a
-        stream that ended without a terminal event closes activity as
-        ``cancelled``.
+        because it carries the real stream error; a cancellation terminal
+        closes activity as ``cancelled``. A ``None`` terminal with no
+        transport failure mirrors the ``_run_inner`` stream-exhausted path,
+        which fails the node, so unfinished calls close as ``failed``.
         """
         if transport_failure is not None:
             return "failed", transport_failure.node_run_result.error
@@ -800,7 +798,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             return "failed", terminal_event.error
         if isinstance(terminal_event, AgentBackendRunCancelledInternalEvent):
             return "cancelled", terminal_event.message or terminal_event.reason
-        return "cancelled", None
+        return "failed", STREAM_EXHAUSTED_ERROR
 
     @staticmethod
     def _agent_log_event(activity: WorkflowAgentToolActivity) -> AgentLogEvent:

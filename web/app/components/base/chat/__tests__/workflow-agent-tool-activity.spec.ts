@@ -1,29 +1,25 @@
 import type { ChatItem } from '../types'
-import type { AgentLogResponse } from '@/types/workflow'
+import type { AgentLogStreamData } from '@/types/workflow'
 import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 
-const toolLog = (overrides: Record<string, unknown> = {}): AgentLogResponse['data'] => {
-  const event: Record<string, unknown> = {
-    id: 'run-1:call-1',
-    node_id: 'agent-node',
-    node_execution_id: 'exec-1',
-    parent_id: null,
-    label: 'shell_run',
-    error: null,
-    status: 'started',
-    data: {
-      tool_call_id: 'call-1',
-      tool_name: 'shell_run',
-      tool_input: '{"command":"ls"}',
-      tool_output: '',
-      node_title: 'Research agent',
-    },
-    metadata: { agent_node_version: '2', kind: 'tool' },
-    children: [],
-    ...overrides,
-  }
-  return event as AgentLogResponse['data']
-}
+const toolLog = (overrides: Partial<AgentLogStreamData> = {}): AgentLogStreamData => ({
+  id: 'run-1:call-1',
+  node_id: 'agent-node',
+  node_execution_id: 'exec-1',
+  parent_id: null,
+  label: 'shell_run',
+  error: null,
+  status: 'started',
+  data: {
+    tool_call_id: 'call-1',
+    tool_name: 'shell_run',
+    tool_input: '{"command":"ls"}',
+    tool_output: '',
+    node_title: 'Research agent',
+  },
+  metadata: { agent_node_version: '2', kind: 'tool' },
+  ...overrides,
+})
 
 const chatItem = (): ChatItem => ({ id: 'answer-1', content: '', isAnswer: true })
 
@@ -39,18 +35,6 @@ describe('upsertWorkflowToolActivity', () => {
     expect(activity.status).toBe('started')
     expect(activity.data.tool_name).toBe('shell_run')
     expect(activity.data.node_title).toBe('Research agent')
-  })
-
-  it('normalizes the legacy message_id spelling when id is absent', () => {
-    const item = chatItem()
-    const event = toolLog()
-    delete (event as Record<string, unknown>).id
-    ;(event as Record<string, unknown>).message_id = 'run-1:call-1'
-
-    upsertWorkflowToolActivity(item, event)
-
-    expect(item.workflowAgentActivities).toHaveLength(1)
-    expect(item.workflowAgentActivities![0]!.id).toBe('run-1:call-1')
   })
 
   it('replaces the snapshot for the same call and preserves order', () => {
@@ -74,7 +58,7 @@ describe('upsertWorkflowToolActivity', () => {
       item,
       toolLog({
         status: 'succeeded',
-        data: { ...toolLog().data, tool_output: 'a.txt' } as Record<string, unknown>,
+        data: { ...toolLog().data, tool_output: 'a.txt' },
       }),
     )
 
@@ -87,7 +71,7 @@ describe('upsertWorkflowToolActivity', () => {
 
   it('accepts the running phase and keeps one snapshot per call', () => {
     const item = chatItem()
-    const data = toolLog().data as Record<string, unknown>
+    const data = toolLog().data
 
     upsertWorkflowToolActivity(item, toolLog({ status: 'started' }))
     upsertWorkflowToolActivity(
@@ -116,7 +100,7 @@ describe('upsertWorkflowToolActivity', () => {
 
   it('keeps same-name parallel calls and different executions distinct', () => {
     const item = chatItem()
-    const base = toolLog().data as Record<string, unknown>
+    const base = toolLog().data
     upsertWorkflowToolActivity(
       item,
       toolLog({ id: 'run-1:call-a', data: { ...base, tool_call_id: 'call-a' } }),
