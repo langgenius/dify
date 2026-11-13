@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Iterator, Mapping
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Any, Literal, NoReturn
 from uuid import UUID
 
 from flask import request
@@ -45,8 +45,10 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from core.logging.context import get_request_id, get_trace_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import RelayedHTTPError
 from libs.external_api import error_responses
 from libs.helper import uuid_value
 from libs.login import login_required
@@ -60,11 +62,6 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
-
-
-@runtime_checkable
-class _ClosableStream(Protocol):
-    def close(self) -> None: ...
 
 
 def _resolve_debugger_chat_streaming(
@@ -244,6 +241,7 @@ class ChatMessageApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        RelayedHTTPError,
     )
     @console_ns.doc("create_chat_message")
     @console_ns.doc(description="Generate chat message for debugging")
@@ -277,6 +275,7 @@ class AgentChatMessageApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        RelayedHTTPError,
     )
     @console_ns.doc("create_agent_chat_message")
     @console_ns.doc(description="Generate an Agent App chat message for debugging")
@@ -316,6 +315,7 @@ class AgentBuildChatFinalizeApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        RelayedHTTPError,
     )
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
@@ -432,6 +432,11 @@ def _create_chat_message(
     current_tenant_id: str | None = None,
     agent_id: str | None = None,
 ):
+    """Validate a Console chat payload and generate a turn for the editor's conversation.
+
+    Agent Build chat keeps its stable conversation, while Preview can start a new one.
+    Immediate Agent stream failures are relayed before the HTTP SSE response starts.
+    """
     raw_payload = console_ns.payload or {}
     args_model = ChatMessagePayload.model_validate(raw_payload)
     args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -472,12 +477,18 @@ def _create_chat_message(
         app_model=app_model,
         args=args,
         streaming=streaming,
+        agent_id=agent_id,
     )
 
 
 def _create_build_chat_finalization_message(
     *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
+    """Finalize the editor's stable Build conversation, succeeding only after message end.
+
+    Applying the finalized draft remains a separate Console operation. Generation failures
+    raise HTTP errors with their original status/code and the available correlation IDs.
+    """
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
         session=session,
         current_tenant_id=current_tenant_id,
@@ -505,51 +516,66 @@ def _create_build_chat_finalization_message(
         args=args,
         streaming=True,
     )
-    _drain_streaming_generate_response(response)
+    _drain_streaming_generate_response(
+        response,
+        context_details={
+            "agent_id": agent_id,
+            "app_id": app_model.id,
+            "conversation_id": debug_conversation_id,
+            "trace_id": external_trace_id,
+        },
+    )
     return {"result": "success"}, 200
 
 
-def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str]) -> None:
+def _drain_streaming_generate_response(
+    response: RateLimitGenerator | Generator[str], *, context_details: Mapping[str, Any]
+) -> None:
     """Consume a streamed app-generate response until a terminal message event arrives.
 
     Finalize keeps the normal Agent App streaming path so the existing queue,
     persistence, and runtime-session behavior stay intact. The console API only
     changes the HTTP boundary: it drains the SSE stream server-side and returns
-    success after the generated build-chat message reaches ``message_end``.
+    success after the generated build-chat message reaches ``message_end``. Stream
+    errors retain their status/code and correlation; premature exhaustion is a 502.
+    The source stream is closed on success and failure.
     """
+    details = dict(context_details)
+    last_event: str | None = None
     try:
         for chunk in response:
-            for raw_event in chunk.split("\n\n"):
-                if not raw_event.strip():
-                    continue
-
-                event_name: str | None = None
-                data_lines: list[str] = []
-                for line in raw_event.splitlines():
-                    if line.startswith("event: "):
-                        event_name = line.removeprefix("event: ").strip()
-                    elif line.startswith("data: "):
-                        data_lines.append(line.removeprefix("data: "))
-
-                if not data_lines:
-                    if event_name == "ping":
-                        continue
-                    continue
-
-                payload = json.loads("\n".join(data_lines))
-                if not isinstance(payload, dict):
-                    continue
-
-                payload_event = payload.get("event")
+            for event_name, payload in _iter_sse_event_payloads(chunk):
+                payload_event = (payload or {}).get("event") or event_name
                 if payload_event == "message_end":
                     return
                 if payload_event == "error":
-                    raise CompletionRequestError(str(payload.get("message") or "Build chat finalization failed."))
+                    _raise_http_error_from_sse_error(
+                        payload or {},
+                        fallback_message="Build chat finalization failed.",
+                        context_details=details,
+                    )
+                if payload_event:
+                    last_event = payload_event
+                if payload:
+                    for key in ("task_id", "message_id", "conversation_id"):
+                        if payload.get(key):
+                            details[key] = payload[key]
     finally:
-        if isinstance(response, _ClosableStream):
-            response.close()
+        response.close()
 
-    raise CompletionRequestError("Build chat finalization did not complete.")
+    _raise_http_error_from_sse_error(
+        {
+            "status": 502,
+            "code": "agent_stream_incomplete",
+            "details": {
+                "error_source": "console_stream",
+                "reason": "missing_terminal_event",
+                "last_event": last_event,
+            },
+        },
+        fallback_message="Build chat finalization did not complete.",
+        context_details=details,
+    )
 
 
 def _generate_chat_message(
@@ -602,7 +628,13 @@ def _generate_chat_message_response(
     app_model: App,
     args: dict[str, Any],
     streaming: bool,
+    agent_id: str | None = None,
 ):
+    """Generate a debugger response, relaying immediate Agent errors before SSE starts.
+
+    The optional Agent ID identifies the agent-owned route; app-owned routes use the
+    app and resolved conversation context. Other app modes keep their response behavior.
+    """
     response = _generate_chat_message(
         session=session,
         current_user=current_user,
@@ -611,7 +643,15 @@ def _generate_chat_message_response(
         streaming=streaming,
     )
     if AppMode.value_of(app_model.mode) == AppMode.AGENT and streaming:
-        response = _raise_agent_stream_error_before_response(response)
+        response = _raise_agent_stream_error_before_response(
+            response,
+            context_details={
+                "agent_id": agent_id,
+                "app_id": app_model.id,
+                "conversation_id": args.get("conversation_id"),
+                "trace_id": args.get("external_trace_id"),
+            },
+        )
     return helper.compact_generate_response(response)
 
 
@@ -628,14 +668,16 @@ def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
     return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
-def _raise_agent_stream_error_before_response(response):
+def _raise_agent_stream_error_before_response(response, *, context_details: Mapping[str, Any]):
     """Surface immediate Agent App stream errors as HTTP errors before SSE starts.
 
     The shared streaming helper always returns HTTP 200 once the SSE response is
     created. Agent v2 configuration errors, such as an invalid model API key,
     can be the first real stream event after the initial ping; pre-reading that
-    first non-ping event lets the console API return the existing 400 error
-    contract instead of a successful HTTP response carrying only an SSE error.
+    first non-ping event lets the console API relay the stream's status/code and
+    diagnostics as an HTTP error. Streaming inputs are closable generation iterators;
+    successful streams replay every buffered chunk and close their source on exhaustion
+    or a downstream close, including while replaying buffered chunks.
     """
     if isinstance(response, Mapping):
         return response
@@ -646,6 +688,7 @@ def _raise_agent_stream_error_before_response(response):
         try:
             chunk = next(iterator)
         except StopIteration:
+            response.close()
             return iter(buffered)
 
         if not isinstance(chunk, str):
@@ -653,40 +696,114 @@ def _raise_agent_stream_error_before_response(response):
 
         if _is_sse_ping(chunk):
             buffered.append(chunk)
-            continue
-
-        error_payload = _extract_sse_error_payload(chunk)
-        if error_payload is not None:
-            if isinstance(response, _ClosableStream):
+        else:
+            error_payload = _extract_sse_error_payload(chunk)
+            if error_payload is not None:
                 response.close()
-            message = error_payload.get("message")
-            raise CompletionRequestError(str(message or "Agent App chat failed."))
+                _raise_http_error_from_sse_error(
+                    error_payload, fallback_message="Agent App chat failed.", context_details=context_details
+                )
+            return _prepend_stream_chunks(buffered, chunk, iterator)
 
-        return _prepend_stream_chunks(buffered, chunk, iterator)
 
+def _prepend_stream_chunks(
+    buffered: list[Any], first: Any, response: RateLimitGenerator | Generator[Any]
+) -> Generator[Any]:
+    """Replay pre-read chunks from a generation iterator, closing it on every exit.
 
-def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any]:
-    yield from buffered
-    yield first
-    yield from iterator
+    The source is already positioned after ``first``. Exhaustion, iteration errors and
+    downstream close release it even when replay has not yet delegated to the source.
+    """
+    try:
+        yield from buffered
+        yield first
+        yield from response
+    finally:
+        response.close()
 
 
 def _is_sse_ping(chunk: str) -> bool:
     return chunk.strip() == "event: ping"
 
 
-def _extract_sse_error_payload(chunk: str) -> dict[str, Any] | None:
-    for raw_event in chunk.split("\n\n"):
+def _iter_sse_event_payloads(chunk: str) -> Iterator[tuple[str | None, dict[str, Any] | None]]:
+    """Parse complete SSE chunks from app generation, ignoring malformed/non-object JSON data.
+
+    Event names are retained for ping and named events; multiline data follows SSE semantics.
+    This consumes the complete frames emitted by the app response serializer.
+    """
+    raw_events = chunk.replace("\r\n", "\n").split("\n\n")
+    for raw_event in (event for event in raw_events if event.strip()):
+        event_name: str | None = None
         data_lines: list[str] = []
         for line in raw_event.splitlines():
-            if line.startswith("data: "):
-                data_lines.append(line.removeprefix("data: "))
-        if not data_lines:
-            continue
-        try:
-            payload = json.loads("\n".join(data_lines))
-        except json.JSONDecodeError:
-            continue
-        if isinstance(payload, dict) and payload.get("event") == "error":
+            if line.startswith("event:"):
+                event_name = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                data_lines.append(line.removeprefix("data:").removeprefix(" "))
+        payload = None
+        if data_lines:
+            try:
+                parsed = json.loads("\n".join(data_lines))
+                if isinstance(parsed, dict):
+                    payload = parsed
+            except json.JSONDecodeError:
+                pass
+        yield event_name, payload
+
+
+def _extract_sse_error_payload(chunk: str) -> dict[str, Any] | None:
+    """Return the first serialized error in a complete chunk, if one is present."""
+    for event_name, payload in _iter_sse_event_payloads(chunk):
+        if payload is not None and (payload.get("event") or event_name) == "error":
             return payload
     return None
+
+
+def _raise_http_error_from_sse_error(
+    payload: Mapping[str, Any], *, fallback_message: str, context_details: Mapping[str, Any]
+) -> NoReturn:
+    """Relay a serialized generation failure through the standard Console error contract.
+
+    Nonempty stream IDs enrich request context; request/trace IDs remain local to this HTTP
+    request. The legacy completion error keeps its class, while all other status/code pairs
+    use the open downstream-error contract. Every failure is logged with its correlation.
+    """
+    details = dict(context_details)
+    stream_details = payload.get("details")
+    if isinstance(stream_details, Mapping):
+        details.update({key: value for key, value in stream_details.items() if value is not None and value != ""})
+    for key in ("conversation_id", "message_id", "task_id"):
+        if payload.get(key):
+            details[key] = payload[key]
+    details["trace_id"] = context_details.get("trace_id") or get_trace_id()
+    details["request_id"] = get_request_id()
+    details = {key: value for key, value in details.items() if value is not None and value != ""}
+
+    status = int(payload.get("status") or 400)
+    code = str(payload.get("code") or "completion_request_error")
+    message = str(payload.get("message") or fallback_message)
+    log = logger.error if status >= 500 else logger.warning
+    log(
+        "Agent stream failed: agent_id=%s app_id=%s conversation_id=%s message_id=%s task_id=%s "
+        "agent_run_id=%s trace_id=%s request_id=%s status=%s code=%s error_source=%s reason=%s message=%s",
+        details.get("agent_id"),
+        details.get("app_id"),
+        details.get("conversation_id"),
+        details.get("message_id"),
+        details.get("task_id"),
+        details.get("agent_run_id"),
+        details.get("trace_id"),
+        details.get("request_id"),
+        status,
+        code,
+        details.get("error_source"),
+        details.get("reason"),
+        message,
+    )
+    if status == 400 and code == "completion_request_error":
+        exc = CompletionRequestError(message)
+        assert exc.data is not None
+        exc.data["details"] = details
+        raise exc
+    raise RelayedHTTPError(status=status, error_code=code, message=message, details=details or None)

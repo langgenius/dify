@@ -18,6 +18,7 @@ from core.app.entities.task_entities import (
 )
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from core.plugin.impl.exc import PluginDaemonError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 from models.model import Message
@@ -48,6 +49,11 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+        """Normalize a queued failure and mark an existing message as failed when supplied.
+
+        Known provider/backend/plugin types survive response conversion; authorization wording
+        is sanitized and unknown errors are wrapped, preserving the cause in both cases.
+        """
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -55,11 +61,13 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
-            case InvokeError() | ValueError() | AgentBackendError():
+                err.__cause__ = e
+            case InvokeError() | ValueError() | AgentBackendError() | PluginDaemonError():
                 err = e
             case _:
                 description = getattr(e, "description", None)
                 err = Exception(description if description is not None else str(e))
+                err.__cause__ = e
 
         if not message_id or not session:
             return err

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { runCommand } from '../scripts/common.ts'
 import { runCucumber } from '../scripts/run-cucumber.ts'
 import {
+  captureMiddlewareLogs,
   getManagedSandboxEnvironment,
   resetState,
   startMiddleware,
@@ -23,6 +24,7 @@ vi.mock('../scripts/common.ts', () => ({
   runCommand: vi.fn(),
 }))
 vi.mock('../scripts/setup.ts', () => ({
+  captureMiddlewareLogs: vi.fn(),
   getManagedSandboxEnvironment: vi.fn(),
   resetState: vi.fn(),
   startMiddleware: vi.fn(),
@@ -97,6 +99,8 @@ describe('core E2E preparation', () => {
     expect(stopManagedProcess).toHaveBeenCalledWith(downloadProcess)
     expect(stopWebServer).toHaveBeenCalledOnce()
     expect(stopMiddleware).toHaveBeenCalledOnce()
+    expect(captureMiddlewareLogs).toHaveBeenCalledWith('/e2e/.logs/cucumber-middleware.log')
+    expect(captureMiddlewareLogs).toHaveBeenCalledBefore(vi.mocked(stopMiddleware))
   })
 
   it('fails closed and tears down the backend when artifact preparation fails', async () => {
@@ -111,6 +115,7 @@ describe('core E2E preparation', () => {
     expect(runCommand).not.toHaveBeenCalled()
     expect(stopManagedProcess).toHaveBeenCalledTimes(5)
     expect(stopMiddleware).toHaveBeenCalledOnce()
+    expect(captureMiddlewareLogs).toHaveBeenCalledBefore(vi.mocked(stopMiddleware))
   })
 
   it('stops an unfinished artifact download when backend startup fails', async () => {
@@ -126,6 +131,7 @@ describe('core E2E preparation', () => {
     )
     expect(stopManagedProcess).toHaveBeenCalledWith(downloadProcess)
     expect(stopMiddleware).toHaveBeenCalledOnce()
+    expect(captureMiddlewareLogs).toHaveBeenCalledBefore(vi.mocked(stopMiddleware))
     expect(startWebServer).not.toHaveBeenCalled()
   })
 
@@ -194,6 +200,8 @@ describe('core E2E preparation', () => {
         env: expect.objectContaining({ DIFY_AGENT_SHELLCTL_AUTH_TOKEN: 'existing-token' }),
       }),
     )
+    expect(captureMiddlewareLogs).not.toHaveBeenCalled()
+    expect(stopMiddleware).not.toHaveBeenCalled()
   })
 
   it('fails before resetting or starting services when sandbox credentials are invalid', async () => {

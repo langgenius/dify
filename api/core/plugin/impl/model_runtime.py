@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections.abc import Generator, Iterable, Mapping, Sequence
+from contextlib import contextmanager, nullcontext
 from typing import IO, Any, Literal, cast, overload, override
 
 from pydantic import ValidationError
@@ -13,7 +14,8 @@ from configs import dify_config
 from core.llm_generator.output_parser.structured_output import (
     invoke_llm_with_structured_output as invoke_llm_with_structured_output_helper,
 )
-from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderDeclaration
+from core.plugin.impl.agent_llm_errors import normalize_agent_llm_plugin_error
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
@@ -40,6 +42,24 @@ logger = logging.getLogger(__name__)
 
 # `TS` means tenant scope
 TENANT_SCOPE_SCHEMA_CACHE_USER_ID = "__DIFY_TS__"
+
+
+@contextmanager
+def _agent_llm_plugin_error_boundary() -> Generator[None]:
+    """Classify client failures before Graphon can replace their cause with a ValueError self-cycle."""
+    try:
+        yield
+    except (PluginDaemonInnerError, ValueError) as exc:
+        error = normalize_agent_llm_plugin_error(exc, from_plugin_stream=True)
+        if error is None:
+            raise
+        raise error from exc
+
+
+def _agent_llm_plugin_stream(source: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
+    """Delegate gateway chunks and generator cleanup, classifying failures during iteration."""
+    with _agent_llm_plugin_error_boundary():
+        yield from source
 
 
 # TODO(-LAN-): Move native structured-output invocation into Graphon's LLM node.
@@ -338,41 +358,52 @@ class PluginModelRuntime(ModelRuntime):
         stream: bool,
         request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult | Generator[LLMResultChunk]:
+        """Invoke a prepared plugin model and optionally aggregate its result.
+
+        Only calls marked source=agent_llm_gateway classify daemon transport/protocol failures
+        during client generator creation and iteration. This must precede Graphon's ``raise e from e``
+        for ValueError, which erases the original daemon cause. Other callers retain the client
+        stream identity and legacy exception contract; ordinary model ValueErrors are unchanged.
+        """
         app_id = request_metadata.get("app_id") if request_metadata else None
         if not isinstance(app_id, str):
             app_id = None
         plugin_id, provider_name = self._split_provider(provider)
-        if app_id is None:
-            result = self.client.invoke_llm(
-                tenant_id=self.tenant_id,
-                user_id=self.user_id,
-                plugin_id=plugin_id,
-                **self._dispatch_identity(provider),
-                provider=provider_name,
-                model=model,
-                credentials=credentials,
-                model_parameters=model_parameters,
-                prompt_messages=list(prompt_messages),
-                tools=tools,
-                stop=list(stop) if stop else None,
-                stream=stream,
-            )
-        else:
-            result = self.client.invoke_llm(
-                tenant_id=self.tenant_id,
-                user_id=self.user_id,
-                plugin_id=plugin_id,
-                **self._dispatch_identity(provider),
-                provider=provider_name,
-                model=model,
-                credentials=credentials,
-                model_parameters=model_parameters,
-                prompt_messages=list(prompt_messages),
-                tools=tools,
-                stop=list(stop) if stop else None,
-                stream=stream,
-                app_id=app_id,
-            )
+        agent_gateway = request_metadata is not None and request_metadata.get("source") == "agent_llm_gateway"
+        with _agent_llm_plugin_error_boundary() if agent_gateway else nullcontext():
+            if app_id is None:
+                result = self.client.invoke_llm(
+                    tenant_id=self.tenant_id,
+                    user_id=self.user_id,
+                    plugin_id=plugin_id,
+                    **self._dispatch_identity(provider),
+                    provider=provider_name,
+                    model=model,
+                    credentials=credentials,
+                    model_parameters=model_parameters,
+                    prompt_messages=list(prompt_messages),
+                    tools=tools,
+                    stop=list(stop) if stop else None,
+                    stream=stream,
+                )
+            else:
+                result = self.client.invoke_llm(
+                    tenant_id=self.tenant_id,
+                    user_id=self.user_id,
+                    plugin_id=plugin_id,
+                    **self._dispatch_identity(provider),
+                    provider=provider_name,
+                    model=model,
+                    credentials=credentials,
+                    model_parameters=model_parameters,
+                    prompt_messages=list(prompt_messages),
+                    tools=tools,
+                    stop=list(stop) if stop else None,
+                    stream=stream,
+                    app_id=app_id,
+                )
+        if agent_gateway:
+            result = _agent_llm_plugin_stream(result)
         if stream:
             return result
 

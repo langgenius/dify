@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import datetime
 import inspect
+import json
 import uuid
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from unittest.mock import call, patch, sentinel
 
+import httpx
 import pytest
 from redis import Redis
 from redis.lock import Lock
 
 from core.plugin.entities.plugin import PluginInstallationSource
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
+from core.plugin.impl import base as plugin_base
 from core.plugin.impl import model_runtime as model_runtime_module
+from core.plugin.impl.exc import PluginDaemonInternalError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
@@ -1110,3 +1114,102 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider(m
 
     with pytest.raises(ValueError, match="Invalid provider"):
         runtime._get_provider_schema("missing")
+
+
+@pytest.mark.parametrize("source", [None, "workflow", "agent_llm_gateway"])
+@pytest.mark.parametrize(
+    ("failure", "message_prefix"),
+    [
+        ("connect", "Request to Plugin Daemon Service failed"),
+        ("invalid-json", "invalid daemon response"),
+        ("invalid-chunk", '{"code": 0'),
+        ("empty-data", "got empty data from plugin daemon:"),
+        ("error-envelope", "plugin daemon: bad response, code: -1"),
+        ("inner-error", "daemon unavailable"),
+    ],
+)
+def test_daemon_http_failures_are_classified_only_for_gateway_invocations(
+    monkeypatch: pytest.MonkeyPatch, source: str | None, failure: str, message_prefix: str
+) -> None:
+    """Exercise real plugin wire decoding while preserving the clients' legacy ValueError contract."""
+
+    def daemon_http(request: httpx.Request) -> httpx.Response:
+        if failure == "connect":
+            raise httpx.ConnectError("private transport detail", request=request)
+        if failure == "invalid-json":
+            return httpx.Response(200, text="data: invalid daemon response\n\n")
+        envelope: dict[str, object] = {"code": 0, "message": "", "data": None}
+        if failure == "invalid-chunk":
+            envelope["data"] = {"invalid": "chunk"}
+        elif failure == "error-envelope":
+            envelope.update(code=-1, message="bad response")
+        elif failure == "inner-error":
+            envelope.update(
+                code=-500,
+                message=json.dumps({"error_type": "PluginDaemonInnerError", "message": "daemon unavailable"}),
+            )
+        return httpx.Response(200, text="data: " + json.dumps(envelope) + "\n\n")
+
+    runtime = create_plugin_model_runtime(tenant_id="tenant")
+    with httpx.Client(transport=httpx.MockTransport(daemon_http)) as daemon_client:
+        monkeypatch.setattr(plugin_base, "_httpx_client", daemon_client)
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-test",
+            credentials={},
+            model_parameters={},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"source": source} if source else None,
+        )
+        with pytest.raises(PluginDaemonInternalError if source == "agent_llm_gateway" else ValueError) as caught:
+            list(result)
+    error = caught.value
+    if source == "agent_llm_gateway":
+        assert isinstance(error, PluginDaemonInternalError)
+        assert error.description.startswith(message_prefix)
+        assert not error.description.endswith("-500")
+        assert type(error.__cause__) is ValueError
+    else:
+        assert type(error) is ValueError
+        assert str(error).startswith(message_prefix)
+        if failure in {"connect", "inner-error"}:
+            assert isinstance(error.__cause__, PluginDaemonInnerError)
+            assert str(error) == message_prefix + "-500"
+
+
+@pytest.mark.parametrize("source", [None, "workflow", "agent_llm_gateway"])
+@pytest.mark.parametrize(
+    "error", [PluginDaemonInnerError(code=-500, message="daemon unavailable"), ValueError("invalid model")]
+)
+def test_client_generator_creation_failure_respects_gateway_marker(
+    monkeypatch: pytest.MonkeyPatch, source: str | None, error: Exception
+) -> None:
+    """Only daemon failures on gateway calls change type; ordinary model errors retain identity."""
+    runtime = create_plugin_model_runtime(tenant_id="tenant")
+
+    def fail_invoke(**_kwargs: object) -> Generator[LLMResultChunk]:
+        raise error
+
+    monkeypatch.setattr(runtime.client, "invoke_llm", fail_invoke)
+    normalize = source == "agent_llm_gateway" and isinstance(error, PluginDaemonInnerError)
+    with pytest.raises(PluginDaemonInternalError if normalize else type(error)) as caught:
+        runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-test",
+            credentials={},
+            model_parameters={},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"source": source} if source else None,
+        )
+    if normalize:
+        assert isinstance(caught.value, PluginDaemonInternalError)
+        assert caught.value.description == "daemon unavailable"
+        assert caught.value.__cause__ is error
+    else:
+        assert caught.value is error

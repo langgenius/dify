@@ -6,11 +6,23 @@ from typing import Any, cast
 from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
-from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
+from clients.agent_backend.errors import (
+    AgentBackendError,
+    AgentBackendHTTPError,
+    AgentBackendRunFailedError,
+    AgentBackendStreamError,
+    AgentBackendTransportError,
+    AgentBackendValidationError,
+)
 from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.impl.exc import (
+    PluginDaemonClientSideError,
+    PluginDaemonInternalError,
+    PluginInvokeError,
+)
 from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -118,16 +130,45 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
 
     @classmethod
     def _error_to_stream_response(cls, e: Exception) -> dict[str, JsonValue]:
-        """
-        Error to stream response.
-        :param e: exception
-        :return:
+        """Return the public code/status/message for a generation failure.
+
+        Known upstream failures keep their status and readable description. Unknown failures
+        expose only the safe internal-error message, with their cause/traceback logged server-side.
         """
         if isinstance(e, AgentBackendRunFailedError) and e.error_type == RunFailureType.AGENT_RUN_LIMIT_EXCEEDED:
             return {
                 "code": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED.value,
                 "status": 400,
                 "message": str(e),
+            }
+
+        if isinstance(e, AgentBackendHTTPError):
+            return {
+                "code": (e.error_code or "agent_backend_error") if e.status_code >= 400 else "agent_backend_error",
+                "status": e.status_code if e.status_code >= 400 else 502,
+                "message": str(e),
+            }
+
+        if isinstance(e, AgentBackendTransportError | AgentBackendStreamError):
+            return {"code": "agent_backend_unreachable", "status": 502, "message": str(e)}
+
+        if isinstance(e, AgentBackendValidationError):
+            backend_rejection = e.status_code is not None and e.status_code >= 400
+            return {
+                "code": (e.error_code or "agent_backend_error") if backend_rejection else "agent_backend_error",
+                "status": e.status_code if backend_rejection else 502,
+                "message": str(e),
+            }
+
+        if isinstance(e, PluginDaemonInternalError):
+            return {"code": "plugin_runtime_error", "status": 502, "message": e.description}
+
+        if isinstance(e, PluginDaemonClientSideError):
+            message = e.get_error_message() if isinstance(e, PluginInvokeError) else e.description
+            return {
+                "code": "completion_request_error",
+                "status": 400,
+                "message": message if message and message != "unknown" else e.description,
             }
 
         if isinstance(e, AppGenerateError):
@@ -159,9 +200,9 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 data = v
 
         if data:
-            data.setdefault("message", getattr(e, "description", str(e)))
+            data.setdefault("message", getattr(e, "description", None) or str(e))
         else:
-            logger.error(e)
+            logger.error("Unhandled error in app generate stream", exc_info=e.__cause__ or e)
             data = {
                 "code": "internal_server_error",
                 "message": "Internal Server Error, please contact support.",
