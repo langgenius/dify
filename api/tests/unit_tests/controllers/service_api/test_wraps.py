@@ -998,6 +998,38 @@ class TestValidateDatasetToken:
         assert account.current_tenant_id == tenant.id
 
     @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.current_app")
+    def test_dataset_admission_releases_request_session_before_handler(
+        self,
+        mock_current_app,
+        mock_validate_token,
+        mock_user_logged_in,
+        app: Flask,
+        sqlite_session: Session,
+    ) -> None:
+        """Dataset handlers open their own sessions, so admission must not keep a connection for them."""
+        _configure_current_app_mock(mock_current_app)
+        tenant, account, _ = _persist_workspace(sqlite_session)
+        api_token = _api_token(tenant_id=tenant.id, token_type=ApiTokenType.DATASET)
+        mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
+
+        @validate_dataset_token
+        def protected_view(tenant_id: str) -> tuple[str, bool]:
+            return tenant_id, sqlite_session.in_transaction()
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            result = protected_view()
+
+        assert result == (tenant.id, False)
+        assert account.current_tenant_id == tenant.id
+
+    @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
     @pytest.mark.parametrize(
         "sqlite_session",

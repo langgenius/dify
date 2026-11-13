@@ -456,6 +456,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         if accepts_dataset_grant:
             kwargs["dataset_grant"] = dataset_grant
 
+        # Dataset handlers open their own sessions; see _release_request_session_connection.
+        _release_request_session_connection()
+
         if expects_bound_instance:
             if not args:
                 raise TypeError("validate_dataset_token expected a bound resource instance.")
