@@ -19,7 +19,7 @@ from core.rag.entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
-from core.rag.models.document import Document
+from core.rag.models.document import SCORE_FROM_FULL_TEXT_METADATA_KEY, Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
@@ -225,6 +225,8 @@ class RetrievalService:
         - If metadata["doc_id"] exists (any provider): deduplicate by (provider, doc_id) key;
           keep the doc with the highest metadata["score"] among duplicates. If a later duplicate
           has no score, ignore it.
+        - A full-text score (flagged with SCORE_FROM_FULL_TEXT_METADATA_KEY) is never compared
+          with a vector score: when only one of two duplicates carries the flag, keep the other.
         - If metadata["doc_id"] is absent: deduplicate by content key (provider, page_content),
           keeping the first occurrence.
         """
@@ -245,8 +247,13 @@ class RetrievalService:
                     chosen[key] = doc
                     order.append(key)
                 else:
+                    chosen_from_full_text = bool(chosen[key].metadata.get(SCORE_FROM_FULL_TEXT_METADATA_KEY))
+                    if chosen_from_full_text != bool(doc.metadata.get(SCORE_FROM_FULL_TEXT_METADATA_KEY)):
+                        # The two scores are on different scales; keep the vector-search copy.
+                        if chosen_from_full_text:
+                            chosen[key] = doc
                     # Only replace if the new one has a score and it's strictly higher
-                    if "score" in doc.metadata:
+                    elif "score" in doc.metadata:
                         new_score = float(doc.metadata.get("score", 0.0))
                         old_score = float(chosen[key].metadata.get("score", 0.0)) if chosen[key].metadata else 0.0
                         if new_score > old_score:
@@ -459,6 +466,11 @@ class RetrievalService:
                                 )
                             )
                     else:
+                        if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
+                            # These hits are fused with vector hits; keep their full-text scores out
+                            # of vector-similarity comparisons.
+                            for document in documents:
+                                document.metadata[SCORE_FROM_FULL_TEXT_METADATA_KEY] = True
                         all_documents.extend(documents)
             except Exception as e:
                 logger.error(e, exc_info=True)
