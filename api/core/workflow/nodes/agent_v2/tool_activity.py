@@ -1,11 +1,7 @@
 """Project Agent v2 backend stream events into ephemeral tool activity snapshots.
 
-The projector is pure and in-memory: it consumes adapted
-``AgentBackendStreamInternalEvent`` payloads for one node execution and returns
-JSON-safe ``WorkflowAgentToolActivity`` snapshots that the node re-emits as
-``agent_log`` events. It never persists state, never inspects stream payloads
-beyond the allowlisted tool fields, and treats ``output_tool_*`` events as
-structured output rather than user-visible tool activity.
+Pure and in-memory: never persists state and reads only allowlisted tool
+fields. ``output_tool_*`` events are structured output, not tool activity.
 """
 
 from __future__ import annotations
@@ -136,10 +132,8 @@ class WorkflowAgentToolActivityProjector:
     def handle(self, event: AgentBackendStreamInternalEvent) -> list[WorkflowAgentToolActivity]:
         """Return activity snapshots produced by one stream event.
 
-        Unrelated event kinds, malformed payloads, missing tool-call ids, and
-        duplicate terminal transitions return an empty list. ``output_tool_*``
-        events are intentionally ignored: structured output is not a real
-        user-facing tool call.
+        Unrelated kinds, malformed payloads, missing ids, and duplicate
+        terminal transitions return an empty list.
         """
         if event.event_kind not in {"function_tool_call", "function_tool_result", "part_start"}:
             return []
@@ -165,10 +159,9 @@ class WorkflowAgentToolActivityProjector:
     ) -> list[WorkflowAgentToolActivity]:
         """Close every still-active call when the backend run terminates.
 
-        ``cancelled`` runs close calls as ``cancelled``; ``failed`` and
-        ``succeeded`` runs close leftovers as ``failed`` because an unfinished
-        tool must never be presented as successful. The returned snapshots
-        preserve start order.
+        ``cancelled`` closes calls as ``cancelled``; any other status closes
+        them as ``failed`` so an unfinished tool is never shown as successful.
+        Snapshots preserve start order.
         """
         bounded_error = _bounded_text(error) or None
         activities: list[WorkflowAgentToolActivity] = []
@@ -187,11 +180,9 @@ class WorkflowAgentToolActivityProjector:
     def _stream_part(data: JsonValue, *, result_event: bool) -> _ToolStreamPart | None:
         """Validate allowlisted part fields from the supported payload shapes.
 
-        Call/start events only accept ``data.part``. Result events additionally
-        accept ``data.result`` and top-level tool fields, matching the roster
-        runner's result parsing; payloads without a declared ``part_kind`` are
-        inferred as ``tool-return`` while unknown declared kinds stay rejected
-        downstream.
+        Call/start events accept only ``data.part``; result events also accept
+        ``data.result`` and top-level fields. A result without ``part_kind`` is
+        inferred as ``tool-return``; unknown declared kinds are rejected later.
         """
         if not isinstance(data, Mapping):
             return None
@@ -213,13 +204,10 @@ class WorkflowAgentToolActivityProjector:
     def _start_call(self, run_id: str, part: _ToolStreamPart) -> list[WorkflowAgentToolActivity]:
         """Emit an early ``started`` preview for known shell tool calls only.
 
-        Ordinary ``tool-call`` part starts may carry partially streamed
-        arguments and fire for every tool, including structured-output
-        preambles, so only the shell tool names get an early preview; other
-        calls first appear at ``function_tool_call`` in ``running`` state with
-        complete arguments. A second start for the same
-        ``(run_id, tool_call_id)`` — including one arriving after promotion or
-        a terminal result — is ignored so state never regresses.
+        Part starts fire for every tool (including structured-output
+        preambles) with partial arguments, so other tools first appear as
+        ``running``. A repeated start for a known call is ignored so state
+        never regresses.
         """
         if not part.tool_call_id or not part.tool_name:
             return []
@@ -239,11 +227,9 @@ class WorkflowAgentToolActivityProjector:
     def _run_call(self, run_id: str, part: _ToolStreamPart) -> list[WorkflowAgentToolActivity]:
         """Mark a tool call ``running`` with its complete arguments.
 
-        ``function_tool_call`` and ``builtin-tool-call`` events mean the tool
-        is actually executing. A call first seen here is created in
-        ``running`` state; a call already previewed as ``started`` is promoted
-        and its partial arguments replaced by the complete ones. Duplicate
-        running starts and starts after a terminal result return no snapshot.
+        A ``started`` preview is promoted and its partial arguments replaced;
+        a new call is created as ``running``. Repeats and calls already
+        terminal return no snapshot.
         """
         if not part.tool_call_id or not part.tool_name:
             return []
@@ -274,13 +260,10 @@ class WorkflowAgentToolActivityProjector:
     ) -> list[WorkflowAgentToolActivity]:
         """Complete an active call, or emit one completed snapshot when unmatched.
 
-        ``retry-prompt`` results mark the call ``failed`` because the model
-        rejected the arguments and will issue a new call. ``tool-return``
-        results map ``outcome == "failure"`` to ``failed`` and everything else
-        to ``succeeded``. A result for an unknown call still produces one
-        terminal snapshot so late-arriving results are not silently dropped —
-        unless it carries no ``tool_name``, which the UI could not display;
-        subsequent duplicates are ignored through the stored terminal state.
+        ``retry-prompt`` -> ``failed``; ``tool-return`` -> ``failed`` when
+        ``outcome == "failure"``, else ``succeeded``. An unmatched result with
+        a ``tool_name`` still yields one terminal snapshot; duplicates are
+        ignored.
         """
         if not part.tool_call_id:
             return []

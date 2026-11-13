@@ -556,7 +556,6 @@ def test_identity_separates_runs_and_call_ids() -> None:
 
 
 def test_real_pydantic_ai_stream_events_through_adapter() -> None:
-    """Integration check: public run events adapt into projected snapshots."""
     adapter = AgentBackendRunEventAdapter()
     projector = _projector()
 

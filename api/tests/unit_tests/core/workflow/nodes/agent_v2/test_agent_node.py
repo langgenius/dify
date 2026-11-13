@@ -310,8 +310,6 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
 
 
 class ToolActivityBackendClient(FakeAgentBackendRunClient):
-    """Streams one tool call/result pair; optionally an agent message delta."""
-
     def __init__(
         self,
         *,
@@ -455,8 +453,6 @@ class ToolCallThenFailingStreamBackendClient(FakeAgentBackendRunClient):
 
 
 class ToolCallThenUncancellableStreamEndBackendClient(FakeAgentBackendRunClient):
-    """Stream ends after a tool call and the cleanup cancel request fails."""
-
     @override
     def _events(self, run_id: str):
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
