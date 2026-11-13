@@ -134,24 +134,37 @@ def _create_conversation(
     return conversation
 
 
-def _create_conversation_workspace(workspace_id: str, app_id: str, conversation_id: str) -> AgentWorkspace:
+def _create_conversation_workspace(
+    workspace_id: str,
+    app_id: str,
+    conversation_id: str,
+    *,
+    tenant_id: str = "tenant-1",
+    owner_scope_key: str = "root",
+) -> AgentWorkspace:
     return AgentWorkspace(
         id=workspace_id,
-        tenant_id="tenant-1",
+        tenant_id=tenant_id,
         app_id=app_id,
         owner_type=AgentWorkspaceOwnerType.CONVERSATION,
         owner_id=conversation_id,
-        owner_scope_key="root",
+        owner_scope_key=owner_scope_key,
         backend_workspace_ref=f"backend-{workspace_id}",
         status=AgentWorkingResourceStatus.ACTIVE,
         active_guard=1,
     )
 
 
-def _create_conversation_workspace_binding(binding_id: str, app_id: str, workspace_id: str) -> AgentWorkspaceBinding:
+def _create_conversation_workspace_binding(
+    binding_id: str,
+    app_id: str,
+    workspace_id: str,
+    *,
+    tenant_id: str = "tenant-1",
+) -> AgentWorkspaceBinding:
     return AgentWorkspaceBinding(
         id=binding_id,
-        tenant_id="tenant-1",
+        tenant_id=tenant_id,
         app_id=app_id,
         workspace_id=workspace_id,
         agent_id="agent-1",
@@ -499,6 +512,10 @@ def test_process_tenant_processes_and_persists_all_batches(
             _create_message("message-old", "app-1", "conversation-old", created_at=old),
             _create_conversation_workspace("workspace-old", "app-1", "conversation-old"),
             _create_conversation_workspace_binding("binding-old", "app-1", "workspace-old"),
+            _create_conversation_workspace("workspace-old-2", "app-1", "conversation-old", owner_scope_key="node-2"),
+            _create_conversation_workspace_binding("binding-old-2", "app-1", "workspace-old-2"),
+            _create_conversation_workspace("workspace-recent", "app-1", "conversation-recent"),
+            _create_conversation_workspace_binding("binding-recent", "app-1", "workspace-recent"),
             _create_message("message-recent", "app-1", "conversation-recent", created_at=recent),
             _create_message("message-other", "app-2", "conversation-other", created_at=old),
             _create_workflow_app_log("log-old", "tenant-1", "app-1", created_at=old),
@@ -518,9 +535,10 @@ def test_process_tenant_processes_and_persists_all_batches(
 
     def enqueue_and_verify_commit(**kwargs: object) -> None:
         with Session(sqlite_engine) as verification_session:
-            workspace = verification_session.get(AgentWorkspace, "workspace-old")
-            assert workspace is not None
-            assert workspace.status == AgentWorkingResourceStatus.RETIRED
+            for workspace_id in ("workspace-old", "workspace-old-2"):
+                workspace = verification_session.get(AgentWorkspace, workspace_id)
+                assert workspace is not None
+                assert workspace.status == AgentWorkingResourceStatus.RETIRED
         enqueue_collection(**kwargs)
 
     monkeypatch.setattr(service_module, "enqueue_agent_resource_collection", enqueue_and_verify_commit)
@@ -565,10 +583,22 @@ def test_process_tenant_processes_and_persists_all_batches(
         assert verification_session.get(Conversation, "conversation-old") is None
         workspace = verification_session.get(AgentWorkspace, "workspace-old")
         binding = verification_session.get(AgentWorkspaceBinding, "binding-old")
+        workspace_old_2 = verification_session.get(AgentWorkspace, "workspace-old-2")
+        binding_old_2 = verification_session.get(AgentWorkspaceBinding, "binding-old-2")
+        workspace_recent = verification_session.get(AgentWorkspace, "workspace-recent")
+        binding_recent = verification_session.get(AgentWorkspaceBinding, "binding-recent")
         assert workspace is not None
         assert workspace.status == AgentWorkingResourceStatus.RETIRED
         assert binding is not None
         assert binding.status == AgentWorkingResourceStatus.RETIRED
+        assert workspace_old_2 is not None
+        assert workspace_old_2.status == AgentWorkingResourceStatus.RETIRED
+        assert binding_old_2 is not None
+        assert binding_old_2.status == AgentWorkingResourceStatus.RETIRED
+        assert workspace_recent is not None
+        assert workspace_recent.status == AgentWorkingResourceStatus.ACTIVE
+        assert binding_recent is not None
+        assert binding_recent.status == AgentWorkingResourceStatus.ACTIVE
         assert verification_session.get(WorkflowAppLog, "log-old") is None
         assert verification_session.get(Message, "message-recent") is not None
         assert verification_session.get(Message, "message-other") is not None
@@ -576,7 +606,9 @@ def test_process_tenant_processes_and_persists_all_batches(
         assert verification_session.get(Conversation, "conversation-other") is not None
         assert verification_session.get(WorkflowAppLog, "log-recent") is not None
         assert verification_session.get(WorkflowAppLog, "log-other") is not None
-    enqueue_collection.assert_called_once_with(tenant_id="tenant-1", workspace_ids=["workspace-old"])
+    enqueue_collection.assert_called_once()
+    assert enqueue_collection.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert set(enqueue_collection.call_args.kwargs["workspace_ids"]) == {"workspace-old", "workspace-old-2"}
 
 
 def test_serialize_record_falls_back_to_table_columns() -> None:
