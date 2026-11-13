@@ -16,8 +16,8 @@
     }
   },
   "scripts": {
-    "build": "vp pack",
-    "dev": "bun bin/dev.js",
+    "build": "node init && vp pack",
+    "dev": "node init && bun bin/dev.js",
     "test": "vp test",
     "test:coverage": "vp test --coverage",
     "test:e2e": "vp test --config vitest.e2e.config.ts",
@@ -33,8 +33,8 @@
     "clean": "rm -rf dist node_modules/.cache",
     "smoke": "bun scripts/run-smoke.ts",
     "version:info": "bun scripts/print-buildinfo.ts",
-    "build:bin": "scripts/release-build.sh",
-    "build:bin:local": "DIFYCTL_CHANNEL=dev scripts/release-build.sh"
+    "build:bin": "node init && scripts/release-build.sh",
+    "build:bin:local": "node init && DIFYCTL_CHANNEL=dev scripts/release-build.sh"
   },
   "dependencies": {
     "@napi-rs/keyring": "catalog:",

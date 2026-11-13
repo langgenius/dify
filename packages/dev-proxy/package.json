@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "node init && vp pack",
     "prepare": "pnpm run build",
     "test": "vp test",
     "type-check": "tsrs --noEmit",
