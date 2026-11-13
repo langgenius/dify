@@ -18,6 +18,7 @@ import {
 } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getProcessedInputs, processOpeningStatement } from '@/app/components/base/chat/chat/utils'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
+import { upsertWorkflowToolActivity } from '@/app/components/base/chat/workflow-agent-tool-activity'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
@@ -592,6 +593,7 @@ export const useChat = (
           }
         },
         onAgentLog: ({ data }) => {
+          upsertWorkflowToolActivity(responseItem, data)
           const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(
             (item) => item.node_id === data.node_id,
           )
@@ -623,14 +625,14 @@ export const useChat = (
             responseItem.workflowProcess!.tracing[currentNodeIndex] = {
               ...current,
             }
-
-            updateCurrentQAOnTree({
-              placeholderQuestionId,
-              questionItem,
-              responseItem,
-              parentId: params.parent_message_id,
-            })
           }
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onHumanInputRequired: ({ data }) => {
           updatePendingHumanInputForm(responseItem, data)
@@ -952,6 +954,11 @@ export const useChat = (
         onWorkflowPaused: () => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
+          })
+        },
+        onAgentLog: ({ data }) => {
+          updateChatTreeNode(messageId, (responseItem) => {
+            upsertWorkflowToolActivity(responseItem, data)
           })
         },
       }
