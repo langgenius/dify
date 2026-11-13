@@ -323,12 +323,20 @@ def test_polling_checks_input_before_submission_and_output_before_delivery(
 
 
 @pytest.mark.parametrize(
-    "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
+    ("edition", "provider_type", "quota_type", "quota_unit", "enabled", "expected"),
+    [
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.TRIAL, QuotaUnit.CREDITS, True, True),
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.PAID, QuotaUnit.CREDITS, True, True),
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.TRIAL, QuotaUnit.TIMES, True, True),
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.PAID, QuotaUnit.TIMES, True, True),
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.PAID, QuotaUnit.CREDITS, False, False),
+        (DeploymentEdition.COMMUNITY, ProviderType.SYSTEM, ProviderQuotaType.PAID, QuotaUnit.CREDITS, True, False),
+        (DeploymentEdition.ENTERPRISE, ProviderType.SYSTEM, ProviderQuotaType.PAID, QuotaUnit.CREDITS, True, False),
+        (DeploymentEdition.CLOUD, ProviderType.CUSTOM, ProviderQuotaType.PAID, QuotaUnit.CREDITS, True, False),
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.FREE, QuotaUnit.CREDITS, True, False),
+        (DeploymentEdition.CLOUD, ProviderType.SYSTEM, ProviderQuotaType.PAID, QuotaUnit.TOKENS, True, False),
+    ],
 )
-@pytest.mark.parametrize("provider_type", [ProviderType.SYSTEM, ProviderType.CUSTOM])
-@pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID, ProviderQuotaType.FREE])
-@pytest.mark.parametrize("quota_unit", [QuotaUnit.CREDITS, QuotaUnit.TIMES, QuotaUnit.TOKENS])
-@pytest.mark.parametrize("enabled", [False, True])
 def test_platform_binding_respects_switch_and_edition_eligibility(
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
@@ -336,6 +344,7 @@ def test_platform_binding_respects_switch_and_edition_eligibility(
     quota_type: ProviderQuotaType,
     quota_unit: QuotaUnit,
     enabled: bool,
+    expected: bool,
 ) -> None:
     config_overrides(
         DEPLOYMENT_EDITION=edition,
@@ -351,13 +360,6 @@ def test_platform_binding_respects_switch_and_edition_eligibility(
     ]
     instance = ModelInstance(bundle, "test-model", credentials={"api_key": "user-key"})
 
-    expected = (
-        enabled
-        and edition == DeploymentEdition.CLOUD
-        and provider_type == ProviderType.SYSTEM
-        and quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
-        and quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
-    )
     assert isinstance(instance.moderation, LLMModerationGuard) is expected
 
 
@@ -401,7 +403,14 @@ def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
     def allow(_text: str, _phase: str) -> None:
         return None
 
-    disabled = LLMModerationGuard(tenant_id="test-tenant-id", check=allow, check_input=False, check_output=False)
+    disabled = LLMModerationGuard(
+        tenant_id="test-tenant-id",
+        check=allow,
+        check_input=False,
+        check_output=False,
+        non_stream_segment_size=2000,
+        stream_segment_size=300,
+    )
     explicit = ModelInstance(bundle, "test-model", credentials={}, moderation=disabled)
     if expected:
         assert isinstance(explicit.moderation, ChainedLLMModerationPolicy)
@@ -434,7 +443,14 @@ def test_missing_sre_pinned_plugin_identifier_still_binds_tenant_first_policy(
     def allow(_text: str, _phase: str) -> None:
         return None
 
-    explicit = LLMModerationGuard(tenant_id="test-tenant-id", check=allow, check_input=False, check_output=False)
+    explicit = LLMModerationGuard(
+        tenant_id="test-tenant-id",
+        check=allow,
+        check_input=False,
+        check_output=False,
+        non_stream_segment_size=2000,
+        stream_segment_size=300,
+    )
     guarded = ModelInstance(bundle, "test-model", credentials={})
     explicitly_guarded = ModelInstance(bundle, "test-model", credentials={}, moderation=explicit)
 

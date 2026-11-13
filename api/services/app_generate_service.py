@@ -21,7 +21,6 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
-from extensions.application_services.app_moderation import with_app_moderation_scope
 from extensions.otel import AppGenerateHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
@@ -107,7 +106,6 @@ class AppGenerateService:
 
     @classmethod
     @trace_span(AppGenerateHandler)
-    @with_app_moderation_scope
     def generate(
         cls,
         app_model: App,

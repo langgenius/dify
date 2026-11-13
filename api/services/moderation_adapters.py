@@ -29,7 +29,8 @@ from services.api_based_extension_application_service import APIBasedExtensionSe
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
-    PlatformModerationRejectedInvocationError,
+    PlatformModerationInputRejectedInvocationError,
+    PlatformModerationOutputRejectedInvocationError,
 )
 from services.moderation_service import (
     ModerationPhase,
@@ -37,7 +38,6 @@ from services.moderation_service import (
     ModerationReplacement,
     ModerationRequest,
     ModerationRule,
-    ModerationUnavailableError,
     ModerationVerdict,
 )
 
@@ -406,25 +406,20 @@ class LLMModerationGuard:
         check: Callable[[str, ModerationPhase], None],
         check_input: bool,
         check_output: bool,
-        non_stream_segment_size: int | None = None,
-        stream_segment_size: int | None = None,
+        non_stream_segment_size: int,
+        stream_segment_size: int,
         platform: bool = False,
-        rejection_observer: Callable[[ModerationRejectedError], None] | None = None,
-        failure_observer: Callable[[ModerationUnavailableError], None] | None = None,
     ) -> None:
         """Bind a nonempty tenant, phase enablement, and positive segment limits.
 
-        None disables segmentation for that mode and preserves a single full-text
-        check. Disabled phases perform no inspection or I/O. An injected failure
-        observer retains typed unavailability for terminal workflow error recovery;
-        it never turns failed checks into approval or changes retry eligibility.
-        A platform rejection observer only publishes failure identity, never
-        executes checks or caches approved text for other model invocations.
+        Both limits are mandatory, matching model assembly configuration. Disabled
+        phases perform no inspection or I/O. Failures propagate through the
+        caller's normal exception and workflow event channels.
         """
         if not tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
         for segment_size in (non_stream_segment_size, stream_segment_size):
-            if segment_size is not None and segment_size <= 0:
+            if segment_size <= 0:
                 raise ValueError("Moderation segment sizes must be positive.")
         self._tenant_id = tenant_id
         self._check = check
@@ -433,8 +428,6 @@ class LLMModerationGuard:
         self._non_stream_segment_size = non_stream_segment_size
         self._stream_segment_size = stream_segment_size
         self._platform = platform
-        self._rejection_observer = rejection_observer
-        self._failure_observer = failure_observer
 
     @property
     def tenant_id(self) -> str:
@@ -473,17 +466,19 @@ class LLMModerationGuard:
         try:
             self._check(text, phase)
         except ModerationRejectedError as error:
-            if self._platform:
-                rejection = PlatformModerationRejectedInvocationError(error.phase, str(error))
-                if self._rejection_observer is not None:
-                    self._rejection_observer(rejection)
-                raise rejection from error
-            raise ModerationRejectedInvocationError(error.phase, str(error)) from error
+            rejection = (
+                (
+                    PlatformModerationInputRejectedInvocationError(str(error))
+                    if error.phase == "input"
+                    else PlatformModerationOutputRejectedInvocationError(str(error))
+                )
+                if self._platform
+                else ModerationRejectedInvocationError(error.phase, str(error))
+            )
+            raise rejection from error
         except Exception as error:
             logger.exception("Moderation %s check failed", phase)
             unavailable = ModerationUnavailableInvocationError()
-            if self._failure_observer is not None:
-                self._failure_observer(unavailable)
             raise unavailable from error
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
@@ -495,15 +490,13 @@ class LLMModerationGuard:
         if not self._check_output:
             return response
         if isinstance(response, Generator):
-            if self._stream_segment_size is not None:
-                return self._check_stream_segments(response)
-            return self._check_stream(response)
+            return self._check_stream_segments(response)
         self.check_result(response)
         return response
 
-    def _segments(self, text: str, segment_size: int | None) -> Generator[str]:
-        """Yield independent text segments within a positive size, or all text when size is None."""
-        if segment_size is None or len(text) <= segment_size:
+    def _segments(self, text: str, segment_size: int) -> Generator[str]:
+        """Yield independent segments within the configured positive size, including an empty input."""
+        if len(text) <= segment_size:
             yield text
             return
         start = 0
@@ -525,8 +518,6 @@ class LLMModerationGuard:
     def _check_stream_segments(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
         """Check each independent segment before releasing its chunks; close the stream even on failure."""
         segment_size = self._stream_segment_size
-        if segment_size is None:
-            raise ValueError("Streaming moderation requires a segment size.")
         chunks: list[LLMResultChunk] = []
         fragment_parts: list[str] = []
         fragment_length = 0
@@ -549,38 +540,5 @@ class LLMModerationGuard:
                 if text:
                     self._check_segment(text, "output")
                 yield from chunks
-        finally:
-            response.close()
-
-    def _check_stream(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
-        """Consume and close a stream, then yield its original chunks only after full approval."""
-        chunks: list[LLMResultChunk] = []
-        text_parts: list[str] = []
-        tool_parts: dict[str, list[str]] = {}
-        tool_ids: dict[int, str] = {}
-        tool_names: dict[str, list[str]] = {}
-        structured_parts: list[str] = []
-        try:
-            for chunk in response:
-                chunks.append(chunk)
-                if isinstance(chunk, LLMStructuredOutput) and chunk.structured_output is not None:
-                    structured_parts.append(_structured_text(chunk))
-                message = chunk.delta.message
-                text_parts.append(_message_text(AssistantPromptMessage(content=message.content)))
-                for position, tool in enumerate(message.tool_calls):
-                    tool_id = tool.id or tool_ids.get(position, str(position))
-                    tool_ids[position] = tool_id
-                    tool_parts.setdefault(tool_id, []).append(tool.function.arguments)
-                    tool_names.setdefault(tool_id, []).append(tool.function.name)
-            text = "\n".join(
-                [
-                    "".join(text_parts),
-                    *("".join(parts) for parts in tool_names.values()),
-                    *("".join(parts) for parts in tool_parts.values()),
-                    *structured_parts,
-                ]
-            )
-            self._check_segment(text, "output")
-            yield from chunks
         finally:
             response.close()

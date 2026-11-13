@@ -326,7 +326,6 @@ def test_unavailable_direct_fallback_fails_closed_without_trying_a_tenant_provid
         )
         with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
             guard.check_inputs([UserPromptMessage(content="content")])
-    assert unavailable.value.status_code == 503
     assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
     assert len(requests) == 1
 
@@ -415,7 +414,7 @@ def test_provider_stream_failure_is_not_converted_to_approval(keyword_guard: LLM
         next(response)
 
 
-@pytest.mark.parametrize("mode", ["input", "non_stream", "segmented_stream", "buffered_stream"])
+@pytest.mark.parametrize("mode", ["input", "non_stream", "segmented_stream"])
 @pytest.mark.parametrize("failure", ["rejected", "authorization", "transport", "malformed_verdict"])
 def test_guard_maps_checker_failures_without_delivering_content(mode: str, failure: str) -> None:
     phase: ModerationPhase = "input" if mode == "input" else "output"
@@ -444,7 +443,8 @@ def test_guard_maps_checker_failures_without_delivering_content(mode: str, failu
         check=check,
         check_input=True,
         check_output=True,
-        stream_segment_size=4 if mode == "segmented_stream" else None,
+        non_stream_segment_size=2000,
+        stream_segment_size=4,
     )
 
     def invoke_guard() -> None:
@@ -467,13 +467,11 @@ def test_guard_maps_checker_failures_without_delivering_content(mode: str, failu
         assert caught.value.phase == phase
         assert str(caught.value) == "Content violates the safety policy."
         assert caught.value.error_code == "moderation_rejected"
-        assert caught.value.status_code == 400
     else:
         assert isinstance(caught.value, ModerationUnavailableInvocationError)
         assert str(caught.value) == "This message can’t be processed right now. Please try again later."
         assert caught.value.error_code == "moderation_unavailable"
-        assert caught.value.status_code == 503
-    assert events == (["closed"] if mode in {"segmented_stream", "buffered_stream"} else [])
+    assert events == (["closed"] if mode == "segmented_stream" else [])
 
 
 def test_tool_argument_fragments_are_reassembled_before_moderation(keyword_guard: LLMModerationGuard) -> None:
@@ -516,6 +514,7 @@ def test_non_stream_checks_independent_segments(phase: ModerationPhase) -> None:
         check_input=True,
         check_output=True,
         non_stream_segment_size=5,
+        stream_segment_size=300,
     )
 
     if phase == "input":
@@ -540,6 +539,8 @@ def test_only_platform_checks_preserve_message_boundaries_for_sharing(platform: 
         check_input=True,
         check_output=False,
         platform=platform,
+        non_stream_segment_size=2000,
+        stream_segment_size=300,
     )
     guard.check_inputs([UserPromptMessage(content="first"), UserPromptMessage(content="second")])
     assert checked == (["first", "second"] if platform else ["first\nsecond"])
@@ -568,6 +569,7 @@ def test_streaming_releases_only_checked_segments() -> None:
         check_input=False,
         check_output=True,
         stream_segment_size=4,
+        non_stream_segment_size=2000,
     )
     stream = guard.check_output(response())
     assert isinstance(stream, Generator)
@@ -602,6 +604,7 @@ def test_streaming_rejection_withholds_current_segment_and_closes_provider(segme
         check_input=False,
         check_output=True,
         stream_segment_size=segment_size,
+        non_stream_segment_size=2000,
     )
     stream = guard.check_output(response())
     assert isinstance(stream, Generator)
@@ -628,6 +631,7 @@ def test_streaming_checks_segments_without_cross_segment_context() -> None:
         check_input=False,
         check_output=True,
         stream_segment_size=4,
+        non_stream_segment_size=2000,
     )
     chunks = [_chunk("xxbl"), _chunk("ocked")]
     stream = guard.check_output(chunk for chunk in chunks)

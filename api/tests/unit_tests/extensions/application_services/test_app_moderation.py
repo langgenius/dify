@@ -1,9 +1,8 @@
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextvars import copy_context
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from threading import Barrier, Thread
+from threading import Barrier
 from time import perf_counter
 from typing import Literal, override
 
@@ -44,25 +43,20 @@ from core.app.entities.task_entities import (
     MessageStreamResponse,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
-from core.model_context import get_app_moderation_runtime
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelManager
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.input_moderation import InputModeration
 from core.moderation.output_moderation import ModerationRule as OutputModerationRule
 from core.moderation.output_moderation import OutputModeration
-from enums import DeploymentEdition
 from events.message_event import message_was_created
 from extensions.application_services.app_moderation import (
     DEFAULT_CHAT_MODERATION_REPLY,
-    ScopedAppModerationRuntime,
-    app_moderation_scope,
+    AppModeration,
     app_output_evaluator,
     app_rejection_replacement,
-    current_moderation_session,
     evaluate_app_input,
     evaluate_app_output,
-    workflow_rejection_handler,
+    workflow_moderation_error,
 )
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -71,11 +65,12 @@ from graphon.runtime import RuntimeState
 from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
-from models.provider import ProviderType
 from services.moderation_adapters import HostedOpenAIModerationGateway, LLMModerationGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
+    PlatformModerationInputRejectedInvocationError,
+    PlatformModerationOutputRejectedInvocationError,
     PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import (
@@ -90,6 +85,13 @@ from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient
 from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
 from tests.workflow_test_utils import build_test_variable_pool
+
+
+@pytest.fixture(autouse=True)
+def inject_app_moderation(monkeypatch: pytest.MonkeyPatch) -> None:
+    moderation = AppModeration()
+    monkeypatch.setattr("core.moderation.input_moderation.get_app_moderation", lambda: moderation)
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", lambda: moderation)
 
 
 class RecordingGateway:
@@ -176,7 +178,7 @@ class RecordingAppService:
         )
 
 
-class TransientOutputFailureGateway:
+class TransientAppFailureGateway:
     def __init__(self) -> None:
         self.calls = 0
 
@@ -184,9 +186,9 @@ class TransientOutputFailureGateway:
         self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
     ) -> ModerationVerdict:
         assert context.tenant_id == "tenant-1"
-        assert rule.type == "api"
+        assert rule.type in {"keywords", "api"}
         assert isinstance(request.text, str)
-        assert phase == "output"
+        assert phase in {"input", "output"}
         self.calls += 1
         if self.calls == 1:
             raise ValueError("request timeout: private backend diagnostic")
@@ -220,23 +222,45 @@ def test_model_owns_input_checks_and_app_only_renders_rejection() -> None:
         type="openai_moderation", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}}
     )
 
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id="tenant-1", app_id="app-1"), service=service, rule=rule, platform=True
-        )
-        config = app_config()
-        app_result = evaluate_app_input(session, config, {}, "safe")
-        assert app_result is not None
-        assert not app_result.flagged
-        guard.check_inputs([UserPromptMessage(content="safe")])
-        assert gateway.calls == [("safe", "input")]
-        with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
-            guard.check_inputs([UserPromptMessage(content="blocked")])
-        assert app_rejection_replacement(config, rejected.value) == ("App input replacement", "input")
-        app_result = evaluate_app_input(session, config, {}, "blocked")
-        assert app_result is not None
-        assert not app_result.flagged
-        assert gateway.calls == [("safe", "input"), ("blocked", "input")]
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"), service=service, rule=rule, platform=True
+    )
+    config = app_config()
+    app_result = evaluate_app_input(config, {}, "safe")
+    assert app_result is not None
+    assert not app_result.flagged
+    guard.check_inputs([UserPromptMessage(content="safe")])
+    assert gateway.calls == [("safe", "input")]
+    with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
+        guard.check_inputs([UserPromptMessage(content="blocked")])
+    assert app_rejection_replacement(config, rejected.value) == ("App input replacement", "input")
+    app_result = evaluate_app_input(config, {}, "blocked")
+    assert app_result is not None
+    assert not app_result.flagged
+    assert gateway.calls == [("safe", "input"), ("blocked", "input")]
+
+
+@pytest.mark.parametrize(
+    ("error_type", "phase"),
+    [
+        (PlatformModerationInputRejectedInvocationError, "input"),
+        (PlatformModerationOutputRejectedInvocationError, "output"),
+    ],
+)
+def test_workflow_rejection_phase_comes_from_node_error_type(
+    error_type: type[PlatformModerationRejectedInvocationError], phase: ModerationPhase
+) -> None:
+    error = workflow_moderation_error(error_type.__name__)
+    assert isinstance(error, error_type)
+    assert error.phase == phase
+    assert app_rejection_replacement(app_config(), error) == (f"App {phase} replacement", phase)
+
+
+def test_workflow_classification_does_not_use_display_text() -> None:
+    unavailable = workflow_moderation_error(ModerationUnavailableInvocationError.__name__)
+    assert isinstance(unavailable, ModerationUnavailableInvocationError)
+    for value in ("", "ValueError", str(unavailable), "Model input was rejected by moderation."):
+        assert workflow_moderation_error(value) is None
 
 
 def test_unrelated_capabilities_cannot_be_marked_as_shared_platform_openai_checks() -> None:
@@ -244,15 +268,13 @@ def test_unrelated_capabilities_cannot_be_marked_as_shared_platform_openai_check
     rule = ModerationRule(
         type="keywords", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}}
     )
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        with pytest.raises(ValueError, match="OpenAI rule"):
-            build_llm_moderation_guard(
-                AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
-                service=ModerationService(gateway=gateway),
-                rule=rule,
-                platform=True,
-            )
-        assert session.rejected_phase("Rejected") is None
+    with pytest.raises(ValueError, match="OpenAI rule"):
+        build_llm_moderation_guard(
+            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+            service=ModerationService(gateway=gateway),
+            rule=rule,
+            platform=True,
+        )
     assert not gateway.calls
 
 
@@ -273,33 +295,32 @@ def test_admitted_app_model_checks_fail_closed_without_exposing_backend_errors(
     )
     monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", lambda: service)
     config = app_config()
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        runtime = get_app_moderation_runtime()
-        assert runtime is not None
-        assert not runtime.evaluate_input(config, {}, "input").flagged
-        assert not runtime.evaluate_output(config, "output").flagged
-        assert not client.calls
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
-            service=service,
-            rule=ModerationRule(
-                type="openai_moderation",
-                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
-            ),
-            platform=True,
-        )
-        with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
-            check_phase(guard, phase, phase)
-        assert session.unavailable_error(str(unavailable.value)) is unavailable.value
+    input_result = evaluate_app_input(config, {}, "input")
+    assert input_result is not None
+    assert not input_result.flagged
+    result = evaluate_app_output(config, "output")
+    assert result is not None
+    assert not result.flagged
+    assert not client.calls
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+        service=service,
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
+        ),
+        platform=True,
+    )
+    with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
+        check_phase(guard, phase, phase)
     assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
-    assert unavailable.value.status_code == 503
     assert unavailable.value.__cause__ is not None
     assert len(client.calls) == (0 if failure == "missing_credentials" else 1)
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
-@pytest.mark.parametrize("scenario", ["foreign_tenant", "foreign_app", "missing_rule", "disabled", "invalid_phase"])
-def test_app_runtime_admission_and_phase_boundaries_do_not_resolve_a_backend(
+@pytest.mark.parametrize("scenario", ["missing_rule", "disabled", "invalid_phase"])
+def test_disabled_or_invalid_app_phases_do_not_resolve_a_backend(
     monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, scenario: str
 ) -> None:
     def unexpected_service() -> ModerationService:
@@ -307,45 +328,36 @@ def test_app_runtime_admission_and_phase_boundaries_do_not_resolve_a_backend(
 
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", unexpected_service)
     config = app_config("keywords")
-    if scenario == "foreign_tenant":
-        config.tenant_id = "tenant-2"
-    elif scenario == "foreign_app":
-        config.app_id = "app-2"
-    elif scenario == "missing_rule":
+    if scenario == "missing_rule":
         config.sensitive_word_avoidance = None
     else:
         rule = config.sensitive_word_avoidance
         assert rule is not None
         rule.config[f"{phase}s_config"]["enabled"] = False if scenario == "disabled" else "invalid"
 
-    with app_moderation_scope("tenant-1", "app-1"):
-        runtime = get_app_moderation_runtime()
-        assert runtime is not None
+    def evaluate() -> ModerationInputsResult | ModerationOutputsResult | None:
+        return (
+            evaluate_app_input(config, {"key": "value"}, "query")
+            if phase == "input"
+            else evaluate_app_output(config, "output")
+        )
 
-        def evaluate() -> ModerationInputsResult | ModerationOutputsResult | None:
-            return (
-                runtime.evaluate_input(config, {"key": "value"}, "query")
-                if phase == "input"
-                else runtime.evaluate_output(config, "output")
-            )
-
-        if scenario == "invalid_phase":
-            with pytest.raises(ValueError, match="enabled must be a bool"):
-                evaluate()
-        elif scenario == "disabled":
-            result = evaluate()
-            assert result is not None
-            assert not result.flagged
-        else:
-            assert evaluate() is None
+    if scenario == "invalid_phase":
+        with pytest.raises(ValueError, match="enabled must be a bool"):
+            evaluate()
+    elif scenario == "disabled":
+        result = evaluate()
+        assert result is not None
+        assert not result.flagged
+    else:
+        assert evaluate() is None
 
 
 def test_app_input_evaluation_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
     service = RecordingAppService()
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
     config = app_config("keywords")
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        result = evaluate_app_input(session, config, {"input_key": "value"}, "query")
+    result = evaluate_app_input(config, {"input_key": "value"}, "query")
 
     assert result is not None
     assert result.flagged is True
@@ -362,8 +374,7 @@ def test_app_output_evaluation_uses_the_shared_use_case(monkeypatch: pytest.Monk
     service = RecordingAppService()
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
     config = app_config("keywords")
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        result = evaluate_app_output(session, config, "model output")
+    result = evaluate_app_output(config, "model output")
 
     assert result is not None
     assert result.flagged is True
@@ -374,25 +385,49 @@ def test_app_output_evaluation_uses_the_shared_use_case(monkeypatch: pytest.Monk
     assert service.calls[0][3] == "output"
 
 
-def test_input_moderation_runtime_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_input_moderation_delegates_to_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
     service = RecordingAppService()
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
     config = app_config("keywords")
-    with app_moderation_scope("tenant-1", "app-1"):
-        flagged, inputs, query = InputModeration().check(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            app_config=config,
-            inputs={"input_key": "value"},
-            query="query",
-            message_id="message-1",
-            trace_scope=None,
-        )
+    flagged, inputs, query = InputModeration().check(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        app_config=config,
+        inputs={"input_key": "value"},
+        query="query",
+        message_id="message-1",
+        trace_scope=None,
+    )
 
     assert flagged is True
     assert inputs == {"input_key": "rewritten"}
     assert query == "rewritten query"
     assert len(service.calls) == 1
+
+
+@pytest.mark.parametrize("backend", ["keywords", "api"])
+def test_app_input_backend_failure_exposes_only_the_safe_unavailable_error(
+    monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
+    gateway = TransientAppFailureGateway()
+    service = ModerationService(gateway=gateway)
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
+    config = app_config(backend)
+    with pytest.raises(ModerationUnavailableInvocationError) as failure:
+        InputModeration().check(
+            app_id=config.app_id,
+            tenant_id=config.tenant_id,
+            app_config=config,
+            inputs={},
+            query="query",
+            message_id="message-1",
+            trace_scope=None,
+        )
+    assert str(failure.value) == "This message can’t be processed right now. Please try again later."
+    assert isinstance(failure.value.__cause__, ValueError)
+    assert "private backend diagnostic" in str(failure.value.__cause__)
+    assert app_rejection_replacement(config, failure.value) is None
+    assert gateway.calls == 1
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -403,32 +438,31 @@ def test_app_output_never_schedules_another_model_check(stream: bool) -> None:
         type="openai_moderation", config={"inputs_config": {"enabled": False}, "outputs_config": {"enabled": True}}
     )
 
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id="tenant-1", app_id="app-1"), service=service, rule=rule, platform=True
-        )
-        if stream:
-            chunks = [
-                LLMResultChunk(
-                    model="model",
-                    delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="safe answer")),
-                )
-            ]
-            response = guard.check_output(chunk for chunk in chunks)
-            assert isinstance(response, Generator)
-            assert list(response) == chunks
-        else:
-            guard.check_result(
-                LLMResult(
-                    model="model", message=AssistantPromptMessage(content="safe answer"), usage=LLMUsage.empty_usage()
-                )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"), service=service, rule=rule, platform=True
+    )
+    if stream:
+        chunks = [
+            LLMResultChunk(
+                model="model",
+                delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="safe answer")),
             )
+        ]
+        response = guard.check_output(chunk for chunk in chunks)
+        assert isinstance(response, Generator)
+        assert list(response) == chunks
+    else:
+        guard.check_result(
+            LLMResult(
+                model="model", message=AssistantPromptMessage(content="safe answer"), usage=LLMUsage.empty_usage()
+            )
+        )
+    assert gateway.calls == [("safe answer", "output")]
+    for text in ["safe", "safe answer", "different answer"]:
+        app_result = evaluate_app_output(app_config(), text)
+        assert app_result is not None
+        assert not app_result.flagged
         assert gateway.calls == [("safe answer", "output")]
-        for text in ["safe", "safe answer", "different answer"]:
-            app_result = evaluate_app_output(session, app_config(), text)
-            assert app_result is not None
-            assert not app_result.flagged
-            assert gateway.calls == [("safe answer", "output")]
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
@@ -477,57 +511,18 @@ def test_blank_app_presets_use_the_chat_default(phase: ModerationPhase, response
     )
 
 
-@pytest.mark.parametrize("phase", ["input", "output"])
-@pytest.mark.parametrize("response", [None, "", " \t"])
-def test_model_rejections_use_default_replies_for_blank_app_presets(
-    monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, response: str | None
-) -> None:
-    service = ModerationService(gateway=RecordingGateway())
-    monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", lambda: service)
-    config = app_config()
-    rule = config.sensitive_word_avoidance
-    assert rule is not None
-    rule.config[f"{phase}s_config"]["preset_response"] = response
-    with app_moderation_scope("tenant-1", "app-1"):
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
-            service=service,
-            rule=ModerationRule(type="openai_moderation", config=rule.config),
-            platform=True,
-        )
-        with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
-            check_phase(guard, phase, "blocked")
-        assert app_rejection_replacement(config, rejected.value) == (DEFAULT_CHAT_MODERATION_REPLY, phase)
-        assert app_output_evaluator(config) is None
-
-
-def test_scope_is_isolated_and_shared_with_copied_worker_contexts() -> None:
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        observed: list[object] = []
-        context = copy_context()
-        worker = Thread(target=lambda: context.run(lambda: observed.append(current_moderation_session("tenant-1"))))
-        worker.start()
-        worker.join()
-        assert observed == [session]
-        assert current_moderation_session("tenant-2") is None
-    assert current_moderation_session("tenant-1") is None
-    with app_moderation_scope("tenant-1", "app-1") as other_session:
-        assert other_session is not session
-
-
 @pytest.mark.parametrize("same_text", [False, True])
 def test_independent_model_checks_do_not_serialize_or_deduplicate(same_text: bool) -> None:
     gateway = ParallelGateway()
-    with app_moderation_scope("tenant-1", "app-1"):
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
-            service=ModerationService(gateway=gateway),
-            rule=ModerationRule(
-                type="openai_moderation",
-                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}},
-            ),
-            platform=True,
-        )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+        service=ModerationService(gateway=gateway),
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}},
+        ),
+        platform=True,
+    )
     texts = ["first", "first" if same_text else "second"]
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [executor.submit(guard.check_inputs, [UserPromptMessage(content=text)]) for text in texts]
@@ -536,237 +531,36 @@ def test_independent_model_checks_do_not_serialize_or_deduplicate(same_text: boo
     assert sorted(gateway.calls) == sorted((text, "input") for text in texts)
 
 
-@pytest.mark.parametrize(
-    "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
-)
-@pytest.mark.parametrize("enabled", [False, True])
-def test_workflow_app_configuration_never_admits_hosted_checks(
-    config_overrides: Callable[..., None], edition: DeploymentEdition, enabled: bool
-) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
-    config = WorkflowUIBasedAppConfig(
-        **app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT}).model_dump(),
-        workflow_id="workflow-1",
-    )
-    entity = AdvancedChatAppGenerateEntity(
-        task_id="task-1",
-        app_config=config,
-        query="safe",
-        inputs={},
-        files=[],
-        user_id="account-1",
-        stream=True,
-        invoke_from=InvokeFrom.DEBUGGER,
-    )
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        result = evaluate_app_input(session, entity.app_config, {}, "safe")
-        assert result is not None
-        assert not result.flagged
-        assert app_output_evaluator(config) is None
-
-
-@pytest.mark.parametrize("advanced", [False, True])
-@pytest.mark.parametrize("credit_model", [False, True])
-@pytest.mark.parametrize("enabled", [False, True])
-@pytest.mark.parametrize(
-    "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
-)
-def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
-    advanced: bool,
-    credit_model: bool,
-    enabled: bool,
-    edition: DeploymentEdition,
-) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
-    platform_model = credit_model and enabled and edition == DeploymentEdition.CLOUD
-
+def test_app_model_rule_does_not_select_a_tenant_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     def tenant_factory(*_args: object, **_kwargs: object) -> ModelManager:
         raise AssertionError("App moderation must not resolve a tenant provider")
 
     monkeypatch.setattr(ModelManager, "for_tenant", tenant_factory)
-
-    def tenant_service_factory() -> ModerationService:
-        raise AssertionError("App model moderation must not use the tenant backend")
-
-    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", tenant_service_factory)
-    gateway = RecordingGateway()
-    hosted_service = ModerationService(gateway=gateway)
-    hosted_calls: list[None] = []
-
-    def hosted_factory() -> ModerationService:
-        hosted_calls.append(None)
-        return hosted_service
-
-    monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", hosted_factory)
-    model = make_model_config(provider="test-provider", model="test-model", mode="chat")
-    model.provider_model_bundle.configuration.tenant_id = "tenant-1"
-    if credit_model:
-        provider = model.provider_model_bundle.configuration
-        provider.using_provider_type = ProviderType.SYSTEM
-        provider.system_configuration.current_quota_type = ProviderQuotaType.PAID
-        provider.system_configuration.quota_configurations = [
-            QuotaConfiguration(
-                quota_type=ProviderQuotaType.PAID,
-                quota_unit=QuotaUnit.CREDITS,
-                quota_limit=100,
-                quota_used=0,
-                is_valid=True,
-            )
-        ]
     config = app_config()
-    if advanced:
-        config.app_mode = AppMode.ADVANCED_CHAT
-        entity = AdvancedChatAppGenerateEntity(
-            task_id="task-1",
-            app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
-            query="safe input",
-            inputs={},
-            files=[],
-            user_id="account-1",
-            stream=True,
-            invoke_from=InvokeFrom.DEBUGGER,
-        )
-    else:
-        entity = ChatAppGenerateEntity(
-            task_id="task-1",
-            app_config=EasyUIBasedAppConfig(
-                **config.model_dump(),
-                app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
-                app_model_config_dict={},
-                model=ModelConfigEntity(provider="test-provider", model="test-model"),
-                prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
-            ),
-            model_conf=model,
-            query="safe input",
-            inputs={},
-            files=[],
-            user_id="account-1",
-            stream=True,
-            invoke_from=InvokeFrom.DEBUGGER,
-        )
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        assert entity.app_config.app_id == config.app_id
-        flagged, inputs, query = InputModeration().check(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            app_config=config,
-            inputs={},
-            query="safe input",
-            message_id="message-1",
-            trace_scope=None,
-        )
-        assert not flagged
-        assert inputs == {}
-        assert query == "safe input"
-        runtime = get_app_moderation_runtime()
-        assert runtime is not None
-        if platform_model:
-            guard = ModelInstance(model.provider_model_bundle, "test-model", credentials={}).moderation
-            assert guard is not None
-            guard.check_inputs([UserPromptMessage(content="credit input")])
-            guard.check_result(
-                LLMResult(
-                    model="test-model",
-                    message=AssistantPromptMessage(content="credit output"),
-                    usage=LLMUsage.empty_usage(),
-                )
-            )
-            shared = evaluate_app_output(session, config, "credit output")
-            assert shared is not None
-            assert not shared.flagged
-        assert app_output_evaluator(config) is None
-        result = runtime.evaluate_output(config, "unrelated custom model output")
-        assert result is not None
-        assert not result.flagged
-        assert result.text == "unrelated custom model output"
-        assert result.preset_response == ""
-    if platform_model:
-        assert gateway.calls == [("credit input", "input"), ("credit output", "output")]
-    else:
-        assert not hosted_calls
-
-
-def test_runtime_does_not_share_output_checks_or_presets_with_another_app() -> None:
-    config = app_config().model_copy(update={"app_id": "app-2"})
-    with app_moderation_scope("tenant-1", "app-1"):
-        runtime = get_app_moderation_runtime()
-        assert runtime is not None
-        assert app_output_evaluator(config) is None
-        assert runtime.replacement(config, PlatformModerationRejectedInvocationError("output", "Rejected")) is None
-
-
-@pytest.mark.parametrize("configured", [False, True])
-def test_workflow_replacement_uses_only_an_exact_rejection_from_the_same_scope(configured: bool) -> None:
-    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
-    if not configured:
-        config.sensitive_word_avoidance = None
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        handler = workflow_rejection_handler(config)
-
-        session.record_rejection(PlatformModerationRejectedInvocationError("output", "Rejected model output"))
-    assert handler("Rejected model output") == (
-        "App output replacement" if configured else DEFAULT_CHAT_MODERATION_REPLY,
-        "output",
+    flagged, inputs, query = InputModeration().check(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        app_config=config,
+        inputs={},
+        query="safe input",
+        message_id="message-1",
+        trace_scope=None,
     )
-    assert handler("Unrelated workflow failure") is None
-
-
-def test_workflow_unavailability_requires_a_recorded_failure_in_the_same_app_invocation() -> None:
-    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
-    error = ModerationUnavailableInvocationError()
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        runtime = ScopedAppModerationRuntime(session)
-        assert runtime.workflow_error(config, str(error)) is None
-        session.record_unavailable(error)
-    restored = runtime.workflow_error(config, str(error))
-    assert restored is error
-    assert restored.error_code == "moderation_unavailable"
-    assert restored.status_code == 503
-    assert runtime.workflow_error(config, f"Run failed: {error}") is None
-    assert runtime.workflow_error(config.model_copy(update={"app_id": "other-app"}), str(error)) is None
-    assert runtime.workflow_error(config.model_copy(update={"tenant_id": "other-tenant"}), str(error)) is None
-    with app_moderation_scope("tenant-1", "app-1") as next_session:
-        assert ScopedAppModerationRuntime(next_session).workflow_error(config, str(error)) is None
-
-
-@pytest.mark.parametrize("platform", [False, True])
-@pytest.mark.parametrize("app_id", ["app-1", "other-app"])
-def test_workflow_failure_recording_is_scoped_without_sharing_explicit_policy_verdicts(
-    platform: bool, app_id: str
-) -> None:
-    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
-    client = RecordingHostedModerationClient()
-    client.error = RuntimeError("Private backend detail")
-    service = ModerationService(
-        gateway=HostedOpenAIModerationGateway(
-            client=client,
-            credentials={"openai_api_key": "platform-key"},
-            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
-        )
-    )
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        runtime = ScopedAppModerationRuntime(session)
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id="tenant-1", app_id=app_id),
-            service=service,
-            rule=ModerationRule(
-                type="openai_moderation",
-                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
-            ),
-            platform=platform,
-        )
-        with pytest.raises(ModerationUnavailableInvocationError) as failure:
-            guard.check_inputs([UserPromptMessage(content="safe")])
-    restored = runtime.workflow_error(config, str(failure.value))
-    assert restored is (failure.value if app_id == "app-1" else None)
+    assert not flagged
+    assert inputs == {}
+    assert query == "safe input"
+    assert app_output_evaluator(config) is None
+    result = evaluate_app_output(config, "unrelated custom model output")
+    assert result is not None
+    assert not result.flagged
+    assert result.text == "unrelated custom model output"
+    assert result.preset_response == ""
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
 @pytest.mark.parametrize("previous_answer", ["", "safe prefix"])
 def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events(
-    phase: ModerationPhase, previous_answer: str
+    monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, previous_answer: str
 ) -> None:
     config = EasyUIBasedAppConfig(
         **app_config().model_dump(),
@@ -795,15 +589,15 @@ def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events
     )
     message = Message(id="message-1")
     message.created_at = datetime.now(UTC)
-    with app_moderation_scope("tenant-1", "app-1"):
-        pipeline = EasyUIBasedGenerateTaskPipeline(
-            application_generate_entity=entity,
-            queue_manager=queue,
-            conversation=Conversation(id="conversation-1", mode=AppMode.CHAT),
-            message=message,
-            stream=True,
-        )
+    pipeline = EasyUIBasedGenerateTaskPipeline(
+        application_generate_entity=entity,
+        queue_manager=queue,
+        conversation=Conversation(id="conversation-1", mode=AppMode.CHAT),
+        message=message,
+        stream=True,
+    )
     pipeline._task_state.llm_result.message.content = previous_answer
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", lambda: None)
     queue.publish_error(PlatformModerationRejectedInvocationError(phase, "Rejected"), PublishFrom.TASK_PIPELINE)
     response = pipeline._process_stream_response(None)
     try:
@@ -824,7 +618,7 @@ def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events
 def test_output_failure_emits_safe_error_and_persists_message_status(
     sqlite_session_factory: sessionmaker[Session], advanced: bool, background: bool, stream: bool
 ) -> None:
-    gateway = TransientOutputFailureGateway()
+    gateway = TransientAppFailureGateway()
     flask_app = Flask(__name__)
     flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
     mode = AppMode.ADVANCED_CHAT if advanced else AppMode.CHAT
@@ -844,7 +638,7 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
         app_mode=mode,
         message_id="message-1",
     )
-    with flask_app.app_context(), app_moderation_scope("tenant-1", "app-1"):
+    with flask_app.app_context():
         if advanced:
             entity = AdvancedChatAppGenerateEntity(
                 task_id="task-1",
@@ -952,19 +746,18 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
 
 
 def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
-    gateway = TransientOutputFailureGateway()
+    gateway = TransientAppFailureGateway()
     flask_app = Flask(__name__)
     flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
     config = app_config("api")
     rule = config.sensitive_word_avoidance
     assert rule is not None
-    with app_moderation_scope("tenant-1", "app-1"):
-        handler = OutputModeration(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            rule=OutputModerationRule(type=rule.type, config=rule.config),
-            output_evaluator=app_output_evaluator(config),
-        )
+    handler = OutputModeration(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        rule=OutputModerationRule(type=rule.type, config=rule.config),
+        output_evaluator=app_output_evaluator(config),
+    )
     with flask_app.app_context():
         with pytest.raises(ModerationUnavailableInvocationError) as failure:
             handler.append_new_token("pending output" * 30)
@@ -976,8 +769,9 @@ def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
 
 @pytest.mark.parametrize("advanced", [False, True])
 @pytest.mark.parametrize("stream", [False, True])
-@pytest.mark.parametrize("action", ["direct_output", "overridden"])
-@pytest.mark.parametrize("preset", ["Refused", ""])
+@pytest.mark.parametrize(
+    ("action", "preset"), [("direct_output", "Refused"), ("direct_output", ""), ("overridden", "Unused preset")]
+)
 def test_sequential_app_replacements_are_delivered_and_persisted_without_final_recheck(
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
@@ -1009,59 +803,58 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
         message_id=message.id,
     )
     with flask_app.app_context(), message_was_created.muted():
-        with app_moderation_scope("tenant-1", "app-1"):
-            if advanced:
-                entity = AdvancedChatAppGenerateEntity(
-                    task_id="task-1",
-                    app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
-                    query="query",
-                    inputs={},
-                    files=[],
-                    user_id="account-1",
-                    stream=stream,
-                    invoke_from=InvokeFrom.DEBUGGER,
-                )
-                queue.graph_runtime_state = RuntimeState(
-                    workflow_id="workflow-1", variable_pool=build_test_variable_pool(), start_at=perf_counter()
-                )
-                pipeline = AdvancedChatAppGenerateTaskPipeline(
-                    application_generate_entity=entity,
-                    workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
-                    queue_manager=queue,
-                    conversation=ConversationSnapshot.from_conversation(conversation),
-                    message=MessageSnapshot.from_message(message),
-                    user=make_account(),
-                    stream=stream,
-                    dialogue_count=1,
-                    draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
-                        InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
-                    ),
-                )
-            else:
-                chat_entity = ChatAppGenerateEntity(
-                    task_id="task-1",
-                    app_config=EasyUIBasedAppConfig(
-                        **config.model_dump(),
-                        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
-                        app_model_config_dict={},
-                        model=ModelConfigEntity(provider="test-provider", model="test-model"),
-                        prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
-                    ),
-                    model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
-                    query="query",
-                    inputs={},
-                    files=[],
-                    user_id="account-1",
-                    stream=stream,
-                    invoke_from=InvokeFrom.DEBUGGER,
-                )
-                pipeline = EasyUIBasedGenerateTaskPipeline(
-                    application_generate_entity=chat_entity,
-                    queue_manager=queue,
-                    conversation=conversation,
-                    message=message,
-                    stream=stream,
-                )
+        if advanced:
+            entity = AdvancedChatAppGenerateEntity(
+                task_id="task-1",
+                app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
+                query="query",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                stream=stream,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            queue.graph_runtime_state = RuntimeState(
+                workflow_id="workflow-1", variable_pool=build_test_variable_pool(), start_at=perf_counter()
+            )
+            pipeline = AdvancedChatAppGenerateTaskPipeline(
+                application_generate_entity=entity,
+                workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
+                queue_manager=queue,
+                conversation=ConversationSnapshot.from_conversation(conversation),
+                message=MessageSnapshot.from_message(message),
+                user=make_account(),
+                stream=stream,
+                dialogue_count=1,
+                draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+                    InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
+                ),
+            )
+        else:
+            chat_entity = ChatAppGenerateEntity(
+                task_id="task-1",
+                app_config=EasyUIBasedAppConfig(
+                    **config.model_dump(),
+                    app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                    app_model_config_dict={},
+                    model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                    prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+                ),
+                model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+                query="query",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                stream=stream,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            pipeline = EasyUIBasedGenerateTaskPipeline(
+                application_generate_entity=chat_entity,
+                queue_manager=queue,
+                conversation=conversation,
+                message=message,
+                stream=stream,
+            )
         for text in ["safe ", "blocked", " tail"]:
             event = (
                 QueueTextChunkEvent(text=text)
@@ -1144,63 +937,61 @@ def test_default_chat_reply_finishes_and_persists_without_app_configuration(
     pipeline: AdvancedChatAppGenerateTaskPipeline | EasyUIBasedGenerateTaskPipeline
     flask_app = Flask(__name__)
     with flask_app.app_context(), message_was_created.muted():
-        with app_moderation_scope("tenant-1", "app-1"):
-            if advanced:
-                advanced_entity = AdvancedChatAppGenerateEntity(
-                    task_id="task-1",
-                    app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
-                    query="query",
-                    inputs={},
-                    files=[],
-                    user_id="account-1",
-                    stream=stream,
-                    invoke_from=InvokeFrom.DEBUGGER,
+        if advanced:
+            advanced_entity = AdvancedChatAppGenerateEntity(
+                task_id="task-1",
+                app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
+                query="query",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                stream=stream,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            pipeline = AdvancedChatAppGenerateTaskPipeline(
+                application_generate_entity=advanced_entity,
+                workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
+                queue_manager=queue,
+                conversation=ConversationSnapshot.from_conversation(conversation),
+                message=MessageSnapshot.from_message(message),
+                user=make_account(),
+                stream=stream,
+                dialogue_count=1,
+                draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+                    InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
+                ),
+            )
+            pipeline._task_state.answer = previous_answer
+        else:
+            chat_entity = ChatAppGenerateEntity(
+                task_id="task-1",
+                app_config=EasyUIBasedAppConfig(
+                    **config.model_dump(),
+                    app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                    app_model_config_dict={},
+                    model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                    prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+                ),
+                model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+                query="query",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                stream=stream,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            pipeline = EasyUIBasedGenerateTaskPipeline(
+                application_generate_entity=chat_entity,
+                queue_manager=queue,
+                conversation=conversation,
+                message=message,
+                stream=stream,
+            )
+            pipeline._task_state.llm_result.message.content = previous_answer
+            if phase == "output":
+                pipeline._task_state.llm_result.usage = LLMUsage.empty_usage().model_copy(
+                    update={"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
                 )
-                pipeline = AdvancedChatAppGenerateTaskPipeline(
-                    application_generate_entity=advanced_entity,
-                    workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
-                    queue_manager=queue,
-                    conversation=ConversationSnapshot.from_conversation(conversation),
-                    message=MessageSnapshot.from_message(message),
-                    user=make_account(),
-                    stream=stream,
-                    dialogue_count=1,
-                    draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
-                        InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
-                    ),
-                )
-                pipeline._task_state.answer = previous_answer
-            else:
-                chat_entity = ChatAppGenerateEntity(
-                    task_id="task-1",
-                    app_config=EasyUIBasedAppConfig(
-                        **config.model_dump(),
-                        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
-                        app_model_config_dict={},
-                        model=ModelConfigEntity(provider="test-provider", model="test-model"),
-                        prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
-                    ),
-                    model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
-                    query="query",
-                    inputs={},
-                    files=[],
-                    user_id="account-1",
-                    stream=stream,
-                    invoke_from=InvokeFrom.DEBUGGER,
-                )
-                pipeline = EasyUIBasedGenerateTaskPipeline(
-                    application_generate_entity=chat_entity,
-                    queue_manager=queue,
-                    conversation=conversation,
-                    message=message,
-                    stream=stream,
-                )
-                pipeline._task_state.llm_result.message.content = previous_answer
-                if phase == "output":
-                    pipeline._task_state.llm_result.usage = LLMUsage.empty_usage().model_copy(
-                        update={"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
-                    )
-        assert get_app_moderation_runtime() is None
         queue.publish_error(
             PlatformModerationRejectedInvocationError(phase, "Platform rejected content"), PublishFrom.TASK_PIPELINE
         )

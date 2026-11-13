@@ -38,7 +38,6 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
-from extensions.application_services.app_moderation import app_moderation_scope
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import (
@@ -492,21 +491,20 @@ class PluginInvokeAppApi(Resource):
     )
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
-        """Bind an isolated app scope during generation; invocation verifies tenant ownership before model work."""
-        with app_moderation_scope(tenant_model.id, payload.app_id):
-            response = PluginAppBackwardsInvocation.invoke_app(
-                execution_driver=WorkflowRunAgg.run,
-                session=session,
-                app_id=payload.app_id,
-                user_id=user_model.id,
-                tenant_id=tenant_model.id,
-                conversation_id=payload.conversation_id,
-                query=payload.query,
-                stream=payload.response_mode == "streaming",
-                inputs=payload.inputs,
-                files=payload.files,
-                end_users=application_services().app_scoped_end_users.commands,
-            )
+        """Invoke an app after the invocation owner verifies tenant ownership before model work."""
+        response = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
+            session=session,
+            app_id=payload.app_id,
+            user_id=user_model.id,
+            tenant_id=tenant_model.id,
+            conversation_id=payload.conversation_id,
+            query=payload.query,
+            stream=payload.response_mode == "streaming",
+            inputs=payload.inputs,
+            files=payload.files,
+            end_users=application_services().app_scoped_end_users.commands,
+        )
 
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 

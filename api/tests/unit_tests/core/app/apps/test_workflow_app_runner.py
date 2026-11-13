@@ -42,6 +42,7 @@ from core.app.entities.queue_entities import (
     QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
+    QueueWorkflowFailedEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
@@ -67,6 +68,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from extensions.application_services.app_moderation import workflow_moderation_error
 from extensions.storage.storage_type import StorageType
 from graphon.engine.layer import Layer
 from graphon.engine.ready_queue import StartTask
@@ -92,14 +94,16 @@ from graphon.engine_events import (
 )
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowType
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus, WorkflowType
 from graphon.file.helpers import verify_file_signature
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
+from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
 from models import Account, UploadFile
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -108,6 +112,11 @@ from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from services.moderation_invocation_errors import (
+    ModerationUnavailableInvocationError,
+    PlatformModerationInputRejectedInvocationError,
+    PlatformModerationOutputRejectedInvocationError,
+)
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.model_factories import make_workflow
@@ -1033,6 +1042,197 @@ class _DummyQueueManager:
 
     def publish(self, event, _from):
         self.published.append(event)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        PlatformModerationInputRejectedInvocationError("Rejected"),
+        PlatformModerationOutputRejectedInvocationError("Rejected"),
+        ModerationUnavailableInvocationError(),
+        ValueError("Model input was rejected by moderation."),
+    ],
+)
+def test_engine_node_failure_type_reaches_the_app_terminal_event(monkeypatch: pytest.MonkeyPatch, error: Exception):
+    queue = _DummyQueueManager()
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    entry = _workflow_entry(runner)
+
+    def fail() -> NodeRunResult:
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED, error=str(error), error_type=type(error).__name__
+        )
+
+    monkeypatch.setattr(entry.graph_engine.graph.nodes["start"], "_run", fail)
+
+    def run() -> None:
+        for event in iter_dify_graph_engine_events(entry.graph_engine):
+            runner.handle_event(entry, event)
+
+    with pytest.raises(RuntimeError):
+        run()
+    terminal = queue.published[-1]
+    assert isinstance(terminal, QueueWorkflowFailedEvent)
+    assert terminal.error_type == type(error).__name__
+    assert "error_type" not in terminal.model_dump()
+    restored = workflow_moderation_error(terminal.error_type)
+    if type(error) is ValueError:
+        assert restored is None
+    else:
+        assert type(restored) is type(error)
+
+
+@pytest.mark.parametrize("discard", ["none", "success", "handled", "restart", "retry", "unrelated", "ambiguous"])
+def test_container_failure_types_follow_only_unhandled_children(discard: str):
+    queue = _DummyQueueManager()
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    entry = _workflow_entry(runner)
+    started_at = datetime.now(UTC)
+    error_type = PlatformModerationOutputRejectedInvocationError.__name__
+    runner.handle_event(
+        entry,
+        NodeRunFailedEvent(
+            id="child-execution",
+            node_id="child",
+            node_type=BuiltinNodeTypes.LLM,
+            container_id="container",
+            start_at=started_at,
+            error="Rejected",
+            node_run_result=NodeRunResult(error="Rejected", error_type=error_type),
+        ),
+    )
+    if discard == "success":
+        runner.handle_event(
+            entry,
+            NodeRunSucceededEvent(
+                id="container-execution", node_id="container", node_type=BuiltinNodeTypes.LOOP, start_at=started_at
+            ),
+        )
+    elif discard == "handled":
+        runner.handle_event(
+            entry,
+            NodeRunExceptionEvent(
+                id="container-execution",
+                node_id="container",
+                node_type=BuiltinNodeTypes.LOOP,
+                start_at=started_at,
+                error="Rejected",
+            ),
+        )
+    elif discard == "restart":
+        runner.handle_event(
+            entry,
+            NodeRunStartedEvent(
+                id="container-execution",
+                node_id="container",
+                node_type=BuiltinNodeTypes.LOOP,
+                node_title="Container",
+                start_at=started_at,
+            ),
+        )
+    elif discard == "retry":
+        runner.handle_event(
+            entry,
+            NodeRunRetryEvent(
+                id="container-execution",
+                node_id="container",
+                node_type=BuiltinNodeTypes.LOOP,
+                node_title="Container",
+                start_at=started_at,
+                error="Rejected",
+                retry_index=1,
+            ),
+        )
+    elif discard == "ambiguous":
+        runner.handle_event(
+            entry,
+            NodeRunFailedEvent(
+                id="other-child-execution",
+                node_id="other-child",
+                node_type=BuiltinNodeTypes.LLM,
+                container_id="container",
+                start_at=started_at,
+                error="Rejected",
+                node_run_result=NodeRunResult(
+                    error="Rejected", error_type=PlatformModerationInputRejectedInvocationError.__name__
+                ),
+            ),
+        )
+    runner.handle_event(
+        entry,
+        NodeRunFailedEvent(
+            id="root-execution",
+            node_id="other" if discard == "unrelated" else "container",
+            node_type=BuiltinNodeTypes.LOOP,
+            start_at=started_at,
+            error="Rejected",
+            node_run_result=NodeRunResult(error="Rejected", error_type="ValueError"),
+        ),
+    )
+    runner.handle_event(entry, GraphRunFailedEvent(error="Rejected", exceptions_count=1))
+    terminal = queue.published[-1]
+    assert isinstance(terminal, QueueWorkflowFailedEvent)
+    expected_type = error_type if discard == "none" else "" if discard == "ambiguous" else "ValueError"
+    assert terminal.error_type == expected_type
+    runner.handle_event(entry, GraphRunStartedEvent())
+    runner.handle_event(entry, GraphRunFailedEvent(error="Rejected", exceptions_count=1))
+    assert queue.published[-1].error_type == ""
+    other_queue = _DummyQueueManager()
+    other_runner = WorkflowBasedAppRunner(queue_manager=other_queue, app_id="app")
+    other_runner.handle_event(entry, GraphRunFailedEvent(error="Rejected", exceptions_count=1))
+    assert other_queue.published[-1].error_type == ""
+
+
+@pytest.mark.parametrize("parallel", [False, True])
+def test_nested_engine_failure_propagates_the_leaf_type(monkeypatch: pytest.MonkeyPatch, parallel: bool):
+    queue = _DummyQueueManager()
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=perf_counter())
+    state.variable_pool.add(["start", "items"], ["input", "output"] if parallel else ["output"])
+    graph_config = _nested_container_graph("canonical")
+    for node in graph_config["nodes"]:
+        if node["id"] == "inner":
+            node["data"].update({"is_parallel": parallel, "parallel_nums": 2})
+    graph_config["nodes"].append(
+        {"id": "deep-end", "data": {"type": "end", "title": "Nested End", "outputs": [], "container_id": "deep"}}
+    )
+    graph_config["edges"].append({"id": "deep-output", "source": "deep-start", "target": "deep-end"})
+    graph = runner._init_graph(
+        graph_config=graph_config,
+        graph_runtime_state=state,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+    entry = WorkflowEntry(graph_config=graph.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
+    original = EndNode._run
+    error_types = {
+        "input": PlatformModerationInputRejectedInvocationError.__name__,
+        "output": PlatformModerationOutputRejectedInvocationError.__name__,
+    }
+
+    def run_node(node: EndNode) -> NodeRunResult:
+        if node.id == "deep-end":
+            phase = node.runtime_state.variable_pool.get(["inner", "item"])
+            assert isinstance(phase, StringSegment)
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=phase.value,
+                error_type=error_types[phase.value],
+            )
+        return original(node)
+
+    monkeypatch.setattr(EndNode, "_run", run_node)
+
+    def run() -> None:
+        for event in iter_dify_graph_engine_events(entry.graph_engine):
+            runner.handle_event(entry, event)
+
+    with pytest.raises(RuntimeError):
+        run()
+    terminal = queue.published[-1]
+    assert isinstance(terminal, QueueWorkflowFailedEvent)
+    assert terminal.error_type == error_types[terminal.error]
 
 
 class _DummyRuntimeState:

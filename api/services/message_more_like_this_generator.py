@@ -20,7 +20,6 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
-from extensions.application_services.app_moderation import app_moderation_scope
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import FileTransferMethod
@@ -93,7 +92,6 @@ class MessageMoreLikeThisGenerator:
         with (
             current_app.app_context(),
             bind_file_access_scope(scope),
-            app_moderation_scope(source.tenant_id, source.app_id),
         ):
             config_dict = cast(AppModelConfigDict, model_config)
             file_config = FileUploadConfigManager.convert(config_dict)

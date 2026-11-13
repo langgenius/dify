@@ -209,9 +209,11 @@ class TestBasedGenerateTaskPipeline:
 @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP])
 @pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
-@pytest.mark.parametrize("failure", ["input_rejected", "output_rejected", "unavailable"])
+@pytest.mark.parametrize(
+    ("failure", "expected_status"), [("input_rejected", 400), ("output_rejected", 400), ("unavailable", 503)]
+)
 def test_moderation_errors_survive_task_handling_and_response_conversion(
-    sqlite_session: Session, invoke_from: InvokeFrom, app_mode: AppMode, failure: str
+    sqlite_session: Session, invoke_from: InvokeFrom, app_mode: AppMode, failure: str, expected_status: int
 ) -> None:
     entity = CompletionAppGenerateEntity(
         task_id="task-1",
@@ -281,5 +283,5 @@ def test_moderation_errors_survive_task_handling_and_response_conversion(
     assert isinstance(payload, dict)
     assert payload["event"] == "error"
     assert payload["code"] == error.error_code
-    assert payload["status"] == error.status_code
+    assert payload["status"] == expected_status
     assert payload["message"] == str(error)

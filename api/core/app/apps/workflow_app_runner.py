@@ -217,6 +217,7 @@ class WorkflowBasedAppRunner:
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
         self._execution_driver = execution_driver
+        self._failed_nodes: dict[str, dict[str, set[tuple[str, str]]]] = {}
 
     def prepare(self) -> PreparedWorkflowRun | None:
         raise NotImplementedError
@@ -598,7 +599,14 @@ class WorkflowBasedAppRunner:
         human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
         """
-        Handle event
+        Handle an ordered engine event and propagate terminal node error types.
+
+        Only unhandled failed nodes contribute an error type. The validated
+        container tree identifies the terminal leaf even when parent failures
+        arrive before their children. Display text only correlates a container's
+        selected failure with node events; it never supplies a failure type.
+        Ambiguous types stay generic. Retries and handled failures discard child
+        records. Types stay internal.
         :param workflow_entry: workflow entry
         :param event: event
         """
@@ -644,6 +652,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case GraphRunStartedEvent():
+                self._failed_nodes.clear()
                 self._publish_event(
                     QueueWorkflowStartedEvent(reason=event.reason, node_execution_snapshots=node_execution_snapshots)
                 )
@@ -654,8 +663,21 @@ class WorkflowBasedAppRunner:
                     QueueWorkflowPartialSuccessEvent(outputs=event.outputs, exceptions_count=event.exceptions_count)
                 )
             case GraphRunFailedEvent():
+                error_types: set[str] = set()
+                pending = list(self._failed_nodes.get("", {}).get(event.error, ()))
+                while pending:
+                    node_id, node_error_type = pending.pop()
+                    children = self._failed_nodes.get(node_id, {}).get(event.error)
+                    if children:
+                        pending.extend(children)
+                    else:
+                        error_types.add(node_error_type)
                 self._publish_event(
-                    QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
+                    QueueWorkflowFailedEvent(
+                        error=event.error,
+                        error_type=error_types.pop() if len(error_types) == 1 else "",
+                        exceptions_count=event.exceptions_count,
+                    )
                 )
             case GraphRunAbortedEvent():
                 self._publish_event(
@@ -689,6 +711,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunRetryEvent():
+                self._failed_nodes.pop(event.node_id, None)
                 node_run_result = event.node_run_result
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data
@@ -718,6 +741,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunStartedEvent():
+                self._failed_nodes.pop(event.node_id, None)
                 self._publish_event(
                     QueueNodeStartedEvent(
                         node_execution_id=event.id,
@@ -734,6 +758,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunSucceededEvent():
+                self._failed_nodes.pop(event.node_id, None)
                 node_run_result = event.node_run_result
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data
@@ -770,6 +795,11 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunFailedEvent():
+                failure = (event.node_id, event.node_run_result.error_type)
+                if event.container_id:
+                    self._failed_nodes.setdefault(event.container_id, {}).setdefault(event.error, set()).add(failure)
+                else:
+                    self._failed_nodes[""] = {event.error: {failure}}
                 outputs = project_node_outputs_for_workflow_run(
                     node_type=event.node_type,
                     inputs=event.node_run_result.inputs,
@@ -792,6 +822,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunExceptionEvent():
+                self._failed_nodes.pop(event.node_id, None)
                 outputs = project_node_outputs_for_workflow_run(
                     node_type=event.node_type,
                     inputs=event.node_run_result.inputs,
@@ -869,6 +900,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunIterationNextEvent():
+                self._failed_nodes.pop(event.node_id, None)
                 self._publish_event(
                     QueueIterationNextEvent(
                         node_execution_id=event.id,
@@ -907,6 +939,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunLoopNextEvent():
+                self._failed_nodes.pop(event.node_id, None)
                 self._publish_event(
                     QueueLoopNextEvent(
                         node_execution_id=event.id,

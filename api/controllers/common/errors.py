@@ -225,17 +225,25 @@ def register_moderation_error_handlers(api: ExternalApi) -> None:
         error: ModerationRejectedInvocationError | ModerationUnavailableInvocationError,
     ) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
+        status = (
+            HTTPStatus.SERVICE_UNAVAILABLE
+            if isinstance(error, ModerationUnavailableInvocationError)
+            else HTTPStatus.BAD_REQUEST
+        )
         return {
             "code": error.error_code,
             "message": str(error),
-            "status": error.status_code,
-        }, error.status_code
+            "status": status.value,
+        }, status.value
 
-    for error_type in (ModerationRejectedInvocationError, ModerationUnavailableInvocationError):
+    for error_type, status in (
+        (ModerationRejectedInvocationError, HTTPStatus.BAD_REQUEST),
+        (ModerationUnavailableInvocationError, HTTPStatus.SERVICE_UNAVAILABLE),
+    ):
         register_handler = api.errorhandler(error_type)
         assert callable(register_handler)
         register_handler(handle_moderation_error)
         handlers: object = api.error_handlers
         assert isinstance(handlers, OrderedDict)
         handlers.move_to_end(error_type, last=False)
-        api.document_error_handler(error_type, status=error_type.status_code, code=error_type.error_code)
+        api.document_error_handler(error_type, status=status, code=error_type.error_code)

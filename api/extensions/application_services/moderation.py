@@ -115,13 +115,6 @@ def build_llm_moderation_guard(
     rule = rule.model_copy(deep=True)
     if platform and rule.type != "openai_moderation":
         raise ValueError("Platform moderation sharing requires an OpenAI rule.")
-    from extensions.application_services.app_moderation import current_moderation_session
-
-    session = current_moderation_session(context.tenant_id)
-    if session is not None and context.app_id and context.app_id != session.app_id:
-        session = None
-    if session is not None and platform:
-        context = AppRequestContext(tenant_id=context.tenant_id, app_id=session.app_id)
     inputs = rule.config.get("inputs_config")
     if not isinstance(inputs, dict) or not isinstance(inputs.get("enabled"), bool):
         raise ValueError("inputs_config.enabled must be a bool")
@@ -141,6 +134,4 @@ def build_llm_moderation_guard(
         non_stream_segment_size=dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE,
         stream_segment_size=dify_config.MODERATION_BUFFER_SIZE,
         platform=platform,
-        rejection_observer=session.record_rejection if platform and session is not None else None,
-        failure_observer=session.record_unavailable if session is not None else None,
     )

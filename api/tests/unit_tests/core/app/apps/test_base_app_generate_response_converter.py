@@ -4,6 +4,7 @@ from collections.abc import Generator
 from typing import ClassVar
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -89,6 +90,14 @@ def test_convert_routes_blocking_response_by_invoke_from() -> None:
     assert simple_result == {"kind": "blocking-simple", "task_id": "task-1"}
     assert _DummyConverter.blocking_full_calls == [blocking_response]
     assert _DummyConverter.blocking_simple_calls == [blocking_response]
+
+
+def test_unmapped_app_error_uses_the_generic_stream_error_contract() -> None:
+    assert AppGenerateResponseConverter._error_to_stream_response(AppGenerateError("Invalid input")) == {
+        "code": "invalid_param",
+        "message": "Invalid input",
+        "status": 400,
+    }
 
 
 def test_convert_routes_stream_response_by_invoke_from() -> None:

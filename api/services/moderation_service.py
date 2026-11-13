@@ -91,10 +91,6 @@ class ModerationRejectedError(ModerationError):
         super().__init__(message or f"Model {phase} was rejected by moderation.")
 
 
-class ModerationUnavailableError(ModerationError):
-    """A moderation backend could not evaluate content; callers must not substitute approval or fallback results."""
-
-
 class ModerationService:
     def __init__(self, *, gateway: ModerationGateway) -> None:
         """Receive the configured backend gateway; construction performs no external I/O."""

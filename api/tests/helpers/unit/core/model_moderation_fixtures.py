@@ -162,7 +162,14 @@ def make_failing_moderated_model(
                 raise RuntimeError("Moderation backend is unavailable")
             raise ModerationRejectedError(phase, "Content rejected by moderation")
 
-    guard = LLMModerationGuard(tenant_id="test-tenant-id", check=check, check_input=True, check_output=True)
+    guard = LLMModerationGuard(
+        tenant_id="test-tenant-id",
+        check=check,
+        check_input=True,
+        check_output=True,
+        non_stream_segment_size=2000,
+        stream_segment_size=300,
+    )
     instance, provider = make_moderated_model(quota=True, parts=["safe"], moderation=guard)
     assert isinstance(instance, RecordingQuotaModelInstance)
     return instance, provider
