@@ -81,6 +81,7 @@ class _ToolCallState:
     tool_output: str = ""
     status: ActivityStatus = "started"
     error: str | None = None
+    retry_pending: bool = False
 
 
 def _bounded_text(value: JsonValue | None) -> str:
@@ -228,8 +229,9 @@ class WorkflowAgentToolActivityProjector:
         """Mark a tool call ``running`` with its complete arguments.
 
         A ``started`` preview is promoted and its partial arguments replaced;
-        a new call is created as ``running``. Repeats and calls already
-        terminal return no snapshot.
+        a new call is created as ``running``. After a retry prompt, the retried
+        arguments replace the prior attempt while preserving the same logical
+        activity. Repeats and calls already terminal return no snapshot.
         """
         if not part.tool_call_id or not part.tool_name:
             return []
@@ -243,6 +245,14 @@ class WorkflowAgentToolActivityProjector:
                 status="running",
             )
             self._calls[key] = state
+            return [self._snapshot(run_id, state)]
+        if state.retry_pending:
+            state.tool_name = part.tool_name
+            state.tool_input = _bounded_text(part.args)
+            state.tool_output = ""
+            state.status = "running"
+            state.error = None
+            state.retry_pending = False
             return [self._snapshot(run_id, state)]
         if state.status != "started":
             return []
@@ -260,10 +270,12 @@ class WorkflowAgentToolActivityProjector:
     ) -> list[WorkflowAgentToolActivity]:
         """Complete an active call, or emit one completed snapshot when unmatched.
 
-        ``retry-prompt`` -> ``failed``; ``tool-return`` -> ``failed`` when
-        ``outcome == "failure"``, else ``succeeded``. An unmatched result with
-        a ``tool_name`` still yields one terminal snapshot; duplicates are
-        ignored.
+        ``retry-prompt`` keeps the logical call running because Pydantic AI
+        retries reuse its ``tool_call_id``. A matching retried call replaces
+        the attempt input; a later tool return is terminal. ``tool-return``
+        maps to ``failed`` when ``outcome == "failure"``, else ``succeeded``.
+        An unmatched result with a ``tool_name`` still yields one terminal
+        snapshot; duplicates are ignored.
         """
         if not part.tool_call_id:
             return []
@@ -289,16 +301,19 @@ class WorkflowAgentToolActivityProjector:
         if state.tool_name == "" and part.tool_name:
             state.tool_name = part.tool_name
         if is_retry:
-            state.status = "failed"
+            state.status = "running"
             state.error = _bounded_text(part.content) or None
+            state.retry_pending = True
         else:
             output = _bounded_text(part.content)
             state.tool_output = output
+            state.retry_pending = False
             if part.outcome == "failure":
                 state.status = "failed"
                 state.error = output or None
             else:
                 state.status = "succeeded"
+                state.error = None
         return [self._snapshot(run_id, state)]
 
     def _snapshot(self, run_id: str, state: _ToolCallState) -> WorkflowAgentToolActivity:
