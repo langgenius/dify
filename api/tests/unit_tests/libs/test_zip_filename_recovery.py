@@ -85,10 +85,29 @@ def test_recovery_rejects_unresolvable_local_header_offsets(offset: int) -> None
         open_zip_with_replacement_names(bytes(content))
 
 
-@pytest.mark.parametrize("entries", [0, 2])
+@pytest.mark.parametrize("entries", [0, 2, 0xFFFF])
 def test_recovery_rejects_inconsistent_directory_entry_counts(entries: int) -> None:
     content = _damaged_utf8_zip()
     end = content.rfind(b"PK\x05\x06")
     struct.pack_into("<HH", content, end + 8, entries, entries)
     with pytest.raises(zipfile.BadZipFile, match="directory bounds|directory length mismatch"):
         open_zip_with_replacement_names(bytes(content))
+
+
+@pytest.mark.parametrize("prefix", [b"", b"self-extracting-prefix"])
+def test_recovery_accepts_maximum_legacy_entry_count(prefix: bytes) -> None:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", allowZip64=False) as archive:
+        for index in range(0xFFFF - 1):
+            archive.writestr(f"{index}.txt", b"")
+        archive.writestr("\u00e9.txt", b"payload")
+    original = prefix + output.getvalue()
+    assert b"PK\x06\x07" not in original
+    with zipfile.ZipFile(io.BytesIO(original)) as archive:
+        assert len(archive.infolist()) == 0xFFFF
+        assert archive.read("\u00e9.txt") == b"payload"
+
+    damaged = original.replace(b"\xc3\xa9.txt", b"\xffa.txt")
+    with open_zip_with_replacement_names(damaged) as archive:
+        assert len(archive.infolist()) == 0xFFFF
+        assert archive.read("\ufffda.txt") == b"payload"
