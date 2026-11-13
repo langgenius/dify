@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -132,29 +131,39 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
-    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
-    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
-    global_timeout_handler = MagicMock()
+    mark_timeout_calls: list[dict[str, object]] = []
+    mark_timeout = repo.mark_timeout
+
+    def record_mark_timeout(**kwargs: object):
+        mark_timeout_calls.append(kwargs)
+        return mark_timeout(**kwargs)
+
+    global_timeout_calls: list[dict[str, object]] = []
+
+    def record_global_timeout(**kwargs: object) -> None:
+        global_timeout_calls.append(kwargs)
 
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "_handle_global_timeout", global_timeout_handler)
-    dispatch_pending = MagicMock()
-    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", dispatch_pending)
-    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", MagicMock())
+    monkeypatch.setattr(repo, "mark_timeout", record_mark_timeout)
+    monkeypatch.setattr(task_module, "_handle_global_timeout", record_global_timeout)
+    dispatched_limits: list[int] = []
+    monkeypatch.setattr(
+        task_module,
+        "_dispatch_pending_human_input_resumes",
+        lambda limit, workflow_run_id=None: dispatched_limits.append(limit),
+    )
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", lambda limit: None)
 
     task_module.check_and_handle_human_input_timeouts(limit=100)
 
-    assert {
-        (call.kwargs["form_id"], call.kwargs["timeout_status"], call.kwargs["reason"])
-        for call in mark_timeout_spy.call_args_list
-    } == {
+    assert {(call["form_id"], call["timeout_status"], call["reason"]) for call in mark_timeout_calls} == {
         ("form-global", HumanInputFormStatus.EXPIRED, "global_timeout"),
         ("form-node", HumanInputFormStatus.TIMEOUT, "node_timeout"),
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),
     }
-    dispatch_pending.assert_called_once_with(100)
-    global_timeout_handler.assert_called_once()
-    global_timeout_call = global_timeout_handler.call_args.kwargs
+    assert dispatched_limits == [100]
+    assert len(global_timeout_calls) == 1
+    global_timeout_call = global_timeout_calls[0]
     assert global_timeout_call["form_id"] == "form-global"
     assert global_timeout_call["workflow_run_id"] == "run-global"
     assert global_timeout_call["node_id"] == "node-global"
@@ -195,19 +204,23 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
-    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
-    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
+    mark_timeout_calls: list[dict[str, object]] = []
+    mark_timeout = repo.mark_timeout
+
+    def record_mark_timeout(**kwargs: object):
+        mark_timeout_calls.append(kwargs)
+        return mark_timeout(**kwargs)
+
+    monkeypatch.setattr(repo, "mark_timeout", record_mark_timeout)
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", MagicMock())
-    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", MagicMock())
+    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", lambda limit, workflow_run_id=None: None)
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", lambda limit: None)
 
     task_module.check_and_handle_human_input_timeouts(limit=1)
 
-    mark_timeout_spy.assert_called_once_with(
-        form_id="form-a",
-        timeout_status=HumanInputFormStatus.TIMEOUT,
-        reason="delivery_test_timeout",
-    )
+    assert mark_timeout_calls == [
+        {"form_id": "form-a", "timeout_status": HumanInputFormStatus.TIMEOUT, "reason": "delivery_test_timeout"}
+    ]
     sqlite_session.expire_all()
     assert _require_form(sqlite_session, "form-a").status == HumanInputFormStatus.TIMEOUT
     assert _require_form(sqlite_session, "form-b").status == HumanInputFormStatus.WAITING
@@ -235,17 +248,27 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
-    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
-    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
+    mark_timeout_calls: list[dict[str, object]] = []
+    mark_timeout = repo.mark_timeout
+
+    def record_mark_timeout(**kwargs: object):
+        mark_timeout_calls.append(kwargs)
+        return mark_timeout(**kwargs)
+
+    global_timeout_calls: list[dict[str, object]] = []
+
+    def record_global_timeout(**kwargs: object) -> None:
+        global_timeout_calls.append(kwargs)
+
+    monkeypatch.setattr(repo, "mark_timeout", record_mark_timeout)
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", MagicMock())
-    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", MagicMock())
-    global_timeout_handler = MagicMock()
-    monkeypatch.setattr(task_module, "_handle_global_timeout", global_timeout_handler)
+    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", lambda limit, workflow_run_id=None: None)
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", lambda limit: None)
+    monkeypatch.setattr(task_module, "_handle_global_timeout", record_global_timeout)
 
     task_module.check_and_handle_human_input_timeouts(limit=1)
 
-    mark_timeout_spy.assert_not_called()
-    global_timeout_handler.assert_not_called()
+    assert mark_timeout_calls == []
+    assert global_timeout_calls == []
     sqlite_session.refresh(old_unexpired_form)
     assert old_unexpired_form.status == HumanInputFormStatus.WAITING
