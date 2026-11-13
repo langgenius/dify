@@ -14,7 +14,7 @@ import { useResultSender } from '../use-result-sender'
 
 type CompletionHandlers = {
   onData: NonNullable<IOtherOptions['onData']>
-  onCompleted: () => void
+  onCompleted: NonNullable<IOtherOptions['onCompleted']>
   onError: () => void
   onMessageReplace: (message: { answer: string }) => void
 }
@@ -273,6 +273,39 @@ describe('result sending', () => {
       expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
     },
   )
+
+  it('treats a completion error flag as failure without an error callback', async () => {
+    const { result, onCompleted } = renderSender()
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
+    act(() => {
+      callbacks.onData('Partial answer', false, { messageId: 'message-1', taskId: 'task-1' })
+      callbacks.onCompleted(true, 'Stream failed')
+    })
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith('Partial answer', 7, false)
+    expect(result.current.state.messageId).toBeNull()
+    expect(result.current.state.isResponding).toBe(false)
+  })
+
+  it.each([false, true])('settles a completion stream only once (failed: %s)', async (failed) => {
+    const { result, onCompleted } = renderSender()
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
+    act(() => {
+      callbacks.onData('Answer', false, { messageId: 'message-1', taskId: 'task-1' })
+      if (failed) callbacks.onError()
+      callbacks.onCompleted(failed)
+      callbacks.onCompleted(failed)
+      callbacks.onError()
+    })
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith('Answer', 7, !failed)
+    expect(result.current.state.messageId).toBe(failed ? null : 'message-1')
+    expect(result.current.state.isResponding).toBe(false)
+  })
 
   it('silently settles a rejected workflow request after its page was denied', async () => {
     window.history.replaceState({}, '', '/workflow/restricted-app')
