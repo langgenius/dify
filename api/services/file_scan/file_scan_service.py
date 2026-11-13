@@ -207,7 +207,11 @@ class FileScanService:
                 return _outcome_from_record(reused, file_name=target.file_name)
 
             external_id = _pending_external_id(
-                session, tenant_id=tenant_id, provider_id=provider_id, upload_file_id=upload_file_id
+                session,
+                tenant_id=tenant_id,
+                provider_id=provider_id,
+                upload_file_id=upload_file_id,
+                provider_last_tested_at=provider.last_tested_at,
             )
             scanner: FileScanner | None = None
             config_error = ""
@@ -412,7 +416,12 @@ def _reusable_record(
 
 
 def _pending_external_id(
-    session: Session, *, tenant_id: str, provider_id: str, upload_file_id: str | None
+    session: Session,
+    *,
+    tenant_id: str,
+    provider_id: str,
+    upload_file_id: str | None,
+    provider_last_tested_at: datetime | None,
 ) -> str | None:
     """The scanner-side id of a scan a previous attempt submitted and left running."""
     if upload_file_id is None:
@@ -428,6 +437,8 @@ def _pending_external_id(
         .limit(1)
     )
     if latest is None or latest.problem != ScanProblem.PENDING.value:
+        return None
+    if provider_last_tested_at is not None and latest.created_at <= provider_last_tested_at:
         return None
     return latest.external_id
 

@@ -913,3 +913,28 @@ def test_provider_update_racing_with_an_inflight_scan_does_not_reuse_old_verdict
     assert _scan(service, first).status == "clean"
     assert _scan(service, second).status == "clean"
     assert calls == 2
+
+
+def test_pending_scan_from_old_provider_configuration_is_not_resumed_after_update(
+    sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scanner = _use_scanner(
+        monkeypatch,
+        ScanVerdict.unavailable(ScanProblem.PENDING, external_id="old-provider-scan-id"),
+        ScanVerdict.clean(),
+    )
+    provider_id, upload_file_id = _seed(sqlite_session_factory, storage)
+    monkeypatch.setattr(FileScanProviderService, "_verify", lambda *_args, **_kwargs: None)
+    service, _ = _service(sqlite_session_factory)
+
+    pending = _scan(service, upload_file_id, wait_for_result=False)
+    assert pending.code is ScanErrorCode.PENDING
+    FileScanProviderService(sqlite_session_factory).update(
+        tenant_id=TENANT_ID,
+        provider_id=provider_id,
+        config={"endpoint": "https://new-scanner.example"},
+        credentials={"api_key": "new-key"},
+    )
+
+    assert _scan(service, upload_file_id, wait_for_result=False).allowed
+    assert scanner.external_ids == [None, None]
