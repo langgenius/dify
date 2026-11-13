@@ -42,9 +42,6 @@ from services.entities.app_entities import AppListParams
 def _is_agent_debug_conversation_mapping_conflict(error: IntegrityError) -> bool:
     """Recognize only the unique conflict used to seed per-account editor conversations."""
     expected_constraint = "agent_debug_conversation_agent_account_draft_type_unique"
-    constraint_name = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
-    if constraint_name == expected_constraint:
-        return True
     message = str(error.orig).lower()
     if expected_constraint in message:
         return True
