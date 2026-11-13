@@ -10,10 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from core.agent.workspace import WorkspaceOwnerScope
+from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
-from libs.helper import to_timestamp
 from machinery.context import RequestContext
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -30,7 +29,11 @@ from models.agent import (
 from models.agent_soul_state import build_initial_agent_soul
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
-from repositories.agent_roster_queries import find_agent_draft, load_reference_counts_by_agent_id
+from repositories.agent_roster_queries import (
+    find_agent_draft,
+    load_reference_counts_by_agent_id,
+    project_agent_draft_summary,
+)
 from repositories.agent_roster_repository import load_published_references_by_agent_id
 from repositories.agent_workspace_repository import AgentWorkspaceRepository, validate_binding_generation
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
@@ -65,7 +68,6 @@ from services.app.agent_build_session_store import (
     AgentBuildBindingUnavailableError,
     AgentBuildDraft,
     AgentBuildDraftNotFoundError,
-    AgentBuildDraftSummary,
     AgentBuildRefresh,
 )
 from services.entities.app_entities import (
@@ -375,17 +377,7 @@ class AgentAppRepository:
             if draft is None:
                 raise AgentBuildDraftNotFoundError
             return AgentBuildDraft(
-                summary=AgentBuildDraftSummary(
-                    id=draft.id,
-                    agent_id=draft.agent_id,
-                    draft_type=draft.draft_type.value,
-                    account_id=draft.account_id,
-                    base_snapshot_id=draft.base_snapshot_id,
-                    created_by=draft.created_by,
-                    updated_by=draft.updated_by,
-                    created_at=to_timestamp(draft.created_at),
-                    updated_at=to_timestamp(draft.updated_at),
-                ),
+                summary=project_agent_draft_summary(draft),
                 agent_soul=draft.config_snapshot_dict,
             )
 
@@ -422,8 +414,9 @@ class AgentAppRepository:
     ) -> str:
         """Stage retirement of the exact draft-owned binding, failing if it cannot be retired.
 
-        Discard requires a matching generation. Refresh can reset an owned
-        binding from an older generation, as before.
+        Discard requires a matching generation and reports a mismatch as an
+        unavailable binding. Refresh can reset an owned binding from an older
+        generation.
         """
         binding_id = draft.agent_workspace_binding_id
         if binding_id is None or app_id is None:
@@ -442,12 +435,15 @@ class AgentAppRepository:
         if binding is None or binding.agent_id != draft.agent_id:
             raise AgentBuildBindingUnavailableError
         if require_generation:
-            validate_binding_generation(
-                binding,
-                base_home_snapshot_id=draft.home_snapshot_id,
-                agent_config_version_id=draft.id,
-                agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
-            )
+            try:
+                validate_binding_generation(
+                    binding,
+                    base_home_snapshot_id=draft.home_snapshot_id,
+                    agent_config_version_id=draft.id,
+                    agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                )
+            except AgentWorkspaceBindingGenerationMismatchError as exc:
+                raise AgentBuildBindingUnavailableError from exc
         retired_binding_id = workspaces.retire_binding(tenant_id=draft.tenant_id, binding_id=binding_id)
         if retired_binding_id is None:
             raise AgentBuildBindingUnavailableError

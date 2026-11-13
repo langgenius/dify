@@ -1,5 +1,6 @@
 import logging
 import uuid
+from dataclasses import asdict
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -34,7 +35,7 @@ from models.agent_config_entities import (
 )
 from models.agent_soul_state import agent_soul_has_model
 from models.workflow import Workflow
-from repositories.agent_roster_queries import find_agent_draft
+from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
@@ -2202,19 +2203,8 @@ class AgentComposerService:
 
     @classmethod
     def _serialize_draft(cls, draft: AgentConfigDraft | None) -> dict[str, Any] | None:
-        if draft is None:
-            return None
-        return {
-            "id": draft.id,
-            "agent_id": draft.agent_id,
-            "draft_type": draft.draft_type.value,
-            "account_id": draft.account_id,
-            "base_snapshot_id": draft.base_snapshot_id,
-            "created_by": draft.created_by,
-            "updated_by": draft.updated_by,
-            "created_at": to_timestamp(draft.created_at),
-            "updated_at": to_timestamp(draft.updated_at),
-        }
+        """Return the shared draft metadata in the legacy response shape, or None if no draft was loaded."""
+        return asdict(project_agent_draft_summary(draft)) if draft is not None else None
 
     @classmethod
     def _serialize_build_draft_state(cls, draft: AgentConfigDraft) -> dict[str, Any]:

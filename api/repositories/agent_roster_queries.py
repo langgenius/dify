@@ -18,6 +18,7 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+from services.app.agent_build_session_store import AgentDraftSummary
 
 
 def find_agent_draft(
@@ -39,6 +40,21 @@ def find_agent_draft(
     if for_update:
         stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
     return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
+
+
+def project_agent_draft_summary(draft: AgentConfigDraft) -> AgentDraftSummary:
+    """Project a loaded draft into detached metadata, with audit timestamps in epoch seconds."""
+    return AgentDraftSummary(
+        id=draft.id,
+        agent_id=draft.agent_id,
+        draft_type=draft.draft_type.value,
+        account_id=draft.account_id,
+        base_snapshot_id=draft.base_snapshot_id,
+        created_by=draft.created_by,
+        updated_by=draft.updated_by,
+        created_at=to_timestamp(draft.created_at),
+        updated_at=to_timestamp(draft.updated_at),
+    )
 
 
 @dataclass(frozen=True)

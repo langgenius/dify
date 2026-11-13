@@ -17,8 +17,8 @@ class AgentBuildBindingUnavailableError(Exception):
 
 
 @dataclass(frozen=True, slots=True)
-class AgentBuildDraftSummary:
-    """Identity, base snapshot and audit fields of a Build draft."""
+class AgentDraftSummary:
+    """Identity, base snapshot and audit fields shared by Agent drafts."""
 
     id: str
     agent_id: str
@@ -35,7 +35,7 @@ class AgentBuildDraftSummary:
 class AgentBuildDraft:
     """The draft's summary and stored Soul configuration, detached from persistence."""
 
-    summary: AgentBuildDraftSummary
+    summary: AgentDraftSummary
     agent_soul: dict[str, object]
 
 

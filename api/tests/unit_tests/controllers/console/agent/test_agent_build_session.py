@@ -15,11 +15,13 @@ from werkzeug.test import TestResponse
 
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
+    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigVersionKind,
     AgentDebugConversation,
     AgentHomeSnapshot,
+    AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspace,
     AgentWorkspaceBinding,
@@ -184,11 +186,25 @@ def test_build_mutation_rejects_an_agent_from_another_workspace(harness: Harness
 
 
 @pytest.mark.usefixtures("memory_broker")
-@pytest.mark.parametrize("method", ["POST", "DELETE"])
+@pytest.mark.parametrize(
+    ("method", "stale_generation", "archived_agent"),
+    [
+        ("POST", False, False),
+        ("POST", True, False),
+        ("DELETE", False, False),
+        ("DELETE", False, True),
+    ],
+)
 def test_build_mutation_commits_before_enqueuing_binding_collection(
-    harness: Harness, build_state: BuildState, method: str
+    harness: Harness, build_state: BuildState, method: str, stale_generation: bool, archived_agent: bool
 ) -> None:
     """Refresh clears the draft pointer and replaces the conversation; discard removes only that draft."""
+    with harness.sessions.begin() as session:
+        if stale_generation:
+            session.get_one(AgentWorkspaceBinding, build_state.binding_id).base_home_snapshot_id = None
+        if archived_agent:
+            session.get_one(Agent, build_state.agent_id).status = AgentStatus.ARCHIVED
+
     published: list[dict[str, object]] = []
     old_conversation_id = None
     if method == "POST":
@@ -254,6 +270,33 @@ def test_build_mutation_commits_before_enqueuing_binding_collection(
             assert conversation.from_account_id == harness.account_id
             assert old_conversation_id is not None
             assert session.get(Conversation, old_conversation_id) is not None
+
+
+@pytest.mark.usefixtures("memory_broker")
+def test_discard_rejects_a_binding_from_an_older_generation(harness: Harness, build_state: BuildState) -> None:
+    """Return the sandbox error and leave the draft and binding intact when the Home generation differs."""
+    with harness.sessions.begin() as session:
+        session.get_one(AgentWorkspaceBinding, build_state.binding_id).base_home_snapshot_id = None
+    published: list[object] = []
+
+    def on_publish(**kwargs: object) -> None:
+        """Record any collection task emitted by the rejected request."""
+        published.append(kwargs)
+
+    with observe_collection_publication(on_publish):
+        response = build_state.request(harness, "DELETE")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["code"] == "agent_build_sandbox_not_found"
+    assert response.get_json()["status"] == HTTPStatus.NOT_FOUND
+    assert published == []
+    with harness.sessions() as session:
+        draft = session.get_one(AgentConfigDraft, build_state.draft_id)
+        assert draft.agent_workspace_binding_id == build_state.binding_id
+        assert draft.home_snapshot_id == build_state.home_id
+        binding = session.get_one(AgentWorkspaceBinding, build_state.binding_id)
+        assert binding.status == AgentWorkingResourceStatus.ACTIVE
+        assert session.get_one(AgentWorkspace, build_state.workspace_id).status == AgentWorkingResourceStatus.ACTIVE
 
 
 @pytest.mark.parametrize(("method", "endpoint"), [("POST", "debug-conversation/refresh"), ("DELETE", "build-draft")])
