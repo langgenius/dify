@@ -149,3 +149,14 @@ class TestCSVSanitizer:
         assert CSVSanitizer.sanitize_value("\n\n") == "\n\n"
         # Tab at start should be escaped
         assert CSVSanitizer.sanitize_value("\t  ") == "'\t  "
+
+    def test_leading_whitespace_hiding_formula(self) -> None:
+        """Formula initiators hidden behind leading whitespace are escaped."""
+        LF = chr(10)
+        SP = "  "
+        assert CSVSanitizer.sanitize_value(LF + "=SUM(A1)") == "'\n=SUM(A1)"
+        assert CSVSanitizer.sanitize_value(SP + "=1+1") == "'  =1+1"
+        assert CSVSanitizer.sanitize_value(LF + "@cmd") == "'\n@cmd"
+        # Pure-whitespace values stay unchanged.
+        assert CSVSanitizer.sanitize_value("   ") == "   "
+        assert CSVSanitizer.sanitize_value(LF + LF) == "\n\n"
