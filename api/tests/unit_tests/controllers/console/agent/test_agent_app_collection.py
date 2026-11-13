@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import Executable
 from werkzeug.test import TestResponse
@@ -33,8 +34,9 @@ from models.model import App, AppMode, AppModelConfig, Conversation, Tag, TagBin
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
+from services.app.agent_app_contracts import AgentAppListPage
 from services.enterprise.base import EnterpriseRequest
-from services.entities.app_entities import AppListParams
+from services.entities.app_entities import AgentAppPublicationCounts, AppListParams
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
@@ -156,6 +158,67 @@ def test_concurrent_first_lists_reuse_the_same_build_conversation(
     with harness.sessions() as session:
         assert session.scalar(select(func.count()).select_from(AgentDebugConversation)) == 1
         assert session.scalar(select(func.count()).select_from(Conversation).where(Conversation.app_id == app_id)) == 1
+
+
+def test_list_retries_named_build_mapping_constraint_conflict(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = AgentAppRepository(session_factory=harness.sessions)
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    params = AppListParams(mode="agent")
+    page = AgentAppListPage(
+        page=1,
+        limit=20,
+        total=0,
+        has_more=False,
+        publication_counts=AgentAppPublicationCounts(published=0, drafts=0),
+        data=[],
+    )
+    attempts = 0
+
+    def conflict_once(
+        _context: RequestContext, _params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        del accessible_agent_ids
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise IntegrityError(
+                "INSERT INTO agent_debug_conversations ...",
+                {},
+                Exception(
+                    "duplicate key violates unique constraint agent_debug_conversation_agent_account_draft_type_unique"
+                ),
+            )
+        return page
+
+    monkeypatch.setattr(repository, "_list_apps_once", conflict_once)
+    assert repository.list_apps(context, params, accessible_agent_ids=None) is page
+    assert attempts == 2
+
+
+def test_list_reraises_unrelated_integrity_error_without_retrying(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = AgentAppRepository(session_factory=harness.sessions)
+    context = RequestContext("test", None, harness.account_id, harness.tenant_id)
+    params = AppListParams(mode="agent")
+    error = IntegrityError("INSERT", {}, Exception("foreign key constraint failed"))
+    attempts = 0
+
+    def fail_unrelated(
+        _context: RequestContext, _params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        del accessible_agent_ids
+        nonlocal attempts
+        attempts += 1
+        raise error
+
+    monkeypatch.setattr(repository, "_list_apps_once", fail_unrelated)
+    with pytest.raises(IntegrityError) as caught:
+        repository.list_apps(context, params, accessible_agent_ids=None)
+    assert caught.value is error
+    assert attempts == 1
 
 
 def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harness) -> None:
