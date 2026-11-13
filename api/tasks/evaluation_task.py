@@ -13,6 +13,7 @@ from typing import Any
 
 from celery import Task, shared_task
 from openpyxl import Workbook
+from openpyxl.cell.cell import Cell
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy import select, update
@@ -1925,7 +1926,7 @@ def _generate_result_xlsx(
     input_list: list[EvaluationDatasetInput],
     results: list[EvaluationItemResult],
 ) -> bytes:
-    """Generate result XLSX with input data, actual output, metric scores, and judgment."""
+    """Generate result XLSX with literal text fields and native numeric scores."""
     wb = Workbook()
     ws = wb.active
     if ws is None:
@@ -1941,6 +1942,18 @@ def _generate_result_xlsx(
         top=Side(style="thin"),
         bottom=Side(style="thin"),
     )
+
+    def write_cell(row: int, column: int, value: Any) -> Cell:
+        """Write an openpyxl-supported value and return its bordered cell.
+
+        Strings stay literal after serialization; other values retain their
+        native cell type. Unsupported values raise from openpyxl.
+        """
+        cell = ws.cell(row=row, column=column, value=value)
+        if isinstance(value, str):
+            cell.data_type = "s"
+        cell.border = thin_border
+        return cell
 
     metric_columns: list[str] = []
     for result in results:
@@ -1976,11 +1989,10 @@ def _generate_result_xlsx(
     )
 
     for col_idx, header in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell = write_cell(1, col_idx, header)
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = header_alignment
-        cell.border = thin_border
 
     ws.column_dimensions["A"].width = 10
     for col_idx in range(2, len(headers) + 1):
@@ -1992,19 +2004,19 @@ def _generate_result_xlsx(
         row_result = result_by_index.get(item.index)
 
         col = 1
-        ws.cell(row=row_idx, column=col, value=item.index).border = thin_border
+        write_cell(row_idx, col, item.index)
         col += 1
 
         for key in input_keys:
             val = item.inputs.get(key, "")
-            ws.cell(row=row_idx, column=col, value=str(val)).border = thin_border
+            write_cell(row_idx, col, str(val))
             col += 1
 
         for header in expected_output_headers:
-            ws.cell(row=row_idx, column=col, value=_get_expected_output_cell_value(item, header)).border = thin_border
+            write_cell(row_idx, col, _get_expected_output_cell_value(item, header))
             col += 1
 
-        ws.cell(row=row_idx, column=col, value=row_result.actual_output if row_result else "").border = thin_border
+        write_cell(row_idx, col, row_result.actual_output if row_result else "")
         col += 1
 
         metric_scores = (
@@ -2012,7 +2024,7 @@ def _generate_result_xlsx(
         )
         for metric_name in metric_columns:
             score = metric_scores.get(metric_name)
-            ws.cell(row=row_idx, column=col, value=score if score is not None else "").border = thin_border
+            write_cell(row_idx, col, score if score is not None else "")
             col += 1
 
         if has_judgment:
@@ -2020,10 +2032,10 @@ def _generate_result_xlsx(
                 judgment_value = "Pass" if row_result.judgment.passed else "Fail"
             else:
                 judgment_value = ""
-            ws.cell(row=row_idx, column=col, value=judgment_value).border = thin_border
+            write_cell(row_idx, col, judgment_value)
             col += 1
 
-        ws.cell(row=row_idx, column=col, value=row_result.error if row_result else "").border = thin_border
+        write_cell(row_idx, col, row_result.error if row_result else "")
 
     output = io.BytesIO()
     wb.save(output)

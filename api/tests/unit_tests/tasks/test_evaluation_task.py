@@ -2489,3 +2489,42 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
         "Answer : faithfulness",
         "error",
     ]
+
+
+def test_result_xlsx_preserves_formula_like_text_as_literal_cells() -> None:
+    input_list = [EvaluationDatasetInput(index=1, inputs={"=input": "=1+1"}, expected_outputs={"=node": "=2+2"})]
+    results = [
+        EvaluationItemResult(
+            index=1,
+            actual_output="=3+3",
+            metrics=[
+                EvaluationMetric(name="=metric", value="=4+4"),
+                EvaluationMetric(name="numeric", value=0.9),
+            ],
+            error="=5+5",
+        )
+    ]
+
+    workbook = load_workbook(io.BytesIO(_generate_result_xlsx(input_list, results)))
+    worksheet = workbook.active
+
+    assert worksheet is not None
+    formula_like_cells = {
+        "B1": "=input",
+        "B2": "=1+1",
+        "C1": "=node : expected_output",
+        "C2": "=2+2",
+        "D2": "=3+3",
+        "E1": "=metric",
+        "E2": "=4+4",
+        "G2": "=5+5",
+    }
+    for coordinate, expected_value in formula_like_cells.items():
+        cell = worksheet[coordinate]
+        assert cell.value == expected_value
+        assert cell.data_type == "s"
+
+    assert worksheet["A2"].value == 1
+    assert worksheet["A2"].data_type == "n"
+    assert worksheet["F2"].value == 0.9
+    assert worksheet["F2"].data_type == "n"
