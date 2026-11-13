@@ -45,6 +45,7 @@ CACHED_APP = Flask(__name__)
 pytest_plugins = (
     "tests.helpers.unit.audio_runtime_fixtures",
     "tests.helpers.unit.agent_runtime_fixtures",
+    "tests.helpers.unit.model_provider_daemon_fixtures",
     "tests.helpers.unit.model_provider_fixtures",
 )
 

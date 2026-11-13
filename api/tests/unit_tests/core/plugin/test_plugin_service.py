@@ -24,6 +24,7 @@ from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
 from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
+from tests.helpers.unit.model_provider_daemon_fixtures import ModelProviderDaemon
 from tests.unit_tests.services.plugin.conftest import mock_features as mock_features  # noqa: PLC0414
 from tests.unit_tests.services.plugin.conftest import mock_installer as mock_installer  # noqa: PLC0414
 
@@ -361,6 +362,7 @@ class TestPluginModelProviderCache:
         assert [provider.provider for provider in second] == ["langgenius/openai/openai"]
         assert first[0].plugin_unique_identifier == "langgenius/openai:1.0.0@checksum"
         assert client.fetch_model_providers.call_count == 2
+        assert second[0] is not first[0]
         redis_client.get.assert_not_called()
         redis_client.mget.assert_not_called()
         redis_client.setex.assert_not_called()
@@ -380,7 +382,7 @@ class TestPluginModelProviderCache:
 
         with (
             patch.object(
-                PluginService, "list_installations_from_ids", return_value=[installation]
+                PluginService, "list_installation_sources_from_ids", return_value=[installation]
             ) as list_installations,
         ):
             client = Mock()
@@ -390,6 +392,97 @@ class TestPluginModelProviderCache:
 
         list_installations.assert_called_once_with("tenant-1", [provider.plugin_id])
         assert result[0].installation_source == PluginInstallationSource.Package
+
+    def test_uncached_fetch_reuses_declarations_while_the_daemon_answers_stay_the_same(
+        self, config_overrides: Callable[..., None], model_provider_daemon: ModelProviderDaemon
+    ) -> None:
+        """The daemon is read on every call; declarations are rebuilt only when its answers change."""
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+        provider = _build_plugin_model_provider(installation_source=None)
+        model_provider_daemon.serve_providers(provider)
+        model_provider_daemon.serve_installations(
+            {
+                "plugin_unique_identifier": provider.plugin_unique_identifier,
+                "source": "package",
+                "declaration": {"this": "is never validated"},
+            }
+        )
+
+        from core.plugin.plugin_service import PluginService
+
+        first = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+        second = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+
+        assert [declaration.provider for declaration in first] == ["langgenius/openai/openai"]
+        assert first[0].installation_source == PluginInstallationSource.Package
+        assert second is first
+        assert len(model_provider_daemon.listing_requests) == 2
+        assert model_provider_daemon.installation_requests == [
+            ("tenant-1", {"plugin_ids": [provider.plugin_id]}),
+            ("tenant-1", {"plugin_ids": [provider.plugin_id]}),
+        ]
+
+    def test_uncached_fetch_rebuilds_declarations_when_the_listing_changes(
+        self, config_overrides: Callable[..., None], model_provider_daemon: ModelProviderDaemon
+    ) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+        openai = _build_plugin_model_provider()
+        model_provider_daemon.serve_providers(openai)
+
+        from core.plugin.plugin_service import PluginService
+
+        before = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+        model_provider_daemon.serve_providers(openai, _build_plugin_model_provider(provider="anthropic"))
+        after = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+
+        assert [declaration.provider for declaration in before] == ["langgenius/openai/openai"]
+        assert [declaration.provider for declaration in after] == [
+            "langgenius/openai/openai",
+            "langgenius/anthropic/anthropic",
+        ]
+        # Sources carried by the listing need no installation lookup.
+        assert model_provider_daemon.installation_requests == []
+
+    def test_uncached_fetch_rebuilds_declarations_when_an_installation_source_changes(
+        self, config_overrides: Callable[..., None], model_provider_daemon: ModelProviderDaemon
+    ) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+        provider = _build_plugin_model_provider(installation_source=None)
+        model_provider_daemon.serve_providers(provider)
+        model_provider_daemon.serve_installations(
+            {"plugin_unique_identifier": provider.plugin_unique_identifier, "source": "package"}
+        )
+
+        from core.plugin.plugin_service import PluginService
+
+        from_package = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+        model_provider_daemon.serve_installations(
+            {"plugin_unique_identifier": provider.plugin_unique_identifier, "source": "github"}
+        )
+        from_github = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+
+        assert from_package[0].installation_source == PluginInstallationSource.Package
+        assert from_github[0].installation_source == PluginInstallationSource.Github
+
+    def test_uncached_fetch_does_not_reuse_declarations_built_without_installation_sources(
+        self, config_overrides: Callable[..., None], model_provider_daemon: ModelProviderDaemon
+    ) -> None:
+        """A failed source lookup yields declarations without a source, and must not hide a later success."""
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+        provider = _build_plugin_model_provider(installation_source=None)
+        model_provider_daemon.serve_providers(provider)
+        model_provider_daemon.installations_body = b"not json"
+
+        from core.plugin.plugin_service import PluginService
+
+        without_source = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+        model_provider_daemon.serve_installations(
+            {"plugin_unique_identifier": provider.plugin_unique_identifier, "source": "marketplace"}
+        )
+        with_source = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+
+        assert without_source[0].installation_source is None
+        assert with_source[0].installation_source == PluginInstallationSource.Marketplace
 
     def test_fetch_plugin_model_providers_refetches_when_cache_read_fails(self) -> None:
         """Redis read failures do not block provider discovery for the tenant."""
