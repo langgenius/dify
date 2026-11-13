@@ -97,8 +97,8 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedNode {
     return {
+      ...super.exportJSON(),
       type: 'agent-output-block',
-      version: 1,
       name: this.getName(),
       outputType: this.getOutputType(),
     }

@@ -301,7 +301,6 @@ export function Banner({ banners }: BannerProps) {
     const applyMotionPreference = () => {
       if (reducedMotionQuery.matches) {
         isRotationEnabledRef.current = false
-        // oxlint-disable-next-line eslint-react/set-state-in-effect -- The media query is an external browser preference.
         setIsRotationEnabled(false)
       } else if (!hasExplicitRotationPreferenceRef.current) {
         isRotationEnabledRef.current = true
@@ -316,6 +315,7 @@ export function Banner({ banners }: BannerProps) {
     reducedMotionQuery.addEventListener('change', applyMotionPreference)
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Embla owns this external playback state.
     setIsPlaying(autoplay.isPlaying())
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The initial playback state follows the external reduced-motion preference.
     applyMotionPreference()
 
     return () => {

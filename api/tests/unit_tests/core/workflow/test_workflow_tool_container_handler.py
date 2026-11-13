@@ -1663,6 +1663,7 @@ class TestWorkflowToolEventDeliveryCases:
         sqlite_session_factory: sessionmaker[Session],
         caller_save_fails: bool,
     ) -> None:
+        """Given an Agent node in a workflow tool, preserve its caller and persist explicit error outputs."""
         binding_resolver = WorkflowAgentBindingResolver()
         resolution_calls: list[dict[str, object]] = []
         if caller_save_fails:
@@ -1797,6 +1798,7 @@ class TestWorkflowToolEventDeliveryCases:
                 caller.node_execution_id,
             )
             assert execution.status == "exception"
+            assert execution.outputs_dict is not None
             if caller_save_fails:
                 assert resolution_calls == []
                 assert execution.error == "Workflow node execution caller is unavailable"

@@ -1,11 +1,11 @@
 import type { LexicalEditor } from 'lexical'
 import { $createLinkNode, $isLinkNode, LinkNode } from '@lexical/link'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $createParagraphNode, $createTextNode, $getRoot, $isElementNode } from 'lexical'
+import { TestLexicalComposer } from '@/test/lexical'
 import NoteEditorContext from '../../../context'
 import { createNoteEditorStore } from '../../../store'
 import LinkEditorComponent from '../component'
@@ -29,7 +29,7 @@ function setup(url: string) {
     return null
   }
   render(
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'link-edit',
         nodes: [LinkNode],
@@ -48,7 +48,7 @@ function setup(url: string) {
       <NoteEditorContext value={store}>
         <LinkEditorComponent containerElement={portalRoot} />
       </NoteEditorContext>
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
   return {
     readLink: () =>

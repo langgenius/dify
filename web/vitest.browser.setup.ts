@@ -12,7 +12,8 @@ document.documentElement.dataset.theme = 'light'
 beforeEach(async () => {
   const { width, height } = server.config.browser.viewport
   await page.viewport(width, height)
-  await userEvent.unhover(document.body)
+  // Move outside the test viewport without waiting for body hover actionability.
+  await userEvent.pointer({ coords: { x: -1, y: -1 } })
 })
 
 vi.mock('react-i18next', async () => {

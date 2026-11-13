@@ -659,11 +659,12 @@ class DatasourceProviderService:
         credentials: dict[str, Any],
     ) -> None:
         """
-        validate datasource provider credentials.
+        validate datasource provider credentials and save them as a new API key credential.
 
-        :param tenant_id:
-        :param provider:
-        :param credentials:
+        :param name: credential name; if None or empty, a default name is generated
+        :param tenant_id: workspace id
+        :param provider_id: datasource provider id
+        :param credentials: API key credentials; secret values are encrypted in place before they are saved
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
@@ -739,8 +740,11 @@ class DatasourceProviderService:
         """
         Extract secret input form variables.
 
-        :param credential_form_schemas:
-        :return:
+        :param tenant_id: workspace id
+        :param provider_id: datasource provider id
+        :param credential_type: credential type, API key or OAuth2
+        :param provider_declaration: provider declaration; if None, it is fetched with provider_id
+        :return: names of the secret input variables in the credential schema for credential_type
         """
         if credential_type not in (CredentialType.API_KEY, CredentialType.OAUTH2):
             raise ValueError(f"Invalid credential type: {credential_type}")
@@ -950,8 +954,10 @@ class DatasourceProviderService:
         get datasource credentials.
 
         :param tenant_id: workspace id
-        :param provider_id: provider id
-        :return:
+        :param provider: provider name
+        :param plugin_id: plugin id
+        :param session: database session
+        :return: credentials with decrypted secret values, and the credential type of each
         """
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = list(
@@ -975,7 +981,7 @@ class DatasourceProviderService:
                 credential_type=CredentialType.of(datasource_provider.auth_type),
             )
 
-            # Obfuscate provider credentials
+            # Decrypt secret credential values
             copy_credentials = encrypted_credentials.copy()
             for key, value in copy_credentials.items():
                 if key in credential_secret_variables:
