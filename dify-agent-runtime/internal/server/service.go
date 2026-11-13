@@ -824,6 +824,8 @@ func (s *Service) jobResultFromView(view *JobStatusView, row *JobRow, window *Ou
 	}
 }
 
+// resolveCwd returns a canonical directory within a canonical allowed root.
+// This boundary applies even when cwd is omitted or path isolation is disabled.
 func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 	var cwd string
 	if rawCwd != nil && *rawCwd != "" {
@@ -832,12 +834,56 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 		cwd = s.config.DefaultCwd
 	}
 
-	info, err := os.Stat(cwd)
-	if err != nil || !info.IsDir() {
-		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
+	displayCwd := cwd
+	if !filepath.IsAbs(cwd) {
+		if cwd == "" || !filepath.IsAbs(s.config.DefaultCwd) {
+			return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
+		}
+		// Anchor at DefaultCwd, never the daemon's cwd. Do not clean or Join:
+		// symlink/.. must resolve through the symlink before traversing its parent.
+		cwd = s.config.DefaultCwd + string(filepath.Separator) + cwd
 	}
-	abs, _ := filepath.Abs(cwd)
-	return abs, nil
+	realCwd, err := resolveExistingDir(cwd)
+	if err != nil {
+		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
+	}
+	for _, root := range s.config.allowedCwdRoots() {
+		realRoot, err := resolveExistingDir(root)
+		// Optional roots, such as /workspace on non-container hosts, may be absent.
+		if err == nil && isPathWithinRoot(realCwd, realRoot) {
+			return realCwd, nil
+		}
+	}
+	return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is outside allowed workspace roots: %s", displayCwd))
+}
+
+func resolveExistingDir(path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("directory path must be absolute: %s", path)
+	}
+	realPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(realPath)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("not a directory: %s", path)
+	}
+	return realPath, nil
+}
+
+// isPathWithinRoot compares canonical absolute paths at directory boundaries.
+func isPathWithinRoot(path, root string) bool {
+	if path == root {
+		return true
+	}
+	if root == string(filepath.Separator) {
+		return strings.HasPrefix(path, root)
+	}
+	return strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
 func (s *Service) allocateJobDir() (string, string, error) {

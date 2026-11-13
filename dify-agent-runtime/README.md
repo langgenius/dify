@@ -49,6 +49,24 @@ for the Agent Stub and inner API endpoints.
 The response models are identical in both modes. Use `stdio` for bounded,
 machine-readable control commands and `pty` for interactive jobs.
 
+## Job working directory
+
+`POST /v1/jobs/run` accepts an optional `cwd`. Omitted or empty values use the
+server's `DefaultCwd` (`$HOME` by default); relative paths resolve from
+`DefaultCwd`. The directory must exist and, after resolving symlinks, be an
+allowed root or one of its descendants. The default allowed roots are
+`DefaultCwd` and `/workspace`. Missing roots are skipped. Invalid directories
+and paths outside all allowed roots return HTTP `400` with error code
+`invalid_cwd` before a job is created, even when Landlock isolation is disabled.
+Accepted jobs use the canonical directory for execution and temp space.
+
+Set `SHELLCTL_ALLOWED_CWD_ROOTS` on the server to replace the default roots with
+a comma-separated list of absolute paths, for example
+`SHELLCTL_ALLOWED_CWD_ROOTS=/home/dify,/workspace`. Whitespace around entries is
+trimmed. An unset or blank value uses the defaults; relative paths and empty
+comma-separated entries fail server startup. Explicit roots also constrain
+requests that omit `cwd`, so include `DefaultCwd` if those requests should run.
+
 ## Building
 
 ```bash

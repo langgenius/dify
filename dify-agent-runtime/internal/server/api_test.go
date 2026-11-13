@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -169,6 +172,54 @@ func TestRunJobRejectsInvalidModeBeforeCallingService(t *testing.T) {
 	}
 	if result.Error.Code != "validation_error" {
 		t.Errorf("expected validation_error, got %q", result.Error.Code)
+	}
+}
+
+func TestRunJobRejectsOutsideCwdBeforeExecution(t *testing.T) {
+	base := t.TempDir()
+	workspace := filepath.Join(base, "workspace")
+	outside := filepath.Join(base, "outside")
+	for _, dir := range []string{workspace, outside} {
+		if err := os.Mkdir(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config := &Config{DefaultCwd: workspace, AllowedCwdRoots: []string{workspace}, StateDir: filepath.Join(base, "state")}
+	if err := os.MkdirAll(config.JobsDir(), 0700); err != nil {
+		t.Fatal(err)
+	}
+	// Leave DB uninitialized: invalid cwd must be rejected before execution.
+	service := NewService(config)
+	for _, mode := range []string{"pty", "stdio"} {
+		t.Run(mode, func(t *testing.T) {
+			body, err := json.Marshal(map[string]string{"script": "true", "cwd": outside, "mode": mode})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest("POST", "/v1/jobs/run", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+			Handler(service, config).ServeHTTP(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", w.Code, w.Body.String())
+			}
+			var result ErrorResponse
+			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Error.Code != "invalid_cwd" {
+				t.Errorf("error code = %q, want invalid_cwd", result.Error.Code)
+			}
+			if !strings.Contains(result.Error.Message, "outside allowed workspace roots") {
+				t.Errorf("error message = %q, want outside allowed workspace roots", result.Error.Message)
+			}
+			entries, err := os.ReadDir(config.JobsDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 0 {
+				t.Errorf("invalid cwd created job artifacts: %v", entries)
+			}
+		})
 	}
 }
 
