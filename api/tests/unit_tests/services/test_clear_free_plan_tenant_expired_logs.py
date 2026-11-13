@@ -341,7 +341,7 @@ class TestClearFreePlanTenantExpiredLogs:
         with Session(sqlite_engine) as verification_session:
             assert all(verification_session.get(model, record_id) is None for model, record_id in record_keys)
 
-    def test_storage_failure_still_deletes_records(
+    def test_storage_failure_preserves_records(
         self,
         sqlite_session: Session,
         sqlite_engine: Engine,
@@ -354,13 +354,14 @@ class TestClearFreePlanTenantExpiredLogs:
         storage.save.side_effect = RuntimeError("storage error")
         monkeypatch.setattr(service_module, "storage", storage)
 
-        ClearFreePlanTenantExpiredLogs._clear_message_related_tables(sqlite_session, "tenant-123", ["msg-1"])
+        with pytest.raises(RuntimeError, match="storage error"):
+            ClearFreePlanTenantExpiredLogs._clear_message_related_tables(sqlite_session, "tenant-123", ["msg-1"])
         sqlite_session.commit()
 
         with Session(sqlite_engine) as verification_session:
-            assert verification_session.get(MessageChain, record.id) is None
+            assert verification_session.get(MessageChain, record.id) is not None
 
-    def test_serialization_failure_skips_backup_but_deletes_records(
+    def test_serialization_failure_preserves_records(
         self,
         sqlite_session: Session,
         sqlite_engine: Engine,
@@ -382,12 +383,13 @@ class TestClearFreePlanTenantExpiredLogs:
             MagicMock(side_effect=RuntimeError("serialization error")),
         )
 
-        ClearFreePlanTenantExpiredLogs._clear_message_related_tables(sqlite_session, "tenant-123", ["msg-1"])
+        with pytest.raises(RuntimeError, match="serialization error"):
+            ClearFreePlanTenantExpiredLogs._clear_message_related_tables(sqlite_session, "tenant-123", ["msg-1"])
         sqlite_session.commit()
 
         storage.save.assert_not_called()
         with Session(sqlite_engine) as verification_session:
-            assert verification_session.get(SavedMessage, record.id) is None
+            assert verification_session.get(SavedMessage, record.id) is not None
 
     def test_deletion_is_scoped_to_requested_message_ids(
         self,

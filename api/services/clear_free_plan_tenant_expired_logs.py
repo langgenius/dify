@@ -89,25 +89,18 @@ class ClearFreePlanTenantExpiredLogs:
             # Save records before deletion
             record_ids = [record.id for record in records]
             try:
-                record_data = []
-                for record in records:
-                    try:
-                        record_data.append(cls._serialize_record(record))
-                    except Exception:
-                        logger.exception("Failed to transform %s record: %s", table_name, record.id)
-                        continue
-
-                if record_data:
-                    storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/{table_name}/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(record_data),
-                        ).encode("utf-8"),
-                    )
+                record_data = [cls._serialize_record(record) for record in records]
+                storage.save(
+                    f"free_plan_tenant_expired_logs/"
+                    f"{tenant_id}/{table_name}/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                    f"-{time.time()}.json",
+                    json.dumps(
+                        jsonable_encoder(record_data),
+                    ).encode("utf-8"),
+                )
             except Exception:
                 logger.exception("Failed to save %s records", table_name)
+                raise
 
             session.execute(
                 delete(model)
