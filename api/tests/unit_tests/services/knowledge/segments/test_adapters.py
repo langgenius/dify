@@ -821,6 +821,119 @@ def test_segment_update_preserves_or_replaces_attachments(
     assert ("image-1" in probe.deleted_ids) is removed_original
 
 
+@pytest.mark.parametrize("other_document_id", ["document-1", "document-2"])
+@pytest.mark.parametrize("other_enabled", [True, False])
+def test_attachment_update_preserves_shared_vector_until_last_binding(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    other_document_id: str,
+    other_enabled: bool,
+) -> None:
+    app, repository, probe = indexing_probe
+    context = RequestContext("request", None, "author", "workspace-1")
+    with sqlite_session_factory.begin() as session:
+        session.add(_upload("image-1", "workspace-1", "shared.png"))
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        dataset.is_multimodal = True
+        if other_document_id != "document-1":
+            session.add(_document(other_document_id, "workspace-1", "dataset-1"))
+    first = app.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "first", "attachment_ids": ["image-1"]},
+    )
+    second = app.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id=other_document_id,
+        values={"content": "second", "attachment_ids": ["image-1"]},
+    )
+    second_ref = DatasetRef("workspace-1", "dataset-1").document(other_document_id).segment(second.data.id)
+    repository.save_segment(second_ref, {"enabled": other_enabled})
+    segment_update(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=first.data.id,
+        values={"content": "first", "attachment_ids": []},
+    )
+    assert "image-1" not in probe.deleted_ids
+    assert repository.get_indexing_snapshot(second_ref).attachment_ids == ("image-1",)
+    repository.save_segment(second_ref, {"enabled": True})
+    segment_update(
+        context,
+        dataset_id="dataset-1",
+        document_id=other_document_id,
+        segment_id=second.data.id,
+        values={"content": "second", "attachment_ids": []},
+    )
+    assert probe.deleted_ids.count("image-1") == 1
+    with sqlite_session_factory() as session:
+        assert session.get(UploadFile, "image-1") is not None
+
+
+def test_attachment_update_does_not_rewrite_retained_vector(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app, _, probe = indexing_probe
+    context = RequestContext("request", None, "author", "workspace-1")
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_upload("image-1", "workspace-1", "one.png"), _upload("image-2", "workspace-1", "two.png")])
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        dataset.is_multimodal = True
+    created = app.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "first", "attachment_ids": ["image-1", "image-2"]},
+    )
+    writes_before = probe.writes
+    segment_update(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=created.data.id,
+        values={"content": "first", "attachment_ids": ["image-1"]},
+    )
+    assert probe.deleted_ids == ["image-2"]
+    assert probe.writes == writes_before
+
+
+def test_attachment_reference_query_respects_vector_collection_scope(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        for workspace, dataset, document, segment, image in [
+            ("workspace-1", "dataset-1", "document-1", "segment-1", "own"),
+            ("workspace-1", "dataset-2", "document-2", "segment-2", "other-dataset"),
+            ("workspace-2", "dataset-1", "document-2", "segment-2", "other-tenant"),
+            ("workspace-1", "dataset-1", "document-2", "segment-2", "shared"),
+        ]:
+            session.add(
+                SegmentAttachmentBinding(
+                    tenant_id=workspace,
+                    dataset_id=dataset,
+                    document_id=document,
+                    segment_id=segment,
+                    attachment_id=image,
+                )
+            )
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1").segment("segment-1")
+    assert repository.get_exclusive_attachment_ids(ref, ["own", "other-dataset", "other-tenant", "shared"]) == (
+        "own",
+        "other-dataset",
+        "other-tenant",
+    )
+    assert repository.get_exclusive_attachment_ids(ref, []) == ()
+
+
 def test_segment_indexing_and_summary_use_closed_read_sessions(
     segment_update: SegmentUpdateEntry, indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
