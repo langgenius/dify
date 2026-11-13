@@ -1065,6 +1065,56 @@ class TestMemberRoles:
         assert out[1].account_id == "acct-3"
         assert out[1].roles == []
 
+    def test_batch_get_splits_large_member_lists_and_merges_results(
+        self, transport: RBACTransport, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def echo_roles(
+            method: str,
+            endpoint: str,
+            *,
+            tenant_id: str,
+            account_id: str | None,
+            json: dict[str, list[str]],
+            params: dict[str, object] | None,
+            timeout: float,
+        ) -> JsonValue:
+            transport.send(
+                method,
+                endpoint,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json=dict(json),
+                params=params,
+                timeout=timeout,
+            )
+            return {
+                member_id: [{"id": f"role-{member_id}", "name": member_id, "type": "workspace"}]
+                for member_id in json["member_ids"]
+            }
+
+        monkeypatch.setattr(svc, "_MEMBER_ROLES_BATCH_SIZE", 2)
+        monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", echo_roles)
+        member_ids = ["acct-2", "acct-3", "acct-4", "acct-5", "acct-6"]
+
+        out = svc.RBACService.MemberRoles.batch_get("tenant-1", "acct-1", member_ids, language="zh-Hans")
+
+        assert [call.json for call in transport.requests] == [
+            {"member_ids": ["acct-2", "acct-3"]},
+            {"member_ids": ["acct-4", "acct-5"]},
+            {"member_ids": ["acct-6"]},
+        ]
+        assert {(call.endpoint, call.tenant_id, call.account_id) for call in transport.requests} == {
+            ("/rbac/members/rbac-roles/batch", "tenant-1", "acct-1")
+        }
+        assert all(call.params == {"language": "zh-Hans"} for call in transport.requests)
+        assert [(item.account_id, [role.id for role in item.roles]) for item in out] == [
+            (member_id, [f"role-{member_id}"]) for member_id in member_ids
+        ]
+
+    def test_batch_get_without_members_skips_the_request(self, transport: RBACTransport) -> None:
+        assert svc.RBACService.MemberRoles.batch_get("tenant-1", "acct-1", []) == []
+        assert transport.requests == []
+
 
 class TestResourcePermissions:
     @pytest.fixture(autouse=True)

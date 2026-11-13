@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from itertools import batched
 from typing import Any, override
 
 from sqlalchemy.orm import Session
@@ -59,6 +60,12 @@ logger = logging.getLogger(__name__)
 
 
 _INNER_PREFIX = "/rbac"
+
+# The RBAC member-binding query binds one parameter per unique member ID plus
+# one tenant ID. A batch of 60,000 therefore uses 60,001 parameters, below
+# PostgreSQL's 65,535-parameter limit. Keep 5,534 parameters of headroom for
+# additional query predicates while reducing round trips for large workspaces.
+_MEMBER_ROLES_BATCH_SIZE = 60_000
 
 
 def _inner_call(
@@ -1065,25 +1072,30 @@ class RBACService:
             return MemberRolesResponse.model_validate(data or {})
 
         @staticmethod
-        def batch_get(
-            tenant_id: str, account_id: str | None, member_account_ids: list[str], *, language: str | None = None
-        ) -> list[MemberRolesResponse]:
+        def _fetch_batch(
+            tenant_id: str, account_id: str | None, member_ids: list[str], language: str | None
+        ) -> dict[str, Any]:
             data = _inner_call(
                 "POST",
                 f"{_INNER_PREFIX}/members/rbac-roles/batch",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                json={"member_ids": member_account_ids},
+                json={"member_ids": member_ids},
                 language=language,
             )
-            items = []
-            if isinstance(data, dict):
-                items = [{"account_id": account_id, "roles": roles} for account_id, roles in data.items()]
-            rst = []
-            for item in items:
-                tmp = MemberRolesResponse.model_validate(item)
-                rst.append(tmp)
-            return rst
+            return data if isinstance(data, dict) else {}
+
+        @staticmethod
+        def batch_get(
+            tenant_id: str, account_id: str | None, member_account_ids: list[str], *, language: str | None = None
+        ) -> list[MemberRolesResponse]:
+            unique_member_ids = list(dict.fromkeys(member_account_ids))
+            results: list[MemberRolesResponse] = []
+            for batch in batched(unique_member_ids, _MEMBER_ROLES_BATCH_SIZE, strict=False):
+                data = RBACService.MemberRoles._fetch_batch(tenant_id, account_id, list(batch), language)
+                for member_id, roles in data.items():
+                    results.append(MemberRolesResponse.model_validate({"account_id": member_id, "roles": roles}))
+            return results
 
         @staticmethod
         def replace(
