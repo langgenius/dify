@@ -31,6 +31,15 @@ class WorkflowGraphTopology:
                 target = edge.get("target")
                 if isinstance(source, str) and isinstance(target, str):
                     incoming[target].append(source)
+        for node in graph.get("nodes") or []:
+            node_id, parent_id = (node.get("id"), node.get("parentId")) if isinstance(node, Mapping) else (None, None)
+            if (
+                isinstance(node_id, str)
+                and isinstance(parent_id, str)
+                and parent_id in node_ids
+                and parent_id != node_id
+            ):
+                incoming[node_id].append(parent_id)
         return cls(node_ids=node_ids, incoming=incoming)
 
     def has_node(self, node_id: str) -> bool:
