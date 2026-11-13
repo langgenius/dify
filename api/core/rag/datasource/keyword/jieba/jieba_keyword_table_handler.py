@@ -80,10 +80,12 @@ class JiebaKeywordTableHandler:
                 self._lcut = getattr(jieba, "lcut", None)
 
             def extract_tags(self, sentence: str, top_k: int | None = 20, **kwargs):
-                # Basic frequency-based keyword extraction as a fallback when TF-IDF is unavailable.
+                """Frequency-ranked keywords, used when jieba's TF-IDF is unavailable.
+
+                Mirrors jieba's contract: ``topK`` (or ``top_k``) as an int keeps that many
+                of the most frequent non-stopword tokens; ``None`` keeps all of them. Pure.
+                """
                 top_k = cast(int | None, kwargs.pop("topK", top_k))
-                if top_k is None:
-                    top_k = 20
                 cut = getattr(jieba, "cut", None)
                 if self._lcut:
                     tokens = self._lcut(sentence)
@@ -106,10 +108,20 @@ class JiebaKeywordTableHandler:
         return _SimpleTFIDF()
 
     def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
-        """Extract keywords with JIEBA tfidf."""
+        """Extract keywords with JIEBA tfidf.
+
+        Preconditions: ``text`` is any string; ``max_keywords_per_chunk`` is a positive
+        int or ``None``.
+
+        Postconditions: with an int ``n``, the result holds jieba's top ``n`` TF-IDF tags
+        (what indexing stores per chunk). With ``None``, it holds every tag; query-time
+        scoring relies on this so long queries keep their distinctive terms. Either way,
+        each tag is followed by its non-stopword ``\\w+`` sub-tokens. Pure: no side
+        effects beyond jieba's lazy dictionary load.
+        """
         keywords = self._tfidf.extract_tags(
             sentence=text,
-            topK=max_keywords_per_chunk or 10,
+            topK=max_keywords_per_chunk,
         )
         # jieba.analyse.extract_tags returns an untyped list when withFlag is False by default.
         keywords = cast(list[str], keywords)
