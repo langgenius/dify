@@ -24,6 +24,7 @@ from controllers.openapi._errors import (
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
+    ServiceApiDisabled,
     VersionNotFound,
     VersionNotRestorable,
     require_uuid,
@@ -177,7 +178,7 @@ class AppRunNodeListApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>:publish")
 class AppPublishApi(Resource):
-    @error_responses(PaidPlanRequiredError)
+    @error_responses(PaidPlanRequiredError, ServiceApiDisabled)
     @endpoint(
         op="publish.console_app",
         kind=Kind.OBJECT,

@@ -3,7 +3,7 @@ import uuid
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from io import BytesIO
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 
 import pytest
 from flask import Flask
@@ -66,6 +66,7 @@ ACCOUNT_ID = "00000000-0000-4000-8000-000000000003"
 VERSION_ID = "00000000-0000-4000-8000-000000000004"
 
 
+@runtime_checkable
 class _EndpointView(Protocol):
     """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
 
@@ -571,6 +572,8 @@ def test_publish_evaluator_plan_denial_is_forbidden(
     ctx = _app_context(sqlite_session)
     api = AppPublishApi()
 
+    endpoint_view: object = type(api).post
+    assert isinstance(endpoint_view, _EndpointView)
     with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
         with pytest.raises(PaidPlanRequiredError):
-            cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
+            endpoint_view.__handler__(api, ctx, "app-1", body=PublishPayload())

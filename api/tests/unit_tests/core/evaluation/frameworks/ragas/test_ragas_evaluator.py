@@ -387,6 +387,16 @@ def test_ragas_metric_loader_reports_missing_package(monkeypatch: pytest.MonkeyP
 
 
 def test_ragas_category_calls_use_tenant_scoped_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
+    @dataclass
+    class FakeModelWrapper:
+        model_provider: str
+        model_name: str
+        tenant_id: str
+
+    model_wrapper_module = ModuleType("core.evaluation.frameworks.ragas.ragas_model_wrapper")
+    model_wrapper_module.__dict__["DifyModelWrapper"] = FakeModelWrapper
+    monkeypatch.setitem(sys.modules, model_wrapper_module.__name__, model_wrapper_module)
+
     evaluator = RagasEvaluator(RagasConfig())
     categories: list[EvaluationCategory] = []
 
