@@ -1745,6 +1745,9 @@ export const versions = {
   byVersionId,
 }
 
+/**
+ * Delete an Agent App and schedule its resource cleanup
+ */
 export const delete6 = oc
   .route({
     inputStructure: 'detailed',
@@ -1752,30 +1755,39 @@ export const delete6 = oc
     operationId: 'deleteAgentByAgentId',
     path: '/agent/{agent_id}',
     successStatus: 204,
+    summary: 'Delete an Agent App and schedule its resource cleanup',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
+/**
+ * Return the admitted Agent's detail and its Build conversation
+ */
 export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentId',
     path: '/agent/{agent_id}',
+    summary: "Return the admitted Agent's detail and its Build conversation",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdPath }))
   .output(zGetAgentByAgentIdResponse)
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
+/**
+ * Update a roster Agent App and return its current detail
+ */
 export const put3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putAgentByAgentId',
     path: '/agent/{agent_id}',
+    summary: 'Update a roster Agent App and return its current detail',
     tags: ['console'],
   })
   .input(z.object({ body: zPutAgentByAgentIdBody, params: zPutAgentByAgentIdPath }))

@@ -1371,6 +1371,7 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
     finalization_model_bundle: ProviderModelBundle,
     finalization_records: tuple[App, _app_generator_Account, AgentConfigDraft],
 ) -> None:
+    """Finalize a valid draft twice without input guards or persisted chat state."""
     app_model, user, draft = finalization_records
     # An unrelated editor's newer draft must not become this account's runtime.
     sqlite_session.add(
@@ -1406,11 +1407,11 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
     client = ObservingClient()
     monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
 
-    def reject_message_path(*_args: object, **_kwargs: object) -> None:
-        pytest.fail("Internal finalization entered the user-message path")
+    def reject_input_guard(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Internal finalization invoked input moderation or annotation lookup")
 
-    monkeypatch.setattr(AgentAppGenerator, "_run_input_guards", reject_message_path)
-    monkeypatch.setattr(AgentAppGenerator, "_init_generate_records", reject_message_path)
+    monkeypatch.setattr(input_moderation_mod.InputModeration, "check", reject_input_guard)
+    monkeypatch.setattr(annotation_mod.AnnotationReplyFeature, "query", reject_input_guard)
     generator = AgentAppGenerator()
     generator.finalize_build_chat(
         app_model=app_model,
@@ -1437,14 +1438,24 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
         assert binding.session_snapshot == SessionSnapshot().model_dump_json()
 
 
-@pytest.mark.parametrize("missing", ["agent", "build_draft", "credentials"])
+@pytest.mark.parametrize(
+    ("missing", "expected_error", "expected_message"),
+    [
+        ("agent", AgentAppGeneratorError, "Agent App has no bound Agent"),
+        ("build_draft", AgentAppGeneratorError, "Agent build draft not found"),
+        ("credentials", ProviderTokenNotInitError, "Model gpt-4o-mini credentials is not initialized."),
+    ],
+)
 def test_finalization_rejects_unavailable_configuration_before_runtime(
     missing: str,
+    expected_error: type[Exception],
+    expected_message: str,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     finalization_model_bundle: ProviderModelBundle,
     finalization_records: tuple[App, _app_generator_Account, AgentConfigDraft],
 ) -> None:
+    """Reject each missing configuration with its own diagnostic before backend admission."""
     app_model, user, draft = finalization_records
     if missing == "agent":
         agent = sqlite_session.get(Agent, "agent1")
@@ -1457,8 +1468,7 @@ def test_finalization_rejects_unavailable_configuration_before_runtime(
     sqlite_session.commit()
     client = FakeAgentBackendRunClient()
     monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
-    expected = ProviderTokenNotInitError if missing == "credentials" else AgentAppGeneratorError
-    with pytest.raises(expected):
+    with pytest.raises(expected_error, match=expected_message):
         AgentAppGenerator().finalize_build_chat(
             app_model=app_model,
             user=user,
