@@ -10,27 +10,24 @@ from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Final, cast
+from urllib.parse import unquote
 
 from jsonschema import SchemaError
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 from jsonschema.protocols import Validator as JsonSchemaValidator
 from jsonschema.validators import validator_for
-from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, JsonValue
+from pydantic import BaseModel, ConfigDict, GetCoreSchemaHandler, GetJsonSchemaHandler, JsonValue
 from pydantic.json_schema import JsonSchemaValue
+from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.output import OutputSpec, ToolOutput
 from pydantic_core import PydanticCustomError, core_schema
 from typing_extensions import assert_never
 
-
-from pydantic import BaseModel, ConfigDict
-from pydantic_ai.capabilities import AbstractCapability
-from dify_agent.runtime.context import Deps
 from dify_agent.layers.output.configs import DifyOutputLayerConfig
-
+from dify_agent.runtime.context import Deps
 
 _FINAL_OUTPUT_TOOL_NAME: Final[str] = "final_output"
 _VALIDATED_OUTPUT_TYPE_NAME: Final[str] = f"DifyValidatedOutput_{_FINAL_OUTPUT_TOOL_NAME}"
-_LOCAL_DEFS_REF_PREFIX: Final[str] = "#/$defs/"
 _NON_SCHEMA_VALUE_KEYWORDS: Final[frozenset[str]] = frozenset({"const", "default", "enum", "example", "examples"})
 # Keywords whose values are name-to-schema maps. Entry names inside these maps
 # are user-chosen data (property names, definition names, ...), never keywords,
@@ -207,10 +204,38 @@ def _reject_non_local_refs(schema: JsonValue) -> None:
             raise ValueError(
                 "Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed."
             )
-        if not ref.startswith(_LOCAL_DEFS_REF_PREFIX):
-            raise ValueError(
-                f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
-            )
+        _local_defs_ref_name(ref)
+
+
+def _local_defs_ref_name(ref: str) -> str:
+    """Resolve the single JSON Pointer token naming a supported root ``$defs`` entry."""
+    try:
+        fragment = unquote(ref[1:], errors="strict")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"Invalid percent-encoded JSON Pointer in local $ref {ref!r}.") from exc
+    prefix = "/$defs/"
+    if not fragment.startswith(prefix):
+        raise ValueError(
+            f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
+        )
+
+    token = fragment.removeprefix(prefix)
+    if "/" in token:
+        raise ValueError(f"Nested local $ref paths are not supported for structured output: {ref!r}.")
+
+    decoded: list[str] = []
+    index = 0
+    while index < len(token):
+        char = token[index]
+        if char != "~":
+            decoded.append(char)
+            index += 1
+            continue
+        if index + 1 == len(token) or token[index + 1] not in "01":
+            raise ValueError(f"Invalid JSON Pointer escape in local $ref {ref!r}.")
+        decoded.append("/" if token[index + 1] == "1" else "~")
+        index += 2
+    return "".join(decoded)
 
 
 def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -231,7 +256,7 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
         if isinstance(node, dict):
             ref = node.get("$ref")
             if isinstance(ref, str):
-                ref_name = ref.removeprefix(_LOCAL_DEFS_REF_PREFIX)
+                ref_name = _local_defs_ref_name(ref)
                 if ref_name in ref_stack:
                     raise ValueError("Recursive $defs refs are not supported for structured output exposure.")
                 target = root_defs.get(ref_name)
