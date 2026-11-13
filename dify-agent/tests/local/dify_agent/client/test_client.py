@@ -855,27 +855,29 @@ def test_stream_events_resets_reconnect_budget_after_each_delivered_event() -> N
 
 
 def test_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
-    calls = 0
+    """Only a delivered event restores spent retries; comment-only heartbeats do not."""
+    seen_after: list[str] = []
+    progress_event = RunStartedEvent(id="1-0", run_id="run-1")
 
-    def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        if calls == 1:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        assert len(seen_after) <= 4, "heartbeats must not restore the reconnect budget"
+        if len(seen_after) == 2:
             return httpx.Response(
                 200,
-                stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1"))),
+                stream=DisconnectingSyncStream(_event_frame(progress_event)),
             )
-        return httpx.Response(200, stream=DisconnectingSyncStream())
+        return httpx.Response(200, stream=DisconnectingSyncStream(": keepalive\n\n"))
 
-    client = Client(
-        base_url="http://testserver",
-        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
+    events: list[RunEvent] = []
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+            for event in client.stream_events_sync("run-1", max_reconnects=2, reconnect_delay_seconds=0):
+                events.append(event)
 
-    with pytest.raises(DifyAgentStreamError, match="reconnect attempts exhausted"):
-        _ = list(client.stream_events_sync("run-1", max_reconnects=2, reconnect_delay_seconds=0))
-    # The progressing connection, then exactly two reconnects that deliver nothing.
-    assert calls == 3
+    assert seen_after == ["0-0", "0-0", "1-0", "1-0"]
+    assert events == [progress_event]
 
 
 def test_stream_events_default_reconnect_budget_is_finite() -> None:
@@ -1081,6 +1083,35 @@ def test_async_stream_events_resets_reconnect_budget_after_each_delivered_event(
         assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
         assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
         await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
+    """Only a delivered event restores spent retries; comment-only heartbeats do not."""
+    seen_after: list[str] = []
+    progress_event = RunStartedEvent(id="1-0", run_id="run-1")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        assert len(seen_after) <= 4, "heartbeats must not restore the reconnect budget"
+        if len(seen_after) == 2:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(progress_event)),
+            )
+        return httpx.Response(200, stream=DisconnectingAsyncStream(": keepalive\n\n"))
+
+    async def scenario() -> None:
+        events: list[RunEvent] = []
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+                async for event in client.stream_events("run-1", max_reconnects=2, reconnect_delay_seconds=0):
+                    events.append(event)
+
+        assert seen_after == ["0-0", "0-0", "1-0", "1-0"]
+        assert events == [progress_event]
 
     asyncio.run(scenario())
 
