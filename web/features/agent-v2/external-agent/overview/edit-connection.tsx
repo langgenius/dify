@@ -193,7 +193,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           <Button
             variant="ghost"
             size="small"
-            className="h-auto px-0 py-0 system-xs-medium text-text-tertiary"
+            className="h-auto px-0 py-0 system-xs-medium text-text-tertiary hover:bg-transparent hover:text-text-secondary"
           />
         }
       >
