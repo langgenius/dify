@@ -28,6 +28,7 @@ const mockGetSubscription = vi.hoisted(() => vi.fn())
 
 const render = async (ui: React.ReactElement) => {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
     accountProfile: mockConsoleState.userProfile as { email?: string },
     accountProfileMeta: { currentVersion: '1.0.0' },
     educationStatus: mockEducationStatus,
