@@ -9,13 +9,13 @@ from flask import request
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.utils.http_parser import deserialize_request
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from graphon.entities.graph_config import NodeConfigDict
 from models.model import App, AppMode
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from models.workflow import Workflow
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
 from services.plugin.dispatch_identity import PLUGIN_IDENTIFIER_HEADER

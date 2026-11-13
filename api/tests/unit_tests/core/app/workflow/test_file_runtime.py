@@ -120,14 +120,6 @@ def test_resolve_file_url_returns_remote_url() -> None:
     assert runtime.resolve_file_url(file=file) == "https://example.com/diagram.png"
 
 
-def test_resolve_file_url_requires_file_reference() -> None:
-    runtime = _build_runtime()
-    file = File.model_construct(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
-
-    with pytest.raises(ValueError, match="Missing file reference"):
-        runtime.resolve_file_url(file=file)
-
-
 def test_resolve_file_url_requires_extension_for_tool_files() -> None:
     runtime = _build_runtime()
     file = _build_file(

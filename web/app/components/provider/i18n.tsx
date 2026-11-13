@@ -49,7 +49,12 @@ export function I18nClientProvider({
   })
   return (
     <I18nextProvider i18n={initial.i18n}>
-      <I18nResourceStream id={streamId} initial={initial.resources} nonce={nonce} />
+      <I18nResourceStream
+        i18n={initial.i18n}
+        id={streamId}
+        initial={initial.resources}
+        nonce={nonce}
+      />
       <I18nDirectionProvider syncDocument>{children}</I18nDirectionProvider>
     </I18nextProvider>
   )

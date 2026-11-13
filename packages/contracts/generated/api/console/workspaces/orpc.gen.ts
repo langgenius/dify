@@ -1135,15 +1135,20 @@ export const enable = {
 }
 
 /**
+ * Given authorized workspace IDs and a validated query, return plugin endpoint DTOs
+ *
  * List endpoints for a specific plugin
+ * Service failures propagate. This read does not change endpoint state.
  */
 export const get10 = oc
   .route({
-    description: 'List endpoints for a specific plugin',
+    description:
+      'List endpoints for a specific plugin\nService failures propagate. This read does not change endpoint state.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentEndpointsListPlugin',
     path: '/workspaces/current/endpoints/list/plugin',
+    summary: 'Given authorized workspace IDs and a validated query, return plugin endpoint DTOs',
     tags: ['console'],
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListPluginQuery }))
@@ -1154,15 +1159,20 @@ export const plugin = {
 }
 
 /**
+ * Given authorized workspace IDs and a validated query, return JSON endpoint DTOs
+ *
  * List plugin endpoints with pagination
+ * Service failures propagate. This read does not change endpoint state.
  */
 export const get11 = oc
   .route({
-    description: 'List plugin endpoints with pagination',
+    description:
+      'List plugin endpoints with pagination\nService failures propagate. This read does not change endpoint state.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentEndpointsList',
     path: '/workspaces/current/endpoints/list',
+    summary: 'Given authorized workspace IDs and a validated query, return JSON endpoint DTOs',
     tags: ['console'],
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListQuery }))

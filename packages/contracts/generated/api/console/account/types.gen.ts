@@ -143,6 +143,7 @@ export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
 
 export type EducationStatusResponse = {
   allow_refresh: boolean
+  can_redeem_discount: boolean
   expire_at: number | null
   is_student: boolean
   result: boolean
@@ -248,6 +249,63 @@ export type InvalidAccountPasswordError = ErrorResponse & {
   status: 400
 }
 
+export type PersonalAccessTokenResourceCandidateResponse = {
+  data: Array<PersonalAccessTokenResourceResponse>
+  has_more: boolean
+  next_cursor: number | null
+}
+
+export type PersonalAccessTokenWorkspaceCandidateResponse = {
+  data: Array<PersonalAccessTokenWorkspaceResponse>
+  has_more: boolean
+  next_cursor: number | null
+}
+
+export type PersonalAccessTokenListResponse = {
+  data: Array<PersonalAccessTokenResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type PersonalAccessTokenCreatePayload = {
+  expiration?: '180_days' | '30_days' | '365_days' | '90_days' | 'never'
+  name: string
+  resource_scope?: PersonalAccessTokenResourceScopePayload
+  workspace_scope?: PersonalAccessTokenWorkspaceScopePayload
+}
+
+export type PersonalAccessTokenCreatedResponse = {
+  created_at: string
+  expires_at: string | null
+  id: string
+  last_used_at: string | null
+  name: string
+  resource_count: number
+  resource_scope_mode: 'all' | 'none' | 'selected'
+  secret: string | null
+  secret_last_four: string
+  status: 'access_issue' | 'active' | 'expired'
+  unavailable_count: number
+  version: number
+  workspace_count: number
+  workspace_scope_mode: 'all' | 'none' | 'selected'
+}
+
+export type PersonalAccessTokenDetailResponse = {
+  resources: Array<PersonalAccessTokenResourceResponse>
+  token: PersonalAccessTokenResponse
+  workspaces: Array<PersonalAccessTokenWorkspaceResponse>
+}
+
+export type PersonalAccessTokenUpdatePayload = {
+  name: string
+  resource_scope?: PersonalAccessTokenResourceScopePayload | null
+  version: number
+  workspace_scope?: PersonalAccessTokenWorkspaceScopePayload | null
+}
+
 export type AccountProfileResponse = {
   avatar?: string | null
   readonly avatar_url: string | null
@@ -288,6 +346,57 @@ export type AccountIntegrateResponse = {
   is_bound: boolean
   link?: string | null
   provider: string
+}
+
+export type PersonalAccessTokenResourceResponse = {
+  app_deployments?: Array<PersonalAccessTokenResourceResponse>
+  available: boolean
+  display_name: string
+  parent_app_id?: string | null
+  reason: string | null
+  resource_id: string
+  resource_type: 'app' | 'app_deployment' | 'dataset'
+  workspace_id: string
+  workspace_name: string
+}
+
+export type PersonalAccessTokenWorkspaceResponse = {
+  available: boolean
+  display_name: string
+  reason: string | null
+  role: string | null
+  workspace_id: string
+}
+
+export type PersonalAccessTokenResponse = {
+  created_at: string
+  expires_at: string | null
+  id: string
+  last_used_at: string | null
+  name: string
+  resource_count: number
+  resource_scope_mode: 'all' | 'none' | 'selected'
+  secret_last_four: string
+  status: 'access_issue' | 'active' | 'expired'
+  unavailable_count: number
+  version: number
+  workspace_count: number
+  workspace_scope_mode: 'all' | 'none' | 'selected'
+}
+
+export type PersonalAccessTokenResourceScopePayload = {
+  mode?: 'all' | 'none' | 'selected'
+  resources?: Array<PersonalAccessTokenResourcePayload>
+}
+
+export type PersonalAccessTokenWorkspaceScopePayload = {
+  mode?: 'all' | 'none' | 'selected'
+  workspace_ids?: Array<string>
+}
+
+export type PersonalAccessTokenResourcePayload = {
+  resource_id: string
+  resource_type: 'app' | 'app_deployment' | 'dataset'
 }
 
 export type AccountResponseWritable = {
@@ -671,6 +780,174 @@ export type PostAccountPasswordResponses = {
 
 export type PostAccountPasswordResponse =
   PostAccountPasswordResponses[keyof PostAccountPasswordResponses]
+
+export type GetAccountPersonalAccessTokenResourcesData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: number
+    keyword?: string
+    limit?: number
+    resource_type?: 'app' | 'dataset'
+  }
+  url: '/account/personal-access-token-resources'
+}
+
+export type GetAccountPersonalAccessTokenResourcesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokenResourcesError =
+  GetAccountPersonalAccessTokenResourcesErrors[keyof GetAccountPersonalAccessTokenResourcesErrors]
+
+export type GetAccountPersonalAccessTokenResourcesResponses = {
+  200: PersonalAccessTokenResourceCandidateResponse
+}
+
+export type GetAccountPersonalAccessTokenResourcesResponse =
+  GetAccountPersonalAccessTokenResourcesResponses[keyof GetAccountPersonalAccessTokenResourcesResponses]
+
+export type GetAccountPersonalAccessTokenWorkspacesData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: number
+    keyword?: string
+    limit?: number
+  }
+  url: '/account/personal-access-token-workspaces'
+}
+
+export type GetAccountPersonalAccessTokenWorkspacesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokenWorkspacesError =
+  GetAccountPersonalAccessTokenWorkspacesErrors[keyof GetAccountPersonalAccessTokenWorkspacesErrors]
+
+export type GetAccountPersonalAccessTokenWorkspacesResponses = {
+  200: PersonalAccessTokenWorkspaceCandidateResponse
+}
+
+export type GetAccountPersonalAccessTokenWorkspacesResponse =
+  GetAccountPersonalAccessTokenWorkspacesResponses[keyof GetAccountPersonalAccessTokenWorkspacesResponses]
+
+export type GetAccountPersonalAccessTokensData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
+  url: '/account/personal-access-tokens'
+}
+
+export type GetAccountPersonalAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokensError =
+  GetAccountPersonalAccessTokensErrors[keyof GetAccountPersonalAccessTokensErrors]
+
+export type GetAccountPersonalAccessTokensResponses = {
+  200: PersonalAccessTokenListResponse
+}
+
+export type GetAccountPersonalAccessTokensResponse =
+  GetAccountPersonalAccessTokensResponses[keyof GetAccountPersonalAccessTokensResponses]
+
+export type PostAccountPersonalAccessTokensData = {
+  body: PersonalAccessTokenCreatePayload
+  headers?: {
+    'Idempotency-Key'?: string
+  }
+  path?: never
+  query?: never
+  url: '/account/personal-access-tokens'
+}
+
+export type PostAccountPersonalAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountPersonalAccessTokensError =
+  PostAccountPersonalAccessTokensErrors[keyof PostAccountPersonalAccessTokensErrors]
+
+export type PostAccountPersonalAccessTokensResponses = {
+  201: PersonalAccessTokenCreatedResponse
+}
+
+export type PostAccountPersonalAccessTokensResponse =
+  PostAccountPersonalAccessTokensResponses[keyof PostAccountPersonalAccessTokensResponses]
+
+export type DeleteAccountPersonalAccessTokensByTokenIdData = {
+  body?: never
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}'
+}
+
+export type DeleteAccountPersonalAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAccountPersonalAccessTokensByTokenIdError =
+  DeleteAccountPersonalAccessTokensByTokenIdErrors[keyof DeleteAccountPersonalAccessTokensByTokenIdErrors]
+
+export type DeleteAccountPersonalAccessTokensByTokenIdResponses = {
+  204: void
+}
+
+export type DeleteAccountPersonalAccessTokensByTokenIdResponse =
+  DeleteAccountPersonalAccessTokensByTokenIdResponses[keyof DeleteAccountPersonalAccessTokensByTokenIdResponses]
+
+export type GetAccountPersonalAccessTokensByTokenIdData = {
+  body?: never
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}'
+}
+
+export type GetAccountPersonalAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountPersonalAccessTokensByTokenIdError =
+  GetAccountPersonalAccessTokensByTokenIdErrors[keyof GetAccountPersonalAccessTokensByTokenIdErrors]
+
+export type GetAccountPersonalAccessTokensByTokenIdResponses = {
+  200: PersonalAccessTokenDetailResponse
+}
+
+export type GetAccountPersonalAccessTokensByTokenIdResponse =
+  GetAccountPersonalAccessTokensByTokenIdResponses[keyof GetAccountPersonalAccessTokensByTokenIdResponses]
+
+export type PatchAccountPersonalAccessTokensByTokenIdData = {
+  body: PersonalAccessTokenUpdatePayload
+  path: {
+    token_id: string
+  }
+  query?: never
+  url: '/account/personal-access-tokens/{token_id}'
+}
+
+export type PatchAccountPersonalAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchAccountPersonalAccessTokensByTokenIdError =
+  PatchAccountPersonalAccessTokensByTokenIdErrors[keyof PatchAccountPersonalAccessTokensByTokenIdErrors]
+
+export type PatchAccountPersonalAccessTokensByTokenIdResponses = {
+  200: PersonalAccessTokenDetailResponse
+}
+
+export type PatchAccountPersonalAccessTokensByTokenIdResponse =
+  PatchAccountPersonalAccessTokensByTokenIdResponses[keyof PatchAccountPersonalAccessTokensByTokenIdResponses]
 
 export type GetAccountProfileData = {
   body?: never

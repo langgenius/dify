@@ -226,8 +226,8 @@ def test_offline_ddl_creates_replacement_before_dropping_old_index(
             assert f"DROP INDEX {name} ON {table}" in sql
 
 
-def test_model_indexes_and_revision_head_match(migration: ModuleType) -> None:
-    """Require model owner indexes to match DDL and keep a single revision head."""
+def test_model_indexes_and_revision_history_match(migration: ModuleType) -> None:
+    """Require matching model indexes and preserve this revision under the single head."""
     for model, name, columns in (
         (UploadFile, "upload_file_owner_idx", ["tenant_id", "created_by_role", "created_by"]),
         (ToolFile, "tool_file_owner_idx", ["tenant_id", "user_id"]),
@@ -241,5 +241,8 @@ def test_model_indexes_and_revision_head_match(migration: ModuleType) -> None:
             assert "upload_file_tenant_idx" not in {index.name for index in table.indexes}
     configuration = Config()
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[4] / "migrations"))
-    assert ScriptDirectory.from_config(configuration).get_heads() == [migration.revision]
+    scripts = ScriptDirectory.from_config(configuration)
+    head = scripts.get_current_head()
+    assert head is not None
+    assert migration.revision in {revision.revision for revision in scripts.iterate_revisions(head, "base")}
     assert migration.down_revision == "2c7e9a4b1d60"

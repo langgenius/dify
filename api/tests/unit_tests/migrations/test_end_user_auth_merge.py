@@ -18,3 +18,14 @@ def test_merge_has_one_head_and_no_schema_operations() -> None:
     assert set(migration.down_revision) == {"c64f2b7a913e", "6b7e2a9c4d10"}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
+
+
+def test_personal_token_merge_preserves_file_index_history_without_schema_operations() -> None:
+    """Require both parent revisions and verify that merging has no schema side effects."""
+    migration = import_module(
+        "migrations.versions.2026_11_13_1600-7d4b1c8e6a20_merge_end_user_auth_and_personal_tokens"
+    )
+
+    assert set(migration.down_revision) == {"f8c2a6d4e901", "b2e4c6d8a013"}
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None

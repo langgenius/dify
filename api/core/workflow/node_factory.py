@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, cast, final, override
 from sqlalchemy import select
 
 from configs import dify_config
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.credit_usage import created_by_from_app_type
@@ -22,7 +23,6 @@ from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     parse_llm_model_selector,

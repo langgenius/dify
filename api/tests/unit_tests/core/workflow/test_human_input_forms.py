@@ -35,8 +35,7 @@ def _persist_recipients(session: Session, recipients: list[HumanInputFormRecipie
 @pytest.mark.parametrize(
     ("surface", "expected_token"),
     [
-        # Unfiltered (no surface) picks the highest-priority recipient: backstage.
-        (None, "backstage-token"),
+        (HumanInputSurface.CONSOLE, "backstage-token"),
         # SERVICE_API may only act on the web-app recipient.
         (HumanInputSurface.SERVICE_API, "web-token"),
     ],
@@ -68,7 +67,7 @@ def test_load_form_tokens_drops_forms_without_actionable_token(sqlite_session: S
         ],
     )
 
-    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session) == {}
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.CONSOLE) == {}
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
@@ -133,9 +132,6 @@ _EMAIL_EXTERNAL = (RecipientType.EMAIL_EXTERNAL, "t2")
         # CONSOLE acts on console/backstage; a web-app recipient is blocked → web_app channel.
         ([_CONSOLE, _WEB], HumanInputSurface.CONSOLE, FormDisposition("tok_c", ["web_app"])),
         ([_WEB], HumanInputSurface.CONSOLE, FormDisposition(None, ["web_app"])),
-        # No surface: unfiltered priority token, channels never populated.
-        ([_BACKSTAGE], None, FormDisposition("tok_b", [])),
-        ([_WEB, _EMAIL_MEMBER], None, FormDisposition("tok_web", [])),
     ],
 )
 def test_disposition_for_surface_partitions_token_and_channels(recipients, surface, expected) -> None:

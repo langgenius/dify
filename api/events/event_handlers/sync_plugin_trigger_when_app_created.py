@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_application_services import application_services
 from models.model import App, AppMode

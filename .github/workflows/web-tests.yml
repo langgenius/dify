@@ -24,6 +24,8 @@ jobs:
       - name: Setup web environment
         timeout-minutes: 15
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Setup Python for in-memory Console schema export
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -69,8 +71,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # All Web jobs restore the same dependency cache; only one shard saves it.
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: ${{ matrix.shardIndex == 1 }}
 
       - name: Run tests
         run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
@@ -109,12 +114,17 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Install Chromium for Browser Mode
         timeout-minutes: 15
         run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run browser tests
+        env:
+          # Unit uploads already include all authored sources, including untested modules.
+          DIFY_TEST_COVERAGE_ONLY_EXECUTED: 'true'
         run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Report browser coverage
@@ -155,6 +165,8 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Install Chromium for Browser Mode
         timeout-minutes: 15
@@ -203,6 +215,8 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Install Chromium for Browser Mode
         timeout-minutes: 15

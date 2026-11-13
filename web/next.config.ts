@@ -18,7 +18,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
     rules: {
-      ...codeInspectorPlugin({ bundler: 'turbopack' }),
+      ...codeInspectorPlugin({
+        bundler: 'turbopack',
+        behavior: { locate: true, defaultAction: 'locate' },
+      }),
       '*.openapi': { loaders: [openapiLoader], as: '*.js' },
       '*.openapi-source': { loaders: [openapiLoader], as: '*.js' },
       '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
@@ -42,12 +45,6 @@ const nextConfig: NextConfig = {
       {
         source: '/explore/apps',
         destination: '/',
-        permanent: true,
-      },
-      {
-        // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
-        source: '/education-apply',
-        destination: '/education/apply',
         permanent: true,
       },
     ]

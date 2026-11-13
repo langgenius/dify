@@ -2,12 +2,12 @@ import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { useRememberStudioListHref } from '@/app/components/apps/list-navigation-state'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppDetailTop } from '../app-detail-top'
-
-vi.mock('@/app/components/apps/list-navigation-state', () => ({
-  useStudioListHref: () => '/apps',
-}))
 
 function TestGotoAnythingDialog() {
   return (
@@ -26,15 +26,26 @@ function AppSidebarTopOwner() {
   return <AppDetailTop expand={expanded} onToggle={() => setExpanded((value) => !value)} />
 }
 
+function RememberedStudioTop() {
+  useRememberStudioListHref('/apps', '/apps?tag=agent')
+  return <AppDetailTop />
+}
+
+async function renderTop(ui: React.ReactNode) {
+  const queryClient = createTestQueryClient()
+  seedCurrentWorkspaceQuery(queryClient, { id: 'workspace-1' })
+  return render(<QueryClientTestProvider queryClient={queryClient}>{ui}</QueryClientTestProvider>)
+}
+
 describe('AppDetailTop', () => {
   beforeEach(() => {
     gotoAnythingDialogHandle.close()
   })
 
   it('opens quick search from the app breadcrumb and restores focus on Escape', async () => {
-    const screen = await render(
+    const screen = await renderTop(
       <>
-        <AppDetailTop />
+        <RememberedStudioTop />
         <TestGotoAnythingDialog />
       </>,
     )
@@ -42,7 +53,7 @@ describe('AppDetailTop', () => {
     const studio = screen.getByRole('link', { name: 'navigation.menus.apps' })
     const search = screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' })
     await expect.element(home).toHaveAttribute('href', '/')
-    await expect.element(studio).toHaveAttribute('href', '/apps')
+    await expect.element(studio).toHaveAttribute('href', '/apps?tag=agent')
 
     await userEvent.click(search)
     await expect.element(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeVisible()
@@ -56,7 +67,7 @@ describe('AppDetailTop', () => {
 
   // TODO(https://github.com/langgenius/dify/issues/45934): collapsing leaves focus on body.
   it.fails('collapses and expands without dropping keyboard focus', async () => {
-    const screen = await render(<AppSidebarTopOwner />)
+    const screen = await renderTop(<AppSidebarTopOwner />)
     await userEvent.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
     const expand = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
     const retainedFocus = document.activeElement === expand.element()

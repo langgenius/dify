@@ -30,13 +30,13 @@ export class CustomTextNode extends TextNode {
 
   override exportJSON(): SerializedTextNode {
     return {
+      ...super.exportJSON(),
       detail: this.getDetail(),
       format: this.getFormat(),
       mode: this.getMode(),
       style: this.getStyle(),
       text: this.getTextContent(),
       type: 'custom-text',
-      version: 1,
     }
   }
 

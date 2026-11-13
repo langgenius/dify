@@ -11,9 +11,13 @@ can persist the run record. Request-shaped execution failures are left to
 ``AgentRunRunner`` so bad compositions, prompts,
 structured-output schemas, or session snapshots become asynchronous
 ``run_failed`` outcomes instead of synchronous HTTP rejections.
+Keyed admission delegates atomic claim/replay to storage across processes;
+only newly created runs start a local task. Replays return the retained status.
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 from collections.abc import Callable
 from typing import Protocol
@@ -48,6 +52,16 @@ class RunStore(RunEventSink, Protocol):
 
     async def create_run(self) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
+        ...
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        """Atomically return ``(record, created)`` across clients sharing storage.
+
+        A retained matching request replays its current record without extending
+        retention. A different fingerprint raises ``IdempotencyConflictError``
+        from the storage adapter. Persist only digests and run metadata; active
+        writes refresh absent or same-run claims without overwriting a new owner.
+        """
         ...
 
     async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
@@ -150,17 +164,29 @@ class RunScheduler:
         self._lifecycle_lock = asyncio.Lock()
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist and schedule one run in the current process.
+        """Admit a new run or replay a retained run with its current status.
 
-        The returned record is already ``running``. The background task is removed
-        from ``active_tasks`` when it finishes, regardless of success or failure.
+        New records are ``running`` and scheduled locally. Their background task
+        is removed from ``active_tasks`` on completion, regardless of outcome.
         Request-shaped runtime failures are intentionally deferred to the runner so
-        callers can observe them through the normal event/status stream.
+        callers can observe them through the normal event/status stream. A request
+        with an idempotency key reuses the original record without scheduling a
+        second task or refreshing retention; a normalized payload mismatch raises
+        the store's ``IdempotencyConflictError``.
         """
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run()
+            if request.idempotency_key is None:
+                record = await self.store.create_run()
+            else:
+                fingerprint = _create_run_fingerprint(request)
+                record, created = await self.store.create_run_idempotent(
+                    idempotency_key=request.idempotency_key,
+                    request_fingerprint=fingerprint,
+                )
+                if not created:
+                    return record
             task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task
             task.add_done_callback(lambda _task, run_id=record.run_id: self._discard_active_run(run_id))
@@ -353,6 +379,13 @@ class RunScheduler:
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
             return None
+
+
+def _create_run_fingerprint(request: CreateRunRequest) -> str:
+    """Hash the normalized request body without its idempotency key."""
+    payload = request.model_dump(mode="json", exclude={"idempotency_key"})
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 __all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]

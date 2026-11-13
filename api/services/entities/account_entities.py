@@ -304,6 +304,7 @@ class AccountEducationStatus:
     is_student: bool
     expire_at: datetime
     allow_refresh: bool
+    can_redeem_discount: bool
 
 
 @dataclass(frozen=True, slots=True)
