@@ -727,7 +727,7 @@
         "app_id": "path",
         "continue_on_pause": "query",
         "include_state_snapshot": "query",
-        "task_id": "path"
+        "run_id": "path"
       },
       "deprecated": false,
       "input": {
@@ -745,15 +745,15 @@
             "title": "Include State Snapshot",
             "type": "boolean"
           },
-          "task_id": { "type": "string" }
+          "run_id": { "type": "string" }
         },
-        "required": ["app_id", "task_id"],
+        "required": ["app_id", "run_id"],
         "type": "object"
       },
       "internal": false,
       "kind": "sse",
       "method": "GET",
-      "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
+      "path": "/openapi/v1/apps/{app_id}/runs/{run_id}/events",
       "summary": "Stream the events of a workflow run"
     },
     "describe.run.form": {
@@ -844,6 +844,20 @@
       "summary": "Submit a human-input form"
     },
     "stop.run": {
+      "bind": { "app_id": "path", "run_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "app_id": { "type": "string" }, "run_id": { "type": "string" } },
+        "required": ["app_id", "run_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/runs/{run_id}:stop",
+      "summary": "Stop a running or paused run of a workflow or advanced-chat app"
+    },
+    "stop.task": {
       "bind": { "app_id": "path", "task_id": "path" },
       "deprecated": false,
       "input": {
@@ -855,7 +869,7 @@
       "kind": "object",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}:stop",
-      "summary": "Stop a running task"
+      "summary": "Stop a streaming reply of a chat, agent-chat or completion app"
     },
     "describe.workspace": {
       "bind": { "workspace_id": "path" },
@@ -1821,6 +1835,106 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/tool-providers/{provider}/credentials",
       "summary": "Save an API-key credential for a tool provider; the provider checks it first"
+    },
+    "get.skill": {
+      "bind": {
+        "keyword": "query",
+        "limit": "query",
+        "page": "query",
+        "tag": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "keyword": {}, "limit": {}, "page": {}, "tag": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills",
+      "summary": "Skills in the workspace, newest edit first"
+    },
+    "describe.skill": {
+      "bind": { "skill_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "skill_id": {}, "workspace_id": {} },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}",
+      "summary": "One skill with its draft hash and latest published version"
+    },
+    "get.skill.version": {
+      "bind": { "limit": "query", "page": "query", "skill_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "limit": {}, "page": {}, "skill_id": {}, "workspace_id": {} },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}/versions",
+      "summary": "Published versions of a skill, newest first"
+    },
+    "export.skill": {
+      "bind": { "skill_id": "path", "version_id": "query", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "skill_id": {}, "version_id": {}, "workspace_id": {} },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "file",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}/archive",
+      "summary": "Download a skill as a zip: its draft, or one published version"
+    },
+    "import.skill": {
+      "bind": { "draft_hash": "body", "files": "file", "skill_id": "body", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "draft_hash": {}, "files": {}, "skill_id": {}, "workspace_id": {} },
+        "required": ["workspace_id", "files"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/imports",
+      "summary": "Create a skill from a folder, or overwrite a skill's draft with one"
+    },
+    "publish.skill": {
+      "bind": {
+        "publish_note": "body",
+        "skill_id": "path",
+        "version_name": "body",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "publish_note": {},
+          "skill_id": {},
+          "version_name": {},
+          "workspace_id": {}
+        },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}:publish",
+      "summary": "Publish the draft as a new version"
     }
   }
 }

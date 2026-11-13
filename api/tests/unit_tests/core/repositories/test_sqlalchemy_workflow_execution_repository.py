@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from aliyun.log.util import Util
 from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -501,6 +502,8 @@ class TestWorkflowControlPersistenceCases:
         monkeypatch.setattr(AliyunLogStore, "_initialized", False)
         monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "https://example.com")
         mocker.patch.object(AliyunLogStore, "_check_endpoint_connectivity")
+        # The SDK constructor probes the endpoint through a socket before any HTTP request.
+        mocker.patch.object(Util, "get_host_ip", return_value="127.0.0.1")
         store = AliyunLogStore()
         store._use_pg_protocol = True
         mocker.patch.object(store, "put_log")

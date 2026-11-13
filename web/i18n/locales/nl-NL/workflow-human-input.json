@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Actiewaarde",
   "nodes.humanInput.userActions.buttonTextTooLong": "Button text must be {{maxLength}} characters or less",
   "nodes.humanInput.userActions.chooseStyle": "Choose a button style",
+  "nodes.humanInput.userActions.defaultTitle": "Knoptekst {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Click the '+' button to add user actions",
   "nodes.humanInput.userActions.title": "User Actions",
   "nodes.humanInput.userActions.tooltip": "Definieer knoppen waarop gebruikers kunnen klikken om op dit formulier te reageren. Actie-ID bepaalt de vertakking. De Actiewaarde wordt stroomafwaarts beschikbaar gesteld als de geselecteerde ingebouwde uitvoer. Actie-ID moet beginnen met een letter of onderstrepingsteken, gevolgd door letters, cijfers of onderstrepingstekens.",

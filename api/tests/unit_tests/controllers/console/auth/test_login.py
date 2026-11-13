@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from typing import Never
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 
 from controllers.console import wraps
 from controllers.console.auth import login
@@ -46,6 +46,7 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
     PasswordLoginResult,
 )
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 TOKENS = AccountSessionTokens(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
@@ -133,7 +134,7 @@ def test_password_login_parses_input_and_serializes_cookies(
             "invite_token": "invite-token",
         },
     ):
-        response = login.LoginApi().post()
+        response = narrowed(login.LoginApi().post(), Response)
 
     assert response.json == {"result": "success", "data": None}
     assert service.password_commands == [
@@ -160,7 +161,7 @@ def test_password_login_serializes_missing_workspace(
         method="POST",
         json={"email": "user@example.com", "password": _encode("password")},
     ):
-        response = login.LoginApi().post()
+        response = narrowed(login.LoginApi().post(), dict)
 
     assert response["result"] == "fail"
     assert "workspace not found" in response["data"]
@@ -315,7 +316,7 @@ def test_refresh_maps_invalid_session_to_unauthorized(
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "bad-token")
 
     with app.test_request_context("/refresh-token", method="POST"):
-        response, status = login.RefreshTokenApi().post()
+        response, status = narrowed(login.RefreshTokenApi().post(), tuple)
 
     assert status == 401
     assert response == {"result": "fail", "message": "Invalid refresh token"}
@@ -329,7 +330,7 @@ def test_refresh_rejects_missing_cookie(
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: None)
 
     with app.test_request_context("/refresh-token", method="POST"):
-        response, status = login.RefreshTokenApi().post()
+        response, status = narrowed(login.RefreshTokenApi().post(), tuple)
 
     assert status == 401
     assert response["message"] == "No refresh token provided"
@@ -347,7 +348,7 @@ def test_refresh_does_not_require_completed_setup(
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "old-refresh")
 
     with app.test_request_context("/refresh-token", method="POST"):
-        response = login.RefreshTokenApi().post()
+        response = narrowed(login.RefreshTokenApi().post(), Response)
 
     assert response.json == {"result": "success"}
     assert service.refresh_tokens == ["old-refresh"]

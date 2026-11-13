@@ -20,7 +20,8 @@ describe('OperationMenu', () => {
   const mockOnViewReadme = vi.fn()
   const defaultProps = {
     source: PluginSource.github,
-    detailUrl: 'https://github.com/test/repo',
+    marketplacePlugin: { org: 'test', name: 'repo' },
+    repo: 'test/repo',
     onInfo: mockOnInfo,
     onCheckVersion: mockOnCheckVersion,
     onRemove: mockOnRemove,
@@ -39,7 +40,9 @@ describe('OperationMenu', () => {
 
       expect(screen.queryByText('plugin.detailPanel.operation.info')).not.toBeInTheDocument()
       expect(screen.queryByText('plugin.detailPanel.operation.checkUpdate')).not.toBeInTheDocument()
-      expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')?.href,
+      ).toContain('/plugins/test/repo')
       expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
 

@@ -37,8 +37,8 @@ export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedLexicalNode {
     return {
+      ...super.exportJSON(),
       type: 'query-block',
-      version: 1,
     }
   }
 

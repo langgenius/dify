@@ -148,8 +148,12 @@ def test_invoke_preserves_multiple_select_values(sqlite_session: Session):
 
     assert tool.last_invocation is not None
     assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
+    # A legacy comma-separated string is normalized, not rejected (#45003).
+    list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": "a,b"}))
+    assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
+    # A non-list, non-string value is still rejected.
     with pytest.raises(ValueError, match="must be a list"):
-        tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": "a"})
+        tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": 1})
 
 
 def test_invoke_supports_list_and_generator_results(sqlite_session: Session):

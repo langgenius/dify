@@ -2,7 +2,6 @@ import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/con
 import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactElement } from 'react'
-import type { NewKnowledgeSourceDraft } from '../../setup/source-draft'
 import type { SourceConnection, SourceProvider } from '../../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -38,72 +37,6 @@ const openMock = vi.hoisted(() => vi.fn())
 const connectFirecrawlButtonName = 'knowledgeSources.connectProvider:{"provider":"Firecrawl"}'
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
-
-vi.mock('../connected-source-workflow', () => ({
-  ConnectedSourceWorkflow: ({
-    draft,
-    onDraftChange,
-    onExit,
-  }: {
-    draft: Exclude<NewKnowledgeSourceDraft, { sourceType: 'websiteCrawl' }>
-    onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-    onExit: () => void
-  }) => {
-    const providers =
-      draft.sourceType === 'onlineDocuments'
-        ? ['Notion', 'Google Docs', 'Confluence']
-        : ['Google Drive', 'OneDrive', 'Amazon S3']
-    return (
-      <section data-testid="connected-source-setup">
-        <fieldset>
-          <legend>knowledgeSpace.providerLabel</legend>
-          {providers.map((provider) => (
-            <label key={provider}>
-              <input
-                type="radio"
-                name="connected-source-provider"
-                checked={draft.provider === provider}
-                onChange={() => onDraftChange({ ...draft, provider } as NewKnowledgeSourceDraft)}
-              />
-              {provider}
-            </label>
-          ))}
-        </fieldset>
-        <label>
-          knowledgeSources.sourceName
-          <input
-            aria-label="knowledgeSources.sourceName"
-            value={draft.sourceName}
-            onChange={(event) => onDraftChange({ ...draft, sourceName: event.target.value })}
-          />
-        </label>
-        <label>
-          knowledgeSources.syncPolicy
-          <select
-            aria-label="knowledgeSources.syncPolicy"
-            value={draft.syncPolicy}
-            onChange={(event) =>
-              onDraftChange({
-                ...draft,
-                syncPolicy: event.target.value as NewKnowledgeSourceDraft['syncPolicy'],
-              })
-            }
-          >
-            <option value="daily">knowledgeSources.syncPolicyDaily</option>
-            <option value="manual">knowledgeSources.syncPolicyManual</option>
-          </select>
-        </label>
-        <p role="status">knowledgeSpace.notionNotConnected</p>
-        <button type="button" onClick={onExit}>
-          knowledgeSources.cancelAddSource
-        </button>
-        <button type="button" disabled>
-          knowledgeSpace.addSource
-        </button>
-      </section>
-    )
-  },
-}))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 const providerApiResponse = vi.hoisted(() => (provider: SourceProvider) => ({
@@ -192,12 +125,36 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.sources.bySourceId.delete`]: async () => ({ status: 'accepted' }),
+      [`${space}.sources.bySourceId.pages.get`]: async () => ({
+        next_cursor: null,
+        workspaces: [],
+      }),
+      [`${space}.sources.bySourceId.files.get`]: async () => ({ buckets: [] }),
+      [`${space}.sources.post`]: async (input: {
+        body: { connectionId: string; name: string; uri: string; metadata: Record<string, unknown> }
+      }) => ({
+        connection_id: input.body.connectionId,
+        created_at: '2026-07-20T10:00:00Z',
+        credential_configured: true,
+        id: `preview-${input.body.connectionId}`,
+        knowledge_space_id: 'space-1',
+        metadata: input.body.metadata,
+        name: input.body.name,
+        permission_scope: [],
+        status: 'disabled',
+        type: 'connector',
+        updated_at: '2026-07-20T10:00:00Z',
+        uri: input.body.uri,
+        version: 1,
+      }),
       [`${space}.sourceConnections.byConnectionId.refresh.post`]: async (input: never) =>
         connectionApiResponse(await clientMock.refreshConnection(input)),
       [`${space}.sourceConnections.post`]: async (input: never) =>
         connectionApiResponse(await clientMock.createConnection(input)),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.list.get': async () => respond(server.datasourceAuth, (data) => data),
       'auth.plugin.datasource.defaultList.get': async (input: never) => {
         await server.listDatasourceAuth(input)
         return respond(server.datasourceAuth, (data) => data)
@@ -467,6 +424,87 @@ const connection = (
   version,
 })
 
+// Installed integration identities are data fixtures; provider discovery and the workflow stay real.
+const connectedPlugins: DataSourceItem[] = (
+  [
+    ['Notion', 'notion', 'notion_datasource', 'online_document'],
+    ['Confluence', 'confluence', 'confluence_datasource', 'online_document'],
+    ['Google Drive', 'google_drive', 'google_drive', 'online_drive'],
+    ['OneDrive', 'onedrive', 'onedrive_datasource', 'online_drive'],
+  ] as const
+).map(([label, provider, packageName, providerType]) => ({
+  ...firecrawlDatasourcePlugin,
+  plugin_id: `langgenius/${packageName}`,
+  provider,
+  plugin_unique_identifier: `langgenius/${packageName}:1.0.0@local`,
+  declaration: {
+    ...firecrawlDatasourcePlugin.declaration,
+    provider_type: providerType,
+    identity: {
+      ...firecrawlDatasourcePlugin.declaration.identity,
+      name: provider,
+      label: { en_US: label },
+    },
+    datasources: [
+      {
+        identity: {
+          author: 'langgenius',
+          name: provider,
+          provider,
+          label: { en_US: label, zh_Hans: label },
+        },
+        description: { en_US: label, zh_Hans: label },
+        parameters: [],
+      },
+    ],
+  },
+}))
+const connectedProviders: SourceProvider[] = connectedPlugins.map((plugin) => ({
+  authKinds: ['endpoint'],
+  available: true,
+  capabilities: [
+    plugin.declaration.provider_type === 'online_document' ? 'online-document' : 'online-drive',
+  ],
+  configuration: ['credentialId', 'pluginId', 'provider', 'datasource', 'providerKind'].map(
+    (name) => ({ name, required: true, secret: false, type: 'string' }),
+  ),
+  displayName: plugin.declaration.identity.label.en_US!,
+  id: plugin.provider,
+}))
+function enableConnectedSources() {
+  server.datasourceAuth.data = {
+    result: connectedPlugins.map((plugin) => ({
+      ...firecrawlDatasourceAuth,
+      name: plugin.provider,
+      provider: plugin.provider,
+      plugin_id: plugin.plugin_id,
+      plugin_unique_identifier: plugin.plugin_unique_identifier,
+      credentials_list: [
+        { ...firecrawlDatasourceAuth.credentials_list[0]!, id: `credential-${plugin.provider}` },
+      ],
+    })),
+  }
+  server.connections.data = [
+    {
+      items: connectedPlugins.map((plugin) => ({
+        ...connection('active'),
+        id: `connection-${plugin.provider}`,
+        providerId: plugin.provider,
+        configuration: {
+          credentialId: `credential-${plugin.provider}`,
+          pluginId: plugin.plugin_id,
+          provider: plugin.provider,
+          datasource: plugin.provider,
+          providerKind:
+            plugin.declaration.provider_type === 'online_document'
+              ? 'online-document'
+              : 'online-drive',
+        },
+      })),
+    },
+  ]
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((resolvePromise) => {
@@ -506,9 +544,17 @@ describe('AddSourcePage', () => {
     globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
     clientMock.refreshConnection.mockReset()
-    server.providers = { data: { items: [firecrawlProvider] }, error: null, pending: false }
+    server.providers = {
+      data: { items: [firecrawlProvider, ...connectedProviders] },
+      error: null,
+      pending: false,
+    }
     server.datasourceAuth = { data: { result: [] }, error: null, pending: false }
-    server.datasourcePlugins = { data: [firecrawlDatasourcePlugin], error: null, pending: false }
+    server.datasourcePlugins = {
+      data: [firecrawlDatasourcePlugin, ...connectedPlugins],
+      error: null,
+      pending: false,
+    }
     server.connections = { data: [{ items: [] }], error: null, nextPageError: null, pending: false }
   })
 
@@ -545,20 +591,6 @@ describe('AddSourcePage', () => {
       { params: { control_space_id: 'space-1' }, query: { cursor: 'page-1', limit: 200 } },
     ])
   })
-  it.each(['onlineDocuments', 'onlineDrive'])(
-    'does not request website provider data for the %s state',
-    async (initialSourceType) => {
-      await renderPage(
-        <AddSourcePage initialSourceType={initialSourceType} knowledgeSpaceId="space-1" />,
-      )
-
-      expect(server.listProviders).not.toHaveBeenCalled()
-      expect(server.listConnections).not.toHaveBeenCalled()
-      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
-      expect(screen.getByTestId('connected-source-setup')).toBeInTheDocument()
-    },
-  )
-
   it('stops automatic connection pagination after a cursor error', async () => {
     server.connections.data = [{ items: [] }, { items: [] }]
     server.connections.nextPageError = new Error('next page failed')
@@ -711,6 +743,7 @@ describe('AddSourcePage', () => {
   })
 
   it('restores online document configuration and keeps Add disabled until a resource is selected', async () => {
+    enableConnectedSources()
     await renderPage(
       <AddSourcePage
         initialSourceDraft={{
@@ -724,7 +757,7 @@ describe('AddSourcePage', () => {
     )
 
     expect(screen.getByRole('radio', { name: 'Google Docs' })).toBeChecked()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toHaveValue(
+    expect(await screen.findByRole('textbox', { name: /knowledgeSources.sourceName/ })).toHaveValue(
       'Shared product docs',
     )
     expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toHaveTextContent(
@@ -1492,6 +1525,7 @@ describe('AddSourcePage', () => {
   })
 
   it('keeps source types selectable and preserves each connected-source draft', async () => {
+    enableConnectedSources()
     const user = userEvent.setup()
     await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -1508,18 +1542,20 @@ describe('AddSourcePage', () => {
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
     expect(screen.getByRole('group', { name: 'knowledgeSpace.providerLabel' })).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toBeEnabled()
+    expect(
+      await screen.findByRole('textbox', { name: /knowledgeSources.sourceName/ }),
+    ).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' })).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.notionNotConnected')
+    await user.clear(screen.getByRole('textbox', { name: /knowledgeSources.sourceName/ }))
     await user.type(
-      screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' }),
+      screen.getByRole('textbox', { name: /knowledgeSources.sourceName/ }),
       'Product docs',
     )
 
     await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' }))
     expect(screen.getByRole('radio', { name: 'Google Drive' })).toBeChecked()
     await user.click(onlineDocuments)
-    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /knowledgeSources.sourceName/ })).toHaveValue(
       'Product docs',
     )
   })
@@ -1528,9 +1564,12 @@ describe('AddSourcePage', () => {
     await renderPage(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDrive' })).toBeChecked()
-    expect(screen.getByTestId('connected-source-setup')).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'knowledgeSources.sourceName' })).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.notionNotConnected')
+    expect(screen.getByRole('radio', { name: 'Google Drive' })).toBeChecked()
+    expect(
+      await screen.findByText(
+        'knowledgeSources.providerNotConfigured:{\"provider\":\"Google Drive\"}',
+      ),
+    ).toBeInTheDocument()
   })
 
   it.each([

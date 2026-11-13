@@ -243,16 +243,18 @@ it('defaults to models and preserves a real model search across section navigati
 
 it('closes compact navigation after changing the settings section', async () => {
   const user = userEvent.setup()
-  vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
-    matches: query === '(width < 48rem)',
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
+  const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList,
+  )
+  onTestFinished(() => matchMedia.mockRestore())
   renderPage({ ui: <SettingsIntegrations /> })
   await user.click(
     screen.getByRole('button', {
@@ -310,6 +312,18 @@ it('honors a legacy category-only MCP URL and the explicit route section takes p
   ).toHaveAttribute('href', '/integrations/tools/api')
 })
 
+it('expands tools in the same render that enters a tool section and keeps them expanded after leaving', () => {
+  const view = renderPage({ props: { section: 'provider' } })
+  const tools = screen.getByRole('button', { name: 'navigation.menus.tools' })
+  expect(tools).toHaveAttribute('aria-expanded', 'false')
+
+  view.rerender(<IntegrationsPage section="mcp" />)
+  expect(tools).toHaveAttribute('aria-expanded', 'true')
+
+  view.rerender(<IntegrationsPage section="data-source" />)
+  expect(tools).toHaveAttribute('aria-expanded', 'true')
+})
+
 it('keeps tools expanded while visiting models and changes to tools only when opening the disclosure', async () => {
   const user = userEvent.setup()
   renderPage({ ui: <SettingsIntegrations /> })
@@ -365,14 +379,16 @@ it.each([
   )
 })
 
-it('passes the category marketplace path to the settings host from the install menu', async () => {
+it('opens the category marketplace path from the install menu', async () => {
   const user = userEvent.setup()
-  const onSwitchToMarketplace = vi.fn()
-  renderPage({ props: { section: 'trigger', onSwitchToMarketplace } })
+  renderPage({ props: { section: 'trigger' } })
   await user.click(await screen.findByRole('button', { name: 'plugin.installAction' }))
   await user.click(screen.getByRole('menuitem', { name: 'plugin.source.marketplace' }))
-  expect(onSwitchToMarketplace).toHaveBeenCalledExactlyOnceWith('/plugins/trigger')
-  expect(window.open).not.toHaveBeenCalled()
+  expect(window.open).toHaveBeenCalledExactlyOnceWith(
+    expect.stringContaining('/plugins/trigger?source='),
+    '_blank',
+    'noopener,noreferrer',
+  )
 })
 
 it('saves category-specific automatic update settings from the toolbar', async () => {

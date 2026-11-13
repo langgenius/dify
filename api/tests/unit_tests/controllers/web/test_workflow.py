@@ -61,7 +61,8 @@ class TestWorkflowRunApi:
     )
     @patch("controllers.web.workflow.web_ns")
     def test_provider_not_init(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(ProviderNotInitializeError):
@@ -78,7 +79,8 @@ class TestWorkflowRunApi:
         mock_gen: MagicMock,
         app: Flask,
     ) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
@@ -93,7 +95,8 @@ class TestWorkflowRunApi:
     )
     @patch("controllers.web.workflow.web_ns")
     def test_quota_exceeded(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(ProviderQuotaExceededError):

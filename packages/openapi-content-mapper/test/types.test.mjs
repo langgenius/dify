@@ -54,7 +54,7 @@ query.pets.byPetId.get.queryOptions({ input: { params: { petId: 'wrong' } }, con
   )
 })
 
-function project(files, run) {
+function project(files, run, compilerOptions = {}) {
   const dir = mkdtempSync(join(root, 'test/.tmp-'))
   try {
     writeFileSync(
@@ -69,6 +69,7 @@ function project(files, run) {
           moduleResolution: 'NodeNext',
           types: ['node'],
           lib: ['ES2022', 'DOM'],
+          ...compilerOptions,
         },
         contentMappers: [{ package: root, extensions: ['.yaml', '.yml', '.openapi'] }],
         include: ['*.ts'],
@@ -99,8 +100,24 @@ for (const [extension, content] of [
         [`pets.${extension}`]: content,
         'index.ts': `
 import { api, query } from './pets.${extension}';
+import type { Schemas, Inputs, Outputs } from './pets.${extension}';
 import * as document from './pets.${extension}';
-// @ts-expect-error documents expose only api and query
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+const inputMatches: Equal<Inputs['pets']['post'], Parameters<typeof api.pets.post>[0]> = true;
+const outputMatches: Equal<Outputs['pets']['byPetId']['get'], Awaited<ReturnType<typeof api.pets.byPetId.get>>> = true;
+const schemaMatches: Equal<Schemas['Pet'], Outputs['pets']['byPetId']['get']> = true;
+const create: Inputs['pets']['post']['body'] = {name: 'Mochi'};
+const optionalInput: Inputs['pets']['get'] = undefined;
+const deletedOutput: Outputs['pets']['byPetId']['delete'] = undefined;
+// @ts-expect-error required inputs cannot be omitted
+const missingInput: Inputs['pets']['post'] = undefined;
+// @ts-expect-error inline bodies retain required fields
+const missingName: Inputs['pets']['post']['body'] = {};
+// @ts-expect-error unknown schema names are rejected
+type UnknownSchema = Schemas['Missing'];
+// @ts-expect-error type exports are not runtime values
+document.Schemas;
+// @ts-expect-error operation IDs are not exports
 document.getPet;
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 const wrappedQuery = createTanstackQueryUtils(api);
@@ -162,6 +179,174 @@ api.pets.get({ body: {} });
     )
   })
 }
+
+test('public schemas include unused recursive models, escaped names and JSON wire types', () => {
+  const binary = { type: 'string', format: 'binary' }
+  const spec = {
+    openapi: '3.1.0',
+    paths: {
+      '/upload': {
+        post: {
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/File' } },
+              'multipart/form-data': { schema: { $ref: '#/components/schemas/File' } },
+            },
+          },
+          responses: { 204: { description: 'Done' } },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        File: { type: 'object', required: ['data'], properties: { data: binary } },
+        'A/B~C': { type: 'integer' },
+        // Public export names cannot collide with schema names.
+        Schemas: { type: 'boolean' },
+        Unused: {
+          type: 'object',
+          required: ['value', 'children'],
+          properties: {
+            value: { $ref: '#/components/schemas/A~1B~0C' },
+            children: { type: 'array', items: { $ref: '#/components/schemas/Unused' } },
+          },
+        },
+      },
+    },
+  }
+  project(
+    {
+      'spec.openapi': JSON.stringify(spec),
+      'empty.openapi': JSON.stringify({ openapi: '3.1.0', paths: {} }),
+      'index.ts': `
+import type { Schemas, Inputs, Outputs } from './spec.openapi';
+import type { Schemas as EmptySchemas, Inputs as EmptyInputs, Outputs as EmptyOutputs } from './empty.openapi';
+type IsNever<T> = [T] extends [never] ? true : false;
+const emptySchemas: IsNever<keyof EmptySchemas> = true;
+const emptyInputs: IsNever<keyof EmptyInputs> = true;
+const emptyOutputs: IsNever<keyof EmptyOutputs> = true;
+const escaped: Schemas['A/B~C'] = 1;
+const collision: Schemas['Schemas'] = true;
+const jsonFile: Schemas['File'] = {data: 'base64'};
+const json: Inputs['upload']['post'] = {body: jsonFile};
+const form: Inputs['upload']['post'] = {body: {data: new Blob()}, contentType: 'multipart/form-data'};
+// @ts-expect-error schema models use JSON strings, not multipart Blob values
+const wrongModel: Schemas['File'] = {data: new Blob()};
+// @ts-expect-error the request body must match its media type
+const wrongForm: Inputs['upload']['post'] = {body: jsonFile, contentType: 'multipart/form-data'};
+// @ts-expect-error JSON is the default media type
+const wrongJson: Inputs['upload']['post'] = {body: {data: new Blob()}};
+const nothing: Outputs['upload']['post'] = undefined;
+type Descend<T, D extends unknown[] = []> = D['length'] extends 60 ? T : T extends {children: (infer C)[]} ? Descend<C, [...D, unknown]> : never;
+const deep: number = (null! as Descend<Schemas['Unused']>).value;
+// @ts-expect-error unused recursive schemas remain precise beyond inference depth limits
+const wrongDeep: string = (null! as Descend<Schemas['Unused']>).value;
+`,
+    },
+    (_dir, compile) => {
+      const result = compile()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('compatibility modules retain existing contracts imports, names and request structure', () => {
+  const spec = {
+    openapi: '3.1.0',
+    paths: {
+      '/tags': {
+        get: {
+          parameters: [
+            {
+              in: 'query',
+              name: 'type',
+              required: true,
+              schema: { $ref: '#/components/schemas/TagType' },
+            },
+            { in: 'query', name: 'keyword', schema: { type: 'string' } },
+          ],
+          responses: {
+            200: {
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/console_TagResponse' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/tags/{tag_id}': {
+        delete: {
+          parameters: [{ in: 'path', name: 'tag_id', required: true, schema: { type: 'string' } }],
+          responses: { 204: { description: 'Done' } },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        TagType: { type: 'string', enum: ['app', 'knowledge', 'skill', 'snippet'] },
+        console_TagResponse: {
+          type: 'object',
+          required: ['id', 'name'],
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            binding_count: { type: ['string', 'null'] },
+            type: { type: ['string', 'null'] },
+          },
+        },
+      },
+    },
+  }
+  project(
+    {
+      'console.openapi': JSON.stringify(spec),
+      'tags.types.ts': `
+import type { Schemas, Inputs, Outputs } from './console.openapi';
+export type TagResponse = Schemas['console_TagResponse'];
+export type GetTagsResponse = Outputs['tags']['get'];
+export type GetTagsData = {
+  body?: never;
+  path?: never;
+  query: Inputs['tags']['get']['query'];
+  url: '/tags';
+};
+export type DeleteTagsByTagIdData = {
+  body?: never;
+  path: Inputs['tags']['byTagId']['delete']['params'];
+  query?: never;
+  url: '/tags/{tag_id}';
+};
+`,
+      'index.ts': `
+import type * as Previous from ${JSON.stringify(join(root, '../contracts/generated/api/console/tags/types.gen.ts'))};
+import type { TagResponse, GetTagsData, GetTagsResponse, DeleteTagsByTagIdData } from '@dify/contracts/api/console/tags/types.gen';
+const tag: TagResponse = null! as Previous.TagResponse;
+const oldTag: Previous.TagResponse = null! as TagResponse;
+const input: GetTagsData = null! as Previous.GetTagsData;
+const oldInput: Previous.GetTagsData = null! as GetTagsData;
+const output: GetTagsResponse = null! as Previous.GetTagsResponse;
+const oldOutput: Previous.GetTagsResponse = null! as GetTagsResponse;
+const deletion: DeleteTagsByTagIdData = null! as Previous.DeleteTagsByTagIdData;
+const oldDeletion: Previous.DeleteTagsByTagIdData = null! as DeleteTagsByTagIdData;
+// @ts-expect-error legacy request types still require url
+const missingUrl: GetTagsData = {query: {type: 'app'}};
+// @ts-expect-error legacy request types retain path rather than params
+const renamedPath: DeleteTagsByTagIdData = {params: {tag_id: 'id'}, url: '/tags/{tag_id}'};
+`,
+    },
+    (_dir, compile) => {
+      const result = compile()
+      assert.equal(result.status, 0, result.output)
+    },
+    { paths: { '@dify/contracts/api/console/tags/types.gen': ['./tags.types.ts'] } },
+  )
+})
 
 test('schema changes invalidate types on the next native compilation', () => {
   project(

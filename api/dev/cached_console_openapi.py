@@ -27,6 +27,8 @@ from pathlib import Path
 from typing import Any, Never
 
 API_ROOT = Path(__file__).resolve().parents[1]
+SOURCE_ROOTS = (API_ROOT, API_ROOT.parent / "dify-agent/src")
+PACKAGE_INPUTS = (API_ROOT / "pyproject.toml", API_ROOT / "uv.lock", API_ROOT.parent / "dify-agent/pyproject.toml")
 TIMEOUT = 90
 IDLE_TIMEOUT = 120
 MAX_BYTES = 64 * 1024 * 1024
@@ -38,7 +40,7 @@ def source_imports() -> None:
 
     def get_code(self: importlib.machinery.SourceFileLoader, fullname: str):
         path = Path(self.path)
-        if path.is_relative_to(API_ROOT) and ".venv" not in path.parts:
+        if any(path.is_relative_to(root) for root in SOURCE_ROOTS) and ".venv" not in path.parts:
             return self.source_to_code(self.get_data(self.path), self.path)
         return original(self, fullname)
 
@@ -48,12 +50,13 @@ def source_imports() -> None:
 
 def source_state() -> dict[str, tuple[int, int, int]]:
     """Match the Console descriptor's inputs, excluding tests and local environments."""
-    files = [API_ROOT / "pyproject.toml", API_ROOT / "uv.lock", Path.cwd() / ".env"]
-    for directory, children, names in os.walk(API_ROOT):
-        children[:] = [name for name in children if name not in {".venv", ".git", "__pycache__"}]
-        if Path(directory) == API_ROOT:
-            children[:] = [name for name in children if name != "tests"]
-        files.extend(Path(directory) / name for name in names if name.endswith(".py"))
+    files = [*PACKAGE_INPUTS, Path.cwd() / ".env"]
+    for root in SOURCE_ROOTS:
+        for directory, children, names in os.walk(root):
+            children[:] = [name for name in children if name not in {".venv", ".git", "__pycache__"}]
+            if Path(directory) == API_ROOT:
+                children[:] = [name for name in children if name != "tests"]
+            files.extend(Path(directory) / name for name in names if name.endswith(".py"))
     return {str(file): file_stamp(file) for file in files}
 
 
@@ -141,7 +144,7 @@ def preload() -> tuple[bool, dict[str, tuple[int, int, int]]]:
         filename = getattr(module, "__file__", None)  # guard-ignore: no-new-getattr -- optional module source metadata
         if isinstance(filename, str):
             dependencies[str(Path(filename).resolve())] = file_stamp(Path(filename))
-    for filename in (API_ROOT / "pyproject.toml", API_ROOT / "uv.lock", Path.cwd() / ".env"):
+    for filename in (*PACKAGE_INPUTS, Path.cwd() / ".env"):
         dependencies[str(filename)] = file_stamp(filename)
     return safe, dependencies
 

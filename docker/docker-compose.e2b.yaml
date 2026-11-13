@@ -26,8 +26,6 @@ services:
       dockerfile: dify-agent/Dockerfile
     environment:
       DIFY_AGENT_RUNTIME_BACKEND: e2b
-      DIFY_AGENT_E2B_API_KEY: ${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
-      DIFY_AGENT_E2B_TEMPLATE: ${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
     ports:
       - "${EXPOSE_AGENT_BACKEND_PORT:-15050}:5050"
 

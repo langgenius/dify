@@ -3,11 +3,15 @@ import { trackMarketplaceSiteCardClick, trackMarketplaceSiteEvent } from '../mar
 
 describe('marketplace site track bridge', () => {
   afterEach(() => {
-    document.body.removeAttribute('data-is-marketplace')
+    document.documentElement.removeAttribute('data-is-marketplace')
     delete window.__marketplaceTracking__
   })
 
-  it('does not forward events outside the standalone marketplace', () => {
+  it.each([
+    ['without the host marker', undefined],
+    ['on the Dify console runtime dataset', 'false'],
+  ])('does not forward events %s', (_label, marker) => {
+    if (marker !== undefined) document.documentElement.setAttribute('data-is-marketplace', marker)
     const track = vi.fn()
     window.__marketplaceTracking__ = {
       track,
@@ -26,7 +30,7 @@ describe('marketplace site track bridge', () => {
   it('forwards events and card clicks on the standalone marketplace', () => {
     const track = vi.fn()
     const rememberReferrer = vi.fn()
-    document.body.setAttribute('data-is-marketplace', '')
+    document.documentElement.setAttribute('data-is-marketplace', '')
     window.__marketplaceTracking__ = {
       track,
       rememberReferrer,

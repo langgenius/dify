@@ -1,5 +1,7 @@
 import type {
   AppTraceResponse,
+  TraceAppConfigResponse,
+  TraceConfigPayload,
   TraceProviderCapabilitiesResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
@@ -22,8 +24,19 @@ vi.mock('@/service/base', async (importOriginal) => ({
 
 const langfuse = {
   public_key: 'public',
-  secret_key: '[__MASKED__]',
+  secret_key: 'secret',
   host: 'https://cloud.langfuse.com',
+}
+const langfuseSecrets = ['public_key', 'secret_key']
+
+/** The trace-config response for a stored Langfuse config: secrets are reported, never returned. */
+function presentLangfuse(stored: TraceConfigPayload['tracing_config']): TraceAppConfigResponse {
+  return {
+    tracing_config: Object.fromEntries(
+      Object.entries(stored).filter(([name]) => !langfuseSecrets.includes(name)),
+    ),
+    configured_secrets: langfuseSecrets.filter((name) => !!stored[name]),
+  }
 }
 const capabilities: TraceProviderCapabilitiesResponse = {
   provider: 'langfuse',
@@ -97,7 +110,7 @@ function setup({
     if (url.pathname.endsWith('/trace-config')) {
       if (req.method === 'GET') {
         const config = url.searchParams.get('tracing_provider') === 'langfuse' ? state.config : null
-        return Response.json({ tracing_config: config, has_not_configured: !config })
+        return Response.json(config ? presentLangfuse(config) : { has_not_configured: true })
       }
       if (req.method === 'DELETE') {
         if (state.failDelete)
@@ -118,7 +131,8 @@ function setup({
       const body = await req.json()
       if (body.activate)
         state.policy = { ...state.policy, enabled: true, tracing_provider: body.tracing_provider }
-      state.config = { ...body.tracing_config, secret_key: '[__MASKED__]' }
+      // Like the API, a secret left out of the save keeps its stored value.
+      state.config = { ...state.config, ...body.tracing_config }
       return Response.json({ result: 'success' }, { status: req.method === 'POST' ? 201 : 200 })
     }
     throw new Error(`Unexpected request ${req.method} ${url.pathname}`)
@@ -380,7 +394,7 @@ describe('Agent tracing configuration', () => {
     ).toEqual(['POST trace-config', 'POST trace-config'])
     expect(await writes(sent)[1]!.json()).toEqual({
       tracing_provider: 'langfuse',
-      tracing_config: { ...langfuse, secret_key: 'secret', host: 'https://updated.langfuse.com' },
+      tracing_config: { ...langfuse, host: 'https://updated.langfuse.com' },
       activate: true,
     })
     expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
@@ -390,7 +404,7 @@ describe('Agent tracing configuration', () => {
       capture_content: false,
       capture_agent: true,
     })
-    expect(state.config?.secret_key).toBe('[__MASKED__]')
+    expect(state.config).toEqual({ ...langfuse, host: 'https://updated.langfuse.com' })
   })
 
   it('preserves the draft after concurrent deletion and clears the conflict when retrying creation', async () => {
@@ -400,6 +414,11 @@ describe('Agent tracing configuration', () => {
     const host = screen.getByRole('textbox', { name: 'Host' })
     await user.clear(host)
     await user.type(host, 'https://draft.langfuse.com')
+    // A new destination needs its secrets entered again.
+    const publicKey = screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' })
+    const secretKey = screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' })
+    await user.type(publicKey, 'public')
+    await user.type(secretKey, 'secret')
     const server = request.getMockImplementation()!
     request.mockImplementation(async (...args) => {
       if (args[2].request.method === 'PATCH') {
@@ -420,6 +439,8 @@ describe('Agent tracing configuration', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Tracing configuration changed')
     expect(host).toHaveValue('https://draft.langfuse.com')
+    expect(publicKey).toHaveValue('public')
+    expect(secretKey).toHaveValue('secret')
     expect(screen.getByRole('button', { name: 'common.operation.saveAndEnable' })).toBeEnabled()
     expect(
       screen.getByRole('switch', { name: 'app.tracing.tracing', hidden: true }),
@@ -433,10 +454,6 @@ describe('Agent tracing configuration', () => {
       if (args[2].request.method === 'POST') await retry
       return server(...args)
     })
-    await user.type(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
-      'secret',
-    )
     await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(host).toHaveValue('https://draft.langfuse.com')
@@ -475,7 +492,7 @@ describe('Agent tracing configuration', () => {
     })
   })
 
-  it('refreshes capabilities after updating masked credentials', async () => {
+  it('refreshes capabilities after saving with the saved credentials kept', async () => {
     const { sent } = setup()
     const user = await openPanel()
     await openProvider(user)
@@ -484,7 +501,10 @@ describe('Agent tracing configuration', () => {
       expect(screen.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument(),
     )
     const patch = writes(sent).find((req) => req.method === 'PATCH')!
-    expect(await patch.json()).toEqual({ tracing_provider: 'langfuse', tracing_config: langfuse })
+    expect(await patch.json()).toEqual({
+      tracing_provider: 'langfuse',
+      tracing_config: { host: langfuse.host },
+    })
     expect(
       sent.filter((req) => new URL(req.url).pathname.endsWith('/trace-capabilities')).length,
     ).toBeGreaterThan(1)

@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 
 export function MissingReferenceWarning({
@@ -14,16 +15,13 @@ export function MissingReferenceWarning({
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
-            type="button"
+          <IconButton
             aria-label={label}
-            className={cn(
-              'flex size-5 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-              className,
-            )}
+            size="sm"
+            className={cn('shrink-0 hover:bg-transparent', className)}
           >
             <span aria-hidden className="i-ri-alert-fill size-3.5 text-text-warning-secondary" />
-          </button>
+          </IconButton>
         }
       />
       <TooltipContent>{label}</TooltipContent>

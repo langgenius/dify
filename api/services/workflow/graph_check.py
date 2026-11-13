@@ -11,7 +11,7 @@ from typing import Any, Final
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from core.trigger.constants import TRIGGER_NODE_TYPES
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
@@ -27,6 +27,7 @@ from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch
 logger = logging.getLogger(__name__)
 
 GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
+MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 _CANVAS_NOTE_TYPE: Final = "custom-note"
 

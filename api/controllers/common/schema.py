@@ -75,12 +75,18 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "core.app.entities.task_entities.WorkflowAppBlockingResponse.Data": "WorkflowAppBlockingResponseData",
 }
 
-_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],])")
+# Pydantic can append metadata such as "_Strict(strict=False)" after a process-local type ID.
+_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],_])")
 _MODULE_PREFIX = re.compile(r"(?:[^.[\],]+\.)+([^.[\],]+)")
 
 # Normalized component name -> (component name, fully qualified source type, schema), per namespace.
 _registered_schemas: WeakKeyDictionary[Namespace, dict[str, tuple[str, str, dict]]] = WeakKeyDictionary()
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]")
+
+
+def registered_schema_sources(namespace: Namespace) -> dict[str, str]:
+    """Return component identities for editor tooling without exposing mutable schemas."""
+    return {name: source for name, source, _ in _registered_schemas.get(namespace, {}).values()}
 
 
 def _normalized_schema_name(name: str) -> str:

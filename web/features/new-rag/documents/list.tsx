@@ -481,15 +481,17 @@ function DocumentsTableHeader() {
             }}
           />
         </th>
-        <th className="py-2 pe-6 font-normal">{t(($) => $.documentColumn)}</th>
-        <th className="hidden w-58.5 py-2 pe-6 font-normal lg:table-cell">
+        <th className="py-2 pe-6 text-start font-normal">{t(($) => $.documentColumn)}</th>
+        <th className="hidden w-58.5 py-2 pe-6 text-start font-normal lg:table-cell">
           {t(($) => $.sourceColumn)}
         </th>
-        <th className="w-24 py-2 pe-2 font-normal sm:w-66 sm:pe-6">{t(($) => $.statusColumn)}</th>
-        <th className="hidden w-43.5 py-2 pe-6 font-normal lg:table-cell">
+        <th className="w-24 py-2 pe-2 text-start font-normal sm:w-66 sm:pe-6">
+          {t(($) => $.statusColumn)}
+        </th>
+        <th className="hidden w-43.5 py-2 pe-6 text-start font-normal lg:table-cell">
           {t(($) => $.updatedColumn, { ns: 'knowledgeDocuments' })}
         </th>
-        <th className="w-10 py-2 font-normal" aria-label={t(($) => $.actionsColumn)} />
+        <th className="w-10 py-2 text-start font-normal" aria-label={t(($) => $.actionsColumn)} />
       </tr>
     </thead>
   )

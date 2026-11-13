@@ -7,7 +7,7 @@ import {
   parseMarketplacePluginId,
   shouldResolveInstallCategoryRedirect,
 } from '@/app/components/plugins/plugin-routes'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 import { redirect } from '@/next/navigation'
 
 type PluginListProps = {
@@ -28,7 +28,7 @@ const fetchPluginCategoryFromMarketplace = async (packageId: string) => {
     const path = pluginId
       ? `/plugins/${encodeURIComponent(pluginId.org)}/${encodeURIComponent(pluginId.name)}`
       : `/plugins/identifier?unique_identifier=${encodeURIComponent(packageId)}`
-    const response = await fetch(`${MARKETPLACE_API_PREFIX}${path}`, { cache: 'no-store' })
+    const response = await fetch(getMarketplaceApiUrl(path), { cache: 'no-store' })
 
     if (!response.ok) return undefined
 

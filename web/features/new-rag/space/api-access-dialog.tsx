@@ -1,11 +1,12 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogHeaderCloseButton,
   DialogTitle,
@@ -17,7 +18,9 @@ import { useTranslation } from 'react-i18next'
 import { DatasetApiKeyDialogContent } from '@/app/components/api-key/dataset-api-key-dialog-content'
 import { useDatasetApiKeyMutations } from '@/app/components/api-key/use-dataset-api-key-mutations'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
+import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
@@ -37,6 +40,7 @@ export function KnowledgeFsApiAccessDialog({
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tAppApi } = useTranslation(['appApi'])
   const { t: tCommon } = useTranslation(['common'])
+  const docLink = useDocLink()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
@@ -70,7 +74,7 @@ export function KnowledgeFsApiAccessDialog({
               <p className="system-xs-semibold-uppercase text-text-tertiary">
                 {t(($) => $['serviceApi.card.endpoint'], { ns: 'dataset' })}
               </p>
-              <div className="mt-1 flex min-h-8 items-center gap-1 rounded-lg bg-components-input-bg-normal py-1 pr-1 pl-3">
+              <div className="mt-1 flex min-h-8 items-center gap-1 rounded-lg bg-components-input-bg-normal py-1 ps-3 pe-1">
                 <code className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
                   {endpoint || tAppApi(($) => $.loading)}
                 </code>
@@ -94,15 +98,25 @@ export function KnowledgeFsApiAccessDialog({
               <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
                 {t(($) => $['settings.viewOnly'], { ns: 'knowledgeSpace' })}
               </div>
-            ) : (
-              <div className="flex justify-end">
-                <Button type="button" onClick={openApiKeyModal}>
-                  <span aria-hidden className="i-ri-key-2-line size-4 shrink-0" />
-                  {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
-                </Button>
-              </div>
-            )}
+            ) : null}
           </DialogBody>
+          <DialogFooter>
+            <Link
+              href={docLink('/api-reference/guides/knowledge-base')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants()}
+            >
+              <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
+              {t(($) => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
+            </Link>
+            {status === 'active' && canManageApiKey && (
+              <Button type="button" onClick={openApiKeyModal}>
+                <span aria-hidden className="i-ri-key-2-line size-4 shrink-0" />
+                {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -2,8 +2,11 @@
 
 Dify is an open-source platform for building LLM applications, agentic workflows, and RAG pipelines. This monorepo contains the backend API (`api/`), frontend application (`web/`), deployment assets (`docker/`), standalone agent backend (`dify-agent/`), CLI (`cli/`), and end-to-end suite (`e2e/`). Follow the nearest scoped `AGENTS.md` for the files being changed. Apply its guidance within the user's requested scope; explicit user instructions take precedence over workflow defaults.
 
+Before starting backend development, read the [architecture](docs/BACKEND_ARCHITECTURE.md), [repositories](docs/BACKEND_REPOSITORIES.md), [SQLAlchemy](docs/BACKEND_SQLALCHEMY.md), and [database schema](docs/BACKEND_DATABASE_SCHEMA.md) guides.
+
 ## Repository Gotchas
 
 - Run backend commands through `uv run --project api <command>`.
 - Backend integration tests are CI-only and are not expected to run locally.
-- Keep `docker/.env.example` limited to variables required for a default Docker Compose deployment to start. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.
+- Prefer targeted checks (specific test files, changed paths) on local machines. Before running a whole-project heavy job, such as the full Web `unit` or `browser` Vitest project, `pnpm -C web build` (`next build`), `pnpm -C web build:vinext`, or the full backend test suite, either get the user's approval or cap its resource use, for example `--maxWorkers=2` for Vitest, `NODE_OPTIONS=--max-old-space-size=4096` for Node builds, and `nice -n 10` for the process.
+- Keep `docker/.env.example` limited to settings that require manual user configuration. Omit settings whose built-in defaults work unchanged. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.

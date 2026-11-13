@@ -1,5 +1,7 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
+from functools import partial
+from hashlib import sha256
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -8,10 +10,19 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
+from models.knowledge_fs import (
+    KnowledgeFSAuthorizationRevision,
+    KnowledgeFSCapabilityIssuanceAudit,
+    KnowledgeFSControlSpace,
+    KnowledgeFSControlSpaceState,
+    KnowledgeFSLifecycleOutbox,
+)
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError
 from services.workspace.contracts import (
     EffectiveCreditPool,
+    WorkspaceCreation,
     WorkspaceCustomConfig,
     WorkspaceFeatures,
     WorkspaceMemberRecord,
@@ -25,6 +36,7 @@ from services.workspace.service import (
     WorkspaceQueryService,
     WorkspaceService,
 )
+from tests.helpers.unit.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 
 def make_account(
@@ -53,6 +65,113 @@ def make_tenant(tenant_id: str) -> Tenant:
 
 
 class TestWorkspaceMembersCases:
+    @staticmethod
+    def test_owner_transfer_commits_with_expired_batch_summary_audit_and_revokes_space_grants(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        workspace = make_tenant("workspace-1")
+        old_owner_id = "old-owner"
+        new_owner_id = "new-owner"
+        spaces = [
+            KnowledgeFSControlSpace(
+                tenant_id=workspace.id,
+                owner_account_id=old_owner_id,
+                provisioning_key=f"owner-transfer-{index}",
+                knowledge_space_id=f"10000000-0000-4000-8000-00000000000{index}",
+                state=KnowledgeFSControlSpaceState.ACTIVE,
+            )
+            for index in (1, 2)
+        ]
+        batch_claims = claims_summary(
+            tenant_id=workspace.id,
+            control_space_id=spaces[0].id,
+            grant_id=f"account:{old_owner_id}:batch:summary-digest",
+            subject=f"dify-account:{old_owner_id}",
+            caller_kind="interactive",
+        )
+        batch_claims["operation_id"] = "batchKnowledgeSpaceProductSummaries"
+        batch_claims["action"] = "knowledge_spaces.status.batch"
+        batch_claims["resource_type"] = "namespace"
+        batch_claims["resource_id"] = workspace.id
+        batch_claims["content_scope_ids"] = [space.knowledge_space_id for space in spaces if space.knowledge_space_id]
+        batch_claims["expires_at"] = "2020-01-01T00:00:00Z"
+        grants = (
+            (spaces[0], old_owner_id, "20000000-0000-4000-8000-000000000001"),
+            (spaces[1], new_owner_id, "20000000-0000-4000-8000-000000000002"),
+        )
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    workspace,
+                    make_account(old_owner_id, status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)),
+                    make_account(new_owner_id, status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)),
+                    TenantAccountJoin(tenant_id=workspace.id, account_id=old_owner_id, role=TenantAccountRole.OWNER),
+                    TenantAccountJoin(tenant_id=workspace.id, account_id=new_owner_id, role=TenantAccountRole.NORMAL),
+                    *spaces,
+                    *(
+                        KnowledgeFSAuthorizationRevision(tenant_id=workspace.id, control_space_id=space.id)
+                        for space in spaces
+                    ),
+                    KnowledgeFSCapabilityIssuanceAudit(
+                        tenant_id=workspace.id,
+                        control_space_id=spaces[0].id,
+                        trace_id="trace-batch-summary",
+                        jti_hash=f"sha256:{sha256(b'batch-summary').hexdigest()}",
+                        claims_summary=batch_claims,
+                    ),
+                    *(
+                        KnowledgeFSCapabilityIssuanceAudit(
+                            tenant_id=workspace.id,
+                            control_space_id=space.id,
+                            trace_id=f"trace-{grant_id}",
+                            jti_hash=f"sha256:{sha256(grant_id.encode()).hexdigest()}",
+                            claims_summary=claims_summary(
+                                tenant_id=workspace.id,
+                                control_space_id=space.id,
+                                grant_id=grant_id,
+                                subject=f"dify-account:{account_id}",
+                                caller_kind="interactive",
+                            ),
+                        )
+                        for space, account_id, grant_id in grants
+                    ),
+                ]
+            )
+
+        WorkspaceRepository(sqlite_session_factory).update_member_role(
+            workspace_id=workspace.id,
+            account_id=new_owner_id,
+            role=TenantAccountRole.OWNER,
+            actor_account_id=old_owner_id,
+        )
+
+        with sqlite_session_factory() as session:
+            roles = {
+                membership.account_id: membership.role
+                for membership in session.scalars(
+                    select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == workspace.id)
+                )
+            }
+            revisions = {
+                revision.control_space_id: revision
+                for revision in session.scalars(
+                    select(KnowledgeFSAuthorizationRevision).where(
+                        KnowledgeFSAuthorizationRevision.tenant_id == workspace.id
+                    )
+                )
+            }
+            commands = tuple(session.scalars(select(KnowledgeFSLifecycleOutbox)))
+            audit_count = len(tuple(session.scalars(select(KnowledgeFSCapabilityIssuanceAudit))))
+
+        assert roles == {old_owner_id: TenantAccountRole.NORMAL, new_owner_id: TenantAccountRole.OWNER}
+        assert {space.id: revisions[space.id].membership_epoch for space in spaces} == {space.id: 1 for space in spaces}
+        assert {space.id: revisions[space.id].revoke_sequence for space in spaces} == {space.id: 1 for space in spaces}
+        assert {(command.control_space_id, revoke_payload(command)["grant_id"]) for command in commands} == {
+            (space.id, grant_id) for space, _, grant_id in grants
+        }
+        assert {revoke_payload(command)["reason_code"] for command in commands} == {"workspace_role_changed"}
+        assert audit_count == 3
+
     @staticmethod
     def test_rbac_profile_batch_filters_requested_ids_and_workspace(
         sqlite_session_factory: sessionmaker[Session],
@@ -310,6 +429,37 @@ class TestWorkspaceRepositoryCases:
             )
             session.commit()
         return WorkspaceRepository(sqlite_session_factory)
+
+    @staticmethod
+    def test_provision_existing_account_creates_and_reuses_contact_identity(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            session.add(make_account("owner", status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)))
+
+        repository = WorkspaceRepository(sqlite_session_factory)
+        contact_ids: list[str] = []
+        for workspace_id in ("first", "second"):
+            prepare = partial(WorkspaceCreation, workspace_id, "Workspace", "public-key", 10, 0, {})
+
+            created = repository.provision(prepare, owner_id="owner")
+
+            assert created is not None
+            assert created.id == workspace_id
+            with sqlite_session_factory() as session:
+                membership = session.scalar(
+                    select(TenantAccountJoin).where(
+                        TenantAccountJoin.tenant_id == workspace_id,
+                        TenantAccountJoin.account_id == "owner",
+                    )
+                )
+                assert membership is not None
+                assert membership.role == TenantAccountRole.OWNER
+                identity = session.scalars(select(HumanInputContactIdentity)).one()
+                assert identity.subject_type == ContactSubjectType.ACCOUNT
+                assert identity.account_id == "owner"
+                contact_ids.append(identity.id)
+        assert contact_ids[0] == contact_ids[1]
 
     @staticmethod
     def test_names_by_ids_returns_only_existing_requested_workspaces(seeded: WorkspaceRepository) -> None:

@@ -164,6 +164,11 @@ describe('InputField', () => {
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
     )
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 1' }),
+      'alpha',
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onChange).toHaveBeenCalledExactlyOnceWith(
@@ -171,31 +176,114 @@ describe('InputField', () => {
     )
   })
 
-  it('should disable save and show validation error when variable name is invalid', async () => {
+  it.each(['invalid name', '1name', 'user-name', 'a'.repeat(31)])(
+    'should reject invalid variable name %s',
+    async (name) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+
+      render(
+        <InputField
+          nodeId="node-1"
+          isEdit
+          payload={createPayload()}
+          onChange={onChange}
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const inputs = screen.getAllByRole('textbox')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, name)
+
+      expect(
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.insertInputField.variableNameInvalid',
+        ),
+      )!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.keyboard('{Control>}{Enter}{/Control}')
+      expect(onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { mode: 'insert', isEdit: false },
+    { mode: 'edit', isEdit: true },
+  ])(
+    'should reject surrounding whitespace until the field name is corrected in $mode mode',
+    async ({ isEdit }) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <InputField
+          nodeId="node-whitespace-name"
+          isEdit={isEdit}
+          payload={isEdit ? createPayload() : undefined}
+          onChange={onChange}
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const nameInput = screen.getByRole('textbox', { name: /saveResponseAs/ })
+      const saveButton = screen.getByRole('button', {
+        name: isEdit ? 'common.operation.save' : /insertInputField\.insert/,
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, ' ReviewNote ')
+
+      expect(screen.getByText(/insertInputField\.variableNameInvalid/)).toBeInTheDocument()
+      expect(saveButton).toBeDisabled()
+      await user.click(saveButton)
+      await user.keyboard('{Control>}{Enter}{/Control}')
+      expect(onChange).not.toHaveBeenCalled()
+
+      await user.clear(nameInput)
+      await user.type(nameInput, 'ReviewNote')
+      expect(screen.queryByText(/insertInputField\.variableNameInvalid/)).not.toBeInTheDocument()
+      expect(saveButton).toBeEnabled()
+      await user.click(saveButton)
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ output_variable_name: 'ReviewNote' }),
+      )
+    },
+  )
+
+  it.each([
+    { mode: 'insert', isEdit: false },
+    { mode: 'edit', isEdit: true },
+  ])('should accept uppercase-start names and preserve case in $mode mode', async ({ isEdit }) => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
       <InputField
-        nodeId="human"
-        isEdit
-        payload={createPayload()}
+        nodeId="node-uppercase-name"
+        isEdit={isEdit}
+        payload={isEdit ? createPayload() : undefined}
+        unavailableVariableNames={['age']}
         onChange={onChange}
         onCancel={vi.fn()}
       />,
     )
 
-    const inputs = screen.getAllByRole('textbox')
-    await user.clear(inputs[0]!)
-    await user.type(inputs[0]!, 'invalid name')
+    const nameInput = screen.getByRole('textbox', {
+      name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.saveResponseAs/,
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Age')
+    const saveButton = screen.getByRole('button', {
+      name: isEdit
+        ? 'common.operation.save'
+        : /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/,
+    })
+    expect(saveButton).toBeEnabled()
+    await user.click(saveButton)
 
-    expect(
-      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.variableNameInvalid'),
-    )!.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await user.keyboard('{Control>}{Enter}{/Control}')
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ output_variable_name: 'Age' }),
+    )
   })
 
   it('should disable save and show validation error when variable name already exists', async () => {
@@ -384,7 +472,7 @@ describe('InputField', () => {
     })
   })
 
-  it('should switch to select payload when field type changes', async () => {
+  it('should block insertion of a select field without options', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -412,21 +500,55 @@ describe('InputField', () => {
       }),
     )
 
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0]).toEqual({
-      type: InputVarType.select,
-      output_variable_name: 'valid_name',
-      option_source: {
-        type: 'constant',
-        selector: [],
-        value: [],
-      },
-    })
+    const error = 'appDebug.variableConfig.errorMsg.atLeastOneOption'
+    expect(screen.getByRole('alert')).toHaveTextContent(error)
     expect(
-      screen.queryByText(
-        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
-      ),
-    ).not.toBeInTheDocument()
+      screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }),
+    ).toHaveAccessibleDescription(error)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('should reject blank and duplicate select options until they are corrected', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <InputField
+        nodeId="human"
+        isEdit
+        payload={{
+          type: InputVarType.select,
+          output_variable_name: 'choice',
+          option_source: { type: 'constant', selector: [], value: ['alpha', '   '] },
+        }}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const option = screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 2' })
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    expect(screen.getByRole('alert')).toHaveTextContent('common.errorMsg.fieldRequired')
+    expect(option).toHaveAccessibleDescription(/common\.errorMsg\.fieldRequired/)
+    expect(onChange).not.toHaveBeenCalled()
+
+    await user.clear(option)
+    await user.type(option, ' alpha ')
+    await user.keyboard('{Control>}{Enter}{/Control}')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'appDebug.variableConfig.errorMsg.optionRepeat',
+    )
+    expect(onChange).not.toHaveBeenCalled()
+
+    await user.clear(option)
+    await user.type(option, ' Alpha ')
+    await user.click(save)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      type: InputVarType.select,
+      output_variable_name: 'choice',
+      option_source: { type: 'constant', selector: [], value: ['alpha', ' Alpha '] },
+    })
   })
 
   it('should keep paragraph pre-populate editor available after switching back to paragraph', async () => {
@@ -594,15 +716,16 @@ describe('InputField', () => {
     })
   })
 
-  it('should only allow array[string] variables for select option source', async () => {
+  it('should save a select using an array[string] variable without constant options', async () => {
     const user = userEvent.setup()
+    const onChange = vi.fn()
 
     render(
       <InputField
         nodeId="human"
         isEdit={false}
         payload={createPayload()}
-        onChange={vi.fn()}
+        onChange={onChange}
         onCancel={vi.fn()}
       />,
     )
@@ -620,9 +743,17 @@ describe('InputField', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /common.setVarValuePlaceholder/ }))
-    expect(await screen.findByText('choices')).toBeInTheDocument()
+    const choices = await screen.findByText('choices')
     expect(screen.queryByText('text', { exact: true })).not.toBeInTheDocument()
     expect(screen.queryByText('files', { exact: true })).not.toBeInTheDocument()
+    await user.click(choices)
+    await user.click(screen.getByRole('button', { name: /insertInputField\.insert/ }))
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      type: InputVarType.select,
+      output_variable_name: 'valid_name',
+      option_source: { type: 'variable', selector: ['code', 'choices'], value: [] },
+    })
   })
 
   it('should save single file upload settings', async () => {

@@ -189,16 +189,15 @@ function GoldenQuestionDialogSession({
         />
       </div>
       <form
-        className="flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-6 pb-6"
+        className="relative flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-6 pb-6"
         onSubmit={handleSubmit}
       >
         <Field name="question" disabled={pending} invalid={questionInvalid}>
           <FieldLabel>
             {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
-            <span className="ml-0.5 text-text-destructive">*</span>
+            <span className="ms-0.5 text-text-destructive">*</span>
           </FieldLabel>
           <Textarea
-            aria-invalid={questionInvalid}
             className="h-22 resize-y"
             placeholder={t(($) => $['qualityPage.questionPlaceholder'], { ns: 'knowledgeQuality' })}
             value={question}
@@ -208,17 +207,16 @@ function GoldenQuestionDialogSession({
             }}
           />
           {questionInvalid && (
-            <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
+            <FieldError match>
               {t(($) => $['qualityPage.questionRequired'], { ns: 'knowledgeQuality' })}
             </FieldError>
           )}
         </Field>
-        <Field name="annotation" disabled={pending} invalid={Boolean(error)}>
+        <Field name="annotation" disabled={pending}>
           <FieldLabel>
             {t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}
           </FieldLabel>
           <Textarea
-            aria-invalid={Boolean(error)}
             className={mode === 'edit' ? 'h-22 min-h-22 resize-y' : 'h-16 min-h-16 resize-y'}
             placeholder={t(($) => $['qualityPage.annotationPlaceholder'], {
               ns: 'knowledgeQuality',
@@ -226,7 +224,6 @@ function GoldenQuestionDialogSession({
             value={annotation}
             onValueChange={setAnnotation}
           />
-          {error && <FieldError match>{error}</FieldError>}
         </Field>
         <div className="grid min-w-0 gap-4">
           <Field name="expectedEvidenceIds" disabled={pending}>
@@ -292,7 +289,7 @@ function GoldenQuestionDialogSession({
               </div>
             )}
           </Field>
-          <Field name="evidenceSearch" disabled={pending}>
+          <Field name="evidenceSearch" disabled={pending} invalid={Boolean(matchError)}>
             <FieldLabel>
               {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
             </FieldLabel>
@@ -338,7 +335,7 @@ function GoldenQuestionDialogSession({
           {searchCandidates.length > 0 && (
             <Field name="evidenceSearchResults" disabled={pending}>
               <Fieldset
-                className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2"
+                className="relative flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2"
                 render={
                   <CheckboxGroup
                     disabled={pending}
@@ -423,6 +420,11 @@ function GoldenQuestionDialogSession({
             onValueChange={setTags}
           />
         </Field>
+        {error && (
+          <p role="alert" className="system-xs-regular text-text-destructive">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button type="button" disabled={pending} onClick={() => onOpenChange(false)}>
             {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}

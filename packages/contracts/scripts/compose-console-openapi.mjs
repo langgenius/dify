@@ -52,6 +52,9 @@ export function composeConsoleDocuments(sources) {
           continue
         }
         operation.operationId = `${name}_${method}_${path}`
+        // Keep the new kebab-case segment from renaming legacy human_input client members.
+        if (name === 'console' && path === '/form/human-input/v2/{form_token}')
+          operation['x-client-path'] = ['form', 'humanInput', 'v2', 'byFormToken', method]
         // Preserve source-level servers when operations do not override them.
         if (!operation.servers && !item.servers && document.servers)
           operation.servers = document.servers
@@ -64,12 +67,16 @@ export function composeConsoleDocuments(sources) {
 
 export function loadConsoleDocument(root = resolve(import.meta.dirname, '..')) {
   const community = JSON.parse(
-    execFileSync('uv', ['run', '--project', 'api', 'api/dev/cached_console_openapi.py'], {
-      cwd: resolve(root, '../..'),
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 100000,
-    }),
+    execFileSync(
+      'uv',
+      ['run', '--frozen', '--project', 'api', 'api/dev/cached_console_openapi.py'],
+      {
+        cwd: resolve(root, '../..'),
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+        timeout: 100000,
+      },
+    ),
   )
   const snapshots = [
     ['enterprise', 'generated/enterprise/openapi.gen.json'],

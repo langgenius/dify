@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
-import { useMarketplace } from '../hooks'
+import { useToolMarketplace } from '../hooks'
 
 const requests = vi.hoisted(() => ({
   installed: vi.fn(),
@@ -51,7 +51,7 @@ const collection: MarketplaceCollection = {
 const response = (plugins = [plugin], total = plugins.length) => ({ data: { plugins, total } })
 function renderMarketplace(initial = { search: '', tags: [] as string[], enabled: true }) {
   const { wrapper } = createConsoleQueryWrapper()
-  return renderHook(({ search, tags, enabled }) => useMarketplace(search, tags, enabled), {
+  return renderHook(({ search, tags, enabled }) => useToolMarketplace(search, tags, enabled), {
     wrapper,
     initialProps: initial,
   })

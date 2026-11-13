@@ -66,8 +66,11 @@ def test_community_account_exists_sends_email_only(
     mail_task.delay.assert_called_once_with(account.email)
 
 
+@pytest.mark.usefixtures("db_session_with_containers")
 def test_cloud_account_not_found_calls_billing_no_email(
-    mock_external_dependencies: tuple[MagicMock, MagicMock], mocker: MockerFixture, caplog: LogCaptureFixture
+    mock_external_dependencies: tuple[MagicMock, MagicMock],
+    mocker: MockerFixture,
+    caplog: LogCaptureFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account_id = str(uuid4())

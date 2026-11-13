@@ -179,7 +179,7 @@ describe('TagItemEditor', () => {
       await waitFor(() =>
         expect(tagMocks.record).toHaveBeenCalledWith({
           type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
+          message: 'update failed',
         }),
       )
     })
@@ -288,7 +288,7 @@ describe('TagItemEditor', () => {
       await waitFor(() =>
         expect(tagMocks.record).toHaveBeenCalledWith({
           type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
+          message: 'delete failed',
         }),
       )
       expect(screen.getByText('Frontend')).toBeInTheDocument()

@@ -1,8 +1,43 @@
 import math
+from collections.abc import Iterator
 
 import pytest
+from sqlalchemy import Integer, Select, create_engine, event, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import DeclarativeBase, Mapped, ORMExecuteState, Session, mapped_column
 
-from libs.pagination import PaginatedResult, clamp_pagination
+from libs.pagination import PaginatedResult, clamp_pagination, paginate_query
+
+
+class _PaginationTestBase(DeclarativeBase):
+    pass
+
+
+class _CountTestRow(_PaginationTestBase):
+    __tablename__ = "_count_order_by_test"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+@pytest.fixture
+def pagination_session() -> Iterator[tuple[Session, list[str]]]:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    statements: list[str] = []
+    try:
+        _PaginationTestBase.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add_all(_CountTestRow(id=row_id) for row_id in range(1, 6))
+            session.commit()
+
+            @event.listens_for(session, "do_orm_execute")
+            def capture_statement(state: ORMExecuteState) -> None:
+                statement = state.statement
+                assert isinstance(statement, Select)
+                statements.append(str(statement.compile(dialect=postgresql.dialect())).upper())
+
+            yield session, statements
+    finally:
+        engine.dispose()
 
 
 class TestPaginatedResultPages:
@@ -72,7 +107,7 @@ class TestClampPagination:
         assert clamp_pagination(3, 500, 100) == (3, 100)
 
     def test_the_floor_wins_over_a_cap_below_one(self) -> None:
-        """Whatever the cap says, a page size of zero is the input that breaks the caller."""
+        """whatever the cap says, a page size of zero is the input that breaks the caller."""
         assert clamp_pagination(1, 20, 0) == (1, 1)
 
     def test_no_cap_leaves_a_large_per_page_alone(self) -> None:
@@ -100,3 +135,42 @@ class TestClampPagination:
         page, size = clamp_pagination(total, per_page, 100)
         result = PaginatedResult(items=[object()], total=total, page=page, per_page=size)
         assert (page * size < total) is result.has_next is False
+
+
+class TestPaginateQueryCount:
+    """The count subquery must not carry the statement's ORDER BY.
+
+    A retained ORDER BY forces PostgreSQL to sort the entire match set inside
+    COUNT(*) — on large tables that saturates read IOPS for a value the
+    ordering cannot change (#45734).
+    """
+
+    def test_count_strips_order_by_from_the_wrapped_statement(
+        self, pagination_session: tuple[Session, list[str]]
+    ) -> None:
+        session, statements = pagination_session
+        stmt = select(_CountTestRow).where(_CountTestRow.id > 2).order_by(_CountTestRow.id.desc())
+        result = paginate_query(stmt, session=session, page=1, per_page=2)
+
+        count_sql, _ = statements
+        assert "ORDER BY" not in count_sql
+        assert result.total == 3
+
+    def test_count_preserves_caller_limit_and_offset(self, pagination_session: tuple[Session, list[str]]) -> None:
+        session, statements = pagination_session
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc()).limit(4).offset(2)
+        result = paginate_query(stmt, session=session, page=1, per_page=10)
+
+        count_sql, _ = statements
+        assert "LIMIT" in count_sql
+        assert "OFFSET" in count_sql
+        assert result.total == 3
+
+    def test_page_query_retains_order_by(self, pagination_session: tuple[Session, list[str]]) -> None:
+        session, statements = pagination_session
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
+        result = paginate_query(stmt, session=session, page=2, per_page=2)
+
+        _, page_sql = statements
+        assert "ORDER BY" in page_sql
+        assert [row.id for row in result.items] == [3, 2]

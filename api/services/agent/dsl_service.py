@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from domain.workflow.agent_node import is_dify_agent_node_data
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (

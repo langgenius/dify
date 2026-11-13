@@ -8,9 +8,9 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Annotated
+from typing import Annotated, NoReturn
 
-from flask import Response
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import ConfigDict, WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
@@ -21,20 +21,30 @@ from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.db.session_factory import session_factory
+from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
+from factories.human_input_v2_form_presentation import build_form_presentation
 from fields.base import ResponseModel
 from libs.external_api import error_responses
-from libs.helper import to_timestamp
+from libs.helper import extract_remote_ip, to_timestamp
 from models.model import App, EndUser
+from repositories.human_input_v2.form_repository import Form as V2Form
 from services.human_input_service import (
     Form,
     FormExpiredError,
     FormNotFoundError,
     FormSubmittedError,
-    HumanInputService,
     InvalidFormDataError,
+    ServiceAPIHumanInputService,
+)
+from services.human_input_v2.submission_service import (
+    HumanInputFormError,
+    HumanInputFormErrorCode,
+    HumanInputSubmissionService,
+    ServiceAPIFormActor,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,7 +66,11 @@ class HumanInputFormSubmitResponse(ResponseModel):
 
 
 register_schema_models(service_api_ns, HumanInputFormSubmitPayload)
-register_response_schema_models(service_api_ns, HumanInputFormDefinitionResponse, HumanInputFormSubmitResponse)
+register_response_schema_models(
+    service_api_ns,
+    HumanInputFormDefinitionResponse,
+    HumanInputFormSubmitResponse,
+)
 
 
 def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] = ()) -> Response:
@@ -81,6 +95,37 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
     # routes must continue to flow through console-only authentication.
     if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.SERVICE_API):
         raise NotFound("Form not found")
+
+
+def _jsonify_v2_form_definition(form: V2Form) -> Response:
+    presentation = build_form_presentation(form.resolved_form)
+    response = HumanInputFormDefinitionResponse(
+        form_content=presentation.form_content,
+        inputs=presentation.inputs,
+        resolved_default_values=presentation.resolved_default_values,
+        user_actions=presentation.user_actions,
+        expiration_time=to_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
+    )
+    return Response(response.model_dump_json(), mimetype="application/json")
+
+
+def _raise_form_error(error: HumanInputFormError) -> NoReturn:
+    # Keep the existing Service API errors instead of leaking Web App v2's
+    # 409/410 statuses or its transport-specific error codes.
+    match error.code:
+        case HumanInputFormErrorCode.NOT_FOUND:
+            raise NotFound("Form not found") from error
+        case HumanInputFormErrorCode.ALREADY_SUBMITTED:
+            assert error.form_id is not None
+            raise FormSubmittedError(error.form_id) from error
+        case HumanInputFormErrorCode.EXPIRED:
+            assert error.form_id is not None
+            raise FormExpiredError(error.form_id) from error
+        case HumanInputFormErrorCode.INVALID_INPUT:
+            description = str(error.__cause__) if error.__cause__ is not None else "Invalid form data"
+            raise InvalidFormDataError(description) from error
+        case HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE:
+            raise BadRequest("The workflow is not paused with an active checkpoint.") from error
 
 
 @service_api_ns.route("/form/human_input/<string:form_token>")
@@ -121,10 +166,19 @@ class WorkflowHumanInputFormApi(Resource):
     )
     @validate_app_token
     def get(self, app_model: App, form_token: str):
-        service = HumanInputService(db.engine)
+        service = ServiceAPIHumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise NotFound("Form not found")
+            v2_service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
+            try:
+                v2_form = v2_service.get_service_api_form(
+                    actor=ServiceAPIFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id),
+                    form_token=form_token,
+                    ip_address=extract_remote_ip(request) or None,
+                )
+            except HumanInputFormError as error:
+                _raise_form_error(error)
+            return _jsonify_v2_form_definition(v2_form)
 
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_service_api(form)
@@ -176,10 +230,21 @@ class WorkflowHumanInputFormApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @model_validate(HumanInputFormSubmitPayload)
     def post(self, payload: HumanInputFormSubmitPayload, app_model: App, end_user: EndUser, form_token: str):
-        service = HumanInputService(db.engine)
+        service = ServiceAPIHumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise NotFound("Form not found")
+            v2_service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
+            try:
+                v2_service.submit_service_api_form(
+                    actor=ServiceAPIFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id),
+                    end_user_id=end_user.id,
+                    form_token=form_token,
+                    action=payload.action,
+                    inputs=payload.inputs,
+                )
+            except HumanInputFormError as error:
+                _raise_form_error(error)
+            return {}, 200
 
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_service_api(form)

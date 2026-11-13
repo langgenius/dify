@@ -739,6 +739,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     method: str,
     item: bool,
 ) -> None:
+    """Given a failed management dependency, retain its exception and log the request identifiers."""
     failure = WebAppAccessUnavailableError("private upstream response containing credentials")
     if item:
         management.harness.state.permission_error = failure
@@ -772,7 +773,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     management.assert_sessions_closed()
     records = [record for record in caplog.records if record.name.startswith("controllers.console.explore.")]
     assert len(records) == 1
-    assert records[0].exc_info is not None
+    assert isinstance(records[0].exc_info, tuple)
     assert records[0].exc_info[1] is failure
     assert management.harness.installed_app.tenant_id in records[0].getMessage()
     assert management.harness.account.id in records[0].getMessage()

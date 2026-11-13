@@ -62,10 +62,14 @@ class AppListBaseParams(BaseModel):
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     accessible_app_ids: list[str] | None = None
-    include_own_apps: bool = False
+    # Credential resource bindings are a strict scope; None means no binding restriction.
+    resource_app_ids: list[str] | None = None
 
 
 class AppListParams(AppListBaseParams):
+    # Internal selection projection; Console HTTP list schemas do not expose these fields.
+    for_selection: bool = False
+    resource_ids: list[str] | None = None
     status: str | None = None
     openapi_visible: bool = False
     agent_is_published: bool | None = None

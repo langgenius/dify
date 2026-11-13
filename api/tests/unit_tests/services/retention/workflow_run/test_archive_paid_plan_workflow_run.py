@@ -27,6 +27,7 @@ from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     WorkflowRunArchiver,
 )
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
+from tests.helpers import billing_builders as builders
 
 """SQLite and in-process coverage for workflow-run bundle archiving."""
 
@@ -333,9 +334,9 @@ class TestWorkflowRunArchiverSqliteCases:
             archiver = WorkflowRunArchiver(days=90)
 
             mock_bulk = {
-                "t1": {"plan": "professional"},
-                "t2": {"plan": "sandbox"},
-                "t3": {"plan": "team"},
+                "t1": builders.plan_item("professional"),
+                "t2": builders.plan_item("sandbox"),
+                "t3": builders.plan_item("team"),
             }
 
             with (
@@ -563,7 +564,7 @@ class TestWorkflowRunArchiverSqliteCases:
             rollback.assert_called_once()
 
         def test_retry_repairs_index_after_catalog_commit_then_index_write_failure(
-            self, sqlite_session: Session
+            self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
         ) -> None:
             archiver = WorkflowRunArchiver(days=90)
             run = _run()
@@ -582,7 +583,7 @@ class TestWorkflowRunArchiverSqliteCases:
                         raise RuntimeError("index write failed")
                 return original_put_object(key, data)
 
-            storage.put_object = MagicMock(side_effect=put_object)
+            monkeypatch.setattr(storage, "put_object", MagicMock(side_effect=put_object))
             table_data = {"workflow_runs": [{"id": run.id, "tenant_id": run.tenant_id}]}
 
             with (
@@ -596,17 +597,18 @@ class TestWorkflowRunArchiverSqliteCases:
             assert manifest_key in storage.objects
             assert json.loads(storage.objects[index_key])["run_ids"] == []
 
-            storage.list_objects = MagicMock(wraps=storage.list_objects)
+            list_objects = MagicMock(wraps=storage.list_objects)
+            monkeypatch.setattr(storage, "list_objects", list_objects)
             retry_result = archiver._archive_bundle(sqlite_session, storage, [run])
 
             assert retry_result.success is True
             assert retry_result.skipped is True
             assert json.loads(storage.objects[index_key])["manifest_keys"] == [manifest_key]
             assert json.loads(storage.objects[index_key])["run_ids"] == [run.id]
-            storage.list_objects.assert_not_called()
+            list_objects.assert_not_called()
 
         def test_existing_manifest_with_missing_index_fails_without_partial_rebuild(
-            self, sqlite_session: Session
+            self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
         ) -> None:
             archiver = WorkflowRunArchiver(days=90)
             run = _run()
@@ -619,14 +621,15 @@ class TestWorkflowRunArchiverSqliteCases:
             manifest_key = archiver._get_manifest_object_key(identity)
             index_key = archiver._get_index_object_key(identity)
             storage = FakeArchiveStorage({manifest_key: manifest_data})
-            storage.list_objects = MagicMock(wraps=storage.list_objects)
+            list_objects = MagicMock(wraps=storage.list_objects)
+            monkeypatch.setattr(storage, "list_objects", list_objects)
 
             result = archiver._archive_bundle(sqlite_session, storage, [run])
 
             assert result.success is False
             assert "archive shard index missing" in (result.error or "")
             assert index_key not in storage.objects
-            storage.list_objects.assert_not_called()
+            list_objects.assert_not_called()
 
         def test_successful_bundle_persists_archive_index(self, sqlite_session: Session) -> None:
             archiver = WorkflowRunArchiver(days=90)

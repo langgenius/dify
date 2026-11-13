@@ -285,11 +285,12 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
                   value={prompt}
                   onValueChange={(value) => setPrompt(value)}
                   maxLength={CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH}
-                  placeholder={
-                    t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder'], {
+                  placeholder={t(
+                    ($) => $['feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder'],
+                    {
                       ns: 'appDebug',
-                    }) || ''
-                  }
+                    },
+                  )}
                 />
               )}
             </FieldItem>

@@ -21,21 +21,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import AppMode, InstalledApp, MessageAgentThought, MessageFeedback, load_annotation_reply_config
+from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
+from repositories.message_projection import snapshot_console_message, snapshot_message
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import (
-    ConsoleMessageFeedbackRecord,
     ConsoleMessageRecord,
     MessageAccount,
-    MessageAccountRecord,
     MessageActor,
-    MessageAgentThoughtRecord,
-    MessageAnnotationHitRecord,
-    MessageAnnotationRecord,
-    MessageFileReference,
-    MessageInputValue,
     MessagePage,
-    MessageRating,
     MessageRecord,
     MessageSource,
 )
@@ -99,8 +92,7 @@ class MessageRepository:
                 limit=limit,
                 has_more=has_more,
                 data=tuple(
-                    self._to_source(record=self._to_message_record(message=message, session=session), session=session)
-                    for message in reversed(messages[:limit])
+                    snapshot_message(message=message, session=session) for message in reversed(messages[:limit])
                 ),
             )
 
@@ -146,10 +138,7 @@ class MessageRepository:
                 limit=limit,
                 has_more=has_more,
                 data=tuple(
-                    self._to_source(
-                        record=self._to_console_message_record(message=message, session=session), session=session
-                    )
-                    for message in reversed(messages)
+                    snapshot_console_message(message=message, session=session) for message in reversed(messages)
                 ),
             )
 
@@ -174,27 +163,7 @@ class MessageRepository:
             message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_id))
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for app {app_id}")
-            record = self._to_console_message_record(message=message, session=session)
-            return self._to_source(record=record, session=session)
-
-    @staticmethod
-    def _to_source[RecordT: MessageRecord](*, record: RecordT, session: Session) -> MessageSource[RecordT]:
-        """Snapshot file references without restoring files or signing URLs."""
-        files = session.scalars(select(MessageFile).where(MessageFile.message_id == record.id))
-        return MessageSource(
-            record=record,
-            files=tuple(
-                MessageFileReference(
-                    id=file.id,
-                    type=file.type.value,
-                    transfer_method=file.transfer_method.value,
-                    url=file.url,
-                    upload_file_id=file.upload_file_id,
-                    belongs_to=file.belongs_to.value if file.belongs_to is not None else None,
-                )
-                for file in files
-            ),
-        )
+            return snapshot_console_message(message=message, session=session)
 
     def _require_page_app(
         self,
@@ -656,116 +625,4 @@ class MessageRepository:
                 Message.from_account_id == account_id,
                 Message.from_end_user_id == end_user_id,
             )
-        )
-
-    @staticmethod
-    def _to_message_record(*, message: Message, session: Session) -> MessageRecord:
-        # Snapshot stored JSON; restoration and URL signing belong to the query
-        # service's file adapter after this database session has closed.
-        inputs = deepcopy(cast(dict[str, MessageInputValue], message._inputs))
-        feedback = message.user_feedback_with_session(session=session)
-        thoughts = [
-            MessageRepository._thought_record(thought)
-            for thought in message.agent_thoughts_with_session(session=session)
-        ]
-        return MessageRecord(
-            id=message.id,
-            conversation_id=message.conversation_id,
-            parent_message_id=message.parent_message_id,
-            inputs=inputs,
-            query=message.query,
-            answer=message.answer,
-            feedback=MessageRating(rating=feedback.rating.value) if feedback is not None else None,
-            retriever_resources=cast(list[dict[str, JsonValue]] | None, message.retriever_resources),
-            created_at=message.created_at,
-            agent_thoughts=thoughts,
-            message_files=[],
-            message_tokens=message.message_tokens,
-            answer_tokens=message.answer_tokens,
-            provider_response_latency=message.provider_response_latency,
-            total_price=message.total_price,
-            currency=message.currency,
-            status=message.status.value,
-            error=message.error,
-            metadata=cast(JsonValue, message.message_metadata_dict),
-        )
-
-    @staticmethod
-    def _thought_record(thought: MessageAgentThought) -> MessageAgentThoughtRecord:
-        return MessageAgentThoughtRecord(
-            id=thought.id,
-            message_id=thought.message_id,
-            message_chain_id=thought.message_chain_id,
-            position=thought.position,
-            thought=thought.thought,
-            answer=thought.answer,
-            tool=thought.tool,
-            tool_labels=cast(JsonValue, thought.tool_labels),
-            tool_input=thought.tool_input,
-            created_at=thought.created_at,
-            observation=thought.observation,
-            files=cast(list[str], thought.files),
-        )
-
-    @staticmethod
-    def _account_record(account: Account | None) -> MessageAccountRecord | None:
-        return MessageAccountRecord(id=account.id, name=account.name, email=account.email) if account else None
-
-    def _to_console_message_record(self, *, message: Message, session: Session) -> ConsoleMessageRecord:
-        record = self._to_message_record(message=message, session=session)
-        annotation = message.annotation_with_session(session=session)
-        annotation_hit = message.annotation_hit_history_with_session(session=session)
-        return ConsoleMessageRecord(
-            id=record.id,
-            conversation_id=record.conversation_id,
-            parent_message_id=record.parent_message_id,
-            inputs=record.inputs,
-            query=record.query,
-            answer=record.answer,
-            feedback=record.feedback,
-            retriever_resources=record.retriever_resources or [],
-            created_at=record.created_at,
-            agent_thoughts=record.agent_thoughts,
-            message_files=record.message_files,
-            message_tokens=record.message_tokens,
-            answer_tokens=record.answer_tokens,
-            provider_response_latency=record.provider_response_latency,
-            total_price=record.total_price,
-            currency=record.currency,
-            status=record.status,
-            error=record.error,
-            metadata=record.metadata,
-            message=deepcopy(cast(JsonValue, message.message)),
-            from_source=message.from_source,
-            from_end_user_id=message.from_end_user_id,
-            from_account_id=message.from_account_id,
-            workflow_run_id=message.workflow_run_id,
-            feedbacks=[
-                ConsoleMessageFeedbackRecord(
-                    rating=feedback.rating.value,
-                    content=feedback.content,
-                    from_source=feedback.from_source.value,
-                    from_end_user_id=feedback.from_end_user_id,
-                    from_account=self._account_record(feedback.from_account_with_session(session=session)),
-                )
-                for feedback in message.feedbacks_with_session(session=session)
-            ],
-            annotation=MessageAnnotationRecord(
-                id=annotation.id,
-                question=annotation.question,
-                content=annotation.content,
-                account=self._account_record(annotation.account_with_session(session=session)),
-                created_at=annotation.created_at,
-            )
-            if annotation
-            else None,
-            annotation_hit_history=MessageAnnotationHitRecord(
-                id=annotation_hit.id,
-                annotation_create_account=self._account_record(
-                    annotation_hit.annotation_create_account_with_session(session=session)
-                ),
-                created_at=annotation_hit.created_at,
-            )
-            if annotation_hit
-            else None,
         )

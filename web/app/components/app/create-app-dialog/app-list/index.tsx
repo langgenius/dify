@@ -27,6 +27,7 @@ import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
@@ -34,12 +35,13 @@ import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
 
 type AppsProps = {
-  onClose: () => void
   onCreateFromBlank?: () => void
+  /** Called after a successful import, before the redirect. Without it the picker stays open. */
+  onCreated?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
+const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -142,6 +144,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
     try {
       const detail = await queryClient.query({
         ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+          context: { silent: true },
           input: { params: { app_id: currApp.app_id } },
         }),
         staleTime: 0,
@@ -170,7 +173,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
               })
             }
             setIsShowCreateModal(false)
-            onClose()
+            onCreated?.()
           },
           onPending: () => {
             setIsShowCreateModal(false)
@@ -178,8 +181,8 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
           },
         },
       )
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
   const submission = useMutation({ mutationFn: onCreate })
@@ -197,7 +200,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
         }
         setShowDSLConfirmModal(false)
         setIsShowCreateModal(false)
-        onClose()
+        onCreated?.()
       },
     })
   }
@@ -213,7 +216,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
-        <div className="min-w-45 pl-5">
+        <div className="min-w-45 ps-5">
           <span className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
           </span>
@@ -269,7 +272,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-s border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
               <div className="pt-4 pb-1">

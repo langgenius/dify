@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Requis est utilisé uniquement comme référence pour l'inférence du modèle, et non pour la validation obligatoire de la sortiedu paramètre.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Type",
   "nodes.parameterExtractor.advancedSetting": "Paramètre avancé",
-  "nodes.parameterExtractor.extractParametersNotSet": "Paramètres d'extraction non configurés",
+  "nodes.parameterExtractor.extractParametersNotSet": "Aucun paramètre d'extraction configuré",
   "nodes.parameterExtractor.importFromTool": "Importer des outils",
   "nodes.parameterExtractor.instruction": "Instruction",
   "nodes.parameterExtractor.instructionTip": "Entrez des instructions supplémentaires pour aider l'extracteur de paramètres à comprendre comment extraire les paramètres.",

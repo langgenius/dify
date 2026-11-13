@@ -483,7 +483,11 @@ export function AgentSkills() {
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
-    useMutation(consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions())
+    useMutation(
+      consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions({
+        context: { silent: true },
+      }),
+    )
   const workspaceSkills = agentSkillBindingsQuery.data?.data ?? []
   const boundSkillIds =
     agentSkillBindingsQuery.data?.skill_ids ?? workspaceSkills.map((skill) => skill.id)
@@ -605,7 +609,7 @@ export function AgentSkills() {
   const handleUploaded = useCallback(
     (skill: AgentSkill) => {
       upsertAgentSkill(skill)
-      promptAddCallbackRef.current?.(skill)
+      promptAddCallbackRef.current?.([skill])
       promptAddCallbackRef.current = undefined
     },
     [upsertAgentSkill],
@@ -626,11 +630,13 @@ export function AgentSkills() {
       }
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
-        promptAddCallbackRef.current?.({
-          description: skill.description,
-          id: skill.name,
-          name: skill.display_name,
-        })
+        promptAddCallbackRef.current?.([
+          {
+            description: skill.description,
+            id: skill.name,
+            name: skill.display_name,
+          },
+        ])
         promptAddCallbackRef.current = undefined
         setAddMenuOpen(false)
         setAddMenuView('menu')
