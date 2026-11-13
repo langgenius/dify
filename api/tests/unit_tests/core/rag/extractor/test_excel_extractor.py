@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 
 import pandas as pd
@@ -28,11 +29,17 @@ class _FakeCell:
         self.column = 0
 
 
+class _FakeMergedCells:
+    def __init__(self, ranges=None):
+        self.ranges = ranges or []
+
+
 class _FakeSheet:
     def __init__(self, header_rows, data_rows, images=None):
         self._header_rows = header_rows
         self._data_rows = data_rows
         self._images = images or []
+        self.merged_cells = _FakeMergedCells()
 
     def iter_rows(self, min_row=1, max_row=None, max_col=None, values_only=False):
         if values_only:
@@ -305,3 +312,184 @@ class TestExcelExtractor:
 
         empty_sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
         assert extractor._find_header_and_columns(empty_sheet) == (0, {}, 0)
+
+    def test_extract_xlsx_finds_a_header_below_the_first_ten_rows(self, tmp_path):
+        """A title and spacer rows must not hide the table.
+
+        Business spreadsheets commonly put a report title, a logo or blank
+        rows above the table. Scanning only the first ten rows found no
+        header there and the whole sheet was dropped without a log.
+        """
+        from openpyxl import Workbook
+
+        path = tmp_path / "late_header.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.cell(row=1, column=1, value="Quarterly Sales Report")
+        for column, name in enumerate(["Region", "Revenue", "Units"], start=1):
+            sheet.cell(row=12, column=column, value=name)
+        for column, value in enumerate(["APAC", 4200, 42], start=1):
+            sheet.cell(row=13, column=column, value=value)
+        for column, value in enumerate(["EMEA", 3100, 31], start=1):
+            sheet.cell(row=14, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert documents, "the sheet must not be dropped"
+        for value in ("APAC", "EMEA", "4200", "3100", "42", "31"):
+            assert value in text
+
+    def test_extract_xlsx_keeps_every_column_of_a_late_header(self, tmp_path):
+        """The header row must bring its whole column map with it.
+
+        When only a single-cell title row was in range the fallback picked
+        that row as the header, so every column past the first was skipped
+        and their values never reached the index.
+        """
+        from openpyxl import Workbook
+
+        path = tmp_path / "late_header_columns.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        for column, name in enumerate(["Region", "Revenue", "Units"], start=1):
+            sheet.cell(row=11, column=column, value=name)
+        for column, value in enumerate(["APAC", 4200, 42], start=1):
+            sheet.cell(row=12, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert "Revenue" in text
+        assert "4200" in text
+        assert "Units" in text
+        assert "42" in text
+
+    def test_sheet_without_a_header_row_is_reported(self, tmp_path, caplog) -> None:
+        """A populated sheet that yields no header must leave a trace.
+
+        The workbook has its only value at row 101, past the header scan
+        window, so no header is found. An empty sheet is the control: it is
+        expected to produce nothing and must stay quiet.
+        """
+        from openpyxl import Workbook
+
+        populated_path = tmp_path / "too_late.xlsx"
+        populated_book = Workbook()
+        populated_sheet = populated_book.active
+        assert populated_sheet is not None
+        populated_sheet.cell(row=101, column=1, value="only value")
+        populated_book.save(populated_path)
+
+        with caplog.at_level(logging.WARNING, logger=excel_module.__name__):
+            documents = ExcelExtractor(str(populated_path)).extract()
+
+        assert documents == []
+        assert "No header row found in sheet" in caplog.text
+        assert populated_book.active.title in caplog.text
+
+        empty_path = tmp_path / "empty.xlsx"
+        Workbook().save(empty_path)
+        caplog.clear()
+
+        with caplog.at_level(logging.WARNING, logger=excel_module.__name__):
+            empty_documents = ExcelExtractor(str(empty_path)).extract()
+
+        assert empty_documents == []
+        assert "No header row found in sheet" not in caplog.text
+
+    def test_extract_warns_when_a_populated_sheet_has_no_header(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        """A sheet dropped for lack of a header must not vanish silently."""
+        sheet = _FakeSheet(header_rows=[("Some value",)], data_rows=[])
+        workbook = _FakeWorkbook({"Sheet1": sheet})
+
+        monkeypatch.setattr(excel_module, "load_workbook", lambda *a, **k: workbook)
+        monkeypatch.setattr(excel_module.ExcelExtractor, "_find_header_and_columns", lambda self, s: (0, {}, 0))
+
+        with caplog.at_level(logging.WARNING, logger=excel_module.__name__):
+            documents = ExcelExtractor("book.xlsx").extract()
+
+        assert documents == []
+        assert "No header row found in sheet" in caplog.text
+        assert "Sheet1" in caplog.text
+
+    def test_extract_xlsx_keeps_columns_under_a_merged_header(self, tmp_path):
+        """A header merged across columns must not hide the covered column.
+
+        openpyxl stores a merged header's text in its leftmost cell and
+        reports the covered cells as None, so the covered columns used to be
+        left out of the column map and their values never reached the text.
+        """
+        from openpyxl import Workbook
+
+        path = tmp_path / "merged_header.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet["A1"] = "Customer"
+        sheet["B1"] = "Contact"
+        sheet.merge_cells("B1:C1")
+        sheet["D1"] = "Phone"
+        for column, value in enumerate(["Acme", "Jane", "Doe", "555-0100"], start=1):
+            sheet.cell(row=2, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert "Acme" in text
+        assert "Jane" in text
+        assert "Doe" in text, "the covered column's value must survive"
+        assert "555-0100" in text
+
+    def test_merged_header_names_stay_distinguishable(self, tmp_path):
+        """Reusing one name for every covered column would be ambiguous."""
+        from openpyxl import Workbook
+
+        path = tmp_path / "merged_header_names.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet["A1"] = "Group"
+        sheet["B1"] = "Value"
+        sheet.merge_cells("B1:D1")
+        for column, value in enumerate(["g1", "v1", "v2", "v3"], start=1):
+            sheet.cell(row=2, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert '"Value":"v1"' in text
+        assert '"Value_2":"v2"' in text
+        assert '"Value_3":"v3"' in text
+
+    def test_vertically_merged_header_is_not_extended_to_siblings(self):
+        """A row-spanning merge is a section title, not a multi-column header."""
+        extractor = ExcelExtractor("dummy.xlsx")
+
+        class _Range:
+            min_row = 1
+            max_row = 3
+            min_col = 2
+            max_col = 2
+
+        class _Merged:
+            ranges = [_Range()]
+
+        class _Cell:
+            value = "Section"
+
+        class _Sheet:
+            merged_cells = _Merged()
+
+            def cell(self, row, column):
+                return _Cell()
+
+        assert extractor._merged_spans_by_row(_Sheet()) == {}
