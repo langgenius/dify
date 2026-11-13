@@ -73,7 +73,6 @@ project-excludes = [
   "core/app/apps/chat/test_app_generator.py",
   "core/app/apps/test_base_app_runner.py",
   "core/app/apps/common/test_workflow_response_converter.py",
-  "core/app/apps/completion/test_app_config_manager.py",
   "core/app/apps/completion/test_app_generator.py",
   "core/app/apps/completion/test_generate_response_converter.py",
   "core/app/apps/pipeline/test_pipeline_generator.py",
