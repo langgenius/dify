@@ -283,6 +283,37 @@ def test_concurrency_limit_returns_429_and_preserves_existing_jobs(harness: _Har
     _assert_no_task(harness)
 
 
+def test_long_running_waiting_imports_keep_their_concurrency_reservations(harness: _Harness) -> None:
+    active_key = f"annotation_import_active:{harness.target.tenant_id}"
+    now_ms = int(time.time() * 1000)
+    existing = {str(uuid4()) for _ in range(2)}
+    harness.redis.zadd(active_key, dict.fromkeys(existing, now_ms - 121_000))
+    for job_id in existing:
+        harness.redis.set(f"app_annotation_batch_import_{job_id}", "waiting", ex=3600)
+
+    response = harness.request()
+
+    assert response.status_code == 429
+    assert response.get_json()["code"] == "too_many_requests"
+    assert {job.decode() for job in harness.redis.zrange(active_key, 0, -1)} == existing
+    assert harness.publications == []
+    _assert_no_task(harness)
+
+
+def test_expired_active_import_reservations_are_recovered(harness: _Harness) -> None:
+    active_key = f"annotation_import_active:{harness.target.tenant_id}"
+    now_ms = int(time.time() * 1000)
+    abandoned = {str(uuid4()) for _ in range(2)}
+    harness.redis.zadd(active_key, dict.fromkeys(abandoned, now_ms - 25 * 60 * 60 * 1000))
+
+    response = harness.request()
+
+    assert response.status_code == 200
+    assert harness.redis.zcard(active_key) == 1
+    assert response.get_json()["job_id"].encode() in harness.redis.zrange(active_key, 0, -1)
+    assert len(harness.publications) == 1
+
+
 def test_concurrent_imports_cannot_exceed_workspace_concurrency_limit(
     harness: _Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:

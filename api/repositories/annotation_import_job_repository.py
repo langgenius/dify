@@ -6,25 +6,35 @@ from uuid import uuid4
 from extensions.ext_redis import RedisClientWrapper
 from services.annotation_import_service import AnnotationImportJob, AnnotationImportJobStore
 
+# Keep reservations for the same bounded interval as pending job status keys.
 _PENDING_JOB_TTL_SECONDS = 24 * 60 * 60
 
 _RESERVE_ACTIVE_JOB_LUA = """
 local now_ms = tonumber(ARGV[1])
 local max_concurrent = tonumber(ARGV[2])
 local job_id = ARGV[3]
+local stale_after_seconds = tonumber(ARGV[4])
 local active_score = redis.call('ZSCORE', KEYS[1], job_id)
 if active_score then
     redis.call('ZADD', KEYS[1], now_ms, job_id)
-    redis.call('EXPIRE', KEYS[1], 7200)
+    redis.call('EXPIRE', KEYS[1], stale_after_seconds)
     return 1
 end
-redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, now_ms - 120000)
+redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, now_ms - stale_after_seconds * 1000)
 if redis.call('ZCARD', KEYS[1]) >= max_concurrent then
     return 0
 end
 redis.call('ZADD', KEYS[1], now_ms, job_id)
-redis.call('EXPIRE', KEYS[1], 7200)
+redis.call('EXPIRE', KEYS[1], stale_after_seconds)
 return 1
+"""
+
+_PRUNE_STALE_ACTIVE_JOBS_LUA = """
+local now_ms = tonumber(ARGV[1])
+local stale_after_seconds = tonumber(ARGV[2])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, now_ms - stale_after_seconds * 1000)
+redis.call('EXPIRE', KEYS[1], stale_after_seconds)
+return redis.call('ZCARD', KEYS[1])
 """
 
 
@@ -40,6 +50,7 @@ class RedisAnnotationImportJobRepository(AnnotationImportJobStore):
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
         self._reserve_active_job = self._redis.register_script(_RESERVE_ACTIVE_JOB_LUA)
+        self._prune_stale_active_jobs = self._redis.register_script(_PRUNE_STALE_ACTIVE_JOBS_LUA)
 
     def record_request(self, *, tenant_id: str, window_seconds: Literal[60, 3600], now_ms: int) -> int:
         window = "1min" if window_seconds == 60 else "1hour"
@@ -52,8 +63,7 @@ class RedisAnnotationImportJobRepository(AnnotationImportJobStore):
 
     def count_active(self, *, tenant_id: str, now_ms: int) -> int:
         key = f"annotation_import_active:{tenant_id}"
-        self._redis.zremrangebyscore(key, 0, now_ms - 120000)
-        return self._redis.zcard(key)
+        return int(self._prune_stale_active_jobs(keys=[key], args=[now_ms, _PENDING_JOB_TTL_SECONDS]))
 
     def create(
         self,
@@ -76,9 +86,11 @@ class RedisAnnotationImportJobRepository(AnnotationImportJobStore):
         active_jobs_key = f"annotation_import_active:{tenant_id}"
         if max_concurrent is None:
             self._redis.zadd(active_jobs_key, {job_id: now_ms})
-            self._redis.expire(active_jobs_key, 7200)
+            self._redis.expire(active_jobs_key, _PENDING_JOB_TTL_SECONDS)
         else:
-            reserved = self._reserve_active_job(keys=[active_jobs_key], args=[now_ms, max_concurrent, job_id])
+            reserved = self._reserve_active_job(
+                keys=[active_jobs_key], args=[now_ms, max_concurrent, job_id, _PENDING_JOB_TTL_SECONDS]
+            )
             if not reserved:
                 if owner_created:
                     self._redis.delete(annotation_import_job_owner_key(job_id=job_id))
