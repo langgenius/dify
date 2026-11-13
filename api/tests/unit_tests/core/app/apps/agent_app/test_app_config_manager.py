@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import json
 
+from core.app.app_config.easy_ui_based_app.variables.manager import BasicVariablesConfigManager
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
+from core.app.apps.base_app_generator import BaseAppGenerator
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig
 
@@ -133,3 +135,31 @@ def test_get_app_config_has_null_model_config_id_without_legacy_row() -> None:
         conversation=None,
     )
     assert app_config.app_model_config_id is None
+
+
+def test_soul_default_reaches_prepared_user_inputs():
+    """Given Soul defaults and an omitted optional input, preserve defaults through the chat bridge."""
+    config = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
+    variables, _ = BasicVariablesConfigManager.convert(config)
+
+    result = BaseAppGenerator()._prepare_user_inputs(
+        user_inputs={"topic": "Dify"}, variables=variables, tenant_id="tenant-1"
+    )
+
+    assert result == {"topic": "Dify", "count": 3}
+
+
+def test_falsy_soul_defaults_reach_prepared_user_inputs():
+    """Given Soul defaults of 0 and False, keep them instead of dropping them as unset."""
+    soul_data = _soul().model_dump()
+    soul_data["app_variables"] = [
+        {"name": "count", "type": "number", "default": 0},
+        {"name": "verbose", "type": "boolean", "default": False},
+    ]
+    soul = AgentSoulConfig.model_validate(soul_data)
+    config = AgentAppConfigManager._synthesize_config_dict(soul, None, annotation_reply=None)
+    variables, _ = BasicVariablesConfigManager.convert(config)
+
+    result = BaseAppGenerator()._prepare_user_inputs(user_inputs={}, variables=variables, tenant_id="tenant-1")
+
+    assert result == {"count": 0, "verbose": False}
