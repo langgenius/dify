@@ -16,10 +16,11 @@ from graphon.nodes.list_operator.entities import (
 )
 from graphon.nodes.list_operator.exc import InvalidKeyError
 from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from graphon.runtime import InitParams
 from graphon.variables import ArrayFileSegment
 
 
-def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params) -> ListOperatorNode:
+def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params: InitParams) -> ListOperatorNode:
     return ListOperatorNode(
         node_id="test_node_id",
         data=node_data,
@@ -29,7 +30,7 @@ def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params
 
 
 @pytest.fixture
-def list_operator_node():
+def list_operator_node() -> ListOperatorNode:
     config = {
         "variable": ["test_variable"],
         "filter_by": FilterBy(
@@ -44,12 +45,7 @@ def list_operator_node():
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData.model_validate(config)
-    # Create properly configured mock for graph_init_params
-    graph_init_params = MagicMock()
-    graph_init_params.workflow_id = "test_workflow"
-    graph_init_params.graph_config = {}
-    graph_init_params.call_depth = 0
-    graph_init_params.run_context = {
+    run_context: dict[str, dict[str, str | UserFrom | InvokeFrom]] = {
         DIFY_RUN_CONTEXT_KEY: {
             "tenant_id": "test_tenant",
             "app_id": "test_app",
@@ -58,6 +54,12 @@ def list_operator_node():
             "invoke_from": InvokeFrom.SERVICE_API,
         }
     }
+    graph_init_params = InitParams(
+        workflow_id="test_workflow",
+        graph_config={},
+        call_depth=0,
+        run_context=run_context,
+    )
 
     node = _build_list_operator_node(node_data, graph_init_params)
     node.runtime_state = MagicMock()
@@ -65,7 +67,7 @@ def list_operator_node():
     return node
 
 
-def test_filter_files_by_type(list_operator_node):
+def test_filter_files_by_type(list_operator_node: ListOperatorNode) -> None:
     # Setup test data
     files = [
         File(
@@ -133,7 +135,7 @@ def test_filter_files_by_type(list_operator_node):
         assert expected_file["related_id"] == result_file.related_id
 
 
-def test_get_file_extract_string_func():
+def test_get_file_extract_string_func() -> None:
     # Create a File object
     file = File(
         file_type=FileType.DOCUMENT,
