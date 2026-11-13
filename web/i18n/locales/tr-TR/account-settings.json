@@ -131,7 +131,7 @@
   "resourceAccessToken.appsSection": "Uygulamalar",
   "resourceAccessToken.copied": "Erişim belirteci kopyalandı",
   "resourceAccessToken.couldNotLoadResources": "Kaynaklar yüklenemedi",
-  "resourceAccessToken.createButton": "Create new token",
+  "resourceAccessToken.createButton": "Yeni belirteç oluştur",
   "resourceAccessToken.createTitle": "Erişim belirteci oluştur",
   "resourceAccessToken.created": "Erişim belirteci oluşturuldu",
   "resourceAccessToken.createdColumn": "Oluşturuldu",
