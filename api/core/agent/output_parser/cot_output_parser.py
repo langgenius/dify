@@ -64,17 +64,19 @@ class CotAgentOutputParser:
                 return json.dumps(payload, ensure_ascii=False)
 
         def extra_json_from_code_block(code_block) -> list[list | dict]:
-            blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
-            if not blocks:
-                return []
-            try:
+            # Greedy first so a fence inside a JSON string stays in one block, then
+            # non-greedy so one malformed block doesn't hide the valid ones after it.
+            for pattern in (r"```[json]*\s*([\[{].*[]}])\s*```", r"```[json]*\s*([\[{].*?[]}])\s*```"):
                 json_blocks = []
-                for block in blocks:
-                    json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
-                    json_blocks.append(json.loads(json_text, strict=False))
-                return json_blocks
-            except Exception:
-                return []
+                for block in re.findall(pattern, code_block, re.DOTALL | re.IGNORECASE):
+                    try:
+                        json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
+                        json_blocks.append(json.loads(json_text, strict=False))
+                    except Exception:
+                        continue
+                if json_blocks:
+                    return json_blocks
+            return []
 
         code_block_cache = ""
         code_block_delimiter_count = 0

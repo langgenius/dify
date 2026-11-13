@@ -339,6 +339,22 @@ class TestCotAgentOutputParser:
             AgentScratchpadUnit.Action(action_name="a2", action_input="y"),
         ]
 
+    def test_invalid_code_block_followed_by_valid_code_block(self, make_chunk, usage_dict) -> None:
+        content = '```json\n{"action":"a1","input":"x",}\n```middle```json\n{"action":"a2","input":"y"}\n```'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="a2", action_input="y"),
+        ]
+
+    def test_code_block_with_nested_fence_in_input(self, make_chunk, usage_dict) -> None:
+        content = '```json\n{"action":"code","input":"```js\nfunction f() {}\n```"}\n```'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="code", action_input="```js\nfunction f() {}\n```"),
+        ]
+
     def test_backtick_noise(self, make_chunk, usage_dict) -> None:
         chunks = [make_chunk("text with ` random ` backticks")]
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
