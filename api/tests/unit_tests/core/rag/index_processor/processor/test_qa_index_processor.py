@@ -146,7 +146,7 @@ class TestQAIndexProcessor:
         mock_format.assert_called_once()
 
     def test_transform_preview_empty_document_returns_empty_result(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
         session = sqlite_session
         document = Document(page_content="   ", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
@@ -176,7 +176,7 @@ class TestQAIndexProcessor:
         mock_format.assert_not_called()
 
     def test_transform_preview_empty_documents_returns_empty_result(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
         session = sqlite_session
 
