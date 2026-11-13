@@ -186,7 +186,8 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     case int() | float():
                         return value
                     case str() if value:
-                        if "." in value:
+                        # A decimal point or an exponent ("1e-05", str(1e16)) both mean a float.
+                        if "." in value or "e" in value.lower():
                             return float(value)
                         else:
                             return int(value)
