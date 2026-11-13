@@ -2427,7 +2427,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.list_logical_documents,
             data_facade_module.KnowledgeFSLogicalDocumentListResponse,
             "listLogicalDocuments",
-            {"cursor": "cursor-1"},
+            {"cursor": "cursor-1", "limit": 25, "query": "late report", "status": "processing"},
             None,
         ),
         (
@@ -2840,6 +2840,13 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
 
     if child_resource_id is not None:
         assert delegated_kwargs["resource_id"] == child_resource_id
+    if operation_id == "listLogicalDocuments":
+        assert delegated_kwargs["query"] == (
+            ("cursor", "cursor-1"),
+            ("limit", "25"),
+            ("query", "late report"),
+            ("status", "processing"),
+        )
     if operation_id == "listDocumentRevisions":
         assert delegated_kwargs["query"] == (("cursor", "cursor-1"), ("limit", "1"))
     if operation_id in {"listGoldenQuestions", "listQualityBadCases"}:
@@ -2871,6 +2878,36 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     if operation_id == "importSourceWorkflow":
         assert delegated_kwargs["path_parameters"] == (("sourceId", "source-1"),)
         assert delegated_kwargs["headers"] == (("Idempotency-Key", "import-source-once"),)
+
+
+def test_list_source_pages_forwards_tree_branch_without_changing_flat_default() -> None:
+    facade = _offline_facade()
+    call = CallRecorder(result={"workspaces": []})
+    with patch.object(facade, "_interactive_child", call):
+        facade.list_source_pages(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="space-1",
+            source_id="source-1",
+        )
+        assert call.last.kwargs["query"] == (("limit", "50"),)
+
+        facade.list_source_pages(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="space-1",
+            source_id="source-1",
+            cursor="next",
+            limit=10,
+            parent_id="repo:FFXN/dify",
+            view="tree",
+        )
+    assert call.last.kwargs["query"] == (
+        ("limit", "10"),
+        ("cursor", "next"),
+        ("parentId", "repo:FFXN/dify"),
+        ("view", "tree"),
+    )
 
 
 def test_service_settings_migration_preserves_service_identity_on_every_operation() -> None:

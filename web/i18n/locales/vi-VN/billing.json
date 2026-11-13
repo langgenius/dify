@@ -8,6 +8,9 @@
   "apps.fullTip2": "Đã đạt giới hạn kế hoạch",
   "apps.fullTip2des": "Chúng tôi khuyên bạn nên xóa các ứng dụng không hoạt động để giải phóng dung lượng, hoặc liên hệ với chúng tôi.",
   "buyPermissionDeniedTip": "Vui lòng liên hệ với quản trị viên doanh nghiệp của bạn để đăng ký",
+  "errors.operationFailed": "Không thể hoàn tất yêu cầu này. Vui lòng thử lại sau. Nếu sự cố vẫn tiếp diễn, hãy liên hệ bộ phận hỗ trợ.",
+  "errors.requestInProgress": "Yêu cầu trước đó của bạn vẫn đang được xử lý. Vui lòng thử lại sau giây lát.",
+  "errors.unavailable": "Dịch vụ này tạm thời không khả dụng. Vui lòng thử lại sau.",
   "plans.community.btnText": "Bắt đầu với Cộng đồng",
   "plans.community.description": "Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại",
   "plans.community.features": [

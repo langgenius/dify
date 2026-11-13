@@ -17,6 +17,11 @@ from tests.local.dify_agent.module_support import invoke_native_tool
     [
         (200, {"observation": "completed", "messages": [], "metadata": {}}, "completed"),
         (429, {"code": "rate_limit", "message": "busy"}, "temporarily unavailable"),
+        (
+            503,
+            {"code": "service_unavailable", "message": "Credential refresh is temporarily unavailable. Please retry."},
+            "temporarily unavailable",
+        ),
         (404, {"code": "app_not_found", "message": "missing"}, "app context no longer exists"),
         (403, {"code": "app_tenant_mismatch", "message": "invalid"}, "app context is invalid"),
         (422, {"code": "agent_tool_credential_invalid", "message": "invalid"}, "check your tool provider credentials"),

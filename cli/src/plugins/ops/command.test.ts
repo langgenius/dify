@@ -9,7 +9,7 @@ import { callOptionsSchema } from '@/call/flags'
 import { parseArgv } from '@/plugins/argv/parse'
 import { parseCatalog } from '@/plugins/catalog'
 import { propertiesOf } from '@/protocol/shape'
-import { effectOf, opCommand } from './command'
+import { effectOf, opCommand, opEffect } from './command'
 
 const OPS = parseCatalog(
   readFileSync(join(__dirname, '../../../test/fixtures/catalog-v2.json')),
@@ -97,6 +97,14 @@ const EFFECTS: readonly [string, CommandEffect | undefined][] = [
 
 it.each(EFFECTS)('effect of %s is %s', (method, effect) => {
   expect(effectOf(method)).toBe(effect)
+})
+
+it.each([
+  ['destructive', 'destructive'],
+  [undefined, 'write'],
+  ['irreversible', undefined],
+] as const)('a POST op declaring effect %s shows %s', (declared, shown) => {
+  expect(opEffect({ ...fixtureOp('stop.run'), effect: declared })).toBe(shown)
 })
 
 it('help shows the business schema, the op facets, the call options and the pin', async () => {

@@ -16,6 +16,7 @@ from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unautho
 
 from configs import dify_config
 from controllers.common.access_response import MISSING_BEARER_MESSAGE
+from controllers.common.errors import UnauthorizedError
 from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
@@ -29,11 +30,17 @@ from extensions.ext_database import db
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset
-from models.model import ApiToken
+from models.model import ApiToken, EndUser
 from repositories.knowledge import dataset_api_key_bindings
-from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from services.api_token_service import (
+    ApiTokenCache,
+    ApiTokenInvalidError,
+    CachedApiToken,
+    fetch_token_with_single_flight,
+    record_token_usage,
+)
 from services.app_service import AppService
-from services.auth.resource_access_token_contracts import is_resource_access_token
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant, is_resource_access_token
 from services.feature_service import FeatureService
 from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 
@@ -77,7 +84,7 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
 }
 
 
-def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+def document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
     doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
     if fetch_user_arg is not None:
         setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
@@ -112,6 +119,10 @@ def validate_app_token[**P, R](
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+            # TODO: Remove these duplicate app/workspace checks when all legacy
+            # ORM App/EndUser handlers (including account-only endpoints) migrate
+            # to scalar admission. Keep resource-token routing and app policy aligned
+            # with service_api_end_user_admission until then.
             auth_token = peek_service_api_bearer_token()
             if auth_token and is_resource_access_token(auth_token):
                 with resource_access_token_errors():
@@ -146,31 +157,9 @@ def validate_app_token[**P, R](
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                user_id = None
-                match fetch_user_arg.fetch_from:
-                    case WhereisUserArg.QUERY:
-                        user_id = request.args.get("user")
-                    case WhereisUserArg.JSON:
-                        user_id = request.get_json().get("user")
-                    case WhereisUserArg.FORM:
-                        user_id = request.form.get("user")
-
-                if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
-
-                if user_id:
-                    user_id = str(user_id)
-
-                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
-                    app_model.tenant_id,
-                    app_model.id,
-                    user_id,
+                kwargs["end_user"] = resolve_service_api_end_user(
+                    tenant_id=app_model.tenant_id, app_id=app_model.id, fetch_user_arg=fetch_user_arg
                 )
-                kwargs["end_user"] = end_user
-
-                # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
@@ -195,13 +184,35 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
-        _document_app_token_contract(decorated_view, fetch_user_arg)
+        document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
         return decorator
     else:
         return decorator(view)
+
+
+def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg: FetchUserArg) -> EndUser:
+    """Share user parsing, provisioning and Flask login identity across API admission paths."""
+    user_id = None
+    match fetch_user_arg.fetch_from:
+        case WhereisUserArg.QUERY:
+            user_id = request.args.get("user")
+        case WhereisUserArg.JSON:
+            user_id = request.get_json().get("user")
+        case WhereisUserArg.FORM:
+            user_id = request.form.get("user")
+
+    if not user_id and fetch_user_arg.required:
+        raise ValueError("Arg user must be provided.")
+    if user_id:
+        user_id = str(user_id)
+
+    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(tenant_id, app_id, user_id)
+    current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
+    user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+    return end_user
 
 
 def cloud_edition_billing_resource_check[**P, R](
@@ -283,7 +294,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
-def check_knowledge_rate_limit(api_token: ApiToken) -> None:
+def check_knowledge_rate_limit(api_token: ApiToken | CachedApiToken) -> None:
     """Enforce the cloud knowledge base request rate limit for a dataset API key's workspace.
 
     Shared by the ``cloud_edition_billing_rate_limit_check`` decorator and the KnowledgeFS
@@ -319,12 +330,14 @@ def cloud_edition_billing_rate_limit_check[**P, R](
 
 
 def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
+    view_parameters = inspect.signature(view).parameters
     positional_parameters = [
         parameter
-        for parameter in inspect.signature(view).parameters.values()
+        for parameter in view_parameters.values()
         if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
     ]
     expects_bound_instance = bool(positional_parameters and positional_parameters[0].name in {"self", "cls"})
+    accepts_dataset_grant = "dataset_grant" in view_parameters
 
     @wraps(view)
     def decorated(*args: object, **kwargs: object) -> R:
@@ -343,10 +356,11 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         auth_token = peek_service_api_bearer_token()
         if auth_token and is_resource_access_token(auth_token):
             with resource_access_token_errors():
-                tenant_id = application_services().resource_access_tokens.resolve_tenant_for_dataset_service_api(
+                dataset_grant = application_services().resource_access_tokens.resolve_datasets_for_service_api(
                     token=auth_token,
                     dataset_id=str(dataset_id) if dataset_id else None,
                 )
+            tenant_id = dataset_grant.tenant_id
         else:
             api_token = validate_and_get_api_token("dataset")
             tenant_id = api_token.tenant_id
@@ -370,6 +384,11 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Unauthorized("API key is no longer valid.")
             if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
                 raise Forbidden("The API key is not authorized to access this knowledge base.")
+            dataset_grant = DatasetServiceApiGrant(
+                token_id=str(api_token.id),
+                tenant_id=tenant_id,
+                dataset_ids=None,
+            )
 
         if dataset_id:
             dataset_id = str(dataset_id)
@@ -407,6 +426,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         else:
             raise Unauthorized("Tenant does not exist.")
 
+        if accepts_dataset_grant:
+            kwargs["dataset_grant"] = dataset_grant
+
         if expects_bound_instance:
             if not args:
                 raise TypeError("validate_dataset_token expected a bound resource instance.")
@@ -417,7 +439,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
     return decorated
 
 
-def validate_and_get_api_token(scope: str | None = None):
+def validate_and_get_api_token(scope: str | None = None) -> ApiToken | CachedApiToken:
     """
     Validate and get API token with Redis caching.
 
@@ -437,17 +459,20 @@ def validate_and_get_api_token(scope: str | None = None):
         logger.debug("Token validation served from cache for scope: %s", scope)
         # Record usage in Redis for later batch update (no Celery task per request)
         record_token_usage(auth_token, scope)
-        return cast(ApiToken, cached_token)
+        return cached_token
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
-    return fetch_token_with_single_flight(auth_token, scope)
+    try:
+        return fetch_token_with_single_flight(auth_token, scope)
+    except ApiTokenInvalidError as error:
+        raise UnauthorizedError(str(error)) from error
 
 
 def extract_service_api_bearer_token() -> str:
     auth_token = peek_service_api_bearer_token()
     if auth_token is None:
-        raise Unauthorized(MISSING_BEARER_MESSAGE)
+        raise UnauthorizedError(MISSING_BEARER_MESSAGE)
     return auth_token
 
 

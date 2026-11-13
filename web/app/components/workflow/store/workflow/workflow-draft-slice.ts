@@ -20,7 +20,8 @@ export type WorkflowDraftSliceShape = {
   setBackupDraft: (backupDraft?: WorkflowDraftSliceShape['backupDraft']) => void
   debouncedSyncWorkflowDraft: DebouncedFunc
   syncWorkflowDraftHash: string
-  setSyncWorkflowDraftHash: (hash: string) => void
+  syncWorkflowDraftIsEmpty: boolean | undefined
+  setSyncWorkflowDraftHash: (hash: string, graph?: { nodes: unknown[]; edges: unknown[] }) => void
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   isWorkflowDataLoaded: boolean
@@ -41,7 +42,14 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
-    setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
+    syncWorkflowDraftIsEmpty: undefined,
+    setSyncWorkflowDraftHash: (syncWorkflowDraftHash, graph) =>
+      set(() => ({
+        syncWorkflowDraftHash,
+        syncWorkflowDraftIsEmpty: graph
+          ? graph.nodes.length === 0 && graph.edges.length === 0
+          : undefined,
+      })),
     isSyncingWorkflowDraft: false,
     setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft) => set(() => ({ isSyncingWorkflowDraft })),
     isWorkflowDataLoaded: false,

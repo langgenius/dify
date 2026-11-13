@@ -1,15 +1,18 @@
 import json
+from collections.abc import Iterator
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Connection, Engine, event, select
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from machinery.context import AppRequestContext
-from models.account import Account, Tenant, TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.agent import (
     Agent,
     AgentConfigRevision,
@@ -33,6 +36,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppSiteConfiguration,
     AppToolIconSource,
+    ServiceApiAppRecord,
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
@@ -69,6 +73,100 @@ def _persist_app(
     session.add(app)
     session.flush()
     return app
+
+
+@pytest.fixture
+def service_api_repository(sqlite_engine: Engine) -> Iterator[AppDefinitionQueryRepository]:
+    factory = sessionmaker(bind=sqlite_engine, close_resets_only=False)
+    sessions: list[Session] = []
+
+    def track(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        sessions.append(session)
+
+    event.listen(factory, "after_begin", track)
+    try:
+        yield AppDefinitionQueryRepository(session_factory=factory)
+    finally:
+        event.remove(factory, "after_begin", track)
+        assert sessions
+        for session in sessions:
+            assert not session.in_transaction()
+            assert not session.identity_map
+            with pytest.raises(InvalidRequestError, match="permanently closed"):
+                session.execute(select(1))
+
+
+@pytest.mark.parametrize("tenant_id", [None, _TENANT_ID, _OTHER_TENANT_ID])
+def test_get_service_api_record_retains_app_scope_after_session_closes(
+    sqlite_session_factory: sessionmaker[Session],
+    service_api_repository: AppDefinitionQueryRepository,
+    tenant_id: str | None,
+) -> None:
+    tenant = Tenant(name="App workspace")
+    tenant.id = _TENANT_ID
+    with sqlite_session_factory.begin() as session:
+        session.add(tenant)
+        _persist_app(session)
+
+    record = service_api_repository.get_service_api_record(_APP_ID, tenant_id=tenant_id)
+
+    assert record == (
+        None
+        if tenant_id == _OTHER_TENANT_ID
+        else ServiceApiAppRecord(
+            app_id=_APP_ID,
+            tenant_id=_TENANT_ID,
+            mode="chat",
+            status="normal",
+            enable_api=True,
+            tenant_status="normal",
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "owner_state",
+    ["active", "admin", "editor", "missing_account", "missing_membership", "archived", "missing_workspace"],
+)
+def test_get_service_api_owner_id_requires_an_existing_owner_in_the_active_workspace(
+    sqlite_session_factory: sessionmaker[Session],
+    service_api_repository: AppDefinitionQueryRepository,
+    owner_state: str,
+) -> None:
+    tenant = Tenant(
+        name="App workspace", status=TenantStatus.ARCHIVE if owner_state == "archived" else TenantStatus.NORMAL
+    )
+    tenant.id = _TENANT_ID
+    owner = Account(name="Workspace owner", email="owner@example.com")
+    owner.id = _ACCOUNT_ID
+    other_tenant = Tenant(name="Other workspace")
+    other_tenant.id = _OTHER_TENANT_ID
+    other_owner = Account(name="Other workspace owner", email="other-owner@example.com")
+    other_owner.id = _stable_uuid("other-service-api-owner")
+    role = {"admin": TenantAccountRole.ADMIN, "editor": TenantAccountRole.EDITOR}.get(
+        owner_state, TenantAccountRole.OWNER
+    )
+    with sqlite_session_factory.begin() as session:
+        if owner_state != "missing_workspace":
+            session.add(tenant)
+        if owner_state != "missing_account":
+            session.add(owner)
+        if owner_state != "missing_membership":
+            session.add(TenantAccountJoin(tenant_id=_TENANT_ID, account_id=_ACCOUNT_ID, role=role))
+        session.add_all(
+            [
+                other_tenant,
+                other_owner,
+                TenantAccountJoin(tenant_id=_OTHER_TENANT_ID, account_id=other_owner.id, role=TenantAccountRole.OWNER),
+            ]
+        )
+        other_owner_id = other_owner.id
+
+    assert service_api_repository.get_service_api_owner_id(_TENANT_ID) == (
+        _ACCOUNT_ID if owner_state == "active" else None
+    )
+    assert service_api_repository.get_service_api_owner_id(_OTHER_TENANT_ID) == other_owner_id
+    assert service_api_repository.get_service_api_owner_id(_stable_uuid("missing-service-api-tenant")) is None
 
 
 def test_get_mode_returns_none_for_missing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -120,7 +218,7 @@ def test_parameter_config_readers_enforce_the_same_ownership(
                 type=WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT,
                 version="1",
                 graph='{"nodes": []}',
-                features='{"opening_statement": "Owned config"}',
+                _features='{"opening_statement": "Owned config"}',
                 created_by=_ACCOUNT_ID,
             )
             app.workflow_id = config.id if ownership != "unset" else None
@@ -167,15 +265,15 @@ def test_get_published_parameter_config_returns_workflow_features_and_legacy_inp
             id="44444444-4444-4444-4444-444444444444",
             tenant_id=_TENANT_ID,
             app_id=app.id,
-            type=workflow_type,
+            type=WorkflowType(workflow_type),
             kind=WorkflowKind.STANDARD,
             version="1",
             graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": [variable]}}]}),
-            features=json.dumps({"opening_statement": "Hello from workflow"}),
+            _features=json.dumps({"opening_statement": "Hello from workflow"}),
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id
@@ -549,7 +647,7 @@ def test_get_tool_icon_sources_reads_workflow_tools(
             id=_WORKFLOW_ID,
             tenant_id=_TENANT_ID,
             app_id=app.id,
-            type=workflow_type,
+            type=WorkflowType(workflow_type),
             kind=WorkflowKind.STANDARD,
             version="1",
             graph=json.dumps(
@@ -560,11 +658,11 @@ def test_get_tool_icon_sources_reads_workflow_tools(
                     ]
                 }
             ),
-            features="{}",
+            _features="{}",
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id
@@ -837,7 +935,7 @@ def test_published_agent_app_parameters_use_soul_file_upload(
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_requires_bound_agent(sqlite_session: Session):
+def test_published_agent_app_parameters_requires_bound_agent(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:unbound")
     app_model = _app_model(tenant_id=tenant_id)
 
@@ -846,7 +944,7 @@ def test_published_agent_app_parameters_requires_bound_agent(sqlite_session: Ses
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_requires_existing_active_agent(sqlite_session: Session):
+def test_published_agent_app_parameters_requires_existing_active_agent(sqlite_session: Session) -> None:
     requested_tenant_id = _stable_uuid("tenant:requested")
     agent_id = _stable_uuid("agent:cross-tenant")
     app_model = _app_model(tenant_id=requested_tenant_id)
@@ -867,7 +965,7 @@ def test_published_agent_app_parameters_requires_existing_active_agent(sqlite_se
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
 def test_published_agent_app_parameters_requires_published_agent(
     active_config_is_published: bool, sqlite_session: Session
-):
+) -> None:
     tenant_id = _stable_uuid(f"tenant:published:{active_config_is_published}")
     agent_id = _stable_uuid(f"agent:published:{active_config_is_published}")
     app_model = _app_model(tenant_id=tenant_id)
@@ -885,7 +983,7 @@ def test_published_agent_app_parameters_requires_published_agent(
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(sqlite_session: Session):
+def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:unpublished-draft")
     agent_id = _stable_uuid("agent:unpublished-draft")
     snapshot_id = _stable_uuid("snapshot:unpublished-draft")
@@ -916,7 +1014,7 @@ def test_published_agent_app_parameters_allows_unpublished_draft_with_active_sna
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_rejects_seeded_unpublished_snapshot(sqlite_session: Session):
+def test_published_agent_app_parameters_rejects_seeded_unpublished_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:never-published")
     agent_id = _stable_uuid("agent:never-published")
     snapshot_id = _stable_uuid("snapshot:never-published")
@@ -943,7 +1041,7 @@ def test_published_agent_app_parameters_rejects_seeded_unpublished_snapshot(sqli
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_requires_published_snapshot(sqlite_session: Session):
+def test_published_agent_app_parameters_requires_published_snapshot(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:missing-snapshot")
     agent_id = _stable_uuid("agent:missing-snapshot")
     app_model = _app_model(tenant_id=tenant_id)
@@ -967,7 +1065,7 @@ def test_published_agent_app_parameters_requires_published_snapshot(sqlite_sessi
 
 
 @pytest.mark.parametrize("sqlite_session", [(Agent, AgentConfigSnapshot, AgentConfigRevision)], indirect=True)
-def test_published_agent_app_parameters_allows_missing_legacy_app_model_config(sqlite_session: Session):
+def test_published_agent_app_parameters_allows_missing_legacy_app_model_config(sqlite_session: Session) -> None:
     tenant_id = _stable_uuid("tenant:no-legacy-config")
     agent_id = _stable_uuid("agent:no-legacy-config")
     snapshot_id = _stable_uuid("snapshot:no-legacy-config")

@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "{{title}} を未完了としてマーク",
   "stepByStepTour.minimize": "最小化",
   "stepByStepTour.progressAriaValueText": "{{total}} ステップ中 {{completed}} 完了",
-  "stepByStepTour.restore": "Step-by-step Tour を開く",
   "stepByStepTour.skip": "ガイドをスキップ",
   "stepByStepTour.skipRecovery.dismiss": "了解",
   "stepByStepTour.skipRecovery.label": "Step-by-step Tour の復元ヒント",

@@ -4,6 +4,8 @@ from decimal import Decimal
 from sqlite3 import Connection
 
 import pytest
+from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
@@ -114,7 +116,7 @@ def _feedback(
 
 def _agent_observability_service_workflow_run(*, workflow_type: WorkflowType = WorkflowType.WORKFLOW) -> WorkflowRun:
     created_at = datetime(2026, 7, 21, 7, 0, 19)
-    return WorkflowRun(
+    workflow_record = WorkflowRun(
         id="workflow-run-1",
         tenant_id="tenant-1",
         app_id="workflow-app-1",
@@ -132,9 +134,10 @@ def _agent_observability_service_workflow_run(*, workflow_type: WorkflowType = W
         total_steps=1,
         created_by_role=CreatorUserRole.END_USER,
         created_by="end-user-1",
-        created_at=created_at,
         finished_at=created_at,
     )
+    workflow_record.created_at = created_at
+    return workflow_record
 
 
 def _agent_observability_service_node_execution(
@@ -143,7 +146,7 @@ def _agent_observability_service_node_execution(
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
 ) -> WorkflowNodeExecutionModel:
     created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
-    return WorkflowNodeExecutionModel(
+    node_record = WorkflowNodeExecutionModel(
         id=execution_id,
         tenant_id="tenant-1",
         app_id="workflow-app-1",
@@ -178,11 +181,12 @@ def _agent_observability_service_node_execution(
                 }
             }
         ),
-        created_at=created_at,
         created_by_role=CreatorUserRole.END_USER,
         created_by="end-user-1",
         finished_at=None,
     )
+    node_record.created_at = created_at
+    return node_record
 
 
 def _agent_observability_service_workflow_binding(
@@ -814,14 +818,34 @@ class TestAgentObservabilityServiceCases:
         }
 
     @staticmethod
-    def test_serialize_workflow_node_message_returns_frontend_log_shape() -> None:
+    @pytest.mark.parametrize("multimodal", [False, True])
+    def test_serialize_workflow_node_message_returns_frontend_log_shape(multimodal: bool) -> None:
         created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
         finished_at = datetime(2026, 7, 23, 7, 0, 28, tzinfo=UTC)
         node_execution = _agent_observability_service_node_execution()
-        node_execution.inputs = (
-            '{"agent_backend_request":{"composition":{"layers":['
-            '{"name":"workflow_node_job_prompt","config":{"user":"Summarize the meeting"}},'
-            '{"name":"workflow_user_prompt","config":{"user":"Focus on action items"}}]}}}'
+        context_config = (
+            DifyUserPromptLayerConfig(
+                text="Focus on action items",
+                files=[
+                    DifyUserPromptImageConfig(
+                        filename="meeting.png", mime_type="image/png", format="png", base64_data="aW1hZ2U="
+                    )
+                ],
+            ).model_dump(mode="json")
+            if multimodal
+            else PromptConfig(user="Focus on action items").model_dump(mode="json")
+        )
+        node_execution.inputs = json.dumps(
+            {
+                "agent_backend_request": {
+                    "composition": {
+                        "layers": [
+                            {"name": "workflow_node_job_prompt", "config": {"user": "Summarize the meeting"}},
+                            {"name": "user_prompt" if multimodal else "workflow_user_prompt", "config": context_config},
+                        ]
+                    }
+                }
+            }
         )
         node_execution.outputs = '{"output":"Alice owns the follow-up."}'
         node_execution.execution_metadata = (

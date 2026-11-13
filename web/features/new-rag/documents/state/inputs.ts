@@ -12,6 +12,11 @@ export const documentsKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing documents knowledge space id')
 })
 
+// A delayed projection of URL search state, hydrated by the Documents boundary.
+export const documentRequestSearchAtom = atomWithLazy<string>(() => {
+  throw new Error('Missing documents request search')
+})
+
 export const documentsQueryGroup = createQueryGroup(
   {
     filter: documentFilterParser,

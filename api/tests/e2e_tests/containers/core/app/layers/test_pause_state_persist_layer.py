@@ -32,6 +32,7 @@ from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.workflow_run_agg import WorkflowRunAgg
 
@@ -54,6 +55,7 @@ class WorkflowCase:
         pause: bool = True,
     ) -> tuple[PreparedWorkflowRun, WorkflowRunAgg]:
         entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.ACCOUNT,
             task_id=str(uuid4()),
             app_config=WorkflowUIBasedAppConfig(
                 tenant_id=self.workflow.tenant_id,
@@ -158,10 +160,10 @@ def workflow_case(db_session_with_containers: Session) -> WorkflowCase:
         id=str(uuid4()),
         tenant_id=tenant.id,
         app_id=str(uuid4()),
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=account.id,
     )
     session.add(workflow)
@@ -209,9 +211,9 @@ def test_state_persistence_and_retrieval(workflow_case: WorkflowCase) -> None:
     pause = repository.get_workflow_pause(workflow_case.run_id)
     assert pause is not None
     assert pause.workflow_execution_id == workflow_case.run_id
-    assert pause.get_pause_reasons() == events[-1].reasons
     snapshot = WorkflowResumptionContext.loads(pause.get_state().decode())
     restored = RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state)
+    assert restored.graph_execution.pause_reasons == events[-1].reasons
     assert restored.outputs == outputs
     assert restored.total_tokens == 250
     assert restored.node_run_steps == prepared.entry.graph_engine.runtime_state.node_run_steps

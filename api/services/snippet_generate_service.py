@@ -38,6 +38,7 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
 from services.snippet_service import SnippetService
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 
@@ -176,6 +177,7 @@ class SnippetGenerateService:
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=streaming,
@@ -228,6 +230,7 @@ class SnippetGenerateService:
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=False,
@@ -428,6 +431,7 @@ class SnippetGenerateService:
                     workflow=workflow,
                     node_id=node_id,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=args,
                     streaming=streaming,
                     session=session,
@@ -475,6 +479,7 @@ class SnippetGenerateService:
                     workflow=workflow,
                     node_id=node_id,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=args,  # type: ignore[arg-type]
                     streaming=streaming,
                     session=session,

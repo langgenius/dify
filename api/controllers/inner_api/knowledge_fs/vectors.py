@@ -12,6 +12,7 @@ from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 from libs.helper import dump_response
 from services.knowledge_fs.vector_store import (
+    VectorCollectionPendingError,
     VectorPoint,
     VectorRequest,
     admit_vector_request,
@@ -63,7 +64,7 @@ class KnowledgeFSVectorApi(Resource):
                 payload.scope.tenant_id, allow_create=payload.operation == "upsert"
             ) as client:
                 result = execute_vector_request(client, payload, check_admission=False)
-        except TidbBindingPendingError:
+        except (TidbBindingPendingError, VectorCollectionPendingError):
             raise ServiceUnavailable("KnowledgeFS vector backend is being provisioned", retry_after=5) from None
         except VectorSpaceAdmissionUnavailableError as error:
             raise KnowledgeFSVectorQuotaUnavailableError(str(error)) from None

@@ -95,13 +95,13 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
             <InputGroupInput
               type="search"
               name="tag-query"
-              aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+              aria-label={t(($) => $.searchTags, { ns: 'pluginTags' })}
               autoComplete="off"
               enterKeyHint="search"
               className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               value={searchText}
               onValueChange={setSearchText}
-              placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+              placeholder={t(($) => $.searchTags, { ns: 'pluginTags' })}
             />
             <InputGroupAddon className="ps-1.75 pe-0.75">
               <span

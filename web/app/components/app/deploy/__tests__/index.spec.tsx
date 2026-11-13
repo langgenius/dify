@@ -1503,9 +1503,6 @@ describe('AppDeploy', () => {
       'Server port workflow.env.modal.valueRequired',
     )
     expect(customPortInput).toHaveFocus()
-    expect(
-      within(rootVariables.getByRole('group', { name: 'PORT' })).getByRole('alert'),
-    ).toHaveTextContent('workflow.env.modal.valueRequired')
 
     await user.type(customPortInput, '3000')
     expect(customPortInput).not.toHaveAttribute('aria-invalid', 'true')

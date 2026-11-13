@@ -1,162 +1,251 @@
-import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
-import type { Plugin } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
+import type { marketplaceClient } from '@/service/marketplace'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { Provider as JotaiProvider } from 'jotai'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { createTestQueryClient } from '@/test/query-client'
+import { useSearchPluginText } from '../../atoms'
 import ListWrapper from '../list-wrapper'
 
-const mockMarketplaceData = vi.hoisted(() => ({
-  plugins: undefined as Plugin[] | undefined,
-  pluginsTotal: 0,
-  marketplaceCollections: [] as MarketplaceCollection[],
-  marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
-  isLoading: false,
-  isRefreshing: false,
-  isError: false,
-  refetch: vi.fn(),
-  isFetchingNextPage: false,
-  page: 1,
+const transport = vi.hoisted(() => ({
+  collections: vi.fn<typeof marketplaceClient.collections>(),
+  collectionPlugins: vi.fn<typeof marketplaceClient.collectionPlugins>(),
+  searchAdvanced: vi.fn<typeof marketplaceClient.searchAdvanced>(),
 }))
 
-vi.mock('#i18n', async () => {
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceClient: {
+      ...actual.marketplaceClient,
+      collections: transport.collections,
+      collectionPlugins: transport.collectionPlugins,
+      searchAdvanced: transport.searchAdvanced,
+    },
+  }
+})
+
+vi.mock('#i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#i18n')>()
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    ...actual,
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        const translations: Record<string, string> = {
+          'marketplace.loadError': 'Could not load plugins',
+          'marketplace.sortBy': 'Sort by',
+          'marketplace.sortOption.mostPopular': 'Most Popular',
+          'marketplace.sortOption.recentlyUpdated': 'Recently Updated',
+          'marketplace.sortOption.newlyReleased': 'Newly Released',
+          'marketplace.sortOption.firstReleased': 'First Released',
+        }
         if (key === 'marketplace.pluginsResult') return `${options?.num} plugins found`
-        return key
+        return translations[key] || key
       }),
     }),
   }
 })
 
-vi.mock('../../sort-menu', () => ({
-  default: () => <div data-testid="sort-menu">sort</div>,
-}))
+const plugin = (name: string, label: string) =>
+  createMarketplacePluginFixture({
+    name,
+    plugin_id: `dify/${name}`,
+    label: { en_US: label },
+    brief: { en_US: `${label} description` },
+  })
 
-vi.mock('../index', () => ({
-  default: ({ plugins }: { plugins?: Plugin[] }) => (
-    <div data-testid="list">{plugins?.length ?? 'collections'}</div>
-  ),
-}))
+const searchResponse = (plugins: ReturnType<typeof plugin>[], total = plugins.length) => ({
+  data: { plugins, total },
+})
 
-vi.mock('../../state', () => ({
-  useMarketplaceData: () => mockMarketplaceData,
-}))
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
 
-// ListWrapper reads the raw `q` through nuqs for its analytics flush, so the
-// tree needs an adapter even though the data hook itself is mocked.
-const renderListWrapper = (ui: ReactNode) => {
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams: '' })
-  return render(ui, { wrapper: NuqsWrapper })
+function SearchControl() {
+  const [query, setQuery] = useSearchPluginText()
+  return (
+    <input
+      aria-label="Marketplace query"
+      value={query}
+      onChange={(event) => void setQuery(event.target.value)}
+    />
+  )
+}
+
+const renderListWrapper = ({
+  children,
+  searchParams = '?category=model',
+}: { children?: ReactNode; searchParams?: string } = {}) => {
+  const queryClient = createTestQueryClient()
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({
+    searchParams,
+    hasMemory: true,
+  })
+  const rendered = render(
+    <JotaiProvider>
+      <QueryClientProvider client={queryClient}>
+        <NuqsWrapper>
+          {children}
+          <div id="marketplace-container">
+            <ListWrapper linkToMarketplaceDetail />
+          </div>
+        </NuqsWrapper>
+      </QueryClientProvider>
+    </JotaiProvider>,
+  )
+  return { ...rendered, onUrlUpdate }
 }
 
 describe('ListWrapper', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockMarketplaceData.plugins = undefined
-    mockMarketplaceData.pluginsTotal = 0
-    mockMarketplaceData.marketplaceCollections = []
-    mockMarketplaceData.marketplaceCollectionPluginsMap = {}
-    mockMarketplaceData.isLoading = false
-    mockMarketplaceData.isRefreshing = false
-    mockMarketplaceData.isError = false
-    mockMarketplaceData.isFetchingNextPage = false
-    mockMarketplaceData.page = 1
+    transport.collections.mockReset().mockResolvedValue({ data: { collections: [] } })
+    transport.collectionPlugins.mockReset().mockResolvedValue({ data: { plugins: [] } })
+    transport.searchAdvanced.mockReset()
   })
 
-  it('shows result header and sort dropdown when plugins are loaded', () => {
-    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
-    mockMarketplaceData.pluginsTotal = 1
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
 
-    renderListWrapper(<ListWrapper />)
+  it('shows real result cards and the sort dropdown when plugins are loaded', async () => {
+    transport.searchAdvanced.mockResolvedValue(searchResponse([plugin('plugin-one', 'Plugin One')]))
 
+    renderListWrapper()
+
+    expect(await screen.findByRole('link', { name: /Plugin One/ })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('1 plugins found')
-    expect(screen.getByTestId('sort-menu')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sort by Most Popular' })).toBeInTheDocument()
   })
 
-  it('keeps the status owner mounted through pagination and reports the total result count', () => {
-    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
-    mockMarketplaceData.pluginsTotal = 20
-    const view = renderListWrapper(<ListWrapper />)
+  it('keeps the status and loaded cards visible while fetching the next page', async () => {
+    const nextPage = deferred<ReturnType<typeof searchResponse>>()
+    const firstPage = Array.from({ length: 40 }, (_, index) =>
+      plugin(`plugin-${index}`, `Plugin ${index}`),
+    )
+    transport.searchAdvanced.mockImplementation(({ body }) =>
+      body.page === 1 ? Promise.resolve(searchResponse(firstPage, 41)) : nextPage.promise,
+    )
+    renderListWrapper()
+    const firstCard = await screen.findByRole('link', { name: /Plugin 0/ })
     const status = screen.getByRole('status')
-    expect(status).toHaveTextContent('20 plugins found')
+    expect(status).toHaveTextContent('41 plugins found')
 
-    mockMarketplaceData.isFetchingNextPage = true
-    view.rerender(<ListWrapper />)
-    expect(screen.getByRole('status')).toBe(status)
-    expect(status).toHaveTextContent('loading')
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    const container = document.getElementById('marketplace-container')!
+    Object.defineProperties(container, {
+      scrollTop: { value: 800, configurable: true },
+      scrollHeight: { value: 1000, configurable: true },
+      clientHeight: { value: 200, configurable: true },
+    })
+    fireEvent.scroll(container)
 
-    mockMarketplaceData.isFetchingNextPage = false
-    mockMarketplaceData.plugins = [
-      ...mockMarketplaceData.plugins,
-      { plugin_id: 'p2', name: 'Plugin Two' } as Plugin,
-    ]
-    view.rerender(<ListWrapper />)
+    await waitFor(() => {
+      expect(screen.getByRole('progressbar')).toBeVisible()
+      expect(status.textContent).toMatch(/loading/i)
+    })
+    expect(firstCard).toBeInTheDocument()
     expect(screen.getByRole('status')).toBe(status)
-    expect(status).toHaveTextContent('20 plugins found')
+
+    await act(async () => {
+      nextPage.resolve(searchResponse([plugin('plugin-40', 'Plugin 40')], 41))
+    })
+
+    expect(await screen.findByRole('link', { name: /Plugin 40/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Plugin 0/ })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('41 plugins found')
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
-
-    mockMarketplaceData.isRefreshing = true
-    view.rerender(<ListWrapper />)
-    expect(status).toHaveTextContent('loading')
-    mockMarketplaceData.isRefreshing = false
-    mockMarketplaceData.isError = true
-    view.rerender(<ListWrapper />)
-    expect(status).toHaveTextContent('marketplace.loadError')
   })
 
   it('shows centered loading on a cold start', () => {
-    mockMarketplaceData.isLoading = true
-    mockMarketplaceData.page = 1
+    transport.searchAdvanced.mockReturnValue(new Promise(() => {}))
 
-    renderListWrapper(<ListWrapper />)
+    renderListWrapper()
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getByRole('status').textContent).toMatch(/loading/i)
   })
 
-  // The reported "jitter": every debounced keystroke used to unmount the grid
-  // behind a centre-absolute spinner, collapsing the container height and
-  // jumping the scroll position.
-  it('keeps the result grid mounted while a superseded query is in flight', () => {
-    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
-    mockMarketplaceData.pluginsTotal = 1
-    mockMarketplaceData.isRefreshing = true
+  it('keeps stale results visible while a debounced replacement query is pending', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    // RTL recognizes this bridge when draining userEvent's zero-delay async wrapper.
+    vi.stubGlobal('jest', { advanceTimersByTime: vi.advanceTimersByTime })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const replacement = deferred<ReturnType<typeof searchResponse>>()
+    transport.searchAdvanced.mockImplementation(({ body }) => {
+      if (body.query === 'first')
+        return Promise.resolve(searchResponse([plugin('first-plugin', 'First Plugin')]))
+      return replacement.promise
+    })
 
-    renderListWrapper(<ListWrapper />)
+    const { onUrlUpdate } = renderListWrapper({
+      children: <SearchControl />,
+      searchParams: '?category=all&q=first',
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByRole('link', { name: /First Plugin/ })).toBeInTheDocument()
 
-    const list = screen.getByTestId('list')
-    expect(list).toBeInTheDocument()
-    expect(list.parentElement).toHaveAttribute('aria-busy', 'true')
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    const input = screen.getByRole('textbox', { name: 'Marketplace query' })
+    await user.clear(input)
+    await user.type(input, 'second')
+    // Flush Nuqs' zero-delay URL update before starting the production debounce clock.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(onUrlUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchParams: new URLSearchParams('category=all&q=second') }),
+    )
+
+    expect(screen.getByRole('link', { name: /First Plugin/ })).toBeInTheDocument()
+    expect(screen.getByRole('status').textContent).toMatch(/loading/i)
+    expect(
+      transport.searchAdvanced.mock.calls.some(([request]) => request.body.query === 'second'),
+    ).toBe(false)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(
+      transport.searchAdvanced.mock.calls.some(([request]) => request.body.query === 'second'),
+    ).toBe(true)
+    expect(screen.getByRole('link', { name: /First Plugin/ })).toBeInTheDocument()
+
+    await act(async () => {
+      replacement.resolve(searchResponse([plugin('second-plugin', 'Second Plugin')]))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByRole('link', { name: /Second Plugin/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /First Plugin/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('1 plugins found')
   })
 
-  it('renders list when loading additional pages', () => {
-    mockMarketplaceData.isLoading = true
-    mockMarketplaceData.page = 2
-    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
-
-    renderListWrapper(<ListWrapper showInstallButton />)
-
-    expect(screen.getByTestId('list')).toBeInTheDocument()
-  })
-
-  // A failed search used to arrive as a successful empty page and render as
-  // "no plugins found", with nothing to retry.
-  it('offers a retry when the search failed with nothing to show', async () => {
+  it('offers a retry and renders the recovered result after a failed search', async () => {
     const user = userEvent.setup()
-    mockMarketplaceData.isError = true
-    mockMarketplaceData.plugins = []
+    transport.searchAdvanced
+      .mockRejectedValueOnce(new Error('Marketplace unavailable'))
+      .mockResolvedValueOnce(searchResponse([plugin('recovered-plugin', 'Recovered Plugin')]))
 
-    renderListWrapper(<ListWrapper />)
+    renderListWrapper()
 
-    expect(screen.queryByTestId('list')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('marketplace.loadError')
+    const status = screen.getByRole('status')
+    await waitFor(() => expect(status).toHaveTextContent('Could not load plugins'))
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /operation\.retry/i }))
 
-    await user.click(screen.getByRole('button', { name: 'operation.retry' }))
-    expect(mockMarketplaceData.refetch).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('link', { name: /Recovered Plugin/ })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('1 plugins found')
   })
 })

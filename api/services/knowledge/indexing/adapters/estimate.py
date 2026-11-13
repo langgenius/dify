@@ -26,6 +26,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
@@ -87,6 +88,8 @@ class IndexingEstimateAdapter:
             )
         except (LLMBadRequestError, ProviderTokenNotInitError, PluginDaemonClientSideError) as error:
             raise IndexingEstimateProviderUnavailableError(error.description) from error
+        except CredentialRefreshUnavailableError:
+            raise
         except Exception as error:
             raise IndexingEstimateExecutionError(str(error)) from error
 

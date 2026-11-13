@@ -1,10 +1,12 @@
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.models import (
     DefaultModelApi,
@@ -29,10 +31,14 @@ from controllers.console.workspace.models import (
 )
 from core.entities.model_entities import DefaultModelSetting
 from core.provider_manager import ProviderManager
+from core.rbac import RBACPermission
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.login import AccountWithTenant
 from models import Account
+from models.account import TenantAccountRole
 from models.provider import TenantDefaultModel
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_account
 
 
@@ -407,6 +413,68 @@ class TestModelProviderModelCredentialSwitchApi:
 
 
 class TestModelEnableDisableApis:
+    @pytest.mark.parametrize(
+        ("resource", "operation"),
+        [
+            (ModelProviderModelEnableApi, "enable_model"),
+            (ModelProviderModelDisableApi, "disable_model"),
+        ],
+    )
+    @pytest.mark.parametrize(
+        ("rbac_enabled", "role", "allowed"),
+        [
+            (False, TenantAccountRole.NORMAL, False),
+            (False, TenantAccountRole.EDITOR, False),
+            (False, TenantAccountRole.DATASET_OPERATOR, False),
+            (False, TenantAccountRole.ADMIN, True),
+            (False, TenantAccountRole.OWNER, True),
+            (True, TenantAccountRole.NORMAL, True),
+            (True, TenantAccountRole.OWNER, False),
+        ],
+    )
+    def test_model_availability_requires_permission(
+        self,
+        app: Flask,
+        resource: type[ModelProviderModelEnableApi] | type[ModelProviderModelDisableApi],
+        operation: str,
+        rbac_enabled: bool,
+        role: TenantAccountRole,
+        allowed: bool,
+    ) -> None:
+        account = make_account(role=role)
+        identity = AccountWithTenant(account, "workspace")
+        with (
+            app.test_request_context("/", method="PATCH", json={"model": "custom-model", "model_type": "llm"}),
+            config_overrides_context(LOGIN_DISABLED=True, RBAC_ENABLED=rbac_enabled),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=identity),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=identity),
+            patch("libs.login.current_user", SimpleNamespace(_get_current_object=lambda: account)),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=allowed) as access,
+            patch("controllers.console.workspace.models.ModelProviderService") as service,
+        ):
+            g._login_user = account
+            if allowed:
+                assert resource().patch(provider="custom-provider") == {"result": "success"}
+                getattr(service.return_value, operation).assert_called_once_with(
+                    tenant_id="workspace", provider="custom-provider", model="custom-model", model_type="llm"
+                )
+            else:
+                with pytest.raises(Forbidden):
+                    resource().patch(provider="custom-provider")
+                service.assert_not_called()
+
+        if rbac_enabled:
+            access.assert_called_once_with(
+                "workspace",
+                account.id,
+                scene=RBACPermission.PLUGIN_PREFERENCES,
+                resource_type=None,
+                resource_id=None,
+            )
+        else:
+            access.assert_not_called()
+
     def test_enable_model(self, app: Flask) -> None:
         api = ModelProviderModelEnableApi()
         method = unwrap(api.patch)

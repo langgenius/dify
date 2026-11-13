@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from sqlalchemy import and_, exists, or_, select
+from sqlalchemy import and_, exists, inspect, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -38,7 +38,6 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -56,6 +55,7 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -85,7 +85,7 @@ from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from libs.helper import escape_like_pattern
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -103,6 +103,7 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
@@ -529,13 +530,13 @@ class WorkflowService:
             workflow = Workflow(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                type=WorkflowType.from_app_mode(app_model.mode).value,
+                type=WorkflowType.from_app_mode(app_model.mode),
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
-                features=json.dumps(features),
+                _features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=initial_environment_variables,
-                conversation_variables=conversation_variables,
+                _environment_variables=initial_environment_variables,
+                _conversation_variables=conversation_variables,
             )
             session.add(workflow)
         # update draft workflow if found
@@ -806,7 +807,7 @@ class WorkflowService:
         # billing check
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if limit_info.subscription.plan == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
                     1
@@ -2049,6 +2050,7 @@ class WorkflowService:
         if app_model.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
+        source_app_id = app_model.id
         # convert to workflow
         new_app: App = workflow_converter.convert_to_workflow(
             app_model=app_model,
@@ -2059,6 +2061,13 @@ class WorkflowService:
             icon_background=args.get("icon_background", "#FFEAD5"),
             session=session,
         )
+
+        if SystemFeatureService.is_webapp_auth_enabled():
+            # The converter committed and expired the App. Read its identity without
+            # opening another database transaction before calling Enterprise.
+            identity = inspect(new_app).identity
+            assert identity is not None
+            EnterpriseService.WebAppAuth.inherit_app_access_mode(source_app_id, str(identity[0]))
 
         return new_app
 
@@ -2253,7 +2262,7 @@ def _setup_variable_pool(
         system_variable_values: dict[str, Any] = {
             "user_id": user_id,
             "app_id": workflow.app_id,
-            "timestamp": int(naive_utc_now().timestamp()),
+            "timestamp": to_utc_timestamp(naive_utc_now()),
             "workflow_id": workflow.id,
             "files": files or [],
             "workflow_execution_id": str(uuid.uuid4()),

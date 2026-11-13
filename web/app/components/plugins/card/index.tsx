@@ -6,9 +6,8 @@ import * as React from 'react'
 import { useTranslation } from '#i18n'
 import { useGetLanguage } from '@/context/i18n'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { renderI18nObject } from '@/i18n/metadata'
-import { Theme } from '@/types/app'
 import { formatNumber } from '@/utils/format'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
@@ -93,8 +92,8 @@ const Card = ({
   const { categoriesMap } = useCategories(true)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, from } = payload
   const badges = payload.badges ?? []
-  const { theme } = useTheme()
-  const activeIcon = theme === Theme.dark && icon_dark ? icon_dark : icon
+  const theme = useResolvedTheme()
+  const activeIcon = theme === 'dark' && icon_dark ? icon_dark : icon
   const pluginIdentity = { from, name, org, type }
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
@@ -133,13 +132,13 @@ const Card = ({
                 </div>
                 {isPartner && (
                   <Partner
-                    className="ml-0.5 size-4"
+                    className="ms-0.5 size-4"
                     text={t(($) => $['marketplace.partnerTip'], { ns: 'plugin' })}
                   />
                 )}
                 {verified && (
                   <Verified
-                    className="ml-0.5 size-4"
+                    className="ms-0.5 size-4"
                     text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
                   />
                 )}
@@ -173,7 +172,7 @@ const Card = ({
             text={getLocalizedText(brief)}
             descriptionLineRows={effectiveDescriptionLineRows}
           />
-          {!!footer && <div className="px-4 pt-2 pr-5">{footer}</div>}
+          {!!footer && <div className="px-4 pe-5 pt-2">{footer}</div>}
         </div>
       </div>
     )
@@ -191,18 +190,18 @@ const Card = ({
             installFailed={installFailed}
             plugin={pluginIdentity}
           />
-          <div className="ml-3 w-0 grow">
+          <div className="ms-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
               {isPartner && (
                 <Partner
-                  className="ml-0.5 size-4"
+                  className="ms-0.5 size-4"
                   text={t(($) => $['marketplace.partnerTip'], { ns: 'plugin' })}
                 />
               )}
               {verified && (
                 <Verified
-                  className="ml-0.5 size-4"
+                  className="ms-0.5 size-4"
                   text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
                 />
               )}

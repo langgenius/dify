@@ -8,6 +8,7 @@ from faker import Faker
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from graphon.enums import WorkflowNodeExecutionStatus
 from machinery.context import RequestContext
 from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
 from models.model import (
@@ -16,6 +17,7 @@ from models.model import (
     Message,
 )
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_service import AppService, CreateAppParams
@@ -35,6 +37,7 @@ class TestWorkflowRunService:
         workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
         return WorkflowRunService(
             workflow_runs=workflow_runs,
+            session_factory=session_factory,
             node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),
@@ -146,7 +149,7 @@ class TestWorkflowRunService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=str(uuid.uuid4()),
-            type="chat",
+            type=ModelWorkflowType("chat"),
             triggered_from=triggered_from,
             version="1.0.0",
             graph=json.dumps({"nodes": [], "edges": []}),
@@ -158,9 +161,9 @@ class TestWorkflowRunService:
             total_steps=3,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=created_time,
             finished_at=created_time,
         )
+        workflow_run.created_at = created_time
 
         db_session_with_containers.add(workflow_run)
         db_session_with_containers.commit()
@@ -521,13 +524,13 @@ class TestWorkflowRunService:
                 title=f"Node {i}",
                 inputs=json.dumps({"input": f"test_input_{i}"}),
                 process_data=json.dumps({"process": f"test_process_{i}"}),
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 elapsed_time=0.5,
                 execution_metadata=json.dumps({"tokens": 50}),
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC),
             )
+            node_execution.created_at = datetime.now(UTC)
             db_session_with_containers.add(node_execution)
             node_executions.append(node_execution)
 
@@ -543,13 +546,13 @@ class TestWorkflowRunService:
             title="Paused Node",
             inputs=json.dumps({"input": "paused"}),
             process_data=json.dumps({"process": "paused"}),
-            status="paused",
+            status=WorkflowNodeExecutionStatus.PAUSED,
             elapsed_time=0.5,
             execution_metadata=json.dumps({"tokens": 0}),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        paused_node_execution.created_at = datetime.now(UTC)
         db_session_with_containers.add(paused_node_execution)
 
         db_session_with_containers.commit()

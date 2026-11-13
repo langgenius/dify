@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.workflow.human_input_adapter import (
@@ -134,8 +134,8 @@ def _create_workflow_pause_state(
         status=WorkflowExecutionStatus.PAUSED,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account_id,
-        created_at=datetime.now(UTC),
     )
+    workflow_run.created_at = datetime.now(UTC)
     db_session_with_containers.add(workflow_run)
 
     runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
@@ -143,6 +143,7 @@ def _create_workflow_pause_state(
         generate_entity={
             "type": AppMode.WORKFLOW,
             "entity": WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 task_id=str(uuid.uuid4()),
                 app_config=WorkflowUIBasedAppConfig(
                     tenant_id=tenant_id,

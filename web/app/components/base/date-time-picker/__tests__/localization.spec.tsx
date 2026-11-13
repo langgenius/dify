@@ -68,12 +68,18 @@ it('localizes empty picker placeholders and preserves a caller override', async 
       </DatePicker>
     </I18nextProvider>,
   )
-  expect(screen.getByRole('button', { name: 'Date' })).toHaveTextContent(zh['operation.pickDate'])
-  expect(screen.getByRole('button', { name: 'Meeting' })).toHaveTextContent(
-    zh['operation.pickDate'],
+  expect(
+    screen.getByRole('button', { name: `Date ${zh['operation.pickDate']}` }),
+  ).toHaveTextContent(zh['operation.pickDate'])
+  expect(
+    screen.getByRole('button', { name: `Meeting ${zh['operation.pickDate']}` }),
+  ).toHaveTextContent(zh['operation.pickDate'])
+  expect(screen.getByRole('button', { name: `Time ${zh['title.pickTime']}` })).toHaveTextContent(
+    zh['title.pickTime'],
   )
-  expect(screen.getByRole('button', { name: 'Time' })).toHaveTextContent(zh['title.pickTime'])
-  expect(screen.getByRole('button', { name: 'Billing' })).toHaveTextContent('Choose billing day')
+  expect(screen.getByRole('button', { name: 'Billing Choose billing day' })).toHaveTextContent(
+    'Choose billing day',
+  )
 })
 
 it('updates time formatting and popup labels from the application language without locale props', async () => {
@@ -153,10 +159,32 @@ it.each([
       </I18nextProvider>,
     )
     await user.click(screen.getByRole('button', { name: /^Date / }))
-    expect(screen.getByRole('button', { name: dayLabel })).toHaveAttribute('aria-current', 'date')
+    expect(screen.getByRole('button', { name: `28: ${dayLabel}` })).toHaveAttribute(
+      'aria-current',
+      'date',
+    )
     expect(screen.getByRole('gridcell', { selected: true })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Calendar navigation' })).toBeInTheDocument()
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('localizes the picker close action and dismisses without changing its value', async () => {
+  const user = userEvent.setup()
+  const i18n = await createI18n('zh-Hans')
+  const changed = vi.fn()
+  render(
+    <I18nextProvider i18n={i18n}>
+      <TimePicker defaultValue="13:30" onValueChange={changed}>
+        <TimePickerLabel>Time</TimePickerLabel>
+        <TimePickerTrigger />
+        <TimePickerContent />
+      </TimePicker>
+    </I18nextProvider>,
+  )
+  await user.click(screen.getByRole('button', { name: /^Time / }))
+  act(() => screen.getByRole('button', { name: zh['operation.close'] }).click())
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(changed).not.toHaveBeenCalled()
 })

@@ -14,10 +14,17 @@ import {
   documentTasksInfiniteOptions,
   logicalDocumentsInfiniteOptions,
 } from '../queries'
-import { documentsKnowledgeSpaceIdAtom } from './inputs'
+import {
+  documentFilterAtom,
+  documentRequestSearchAtom,
+  documentsKnowledgeSpaceIdAtom,
+} from './inputs'
 
 const documentsQueryAtom = atomWithInfiniteQuery((get) =>
-  logicalDocumentsInfiniteOptions(get(documentsKnowledgeSpaceIdAtom)),
+  logicalDocumentsInfiniteOptions(get(documentsKnowledgeSpaceIdAtom), {
+    search: get(documentRequestSearchAtom),
+    filter: get(documentFilterAtom),
+  }),
 )
 
 const documentsQueryDataAtom = selectAtom(documentsQueryAtom, (query) => query.data)

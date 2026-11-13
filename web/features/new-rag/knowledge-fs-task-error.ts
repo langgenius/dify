@@ -232,9 +232,14 @@ export async function knowledgeFsRequestFailureMessageKey(error: unknown) {
   } else {
     return
   }
-  if (typeof body === 'object' && body !== null && 'failure' in body) {
-    const failure = zKnowledgeFsPublicFailureResponse.safeParse(body.failure)
-    if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
+  if (typeof body === 'object' && body !== null) {
+    for (const value of [
+      'details' in body ? body.details : undefined,
+      'failure' in body ? body.failure : undefined,
+    ]) {
+      const failure = zKnowledgeFsPublicFailureResponse.safeParse(value)
+      if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
+    }
   }
 }
 

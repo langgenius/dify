@@ -1,7 +1,7 @@
 import type { MarketplaceCreator, MarketplaceOrganization } from '@dify/contracts/marketplace'
 import type { CreatorSortField, CreatorSortOrder, LoadedCreatorProfile } from './model'
 import { cache } from 'react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
 import { getPluginIconInMarketplace } from '../utils'
 import {
@@ -81,10 +81,10 @@ const loadCreatorProfileCached = cache(
     const resource = kind === 'organization' ? 'organizations' : 'creators'
     const encodedHandle = encodeURIComponent(uniqueHandle)
     const backgroundUrl = creator.background_image
-      ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/background-image`
+      ? getMarketplaceApiUrl(`${resource}/${encodedHandle}/background-image`)
       : ''
     const avatarUrl = creator.avatar
-      ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/avatar`
+      ? getMarketplaceApiUrl(`${resource}/${encodedHandle}/avatar`)
       : ''
     const viewModel = adaptCreatorProfile({
       creator,

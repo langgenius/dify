@@ -71,7 +71,7 @@ export async function fetchSkillFileBlob({
   const response = await get<Response>(
     `/workspaces/current/skills/${encodeURIComponent(skillId)}/files/content?${params.toString()}`,
     {},
-    { needAllResponseContent: true },
+    { needAllResponseContent: true, silent: true },
   )
   return response.blob()
 }
@@ -80,7 +80,7 @@ export async function fetchSkillArchiveBlob(skillId: string) {
   const response = await get<Response>(
     `/workspaces/current/skills/${encodeURIComponent(skillId)}/export`,
     {},
-    { needAllResponseContent: true },
+    { needAllResponseContent: true, silent: true },
   )
   return response.blob()
 }

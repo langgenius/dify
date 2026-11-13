@@ -69,6 +69,7 @@ from models.workflow import Workflow
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_latest_dataset_process_rule
 from repositories.knowledge.segment_repository import query_child_chunks
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -133,15 +134,6 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
-        if not dify_config.RBAC_ENABLED:
-            return False
-
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
-        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
-        return "dataset.create_and_management" in workspace_permission_keys
-
-    @staticmethod
     def get_datasets(
         page: int,
         per_page: int,
@@ -152,23 +144,35 @@ class DatasetService:
         tag_ids=None,
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
         for_selection: bool = False,
         ids: list[str] | None = None,
+        service_api_grant: DatasetServiceApiGrant | None = None,
     ):
-        """Return visible datasets for a tenant using the injected read session."""
+        """Return datasets under account or Dataset Service API visibility.
+
+        Service API callers skip account ACLs while retaining the tenant boundary.
+        A resource-scoped grant further restricts the query to its authorized IDs.
+        Account callers must supply the resolved RBAC resource scope when restricted.
+        This method preserves that scope and pagination without fetching another
+        permission snapshot; include_all does not bypass the RBAC resource filter.
+        """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
-        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+        if service_api_grant is not None:
+            if service_api_grant.tenant_id != tenant_id:
+                raise ValueError("Dataset Service API grant does not match the requested workspace.")
+            if service_api_grant.dataset_ids is not None:
+                query = query.where(Dataset.id.in_(service_api_grant.dataset_ids))
+        elif dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
-        if user:
+        if service_api_grant is None and user:
             # get permitted dataset ids
             dataset_permission = session.scalars(
                 select(DatasetPermission).where(
@@ -183,47 +187,35 @@ class DatasetService:
                     query = query.where(Dataset.id.in_(permitted_dataset_ids))
                 else:
                     return [], 0
-            else:
-                if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = include_all and DatasetService._can_manage_all_datasets(
-                        str(tenant_id), str(user.id)
-                    )
-                    should_show_all_datasets = include_all and can_manage_all_datasets
-                else:
-                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
-
+            elif not dify_config.RBAC_ENABLED:
+                should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
                 if not should_show_all_datasets:
-                    if dify_config.RBAC_ENABLED:
-                        # RBAC mode: show all datasets.  Permission control is enforced
-                        # via permission_keys on each item and @rbac_permission_required decorators.
-                        pass
+                    # Keep legacy visibility rules when RBAC is disabled.
+                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                        query = query.where(
+                            sa.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                    Dataset.maintainer == user.id,
+                                ),
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                    Dataset.id.in_(permitted_dataset_ids),
+                                ),
+                            )
+                        )
                     else:
-                        # Keep legacy visibility rules when RBAC is disabled.
-                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                            query = query.where(
-                                sa.or_(
-                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.maintainer == user.id,
-                                    ),
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                        Dataset.id.in_(permitted_dataset_ids),
-                                    ),
-                                )
+                        query = query.where(
+                            sa.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                    Dataset.maintainer == user.id,
+                                ),
                             )
-                        else:
-                            query = query.where(
-                                sa.or_(
-                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.maintainer == user.id,
-                                    ),
-                                )
-                            )
-        else:
+                        )
+        elif service_api_grant is None:
             if dify_config.RBAC_ENABLED:
                 # Without an account we cannot resolve RBAC resource visibility.
                 query = query.where(sa.false())
@@ -296,7 +288,6 @@ class DatasetService:
         tenant_id: str,
         user=None,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         *,
         session: Session,
     ):
@@ -311,7 +302,7 @@ class DatasetService:
                 dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
             ]
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 
@@ -1985,22 +1976,27 @@ class DocumentService:
 
     @staticmethod
     def delete_document(document, session: Session):
-        # trigger document_was_deleted signal
         file_id = None
         if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
-        document_was_deleted.send(
-            document.id,
-            dataset_id=document.dataset_id,
-            doc_form=document.doc_form,
-            file_id=file_id,
-        )
+        # Read everything cleanup needs before the row is deleted and expired.
+        document_id, dataset_id, doc_form = document.id, document.dataset_id, document.doc_form
 
         session.delete(document)
         session.commit()
+
+        # Dispatch cleanup only after the deletion commits, as bulk deletion does. An
+        # in-flight indexing run either sees the document gone and discards what it
+        # wrote, or finished writing before the commit, so cleanup still finds it.
+        document_was_deleted.send(
+            document_id,
+            dataset_id=dataset_id,
+            doc_form=doc_form,
+            file_id=file_id,
+        )
 
     @staticmethod
     def delete_documents(
@@ -3262,9 +3258,6 @@ class DocumentService:
 
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
-                if not pre_processing_rule.id:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
                 if not isinstance(pre_processing_rule.enabled, bool):
                     raise ValueError("Process rule pre_processing_rules enabled is invalid")
 

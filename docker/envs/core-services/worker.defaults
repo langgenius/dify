@@ -1,0 +1,42 @@
+# Defaults for worker. Copy this file to worker.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+# MODE is selected by the Compose service.
+# CELERY_WORKER_CLASS=gevent
+API_SENTRY_DSN=${API_SENTRY_DSN:-}
+API_SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+API_SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+PLUGIN_MAX_PACKAGE_SIZE=${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; all callers must share the API's inner credential.
+# Set COMPOSE_WORKER_HEALTHCHECK_DISABLED in docker/.env; Compose needs it before loading service files.
+# Set COMPOSE_WORKER_HEALTHCHECK_INTERVAL in docker/.env; Compose needs it before loading service files.
+# Set COMPOSE_WORKER_HEALTHCHECK_TIMEOUT in docker/.env; Compose needs it before loading service files.
+DIFY_AGENT_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
+AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
+CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}
+
+# Worker autoscaling
+# CELERY_AUTO_SCALE=false
+# CELERY_MAX_WORKERS=
+# CELERY_MIN_WORKERS=
+
+# Evaluation run orchestration (deploy/dev evaluation feature; consumed by API and worker processes).
+# Prevent DeepEval from loading local dotenv files or exporting telemetry from API/worker processes.
+DEEPEVAL_DISABLE_DOTENV=${DEEPEVAL_DISABLE_DOTENV:-1}
+DEEPEVAL_TELEMETRY_OPT_OUT=${DEEPEVAL_TELEMETRY_OPT_OUT:-1}
+EVALUATION_MAX_CONCURRENT_RUNS=${EVALUATION_MAX_CONCURRENT_RUNS:-3}
+EVALUATION_MAX_DATASET_ROWS=${EVALUATION_MAX_DATASET_ROWS:-500}
+EVALUATION_RUN_HEARTBEAT_INTERVAL=${EVALUATION_RUN_HEARTBEAT_INTERVAL:-30}
+EVALUATION_RUN_LEASE_TIMEOUT=${EVALUATION_RUN_LEASE_TIMEOUT:-180}
+EVALUATION_RUN_MAX_RETRIES=${EVALUATION_RUN_MAX_RETRIES:-3}
+EVALUATION_RUN_RETRY_DELAY=${EVALUATION_RUN_RETRY_DELAY:-30}
+EVALUATION_MAX_PARALLEL_TARGETS=${EVALUATION_MAX_PARALLEL_TARGETS:-5}
+ENABLE_EVALUATION_RUN_RECONCILER=${ENABLE_EVALUATION_RUN_RECONCILER:-true}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
+INNER_API_KEY_FOR_PLUGIN=${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+SENTRY_DSN=${API_SENTRY_DSN:-}
+SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}

@@ -69,9 +69,12 @@ const TransferOwnershipContent = () => {
   })
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
-      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post({
-        body: { code, token },
-      })
+      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post(
+        {
+          body: { code, token },
+        },
+        { context: { silent: true } },
+      )
       if (res.is_valid) {
         setStepToken(res.token)
         callback?.()
@@ -98,10 +101,13 @@ const TransferOwnershipContent = () => {
   const handleTransfer = async () => {
     setIsTransfer(true)
     try {
-      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post({
-        params: { member_id: newOwner },
-        body: { token: stepToken },
-      })
+      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post(
+        {
+          params: { member_id: newOwner },
+          body: { token: stepToken },
+        },
+        { context: { silent: true } },
+      )
       globalThis.location.reload()
     } catch (error) {
       toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)

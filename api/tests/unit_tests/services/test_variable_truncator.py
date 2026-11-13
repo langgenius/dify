@@ -66,10 +66,10 @@ class TestVariableTruncatorCases:
         """Test calculate_json_size method with different data types."""
 
         @pytest.fixture
-        def truncator(self):
+        def truncator(self) -> VariableTruncator:
             return VariableTruncator()
 
-        def test_string_size_calculation(self):
+        def test_string_size_calculation(self) -> None:
             """Test JSON size calculation for strings."""
             # Simple ASCII string
             assert VariableTruncator.calculate_json_size("hello") == 7  # "hello" + 2 quotes
@@ -80,23 +80,23 @@ class TestVariableTruncatorCases:
             # Unicode string
             assert VariableTruncator.calculate_json_size("你好") == 4
 
-        def test_number_size_calculation(self, truncator):
+        def test_number_size_calculation(self, truncator: VariableTruncator) -> None:
             """Test JSON size calculation for numbers."""
             assert truncator.calculate_json_size(123) == 3
             assert truncator.calculate_json_size(12.34) == 5
             assert truncator.calculate_json_size(-456) == 4
             assert truncator.calculate_json_size(0) == 1
 
-        def test_boolean_size_calculation(self, truncator):
+        def test_boolean_size_calculation(self, truncator: VariableTruncator) -> None:
             """Test JSON size calculation for booleans."""
             assert truncator.calculate_json_size(True) == 4  # "true"
             assert truncator.calculate_json_size(False) == 5  # "false"
 
-        def test_null_size_calculation(self, truncator):
+        def test_null_size_calculation(self, truncator: VariableTruncator) -> None:
             """Test JSON size calculation for None/null."""
             assert truncator.calculate_json_size(None) == 4  # "null"
 
-        def test_array_size_calculation(self, truncator):
+        def test_array_size_calculation(self, truncator: VariableTruncator) -> None:
             """Test JSON size calculation for arrays."""
             # Empty array
             assert truncator.calculate_json_size([]) == 2  # "[]"
@@ -111,7 +111,7 @@ class TestVariableTruncatorCases:
             # ["a","b"] = 3 + 3 + 1 + 2 = 9 (quoted strings + comma + brackets)
             assert truncator.calculate_json_size(string_array) == 9
 
-        def test_object_size_calculation(self, truncator):
+        def test_object_size_calculation(self, truncator: VariableTruncator) -> None:
             """Test JSON size calculation for objects."""
             # Empty object
             assert truncator.calculate_json_size({}) == 2  # "{}"
@@ -126,7 +126,7 @@ class TestVariableTruncatorCases:
             # {"a":1,"b":2} = 3 + 1 + 1 + 1 + 3 + 1 + 1 + 2 = 13
             assert truncator.calculate_json_size(multi_obj) == 13
 
-        def test_nested_structure_size_calculation(self, truncator):
+        def test_nested_structure_size_calculation(self, truncator: VariableTruncator) -> None:
             """Test JSON size calculation for nested structures."""
             nested = {"items": [1, 2, {"nested": "value"}]}
             size = truncator.calculate_json_size(nested)
@@ -138,20 +138,21 @@ class TestVariableTruncatorCases:
             # Should be close but not exact due to UTF-8 encoding considerations
             assert abs(size - len(actual_json.encode())) <= 5
 
-        def test_calculate_json_size_max_depth_exceeded(self, truncator):
+        def test_calculate_json_size_max_depth_exceeded(self, truncator: VariableTruncator) -> None:
             """Test that calculate_json_size handles deep nesting gracefully."""
             # Create deeply nested structure
-            nested: dict[str, Any] = {"level": 0}
-            current = nested
+            nested: dict[str, object] = {"level": 0}
+            current: dict[str, object] = nested
             for i in range(105):  # Create deep nesting
-                current["next"] = {"level": i + 1}
-                current = current["next"]
+                nxt: dict[str, object] = {"level": i + 1}
+                current["next"] = nxt
+                current = nxt
 
             # Should either raise an error or handle gracefully
             with pytest.raises(MaxDepthExceededError):
                 truncator.calculate_json_size(nested)
 
-        def test_calculate_json_size_unknown_type(self, truncator):
+        def test_calculate_json_size_unknown_type(self, truncator: VariableTruncator) -> None:
             """Test that calculate_json_size raises error for unknown types."""
 
             class CustomType:
@@ -165,10 +166,10 @@ class TestVariableTruncatorCases:
         """Test string truncation functionality."""
 
         @pytest.fixture
-        def small_truncator(self):
+        def small_truncator(self) -> VariableTruncator:
             return VariableTruncator(string_length_limit=10)
 
-        def test_short_string_no_truncation(self, small_truncator):
+        def test_short_string_no_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test that short strings are not truncated."""
             short_str = "hello"
             result = small_truncator._truncate_string(short_str, self.LENGTH_LIMIT)
@@ -176,7 +177,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.value_size == VariableTruncator.calculate_json_size(short_str)
 
-        def test_long_string_truncation(self, small_truncator: VariableTruncator):
+        def test_long_string_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test that long strings are truncated with ellipsis."""
             long_str = "this is a very long string that exceeds the limit"
             result = small_truncator._truncate_string(long_str, self.LENGTH_LIMIT)
@@ -185,7 +186,7 @@ class TestVariableTruncatorCases:
             assert result.value == long_str[:5] + "..."
             assert result.value_size == 10  # 10 chars + "..."
 
-        def test_exact_limit_string(self, small_truncator: VariableTruncator):
+        def test_exact_limit_string(self, small_truncator: VariableTruncator) -> None:
             """Test string exactly at limit."""
             exact_str = "1234567890"  # Exactly 10 chars
             result = small_truncator._truncate_string(exact_str, self.LENGTH_LIMIT)
@@ -197,17 +198,17 @@ class TestVariableTruncatorCases:
         """Test array truncation functionality."""
 
         @pytest.fixture
-        def small_truncator(self):
+        def small_truncator(self) -> VariableTruncator:
             return VariableTruncator(array_element_limit=3, max_size_bytes=100)
 
-        def test_small_array_no_truncation(self, small_truncator: VariableTruncator):
+        def test_small_array_no_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test that small arrays are not truncated."""
             small_array: list[object] = [1, 2]
             result = small_truncator._truncate_array(small_array, 1000)
             assert result.value == small_array
             assert result.truncated is False
 
-        def test_array_element_limit_truncation(self, small_truncator: VariableTruncator):
+        def test_array_element_limit_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test that arrays over element limit are truncated."""
             large_array: list[object] = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
             result = small_truncator._truncate_array(large_array, 1000)
@@ -215,7 +216,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is True
             assert result.value == [1, 2, 3]
 
-        def test_array_size_budget_truncation(self, small_truncator: VariableTruncator):
+        def test_array_size_budget_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test array truncation due to size budget constraints."""
             # Create array with strings that will exceed size budget
             large_strings: list[object] = ["very long string " * 5, "another long string " * 5]
@@ -227,9 +228,9 @@ class TestVariableTruncatorCases:
                 assert isinstance(item, str)
             assert VariableTruncator.calculate_json_size(result.value) <= 50
 
-        def test_array_with_nested_objects(self, small_truncator):
+        def test_array_with_nested_objects(self, small_truncator: VariableTruncator) -> None:
             """Test array truncation with nested objects."""
-            nested_array = [
+            nested_array: list[object] = [
                 {"name": "item1", "data": "some data"},
                 {"name": "item2", "data": "more data"},
                 {"name": "item3", "data": "even more data"},
@@ -245,24 +246,24 @@ class TestVariableTruncatorCases:
         """Test object truncation functionality."""
 
         @pytest.fixture
-        def small_truncator(self):
+        def small_truncator(self) -> VariableTruncator:
             return VariableTruncator(max_size_bytes=100)
 
-        def test_small_object_no_truncation(self, small_truncator):
+        def test_small_object_no_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test that small objects are not truncated."""
             small_obj = {"a": 1, "b": 2}
             result = small_truncator._truncate_object(small_obj, 1000)
             assert result.value == small_obj
             assert result.truncated is False
 
-        def test_empty_object_no_truncation(self, small_truncator):
+        def test_empty_object_no_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test that empty objects are not truncated."""
             empty_obj = {}
             result = small_truncator._truncate_object(empty_obj, 100)
             assert result.value == empty_obj
             assert result.truncated is False
 
-        def test_object_value_truncation(self, small_truncator):
+        def test_object_value_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test object truncation where values are truncated to fit budget."""
             obj_with_long_values = {
                 "key1": "very long string " * 10,
@@ -283,7 +284,7 @@ class TestVariableTruncatorCases:
                 # Value should be same or smaller
                 assert len(value) <= len(original_value)
 
-        def test_object_key_dropping(self, small_truncator):
+        def test_object_key_dropping(self, small_truncator: VariableTruncator) -> None:
             """Test object truncation where keys are dropped due to size constraints."""
             large_obj = {f"key{i:02d}": f"value{i}" for i in range(20)}
             result = small_truncator._truncate_object(large_obj, 50)
@@ -295,7 +296,7 @@ class TestVariableTruncatorCases:
             result_keys = list(result.value.keys())
             assert result_keys == sorted(result_keys)
 
-        def test_object_with_nested_structures(self, small_truncator):
+        def test_object_with_nested_structures(self, small_truncator: VariableTruncator) -> None:
             """Test object truncation with nested arrays and objects."""
             nested_obj = {
                 "simple": "value",
@@ -310,14 +311,14 @@ class TestVariableTruncatorCases:
         """Test the main truncate method that works with Segments."""
 
         @pytest.fixture
-        def truncator(self):
+        def truncator(self) -> VariableTruncator:
             return VariableTruncator()
 
         @pytest.fixture
-        def small_truncator(self):
+        def small_truncator(self) -> VariableTruncator:
             return VariableTruncator(string_length_limit=20, array_element_limit=3, max_size_bytes=200)
 
-        def test_integer_segment_no_truncation(self, truncator):
+        def test_integer_segment_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test that integer segments are never truncated."""
             segment = IntegerSegment(value=12345)
             result = truncator.truncate(segment)
@@ -326,7 +327,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.result == segment
 
-        def test_boolean_as_integer_segment(self, truncator):
+        def test_boolean_as_integer_segment(self, truncator: VariableTruncator) -> None:
             """Test boolean values in IntegerSegment are converted to int."""
             segment = IntegerSegment(value=True)
             result = truncator.truncate(segment)
@@ -336,7 +337,7 @@ class TestVariableTruncatorCases:
             assert isinstance(result.result, IntegerSegment)
             assert result.result.value == 1  # True converted to 1
 
-        def test_float_segment_no_truncation(self, truncator):
+        def test_float_segment_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test that float segments are never truncated."""
             segment = FloatSegment(value=123.456)
             result = truncator.truncate(segment)
@@ -345,7 +346,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.result == segment
 
-        def test_none_segment_no_truncation(self, truncator):
+        def test_none_segment_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test that None segments are never truncated."""
             segment = NoneSegment()
             result = truncator.truncate(segment)
@@ -354,14 +355,14 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.result == segment
 
-        def test_file_segment_no_truncation(self, truncator, file):
+        def test_file_segment_no_truncation(self, truncator: VariableTruncator, file: File) -> None:
             """Test that file segments are never truncated."""
             file_segment = FileSegment(value=file)
             result = truncator.truncate(file_segment)
             assert result.result == file_segment
             assert result.truncated is False
 
-        def test_array_file_segment_no_truncation(self, truncator, file):
+        def test_array_file_segment_no_truncation(self, truncator: VariableTruncator, file: File) -> None:
             """Test that array file segments are never truncated."""
 
             array_file_segment = ArrayFileSegment(value=[file] * 20)
@@ -369,7 +370,7 @@ class TestVariableTruncatorCases:
             assert result.result == array_file_segment
             assert result.truncated is False
 
-        def test_string_segment_small_no_truncation(self, truncator):
+        def test_string_segment_small_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test small string segments are not truncated."""
             segment = StringSegment(value="hello world")
             result = truncator.truncate(segment)
@@ -378,7 +379,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.result == segment
 
-        def test_string_segment_large_truncation(self, small_truncator):
+        def test_string_segment_large_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test large string segments are truncated."""
             long_text = "this is a very long string that will definitely exceed the limit"
             segment = StringSegment(value=long_text)
@@ -390,7 +391,7 @@ class TestVariableTruncatorCases:
             assert len(result.result.value) < len(long_text)
             assert result.result.value.endswith("...")
 
-        def test_array_segment_small_no_truncation(self, truncator):
+        def test_array_segment_small_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test small array segments are not truncated."""
             from factories.variable_factory import build_segment
 
@@ -401,7 +402,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.result == segment
 
-        def test_array_segment_large_truncation(self, small_truncator):
+        def test_array_segment_large_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test large array segments are truncated."""
             from factories.variable_factory import build_segment
 
@@ -414,7 +415,7 @@ class TestVariableTruncatorCases:
             assert isinstance(result.result, ArraySegment)
             assert len(result.result.value) <= 3
 
-        def test_object_segment_small_no_truncation(self, truncator):
+        def test_object_segment_small_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test small object segments are not truncated."""
             segment = ObjectSegment(value={"key": "value"})
             result = truncator.truncate(segment)
@@ -423,7 +424,7 @@ class TestVariableTruncatorCases:
             assert result.truncated is False
             assert result.result == segment
 
-        def test_object_segment_large_truncation(self, small_truncator):
+        def test_object_segment_large_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test large object segments are truncated."""
             large_obj = {f"key{i}": f"very long value {i}" * 5 for i in range(5)}
             segment = ObjectSegment(value=large_obj)
@@ -437,7 +438,7 @@ class TestVariableTruncatorCases:
             result_size = small_truncator.calculate_json_size(result.result.value)
             assert result_size <= original_size
 
-        def test_final_size_fallback_to_json_string(self, small_truncator):
+        def test_final_size_fallback_to_json_string(self, small_truncator: VariableTruncator) -> None:
             """Test final fallback when truncated result still exceeds size limit."""
             # Create data that will still be large after initial truncation
             large_nested_data = {"data": ["very long string " * 5] * 5, "more": {"nested": "content " * 20}}
@@ -453,7 +454,7 @@ class TestVariableTruncatorCases:
             # Should be JSON string with possible truncation
             assert len(result.result.value) <= 53  # 50 + "..." = 53
 
-        def test_final_size_fallback_string_truncation(self, small_truncator):
+        def test_final_size_fallback_string_truncation(self, small_truncator: VariableTruncator) -> None:
             """Test final fallback for string that still exceeds limit."""
             # Create very long string that exceeds string length limit
             very_long_string = "x" * 6000  # Exceeds default string_length_limit of 5000
@@ -472,7 +473,7 @@ class TestVariableTruncatorCases:
     class TestEdgeCases:
         """Test edge cases and error conditions."""
 
-        def test_empty_inputs(self):
+        def test_empty_inputs(self) -> None:
             """Test truncator with empty inputs."""
             truncator = VariableTruncator()
 
@@ -493,7 +494,7 @@ class TestVariableTruncatorCases:
             assert not result.truncated
             assert result.result.value == {}
 
-        def test_zero_and_negative_limits(self):
+        def test_zero_and_negative_limits(self) -> None:
             """Test truncator behavior with zero or very small limits."""
             # Zero string limit
             with pytest.raises(ValueError, match="string_length_limit should be greater than 3\\."):
@@ -505,7 +506,7 @@ class TestVariableTruncatorCases:
             with pytest.raises(ValueError, match="max_size_bytes should be greater than 0\\."):
                 VariableTruncator(max_size_bytes=0)
 
-        def test_unicode_and_special_characters(self):
+        def test_unicode_and_special_characters(self) -> None:
             """Test truncator with unicode and special characters."""
             truncator = VariableTruncator(string_length_limit=10)
 
@@ -523,10 +524,10 @@ class TestVariableTruncatorCases:
         """Test _truncate_json_primitives method with different data types."""
 
         @pytest.fixture
-        def truncator(self):
+        def truncator(self) -> VariableTruncator:
             return VariableTruncator()
 
-        def test_truncate_json_primitives_file_type(self, truncator, file):
+        def test_truncate_json_primitives_file_type(self, truncator: VariableTruncator, file: File) -> None:
             """Test that File objects are handled correctly in _truncate_json_primitives."""
             # Test File object is returned as-is without truncation
             result = truncator._truncate_json_primitives(file, 1000)
@@ -537,7 +538,9 @@ class TestVariableTruncatorCases:
             expected_size = VariableTruncator.calculate_json_size(file)
             assert result.value_size == expected_size
 
-        def test_truncate_json_primitives_file_type_small_budget(self, truncator, file):
+        def test_truncate_json_primitives_file_type_small_budget(
+            self, truncator: VariableTruncator, file: File
+        ) -> None:
             """Test that File objects are returned as-is even with small budget."""
             # Even with a small size budget, File objects should not be truncated
             result = truncator._truncate_json_primitives(file, 10)
@@ -545,9 +548,9 @@ class TestVariableTruncatorCases:
             assert result.value == file
             assert result.truncated is False
 
-        def test_truncate_json_primitives_file_type_in_array(self, truncator, file):
+        def test_truncate_json_primitives_file_type_in_array(self, truncator: VariableTruncator, file: File) -> None:
             """Test File objects in arrays are handled correctly."""
-            array_with_files = [file, file]
+            array_with_files: list[object] = [file, file]
             result = truncator._truncate_json_primitives(array_with_files, 1000)
 
             assert isinstance(result.value, list)
@@ -556,10 +559,9 @@ class TestVariableTruncatorCases:
             assert result.value[1] == file
             assert result.truncated is False
 
-        def test_truncate_json_primitives_file_type_in_object(self, truncator, file):
+        def test_truncate_json_primitives_file_type_in_object(self, truncator: VariableTruncator, file: File) -> None:
             """Test File objects in objects are handled correctly."""
-            obj_with_files = {"file1": file, "file2": file}
-            result = truncator._truncate_json_primitives(obj_with_files, 1000)
+            result = truncator._truncate_json_primitives({"file1": file, "file2": file}, 1000)
 
             assert isinstance(result.value, dict)
             assert len(result.value) == 2
@@ -570,7 +572,7 @@ class TestVariableTruncatorCases:
     class TestIntegrationScenarios:
         """Test realistic integration scenarios."""
 
-        def test_workflow_output_scenario(self):
+        def test_workflow_output_scenario(self) -> None:
             """Test truncation of typical workflow output data."""
             truncator = VariableTruncator()
 
@@ -597,7 +599,7 @@ class TestVariableTruncatorCases:
             assert isinstance(result.result, (ObjectSegment, StringSegment))
             # Should handle complex nested structure appropriately
 
-        def test_large_text_processing_scenario(self):
+        def test_large_text_processing_scenario(self) -> None:
             """Test truncation of large text data."""
             truncator = VariableTruncator(string_length_limit=100)
 
@@ -612,7 +614,7 @@ class TestVariableTruncatorCases:
             assert len(result.result.value) <= 103  # 100 + "..."
             assert result.result.value.endswith("...")
 
-        def test_mixed_data_types_scenario(self):
+        def test_mixed_data_types_scenario(self) -> None:
             """Test truncation with mixed data types in complex structure."""
             truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)
 
@@ -639,7 +641,7 @@ class TestVariableTruncatorCases:
             result_size = truncator.calculate_json_size(result.result.value)
             assert result_size <= original_size
 
-        def test_file_and_array_file_variable_mapping(self, file):
+        def test_file_and_array_file_variable_mapping(self, file: File) -> None:
             truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)
 
             mapping = {"array_file": [file]}
@@ -648,7 +650,7 @@ class TestVariableTruncatorCases:
             assert truncated_mapping == mapping
 
     @staticmethod
-    def test_dummy_variable_truncator_methods():
+    def test_dummy_variable_truncator_methods() -> None:
         """Test DummyVariableTruncator methods work correctly."""
         truncator = DummyVariableTruncator()
 
@@ -719,7 +721,7 @@ class TestVariableTruncatorCases:
             # Use a target_size larger than ``count * file_size`` so the byte
             # budget never binds — only the count cap should fire.
             # Each File serializes to ~237 bytes; 3 files = ~713 bytes.
-            files = [self._make_file(f"f{i}") for i in range(500)]
+            files: list[object] = [self._make_file(f"f{i}") for i in range(500)]
 
             result = truncator._truncate_array(files, target_size=10_000_000)
 
@@ -731,7 +733,7 @@ class TestVariableTruncatorCases:
 
         def test_file_array_reports_real_used_size(self, truncator: VariableTruncator) -> None:
             # Large budget so the count cap fires before the byte budget does.
-            files = [self._make_file(f"f{i}") for i in range(500)]
+            files: list[object] = [self._make_file(f"f{i}") for i in range(500)]
 
             result = truncator._truncate_array(files, target_size=10_000_000)
 
@@ -746,7 +748,7 @@ class TestVariableTruncatorCases:
             # Use a small ``target_size`` so the byte budget is the binding
             # constraint. Each File serializes to ~237 bytes, so even one File
             # blows the 200-byte budget.
-            files = [self._make_file(f"f{i}") for i in range(50)]
+            files: list[object] = [self._make_file(f"f{i}") for i in range(50)]
 
             result = truncator._truncate_array(files, target_size=200)
 

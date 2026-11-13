@@ -30,6 +30,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGrepResponse,
     KnowledgeFSListQuery,
     KnowledgeFSListResponse,
+    KnowledgeFSLogicalDocumentListQuery,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
@@ -60,6 +61,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceEditSyncPolicyPayload,
     KnowledgeFSSourceImportFailureResponse,
     KnowledgeFSSourceListQuery,
+    KnowledgeFSSourcePageResponse,
+    KnowledgeFSSourcePagesQuery,
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
@@ -76,6 +79,22 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
+
+
+def test_source_pages_tree_preview_aliases() -> None:
+    query = KnowledgeFSSourcePagesQuery.model_validate(
+        {"view": "tree", "parentId": "repo:FFXN/dify", "cursor": "next", "limit": "10"}
+    )
+    assert query.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "cursor": "next",
+        "limit": 10,
+        "parentId": "repo:FFXN/dify",
+        "view": "tree",
+    }
+    page = KnowledgeFSSourcePageResponse.model_validate(
+        {"pageId": "repo:FFXN/dify", "pageName": "dify", "hasChildren": True, "type": "repository"}
+    )
+    assert page.model_dump(mode="json", exclude_none=True)["has_children"] is True
 
 
 def test_background_task_response_accepts_source_title_alias() -> None:
@@ -1979,3 +1998,16 @@ def test_every_sync_policy_entry_point_applies_the_same_custom_interval_rules(
         payload_type.model_validate({"enabled": True, "mode": "custom", **extra})
     with pytest.raises(ValidationError, match="customIntervalSeconds is only valid"):
         payload_type.model_validate({"enabled": True, "mode": "manual", "customIntervalSeconds": 3_600, **extra})
+
+
+def test_logical_document_search_query_normalizes_and_validates_filters() -> None:
+    query = KnowledgeFSLogicalDocumentListQuery.model_validate(
+        {"query": "  report  ", "status": "processing", "cursor": "next", "limit": "25"}
+    )
+    assert query.query == "report"
+    assert query.status == "processing"
+    assert query.limit == 25
+    assert KnowledgeFSLogicalDocumentListQuery(query="  ").query is None
+    for payload in ({"status": "running"}, {"query": "x" * 201}, {"limit": 101}):
+        with pytest.raises(ValidationError):
+            KnowledgeFSLogicalDocumentListQuery.model_validate(payload)

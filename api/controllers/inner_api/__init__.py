@@ -3,6 +3,7 @@ from types import ModuleType
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.errors import register_credential_refresh_error_handler
 from libs.external_api import ExternalApi
 
 bp = Blueprint("inner_api", __name__, url_prefix="/inner/api")
@@ -22,6 +23,7 @@ api = ExternalApi(
     },
     security="InnerApiKey",
 )
+register_credential_refresh_error_handler(api)
 
 # Create namespace
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")

@@ -1,5 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Provider as JotaiProvider } from 'jotai'
+import { useMarketplaceSort } from '../../atoms'
 import SortMenu from '../index'
 
 const mockTranslation = vi.hoisted(() =>
@@ -25,49 +27,47 @@ vi.mock('#i18n', async () => {
   }
 })
 
-let mockSort: { sortBy: string; sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
-const mockHandleSortChange = vi.fn()
-
-vi.mock('../../atoms', () => ({
-  useMarketplaceSort: () => [mockSort, mockHandleSortChange],
-}))
+function SortStateSubscriber() {
+  const [sort] = useMarketplaceSort()
+  return (
+    <output aria-label="Selected marketplace sort">{`${sort.sortBy}-${sort.sortOrder}`}</output>
+  )
+}
 
 describe('SortMenu', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockSort = { sortBy: 'install_count', sortOrder: 'DESC' }
-  })
-
-  it('falls back to the default option when the current sort is invalid', () => {
-    mockSort = { sortBy: 'unknown', sortOrder: 'ASC' }
-
-    render(<SortMenu />)
-
-    expect(screen.getByText('Most Popular')).toBeInTheDocument()
-  })
-
-  it('updates the sort and closes the menu when an option is selected', async () => {
+  it('updates the shared sort state and preserves the selection when reopened', async () => {
     const user = userEvent.setup()
-    render(<SortMenu />)
+    render(
+      <JotaiProvider>
+        <SortMenu />
+        <SortStateSubscriber />
+      </JotaiProvider>,
+    )
 
-    await user.click(screen.getByRole('button', { name: 'Sort by Most Popular' }))
+    const trigger = screen.getByRole('button', { name: 'Sort by Most Popular' })
+    await user.click(trigger)
     const menu = within(await screen.findByRole('menu'))
     expect(menu.getByRole('menuitemradio', { name: 'Most Popular' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
-    expect(menu.getByRole('menuitemradio', { name: 'Recently Updated' })).toHaveAttribute(
+    await user.click(menu.getByRole('menuitemradio', { name: 'Recently Updated' }))
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sort by Recently Updated' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Selected marketplace sort' })).toHaveTextContent(
+      'version_updated_at-DESC',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Sort by Recently Updated' }))
+    const reopenedMenu = within(await screen.findByRole('menu'))
+    expect(reopenedMenu.getByRole('menuitemradio', { name: 'Recently Updated' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(reopenedMenu.getByRole('menuitemradio', { name: 'Most Popular' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
-    expect(menu.getByRole('menuitemradio', { name: 'Newly Released' })).toBeInTheDocument()
-    expect(menu.getByRole('menuitemradio', { name: 'First Released' })).toBeInTheDocument()
-    await user.click(menu.getByRole('menuitemradio', { name: 'Recently Updated' }))
-
-    expect(mockHandleSortChange).toHaveBeenCalledWith({
-      sortBy: 'version_updated_at',
-      sortOrder: 'DESC',
-    })
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

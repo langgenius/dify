@@ -9,11 +9,11 @@ import {
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
   IS_MARKETPLACE,
-  MARKETPLACE_API_PREFIX,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'

@@ -33,7 +33,7 @@ def test_revoke_by_id_hides_a_session_the_caller_does_not_own(
     _stub_account_service(monkeypatch)
     with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
         with pytest.raises(NotFound, match="session not found"):
-            api.delete.__handler__(api, _ctx(), session_id=session_id)
+            api.delete.__handler__(api, _ctx(), session_id=session_id)  # type: ignore[attr-defined]
 
 
 # --- GET /account/sessions query validation. The application service is replaced
@@ -61,12 +61,12 @@ def _stub_account_service(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mod, "application_services", lambda: services)
 
 
-def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """A valid page/limit round-trips through SessionListQuery into the response envelope."""
     api = AccountSessionsApi()
     _stub_account_service(monkeypatch)
     with app.test_request_context("/openapi/v1/account/sessions?page=2&limit=5"):
-        result = api.get.__handler__(api, _ctx(), query=SessionListQuery(page=2, limit=5))
+        result = api.get.__handler__(api, _ctx(), query=SessionListQuery(page=2, limit=5))  # type: ignore[attr-defined]
     assert result.page == 2
     assert result.limit == 5
     assert result.total == 0
@@ -82,6 +82,6 @@ def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch
         {"foo": "bar"},
     ],
 )
-def test_session_list_query_rejects_out_of_bounds(params):
+def test_session_list_query_rejects_out_of_bounds(params: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         SessionListQuery.model_validate(params)

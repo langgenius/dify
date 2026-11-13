@@ -99,6 +99,8 @@
 /api/tests/**/tasks/test_async_workflow_tasks.py @Mairuis
 /api/tests/**/services/test_billing_service.py @zyssyz123
 /api/tests/**/controllers/console/billing/ @zyssyz123
+/api/tests/**/services/billing_client/ @zyssyz123
+/api/tests/**/dev/test_generate_billing_client.py @zyssyz123
 /api/tests/**/configs/enterprise/ @GareArc
 /api/tests/**/services/enterprise/ @GareArc
 /api/tests/**/services/test_feature_service.py @GareArc
@@ -188,6 +190,8 @@
 # Backend - Billing
 /api/services/billing_service.py @zyssyz123
 /api/controllers/console/billing/ @zyssyz123
+/api/services/billing_client/ @zyssyz123
+/api/dev/generate_billing_client.py @zyssyz123
 
 # Backend - Enterprise
 /api/configs/enterprise/ @GareArc
@@ -288,12 +292,8 @@
 /web/app/components/plugins/marketplace/ @iamjoel @Yessenia-d
 
 # Frontend - Login and Registration
-/web/app/signin/ @iamjoel
-/web/app/signup/ @iamjoel
-/web/app/reset-password/ @iamjoel
-/web/app/install/ @iamjoel
-/web/app/init/ @iamjoel
-/web/app/forgot-password/ @iamjoel
+/web/app/(auth)/ @iamjoel
+/web/app/components/auth-shell/ @iamjoel
 /web/app/account/ @iamjoel
 
 # Frontend - Service Authentication

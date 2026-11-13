@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
-from contextlib import nullcontext
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
@@ -12,13 +12,6 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.knowledge_fs import query_images
-
-
-class _Session:
-    committed = False
-
-    def commit(self) -> None:
-        self.committed = True
 
 
 def _upload(
@@ -46,25 +39,16 @@ def _upload(
     return upload
 
 
-def _install_files(monkeypatch: pytest.MonkeyPatch, files: list[UploadFile]) -> _Session:
-    session = _Session()
-
-    def get_upload_files_by_ids(_tenant_id: str, _ids: list[str], *, session: _Session) -> dict[str, UploadFile]:
-        assert session is not None
-        return {item.id: item for item in files}
-
-    monkeypatch.setattr(query_images.session_factory, "create_session", lambda: nullcontext(session))
-    monkeypatch.setattr(
-        query_images.FileService,
-        "get_upload_files_by_ids",
-        get_upload_files_by_ids,
-    )
-    return session
+def _persist_files(session: Session, files: Iterable[UploadFile | ToolFile]) -> None:
+    session.add_all(files)
+    session.commit()
 
 
-def test_validate_query_images_checks_actor_bounds_and_marks_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_query_images_checks_actor_bounds_and_marks_usage(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     upload = _upload()
-    session = _install_files(monkeypatch, [upload])
+    _persist_files(sqlite_session, [upload])
     used_at = datetime(2026, 7, 21, 12, 30)
     monkeypatch.setattr(query_images, "naive_utc_now", lambda: used_at)
 
@@ -82,10 +66,12 @@ def test_validate_query_images_checks_actor_bounds_and_marks_usage(monkeypatch: 
             mime_type="image/png",
         )
     ]
-    assert upload.used is True
-    assert upload.used_by == "account-1"
-    assert upload.used_at == used_at
-    assert session.committed is True
+    with sqlite_session_factory() as session:
+        persisted = session.get(UploadFile, upload.id)
+        assert persisted is not None
+        assert persisted.used is True
+        assert persisted.used_by == "account-1"
+        assert persisted.used_at == used_at
 
 
 @pytest.mark.parametrize(
@@ -98,11 +84,11 @@ def test_validate_query_images_checks_actor_bounds_and_marks_usage(monkeypatch: 
     ],
 )
 def test_validate_query_images_rejects_hidden_or_invalid_files(
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     upload: UploadFile,
     code: str,
 ) -> None:
-    _install_files(monkeypatch, [upload])
+    _persist_files(sqlite_session, [upload])
 
     with pytest.raises(query_images.KnowledgeFSQueryImageError) as error:
         query_images.validate_query_image_references(
@@ -115,12 +101,15 @@ def test_validate_query_images_rejects_hidden_or_invalid_files(
     assert error.value.code == code
 
 
-def test_load_query_image_previews_signs_only_files_the_actor_owns(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_query_image_previews_signs_only_files_the_actor_owns(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     owned = _upload(upload_file_id="00000000-0000-4000-8000-000000000001")
     owned.name = "diagram.png"
     foreign = _upload(upload_file_id="00000000-0000-4000-8000-000000000002", account_id="account-2")
     foreign.name = "other.png"
-    _install_files(monkeypatch, [owned, foreign])
+    other_tenant = _upload(upload_file_id="00000000-0000-4000-8000-000000000004", tenant_id="other-tenant")
+    _persist_files(sqlite_session, [owned, foreign, other_tenant])
     monkeypatch.setattr(
         query_images.file_helpers,
         "get_signed_file_url",
@@ -134,6 +123,7 @@ def test_load_query_image_previews_signs_only_files_the_actor_owns(monkeypatch: 
             owned.id,
             owned.id,
             foreign.id,
+            other_tenant.id,
             "00000000-0000-4000-8000-000000000003",
         ],
     )
@@ -151,8 +141,9 @@ def test_load_query_image_previews_signs_only_files_the_actor_owns(monkeypatch: 
     )
 
 
-def test_validate_query_images_rejects_missing_and_oversized_aggregate(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_files(monkeypatch, [])
+def test_validate_query_images_rejects_missing_and_oversized_aggregate(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     with pytest.raises(query_images.KnowledgeFSQueryImageError) as missing:
         query_images.validate_query_image_references(
             tenant_id="tenant-1",
@@ -166,21 +157,31 @@ def test_validate_query_images_rejects_missing_and_oversized_aggregate(monkeypat
         _upload(upload_file_id=f"00000000-0000-4000-8000-00000000000{index}", size=9 * 1024 * 1024)
         for index in range(1, 5)
     ]
-    _install_files(monkeypatch, uploads)
+    _persist_files(sqlite_session, uploads)
     with pytest.raises(query_images.KnowledgeFSQueryImageError) as oversized:
         query_images.validate_query_image_references(
             tenant_id="tenant-1",
             account_id="account-1",
             upload_file_ids=[upload.id for upload in uploads],
-            mark_used=False,
+            mark_used=True,
         )
     assert oversized.value.code == "QUERY_IMAGE_TOTAL_TOO_LARGE"
 
+    with sqlite_session_factory() as session:
+        for upload in uploads:
+            persisted = session.get(UploadFile, upload.id)
+            assert persisted is not None
+            assert persisted.used is False
+            assert persisted.used_by is None
+            assert persisted.used_at is None
 
-def test_load_query_image_sniffs_bytes_and_hashes_content(monkeypatch: pytest.MonkeyPatch) -> None:
+
+def test_load_query_image_sniffs_bytes_and_hashes_content(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
     upload = _upload(size=len(body))
-    _install_files(monkeypatch, [upload])
+    _persist_files(sqlite_session, [upload])
     monkeypatch.setattr(
         query_images.storage,
         "load",
@@ -198,9 +199,11 @@ def test_load_query_image_sniffs_bytes_and_hashes_content(monkeypatch: pytest.Mo
     assert len(result.sha256) == 64
 
 
-def test_load_query_image_stops_when_stream_exceeds_declared_size(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_query_image_stops_when_stream_exceeds_declared_size(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     upload = _upload(size=8)
-    _install_files(monkeypatch, [upload])
+    _persist_files(sqlite_session, [upload])
     image_stream = iter((b"\x89PNG\r\n\x1a\n", b"unexpected"))
 
     def load(_key: str, *, stream: bool = False) -> Iterator[bytes]:
@@ -222,16 +225,12 @@ def test_load_query_image_stops_when_stream_exceeds_declared_size(monkeypatch: p
 def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ownership(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
+    sqlite_session: Session,
 ) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
     upload = _upload(account_id="another-account", size=len(body))
-    _install_files(monkeypatch, [upload])
+    _persist_files(sqlite_session, [upload])
 
-    class _Controller:
-        def get_upload_file(self, **_kwargs: object) -> UploadFile:
-            return upload
-
-    monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
     config_overrides(SECRET_KEY="test-secret")
     monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
     monkeypatch.setattr(query_images.storage, "load", lambda _key, **_kwargs: iter((body,)))
@@ -268,6 +267,7 @@ def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ow
 def test_workflow_grant_loads_tool_files(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
+    sqlite_session: Session,
 ) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
     tool_file = ToolFile(
@@ -280,17 +280,7 @@ def test_workflow_grant_loads_tool_files(
     )
     tool_file.id = "00000000-0000-4000-8000-000000000002"
 
-    class _ToolFileSession(_Session):
-        def get(self, model: object, file_id: str) -> ToolFile | None:
-            assert model is query_images.ToolFile
-            return tool_file if file_id == tool_file.id else None
-
-    class _Controller:
-        def get_tool_file(self, **_kwargs: object) -> ToolFile:
-            return tool_file
-
-    monkeypatch.setattr(query_images.session_factory, "create_session", lambda: nullcontext(_ToolFileSession()))
-    monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
+    _persist_files(sqlite_session, [tool_file])
     config_overrides(SECRET_KEY="test-secret")
     monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
     monkeypatch.setattr(query_images.storage, "load", lambda _key, **_kwargs: iter((body,)))
@@ -353,14 +343,12 @@ def test_workflow_grant_rejects_invalid_context_and_file_shape() -> None:
     assert missing_reference.value.code == "QUERY_IMAGE_REFERENCE_UNSUPPORTED"
 
 
-def test_workflow_grant_rejects_cross_tenant_files_and_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_grant_rejects_cross_tenant_files_and_expiry(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     upload = _upload(tenant_id="other-tenant")
 
-    class _Controller:
-        def get_upload_file(self, **_kwargs: object) -> UploadFile:
-            return upload
-
-    monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
+    _persist_files(sqlite_session, [upload])
     with pytest.raises(query_images.KnowledgeFSQueryImageError) as cross_tenant:
         query_images.issue_workflow_query_image_reference(
             app_id="app-1",
@@ -399,3 +387,55 @@ def test_reference_shape_rejects_duplicates_and_over_count() -> None:
         query_images._validate_reference_ids(["same", "same"])
     with pytest.raises(query_images.KnowledgeFSQueryImageError, match="max count"):
         query_images._validate_reference_ids([str(index) for index in range(5)])
+
+
+@pytest.mark.parametrize("file_kind", ["upload_file", "tool_file"])
+@pytest.mark.parametrize("unavailable", ["deleted", "other_tenant"])
+def test_workflow_grant_rechecks_persisted_file_availability(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    sqlite_session: Session,
+    file_kind: str,
+    unavailable: str,
+) -> None:
+    upload = _upload()
+    if file_kind == "tool_file":
+        record: UploadFile | ToolFile = ToolFile(
+            conversation_id=None,
+            tenant_id="tenant-1",
+            user_id="account-1",
+            file_key="tool-files/image.png",
+            mimetype="image/png",
+            size=12,
+        )
+    else:
+        record = upload
+    record.id = upload.id
+    _persist_files(sqlite_session, [record])
+    config_overrides(SECRET_KEY="test-secret")
+    monkeypatch.setattr(query_images.time, "time", lambda: 1_001)
+    reference = query_images.issue_workflow_query_image_reference(
+        app_id="app-1",
+        file=File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE if file_kind == "tool_file" else FileTransferMethod.LOCAL_FILE,
+            reference=record.id,
+        ),
+        now=1_000,
+        tenant_id="tenant-1",
+    )
+    if unavailable == "deleted":
+        sqlite_session.delete(record)
+    else:
+        record.tenant_id = "other-tenant"
+    sqlite_session.commit()
+
+    with pytest.raises(query_images.KnowledgeFSQueryImageError) as error:
+        query_images.load_query_image(
+            access_grant=reference.access_grant,
+            subject_id="dify-app:app-1",
+            tenant_id="tenant-1",
+            upload_file_id=record.id,
+        )
+
+    assert error.value.code == "QUERY_IMAGE_NOT_FOUND"

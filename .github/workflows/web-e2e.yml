@@ -51,6 +51,10 @@ jobs:
           restore-keys: |
             e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
 
+      - name: Validate all active Cucumber scenarios
+        working-directory: ./e2e
+        run: vp run check:scenarios
+
       - name: Run E2E support unit tests
         working-directory: ./e2e
         run: vp run test:unit
@@ -115,7 +119,7 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           python-version: '3.13'
@@ -193,7 +197,7 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           python-version: '3.13'
@@ -265,7 +269,7 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           python-version: '3.13'

@@ -287,6 +287,9 @@ export const ExplicitAnatomy: Story = {
         trigger.getBoundingClientRect().bottom + 7,
       ),
     )
+    // A pointer open focuses the role="menu" element in a deferred animation frame; list
+    // navigation only handles ArrowDown once that focus lands.
+    await waitFor(() => expect(popup).toHaveFocus())
     await userEvent.keyboard('{ArrowDown}')
     await waitFor(() => expect(body.getByRole('menuitem', { name: 'Share' })).toHaveFocus())
     await userEvent.keyboard('{ArrowRight}')

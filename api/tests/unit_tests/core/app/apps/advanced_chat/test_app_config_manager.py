@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -15,7 +16,7 @@ def _workflow() -> Workflow:
 
 
 class TestAdvancedChatAppConfigManager:
-    def test_get_app_config(self):
+    def test_get_app_config(self) -> None:
         app_model = _app()
         workflow = _workflow()
 
@@ -34,12 +35,10 @@ class TestAdvancedChatAppConfigManager:
         assert app_config.workflow_id == "wf-1"
         assert app_config.app_mode == AppMode.ADVANCED_CHAT
 
-    def test_config_validate_filters_keys(self):
-        def _add_key(key, value):
-            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
-                config = kwargs.get("config") if kwargs else args[-1]
-                config = {**config, key: value}
-                return config, [key]
+    def test_config_validate_filters_keys(self) -> None:
+        def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
+            def _inner(config: dict[str, object], **_: object) -> tuple[dict[str, object], list[str]]:
+                return {**config, key: value}, [key]
 
             return _inner
 

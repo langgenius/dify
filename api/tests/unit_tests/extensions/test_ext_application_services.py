@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
-from typing import Never, cast
+from typing import cast
 from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
@@ -14,19 +14,21 @@ import httpx
 import pytest
 from flask import Flask
 from redis import Redis
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Connection, event, select
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-from core.credit_usage import CreditUsageAppType
-from core.llm_generator.llm_generator import LLMGenerator
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
-from core.ops.base_trace_instance import application_tracing_hooks
+from core.plugin.impl import base as plugin_http
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
+from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
@@ -43,7 +45,7 @@ from models.model import (
     Site,
     TrialApp,
 )
-from models.provider import ProviderCredential
+from models.provider import Provider, ProviderCredential, TenantDefaultModel
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -105,7 +107,6 @@ from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavaila
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.billing_portal_service import BillingPortalService
@@ -140,6 +141,8 @@ from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapte
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.application import DatasetSegmentApplicationService
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.feature_service import KnowledgeFSFeatures
 from services.message_file_preview_service import MessageFilePreviewService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
@@ -153,7 +156,9 @@ from services.retention.workflow_run.archive_download_task_cache import Workflow
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
-from services.tracing import runtime_bridge
+from services.tracing.adapters import CeleryTraceEmitter
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.trigger.oauth_gateway import TriggerOAuthBuilderGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -168,7 +173,11 @@ from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
+
+pytest_plugins = ("tests.helpers.unit.services.conversation_name_fixtures",)
 
 
 @pytest.fixture(autouse=True)
@@ -250,6 +259,10 @@ def test_init_app_registers_services_for_the_current_app(
 
     ext_application_services.init_app(app)
 
+    from extensions.application_services.tools import resolve_tool_credentials
+
+    assert ext_application_services.ToolManager._credential_resolver is resolve_tool_credentials
+
     with app.app_context():
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
@@ -272,9 +285,33 @@ def test_init_app_registers_services_for_the_current_app(
         assert creators._oauth is services.oauth_server
 
 
-def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_services(
+@pytest.mark.parametrize("enabled", [True, False])
+def test_init_app_registers_knowledge_fs_tool_only_when_knowledge_fs_is_enabled(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
+    enabled: bool,
+) -> None:
+    app = Flask(__name__)
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    monkeypatch.setattr(
+        ext_application_services,
+        "get_knowledge_fs_features",
+        lambda: KnowledgeFSFeatures(enabled=enabled, upload_enabled=False, agent_enabled=False),
+    )
+    monkeypatch.setattr(ext_application_services.ToolManager, "_external_hardcoded_provider_classes", [])
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
+
+    ext_application_services.init_app(app)
+
+    registered = ext_application_services.ToolManager._external_hardcoded_provider_classes
+    assert (KnowledgeFSProvider in registered) is enabled
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_init_app_binds_each_apps_agent_hooks_only_when_agent_tracing_is_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    enabled: bool,
 ) -> None:
     first_app, second_app = Flask("first"), Flask("second")
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
@@ -282,28 +319,60 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
         INIT_PASSWORD="",
-        OPS_AGENT_TRACE_ENABLED=True,
+        OPS_AGENT_TRACE_ENABLED=enabled,
     )
-    construction_calls: list[bool] = []
-
-    def construct_trace_service() -> Never:
-        construction_calls.append(True)
-        raise AssertionError("Composition must not construct a trace service")
-
-    monkeypatch.setattr(runtime_bridge, "_service", construct_trace_service)
 
     ext_application_services.init_app(first_app)
     ext_application_services.init_app(second_app)
 
     with first_app.app_context():
         first_hooks = application_tracing_hooks()
-        assert isinstance(first_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
+        first_services = ext_application_services.application_services()
         with second_app.app_context():
             second_hooks = application_tracing_hooks()
-            assert isinstance(second_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
-            assert second_hooks is not first_hooks
         assert application_tracing_hooks() is first_hooks
-    assert construction_calls == []
+    if not enabled:
+        assert first_hooks is None
+        assert second_hooks is None
+        return
+    assert isinstance(first_hooks, RuntimeApplicationTracingHooks)
+    assert isinstance(second_hooks, RuntimeApplicationTracingHooks)
+    assert second_hooks is not first_hooks
+    assert first_hooks is first_services.tracing.hooks
+
+
+def test_init_app_binds_trace_scopes_to_the_apps_tracing_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app = Flask(__name__)
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                make_app(
+                    app_id="traced-app",
+                    tenant_id="tenant-1",
+                    tracing=json.dumps({"enabled": True, "tracing_provider": "langfuse"}),
+                ),
+                make_app(app_id="untraced-app", tenant_id="tenant-1"),
+            ]
+        )
+
+    ext_application_services.init_app(app)
+
+    with app.app_context():
+        scope = create_trace_scope_for_app(
+            tenant_id="tenant-1", app_id="traced-app", user_id="user-1", extras={"external_trace_id": "external-1"}
+        )
+        assert scope is not None
+        assert isinstance(scope.emitter, CeleryTraceEmitter)
+        assert (scope.tenant_id, scope.app_id, scope.user_id) == ("tenant-1", "traced-app", "user-1")
+        assert scope.correlation.external_trace_id == "external-1"
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="untraced-app", user_id=None, extras={}) is None
+    with Flask("unbound").app_context():
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="traced-app", user_id=None, extras={}) is None
 
 
 def test_build_application_services_preserves_composed_boundaries(
@@ -324,6 +393,7 @@ def test_build_application_services_preserves_composed_boundaries(
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
     assert register_script.call_count == 3
+    assert services.conversation_queries._files is services.message_queries._files
 
     assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)
     installed_apps = services.installed_apps.access._installed_apps
@@ -633,7 +703,7 @@ def test_build_application_services_wires_app_tracing_config_boundary(
     assert isinstance(services.app_tracing_configs, AppTracingConfigService)
     assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
     assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
-    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
+    assert services.app_tracing_configs._provider is services.tracing.provider_configs
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(
@@ -1049,6 +1119,36 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
+    assert services.triggers.subscriptions._credentials is services.credential_queries
+    assert services.triggers.events._subscriptions is services.triggers.subscriptions
+    assert services.triggers.binding_queries is services.triggers.subscription_management._subscriptions
+    assert services.triggers.events._requests is services.triggers.endpoints._requests
+    assert services.workspaces.plugin_parameters._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._builders is services.triggers.builders
+    assert (
+        services.workspaces.plugin_parameters._subscriptions is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscriptions._schemas is services.triggers.providers
+    assert services.triggers.subscriptions._subscriptions is services.triggers.subscription_management._subscriptions
+    gateway = services.triggers.oauth._builders
+    assert isinstance(gateway, TriggerOAuthBuilderGateway)
+    assert gateway._builders is services.triggers.builders
+    assert services.triggers.builders._create_subscription == services.triggers.subscription_management.create
+    assert services.triggers.endpoints._subscriptions is services.triggers.subscription_management._subscriptions
+    assert (
+        services.triggers.subscription_renewal._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._providers is services.triggers.subscription_management._providers
+    assert services.triggers.subscription_refresh._renewal is services.triggers.subscription_renewal
+    assert (
+        services.triggers.subscription_refresh._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._locks is services.triggers.subscription_management._locks
+    assert services.triggers.subscription_renewal._codec is services.triggers.subscription_management._codec
+    assert services.triggers.subscription_renewal._clients is services.triggers.oauth_clients
+    assert services.triggers.subscription_renewal._oauth is services.triggers.oauth._providers
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
@@ -1763,15 +1863,27 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
 def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     sqlite_session_factory: sessionmaker[Session],
     installed_app_ref: InstalledAppRef,
+    naming_app: Flask,
+    naming_plugin: NamingPlugin,
     monkeypatch: pytest.MonkeyPatch,
     naming_fails: bool,
 ) -> None:
+    naming_plugin.answer = '{"Your Output": "Generated name"}'
+    naming_plugin.fail_invoke = naming_fails
     account_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
         app = session.get(App, installed_app_ref.app_id)
         assert app is not None
         app.mode = AppMode.CHAT
         owner_tenant_id = app.tenant_id
+        session.add_all(
+            [
+                Provider(tenant_id=owner_tenant_id, provider_name=_PROVIDER, is_valid=True),
+                TenantDefaultModel(
+                    tenant_id=owner_tenant_id, provider_name=_PROVIDER, model_name=_MODEL, model_type=ModelType.LLM
+                ),
+            ]
+        )
         conversation = Conversation(
             app_id=app.id,
             mode=AppMode.CHAT,
@@ -1815,23 +1927,23 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
 
     naming_sessions: list[Session] = []
 
-    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str) -> str:
-        assert active_connections == 0
-        assert get_credit_usage_metadata() == {"app_type": CreditUsageAppType.CHATBOT, "request_id": "naming-request"}
-        assert (tenant_id, query, c_id, app_id) == (
-            owner_tenant_id,
-            "First question",
-            conversation_id,
-            installed_app_ref.app_id,
-        )
-        # Provider/tracing code still uses the Flask-scoped session. Exercise
-        # that lifecycle rather than letting a pure callback hide a leaked read.
-        naming_session = db.session()
-        naming_session.scalar(select(1))
-        naming_sessions.append(naming_session)
-        if naming_fails:
-            raise RuntimeError("Provider unavailable")
-        return "Generated name"
+    def observe_naming_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        naming_sessions.append(session)
+
+    def observe_naming_request(request: httpx.Request) -> None:
+        if request.url.path.endswith("/llm/invoke"):
+            assert active_connections == 0
+            assert naming_sessions
+            assert all(not session.in_transaction() for session in naming_sessions)
+            assert get_credit_usage_metadata() == {
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.CONVERSATION_NAME,
+                "request_id": "naming-request",
+            }
+            assert f"/{owner_tenant_id}/" in request.url.path
+            assert json.loads(request.content)["data"]["prompt_messages"] == [
+                {"role": "user", "content": CONVERSATION_TITLE_PROMPT + "First question\n", "name": None}
+            ]
 
     queued: list[str] = []
 
@@ -1844,7 +1956,6 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             assert stored.is_deleted
         queued.append(c_id)
 
-    monkeypatch.setattr(LLMGenerator, "generate_conversation_name", generate_name)
     monkeypatch.setattr(delete_conversation_related_data, "delay", enqueue_cleanup)
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
@@ -1852,35 +1963,38 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
         initialization_password="",
         redis=_redis(),
     )
-    naming_app = Flask(__name__)
     admitted_app = services.installed_apps.access.get_access(
         installed_app_id=installed_app_ref.id,
         tenant_id=installed_app_ref.tenant_id,
         account_id=account_id,
     )
     assert admitted_app.app_mode == "chat"
-    naming_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
-    db.init_app(naming_app)
     previous_metadata = get_credit_usage_metadata()
-    with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
-        outer_session = db.session()
-        renamed = services.installed_apps.conversations.rename(
-            installed_app=admitted_app,
-            account_id=account_id,
-            conversation_id=conversation_id,
-            name=None,
-            auto_generate=True,
-        )
-        assert get_credit_usage_metadata() == {"request_id": "naming-request"}
-        assert renamed.name == ("Original" if naming_fails else "Generated name")
-        assert renamed.inputs == {"enabled": False}
-        assert len(naming_sessions) == 1
-        assert naming_sessions[0] is not outer_session
-        assert not naming_sessions[0].in_transaction()
-        assert db.session() is outer_session
-        services.installed_apps.conversations.delete(
-            installed_app=admitted_app, account_id=account_id, conversation_id=conversation_id
-        )
+    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
+    try:
+        with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
+            outer_session = db.session()
+            renamed = services.installed_apps.conversations.rename(
+                installed_app=admitted_app,
+                account_id=account_id,
+                conversation_id=conversation_id,
+                name=None,
+                auto_generate=True,
+            )
+            assert get_credit_usage_metadata() == {"request_id": "naming-request"}
+            assert renamed.name == ("Original" if naming_fails else "Generated name")
+            assert renamed.inputs == {"enabled": False}
+            assert naming_sessions
+            assert all(session is not outer_session and not session.in_transaction() for session in naming_sessions)
+            assert db.session() is outer_session
+            services.installed_apps.conversations.delete(
+                installed_app=admitted_app, account_id=account_id, conversation_id=conversation_id
+            )
+    finally:
+        plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
+        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+    assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]
     assert active_connections == 0

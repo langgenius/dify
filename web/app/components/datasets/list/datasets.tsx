@@ -8,10 +8,12 @@ import {
   AlertDialogContent,
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { DeleteDatasetConfirmation } from '../delete-dataset-confirmation'
@@ -19,8 +21,7 @@ import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 import { useInvalidDatasetList } from './use-dataset-list'
 
-const DATASET_GRID_CLASS_NAME =
-  'grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3'
+const DATASET_GRID_CLASS_NAME = cn('content-start gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)
 
 type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DatasetListResponse, number>>
 

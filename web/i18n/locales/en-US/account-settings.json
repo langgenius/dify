@@ -165,7 +165,7 @@
   "resourceAccessToken.searchResourcesPlaceholder": "Search apps or knowledge bases...",
   "resourceAccessToken.selectionPreservedError": "Try again. Your selection has not changed.",
   "resourceAccessToken.selectionPreservedLoading": "Your existing selection is preserved.",
-  "resourceAccessToken.tabAllTypes": "All types",
+  "resourceAccessToken.tabAllTypes": "All Types",
   "resourceAccessToken.tabApps": "Apps",
   "resourceAccessToken.tabKnowledgeBases": "Knowledge bases",
   "resourceAccessToken.token": "Token",

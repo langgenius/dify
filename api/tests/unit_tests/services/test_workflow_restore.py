@@ -2,9 +2,10 @@ import json
 
 from models.account import Account
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
-LEGACY_FEATURES = {
+LEGACY_FEATURES: dict[str, object] = {
     "file_upload": {
         "image": {
             "enabled": True,
@@ -16,16 +17,16 @@ LEGACY_FEATURES = {
     "retriever_resource": {"enabled": True},
     "sensitive_word_avoidance": {"enabled": False},
     "speech_to_text": {"enabled": False},
-    "suggested_questions": [],
+    "suggested_questions": list[str](),
     "suggested_questions_after_answer": {"enabled": False},
     "text_to_speech": {"enabled": False, "language": "", "voice": ""},
 }
 
-NORMALIZED_FEATURES = {
+NORMALIZED_FEATURES: dict[str, object] = {
     "file_upload": {
         "enabled": True,
         "allowed_file_types": ["image"],
-        "allowed_file_extensions": [],
+        "allowed_file_extensions": list[str](),
         "allowed_file_upload_methods": ["remote_url", "local_file"],
         "number_limits": 6,
     },
@@ -33,7 +34,7 @@ NORMALIZED_FEATURES = {
     "retriever_resource": {"enabled": True},
     "sensitive_word_avoidance": {"enabled": False},
     "speech_to_text": {"enabled": False},
-    "suggested_questions": [],
+    "suggested_questions": list[str](),
     "suggested_questions_after_answer": {"enabled": False},
     "text_to_speech": {"enabled": False, "language": "", "voice": ""},
 }
@@ -44,14 +45,14 @@ def _create_workflow(*, workflow_id: str, version: str, features: dict[str, obje
         id=workflow_id,
         tenant_id="tenant-id",
         app_id="app-id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version=version,
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-id",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 

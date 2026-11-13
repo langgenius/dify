@@ -59,10 +59,18 @@ type ShortcutPopup = {
 
 type PromptEditorContentAriaProps = Pick<
   React.AriaAttributes,
-  'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'
+  | 'aria-controls'
+  | 'aria-haspopup'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'aria-describedby'
+  | 'aria-invalid'
+  | 'aria-multiline'
+  | 'aria-disabled'
 >
 
 type PromptEditorContentProps = PromptEditorContentAriaProps & {
+  id?: string
   compact?: boolean
   className?: string
   placeholder?: string | React.ReactNode
@@ -107,6 +115,11 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-multiline': ariaMultiline,
+  'aria-disabled': ariaDisabled,
+  id,
   compact,
   className,
   placeholder,
@@ -140,10 +153,15 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       <RichTextPlugin
         contentEditable={
           <ContentEditable
+            id={id}
             aria-controls={ariaControls}
             aria-haspopup={ariaHasPopup}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
+            aria-multiline={ariaMultiline}
+            aria-disabled={ariaDisabled}
             className={cn(
               'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
               compact ? 'text-[13px] leading-5' : 'text-sm/6',

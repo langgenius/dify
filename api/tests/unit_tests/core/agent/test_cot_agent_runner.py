@@ -4,6 +4,8 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -50,6 +52,26 @@ def _make_message(*, message_id: str = "msg-id", conversation_id: str = "conv1")
     return message
 
 
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_Recorder(),
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
 class DummyRunner(CotAgentRunner):
     """Concrete implementation for testing abstract methods."""
 
@@ -78,7 +100,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[DummyRunner
     application_generate_entity.model_conf.stop = []
     application_generate_entity.model_conf.provider = "openai"
     application_generate_entity.model_conf.parameters = {}
-    application_generate_entity.trace_manager = None
+    application_generate_entity.trace_scope = None
     application_generate_entity.invoke_from = "test"
 
     app_config = MagicMock()
@@ -208,7 +230,7 @@ class TestFormatAssistantMessage:
 class TestHandleInvokeAction:
     def test_handle_invoke_action_tool_not_present(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="missing", action_input={})
-        response, meta = runner._handle_invoke_action(runner.session, action, {}, [])
+        response, meta = runner._handle_invoke_action(runner.session, action, {}, [], trace_scope=None)
         assert "there is not a tool named" in response
 
     def test_tool_with_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
@@ -221,7 +243,7 @@ class TestHandleInvokeAction:
             return_value=("result", [], MagicMock(to_dict=lambda: {})),
         )
 
-        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, [])
+        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, [], trace_scope=None)
         assert response == "result"
 
 
@@ -430,6 +452,8 @@ class TestRun:
     def test_run_prompt_tool_update_branch(self, runner: DummyRunner, mocker: MockerFixture):
         message = _make_message()
         message.id = "msg-id"
+        trace_scope = _trace_scope()
+        runner.application_generate_entity.trace_scope = trace_scope
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
 
@@ -440,7 +464,7 @@ class TestRun:
             side_effect=[[action], []],
         )
 
-        mocker.patch(
+        agent_invoke = mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
             return_value=("ok", [], MagicMock(to_dict=lambda: {})),
         )
@@ -458,6 +482,7 @@ class TestRun:
         list(runner.run(runner.session, message, "query", {}))
 
         runner.update_prompt_message_tool.assert_called_once()
+        assert agent_invoke.call_args.kwargs["trace_scope"] is trace_scope
 
     def test_historic_with_assistant_and_tool_calls(self, runner: DummyRunner):
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ToolPromptMessage
@@ -507,7 +532,9 @@ class TestHandleInvokeActionExtended:
         )
 
         message_file_ids = []
-        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, message_file_ids)
+        response, meta = runner._handle_invoke_action(
+            runner.session, action, tool_instances, message_file_ids, trace_scope=None
+        )
 
         assert response == "ok"
         assert message_file_ids == ["file1"]

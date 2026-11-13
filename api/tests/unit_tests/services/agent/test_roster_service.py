@@ -1021,7 +1021,7 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
             tenant_id="tenant-1",
             agent_id="agent-1",
             draft_type=AgentConfigDraftType.DRAFT,
-            config_snapshot=AgentSoulConfig(),
+            config_snapshot=agent_soul,
             id="draft-1",
             home_snapshot_id="home-initial",
         ),
@@ -1844,6 +1844,78 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
     assert result == {"result": "success", "draft": {"id": "draft-1"}}
 
 
+def test_build_apply_clears_snapshot_ref_when_backend_cannot_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    mocker: MockerFixture,
+) -> None:
+    session = sqlite_session
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    build_draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        home_snapshot_id="home-old",
+        agent_workspace_binding_id="binding-1",
+        config_snapshot=AgentSoulConfig(),
+    )
+    normal_draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        home_snapshot_id="home-old",
+        config_snapshot=AgentSoulConfig(),
+    )
+    session.add_all([agent, build_draft])
+    session.commit()
+    create_home = mocker.patch.object(
+        AgentHomeSnapshotService,
+        "create_for_build_apply",
+        return_value=None,
+    )
+    match_args: dict[str, object] = {}
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", MagicMock())
+    monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: normal_draft)
+
+    def _record_match(**kwargs: object) -> bool:
+        match_args.update(kwargs)
+        return False
+
+    monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", _record_match)
+    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", MagicMock())
+    monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda draft: {"id": draft.id})
+
+    result = AgentComposerService.apply_agent_app_build_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    create_home.assert_called_once_with(session=session, build_draft=build_draft)
+    # No snapshot was captured, so the normal draft must not retain the
+    # previous snapshot id — the applied config is still saved.
+    assert normal_draft.home_snapshot_id is None
+    assert match_args["home_snapshot_id"] is None
+    assert result == {"result": "success", "draft": {"id": "draft-1"}}
+
+
 def test_build_apply_requires_retained_sandbox_before_creating_home(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -2511,7 +2583,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(
-        session=session, binding=binding, agent=agent, version=version
+        session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
 
     assert state["soul_lock"]["locked"] is True
@@ -2562,7 +2634,7 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(
-        session=session, binding=binding, agent=agent, version=version
+        session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
 
     effective = state["effective_declared_outputs"]
@@ -2624,6 +2696,7 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
         agent=agent,
         version=version,
         account_id="account-1",
+        include_draft_files=True,
     )
 
     assert state["debug_conversation_id"] == "debug-conversation-1"
@@ -2666,7 +2739,11 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         "_create_roster_agent_for_composer",
         fake_create_roster_agent_for_composer,
     )
-    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_agent",
+        lambda **kwargs: workflow_agent if kwargs["agent_id"] == workflow_agent.id else roster_agent,
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
@@ -2711,6 +2788,8 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         agent_id="inline-agent-1",
         current_snapshot_id="inline-version-1",
     )
+    session.add_all([workflow_agent, roster_agent, existing_binding])
+    session.commit()
 
     updated_binding = AgentComposerService._save_node_job_only(
         session=session,
@@ -2868,6 +2947,8 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         ),
     )
     original_node_job = binding.node_job_config_dict
+    session.add_all([inline_agent, current_snapshot, normal_draft, binding])
+    session.commit()
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
@@ -5213,7 +5294,11 @@ class TestAgentAppBackingAgent:
             ),
         )
         retire_binding = MagicMock(return_value="binding-1")
-        enqueue_collection = MagicMock()
+        collection_calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def enqueue_collection(*, tenant_id: str, binding_ids: tuple[str, ...]) -> None:
+            collection_calls.append((tenant_id, binding_ids))
+
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
@@ -5233,10 +5318,7 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             binding_id="binding-1",
         )
-        enqueue_collection.assert_called_once_with(
-            tenant_id="tenant-1",
-            binding_ids=("binding-1",),
-        )
+        assert collection_calls == [("tenant-1", ("binding-1",))]
 
     def test_preview_rotation_commit_failure_rolls_back_before_enqueue(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
@@ -5284,7 +5366,11 @@ class TestAgentAppBackingAgent:
             ),
         )
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock(return_value="binding-1"))
-        enqueue_collection = MagicMock()
+        collection_calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def enqueue_collection(*, tenant_id: str, binding_ids: tuple[str, ...]) -> None:
+            collection_calls.append((tenant_id, binding_ids))
+
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
         with pytest.raises(RuntimeError, match="commit failed"):
@@ -5295,7 +5381,7 @@ class TestAgentAppBackingAgent:
             )
 
         assert session.get(AgentDebugConversation, mapping.id).conversation_id == "old-conversation"
-        enqueue_collection.assert_not_called()
+        assert collection_calls == []
 
     def test_build_reset_commit_failure_rolls_back_before_enqueue(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
@@ -5359,7 +5445,11 @@ class TestAgentAppBackingAgent:
         )
         retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "binding-1")
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
-        enqueue_collection = MagicMock()
+        collection_calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def enqueue_collection(*, tenant_id: str, binding_ids: tuple[str, ...]) -> None:
+            collection_calls.append((tenant_id, binding_ids))
+
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
         with pytest.raises(RuntimeError, match="commit failed"):
@@ -5378,7 +5468,7 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             binding_id="binding-1",
         )
-        enqueue_collection.assert_not_called()
+        assert collection_calls == []
 
     def test_duplicate_agent_app_copies_app_config_and_active_soul(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session

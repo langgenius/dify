@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -11,6 +13,8 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.model_template import default_app_templates
+from core.errors.error import ProviderTokenNotInitError
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
@@ -1053,3 +1057,92 @@ class TestAgentAppType:
         assert exc_info.value is error
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
+
+
+class _TenantDefaultModelManager:
+    """Tenant model manager the fallback branch needs, built without a mock.
+
+    Contract: `get_default_model_instance` always raises `ProviderTokenNotInitError`
+    and `get_default_provider_model_name` returns the tenant-scoped provider/model pair.
+    Those are the only two calls `AppService` makes on a tenant manager while it reads
+    `default_app_templates`, so the fallback path is exercised against real code.
+    """
+
+    def __init__(self, provider: str, model: str) -> None:
+        self._provider = provider
+        self._model = model
+
+    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> NoReturn:
+        raise ProviderTokenNotInitError(f"no default {model_type} model instance for tenant {tenant_id}")
+
+    def get_default_provider_model_name(self, *, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+        if not tenant_id or model_type is not ModelType.LLM:
+            raise AssertionError(f"unexpected default model lookup: {tenant_id!r} ({model_type})")
+        return self._provider, self._model
+
+
+class TestSharedAppTemplateIsolation:
+    """`default_app_templates` is imported once per process, so app creation must read it without writing to it.
+
+    Precondition: the tenant's default model instance is unavailable while a tenant-scoped default
+    provider/model exists. Postcondition: the new app uses the tenant's model and the shipped template
+    keeps its own provider and model for every later request and tenant.
+    """
+
+    @staticmethod
+    def _tenant_default_model_manager() -> _TenantDefaultModelManager:
+        return _TenantDefaultModelManager("langgenius/anthropic/anthropic", "claude-3-5-sonnet")
+
+    @staticmethod
+    def _use_clean_template_model(monkeypatch: pytest.MonkeyPatch, mode: AppMode) -> dict[str, object]:
+        baseline: dict[str, object] = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+        monkeypatch.setitem(default_app_templates[mode]["model_config"], "model", deepcopy(baseline))
+        return baseline
+
+    def test_create_app_does_not_rewrite_the_shared_template(
+        self,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        baseline = self._use_clean_template_model(monkeypatch, AppMode.CHAT)
+        account = _persist_account(sqlite_session)
+        model_manager = self._tenant_default_model_manager()
+
+        with (
+            patch("services.app_service.ModelManager.for_tenant", return_value=model_manager),
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                account.current_tenant_id,
+                CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        app_model_config = sqlite_session.get(AppModelConfig, app.app_model_config_id)
+        assert app_model_config is not None
+        assert app_model_config.model_dict == {
+            "provider": "langgenius/anthropic/anthropic",
+            "name": "claude-3-5-sonnet",
+            "mode": "chat",
+            "completion_params": {},
+        }
+        assert default_app_templates[AppMode.CHAT]["model_config"]["model"] == baseline
+
+    def test_prepare_creation_does_not_rewrite_the_shared_template(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        baseline = self._use_clean_template_model(monkeypatch, AppMode.COMPLETION)
+        model_manager = self._tenant_default_model_manager()
+
+        with patch("services.app_service.ModelManager.for_tenant", return_value=model_manager):
+            settings = AppService.prepare_creation(
+                "tenant-a",
+                CreateAppParams(name="Completion", mode=AppMode.COMPLETION.value),
+            )
+
+        assert settings.model_config is not None
+        assert json.loads(settings.model_config["model"])["provider"] == "langgenius/anthropic/anthropic"
+        assert default_app_templates[AppMode.COMPLETION]["model_config"]["model"] == baseline

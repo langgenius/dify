@@ -343,7 +343,7 @@ const NodePanel: FC<Props> = ({
                       isJSONStringifyBeauty
                       footer={
                         nodeInfo.inputs_truncated && (
-                          <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
+                          <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1" />
                         )
                       }
                     />
@@ -376,7 +376,7 @@ const NodePanel: FC<Props> = ({
                           <LargeDataAlert
                             textHasNoExport
                             downloadUrl={nodeInfo.outputs_full_content?.download_url}
-                            className="mx-1 mt-2 mb-1 h-7"
+                            className="mx-1 mt-2 mb-1"
                           />
                         )
                       }

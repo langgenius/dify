@@ -17,19 +17,20 @@ const renderZoomInOut = ({
   ui?: React.ReactElement
   initialZoom?: number
 } = {}) => {
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   const doSyncWorkflowDraft = vi
     .fn<HooksStoreShape['doSyncWorkflowDraft']>()
     .mockResolvedValue(undefined)
   const view = renderWorkflowFlowComponent(ui, {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled },
     nodes: [
       createNode({ id: 'left', position: { x: 0, y: 0 }, width: 240, height: 80 }),
       createNode({ id: 'right', position: { x: 1600, y: 400 }, width: 240, height: 80 }),
     ],
-    initialStoreState: { canvasReadOnly: workflowReadOnly },
+    initialStoreState: {
+      canvasReadOnly: workflowReadOnly,
+    },
     hooksStoreProps: { doSyncWorkflowDraft },
     reactFlowProps: {
       fitView: false,

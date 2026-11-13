@@ -197,9 +197,13 @@ def test_pending_cluster_returns_explicit_retry_after_without_secrets(app: Flask
         assert "private" not in str(error.value)
 
 
-def test_http_pending_response_preserves_retry_after_header(config_overrides: Callable[..., None]) -> None:
+@pytest.mark.parametrize("pending_kind", ["binding", "collection"])
+def test_http_pending_response_preserves_retry_after_header(
+    config_overrides: Callable[..., None], pending_kind: str
+) -> None:
     from controllers.inner_api import inner_api_ns
     from libs.external_api import ExternalApi
+    from services.knowledge_fs.vector_store import VectorCollectionPendingError
     from services.tidb_binding_service import TidbBindingPendingError
 
     config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
@@ -209,7 +213,9 @@ def test_http_pending_response_preserves_retry_after_header(config_overrides: Ca
     api.add_resource(KnowledgeFSVectorApi, "/vectors")
     with patch(
         "controllers.inner_api.knowledge_fs.vectors.configured_vector_client",
-        side_effect=TidbBindingPendingError("private endpoint"),
+        side_effect=(TidbBindingPendingError if pending_kind == "binding" else VectorCollectionPendingError)(
+            "private endpoint"
+        ),
     ):
         response = http_app.test_client().post("/vectors", json=PAYLOAD, headers={"X-Inner-Api-Key": "trusted-key"})
     assert response.status_code == 503

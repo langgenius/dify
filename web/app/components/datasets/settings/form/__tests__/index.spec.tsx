@@ -126,13 +126,16 @@ describe('Dataset settings form', () => {
     await waitFor(() => expectLoadingButton(save))
     await user.click(save)
     expect(updateDatasetSetting).toHaveBeenCalledTimes(1)
-    expect(updateDatasetSetting).toHaveBeenCalledWith({
-      datasetId: 'dataset-1',
-      body: expect.objectContaining({
-        name: 'Updated Dataset',
-        description: 'Updated description',
-      }),
-    })
+    expect(updateDatasetSetting).toHaveBeenCalledWith(
+      {
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          name: 'Updated Dataset',
+          description: 'Updated description',
+        }),
+      },
+      { silent: true },
+    )
     expect(mockMutateDatasets).not.toHaveBeenCalled()
     await act(async () => pending.resolve(mockDataset))
     await waitFor(() => expect(mockMutateDatasets).toHaveBeenCalledTimes(1))
@@ -157,9 +160,7 @@ describe('Dataset settings form', () => {
     render(<Form />)
     await user.type(screen.getByDisplayValue('Test Dataset'), ' updated')
     await user.click(screen.getByRole('button', { name: /form.save/ }))
-    await waitFor(() =>
-      expect(mockToastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
-    )
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('offline'))
     expect(screen.getByDisplayValue('Test Dataset updated')).toBeInTheDocument()
     expect(mockMutateDatasets).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: /form.save/ }))

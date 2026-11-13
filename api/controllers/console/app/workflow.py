@@ -12,7 +12,6 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    ValidationError,
     field_validator,
     model_validator,
 )
@@ -60,17 +59,12 @@ from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.trigger.debug.event_selectors import (
-    TriggerDebugEvent,
-    TriggerDebugEventPoller,
-    create_event_poller,
-    select_trigger_debug_events,
-)
 from core.workflow.llm_environment_variable import (
     LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
     LLMEnvironmentVariable,
 )
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
@@ -102,6 +96,7 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -680,7 +675,7 @@ class DraftWorkflowApi(Resource):
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError) as caught_error:
+            except ValueError as caught_error:
                 raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
@@ -1360,7 +1355,7 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
@@ -1830,6 +1825,10 @@ class DraftWorkflowNodeLastRunApi(Resource):
         ).model_dump(mode="json")
 
 
+# TODO(workflow runtime): These three trigger-debug endpoints still share the
+# WorkflowService/AppGenerateService caller session. Release it before polling
+# and execution once draft queries return detached graphs and generation separates
+# model preparation from invocation; closing it here can break legacy ORM consumers.
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
 class DraftWorkflowTriggerRunApi(Resource):
     """
@@ -1869,16 +1868,15 @@ class DraftWorkflowTriggerRunApi(Resource):
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
-        poller: TriggerDebugEventPoller = create_event_poller(
-            draft_workflow=draft_workflow,
-            tenant_id=app_model.tenant_id,
-            user_id=current_user.id,
-            app_id=app_model.id,
-            node_id=node_id,
-        )
+        node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         event: TriggerDebugEvent | None = None
         try:
-            event = poller.poll()
+            event = application_services().triggers.debug.poll(
+                node_config=node_config,
+                tenant_id=app_model.tenant_id,
+                user_id=current_user.id,
+                app_id=app_model.id,
+            )
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
             return helper.compact_generate_response(
@@ -1950,14 +1948,12 @@ class DraftWorkflowTriggerNodeApi(Resource):
         # for other trigger types, poll for the event
         else:
             try:
-                poller: TriggerDebugEventPoller = create_event_poller(
-                    draft_workflow=draft_workflow,
+                event = application_services().triggers.debug.poll(
+                    node_config=node_config,
                     tenant_id=app_model.tenant_id,
                     user_id=current_user.id,
                     app_id=app_model.id,
-                    node_id=node_id,
                 )
-                event = poller.poll()
             except PluginInvokeError as e:
                 return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
             except Exception as e:
@@ -2023,11 +2019,11 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             raise ValueError("Workflow not found")
 
         try:
-            trigger_debug_event: TriggerDebugEvent | None = select_trigger_debug_events(
-                draft_workflow=draft_workflow,
-                app_model=app_model,
+            trigger_debug_event = application_services().triggers.debug.select_events(
+                node_configs=(draft_workflow.get_node_config_by_id(node_id) for node_id in node_ids),
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
                 user_id=current_user.id,
-                node_ids=node_ids,
             )
         except PluginInvokeError as e:
             return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400

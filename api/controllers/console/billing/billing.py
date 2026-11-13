@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, assert_never
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -18,11 +18,13 @@ from controllers.console.wraps import model_validate
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.errors.billing import BillingError
+from services.billing_client import billing
+from services.errors.billing import UnknownErrorReason
 
 _BILLING_PORTAL_ALLOWED_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
@@ -49,6 +51,60 @@ register_response_schema_models(
     BillingInvoiceResponse,
     BillingSubscriptionResponse,
 )
+
+
+def _subscription_portal_error(error: billing.BillingSubscriptionUpstreamError) -> BaseHTTPException:
+    match error.reason:
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "REQUEST_IN_PROGRESS"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "INVALID_PAYMENT_LINK_REQUEST"
+            | "MISSING_PLAN"
+            | "MISSING_INTERVAL"
+            | "INVALID_PLAN_INTERVAL"
+            | "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"
+            | "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST"
+            | "TENANT_IDS_COUNT_TOO_LARGE"
+            | "DOCUMENT_USAGE_UNAVAILABLE"
+        ):
+            return to_billing_request_error(error)
+        case UnknownErrorReason() | None:
+            return to_billing_request_error(error)
+        case unreachable:
+            assert_never(unreachable)
+
+
+def _invoice_portal_error(error: billing.BillingInvoiceUpstreamError) -> BaseHTTPException:
+    match error.reason:
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "REQUEST_IN_PROGRESS"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "INVALID_INVOICE_REQUEST"
+            | "CREATE_INVOICE_PORTAL_FAILED"
+        ):
+            return to_billing_request_error(error)
+        case UnknownErrorReason() | None:
+            return to_billing_request_error(error)
+        case unreachable:
+            assert_never(unreachable)
 
 
 @console_ns.route("/billing/subscription")
@@ -84,8 +140,8 @@ class Subscription(Resource):
                 plan=req_data.plan,
                 interval=req_data.interval,
             )
-        except BillingError as error:
-            raise to_billing_request_error(error) from error
+        except billing.BillingSubscriptionUpstreamError as error:
+            raise _subscription_portal_error(error) from error
         return dump_response(BillingSubscriptionResponse, data)
 
 
@@ -111,6 +167,6 @@ class Invoices(Resource):
     def get(self, request_context: RequestContext):
         try:
             data = application_services().billing_portal.get_invoices(request_context)
-        except BillingError as error:
-            raise to_billing_request_error(error) from error
+        except billing.BillingInvoiceUpstreamError as error:
+            raise _invoice_portal_error(error) from error
         return dump_response(BillingInvoiceResponse, data)

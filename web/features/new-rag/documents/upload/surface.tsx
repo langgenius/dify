@@ -317,7 +317,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   return (
     <section
       className={cn(
-        'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
+        'relative flex min-h-full w-full shrink-0 flex-col gap-4 px-6 pt-3',
         bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
       )}
       onDragEnter={(event) => {

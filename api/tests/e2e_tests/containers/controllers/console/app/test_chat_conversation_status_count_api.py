@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from decimal import Decimal
 
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
@@ -13,9 +14,16 @@ from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    MessageStatus,
+    WorkflowRunTriggeredFrom,
+)
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from tests.e2e_tests.containers.controllers.console.helpers import ensure_dify_setup
 
 
@@ -71,7 +79,7 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str) -> C
         app_id=app_id,
         name="Test Conversation",
         _inputs={},
-        status="normal",
+        status=ConversationStatus.NORMAL,
         mode=AppMode.CHAT,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
@@ -86,8 +94,8 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=str(uuid.uuid4()),
-        type="chat",
-        triggered_from="app-run",
+        type=ModelWorkflowType("chat"),
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1.0.0",
         graph=json.dumps({"nodes": [], "edges": []}),
         inputs=json.dumps({"query": "test"}),
@@ -98,8 +106,8 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account_id,
-        created_at=naive_utc_now(),
     )
+    workflow_run.created_at = naive_utc_now()
     db_session.add(workflow_run)
     db_session.commit()
     return workflow_run
@@ -116,12 +124,12 @@ def _create_message(
         answer="Hi there",
         message_tokens=1,
         answer_tokens=1,
-        message_unit_price=0.001,
-        answer_unit_price=0.001,
-        message_price_unit=0.001,
-        answer_price_unit=0.001,
+        message_unit_price=Decimal("0.001"),
+        answer_unit_price=Decimal("0.001"),
+        message_price_unit=Decimal("0.001"),
+        answer_price_unit=Decimal("0.001"),
         currency="USD",
-        status="normal",
+        status=MessageStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
         workflow_run_id=workflow_run_id,
@@ -135,7 +143,7 @@ def _create_message(
 def test_chat_conversation_status_count_includes_paused(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
-):
+) -> None:
     account, tenant = _create_account_and_tenant(db_session_with_containers)
     app = _create_app(db_session_with_containers, tenant.id, account.id)
     conversation = _create_conversation(db_session_with_containers, app.id, account.id)

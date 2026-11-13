@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Valor da Ação",
   "nodes.humanInput.userActions.buttonTextTooLong": "O texto do botão deve ter {{maxLength}} caracteres ou menos",
   "nodes.humanInput.userActions.chooseStyle": "Escolha um estilo de botão",
+  "nodes.humanInput.userActions.defaultTitle": "Texto do botão {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Clique no botão '+' para adicionar ações do usuário",
   "nodes.humanInput.userActions.title": "Ações do Usuário",
   "nodes.humanInput.userActions.tooltip": "Defina botões em que os usuários podem clicar para responder a este formulário. O ID da ação controla a ramificação. O Valor da Ação é exposto posteriormente como a saída integrada selecionada. O ID da ação deve começar com uma letra ou sublinhados, seguido de letras, números ou sublinhados.",

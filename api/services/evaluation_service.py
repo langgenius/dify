@@ -42,7 +42,7 @@ from core.evaluation.entities.evaluation_entity import (
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult

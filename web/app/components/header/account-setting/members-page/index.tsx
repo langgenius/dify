@@ -6,6 +6,7 @@ import type {
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -15,6 +16,7 @@ import {
   AlertDialogTitle,
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import {
   createDialogHandle,
   Dialog,
@@ -33,6 +35,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
@@ -44,7 +47,7 @@ import { InviteModal } from './invite-modal'
 import MemberDetailsContent from './member-details-content'
 import MemberRow from './member-row'
 
-const MembersPage = () => {
+const MembersPageContent = () => {
   const { t } = useTranslation([
     'billing',
     'common',
@@ -52,6 +55,7 @@ const MembersPage = () => {
     'accountSettings',
     'permission',
     'navigation',
+    'contacts',
   ])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
@@ -131,7 +135,7 @@ const MembersPage = () => {
     <Dialog
       handle={detailsDialogHandle}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember) details.cancel()
+        if (!open && isSavingMember && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
@@ -285,63 +289,135 @@ const MembersPage = () => {
                 details.cancel()
             }}
             onOpenChangeComplete={(open) => {
-              if (!open) removal.reset()
+              if (!open) {
+                removal.reset()
+              }
             }}
           >
-            {({ payload }) => (
-              <AlertDialogContent
-                backdropProps={{ forceRender: true }}
-                finalFocus={() => {
-                  const fallback = payload?.fallbackFocus.current
-                  if (!fallback) return true
-                  const target =
-                    payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
-                  target.focus({ preventScroll: true })
-                  return false
-                }}
-              >
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t(($) => $['members.removeFromTeamConfirmTitle'], {
-                      ns: 'workspaceMembers',
-                      memberName: payload?.member.name || payload?.member.email || '',
-                    })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t(($) => $['members.removeFromTeamConfirmDescription'], {
-                      ns: 'workspaceMembers',
-                    })}
-                  </AlertDialogDescription>
-                  {removal.isError && (
-                    <p role="alert" className="text-text-destructive">
-                      {t(($) => $['api.actionFailed'], { ns: 'common' })}
-                    </p>
-                  )}
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancelButton disabled={removal.isPending}>
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton
-                    loading={removal.isPending}
-                    onClick={() => {
-                      if (!payload || removal.isPending) return
-                      removal.mutate(
-                        { params: { member_id: payload.member.id } },
-                        {
-                          onSuccess: () => {
-                            payload.fallbackFocus.current = listRef.current
-                            removeDialog.close()
-                          },
-                        },
-                      )
-                    }}
-                  >
-                    {t(($) => $['operation.confirm'], { ns: 'common' })}
-                  </AlertDialogConfirmButton>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            )}
+            {({ payload }) => {
+              const showContactsRemovalDesign = Boolean(
+                payload && isContactsManagementEnabled() && payload.member.status !== 'pending',
+              )
+              const memberName = payload?.member.name || payload?.member.email || ''
+              return (
+                <AlertDialogContent
+                  backdropProps={{ forceRender: true }}
+                  className={showContactsRemovalDesign ? 'w-110' : undefined}
+                  finalFocus={() => {
+                    const fallback = payload?.fallbackFocus.current
+                    if (!fallback) return true
+                    const target =
+                      payload.adjacentFocusTargets.find((element) => element.isConnected) ??
+                      fallback
+                    target.focus({ preventScroll: true })
+                    return false
+                  }}
+                >
+                  <>
+                    {showContactsRemovalDesign && payload ? (
+                      <>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t(
+                              ($) =>
+                                $[
+                                  currentWorkspace.name
+                                    ? 'memberRemoval.workspaceTitle'
+                                    : 'memberRemoval.title'
+                                ],
+                              {
+                                ns: 'contacts',
+                                memberName,
+                                workspaceName: currentWorkspace.name,
+                              },
+                            )}
+                          </AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogBody className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2.5 rounded-xl bg-background-section-burn py-2 ps-3 pe-2">
+                            <Avatar size="md">
+                              <AvatarImage src={payload.member.avatar_url || undefined} alt="" />
+                              <AvatarFallback aria-hidden>
+                                {memberName[0]?.toLocaleUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 py-0.5">
+                              <div className="system-md-medium wrap-break-word text-text-secondary">
+                                {memberName}
+                              </div>
+                              <div className="system-xs-regular wrap-anywhere text-text-tertiary">
+                                {payload.member.email}
+                              </div>
+                            </div>
+                          </div>
+                          <AlertDialogDescription render={<div />}>
+                            <p>
+                              {t(($) => $['memberRemoval.accessImpact'], {
+                                ns: 'contacts',
+                                memberName,
+                              })}
+                            </p>
+                            <p>{t(($) => $['memberRemoval.contentImpact'], { ns: 'contacts' })}</p>
+                          </AlertDialogDescription>
+                          {removal.isError && (
+                            <p role="alert" className="text-text-destructive">
+                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                            </p>
+                          )}
+                        </AlertDialogBody>
+                      </>
+                    ) : (
+                      <>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t(($) => $['members.removeFromTeamConfirmTitle'], {
+                              ns: 'workspaceMembers',
+                              memberName: payload?.member.name || payload?.member.email || '',
+                            })}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t(($) => $['members.removeFromTeamConfirmDescription'], {
+                              ns: 'workspaceMembers',
+                            })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        {removal.isError && (
+                          <AlertDialogBody>
+                            <p role="alert" className="text-text-destructive">
+                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                            </p>
+                          </AlertDialogBody>
+                        )}
+                      </>
+                    )}
+                    <AlertDialogFooter>
+                      <AlertDialogCancelButton disabled={removal.isPending}>
+                        {t(($) => $['operation.cancel'], { ns: 'common' })}
+                      </AlertDialogCancelButton>
+                      <AlertDialogConfirmButton
+                        loading={removal.isPending}
+                        onClick={() => {
+                          if (!payload || removal.isPending) return
+                          removal.mutate(
+                            { params: { member_id: payload.member.id } },
+                            {
+                              onSuccess: () => {
+                                payload.fallbackFocus.current = listRef.current
+                                removeDialog.close()
+                              },
+                            },
+                          )
+                        }}
+                      >
+                        {showContactsRemovalDesign
+                          ? t(($) => $['memberRemoval.remove'], { ns: 'contacts' })
+                          : t(($) => $['operation.confirm'], { ns: 'common' })}
+                      </AlertDialogConfirmButton>
+                    </AlertDialogFooter>
+                  </>
+                </AlertDialogContent>
+              )
+            }}
           </AlertDialog>
           <Dialog handle={invitationDialogHandle}>
             {({ payload: results }) => (
@@ -370,4 +446,6 @@ const MembersPage = () => {
   )
 }
 
-export default MembersPage
+export default function MembersPage() {
+  return <MembersPageContent />
+}

@@ -38,6 +38,8 @@ _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
 _CALLER_ID = "33333333-3333-4333-8333-333333333333"
 _OTHER_ACCOUNT_ID = "44444444-4444-4444-8444-444444444444"
+_WORKFLOW_TOOL_PROVIDER_ID = "77777777-7777-4777-8777-000000000000"
+_API_TOOL_PROVIDER_ID = "88888888-8888-4888-8888-000000000000"
 _PENDING_WORKFLOW_DSL = "version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n"
 _PENDING_DATA_JSON = PendingData(
     tenant_id=_TENANT_ID,
@@ -126,6 +128,7 @@ def test_import_rejects_cloud_app_quota_before_side_effects(
         dsl="",
         agents={},
         agent_resources={},
+        workflow_tools=[],
         icons=[PackageIcon(id="i_000001", path="i_000001.png", size=0, sha256="0" * 64)],
     )
     monkeypatch.setattr(package, "materialize_icons", unexpected_side_effect)
@@ -250,14 +253,25 @@ def test_confirm_import_rechecks_cloud_app_quota_and_preserves_pending_on_reject
     assert f"app_import_info:{pending.id}" not in pending_imports
 
 
-def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "services.app_dsl_service.ToolNodeData.model_validate",
-        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
-    )
+def _tool_node_data(*, provider_type: str, provider_id: str, **extra: str) -> dict[str, object]:
+    return {
+        "type": "tool",
+        "title": "Tool",
+        "provider_id": provider_id,
+        "provider_type": provider_type,
+        "provider_name": provider_id,
+        "tool_name": "run",
+        "tool_label": "Run",
+        "tool_configurations": {},
+        "tool_parameters": {},
+        **extra,
+    }
+
+
+def test_extract_workflow_dependencies_includes_plugin_nodes() -> None:
     graph = {
         "nodes": [
-            {"data": {"type": "tool", "plugin_id": "acme/tool"}},
+            {"data": _tool_node_data(provider_type="plugin", provider_id="acme/tool/provider", plugin_id="acme/tool")},
             {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
             {"data": {"type": "datasource", "provider_type": "online_document", "plugin_id": "acme/drive"}},
             {"data": {"type": "datasource", "provider_type": "local_file", "plugin_id": "langgenius/file"}},
@@ -342,6 +356,32 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
 
     assert result == ["old-provider"]
     analyze_dependency.assert_called_once_with("old-provider")
+
+
+def test_extract_workflow_dependencies_skips_workspace_tool_providers() -> None:
+    graph = {
+        "nodes": [
+            {"data": _tool_node_data(provider_type="builtin", provider_id="time")},
+            {"data": _tool_node_data(provider_type="workflow", provider_id=_WORKFLOW_TOOL_PROVIDER_ID)},
+            {"data": _tool_node_data(provider_type="api", provider_id=_API_TOOL_PROVIDER_ID)},
+        ]
+    }
+
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == ["langgenius/time"]
+
+
+def test_extract_model_config_dependencies_skips_workspace_tool_providers() -> None:
+    model_config = {
+        "agent_mode": {
+            "tools": [
+                {"dataset": {"enabled": True, "id": "dataset-1"}},
+                {"provider_type": "workflow", "provider_id": _WORKFLOW_TOOL_PROVIDER_ID, "tool_name": "summarize"},
+                {"provider_type": "builtin", "provider_id": "time", "tool_name": "current_time"},
+            ]
+        }
+    }
+
+    assert AppDslService._extract_dependencies_from_model_config(model_config) == ["langgenius/time"]
 
 
 def test_import_app_rejects_oversized_yaml_content_before_parsing(
@@ -1179,11 +1219,15 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         (AppMode.ADVANCED_CHAT, "trigger-plugin"),
     ],
 )
-def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
-    session = Mock()
-    target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
-    service = AppDslService(session)
-    service._load_app_for_overwrite = Mock(return_value=target)
+def test_overwrite_rejects_incompatible_nodes_before_mutation(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mode: AppMode, node_type: str
+) -> None:
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    target = _app(tenant_id="tenant-1", mode=mode)
+    target.name = "Original"
+    sqlite_session.add(target)
+    sqlite_session.commit()
+    service = AppDslService(sqlite_session)
     result = service.import_app(
         account=_account(),
         import_mode="yaml-content",
@@ -1200,8 +1244,10 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, nod
     assert result.status == ImportStatus.FAILED
     assert result.error is not None
     assert "incompatible" in result.error
+    sqlite_session.refresh(target)
     assert target.name == "Original"
-    session.add.assert_not_called()
+    assert not sqlite_session.new
+    assert not sqlite_session.deleted
 
 
 @pytest.mark.parametrize(

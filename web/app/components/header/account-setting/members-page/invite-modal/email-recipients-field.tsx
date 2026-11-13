@@ -250,7 +250,7 @@ export function EmailRecipientsField({
           inputMode="email"
           placeholder={
             recipients.length === 0
-              ? t(($) => $['members.emailPlaceholder'], { ns: 'workspaceMembers' }) || ''
+              ? t(($) => $['members.emailPlaceholder'], { ns: 'workspaceMembers' })
               : ''
           }
           value={draft}

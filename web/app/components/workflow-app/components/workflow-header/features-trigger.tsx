@@ -8,7 +8,6 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import type { WorkflowKind } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
@@ -35,13 +34,11 @@ import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflo
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isEvaluationEdition } from '@/features/system-features/utils'
-import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
-  const { theme } = useTheme()
   const isChatflow = useAtomValue(isChatflowAtom)
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
@@ -342,10 +339,7 @@ const FeaturesTrigger = () => {
       {/* Feature button is only visible in chatflow mode (advanced-chat) */}
       {isChatflow && (
         <Button
-          className={cn(
-            'rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent',
-            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
-          )}
+          className="rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent dark:bg-white/10 dark:inset-ring-black/5 dark:backdrop-blur-xs"
           onClick={handleShowFeatures}
         >
           <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />

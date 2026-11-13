@@ -8,6 +8,7 @@ import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
@@ -46,26 +47,30 @@ def create_fastopenapi_spec_app():
     return app
 
 
-def generate_fastopenapi_specs(output_dir: Path) -> list[Path]:
-    """Write FastOpenAPI specs to `output_dir` and return the written paths."""
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-
+def export_fastopenapi_specs() -> dict[str, dict[str, Any]]:
+    """Build FastOpenAPI documents in memory without writing generated files."""
     app = create_fastopenapi_spec_app()
     client = app.test_client()
 
-    written_paths: list[Path] = []
+    documents = {}
     for target in FASTOPENAPI_SPEC_TARGETS:
         response = client.get(target.route)
         if response.status_code != 200:
             raise RuntimeError(f"failed to fetch {target.route}: {response.status_code}")
 
-        payload = response.get_json()
+        payload = sort_openapi_arrays(response.get_json())
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
-        payload = sort_openapi_arrays(payload)
+        documents[target.filename] = payload
+    return documents
 
-        output_path = output_dir / target.filename
+
+def generate_fastopenapi_specs(output_dir: Path) -> list[Path]:
+    """Write FastOpenAPI specs to `output_dir` and return the written paths."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    written_paths: list[Path] = []
+    for filename, payload in export_fastopenapi_specs().items():
+        output_path = output_dir / filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         written_paths.append(output_path)
 

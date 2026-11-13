@@ -721,11 +721,16 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
-export type KnowledgeFsUpgradeDiscoveryResponse = {
+export type KnowledgeFsUpgradePreparationResponse = {
   block_reason?: KnowledgeFsUpgradeBlockReason | null
   can_retry: boolean
   can_upgrade: boolean
   job?: KnowledgeFsUpgradeJobResponse | null
+  models?: KnowledgeFsUpgradeModelRecommendationsResponse | null
+}
+
+export type KnowledgeFsUpgradeStartPayload = {
+  models?: KnowledgeFsUpgradeModelsPayload | null
 }
 
 export type KnowledgeFsUpgradeJobResponse = {
@@ -742,6 +747,12 @@ export type KnowledgeFsUpgradeJobResponse = {
   status: KnowledgeFsUpgradeJobStatus
   total_documents: number
   total_sources: number
+}
+
+export type KnowledgeFsUpgradeModelsUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_upgrade_models_unavailable'
+  details?: KnowledgeFsUpgradeModelErrorDetailsResponse
+  status: 422
 }
 
 export type KnowledgeFsUpgradeRetryResponse = {
@@ -1156,6 +1167,18 @@ export type KnowledgeFsUpgradeBlockReason =
   | 'unsupported_dataset_provider'
   | 'upgrade_in_progress'
 
+export type KnowledgeFsUpgradeModelRecommendationsResponse = {
+  embedding: KnowledgeFsUpgradeModelRecommendationResponse
+  reasoning: KnowledgeFsUpgradeModelRecommendationResponse
+  rerank: KnowledgeFsUpgradeModelRecommendationResponse
+}
+
+export type KnowledgeFsUpgradeModelsPayload = {
+  embedding: KnowledgeFsUpgradeModelChoice
+  reasoning: KnowledgeFsUpgradeModelChoice
+  rerank: KnowledgeFsUpgradeModelChoice
+}
+
 export type KnowledgeFsUpgradeStage =
   | 'completed'
   | 'creating_sources'
@@ -1166,6 +1189,10 @@ export type KnowledgeFsUpgradeStage =
   | 'waiting_for_space'
 
 export type KnowledgeFsUpgradeJobStatus = 'failed' | 'queued' | 'running' | 'succeeded'
+
+export type KnowledgeFsUpgradeModelErrorDetailsResponse = {
+  issues: Array<KnowledgeFsUpgradeModelIssueResponse>
+}
 
 export type DatasetMetadataListItemResponse = {
   count?: number
@@ -1193,6 +1220,13 @@ export type RelatedAppResponse = {
   id: string
   mode: AppMode
   name: string
+}
+
+export type KnowledgeFsUpgradeDiscoveryResponse = {
+  block_reason?: KnowledgeFsUpgradeBlockReason | null
+  can_retry: boolean
+  can_upgrade: boolean
+  job?: KnowledgeFsUpgradeJobResponse | null
 }
 
 export type DatasetRerankingModelResponse = {
@@ -1360,6 +1394,42 @@ export type HitTestingSegment = {
   stopped_at: number | null
   tokens: number
   word_count: number
+}
+
+export type KnowledgeFsUpgradeModelRecommendationResponse = {
+  available: boolean
+  source: 'legacy' | 'workspace_default' | null
+  unavailable_reason?:
+    | 'credential-removed'
+    | 'deprecated'
+    | 'disabled'
+    | 'missing'
+    | 'no-configure'
+    | 'no-permission'
+    | 'not_found'
+    | 'quota-exceeded'
+    | null
+  value: KnowledgeFsUpgradeModelChoice | null
+}
+
+export type KnowledgeFsUpgradeModelChoice = {
+  model: string
+  provider: string
+}
+
+export type KnowledgeFsUpgradeModelIssueResponse = {
+  field: 'embedding' | 'reasoning' | 'rerank'
+  model?: string | null
+  provider?: string | null
+  reason:
+    | 'credential-removed'
+    | 'deprecated'
+    | 'disabled'
+    | 'missing'
+    | 'no-configure'
+    | 'no-permission'
+    | 'not_found'
+    | 'quota-exceeded'
 }
 
 export type CreatorUserRole = 'account' | 'dataset_api_key' | 'end_user'
@@ -3432,14 +3502,14 @@ export type GetDatasetsByDatasetIdKnowledgeFsUpgradesError =
   GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors]
 
 export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
-  200: KnowledgeFsUpgradeDiscoveryResponse
+  200: KnowledgeFsUpgradePreparationResponse
 }
 
 export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
   GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
 
 export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
-  body?: never
+  body: KnowledgeFsUpgradeStartPayload
   headers: {
     'Idempotency-Key': string
   }
@@ -3451,6 +3521,7 @@ export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
 }
 
 export type PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors = {
+  422: KnowledgeFsUpgradeModelsUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

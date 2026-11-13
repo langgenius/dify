@@ -135,15 +135,18 @@ const areMeasuredTargetRectSetsEqual = (
 }
 
 export const useStepByStepTourTargetRect = (
-  targetElement: HTMLElement,
+  targetElement: HTMLElement | null,
   highlightPartSelectors: string[] = EMPTY_HIGHLIGHT_PART_SELECTORS,
 ) => {
-  const [targetRects, setTargetRects] = useState(() =>
-    getInitialTargetRects(targetElement, highlightPartSelectors),
+  const [targetRects, setTargetRects] = useState<StepByStepTourTargetRects | null>(() =>
+    targetElement ? getInitialTargetRects(targetElement, highlightPartSelectors) : null,
   )
   const targetRectsRef = useRef(targetRects)
 
   useLayoutEffect(() => {
+    if (!targetElement) return
+    const target = targetElement
+
     let animationFrame = 0
     let resizeObserver: ResizeObserver | undefined
     let mutationObserver: MutationObserver | undefined
@@ -178,7 +181,7 @@ export const useStepByStepTourTargetRect = (
       const highlightPartElements = getElementsBySelectors(highlightPartSelectors)
       highlightPartElements.forEach(observeHighlightPart)
 
-      const nextMeasuredRects = getTargetRects(targetElement, highlightPartSelectors)
+      const nextMeasuredRects = getTargetRects(target, highlightPartSelectors)
       if (highlightPartSelectors.length === 0) {
         previousMeasuredRects = nextMeasuredRects
         settleFrameCount = 0
@@ -223,7 +226,8 @@ export const useStepByStepTourTargetRect = (
     }
 
     function commitTargetRects(nextRects: StepByStepTourTargetRects) {
-      if (areTargetRectSetsEqual(targetRectsRef.current, nextRects)) return
+      if (targetRectsRef.current && areTargetRectSetsEqual(targetRectsRef.current, nextRects))
+        return
 
       targetRectsRef.current = nextRects
       setTargetRects(nextRects)
@@ -237,7 +241,7 @@ export const useStepByStepTourTargetRect = (
 
     resizeObserver =
       typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(scheduleSyncRect)
-    observeResizeElement(targetElement)
+    observeResizeElement(target)
 
     mutationObserver =
       typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(scheduleSyncRect)
@@ -245,7 +249,7 @@ export const useStepByStepTourTargetRect = (
       childList: true,
       subtree: true,
     })
-    observeAttributeElement(targetElement)
+    observeAttributeElement(target)
 
     window.addEventListener('resize', scheduleSyncRect)
     window.addEventListener('scroll', scheduleSyncRect, true)
@@ -261,5 +265,5 @@ export const useStepByStepTourTargetRect = (
     }
   }, [highlightPartSelectors, targetElement])
 
-  return targetRects
+  return targetElement ? targetRects : null
 }

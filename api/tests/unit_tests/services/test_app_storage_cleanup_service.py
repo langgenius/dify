@@ -15,7 +15,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
-from models import WorkflowType
+from graphon.variables.types import SegmentType
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
@@ -26,6 +26,7 @@ from models.enums import (
 from models.model import AppMode, Conversation, EndUser, Message, MessageFile, UploadFile
 from models.tools import ToolFile
 from models.workflow import (
+    WorkflowDraftVariableFile,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
@@ -33,6 +34,7 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from services import app_storage_cleanup_service as cleanup
 
 
@@ -117,7 +119,7 @@ def test_nested_offload_cleanup_preserves_retry_references(
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=WorkflowType.CHAT,
+            type=ModelWorkflowType.CHAT,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.SUCCEEDED,
@@ -365,7 +367,7 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,
@@ -557,3 +559,99 @@ def test_tool_with_conflicting_conversation_owner_is_retained(sqlite_session: Se
     cleanup.cleanup_app_storage("tenant-1", "app-1")
     storage.delete.assert_not_called()
     assert sqlite_session.get(ToolFile, tool.id) is not None
+
+
+@pytest.mark.parametrize("message_owner", ["app-1", "app-2", None])
+def test_message_reference_protection_for_tools_and_uploads(
+    sqlite_session: Session, deleted_keys: list[str], message_owner: str | None
+) -> None:
+    user = _end_user(sqlite_session)
+    tool = ToolFile(
+        tenant_id="tenant-1",
+        user_id=user.id,
+        conversation_id=None,
+        file_key="tools/reference.json",
+        mimetype="application/json",
+    )
+    sqlite_session.add(tool)
+    file_id, offload_id = _offload(sqlite_session, "app-2", "uploads/reference.json")
+    offload = sqlite_session.get(WorkflowNodeExecutionOffload, offload_id)
+    assert offload is not None
+    sqlite_session.delete(offload)
+    upload = sqlite_session.get(UploadFile, file_id)
+    assert upload is not None
+    upload.created_by_role = CreatorUserRole.END_USER
+    upload.created_by = user.id
+    message_id = "orphan-message"
+    if message_owner is not None:
+        message = Message(
+            app_id=message_owner,
+            conversation_id="conversation",
+            _inputs={},
+            query="q",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="a",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+        )
+        sqlite_session.add(message)
+        sqlite_session.flush()
+        message_id = message.id
+    tool_id = tool.id
+    for record_id, method in ((tool_id, FileTransferMethod.TOOL_FILE), (file_id, FileTransferMethod.LOCAL_FILE)):
+        sqlite_session.add(
+            MessageFile(
+                message_id=message_id,
+                type=FileType.DOCUMENT,
+                transfer_method=method,
+                upload_file_id=record_id,
+                created_by_role=CreatorUserRole.END_USER,
+                created_by=user.id,
+            )
+        )
+    sqlite_session.commit()
+    for _ in range(2):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+    retained = message_owner != "app-1"
+    sqlite_session.expire_all()
+    assert (sqlite_session.get(ToolFile, tool_id) is not None) == retained
+    assert (sqlite_session.get(UploadFile, file_id) is not None) == retained
+    assert sorted(deleted_keys) == ([] if retained else ["tools/reference.json", "uploads/reference.json"])
+
+
+@pytest.mark.parametrize("reference", ["offload", "draft", "foreign_tenant"])
+def test_end_user_upload_reference_and_tenant_protection(
+    sqlite_session: Session, deleted_keys: list[str], reference: str
+) -> None:
+    user = _end_user(sqlite_session)
+    file_id, offload_id = _offload(sqlite_session, "app-2", "uploads/protected.json")
+    upload = sqlite_session.get(UploadFile, file_id)
+    assert upload is not None
+    upload.created_by_role = CreatorUserRole.END_USER
+    upload.created_by = user.id
+    if reference != "offload":
+        offload = sqlite_session.get(WorkflowNodeExecutionOffload, offload_id)
+        assert offload is not None
+        sqlite_session.delete(offload)
+    if reference == "draft":
+        sqlite_session.add(
+            WorkflowDraftVariableFile(
+                tenant_id="tenant-1",
+                app_id="app-2",
+                user_id="account-1",
+                upload_file_id=file_id,
+                size=1,
+                length=None,
+                value_type=SegmentType.STRING,
+            )
+        )
+    elif reference == "foreign_tenant":
+        upload.tenant_id = "tenant-2"
+    sqlite_session.commit()
+    for _ in range(2):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert deleted_keys == []

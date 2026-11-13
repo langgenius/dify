@@ -137,10 +137,13 @@ describe('RunPanel', () => {
     )
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/console/api/runs/run-1')
-      expect(mockFetchTracingList).toHaveBeenCalledWith({
-        url: '/console/api/runs/run-1/tracing',
-      })
+      expect(mockFetchRunDetail).toHaveBeenCalledWith('/console/api/runs/run-1', { silent: true })
+      expect(mockFetchTracingList).toHaveBeenCalledWith(
+        {
+          url: '/console/api/runs/run-1/tracing',
+        },
+        { silent: true },
+      )
       expect(handleResult).toHaveBeenCalledWith(runDetail)
       expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
         'workflow output',

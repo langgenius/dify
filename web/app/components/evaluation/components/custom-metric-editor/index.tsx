@@ -151,11 +151,20 @@ const CustomMetricEditorCard = ({
   )
   const isConfigured = isCustomMetricConfigured(metric)
   const isSelectedWorkflowLoaded = !!selectedWorkflow
+  const { data: workflowCollaborationEnabled } = useQuery({
+    ...consoleQuery.features.get.queryOptions(),
+    select: (features) => features.workflow_collaboration_enabled,
+  })
   const pickerResource: EditorResource | null =
     resourceType === 'snippets'
       ? { kind: 'snippet', snippetId: resourceId }
       : resourceType === 'apps' && currentApp && isWorkflowAppMode(currentApp.mode)
-        ? { kind: 'app', appId: resourceId, mode: currentApp.mode }
+        ? {
+            kind: 'app',
+            appId: resourceId,
+            mode: currentApp.mode,
+            collaborationEnabled: workflowCollaborationEnabled ?? false,
+          }
         : null
   const mappingSource =
     resourceType === 'agents'

@@ -1,6 +1,7 @@
 import type { Resources } from '../index'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { downloadUrl } from '@/utils/download'
@@ -255,13 +256,46 @@ it('resolves a historical KnowledgeFS asset through document revisions', async (
   )
   await openPopup(user)
   await user.click(screen.getByRole('button', { name: /linkToDataset/ }))
-  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith({
-    params: { control_space_id: 'space-1' },
-    query: { document_asset_id: 'asset-1', document_asset_version: 1 },
-  })
+  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith(
+    {
+      params: { control_space_id: 'space-1' },
+      query: { document_asset_id: 'asset-1', document_asset_version: 1 },
+    },
+    { context: { silent: true } },
+  )
   expect(navigationMock.push).toHaveBeenCalledWith(
     '/datasets/new/space-1/documents/logical-document-1?revision=2&chunk=node-1',
   )
+})
+
+it('preserves the server reason when resolving a historical citation fails', async () => {
+  const errorToast = vi.spyOn(toast, 'error')
+  resolveDocumentReference.mockRejectedValueOnce(new Error('Document access has been revoked'))
+  const user = userEvent.setup()
+  render(
+    <Popup
+      showHitInfo
+      data={makeData({
+        dataSourceType: 'knowledge_fs',
+        sources: [
+          makeSource({
+            data_source_type: 'knowledge_fs',
+            dataset_id: 'space-1',
+            document_asset_id: 'asset-1',
+            document_id: 'asset-1',
+            document_version: 1,
+            segment_id: 'node-1',
+          }),
+        ],
+      })}
+    />,
+  )
+  await openPopup(user)
+  await user.click(screen.getByRole('button', { name: /linkToDataset/ }))
+  await waitFor(() =>
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Document access has been revoked'),
+  )
+  expect(navigationMock.push).not.toHaveBeenCalled()
 })
 
 it('keeps retrieval diagnostics out of citations shown to end users', async () => {

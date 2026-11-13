@@ -29,9 +29,9 @@ export type SimpleResultResponse = {
 
 export type NotificationItemResponse = {
   body: string
-  frequency?: string | null
+  frequency: 'every_page_load' | 'once'
   lang: string
-  notification_id?: string | null
+  notification_id: string
   subtitle: string
   title: string
   title_pic_url: string

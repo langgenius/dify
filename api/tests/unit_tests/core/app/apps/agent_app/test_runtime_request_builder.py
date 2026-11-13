@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import SimpleNamespace
 
 import pytest
@@ -16,7 +16,9 @@ from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
 from dify_agent.layers.user_prompt import layer as user_prompt_layer
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_trace_sdk.events import TraceEvent
 from flask import Flask
+from pydantic import ValidationError
 from pydantic_ai.messages import BinaryContent, ImageUrl
 
 from clients.agent_backend import (
@@ -34,16 +36,16 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuildError,
 )
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
-from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from models.agent_config_entities import AgentSoulConfig
-from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 
 
 @dataclass(frozen=True)
@@ -53,9 +55,12 @@ class _LayerDeps:
     layers: dict[str, dict[str, object]]
 
 
-@pytest.fixture(autouse=True)
-def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 @pytest.fixture(autouse=True)
@@ -133,7 +138,7 @@ class TestBuildForAgentApp:
         assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
 
 
-def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs(monkeypatch: pytest.MonkeyPatch):
+def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs():
     from uuid import uuid4
 
     from dify_agent.layers.execution_context import ApplicationTracingContext
@@ -146,18 +151,14 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
         session_id="private-session",
         capture_content=False,
     )
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     context = _ctx(_soul_with_model())
-    calls: list[AgentAppRuntimeBuildContext] = []
-
-    def prepare(value: AgentAppRuntimeBuildContext) -> ApplicationTracingContext:
-        calls.append(value)
-        return tracing
-
-    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_agent_app", staticmethod(prepare))
-    hooks = RuntimeApplicationTracingHooks()
+    hooks = RecordingTracingHooks(tracing)
     app = Flask(__name__)
-    bind_application_tracing_hooks(app, hooks)
+    bind_tracing(
+        app,
+        scopes=kernel_trace_scopes(_TraceRecorder(), policies=NoTracingPolicies(), enterprise_enabled=False),
+        hooks=hooks,
+    )
 
     with app.app_context():
         result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
@@ -167,7 +168,7 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
         item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
     )
     assert redacted["config"]["tracing"] == "[REDACTED]"
-    assert calls == [context]
+    assert hooks.agent_apps == [context]
 
 
 class _NoToolsBuilder:
@@ -852,6 +853,63 @@ class TestAgentAppRuntimeRequestBuilder:
             "shell_input",
             "shell_interrupt",
         ]
+
+    @pytest.mark.parametrize(
+        ("inputs", "expected_block"),
+        [
+            (
+                {"second": "中文\nnext", "first": 0, "flag": False, "empty": "", "null": None, "secret": "hidden"},
+                '- first: 0\n- second: "中文\\nnext"\n- flag: false',
+            ),
+            ({"second": ["a", 2], "first": {"key": "值"}}, '- first: {"key": "值"}\n- second: ["a", 2]'),
+            ({"empty": "", "null": None, "secret": "hidden"}, None),
+            ({}, None),
+            ({"first": "  "}, '- first: "  "'),
+        ],
+        ids=["mixed", "nested", "all-skipped", "empty", "whitespace"],
+    )
+    def test_build_injects_only_declared_nonempty_inputs_in_declaration_order(self, inputs, expected_block):
+        soul = _soul_with_model()
+        soul.app_variables = [
+            AppVariableConfig(name=name, type="text-input") for name in ("first", "second", "flag", "empty", "null")
+        ]
+        query = "  original\n用户消息  "
+        context = replace(_ctx(soul, query=query), inputs=inputs)
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(context)
+
+        layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_app_user_prompt")
+        expected = (
+            query
+            if expected_block is None
+            else (
+                "App inputs for this run:\n"
+                + expected_block
+                + "\nThe above app inputs are run-specific. Do not treat them as Agent Soul or persistent memory.\n\n"
+                + query
+            )
+        )
+        assert DifyUserPromptLayerConfig.model_validate(layer.config).text == expected
+
+    @pytest.mark.parametrize("query", ["", "  \n\t"])
+    def test_build_rejects_blank_query_with_inputs(self, query):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul, query=query), inputs={"name": "value"})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(ValidationError, match="prompt must not be blank"):
+            builder.build(context)
+
+    def test_build_rejects_non_json_input(self):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul), inputs={"name": object()})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="not JSON serializable"):
+            builder.build(context)
 
 
 # ── Agent config layer declaration on the Agent App surface ──────────────────

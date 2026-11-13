@@ -9,6 +9,10 @@ from services.rbac.ports import ResourceMaintainers
 class AppResourceQueries(Protocol):
     def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None: ...
 
+    def get_agent_creator_id(self, workspace_id: str, agent_id: str) -> str | None:
+        """Return an active Agent's creator in this workspace, or None if absent or unset."""
+        ...
+
     def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None: ...
 
 
@@ -25,6 +29,9 @@ class ResourceQueryService:
 
     def get_app_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
         return self._apps.get_agent_binding(workspace_id, app_id)
+
+    def get_agent_creator(self, workspace_id: str, agent_id: str) -> str | None:
+        return self._apps.get_agent_creator_id(workspace_id, agent_id)
 
     def get_app_maintainer(self, workspace_id: str, app_id: str) -> str | None:
         return self._apps.get_maintainer_id(workspace_id, app_id, normal_only=True)

@@ -1,11 +1,19 @@
+import json
+from collections.abc import Mapping, Sequence
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
+from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyIdentity, AgentStrategyParameter
+from core.agent.strategy.plugin import PluginAgentStrategy
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from core.tools.entities.common_entities import I18nObject as ToolI18nObject
 from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity, ToolParameter
+from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
@@ -17,6 +25,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from graphon.runtime import VariablePool
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -213,3 +222,275 @@ def test_build_model_visible_tool_snapshots_excludes_runtime_values() -> None:
             "schema_available": True,
         }
     ]
+
+
+_ParameterType = AgentStrategyParameter.AgentStrategyParameterType
+
+
+def _declared_parameter(name: str, parameter_type: _ParameterType) -> AgentStrategyParameter:
+    return AgentStrategyParameter(name=name, label=ToolI18nObject(en_US=name), type=parameter_type)
+
+
+def _resolved_strategy() -> PluginAgentStrategy:
+    label = ToolI18nObject(en_US="strategy")
+    return PluginAgentStrategy(
+        tenant_id="tenant-1",
+        declaration=AgentStrategyEntity(
+            identity=AgentStrategyIdentity(author="author", name="strategy", label=label, provider="provider"),
+            description=label,
+        ),
+        meta_version="0.0.2",
+        plugin_unique_identifier="identifier",
+    )
+
+
+def _build_parameters(
+    *,
+    configured: Mapping[str, object],
+    declared: Sequence[AgentStrategyParameter],
+    variables: Mapping[str, object],
+    scoped_variables: Mapping[tuple[str, str], object] | None = None,
+    for_log: bool = False,
+) -> dict[str, object]:
+    variable_pool = VariablePool()
+    for name, value in variables.items():
+        variable_pool.add(("start", name), value)
+    for selector, value in (scoped_variables or {}).items():
+        variable_pool.add(selector, value)
+    node_data = AgentNodeData.model_validate({"type": "agent", "agent_parameters": configured})
+    return AgentRuntimeSupport().build_parameters(
+        agent_parameters=declared,
+        variable_pool=variable_pool,
+        node_data=node_data,
+        strategy=_resolved_strategy(),
+        tenant_id="tenant-1",
+        user_id="user-1",
+        app_id="app-1",
+        invoke_from=InvokeFrom.SERVICE_API,
+        for_log=for_log,
+    )
+
+
+def _tool_with_setting(template: str) -> dict[str, object]:
+    return {
+        "provider_name": "provider",
+        "tool_name": "call_something",
+        "type": "builtin",
+        "enabled": True,
+        "settings": {"target": {"value": {"value": template, "type": "mixed"}}},
+        "parameters": {},
+    }
+
+
+def test_build_parameters_treats_null_variable_value_as_not_provided():
+    """A canvas-written {type: variable, value: null} entry must not crash the node.
+
+    The canvas stores unset optional strategy params as {"type": "variable", "value": null}.
+    build_parameters must pass None to the strategy instead of calling
+    variable_pool.get(None), which raises TypeError: object of type 'NoneType' has no len().
+    """
+    result = _build_parameters(
+        configured={
+            "files": {"type": "variable", "value": None},
+            "allowed_tools": {"type": "variable", "value": None},
+        },
+        declared=[
+            _declared_parameter("files", _ParameterType.FILES),
+            _declared_parameter("allowed_tools", _ParameterType.TOOLS_SELECTOR),
+        ],
+        variables={},
+    )
+
+    assert result["files"] is None
+    assert result["allowed_tools"] is None
+
+
+def test_build_parameters_resolves_set_variable_value():
+    result = _build_parameters(
+        configured={"query": {"type": "variable", "value": ["start", "target"]}},
+        declared=[_declared_parameter("query", _ParameterType.STRING)],
+        variables={"target": "dify"},
+    )
+
+    assert result["query"] == "dify"
+
+
+@pytest.mark.parametrize(
+    "raw_value",
+    [
+        pytest.param('a "quoted" word', id="double-quote"),
+        pytest.param("a\\backslash", id="backslash"),
+        pytest.param("tab\there", id="tab"),
+        pytest.param("line\nbreak", id="newline"),
+        pytest.param('{"looks": "like json\t"}', id="json-lookalike"),
+    ],
+)
+def test_build_parameters_keeps_tool_settings_holding_json_special_characters(raw_value: str):
+    """Tool settings referencing a variable must survive values that are illegal inside JSON text."""
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting("{{#start.target#}}")]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={"target": raw_value},
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert len(tools) == 1
+    assert tools[0]["tool_name"] == "call_something"
+    assert tools[0]["settings"]["target"]["value"] == raw_value
+
+
+def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting():
+    # for_log keeps the tools branch away from ToolManager while still resolving settings.
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting("room {{#start.target#}}!")]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={"target": 'a\t"tabbed"\tname'},
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["settings"]["target"]["value"] == 'room a\t"tabbed"\tname!'
+
+
+def test_build_parameters_preserves_nested_constant_structure():
+    raw_value = 'a "quoted"\ttab'
+    result = _build_parameters(
+        configured={
+            "options": {
+                "type": "constant",
+                "value": [{"label": "{{#start.target#}}", "nested": {"items": ["{{#start.target#}}"]}}],
+            }
+        },
+        declared=[_declared_parameter("options", _ParameterType.ANY)],
+        variables={"target": raw_value},
+    )
+
+    assert result["options"] == [{"label": raw_value, "nested": {"items": [raw_value]}}]
+
+
+def test_build_parameters_keeps_scalar_constant_types():
+    result = _build_parameters(
+        configured={
+            "maximum_iterations": {"type": "constant", "value": 10},
+            "stream": {"type": "constant", "value": True},
+            "ratio": {"type": "constant", "value": 0.5},
+        },
+        declared=[
+            _declared_parameter("maximum_iterations", _ParameterType.NUMBER),
+            _declared_parameter("stream", _ParameterType.BOOLEAN),
+            _declared_parameter("ratio", _ParameterType.NUMBER),
+        ],
+        variables={},
+    )
+
+    assert result["maximum_iterations"] == 10
+    assert isinstance(result["maximum_iterations"], int)
+    assert result["stream"] is True
+    assert result["ratio"] == 0.5
+
+
+def test_build_parameters_resolves_plain_string_constant():
+    result = _build_parameters(
+        configured={"query": {"type": "mixed", "value": 'ask about "{{#start.target#}}"'}},
+        declared=[_declared_parameter("query", _ParameterType.STRING)],
+        variables={"target": "dify"},
+    )
+
+    assert result["query"] == 'ask about "dify"'
+
+
+def test_build_parameters_selects_log_form_for_nested_leaves_when_logging():
+    configured = {"options": {"type": "constant", "value": {"payload": "{{#start.blob#}}"}}}
+    declared = [_declared_parameter("options", _ParameterType.ANY)]
+    variables = {"blob": {"key": "value"}}
+
+    logged = _build_parameters(configured=configured, declared=declared, variables=variables, for_log=True)
+    rendered = _build_parameters(configured=configured, declared=declared, variables=variables, for_log=False)
+
+    logged_options = logged["options"]
+    rendered_options = rendered["options"]
+    assert isinstance(logged_options, dict)
+    assert isinstance(rendered_options, dict)
+
+    assert logged_options["payload"] == json.dumps({"key": "value"}, ensure_ascii=False, indent=2)
+    assert rendered_options["payload"] == json.dumps({"key": "value"}, ensure_ascii=False)
+
+
+_SELECTOR_LOOKALIKES = {
+    ("sys", "query"): "the user question",
+    ("env", "SECRET"): "s3cr3t-value",
+    ("start", "target"): "plain",
+}
+
+
+@pytest.mark.parametrize(
+    "literal",
+    [
+        pytest.param("sys.query", id="system-variable"),
+        pytest.param("env.SECRET", id="environment-secret"),
+        pytest.param("start.target", id="node-output"),
+    ],
+)
+def test_build_parameters_keeps_selector_lookalike_tool_arguments_literal(literal: str):
+    """A tool argument carrying no {{#...#}} marker is literal text even when it names a variable.
+
+    convert_template also looks a bare dotted fragment up as a selector. That stayed dormant while
+    the value was resolved as one serialized document, so resolving leaves one by one must not
+    resurrect it or existing configurations would start sending variable values to the tool.
+    """
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting(literal)]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["settings"]["target"]["value"] == literal
+
+
+def test_build_parameters_resolves_markers_without_touching_bare_selectors_beside_them():
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting("env.SECRET{{#start.target#}}")]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["settings"]["target"]["value"] == "env.SECRETplain"
+
+
+def test_build_parameters_keeps_selector_lookalikes_literal_in_nested_constants():
+    result = _build_parameters(
+        configured={
+            "options": {
+                "type": "constant",
+                "value": [{"label": "env.SECRET", "nested": {"items": ["sys.query", "{{#start.target#}}"]}}],
+            }
+        },
+        declared=[_declared_parameter("options", _ParameterType.ANY)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+    )
+
+    assert result["options"] == [{"label": "env.SECRET", "nested": {"items": ["sys.query", "plain"]}}]
+
+
+def test_build_parameters_keeps_top_level_string_lookup_behaviour():
+    """A top-level string is the template itself, so its lookup is deliberately left unchanged."""
+    result = _build_parameters(
+        configured={"query": {"type": "mixed", "value": "sys.query"}},
+        declared=[_declared_parameter("query", _ParameterType.STRING)],
+        variables={},
+        scoped_variables=_SELECTOR_LOOKALIKES,
+    )
+
+    assert result["query"] == "the user question"
