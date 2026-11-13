@@ -74,7 +74,7 @@
   "plansCommon.comparePlanAndFeatures": "Planları ve özellikleri karşılaştır",
   "plansCommon.currentPlan": "Mevcut Plan",
   "plansCommon.days": "gün",
-  "plansCommon.documentProcessingPriority": "Doküman İşleme Önceliği",
+  "plansCommon.documentProcessingPriority": " belge işleme",
   "plansCommon.documentProcessingPriorityTip": "Daha yüksek belge işleme önceliği için lütfen planınızı yükseltin.",
   "plansCommon.documentProcessingPriorityUpgrade": "Daha fazla veriyi daha yüksek doğrulukla ve daha hızlı işleyin.",
   "plansCommon.documents": "{{count,number}} Bilgi Belgesi",
