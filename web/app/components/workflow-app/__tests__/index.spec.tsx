@@ -205,6 +205,17 @@ describe('WorkflowApp', () => {
     },
   )
 
+  it('opens the editor without collaboration when an older API omits the capability', async () => {
+    const features = zGetFeaturesResponse.parse({})
+    Reflect.deleteProperty(features, 'workflow_collaboration_enabled')
+    fetchFeatures.mockResolvedValueOnce(features)
+
+    render(<WorkflowApp />, { collaboration: null })
+    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('false')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it.each([false, true])(
     'keeps the initial editor mode when workspace capability changes from %s',
     async (initial) => {

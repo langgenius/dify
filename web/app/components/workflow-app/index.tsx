@@ -150,7 +150,7 @@ const WorkflowAppWrapper = () => {
   const collaboration = useQuery({
     ...consoleQuery.features.get.queryOptions(),
     retry: false,
-    select: (features) => features.workflow_collaboration_enabled,
+    select: (features) => features.workflow_collaboration_enabled ?? false,
   })
   const { data: mode } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
