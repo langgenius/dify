@@ -1582,9 +1582,11 @@ def _workflow_pause_events_build_converter(
 def _build_paused_human_input_response(
     session: Session,
     recipients: list[tuple[RecipientType, str]],
-):
-    """Drive the live OPENAPI pause path with persisted forms and recipients."""
-    converter = _workflow_pause_events_build_converter(invoke_from=InvokeFrom.OPENAPI)
+    *,
+    invoke_from: InvokeFrom,
+) -> tuple[HumanInputRequiredResponse, WorkflowPauseStreamResponse]:
+    """Build live pause responses for an invocation using persisted recipients."""
+    converter = _workflow_pause_events_build_converter(invoke_from=invoke_from)
     converter.workflow_start_to_stream_response(
         task_id="task",
         workflow_run_id="run-id",
@@ -1614,8 +1616,66 @@ def _build_paused_human_input_response(
         task_id="task",
         graph_runtime_state=runtime_state,
     )
-    assert isinstance(responses[0], HumanInputRequiredResponse)
-    return responses
+    human_input_response, pause_response = responses
+    assert isinstance(human_input_response, HumanInputRequiredResponse)
+    assert isinstance(pause_response, WorkflowPauseStreamResponse)
+    return human_input_response, pause_response
+
+
+@pytest.mark.parametrize(
+    ("invoke_from", "expected_token"),
+    [
+        (InvokeFrom.WEB_APP, "web-app-token"),
+        (InvokeFrom.SERVICE_API, "web-app-token"),
+        (InvokeFrom.OPENAPI, "web-app-token"),
+        (InvokeFrom.DEBUGGER, "backstage-token"),
+        (InvokeFrom.EXPLORE, "backstage-token"),
+        (InvokeFrom.TRIGGER, None),
+        (InvokeFrom.VALIDATION, None),
+        (InvokeFrom.PUBLISHED_PIPELINE, None),
+    ],
+)
+def test_pause_response_selects_token_for_invocation_surface(
+    sqlite_pause_session: Session, invoke_from: InvokeFrom, expected_token: str | None
+) -> None:
+    responses = _build_paused_human_input_response(
+        sqlite_pause_session,
+        recipients=[
+            (RecipientType.STANDALONE_WEB_APP, "web-app-token"),
+            (RecipientType.CONSOLE, "console-token"),
+            (RecipientType.BACKSTAGE, "backstage-token"),
+            (RecipientType.EMAIL_MEMBER, "email-token"),
+        ],
+        invoke_from=invoke_from,
+    )
+
+    human_input_response, pause_response = responses
+    assert human_input_response.data.form_token == expected_token
+    assert pause_response.data.reasons[0]["form_token"] == expected_token
+
+
+@pytest.mark.parametrize(
+    ("invoke_from", "recipient_type"),
+    [
+        (InvokeFrom.WEB_APP, RecipientType.BACKSTAGE),
+        (InvokeFrom.SERVICE_API, RecipientType.BACKSTAGE),
+        (InvokeFrom.OPENAPI, RecipientType.BACKSTAGE),
+        (InvokeFrom.DEBUGGER, RecipientType.STANDALONE_WEB_APP),
+        (InvokeFrom.EXPLORE, RecipientType.STANDALONE_WEB_APP),
+    ],
+)
+def test_pause_response_without_surface_recipient_has_no_token(
+    sqlite_pause_session: Session, invoke_from: InvokeFrom, recipient_type: RecipientType
+) -> None:
+    responses = _build_paused_human_input_response(
+        sqlite_pause_session,
+        recipients=[(recipient_type, "other-surface-token"), (RecipientType.EMAIL_MEMBER, "email-token")],
+        invoke_from=invoke_from,
+    )
+
+    human_input_response, pause_response = responses
+    assert human_input_response.data.form_token is None
+    assert pause_response.data.reasons[0]["form_token"] is None
 
 
 class TestWorkflowPauseEventsCases:
@@ -1727,6 +1787,7 @@ class TestWorkflowPauseEventsCases:
     def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_pause_session: Session):
         responses = _build_paused_human_input_response(
             sqlite_pause_session,
+            invoke_from=InvokeFrom.OPENAPI,
             recipients=[
                 (RecipientType.EMAIL_MEMBER, "email-token"),
                 (RecipientType.BACKSTAGE, "backstage-token"),
@@ -1749,6 +1810,7 @@ class TestWorkflowPauseEventsCases:
     def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pause_session: Session):
         responses = _build_paused_human_input_response(
             sqlite_pause_session,
+            invoke_from=InvokeFrom.OPENAPI,
             recipients=[
                 (RecipientType.STANDALONE_WEB_APP, "web-app-token"),
                 (RecipientType.BACKSTAGE, "backstage-token"),

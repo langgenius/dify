@@ -67,7 +67,13 @@ it.each([0, 1])(
     await userEvent.tab()
     await expect.element(node).toHaveFocus()
     // Click the real React Flow handle: its transparent button intentionally does not receive pointer events.
-    await userEvent.click(trigger.element().parentElement!)
+    const bounds = trigger.element().getBoundingClientRect()
+    const handle = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    )
+    if (!handle) throw new Error('The node handle must be hit-testable')
+    await userEvent.click(handle)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await screen.getByRole('dialog').hover()
     await userEvent.keyboard('{Escape}')
@@ -100,7 +106,13 @@ it.each([0, 1])(
     const editor = screen.getByRole('textbox', { name: 'Outside editor' })
     const input = editor.element()
     await expect.element(trigger).toBeInTheDocument()
-    await userEvent.click(trigger.element().parentElement!)
+    const bounds = trigger.element().getBoundingClientRect()
+    const handle = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    )
+    if (!handle) throw new Error('The node handle must be hit-testable')
+    await userEvent.click(handle)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await userEvent.click(input)
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()

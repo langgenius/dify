@@ -79,7 +79,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [{ find: '~@', replacement: projectRoot }],
+      // Storybook's Next.js preset merges aliases as an object.
+      alias: { '~@': projectRoot },
     },
     // vinext related config
     ...(!isTest && !isStorybook
@@ -100,8 +101,11 @@ export default defineConfig(({ command, mode, isPreview }) => {
       attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
-        // Include authored sources even when no test imports them.
-        include: ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
+        // Unit uploads establish the full source denominator; browser uploads add executed code.
+        include:
+          process.env.DIFY_TEST_COVERAGE_ONLY_EXECUTED === 'true'
+            ? undefined
+            : ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'html', 'json', 'json-summary'],
         exclude: [
           // Test infrastructure and examples do not belong in the source denominator.
@@ -170,9 +174,13 @@ export default defineConfig(({ command, mode, isPreview }) => {
               provider: playwright(),
               instances: [{ browser: 'chromium' }],
               headless: true,
+              // Keep application maps and mapped error stacks without sending dependency maps.
+              dependencySourcemaps: false,
               screenshotFailures: true,
               trace: {
-                mode: 'retain-on-failure',
+                mode: isCI ? 'retain-on-failure' : 'off',
+                // DOM snapshots and failure screenshots remain available without a filmstrip.
+                screenshots: false,
                 tracesDir: './.vitest-browser/traces',
               },
             },

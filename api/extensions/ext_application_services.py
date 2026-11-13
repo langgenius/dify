@@ -672,7 +672,7 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
-        agent_apps=build_agent_app_services(database_client=database_client),
+        agent_apps=build_agent_app_services(database_client=database_client, rbac_members=rbac.members),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(
