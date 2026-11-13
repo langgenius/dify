@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import uuid
+from collections import Counter
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -1884,22 +1885,27 @@ def _compute_metrics_summary(
     results: list[EvaluationItemResult],
     judgment_config: JudgmentConfig | None,
 ) -> dict[str, Any]:
-    """Compute aggregate metric and judgment summaries for an evaluation run."""
-    metric_values: dict[str, list[float]] = {}
+    """Aggregate numeric scores by node ID and metric name without modifying results.
+
+    Titles are display metadata: equal titles never merge different nodes, and
+    a changed title never splits one node. Summary labels match XLSX headers.
+    """
+    metric_columns = _metric_columns(results)
+    metric_values: dict[_MetricIdentity, list[float]] = {}
     for result in results:
         for metric in result.metrics:
             if isinstance(metric.value, Real) and not isinstance(metric.value, bool):
-                metric_values.setdefault(_metric_column_name(metric), []).append(float(metric.value))
+                metric_values.setdefault(_metric_identity(metric), []).append(float(metric.value))
 
     summary: dict[str, Any] = {
         "metrics": {
-            name: {
+            metric_columns[identity]: {
                 "count": len(values),
                 "average": sum(values) / len(values),
                 "min": min(values),
                 "max": max(values),
             }
-            for name, values in metric_values.items()
+            for identity, values in metric_values.items()
         }
     }
 
@@ -1930,6 +1936,7 @@ def _generate_result_xlsx(
 
     Structured metric values must be JSON-serializable, as they are in saved
     checkpoints. They become literal JSON text; numeric scores remain numeric.
+    Each node ID and metric name has its own column, even when titles repeat.
     Unsupported values raise during serialization or cell construction.
     """
     wb = Workbook()
@@ -1960,12 +1967,7 @@ def _generate_result_xlsx(
         cell.border = thin_border
         return cell
 
-    metric_columns: list[str] = []
-    for result in results:
-        for metric in result.metrics:
-            column_name = _metric_column_name(metric)
-            if column_name not in metric_columns:
-                metric_columns.append(column_name)
+    metric_columns = _metric_columns(results)
 
     # Collect all input keys
     input_keys: list[str] = []
@@ -1988,7 +1990,7 @@ def _generate_result_xlsx(
         + input_keys
         + expected_output_headers
         + ["actual_output"]
-        + metric_columns
+        + list(metric_columns.values())
         + judgment_headers
         + ["error"]
     )
@@ -2024,11 +2026,9 @@ def _generate_result_xlsx(
         write_cell(row_idx, col, row_result.actual_output if row_result else "")
         col += 1
 
-        metric_scores = (
-            {_metric_column_name(metric): metric.value for metric in row_result.metrics} if row_result else {}
-        )
-        for metric_name in metric_columns:
-            score = metric_scores.get(metric_name)
+        metric_scores = {_metric_identity(metric): metric.value for metric in row_result.metrics} if row_result else {}
+        for identity in metric_columns:
+            score = metric_scores.get(identity)
             if isinstance(score, (dict, list)):
                 score = json.dumps(score, ensure_ascii=False)
             write_cell(row_idx, col, score if score is not None else "")
@@ -2050,11 +2050,50 @@ def _generate_result_xlsx(
     return output.getvalue()
 
 
-def _metric_column_name(metric: EvaluationMetric) -> str:
-    if metric.node_info is None:
-        return metric.name
-    node_label = metric.node_info.title or metric.node_info.node_id
-    return f"{node_label} : {metric.name}"
+@dataclass(frozen=True)
+class _MetricIdentity:
+    """Stable report identity; a null node ID denotes a target-scoped metric."""
+
+    node_id: str | None
+    name: str
+
+
+def _metric_identity(metric: EvaluationMetric) -> _MetricIdentity:
+    """Return the score's node/name identity, independent of mutable display metadata."""
+    return _MetricIdentity(metric.node_info.node_id if metric.node_info is not None else None, metric.name)
+
+
+def _metric_columns(results: Sequence[EvaluationItemResult]) -> dict[_MetricIdentity, str]:
+    """Assign unique display labels to result identities in first-seen order.
+
+    The first title seen for an identity is retained. Unambiguous labels keep
+    their existing format; duplicate labels gain the node ID and, if needed,
+    a numeric suffix. Neither user labels nor generated labels can overwrite
+    another metric in the summary or XLSX, and input results remain unchanged.
+    """
+    labels: dict[_MetricIdentity, str] = {}
+    for result in results:
+        for metric in result.metrics:
+            node = metric.node_info
+            label = f"{node.title or node.node_id} : {metric.name}" if node is not None else metric.name
+            labels.setdefault(_metric_identity(metric), label)
+
+    label_counts = Counter(labels.values())
+    reserved_labels = set(labels.values())
+    columns: dict[_MetricIdentity, str] = {}
+    for identity, label in labels.items():
+        column_label = label
+        if label_counts[label] > 1:
+            scope = identity.node_id if identity.node_id is not None else "unscoped"
+            qualified_label = f"{label} [{scope}]"
+            column_label = qualified_label
+            suffix = 2
+            while column_label in reserved_labels:
+                column_label = f"{qualified_label} ({suffix})"
+                suffix += 1
+            reserved_labels.add(column_label)
+        columns[identity] = column_label
+    return columns
 
 
 def _get_expected_output_cell_value(item: EvaluationDatasetInput, header: str) -> str:

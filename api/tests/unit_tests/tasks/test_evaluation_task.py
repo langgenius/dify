@@ -2492,6 +2492,87 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
     ]
 
 
+def test_summaries_and_xlsx_keep_same_title_nodes_separate() -> None:
+    first_node = NodeInfo(node_id="llm-1", type="llm", title="Answer")
+    second_node = NodeInfo(node_id="llm-2", type="llm", title="Answer")
+    results = [
+        EvaluationItemResult(
+            index=1,
+            metrics=[
+                EvaluationMetric(name="faithfulness", value=0.2, node_info=first_node),
+                EvaluationMetric(name="faithfulness", value=0.8, node_info=second_node),
+            ],
+        ),
+        EvaluationItemResult(
+            index=2,
+            metrics=[
+                EvaluationMetric(name="faithfulness", value=0.6, node_info=second_node),
+                EvaluationMetric(
+                    name="faithfulness", value=0.4, node_info=first_node.model_copy(update={"title": "Renamed"})
+                ),
+            ],
+        ),
+    ]
+
+    summary = _compute_metrics_summary(results, None)["metrics"]
+
+    assert set(summary) == {"Answer : faithfulness [llm-1]", "Answer : faithfulness [llm-2]"}
+    assert summary["Answer : faithfulness [llm-1]"] == pytest.approx(
+        {"count": 2, "average": 0.3, "min": 0.2, "max": 0.4}
+    )
+    assert summary["Answer : faithfulness [llm-2]"] == pytest.approx(
+        {"count": 2, "average": 0.7, "min": 0.6, "max": 0.8}
+    )
+
+    inputs = [EvaluationDatasetInput(index=index, inputs={}) for index in (1, 2)]
+    workbook = load_workbook(io.BytesIO(_generate_result_xlsx(inputs, results)))
+    worksheet = workbook.active
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == [
+        "index",
+        "actual_output",
+        "Answer : faithfulness [llm-1]",
+        "Answer : faithfulness [llm-2]",
+        "error",
+    ]
+    assert [cell.value for cell in worksheet[2][2:4]] == [0.2, 0.8]
+    assert [cell.value for cell in worksheet[3][2:4]] == [0.4, 0.6]
+
+
+def test_metric_headers_remain_unique_when_titles_contain_disambiguation_suffixes() -> None:
+    nodes = [
+        NodeInfo(node_id="llm-1", type="llm", title="Answer"),
+        NodeInfo(node_id="llm-2", type="llm", title="Answer"),
+        NodeInfo(node_id="llm-3", type="llm", title="Answer : faithfulness [llm-1]"),
+    ]
+    results = [
+        EvaluationItemResult(
+            index=1,
+            metrics=[
+                EvaluationMetric(name="faithfulness", value=0.2, node_info=nodes[0]),
+                EvaluationMetric(name="faithfulness", value=0.8, node_info=nodes[1]),
+                EvaluationMetric(name="faithfulness", value=0.6, node_info=nodes[2]),
+                EvaluationMetric(name="Answer : faithfulness [llm-1]", value=0.9),
+                EvaluationMetric(name="Answer : faithfulness", value=0.4),
+            ],
+        )
+    ]
+
+    summary = _compute_metrics_summary(results, None)["metrics"]
+    assert len(summary) == 5
+    assert all(metric["count"] == 1 for metric in summary.values())
+    assert sorted(metric["average"] for metric in summary.values()) == [0.2, 0.4, 0.6, 0.8, 0.9]
+    assert summary["Answer : faithfulness [llm-1]"]["average"] == 0.9
+
+    workbook = load_workbook(io.BytesIO(_generate_result_xlsx([EvaluationDatasetInput(index=1, inputs={})], results)))
+    worksheet = workbook.active
+    assert worksheet is not None
+    exported_metrics = {
+        header.value: score.value for header, score in zip(worksheet[1][2:-1], worksheet[2][2:-1], strict=True)
+    }
+    assert exported_metrics == {name: metric["average"] for name, metric in summary.items()}
+
+
 def test_result_xlsx_preserves_formula_like_text_as_literal_cells() -> None:
     input_list = [EvaluationDatasetInput(index=1, inputs={"=input": "=1+1"}, expected_outputs={"=node": "=2+2"})]
     results = [
