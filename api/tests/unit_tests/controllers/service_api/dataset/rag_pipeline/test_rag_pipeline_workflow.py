@@ -706,6 +706,62 @@ class TestRagPipelineWorkflowCases:
                         dataset_id=dataset_id,
                     )
 
+        @pytest.mark.parametrize(
+            ("raised", "expected"),
+            [
+                # Invalid caller input must surface as-is so the shared handler answers 400.
+                (ValueError("source_files is required in input form"), ValueError),
+                # Already-mapped HTTP errors keep their own status code.
+                (NotFound("Workflow not found"), NotFound),
+                # Anything unexpected is still reported as a pipeline execution failure (500).
+                (RuntimeError("boom"), PipelineRunError),
+            ],
+        )
+        @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService")
+        @patch(
+            "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+            new_callable=lambda: Account(name="Test Account", email="test@example.com"),
+        )
+        @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+        @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
+        def test_post_maps_generate_errors(
+            self,
+            mock_ns,
+            mock_svc_cls,
+            mock_current_user,
+            mock_gen_svc,
+            raised: Exception,
+            expected: type[Exception],
+            app: Flask,
+            sqlite_session: Session,
+            pipeline_application: PipelineGenerator,
+        ):
+            """Input errors stay 4xx; only unexpected failures become PipelineRunError."""
+            tenant_id = str(uuid.uuid4())
+            dataset_id = str(uuid.uuid4())
+            _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+            mock_ns.payload = {
+                "inputs": {},
+                "datasource_type": "local_file",
+                "datasource_info_list": [],
+                "start_node_id": "node_1",
+                "is_published": True,
+                "response_mode": "blocking",
+            }
+            mock_svc_cls.return_value.get_pipeline.return_value = _persist_pipeline(sqlite_session, tenant_id=tenant_id)
+            mock_gen_svc.generate.side_effect = raised
+
+            with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
+                api = PipelineRunApi()
+                with pytest.raises(expected) as exc_info:
+                    api.post.__wrapped__(api, sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+
+            if expected is PipelineRunError:
+                assert exc_info.value.code == 500
+                assert exc_info.value.__cause__ is raised
+            else:
+                assert exc_info.value is raised
+
     class TestFileUploadApiPost:
         """Tests for KnowledgebasePipelineFileUploadApi.post()."""
 
