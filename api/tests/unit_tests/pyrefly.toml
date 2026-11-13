@@ -47,7 +47,6 @@ project-excludes = [
   "controllers/service_api/app/test_audio.py",
   "controllers/service_api/app/test_completion.py",
   "controllers/service_api/app/test_file.py",
-  "controllers/service_api/app/test_workflow_events.py",
   "controllers/service_api/dataset/rag_pipeline/test_rag_pipeline_workflow.py",
   "controllers/service_api/dataset/test_segment.py",
   "controllers/service_api/dataset/test_document.py",
