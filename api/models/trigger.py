@@ -11,11 +11,10 @@ from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 
 from .base import TypeBase
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
@@ -23,7 +22,7 @@ from .model import Account
 from .types import EnumText, LongText, StringUUID
 
 TriggerJsonObject = dict[str, object]
-TriggerCredentials = dict[str, str]
+TriggerCredentials = dict[str, object]
 
 
 class WorkflowTriggerLogDict(TypedDict):
@@ -138,19 +137,6 @@ class TriggerSubscription(TypeBase):
             endpoint=generate_plugin_trigger_endpoint_url(self.endpoint_id),
             parameters=self.parameters,
             properties=self.properties,
-        )
-
-    def to_api_entity(self) -> TriggerProviderSubscriptionApiEntity:
-        return TriggerProviderSubscriptionApiEntity(
-            id=self.id,
-            name=self.name,
-            provider=self.provider_id,
-            endpoint=generate_plugin_trigger_endpoint_url(self.endpoint_id),
-            parameters=self.parameters,
-            properties=self.properties,
-            credential_type=self.credential_type,
-            credentials=self.credentials,
-            workflows_in_use=-1,
         )
 
 
@@ -443,7 +429,7 @@ class AppTrigger(TypeBase):
     - title (string) Trigger title
 
     - status (string) Status: enabled, disabled, unauthorized, error
-    - node_id (string) Optional workflow node ID
+    - node_id (string) Required workflow node ID
     - created_at (timestamp) Creation time
     - updated_at (timestamp) Last update time
     """
@@ -459,7 +445,7 @@ class AppTrigger(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True, default="")

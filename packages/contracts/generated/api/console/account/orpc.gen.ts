@@ -6,8 +6,13 @@ import {
   zAccountAlreadyInitedError,
   zAccountInFreezeError,
   zAccountNotFoundError,
+  zBillingOperationFailedError,
+  zBillingRequestInProgressError,
+  zBillingUnavailableError,
   zCurrentPasswordIncorrectError,
+  zEducationActivateFailedError,
   zEducationActivateLimitError,
+  zEducationVerifyFailedError,
   zEducationVerifyLimitError,
   zEmailAlreadyInUseError,
   zEmailChangeLimitError,
@@ -24,6 +29,8 @@ import {
   zMissingInvitationCodeError,
 } from './zod.gen.ts'
 import {
+  zDeleteAccountPersonalAccessTokensByTokenIdPath,
+  zDeleteAccountPersonalAccessTokensByTokenIdResponse,
   zGetAccountAvatarQuery,
   zGetAccountAvatarResponse,
   zGetAccountDeleteVerifyResponse,
@@ -32,7 +39,18 @@ import {
   zGetAccountEducationResponse,
   zGetAccountEducationVerifyResponse,
   zGetAccountIntegratesResponse,
+  zGetAccountPersonalAccessTokenResourcesQuery,
+  zGetAccountPersonalAccessTokenResourcesResponse,
+  zGetAccountPersonalAccessTokensByTokenIdPath,
+  zGetAccountPersonalAccessTokensByTokenIdResponse,
+  zGetAccountPersonalAccessTokensQuery,
+  zGetAccountPersonalAccessTokensResponse,
+  zGetAccountPersonalAccessTokenWorkspacesQuery,
+  zGetAccountPersonalAccessTokenWorkspacesResponse,
   zGetAccountProfileResponse,
+  zPatchAccountPersonalAccessTokensByTokenIdBody,
+  zPatchAccountPersonalAccessTokensByTokenIdPath,
+  zPatchAccountPersonalAccessTokensByTokenIdResponse,
   zPatchAccountProfileBody,
   zPatchAccountProfileResponse,
   zPostAccountChangeEmailBody,
@@ -53,6 +71,9 @@ import {
   zPostAccountInitResponse,
   zPostAccountPasswordBody,
   zPostAccountPasswordResponse,
+  zPostAccountPersonalAccessTokensBody,
+  zPostAccountPersonalAccessTokensHeaders,
+  zPostAccountPersonalAccessTokensResponse,
 } from './zod.gen.ts'
 
 /**
@@ -228,6 +249,10 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetAccountEducationAutocompleteQuery }))
   .output(zGetAccountEducationAutocompleteResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const autocomplete = {
   get: get3,
@@ -244,6 +269,10 @@ export const get4 = oc
   .output(zGetAccountEducationVerifyResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    education_verify_failed: { status: 400, data: zEducationVerifyFailedError },
     education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
   })
 
@@ -260,6 +289,11 @@ export const get5 = oc
     tags: ['console'],
   })
   .output(zGetAccountEducationResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const post7 = oc
   .route({
@@ -273,6 +307,10 @@ export const post7 = oc
   .output(zPostAccountEducationResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    education_activate_failed: { status: 400, data: zEducationActivateFailedError },
     education_activate_limit: { status: 429, data: zEducationActivateLimitError },
   })
 
@@ -338,7 +376,120 @@ export const password = {
   post: post9,
 }
 
+/**
+ * List account-visible candidates for the validated search, type, and cursor
+ */
 export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokenResources',
+    path: '/account/personal-access-token-resources',
+    summary: 'List account-visible candidates for the validated search, type, and cursor',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokenResourcesQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokenResourcesResponse)
+
+export const personalAccessTokenResources = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokenWorkspaces',
+    path: '/account/personal-access-token-workspaces',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokenWorkspacesQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokenWorkspacesResponse)
+
+export const personalAccessTokenWorkspaces = {
+  get: get8,
+}
+
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteAccountPersonalAccessTokensByTokenIdPath }))
+  .output(zDeleteAccountPersonalAccessTokensByTokenIdResponse)
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAccountPersonalAccessTokensByTokenIdPath }))
+  .output(zGetAccountPersonalAccessTokensByTokenIdResponse)
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchAccountPersonalAccessTokensByTokenIdBody,
+      params: zPatchAccountPersonalAccessTokensByTokenIdPath,
+    }),
+  )
+  .output(zPatchAccountPersonalAccessTokensByTokenIdResponse)
+
+export const byTokenId = {
+  delete: delete2,
+  get: get9,
+  patch,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokens',
+    path: '/account/personal-access-tokens',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokensQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokensResponse)
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountPersonalAccessTokens',
+    path: '/account/personal-access-tokens',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAccountPersonalAccessTokensBody,
+      headers: zPostAccountPersonalAccessTokensHeaders.optional(),
+    }),
+  )
+  .output(zPostAccountPersonalAccessTokensResponse)
+
+export const personalAccessTokens = {
+  get: get10,
+  post: post10,
+  byTokenId,
+}
+
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -349,7 +500,7 @@ export const get7 = oc
   .output(zGetAccountProfileResponse)
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
-export const patch = oc
+export const patch2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -362,8 +513,8 @@ export const patch = oc
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const profile = {
-  get: get7,
-  patch,
+  get: get11,
+  patch: patch2,
 }
 
 export const account = {
@@ -374,6 +525,9 @@ export const account = {
   init,
   integrates,
   password,
+  personalAccessTokenResources,
+  personalAccessTokenWorkspaces,
+  personalAccessTokens,
   profile,
 }
 

@@ -15,12 +15,14 @@ export type FeatureModel = {
   enable_knowledge_fs: boolean
   enable_skill: boolean
   human_input_email_delivery_enabled: boolean
+  im_centrally_managed: boolean
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
   members: LimitationModel
   model_load_balancing_enabled: boolean
   trigger_event: Quota
   webapp_copyright_enabled: boolean
+  workflow_collaboration_enabled: boolean
   workspace_members: LicenseLimitationModel
 }
 
@@ -71,7 +73,7 @@ export type LicenseLimitationModel = {
 }
 
 export type SubscriptionModel = {
-  interval: string
+  interval: '' | 'month' | 'year'
   plan: CloudPlan
 }
 

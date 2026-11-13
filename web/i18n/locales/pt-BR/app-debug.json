@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Gere vários textos de uma vez e, em seguida, edite e continue a gerar",
   "feature.moreLikeThis.tip": "Usar esse recurso incorrerá em sobrecarga adicional de tokens",
   "feature.moreLikeThis.title": "Mais como isso",
+  "feature.showThoughts.description": "Exiba o raciocínio do modelo nas conversas.",
+  "feature.showThoughts.title": "Mostrar raciocínio",
   "feature.speechToText.description": "Uma vez ativado, você pode usar entrada de voz.",
   "feature.speechToText.title": "Fala para Texto",
   "feature.suggestedQuestionsAfterAnswer.description": "Configurar sugestões de próximas perguntas pode proporcionar um melhor chat aos usuários.",

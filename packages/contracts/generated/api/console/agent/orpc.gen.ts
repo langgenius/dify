@@ -252,12 +252,16 @@ export const inviteOptions = {
   get,
 }
 
+/**
+ * Return API access for an Agent visible to the admitted account
+ */
 export const get2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdApiAccess',
     path: '/agent/{agent_id}/api-access',
+    summary: 'Return API access for an Agent visible to the admitted account',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdApiAccessPath }))
@@ -268,12 +272,16 @@ export const apiAccess = {
   get: get2,
 }
 
+/**
+ * Change API access for an Agent and return the committed state
+ */
 export const post = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdApiEnable',
     path: '/agent/{agent_id}/api-enable',
+    summary: 'Change API access for an Agent and return the committed state',
     tags: ['console'],
   })
   .input(
@@ -1501,7 +1509,10 @@ export const get30 = oc
     }),
   )
   .output(zGetAgentByAgentIdTraceCapabilitiesResponse)
-  .errors({ unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError } })
+  .errors({
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 export const traceCapabilities = {
   get: get30,

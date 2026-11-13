@@ -6,7 +6,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from http import HTTPStatus
 from typing import Any, Final
-from uuid import UUID
 
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
@@ -21,12 +20,12 @@ from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
     NodeNotFound,
-    OpenApiError,
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
     VersionNotFound,
     VersionNotRestorable,
+    require_uuid,
 )
 from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._hints import cursor_after, next_page_hint, page_after
@@ -87,15 +86,6 @@ _RELEASE_GUARDS: Final = account_app_guards(
 _ENV_WRITE_GUARDS: Final = account_app_guards(
     RBACPermission.APP_EDIT, scope=Scope.WORKSPACE_WRITE, roles=EDITOR_ROLES, modes=GRAPH_MODES
 )
-
-
-def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
-    """Parse a path id as a UUID or raise 404; an unparsed id would otherwise reach
-    a UUID-typed database column and fail as a 500."""
-    try:
-        return str(UUID(value))
-    except ValueError as e:
-        raise not_found() from e
 
 
 def _require_run(ctx: Context, run_id: str) -> WorkflowRun:

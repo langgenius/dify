@@ -1,0 +1,60 @@
+# Defaults for web. Copy this file to web.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+CONSOLE_API_URL=${CONSOLE_API_URL:-}
+SERVER_CONSOLE_API_URL=${SERVER_CONSOLE_API_URL:-http://api:5001}
+APP_API_URL=${APP_API_URL:-}
+# Optional Cloud WebApp document admission. Enable only after the edge proxy
+# overwrites both X-Dify-Webapp-Client-Ip and X-Dify-Webapp-Proxy-Secret, Web is
+# private to that proxy, and the target Gateway enforces /api using trusted IPs.
+# Use the complete internal Gateway endpoint, never a direct Core API URL.
+# Example: http://gateway-public:8080/api/webapp/access-mode
+# WEBAPP_ACCESS_PREFLIGHT_URL=
+# Provision outside Git; must match the edge-injected secret. Never NEXT_PUBLIC.
+# WEBAPP_ACCESS_PREFLIGHT_PROXY_SECRET=
+WEB_SENTRY_DSN=${WEB_SENTRY_DSN:-}
+NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:-ws://localhost}
+EXPERIMENTAL_ENABLE_VINEXT=${EXPERIMENTAL_ENABLE_VINEXT:-false}
+LOOP_NODE_MAX_COUNT=${LOOP_NODE_MAX_COUNT:-100}
+MAX_TOOLS_NUM=${MAX_TOOLS_NUM:-10}
+MAX_PARALLEL_LIMIT=${MAX_PARALLEL_LIMIT:-10}
+MAX_ITERATIONS_NUM=${MAX_ITERATIONS_NUM:-99}
+TEXT_GENERATION_TIMEOUT_MS=${TEXT_GENERATION_TIMEOUT_MS:-60000}
+# WORKFLOW_GENERATION_TIMEOUT_MS=180000
+# ALLOW_INLINE_STYLES=false
+# Example: ()!*&（）！＊＆－。.;；+=—
+# MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS=
+# Maximum length of Markdown form field names.
+# MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH=128
+ALLOW_UNSAFE_DATA_SCHEME=${ALLOW_UNSAFE_DATA_SCHEME:-false}
+MAX_TREE_DEPTH=${MAX_TREE_DEPTH:-50}
+MARKETPLACE_API_URL=${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+MARKETPLACE_URL=${MARKETPLACE_URL:-https://marketplace.dify.ai}
+INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH=${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
+ALLOW_EMBED=${ALLOW_EMBED:-false}
+AMPLITUDE_API_KEY=${AMPLITUDE_API_KEY:-}
+TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+# COOKIEYES_SITE_KEY=
+ENABLE_WEBSITE_JINAREADER=${ENABLE_WEBSITE_JINAREADER:-true}
+ENABLE_WEBSITE_FIRECRAWL=${ENABLE_WEBSITE_FIRECRAWL:-true}
+ENABLE_WEBSITE_WATERCRAWL=${ENABLE_WEBSITE_WATERCRAWL:-true}
+# NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX=false
+# NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW=true
+
+# Enable HITL IM, Contacts, V2 editing/migration and approval UI. Defaults to false.
+# When false, retain legacy V1 behavior and disable V2 entry points without converting saved data.
+# Restart the Web service and reload the page after changing this setting.
+# NEXT_PUBLIC_ENABLE_HITL_IM=false
+# Show Access Token settings to workspace owners. Disabled by default.
+# NEXT_PUBLIC_ENABLE_ACCESS_TOKEN=false
+NEXT_PUBLIC_ENABLE_AGENT_V2=${NEXT_PUBLIC_ENABLE_AGENT_V2:-true}
+# NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW=false
+NEXT_PUBLIC_COOKIE_DOMAIN=${NEXT_PUBLIC_COOKIE_DOMAIN:-}
+# NEXT_PUBLIC_BATCH_CONCURRENCY=5
+CSP_WHITELIST=${CSP_WHITELIST:-}
+TOP_K_MAX_VALUE=${TOP_K_MAX_VALUE:-10}
+NEXT_TELEMETRY_DISABLED=${NEXT_TELEMETRY_DISABLED:-0}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+SENTRY_DSN=${WEB_SENTRY_DSN:-}

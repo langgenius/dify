@@ -276,6 +276,8 @@ def collect_changed_glue_lines(
             "--no-ext-diff",
             "--no-color",
             "--unified=0",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
             base,
             "--",
             *glue_paths,

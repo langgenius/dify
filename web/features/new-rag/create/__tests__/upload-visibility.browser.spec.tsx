@@ -3,10 +3,10 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { StartMode } from '../components/dialog-parts'
 import { CreateUploadQueue } from '../upload-queue'
-
-vi.mock('../../upload/plan-notice', () => ({ DocumentUploadPlanNotice: () => null }))
 
 function ScrollableCreationModes() {
   const [mode, setMode] = useState<NewKnowledgeStartMode>('empty')
@@ -51,7 +51,18 @@ it('reveals the entire upload drop zone on expansion without moving the panel or
   // Real scrolling catches the expanded drop zone remaining clipped below the form viewport;
   // DOM visibility assertions alone pass even when its lower edge cannot be seen.
   await page.viewport(400, 600)
-  const screen = await render(<ScrollableCreationModes />)
+  const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
+    features: { billing: { subscription: { plan: 'sandbox' } } },
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  onTestFinished(() => queryClient.clear())
+  const screen = await render(
+    <Wrapper>
+      <QueryTestingAdapter>
+        <ScrollableCreationModes />
+      </QueryTestingAdapter>
+    </Wrapper>,
+  )
   const heading = screen.getByRole('heading', { name: 'Create knowledge' }).element()
   const submit = screen.getByRole('button', { name: 'Create', exact: true }).element()
   const headingTop = heading.getBoundingClientRect().top
@@ -63,6 +74,9 @@ it('reveals the entire upload drop zone on expansion without moving the panel or
     await upload.click()
     await expect.element(upload).toBeChecked()
     await expect.element(upload).toHaveFocus()
+    await expect
+      .element(screen.getByText('billing.upgrade.uploadMultiplePages.title'))
+      .toBeInTheDocument()
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles').element() as HTMLInputElement
     const dropzone = input.labels?.[0]
     if (!dropzone) throw new Error('Upload input must have an associated drop zone label')

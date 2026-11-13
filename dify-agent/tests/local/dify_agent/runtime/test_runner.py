@@ -26,6 +26,7 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     RunComposition,
     RunFailedEvent,
+    RunFailedEventData,
     RunLayerSpec,
     RunSucceededEvent,
     RunFailureType,
@@ -242,6 +243,32 @@ async def test_run_started_store_failure_finalizes_run_as_failed(monkeypatch):
         terminal = sink.events["test"][-1]
         assert isinstance(terminal, RunFailedEvent)
         assert terminal.data.error == "store unavailable"
+
+
+@pytest.mark.anyio
+async def test_sealed_stream_stops_runner_without_second_terminal_event(monkeypatch):
+    async def stream(messages, info):
+        pytest.fail("the model must not run when the stream is already sealed")
+        yield "unreachable"
+
+    async with httpx.AsyncClient() as client:
+        model = FunctionModel(stream_function=stream)
+        monkeypatch.setattr(llm_layer.Capability, "build_model", lambda self, deps: model)
+        sink = InMemoryRunEventSink()
+        sealed = await sink.finalize_run(
+            RunFailedEvent(run_id="test", data=RunFailedEventData(error="cancelled elsewhere"))
+        )
+        assert sealed.applied
+        runner = AgentRunRunner(
+            sink=sink,
+            request=request(),
+            run_id="test",
+            services=Services(client, client),
+            run_timeout_seconds=10,
+        )
+        await runner.run()
+        assert sink.statuses["test"] == "failed"
+        assert [type(event) for event in sink.events["test"]] == [RunFailedEvent]
 
 
 @pytest.mark.anyio

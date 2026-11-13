@@ -145,7 +145,7 @@ function DatePickerContent(props: DatePickerContentProps) {
 }
 function Session() {
   const { value, commit, locale = enUS, minDate, maxDate, isDateUnavailable, labels } = useContext()
-  const { close, canEdit } = usePickerContext()
+  const { close, canEdit, readOnly } = usePickerContext()
   const [displayMonth, setDisplayMonth] = React.useState(() =>
     getInitialMonth(value ?? formatDateValue(new Date()), minDate, maxDate),
   )
@@ -169,6 +169,7 @@ function Session() {
       maxDate={maxDate}
       isDateUnavailable={isDateUnavailable}
       labels={labels}
+      readOnly={readOnly}
     />
   )
 }

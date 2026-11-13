@@ -14,6 +14,11 @@ const repeatedQueryArrayRules = [
   { path: /\/knowledge-fs\/spaces$/, fields: ['creator_ids', 'tag_ids'] },
   { path: /\/trial-apps\/[^/]+\/datasets$/, fields: ['ids'] },
   { path: /\/workspaces\/current\/customized-snippets$/, fields: ['tag_ids', 'creators'] },
+  {
+    path: /\/workspaces\/current\/human-input\/v2\/contact-options\/batch$/,
+    fields: ['contact_ids'],
+  },
+  { path: /\/workspaces\/current\/human-input\/v2\/contacts\/batch$/, fields: ['contact_ids'] },
   { path: /\/workspaces\/current\/skills$/, fields: ['tag'] },
   { path: /\/workspaces\/current\/plugin\/[^/]+\/list$/, fields: ['tags'] },
   {

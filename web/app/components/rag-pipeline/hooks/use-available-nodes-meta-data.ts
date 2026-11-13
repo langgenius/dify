@@ -1,5 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -7,6 +7,7 @@ import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-
 import dataSourceDefault from '@/app/components/workflow/nodes/data-source/default'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getNodePersistedType } from '@/app/components/workflow/utils/node'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { consoleQuery } from '@/service/console'
@@ -15,7 +16,7 @@ export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
-  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+  const { data: knowledgeFsEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_knowledge_fs,
     }),
@@ -26,6 +27,7 @@ export const useAvailableNodesMetaData = () => {
       ...WORKFLOW_COMMON_NODES.filter(
         (node) =>
           node.metaData.type !== BlockEnum.HumanInput &&
+          node.metaData.type !== BlockEnum.HumanInputV2 &&
           (knowledgeFsEnabled || node.metaData.type !== BlockEnum.KnowledgeRetrievalV2) &&
           (agentV2Enabled
             ? node.metaData.type !== BlockEnum.Agent
@@ -65,7 +67,7 @@ export const useAvailableNodesMetaData = () => {
           },
           defaultValue: {
             ...node.defaultValue,
-            type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
+            type: getNodePersistedType(metaData.type),
             title,
           },
         }

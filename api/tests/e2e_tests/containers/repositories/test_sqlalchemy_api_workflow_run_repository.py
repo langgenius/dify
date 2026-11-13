@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
@@ -94,7 +95,6 @@ def _unpersisted_pause(*, workflow_id: str, workflow_run_id: str) -> WorkflowPau
             workflow_run_id=workflow_run_id,
             state_object_key="unpersisted-state",
         ),
-        reason_models=[],
     )
 
 
@@ -148,7 +148,7 @@ def repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflow
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> _TestScope:
+def test_scope(db_session_with_containers: Session) -> Iterator[_TestScope]:
     """Provide an isolated scope and clean related data after each test."""
 
     scope = _TestScope()
@@ -360,7 +360,7 @@ class TestCreateWorkflowPause:
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
         assert pause_entity.id == pause_model.id
         assert pause_entity.workflow_execution_id == workflow_run.id
-        assert pause_entity.get_pause_reasons() == []
+        assert repository.get_legacy_pause_reasons(db_session_with_containers, pause_entity.id) == []
         assert pause_entity.get_state() == state.encode()
 
     def test_replaces_pause_when_previous_state_object_delete_fails(
@@ -535,7 +535,7 @@ class TestCreateWorkflowPause:
         assert reason_models[0].form_id == form_model.id
         assert reason_models[0].node_id == "node-1"
 
-        pause_reasons = pause_entity.get_pause_reasons()
+        pause_reasons = repository.get_legacy_pause_reasons(db_session_with_containers, pause_entity.id)
 
         assert len(pause_reasons) == 1
         reason = pause_reasons[0]
@@ -549,7 +549,7 @@ class TestCreateWorkflowPause:
         reloaded_pause = repository.get_workflow_pause(workflow_run.id)
 
         assert reloaded_pause is not None
-        reloaded_reasons = reloaded_pause.get_pause_reasons()
+        reloaded_reasons = repository.get_legacy_pause_reasons(db_session_with_containers, reloaded_pause.id)
         assert len(reloaded_reasons) == 1
         reloaded_reason = reloaded_reasons[0]
         assert isinstance(reloaded_reason, HumanInputRequired)
@@ -623,7 +623,7 @@ class TestCreateWorkflowPause:
         assert raw_reason.session_id == form_model.id
         assert raw_reason.node_id == "node-1"
 
-        pause_reasons = pause_entity.get_pause_reasons()
+        pause_reasons = repository.get_legacy_pause_reasons(db_session_with_containers, pause_entity.id)
         assert len(pause_reasons) == 1
         reason = pause_reasons[0]
         assert isinstance(reason, HumanInputRequired)
@@ -685,7 +685,7 @@ class TestCreateWorkflowPause:
         pause_entity = repository.get_workflow_pause(workflow_run.id)
 
         assert pause_entity is not None
-        pause_reasons = pause_entity.get_pause_reasons()
+        pause_reasons = repository.get_legacy_pause_reasons(db_session_with_containers, pause_entity.id)
         assert len(pause_reasons) == 1
         reason = pause_reasons[0]
         assert isinstance(reason, HumanInputRequired)
@@ -862,7 +862,7 @@ class TestPrivateWorkflowPauseEntity:
         db_session_with_containers.refresh(pause)
         test_scope.state_keys.add(pause.state_object_key)
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause)
 
         assert entity.id == pause.id
         assert entity.workflow_execution_id == workflow_run.id
@@ -894,7 +894,7 @@ class TestPrivateWorkflowPauseEntity:
         expected_state = b'{"test": "state"}'
         storage.save(state_key, expected_state)
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause)
         result = entity.get_state()
 
         assert result == expected_state
@@ -925,7 +925,7 @@ class TestPrivateWorkflowPauseEntity:
         expected_state = b'{"test": "state"}'
         storage.save(state_key, expected_state)
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause)
         result1 = entity.get_state()
         # Delete from storage to prove second call uses cache
         storage.delete(state_key)

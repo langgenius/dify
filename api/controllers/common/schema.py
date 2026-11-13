@@ -75,7 +75,8 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "core.app.entities.task_entities.WorkflowAppBlockingResponse.Data": "WorkflowAppBlockingResponseData",
 }
 
-_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],])")
+# Pydantic can append metadata such as "_Strict(strict=False)" after a process-local type ID.
+_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],_])")
 _MODULE_PREFIX = re.compile(r"(?:[^.[\],]+\.)+([^.[\],]+)")
 
 # Normalized component name -> (component name, fully qualified source type, schema), per namespace.

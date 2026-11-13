@@ -1,6 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
+  PopoverArrow,
   PopoverContent,
   PopoverDescription,
   PopoverTitle,
@@ -8,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useIsClient } from 'foxact/use-is-client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -28,6 +29,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
   const isClient = useIsClient()
   const [guideOpenOverride, setGuideOpenOverride] = useState<boolean | null>(null)
+  const gotItRef = useRef<HTMLButtonElement>(null)
   const guideOpen = isClient && (guideOpenOverride ?? !guideDismissed)
 
   const dismissGuide = () => {
@@ -36,7 +38,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   }
 
   return (
-    <div className="relative flex max-w-full shrink-0">
+    <div className="relative flex w-fit max-w-full shrink-0">
       <SegmentedControl
         className="max-w-full rounded-md p-px"
         aria-label={t(($) => $.viewLabel)}
@@ -44,17 +46,17 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         onValueChange={(value) => onChange(value)}
       >
         <SegmentedControlItem
-          className="h-5.5 rounded-md px-1 py-px system-xs-medium"
+          className="h-5.5 rounded-md px-1 py-px system-xs-medium focus-visible:ring-inset"
           value="classic"
         >
           {t(($) => $['view.classic'])}
         </SegmentedControlItem>
         <SegmentedControlItem
-          className="h-5.5 rounded-md py-px pr-5 pl-1 system-xs-medium"
+          className="h-5.5 rounded-md py-px ps-1 pe-5 system-xs-medium focus-visible:ring-inset"
           value="agent"
         >
           {t(($) => $['view.agent'])}
-          <span className="ml-1 inline-flex items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-px system-2xs-medium-uppercase text-text-tertiary">
+          <span className="ms-1 inline-flex items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-px system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['view.beta'])}
           </span>
         </SegmentedControlItem>
@@ -65,7 +67,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           render={
             <button
               type="button"
-              className="absolute top-1.25 right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary"
+              className="absolute inset-e-1 top-1.25 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-question-line size-3.5" />
             </button>
@@ -73,14 +75,17 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         />
         <PopoverContent
           sideOffset={13}
+          initialFocus={guideOpenOverride ? gotItRef : false}
           className="relative flex max-h-[calc(100dvh-2rem)] min-h-40.5 w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
-          <span
-            aria-hidden
-            className="absolute top-[-9.59px] left-1/2 flex size-[19.456px] -translate-x-1/2 items-center justify-center"
-          >
-            <span className="size-[13.757px] -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
-          </span>
+          <PopoverArrow className="h-[9.728px] w-[19.456px] overflow-clip data-[side=bottom]:top-[-9.728px] data-[side=top]:bottom-[-9.728px] data-[side=top]:rotate-180">
+            <svg aria-hidden="true" viewBox="0 0 20 10" className="block size-full">
+              <path
+                d="M-1 11.7 8.94 1.76a1.5 1.5 0 0 1 2.12 0L21 11.7"
+                className="fill-components-panel-bg stroke-divider-subtle"
+              />
+            </svg>
+          </PopoverArrow>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">
               {t(($) => $.guideTitle)}
@@ -97,7 +102,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
               >
                 {t(($) => $.learnMore)}
               </a>
-              <Button variant="primary" size="small" onClick={dismissGuide}>
+              <Button ref={gotItRef} variant="primary" size="small" onClick={dismissGuide}>
                 {t(($) => $.gotIt)}
               </Button>
             </div>

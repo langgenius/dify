@@ -9,6 +9,11 @@ export type WorkflowRunArchiveListResponse = {
   summary: WorkflowRunArchiveSummaryResponse
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -79,6 +84,7 @@ export type GetWorkflowRunArchivesData = {
 }
 
 export type GetWorkflowRunArchivesErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -100,6 +106,7 @@ export type PostWorkflowRunArchivesDownloadsData = {
 }
 
 export type PostWorkflowRunArchivesDownloadsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -123,6 +130,7 @@ export type GetWorkflowRunArchivesDownloadsByDownloadIdData = {
 }
 
 export type GetWorkflowRunArchivesDownloadsByDownloadIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -147,6 +155,7 @@ export type DeleteWorkflowRunArchivesByYearByMonthData = {
 }
 
 export type DeleteWorkflowRunArchivesByYearByMonthErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 

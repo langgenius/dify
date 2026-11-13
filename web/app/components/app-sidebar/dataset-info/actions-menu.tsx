@@ -16,6 +16,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { DeleteDatasetConfirmation } from '../../datasets/delete-dataset-confirmation'
 import RenameDatasetModal from '../../datasets/rename-modal'
@@ -84,7 +85,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const { mutateAsync: exportPipelineConfig } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const handleExportPipeline = useCallback(
@@ -98,8 +101,8 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         })
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
-      } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
       }
     },
     [dataset, exportPipelineConfig, t],

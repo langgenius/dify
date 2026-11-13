@@ -3,12 +3,14 @@
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
 
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -61,15 +63,160 @@ def _request_schema(operation, content_type="application/json"):
     return operation["requestBody"]["content"][content_type]["schema"]
 
 
-def _nullable_schema_ref(schema):
-    if "$ref" in schema:
-        return schema["$ref"]
-    return next(item["$ref"] for item in schema["anyOf"] if "$ref" in item)
-
-
 def _reset_schema_cache(api):
     api._schema = None
     api.__dict__.pop("__schema__", None)
+
+
+_OPENAPI_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+
+_SCHEMA_MAP_KEYWORDS = ("$defs", "definitions", "dependentSchemas", "patternProperties", "properties")
+_SCHEMA_OBJECT_KEYWORDS = (
+    "additionalProperties",
+    "contains",
+    "else",
+    "if",
+    "items",
+    "not",
+    "propertyNames",
+    "then",
+    "unevaluatedItems",
+    "unevaluatedProperties",
+)
+_SCHEMA_LIST_KEYWORDS = ("allOf", "anyOf", "oneOf", "prefixItems")
+
+
+def _iter_subschemas(schema):
+    if not isinstance(schema, dict):
+        return
+    yield schema
+    for keyword in _SCHEMA_MAP_KEYWORDS:
+        for child in (schema.get(keyword) or {}).values():
+            yield from _iter_subschemas(child)
+    for keyword in _SCHEMA_OBJECT_KEYWORDS:
+        if keyword in schema:
+            child = schema[keyword]
+            if isinstance(child, list):
+                for item in child:
+                    yield from _iter_subschemas(item)
+            else:
+                yield from _iter_subschemas(child)
+    for keyword in _SCHEMA_LIST_KEYWORDS:
+        for child in schema.get(keyword) or []:
+            yield from _iter_subschemas(child)
+
+
+def _iter_content_schemas(content):
+    """Yield unmodified schema roots from an optional OpenAPI content mapping."""
+    for media_type in (content or {}).values():
+        if isinstance(media_type, dict) and "schema" in media_type:
+            yield media_type["schema"]
+
+
+def _iter_parameter_schemas(parameter):
+    """Yield unmodified schema roots when the input is an OpenAPI parameter mapping."""
+    if not isinstance(parameter, dict):
+        return
+    if "schema" in parameter:
+        yield parameter["schema"]
+    yield from _iter_content_schemas(parameter.get("content"))
+
+
+def _iter_operation_schemas(operation):
+    for parameter in operation.get("parameters") or []:
+        yield from _iter_parameter_schemas(parameter)
+    request_body = operation.get("requestBody")
+    if isinstance(request_body, dict):
+        yield from _iter_content_schemas(request_body.get("content"))
+    for response in (operation.get("responses") or {}).values():
+        if not isinstance(response, dict):
+            continue
+        yield from _iter_content_schemas(response.get("content"))
+        for header in (response.get("headers") or {}).values():
+            yield from _iter_parameter_schemas(header)
+
+
+def _iter_document_schemas(payload):
+    """Yield schema roots from a document without recursively duplicating their children."""
+    yield from payload["components"]["schemas"].values()
+    for path_item in payload["paths"].values():
+        for parameter in path_item.get("parameters") or []:
+            yield from _iter_parameter_schemas(parameter)
+        for method, operation in path_item.items():
+            if method in _OPENAPI_METHODS and isinstance(operation, dict):
+                yield from _iter_operation_schemas(operation)
+
+
+def _schema_contract_errors(payload):
+    """Report invalid schemas and broken local contracts without changing the document.
+
+    The input has OpenAPI paths and component schemas. Validate each schema tree
+    once, then inspect its subschemas for required fields and local references.
+    """
+    errors = []
+    known_refs = {f"#/components/schemas/{name}" for name in payload["components"]["schemas"]}
+    roots = list(_iter_document_schemas(payload))
+    # check_schema recursively validates children. Batching roots also avoids
+    # constructing the meta-schema validator again for every property and ref.
+    try:
+        Draft202012Validator.check_schema({"$defs": {str(index): schema for index, schema in enumerate(roots)}})
+    except SchemaError as exc:
+        return [f"malformed schema: {exc}"]
+    for schema in (child for root in roots for child in _iter_subschemas(root)):
+        required = schema.get("required")
+        properties = schema.get("properties")
+        if required and isinstance(properties, dict) and not ({"allOf", "anyOf", "oneOf", "$ref"} & schema.keys()):
+            missing = sorted(set(required) - set(properties))
+            if missing:
+                errors.append(f"required properties missing from properties: {missing}")
+        ref = schema.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/components/schemas/") and ref not in known_refs:
+            errors.append(f"dangling $ref: {ref}")
+        discriminator = schema.get("discriminator")
+        if isinstance(discriminator, dict):
+            for mapped in (discriminator.get("mapping") or {}).values():
+                if isinstance(mapped, str) and mapped.startswith("#/components/schemas/") and mapped not in known_refs:
+                    errors.append(f"dangling discriminator mapping: {mapped}")
+    return errors
+
+
+def _operation_contract_errors(payload):
+    errors = []
+    for path, path_item in payload["paths"].items():
+        template_parameters = set(re.findall(r"\{([^{}]+)\}", path))
+        path_level_parameters = [p for p in path_item.get("parameters") or [] if isinstance(p, dict)]
+        for method, operation in path_item.items():
+            if method not in _OPENAPI_METHODS or not isinstance(operation, dict):
+                continue
+            label = f"{method.upper()} {path}"
+            if not operation.get("operationId"):
+                errors.append(f"{label}: missing operationId")
+            responses = operation.get("responses")
+            if not responses:
+                errors.append(f"{label}: missing responses")
+            else:
+                for status, response in responses.items():
+                    if not isinstance(response, dict) or not response.get("description"):
+                        errors.append(f"{label} {status}: response is missing a description")
+            parameters = path_level_parameters + [p for p in operation.get("parameters") or [] if isinstance(p, dict)]
+            declared = {p.get("name") for p in parameters if p.get("in") == "path"}
+            undeclared = sorted(template_parameters - declared)
+            if undeclared:
+                errors.append(f"{label}: path parameters not declared: {undeclared}")
+            for parameter in parameters:
+                if parameter.get("in") == "path" and parameter.get("required") is not True:
+                    errors.append(f"{label}: path parameter {parameter.get('name')!r} is not required")
+    return errors
+
+
+@pytest.fixture(scope="module")
+def generated_specs(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
+    """Spec files written once by ``generate_specs`` for the tests that only read them.
+
+    Each export imports every API surface and takes seconds, so read-only checks share one;
+    tests that exercise generation itself still call ``generate_specs`` on their own.
+    """
+    return _load_generate_swagger_specs_module().generate_specs(tmp_path_factory.mktemp("specs"))
 
 
 @pytest.mark.timeout(150)  # Two cold, coverage-instrumented CLI exports each have a 60-second limit.
@@ -105,12 +252,8 @@ def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_pat
     assert not list(tmp_path.rglob("*.json"))
 
 
-def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    assert [path.name for path in written_paths] == [
+def test_generate_specs_writes_all_openapi_files(generated_specs: list[Path]):
+    assert [path.name for path in generated_specs] == [
         "console-openapi.json",
         "web-openapi.json",
         "service-openapi.json",
@@ -118,12 +261,12 @@ def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
         "inner-openapi.json",
     ]
 
-    for path in written_paths:
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
 
-    inner_path = next(path for path in written_paths if path.name == "inner-openapi.json")
+    inner_path = next(path for path in generated_specs if path.name == "inner-openapi.json")
     inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
     assert inner_payload["security"] == [{"InnerApiKey": []}]
     assert inner_payload["components"]["securitySchemes"] == {
@@ -174,6 +317,7 @@ def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
         assert json.loads(path.read_text(encoding="utf-8")) == live_payloads[path.name]
 
 
+@pytest.mark.timeout(75)  # Allow one cold, coverage-instrumented export with its own 60-second limit.
 def test_generate_specs_after_controllers_were_imported_with_swagger_disabled(tmp_path: Path):
     api_dir = Path(__file__).resolve().parents[3]
     script = """
@@ -210,6 +354,7 @@ assert [path.name for path in written_paths] == [
         env=env,
         capture_output=True,
         text=True,
+        timeout=60,
     )
 
     assert result.returncode == 0, result.stderr
@@ -227,12 +372,8 @@ def test_apply_runtime_defaults_forces_swagger_routes_on(monkeypatch):
     assert dify_config.SWAGGER_UI_ENABLED is True
 
 
-def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    for path in written_paths:
+def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults(generated_specs: list[Path]):
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         schemas = payload["components"]["schemas"]
         refs = {
@@ -246,7 +387,7 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
         assert refs <= set(schemas)
         assert all("nullable" not in value for value in _walk_values(payload) if isinstance(value, dict))
 
-    service_payload = json.loads((tmp_path / "service-openapi.json").read_text(encoding="utf-8"))
+    service_payload = json.loads((generated_specs[0].parent / "service-openapi.json").read_text(encoding="utf-8"))
     conversation_id = service_payload["components"]["schemas"]["ChatRequestPayload"]["properties"]["conversation_id"]
     assert "default" in conversation_id
     assert conversation_id["default"] is None
@@ -265,12 +406,8 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     assert document_detail["properties"]["tokens"]["default"] is None
 
 
-def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    for path in written_paths:
+def test_generate_specs_writes_unique_operation_ids(generated_specs: list[Path]):
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         operation_ids = list(_operation_ids(payload))
 
@@ -335,10 +472,8 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
     assert "x-dify-binary-response-media-types" not in operation
 
 
-def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-    module.generate_specs(tmp_path)
-    payload = json.loads((tmp_path / "console-openapi.json").read_text(encoding="utf-8"))
+def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(generated_specs: list[Path]):
+    payload = json.loads((generated_specs[0].parent / "console-openapi.json").read_text(encoding="utf-8"))
     audio_media = {"audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"}
     operations = [
         ("/workspaces/current/plugin/asset", "get", {"application/octet-stream"}),
@@ -358,11 +493,9 @@ def test_console_file_and_audio_responses_declare_binary_success_and_json_errors
             assert set(response["content"]) == {"application/json"}, (path, status)
 
 
-def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_system_features_specs_exclude_backend_only_fields(generated_specs: list[Path]):
     excluded_fields = {
+        "enable_collaboration_mode",
         "enable_trial_app",
         "is_allow_create_workspace",
         "max_plugin_package_size",
@@ -370,7 +503,7 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
     }
 
     for spec_name in ("console-openapi.json", "web-openapi.json"):
-        spec_path = next(path for path in written_paths if path.name == spec_name)
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
         payload = json.loads(spec_path.read_text(encoding="utf-8"))
         schemas = payload["components"]["schemas"]
         system_features_schema = schemas["SystemFeatureModel"]
@@ -379,22 +512,15 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
         assert "PluginManagerModel" not in schemas
 
 
-def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    for path in written_paths:
+def test_generate_specs_writes_get_operations_without_request_bodies(generated_specs: list[Path]):
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
 
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
-def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    openapi_path = next(path for path in written_paths if path.name == "openapi-openapi.json")
+def test_generate_specs_include_command_oriented_knowledge_fs_contract(generated_specs: list[Path]):
+    openapi_path = next(path for path in generated_specs if path.name == "openapi-openapi.json")
     payload = json.loads(openapi_path.read_text(encoding="utf-8"))
     paths = payload["paths"]
     prefix = "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs"
@@ -451,239 +577,52 @@ def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path)
     assert tree_operation["operationId"] == "tree_knowledge_fs"
 
 
-def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path):
+@pytest.mark.parametrize(
+    ("nested_schema", "expected_error"),
+    [
+        ({"type": "invalid-type"}, "malformed schema"),
+        ({"properties": {}, "required": ["missing"]}, "required properties missing"),
+        ({"$ref": "#/components/schemas/Missing"}, "dangling $ref"),
+        (
+            {"discriminator": {"propertyName": "kind", "mapping": {"cat": "#/components/schemas/Missing"}}},
+            "dangling discriminator mapping",
+        ),
+    ],
+)
+def test_schema_contract_rejects_invalid_nested_schemas(nested_schema, expected_error):
+    """Nested schema defects must remain detectable when validating roots together."""
+    payload = {
+        "components": {"schemas": {"Envelope": {"properties": {"nested": nested_schema}}}},
+        "paths": {},
+    }
+
+    assert any(expected_error in error for error in _schema_contract_errors(payload))
+
+
+@pytest.mark.timeout(60)  # Validate all five exports under coverage, including the large console schema.
+def test_generate_specs_produce_valid_openapi_contracts(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+
+    assert len(written_paths) == 5
+    for path in written_paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        assert payload["openapi"].startswith("3."), path.name
+        assert payload["paths"], path.name
+        assert _schema_contract_errors(payload) == [], path.name
+        assert _operation_contract_errors(payload) == [], path.name
+
+
+def test_generated_request_contracts_accept_and_reject_payloads(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
     service_path = next(path for path in written_paths if path.name == "service-openapi.json")
     payload = json.loads(service_path.read_text(encoding="utf-8"))
-
-    chat_operation = payload["paths"]["/chat-messages"]["post"]
-    assert chat_operation["summary"] == "Send Chat Message"
-    assert chat_operation["description"] == "Send a request to the chat application."
-    assert chat_operation["tags"] == ["Chatflows", "Chats"]
-    serialized_payload = json.dumps(payload)
-    assert "](/api-reference/files/upload-file)" in serialized_payload
-    assert "](/en/api-reference/" not in serialized_payload
-
-    rename_operation = payload["paths"]["/conversations/{conversation_id}/name"]["post"]
-    assert rename_operation["summary"] == "Rename Conversation"
-
-    datasource_node_operation = payload["paths"]["/datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run"][
-        "post"
-    ]
-    assert datasource_node_operation["operationId"] == "run_datasource_node"
-
-    pipeline_operation = payload["paths"]["/datasets/{dataset_id}/pipeline/run"]["post"]
-    assert pipeline_operation["operationId"] == "run_pipeline"
-
-    chat_error_content = chat_operation["responses"]["401"]["content"]
-    # No business error on chat-messages answers 401, so it keeps the open error body.
-    assert chat_error_content == {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
-    chat_success_content = chat_operation["responses"]["200"]["content"]
-    assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
-    assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
-
-    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
-    assert "`file_extension_blocked`" in upload_bad_request
-
     schemas = payload["components"]["schemas"]
-    expected_property_descriptions = {
-        ("AgentThought", "tool_labels"): "Labels for tools used.",
-        ("CompletionBlockingResponse", "metadata"): "Metadata including usage and retriever resources.",
-        ("DatasetCreatePayload", "retrieval_model"): (
-            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
-            "knowledge base."
-        ),
-        ("DatasetDetailResponse", "external_knowledge_info"): (
-            "Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise "
-            "its properties are `null`."
-        ),
-        ("DatasetDetailResponse", "icon_info"): "Icon display configuration for the knowledge base.",
-        ("DatasetDetailResponse", "retrieval_model_dict"): "Retrieval configuration for the knowledge base.",
-        ("DatasetDetailResponse", "summary_index_setting"): "Summary index configuration.",
-        ("DatasetRetrievalModelResponse", "reranking_model"): "Reranking model configuration.",
-        ("DatasetWeightedScoreResponse", "keyword_setting"): "Keyword search weight settings.",
-        ("DatasetWeightedScoreResponse", "vector_setting"): "Semantic search weight settings.",
-        ("HitTestingRecord", "segment"): "Matched chunk from the knowledge base.",
-        ("HitTestingResponse", "query"): "The original query object.",
-        ("HitTestingSegment", "document"): "Parent document information for the matched chunk.",
-        ("Parameters", "system_parameters"): "System-level parameter limits.",
-        ("ParagraphInputConfig", "default"): (
-            "Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the "
-            "surrounding `resolved_default_values` mapping."
-        ),
-        ("ProviderModelWithStatusEntity", "fetch_from"): (
-            "Where the model definition comes from. `predefined-model` for built-in models, "
-            "`customizable-model` for user-configured models."
-        ),
-        ("ProviderWithModelsResponse", "status"): (
-            "Provider status. `active` when credentials are configured and valid."
-        ),
-        ("SelectInputConfig", "option_source"): (
-            "Source of options for `select` inputs. Present only when `type` is `select`."
-        ),
-        ("StringListSource", "selector"): "Variable reference path when `type` is `variable`.",
-    }
-    for (schema_name, property_name), description in expected_property_descriptions.items():
-        assert schemas[schema_name]["properties"][property_name]["description"] == description
 
-    assert schemas["PipelineRunJsonResponse"]["description"] == (
-        "JSON result for published runs and draft runs using `response_mode: blocking`."
-    )
-    for schema_name in ("DatasetDetailResponse", "DatasetDetailWithPartialMembersResponse"):
-        assert schemas[schema_name]["properties"]["external_knowledge_info"]["description"] == (
-            "Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise "
-            "its properties are `null`."
-        )
-
-    chat_blocking_schema = schemas["ChatBlockingResponse"]
-    assert chat_blocking_schema["discriminator"] == {
-        "mapping": {
-            "message": "#/components/schemas/ChatMessageBlockingResponse",
-            "workflow_paused": "#/components/schemas/ChatPausedBlockingResponse",
-        },
-        "propertyName": "event",
-    }
-    assert schemas["ChatPausedBlockingDataResponse"]["properties"]["reasons"]["items"] == {
-        "$ref": "#/components/schemas/ChatPauseReasonResponse"
-    }
-    chat_pause_reason = schemas["ChatPauseReasonResponse"]
-    assert chat_pause_reason["required"] == ["TYPE"]
-    assert {"form_token", "expiration_time", "inputs", "actions", "TYPE"} <= set(chat_pause_reason["properties"])
-
-    feedback_properties = schemas["AppFeedbackResponse"]["properties"]
-    assert feedback_properties["created_at"]["type"] == "string"
-    assert "format" not in feedback_properties["created_at"]
-    assert feedback_properties["updated_at"]["type"] == "string"
-    assert "format" not in feedback_properties["updated_at"]
-
-    completion_success_content = payload["paths"]["/completion-messages"]["post"]["responses"]["200"]["content"]
-    assert completion_success_content["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/CompletionBlockingResponse"
-    }
-    assert completion_success_content["text/event-stream"]["schema"] == {"type": "string"}
-
-    workflow_success_content = payload["paths"]["/workflows/run"]["post"]["responses"]["200"]["content"]
-    assert workflow_success_content["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/WorkflowBlockingResponse"
-    }
-    assert workflow_success_content["text/event-stream"]["schema"] == {"type": "string"}
-    workflow_blocking_refs = {branch["$ref"] for branch in schemas["WorkflowBlockingResponse"]["anyOf"]}
-    assert workflow_blocking_refs == {
-        "#/components/schemas/WorkflowFinishedBlockingResponse",
-        "#/components/schemas/WorkflowPausedBlockingResponse",
-    }
-    workflow_paused_properties = schemas["WorkflowPausedBlockingDataResponse"]["properties"]
-    assert {"paused_nodes", "reasons"} <= set(workflow_paused_properties)
-    assert workflow_paused_properties["reasons"]["items"] == {
-        "$ref": "#/components/schemas/WorkflowPauseReasonResponse"
-    }
-    workflow_pause_reason = schemas["WorkflowPauseReasonResponse"]
-    assert workflow_pause_reason["required"] == ["TYPE"]
-    assert {"form_token", "expiration_time", "inputs", "actions", "TYPE"} <= set(workflow_pause_reason["properties"])
-
-    pipeline_success_content = pipeline_operation["responses"]["200"]["content"]
-    assert pipeline_success_content["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/PipelineRunJsonResponse"
-    }
-    assert pipeline_success_content["text/event-stream"]["schema"] == {"type": "string"}
-    pipeline_json_refs = {branch["$ref"] for branch in schemas["PipelineRunJsonResponse"]["anyOf"]}
-    assert pipeline_json_refs == {
-        "#/components/schemas/PublishedPipelineRunResponse",
-        "#/components/schemas/WorkflowBlockingResponse",
-    }
-    assert schemas["PublishedPipelineRunResponse"]["required"] == ["batch", "dataset", "documents"]
-
-    preview_content = payload["paths"]["/files/{file_id}/preview"]["get"]["responses"]["200"]["content"]
-    assert preview_content == {"*/*": {"schema": {"format": "binary", "type": "string"}}}
-
-    scoped_stop_schema = schemas["ScopedTaskStopPayload"]
-    workflow_stop_schema = schemas["WorkflowTaskStopPayload"]
-    assert scoped_stop_schema["required"] == ["user"]
-    assert workflow_stop_schema["required"] == ["user"]
-    assert "Send the same" in scoped_stop_schema["properties"]["user"]["description"]
-    assert "does not need to match" in workflow_stop_schema["properties"]["user"]["description"]
-    for path in ("/chat-messages/{task_id}/stop", "/completion-messages/{task_id}/stop"):
-        assert _request_schema(payload["paths"][path]["post"])["$ref"] == ("#/components/schemas/ScopedTaskStopPayload")
-        assert "404" not in payload["paths"][path]["post"]["responses"]
-    assert _request_schema(payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"])["$ref"] == (
-        "#/components/schemas/WorkflowTaskStopPayload"
-    )
-    assert "404" not in payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"]["responses"]
-
-    vector_space_operations = {
-        (method, path)
-        for path, path_item in payload["paths"].items()
-        for method, operation in path_item.items()
-        if isinstance(operation, dict)
-        and "503" in operation.get("responses", {})
-        # KnowledgeFS operations document their own 503 when KnowledgeFS is unavailable.
-        and not path.startswith("/knowledge-fs/")
-    }
-    assert vector_space_operations == {
-        ("post", "/datasets/{dataset_id}/document/create-by-file"),
-        ("post", "/datasets/{dataset_id}/document/create-by-text"),
-        ("post", "/datasets/{dataset_id}/document/create_by_file"),
-        ("post", "/datasets/{dataset_id}/document/create_by_text"),
-        ("patch", "/datasets/{dataset_id}/documents/{document_id}"),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/segments"),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"),
-        (
-            "patch",
-            "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}",
-        ),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/update-by-file"),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/update-by-text"),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_file"),
-        ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_text"),
-    }
-    vector_space_unavailable_description = (
-        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
-        "plan only; retry the request later."
-    )
-    for method, path in vector_space_operations:
-        assert payload["paths"][path][method]["responses"]["503"]["description"] == (
-            vector_space_unavailable_description
-        )
-
-    for path in (
-        "/datasets/{dataset_id}/document/create-by-file",
-        "/datasets/{dataset_id}/document/create-by-text",
-        "/datasets/{dataset_id}/document/create_by_text",
-        "/datasets/{dataset_id}/metadata/built-in",
-        "/datasets/{dataset_id}/tags",
-    ):
-        operation = next(
-            operation
-            for operation in payload["paths"][path].values()
-            if isinstance(operation, dict) and "responses" in operation
-        )
-        assert operation["responses"]["404"]["description"] == "`not_found` : Knowledge base not found."
-
-    assert "503" not in payload["paths"]["/datasets/{dataset_id}"]["patch"]["responses"]
-
-    text_to_audio_content = payload["paths"]["/text-to-audio"]["post"]["responses"]["200"]["content"]
-    assert text_to_audio_content == {
-        media_type: {"schema": {"format": "binary", "type": "string"}}
-        for media_type in (
-            "audio/aac",
-            "audio/flac",
-            "audio/mp4",
-            "audio/mpeg",
-            "audio/ogg",
-            "audio/wav",
-            "audio/webm",
-        )
-    }
-
-    tag_binding_schema = payload["components"]["schemas"]["TagBindingPayload"]
-    assert tag_binding_schema["properties"]["tag_ids"]["minItems"] == 1
-
-    file_item_schema = payload["components"]["schemas"]["CompletionRequestPayloadWithUser"]["properties"]["files"][
-        "anyOf"
-    ][0]["items"]
+    file_item_schema = schemas["CompletionRequestPayloadWithUser"]["properties"]["files"]["anyOf"][0]["items"]
     file_validator = Draft202012Validator(file_item_schema)
     valid_file_values = [
         {"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"},
@@ -710,7 +649,7 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     for value in invalid_file_values:
         assert list(file_validator.iter_errors(value)), value
 
-    user_input_form_schema = payload["components"]["schemas"]["Parameters"]["properties"]["user_input_form"]
+    user_input_form_schema = schemas["Parameters"]["properties"]["user_input_form"]
     validator = Draft202012Validator(user_input_form_schema)
     form_values = {
         "text-input": "hello",
@@ -739,34 +678,9 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     for value in invalid_values:
         assert list(validator.iter_errors(value)), value
 
-    file_upload_schema = payload["components"]["schemas"]["Parameters"]["properties"]["file_upload"]
-    file_upload_properties = file_upload_schema["properties"]
-    assert {
-        "enabled",
-        "number_limits",
-        "allowed_file_types",
-        "allowed_file_extensions",
-        "allowed_file_upload_methods",
-        "image",
-    } <= set(file_upload_properties)
-    assert set(file_upload_properties["allowed_file_types"]["items"]["enum"]) == {
-        "document",
-        "image",
-        "audio",
-        "video",
-        "custom",
-    }
-    assert set(file_upload_properties["allowed_file_upload_methods"]["items"]["enum"]) == {
-        "remote_url",
-        "local_file",
-    }
 
-
-def test_generate_specs_writes_web_file_upload_error_codes(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    web_path = next(path for path in written_paths if path.name == "web-openapi.json")
+def test_generate_specs_writes_web_file_upload_error_codes(generated_specs: list[Path]):
+    web_path = next(path for path in generated_specs if path.name == "web-openapi.json")
     payload = json.loads(web_path.read_text(encoding="utf-8"))
 
     upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
@@ -801,11 +715,8 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
-def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(generated_specs: list[Path]):
+    console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
     payload = json.loads(console_path.read_text(encoding="utf-8"))
     schemas = payload["components"]["schemas"]
 
@@ -814,159 +725,6 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tm
         "#/components/schemas/AgentKnowledgeSetConfig"
     )
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
-
-
-def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
-    payload = json.loads(console_path.read_text(encoding="utf-8"))
-    schemas = payload["components"]["schemas"]
-    paths = payload["paths"]
-
-    file_upload_schema = _request_schema(paths["/files/upload"]["post"], "multipart/form-data")
-    assert file_upload_schema["required"] == ["file"]
-    assert file_upload_schema["properties"]["file"]["format"] == "binary"
-    assert file_upload_schema["properties"]["file"]["type"] == "string"
-    assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
-
-    package_import = paths["/apps/imports"]["post"]
-    assert _request_schema(package_import, "multipart/form-data")["required"] == ["file"]
-    assert _request_schema(package_import, "multipart/form-data")["properties"]["app_id"]["type"] == "string"
-    assert _request_schema(package_import, "application/json")["$ref"] == "#/components/schemas/AppImportPayload"
-    assert "mode" in schemas["AppImportPayload"]["required"]
-    assert "403" in package_import["responses"]
-    export = paths["/apps/{app_id}/export"]["get"]
-    assert export["responses"]["200"]["content"]["application/zip"]["schema"] == {"type": "string", "format": "binary"}
-    assert export["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
-        "#/components/schemas/AppExportResponse"
-    )
-    export_format = next(param for param in export["parameters"] if param["name"] == "format")
-    assert set(export_format["schema"]["enum"]) == {"yaml", "ifpkg"}
-    assert export_format["schema"].get("default") is None
-    assert "defaults to ifpkg for all Apps" in export_format["description"]
-
-    api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
-    assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
-    assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
-        "#/components/schemas/ApiKeyAuthCredentialsPayload"
-    )
-    assert schemas["ApiKeyAuthCredentialsPayload"]["properties"]["config"]["$ref"] == (
-        "#/components/schemas/ApiKeyAuthConfigPayload"
-    )
-    assert schemas["ApiKeyAuthConfigPayload"]["properties"]["api_key"]["minLength"] == 1
-
-    invoices_schema_ref = _response_schema(paths["/billing/invoices"]["get"])["$ref"].removeprefix(
-        "#/components/schemas/"
-    )
-    assert schemas[invoices_schema_ref]["properties"]["url"]["type"] == "string"
-
-    app_detail_schema = schemas["RecommendedAppDetailResponse"]
-    assert app_detail_schema["properties"]["id"]["type"] == "string"
-    assert app_detail_schema["properties"]["export_data"]["type"] == "string"
-    assert app_detail_schema["properties"]["can_trial"]["type"] == "boolean"
-    assert "anyOf" not in app_detail_schema["properties"]["can_trial"]
-    assert "can_trial" in app_detail_schema["required"]
-    app_list_item_schema = schemas["RecommendedAppResponse"]
-    assert app_list_item_schema["properties"]["can_trial"]["type"] == "boolean"
-    assert "anyOf" not in app_list_item_schema["properties"]["can_trial"]
-    assert "can_trial" in app_list_item_schema["required"]
-    assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
-        "#/components/schemas/RecommendedAppDetailResponse"
-    )
-    assert "404" in paths["/explore/apps/{app_id}"]["get"]["responses"]
-    assert "RecommendedAppDetailNullableResponse" not in schemas
-    assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
-    assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
-    assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"
-    app_model_config = schemas["AppDetailWithSite"]["properties"]["model_config"]
-    assert {"$ref": "#/components/schemas/AppModelConfigResponse"} in app_model_config["anyOf"]
-    app_detail = schemas["AppDetail"]
-    assert "mode" in app_detail["properties"]
-    assert "mode_compatible_with_agent" not in app_detail["properties"]
-    sync_draft_workflow = schemas["SyncDraftWorkflowResponse"]
-    assert _response_schema(paths["/apps/{app_id}/workflows/draft"]["post"])["$ref"] == (
-        "#/components/schemas/SyncDraftWorkflowResponse"
-    )
-    assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
-    trigger_run_request = _request_schema(paths["/apps/{app_id}/workflows/draft/trigger/run"]["post"])
-    assert trigger_run_request["$ref"] == "#/components/schemas/DraftWorkflowTriggerRunPayload"
-    assert "DraftWorkflowTriggerRunRequest" not in schemas
-
-    draft_variable_list_ref = "#/components/schemas/WorkflowDraftVariableListWithoutValueResponse"
-    for path in (
-        "/apps/{app_id}/workflows/draft/variables",
-        "/snippets/{snippet_id}/workflows/draft/variables",
-        "/rag/pipelines/{pipeline_id}/workflows/draft/variables",
-    ):
-        assert _response_schema(paths[path]["get"])["$ref"] == draft_variable_list_ref
-    assert schemas["WorkflowDraftVariableListResponse"]["properties"]["items"]["items"]["$ref"] == (
-        "#/components/schemas/WorkflowDraftVariableResponse"
-    )
-    full_content = schemas["WorkflowDraftVariableFullContentResponse"]
-    assert set(full_content["properties"]) == {"size_bytes", "value_type", "length", "download_url"}
-    assert "WorkflowDraftVariable" not in schemas
-    assert "WorkflowDraftVariableList" not in schemas
-    assert "WorkflowDraftVariableWithoutValue" not in schemas
-    tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
-    assert {"type": "string"} in tool_icon_schema["anyOf"]
-    assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
-    assert "ToolIconResponse" not in schemas
-
-    plugin_versions = schemas["PluginVersionsResponse"]["properties"]["versions"]
-    assert plugin_versions["additionalProperties"]["anyOf"][0]["$ref"] == "#/components/schemas/LatestPluginCache"
-    assert plugin_versions["additionalProperties"]["anyOf"][1]["type"] == "null"
-    plugin_installations = schemas["PluginInstallationsResponse"]["properties"]["plugins"]
-    assert plugin_installations["items"]["$ref"] == "#/components/schemas/PluginInstallationItemResponse"
-
-    rbac_whitelist_request = _request_schema(paths["/workspaces/current/rbac/apps/{app_id}/whitelist"]["put"])
-    assert rbac_whitelist_request["$ref"] == "#/components/schemas/_ResourceAccessScopeRequest"
-    app_access_policy_params = paths["/workspaces/current/rbac/apps/{app_id}/access-policy"]["get"]["parameters"]
-    language_param = next(param for param in app_access_policy_params if param["name"] == "language")
-    assert language_param["schema"]["enum"] == ["en", "ja", "zh"]
-
-    trigger_list_schema = _response_schema(paths["/workspaces/current/triggers"]["get"])
-    assert trigger_list_schema["$ref"] == "#/components/schemas/TriggerProviderListResponse"
-    trigger_builder_create_schema = _response_schema(
-        paths["/workspaces/current/trigger-provider/{provider}/subscriptions/builder/create"]["post"]
-    )
-    assert trigger_builder_create_schema["$ref"] == "#/components/schemas/TriggerSubscriptionBuilderCreateResponse"
-    assert (
-        schemas["TriggerSubscriptionBuilderCreateResponse"]["properties"]["subscription_builder"]["$ref"]
-        == "#/components/schemas/SubscriptionBuilderApiEntity"
-    )
-
-    conversation_variables = schemas["ConversationVariableUpdatePayload"]["properties"]["conversation_variables"]
-    assert conversation_variables["items"]["$ref"] == "#/components/schemas/ConversationVariableItemPayload"
-    workflow_features = schemas["WorkflowFeaturesPayload"]["properties"]["features"]
-    assert workflow_features["$ref"] == "#/components/schemas/WorkflowFeaturesConfigPayload"
-    workflow_feature_properties = schemas["WorkflowFeaturesConfigPayload"]["properties"]
-    assert _nullable_schema_ref(workflow_feature_properties["suggested_questions_after_answer"]) == (
-        "#/components/schemas/WorkflowSuggestedQuestionsAfterAnswerPayload"
-    )
-    assert _nullable_schema_ref(workflow_feature_properties["text_to_speech"]) == (
-        "#/components/schemas/WorkflowTextToSpeechPayload"
-    )
-    assert _nullable_schema_ref(workflow_feature_properties["sensitive_word_avoidance"]) == (
-        "#/components/schemas/WorkflowSensitiveWordAvoidancePayload"
-    )
-    assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
-    assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
-    assert schemas["WorkflowTextToSpeechPayload"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
-        "disabled",
-        "enabled",
-    ]
-    assert schemas["AgentTextToSpeechFeatureConfig"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
-        "disabled",
-        "enabled",
-    ]
-    assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
-    file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
-    assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)
-    assert "detail" in schemas["WorkflowFileUploadImagePayload"]["properties"]
-    assert {"mode", "file_type_list"} <= set(schemas["WorkflowFileUploadPreviewConfigPayload"]["properties"])
-    assert schemas["AccountWithRoleResponse"]["properties"]["avatar_url"]["readOnly"] is True
 
 
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():

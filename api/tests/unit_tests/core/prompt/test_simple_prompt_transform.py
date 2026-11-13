@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.prompt.prompt_templates.advanced_prompt_templates import (
@@ -107,15 +108,15 @@ def test_get_common_chat_app_prompt_template_with_p() -> None:
     assert prompt_template["special_variable_keys"] == []
 
 
-def test__get_chat_model_prompt_messages() -> None:
+def test__get_chat_model_prompt_messages(mocker: MockerFixture) -> None:
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
 
     memory = make_token_buffer_memory(model_config)
     history_prompt_messages = [UserPromptMessage(content="Hi"), AssistantPromptMessage(content="Hello")]
-    memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
+    mocker.patch.object(memory, "get_history_prompt_messages", return_value=history_prompt_messages)
 
     prompt_transform = SimplePromptTransform()
-    prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
+    mocker.patch.object(prompt_transform, "_calculate_rest_token", return_value=2000)
 
     pre_prompt = "You are a helpful assistant {{name}}."
     inputs = {"name": "John"}
@@ -150,16 +151,16 @@ def test__get_chat_model_prompt_messages() -> None:
     assert prompt_messages[3].content == query
 
 
-def test__get_completion_model_prompt_messages() -> None:
+def test__get_completion_model_prompt_messages(mocker: MockerFixture) -> None:
     model_config = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
 
     memory = make_token_buffer_memory(model_config)
 
     history_prompt_messages = [UserPromptMessage(content="Hi"), AssistantPromptMessage(content="Hello")]
-    memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
+    mocker.patch.object(memory, "get_history_prompt_messages", return_value=history_prompt_messages)
 
     prompt_transform = SimplePromptTransform()
-    prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
+    mocker.patch.object(prompt_transform, "_calculate_rest_token", return_value=2000)
     pre_prompt = "You are a helpful assistant {{name}}."
     inputs = {"name": "John"}
     context = "yes or no."
@@ -201,7 +202,7 @@ def test__get_completion_model_prompt_messages() -> None:
     assert prompt_messages[0].content == real_prompt
 
 
-def test_get_prompt_dispatches_chat_and_completion() -> None:
+def test_get_prompt_dispatches_chat_and_completion(mocker: MockerFixture) -> None:
     transform = SimplePromptTransform()
     model_config_chat = make_model_config(provider="openai", model="gpt-4", mode="chat")
     model_config_completion = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
@@ -209,8 +210,8 @@ def test_get_prompt_dispatches_chat_and_completion() -> None:
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE, simple_prompt_template="hello"
     )
 
-    transform._get_chat_model_prompt_messages = MagicMock(return_value=(["chat-msg"], None))
-    transform._get_completion_model_prompt_messages = MagicMock(return_value=(["completion-msg"], ["stop"]))
+    mocker.patch.object(transform, "_get_chat_model_prompt_messages", return_value=(["chat-msg"], None))
+    mocker.patch.object(transform, "_get_completion_model_prompt_messages", return_value=(["completion-msg"], ["stop"]))
 
     chat_messages, chat_stops = transform.get_prompt(
         app_mode=AppMode.CHAT,
@@ -239,7 +240,7 @@ def test_get_prompt_dispatches_chat_and_completion() -> None:
     assert completion_stops == ["stop"]
 
 
-def test_get_prompt_str_and_rules_type_validation_errors() -> None:
+def test_get_prompt_str_and_rules_type_validation_errors(mocker: MockerFixture) -> None:
     transform = SimplePromptTransform()
     valid_prompt_template = SimplePromptTransform().get_prompt_template(AppMode.CHAT, "", False, False)[
         "prompt_template"
@@ -251,7 +252,7 @@ def test_get_prompt_str_and_rules_type_validation_errors() -> None:
         "special_variable_keys": list[object](),
         "prompt_rules": dict[str, object](),
     }
-    transform.get_prompt_template = MagicMock(return_value=bad_custom_keys)
+    mocker.patch.object(transform, "get_prompt_template", return_value=bad_custom_keys)
     with pytest.raises(TypeError, match="custom_variable_keys"):
         transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
@@ -260,7 +261,7 @@ def test_get_prompt_str_and_rules_type_validation_errors() -> None:
         "custom_variable_keys": list[object](),
         "special_variable_keys": "not-list",
     }
-    transform.get_prompt_template = MagicMock(return_value=bad_special_keys)
+    mocker.patch.object(transform, "get_prompt_template", return_value=bad_special_keys)
     with pytest.raises(TypeError, match="special_variable_keys"):
         transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
@@ -270,7 +271,7 @@ def test_get_prompt_str_and_rules_type_validation_errors() -> None:
         "special_variable_keys": list[object](),
         "prompt_template": 123,
     }
-    transform.get_prompt_template = MagicMock(return_value=bad_prompt_template)
+    mocker.patch.object(transform, "get_prompt_template", return_value=bad_prompt_template)
     with pytest.raises(TypeError, match="PromptTemplateParser"):
         transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
@@ -281,16 +282,18 @@ def test_get_prompt_str_and_rules_type_validation_errors() -> None:
         "prompt_template": valid_prompt_template,
         "prompt_rules": "not-dict",
     }
-    transform.get_prompt_template = MagicMock(return_value=bad_prompt_rules)
+    mocker.patch.object(transform, "get_prompt_template", return_value=bad_prompt_rules)
     with pytest.raises(TypeError, match="prompt_rules"):
         transform._get_prompt_str_and_rules(AppMode.CHAT, "", {}, query=None, context=None)
 
 
-def test_chat_model_prompt_messages_uses_prompt_when_query_empty() -> None:
+def test_chat_model_prompt_messages_uses_prompt_when_query_empty(mocker: MockerFixture) -> None:
     transform = SimplePromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
-    transform._get_prompt_str_and_rules = MagicMock(return_value=("prompt-text", {}))
-    transform._get_last_user_message = MagicMock(return_value=UserPromptMessage(content="prompt-text"))
+    mocker.patch.object(transform, "_get_prompt_str_and_rules", return_value=("prompt-text", {}))
+    mock_get_last_user_message = mocker.patch.object(
+        transform, "_get_last_user_message", return_value=UserPromptMessage(content="prompt-text")
+    )
 
     prompt_messages, _ = transform._get_chat_model_prompt_messages(
         app_mode=AppMode.CHAT,
@@ -304,13 +307,13 @@ def test_chat_model_prompt_messages_uses_prompt_when_query_empty() -> None:
     )
 
     assert prompt_messages[0].content == "prompt-text"
-    transform._get_last_user_message.assert_called_once_with("prompt-text", [], None, None)
+    mock_get_last_user_message.assert_called_once_with("prompt-text", [], None, None)
 
 
-def test_completion_model_prompt_messages_empty_stops_becomes_none() -> None:
+def test_completion_model_prompt_messages_empty_stops_becomes_none(mocker: MockerFixture) -> None:
     transform = SimplePromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
-    transform._get_prompt_str_and_rules = MagicMock(return_value=("prompt", {"stops": []}))
+    mocker.patch.object(transform, "_get_prompt_str_and_rules", return_value=("prompt", {"stops": []}))
 
     prompt_messages, stops = transform._get_completion_model_prompt_messages(
         app_mode=AppMode.CHAT,

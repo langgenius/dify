@@ -46,6 +46,11 @@ standalone `Input` may use a native `<label htmlFor>` relationship, but normal f
 prefer a visible label. `FieldDescription` and `FieldError` provide the corresponding accessible
 message relationships.
 
+`FieldError` follows native constraints, `validate`, and `Form` `errors`. When application code
+owns the validity instead, set `invalid` on `Field` and `match` on `FieldError`. A `Field` describes
+one control; a composite that renders its own controls, such as a picker with controls in its popup,
+does not go inside one.
+
 Choose the label primitive by the control:
 
 - Text-like inputs, `Textarea`, input-based `Combobox` and `Autocomplete`, a single `Checkbox`,

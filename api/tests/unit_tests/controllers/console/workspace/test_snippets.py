@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -172,6 +173,27 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(
     assert response["id"] == "snippet-1"
     assert response["type"] == snippets_module.SnippetType.NODE.value
     assert create_snippet.call_args.kwargs["snippet_type"] == snippets_module.SnippetType.NODE
+
+
+@pytest.mark.parametrize("implicit_returning", [True, False])
+def test_create_snippet_returns_database_defaults_without_committing(
+    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, implicit_returning: bool
+):
+    monkeypatch.setattr(CustomizedSnippet.__table__, "implicit_returning", implicit_returning)
+    monkeypatch.setattr(CustomizedSnippet.__mapper__, "_compiled_cache", {})
+    api = snippets_module.CustomizedSnippetsApi()
+    handler = unwrap(api.post)
+    payload = snippets_module.CreateSnippetPayload(name="Snippet", type="node")
+
+    with app.test_request_context("/workspaces/current/customized-snippets", method="POST"):
+        response, status_code = handler(api, payload, sqlite_session, "tenant-1", _account())
+
+    assert status_code == 201
+    assert (response["version"], response["use_count"], response["is_published"]) == (1, 0, False)
+    snippet_id = response["id"]
+    assert sqlite_session.scalar(select(CustomizedSnippet).where(CustomizedSnippet.id == snippet_id)) is not None
+    sqlite_session.rollback()
+    assert sqlite_session.scalar(select(CustomizedSnippet).where(CustomizedSnippet.id == snippet_id)) is None
 
 
 def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):

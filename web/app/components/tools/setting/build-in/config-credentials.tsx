@@ -95,8 +95,8 @@ const ConfigCredential: FC<Props> = ({
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
+          <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl">
+            <DrawerContent className="bg-components-panel-bg">
               <div className="shrink-0 border-b border-divider-subtle py-4">
                 <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">

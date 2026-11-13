@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Valoarea Acțiunii",
   "nodes.humanInput.userActions.buttonTextTooLong": "Textul butonului trebuie să fie de {{maxLength}} caractere sau mai puțin",
   "nodes.humanInput.userActions.chooseStyle": "Alegeți un stil de buton",
+  "nodes.humanInput.userActions.defaultTitle": "Textul butonului {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Faceți clic pe butonul '+' pentru a adăuga acțiuni utilizator",
   "nodes.humanInput.userActions.title": "Acțiuni utilizator",
   "nodes.humanInput.userActions.tooltip": "Definiți butoane pe care utilizatorii le pot apăsa pentru a răspunde la acest formular. ID-ul acțiunii controlează ramificarea. Valoarea Acțiunii este expusă în aval ca ieșirea integrată selectată. ID-ul acțiunii trebuie să înceapă cu o literă sau underscore, urmat de litere, cifre sau underscore.",

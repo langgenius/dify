@@ -49,10 +49,10 @@ const meta = {
   },
   args: {
     relatedApps: mockRelatedApps,
-    isMobile: false,
+    compact: false,
   },
   argTypes: {
-    isMobile: {
+    compact: {
       control: 'boolean',
     },
   },
@@ -62,11 +62,11 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Desktop: Story = {}
+export const Default: Story = {}
 
-export const Mobile: Story = {
+export const Compact: Story = {
   args: {
-    isMobile: true,
+    compact: true,
   },
   parameters: {
     viewport: {

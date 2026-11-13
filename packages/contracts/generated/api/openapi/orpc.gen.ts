@@ -128,6 +128,17 @@ import {
   zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdPath,
   zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse,
   zGetWorkspacesByWorkspaceIdResponse,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchivePath,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveQuery,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveResponse,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdPath,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdResponse,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsPath,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsQuery,
+  zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsResponse,
+  zGetWorkspacesByWorkspaceIdSkillsPath,
+  zGetWorkspacesByWorkspaceIdSkillsQuery,
+  zGetWorkspacesByWorkspaceIdSkillsResponse,
   zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath,
   zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse,
   zGetWorkspacesByWorkspaceIdToolsPath,
@@ -269,6 +280,14 @@ import {
   zPostWorkspacesByWorkspaceIdPluginsInstallBody,
   zPostWorkspacesByWorkspaceIdPluginsInstallPath,
   zPostWorkspacesByWorkspaceIdPluginsInstallResponse,
+  zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishBody,
+  zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishPath,
+  zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse,
+  zPostWorkspacesByWorkspaceIdSkillsImportsBody,
+  zPostWorkspacesByWorkspaceIdSkillsImportsPath,
+  zPostWorkspacesByWorkspaceIdSkillsImportsResponse,
+  zPostWorkspacesByWorkspaceIdSwitchPath,
+  zPostWorkspacesByWorkspaceIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse,
@@ -375,12 +394,23 @@ export const sessions = {
   bySessionId,
 }
 
+/**
+ * Return account details with workspace visibility bounded by PAT scope
+ *
+ * The account snapshot supplies current memberships and the default workspace.
+ * A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+ * present only when its workspace remains visible. Non-PAT requests have no
+ * workspace filter. This handler is read-only and does not change membership.
+ */
 export const get5 = oc
   .route({
+    description:
+      "The account snapshot supplies current memberships and the default workspace.\nA PAT's admitted workspace IDs narrow that snapshot; the returned default is\npresent only when its workspace remains visible. Non-PAT requests have no\nworkspace filter. This handler is read-only and does not change membership.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccount',
     path: '/account',
+    summary: 'Return account details with workspace visibility bounded by PAT scope',
     tags: ['openapi'],
   })
   .output(zGetAccountResponse)
@@ -2310,6 +2340,136 @@ export const plugins2 = {
   install,
 }
 
+/**
+ * Import an admitted editor's validated folder, returning a count of file entries only
+ *
+ * Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+ * Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+ * so an edit made in the same second as the export is not detected.
+ */
+export const post31 = oc
+  .route({
+    description:
+      "Creates a draft (201) or overwrites it (200), relaying archive and service errors.\nImport never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdSkillsImports',
+    path: '/workspaces/{workspace_id}/skills/imports',
+    summary: "Import an admitted editor's validated folder, returning a count of file entries only",
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdSkillsImportsBody,
+      params: zPostWorkspacesByWorkspaceIdSkillsImportsPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdSkillsImportsResponse)
+
+export const imports2 = {
+  post: post31,
+}
+
+export const get52 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdSkillsBySkillIdArchive',
+    path: '/workspaces/{workspace_id}/skills/{skill_id}/archive',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchivePath,
+      query: zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveResponse)
+
+export const archive = {
+  get: get52,
+}
+
+export const get53 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdSkillsBySkillIdVersions',
+    path: '/workspaces/{workspace_id}/skills/{skill_id}/versions',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsPath,
+      query: zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsResponse)
+
+export const versions2 = {
+  get: get53,
+}
+
+export const post32 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdSkillsBySkillIdPublish',
+    path: '/workspaces/{workspace_id}/skills/{skill_id}:publish',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishBody,
+      params: zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse)
+
+export const publish2 = {
+  post: post32,
+}
+
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdSkillsBySkillId',
+    path: '/workspaces/{workspace_id}/skills/{skill_id}',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdSkillsBySkillIdPath }))
+  .output(zGetWorkspacesByWorkspaceIdSkillsBySkillIdResponse)
+
+export const bySkillId = {
+  get: get54,
+  archive,
+  versions: versions2,
+  publish: publish2,
+}
+
+export const get55 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdSkills',
+    path: '/workspaces/{workspace_id}/skills',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdSkillsPath,
+      query: zGetWorkspacesByWorkspaceIdSkillsQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdSkillsResponse)
+
+export const skills = {
+  get: get55,
+  imports: imports2,
+  bySkillId,
+}
+
 export const patch18 = oc
   .route({
     inputStructure: 'detailed',
@@ -2330,7 +2490,7 @@ export const byCredentialId3 = {
   patch: patch18,
 }
 
-export const post31 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2348,11 +2508,11 @@ export const post31 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post31,
+  post: post33,
   byCredentialId: byCredentialId3,
 }
 
-export const get52 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2364,7 +2524,7 @@ export const get52 = oc
   .output(zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse)
 
 export const byProvider2 = {
-  get: get52,
+  get: get56,
   credentials: credentials3,
 }
 
@@ -2372,7 +2532,7 @@ export const toolProviders = {
   byProvider: byProvider2,
 }
 
-export const get53 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2389,10 +2549,25 @@ export const get53 = oc
   .output(zGetWorkspacesByWorkspaceIdToolsResponse)
 
 export const tools = {
-  get: get53,
+  get: get57,
 }
 
-export const get54 = oc
+export const post34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdSwitch',
+    path: '/workspaces/{workspace_id}:switch',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
+  .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
+
+export const switch_ = {
+  post: post34,
+}
+
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2404,7 +2579,7 @@ export const get54 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get54,
+  get: get58,
   apps: apps2,
   knowledgeBases,
   knowledgeFs,
@@ -2414,11 +2589,13 @@ export const byWorkspaceId = {
   models: models2,
   pluginTasks,
   plugins: plugins2,
+  skills,
   toolProviders,
   tools,
+  switch: switch_,
 }
 
-export const get55 = oc
+export const get59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2430,7 +2607,7 @@ export const get55 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get55,
+  get: get59,
   byWorkspaceId,
 }
 

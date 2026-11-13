@@ -1835,6 +1835,106 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/tool-providers/{provider}/credentials",
       "summary": "Save an API-key credential for a tool provider; the provider checks it first"
+    },
+    "get.skill": {
+      "bind": {
+        "keyword": "query",
+        "limit": "query",
+        "page": "query",
+        "tag": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "keyword": {}, "limit": {}, "page": {}, "tag": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills",
+      "summary": "Skills in the workspace, newest edit first"
+    },
+    "describe.skill": {
+      "bind": { "skill_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "skill_id": {}, "workspace_id": {} },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}",
+      "summary": "One skill with its draft hash and latest published version"
+    },
+    "get.skill.version": {
+      "bind": { "limit": "query", "page": "query", "skill_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "limit": {}, "page": {}, "skill_id": {}, "workspace_id": {} },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}/versions",
+      "summary": "Published versions of a skill, newest first"
+    },
+    "export.skill": {
+      "bind": { "skill_id": "path", "version_id": "query", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "skill_id": {}, "version_id": {}, "workspace_id": {} },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "file",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}/archive",
+      "summary": "Download a skill as a zip: its draft, or one published version"
+    },
+    "import.skill": {
+      "bind": { "draft_hash": "body", "files": "file", "skill_id": "body", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "draft_hash": {}, "files": {}, "skill_id": {}, "workspace_id": {} },
+        "required": ["workspace_id", "files"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/imports",
+      "summary": "Create a skill from a folder, or overwrite a skill's draft with one"
+    },
+    "publish.skill": {
+      "bind": {
+        "publish_note": "body",
+        "skill_id": "path",
+        "version_name": "body",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "publish_note": {},
+          "skill_id": {},
+          "version_name": {},
+          "workspace_id": {}
+        },
+        "required": ["skill_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}:publish",
+      "summary": "Publish the draft as a new version"
     }
   }
 }

@@ -135,6 +135,9 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationStatusResponse](#educationstatusresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [BillingRequestInProgressError](#billingrequestinprogresserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/education
@@ -149,8 +152,10 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EducationActivateLimitError](#educationactivatelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[EducationActivateFailedError](#educationactivatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [BillingRequestInProgressError](#billingrequestinprogresserror)<br>[EducationActivateLimitError](#educationactivatelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/autocomplete
@@ -167,6 +172,8 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationAutocompleteResponse](#educationautocompleteresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/verify
@@ -175,8 +182,10 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationVerifyResponse](#educationverifyresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EducationVerifyLimitError](#educationverifylimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[EducationVerifyFailedError](#educationverifyfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [BillingRequestInProgressError](#billingrequestinprogresserror)<br>[EducationVerifyLimitError](#educationverifylimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/init
@@ -215,6 +224,124 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[CurrentPasswordIncorrectError](#currentpasswordincorrecterror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-token-resources
+**List account-visible candidates for the validated search, type, and cursor**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | integer |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| resource_type | query | Resource type to filter by before pagination | No | string, <br>**Available values:** "app", "dataset" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available resources | **application/json**: [PersonalAccessTokenResourceCandidateResponse](#personalaccesstokenresourcecandidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-token-workspaces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | integer |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available workspaces | **application/json**: [PersonalAccessTokenWorkspaceCandidateResponse](#personalaccesstokenworkspacecandidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Personal access tokens | **application/json**: [PersonalAccessTokenListResponse](#personalaccesstokenlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/personal-access-tokens
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key for creation retries | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PersonalAccessTokenCreatePayload](#personalaccesstokencreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Personal access token created | **application/json**: [PersonalAccessTokenCreatedResponse](#personalaccesstokencreatedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /account/personal-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Personal access token revoked |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/personal-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved scopes | **application/json**: [PersonalAccessTokenDetailResponse](#personalaccesstokendetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /account/personal-access-tokens/{token_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| token_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PersonalAccessTokenUpdatePayload](#personalaccesstokenupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated scopes | **application/json**: [PersonalAccessTokenDetailResponse](#personalaccesstokendetailresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/profile
@@ -397,6 +524,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-access
+**Return API access for an Agent visible to the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -412,6 +541,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-enable
+**Change API access for an Agent and return the committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1448,7 +1579,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/trace-config
@@ -2088,6 +2219,28 @@ Submit human input form preview for advanced chat workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/message-template/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageTemplateTestRequest](#messagetemplatetestrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MessageTemplateTestResponse](#messagetemplatetestresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2840,7 +2993,7 @@ Transcript audio to text for chat messages
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations
-Get chat conversations with pagination, filtering and summary
+Get chat conversations with pagination and filtering
 
 #### Parameters
 
@@ -2860,8 +3013,11 @@ Get chat conversations with pagination, filtering and summary
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationWithSummaryPagination](#conversationwithsummarypagination)<br> |
+| 400 | Invalid date range | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -2879,8 +3035,9 @@ Delete a chat conversation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -2898,8 +3055,9 @@ Get chat conversation details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationDetail](#conversationdetail)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-messages
@@ -2983,8 +3141,11 @@ Get completion conversations with pagination and filtering
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationPagination](#conversationpagination)<br> |
+| 400 | Invalid date range | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/completion-conversations/{conversation_id}
@@ -3002,8 +3163,9 @@ Delete a completion conversation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations/{conversation_id}
@@ -3021,8 +3183,9 @@ Get completion conversation details with messages
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationMessageDetail](#conversationmessagedetail)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/completion-messages
@@ -3288,7 +3451,11 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access group binding retrieved successfully | **application/json**: [AppNetworkAccessGroupResponse](#appnetworkaccessgroupresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessUnsupportedAppModeError](#networkaccessunsupportedappmodeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/network-access-group
@@ -3309,7 +3476,12 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access group binding updated successfully | **application/json**: [AppNetworkAccessGroupMutationResponse](#appnetworkaccessgroupmutationresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessInvalidInputError](#networkaccessinvalidinputerror)<br>[NetworkAccessUnsupportedAccessPointsError](#networkaccessunsupportedaccesspointserror)<br>[NetworkAccessUnsupportedAppModeError](#networkaccessunsupportedappmodeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessVersionConflictError](#networkaccessversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/network-access-group/status
@@ -3324,7 +3496,11 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access control entry status retrieved successfully | **application/json**: [AppNetworkAccessGroupStatusResponse](#appnetworkaccessgroupstatusresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessUnsupportedAppModeError](#networkaccessunsupportedappmodeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
@@ -3775,7 +3951,7 @@ Update app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/trace-config
@@ -4759,6 +4935,28 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/message-template/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageTemplateTestRequest](#messagetemplatetestrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MessageTemplateTestResponse](#messagetemplatetestresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -5825,8 +6023,10 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ComplianceDownloadResponse](#compliancedownloadresponse)<br> |
+| 403 | Forbidden | **application/json**: [ComplianceDownloadForbiddenError](#compliancedownloadforbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ComplianceDocumentNotFoundError](#compliancedocumentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid compliance download query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br>[ComplianceRateLimitError](#complianceratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br>[BillingRequestInProgressError](#billingrequestinprogresserror)<br>[ComplianceRateLimitError](#complianceratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Compliance download failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -7081,7 +7281,7 @@ Get dataset indexing status
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradeDiscoveryResponse](#knowledgefsupgradediscoveryresponse)<br> |
+| 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradePreparationResponse](#knowledgefsupgradepreparationresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades
@@ -7092,11 +7292,18 @@ Get dataset indexing status
 | Idempotency-Key | header | Stable key used to make the Dataset upgrade safe to retry | Yes | string |
 | dataset_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUpgradeStartPayload](#knowledgefsupgradestartpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsUpgradeModelsUnavailableError](#knowledgefsupgrademodelsunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
@@ -7612,6 +7819,49 @@ Verify password reset code
 | 200 | Code verified successfully | **application/json**: [ForgotPasswordCheckResponse](#forgotpasswordcheckresponse)<br> |
 | 400 | Invalid code or token | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /form/human-input/v2/{form_token}
+Read a frozen v2 form using the current Account's Contact authorization.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form retrieved | **application/json**: [ConsoleHumanInputV2FormDefinitionResponse](#consolehumaninputv2formdefinitionresponse)<br> |
+| 401 | Login required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Already submitted | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | Expired | **application/json**: [ExpiredError](#expirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /form/human-input/v2/{form_token}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConsoleHumanInputV2SubmitPayload](#consolehumaninputv2submitpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Approval accepted | **application/json**: [ConsoleHumanInputV2SubmitResponse](#consolehumaninputv2submitresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /form/human_input/{form_token}
@@ -10515,6 +10765,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -11267,7 +11519,7 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
-**Handle OAuth callback for trigger provider**
+**Complete the cookie-bound flow without requiring a Console login**
 
 #### Parameters
 
@@ -11280,6 +11532,9 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[TriggerOauthContextInvalidError](#triggeroauthcontextinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider
@@ -14003,6 +14258,7 @@ List monthly workflow-run archive metadata for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowRunArchiveListResponse](#workflowrunarchivelistresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-run-archives/downloads
@@ -14019,6 +14275,7 @@ Create or return a temporary workflow-run archive download task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Download task accepted | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives/downloads/{download_id}
@@ -14035,6 +14292,7 @@ Get a temporary workflow-run archive download task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives/downloads/{download_id}/file
@@ -14051,6 +14309,7 @@ Redirect to a prepared workflow-run archive ZIP file
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to pre-signed archive storage URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Download task is not ready | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -14069,6 +14328,7 @@ Permanently delete this workspace's monthly archive files and archive index
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Archive deletion accepted | **application/json**: [WorkflowRunArchiveDeletionTaskResponse](#workflowrunarchivedeletiontaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
@@ -14498,7 +14758,10 @@ Enable a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list
+**Given authorized workspace IDs and a validated query, return JSON endpoint DTOs**
+
 List plugin endpoints with pagination
+Service failures propagate. This read does not change endpoint state.
 
 #### Parameters
 
@@ -14515,7 +14778,10 @@ List plugin endpoints with pagination
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list/plugin
+**Given authorized workspace IDs and a validated query, return plugin endpoint DTOs**
+
 List endpoints for a specific plugin
+Service failures propagate. This read does not change endpoint state.
 
 #### Parameters
 
@@ -14590,6 +14856,573 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint updated successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channel-providers
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListChannelProvidersResponse](#listchannelprovidersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channels
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListChannelsResponse](#listchannelsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/email
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelCreatePayload](#emailchannelcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/email/test
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelTestPayload](#emailchanneltestpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/channels/email/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_config_version | query |  | Yes | string |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelDeleteResponse](#channeldeleteresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channels/email/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailChannelDetailResponse](#emailchanneldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/channels/email/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelUpdatePayload](#emailchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/email/{channel_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelUpdatePayload](#emailchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelCreatePayload](#imchannelcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im/test
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelTestPayload](#imchanneltestpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/channels/im/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_config_version | query |  | Yes | string |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelDeleteResponse](#channeldeleteresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channels/im/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelDetailResponse](#imchanneldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/channels/im/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelUpdatePayload](#imchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im/{channel_id}/replacement
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelReplacementPayload](#imchannelreplacementpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im/{channel_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelUpdatePayload](#imchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| 400 | The test provider must match the saved IM Channel. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contact-options
+List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Free-text search against selectable contact names. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListContactOptionsResponse](#listcontactoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contact-options/batch
+Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_ids | query | Contact IDs persisted in workflow recipient configuration. | Yes | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BatchGetContactOptionsResponse](#batchgetcontactoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contacts
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group | query | Optional contact type filter. None means all contacts. | No | string, <br>**Available values:** "external", "platform", "workspace" |
+| keyword | query | Free-text search against contact name or email. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListContactsResponse](#listcontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contacts/batch
+Admin-only batch lookup for Contact management clients. Workflow editors must use the editor-safe contact-options/batch projection.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_ids | query | List of contact IDs to retrieve. | Yes | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BatchGetContactsResponse](#batchgetcontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/contacts/external
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalContactCreateRequest](#externalcontactcreaterequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ExternalContactCreateResponse](#externalcontactcreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /workspaces/current/human-input/v2/contacts/external/{contact_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalContactUpdateRequest](#externalcontactupdaterequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ExternalContactUpdateResponse](#externalcontactupdateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/contacts/platform
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AddPlatformContactsRequest](#addplatformcontactsrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AddPlatformContactsResponse](#addplatformcontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/contacts/remove
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RemoveContactsRequest](#removecontactsrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RemoveContactsResponse](#removecontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contacts/{contact_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GetContactResponse](#getcontactresponse)<br> |
+| 404 | Contact not found or absent in the current workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/contacts/{contact_id}/im-bindings
+Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DeleteIMBindingResponse](#deleteimbindingresponse)<br> |
+| 403 | Centrally managed IM bindings cannot be edited from a workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | IM binding not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/contacts/{contact_id}/im-bindings
+Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateIMBindingRequest](#createimbindingrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CreateIMBindingResponse](#createimbindingresponse)<br> |
+| 403 | Centrally managed IM bindings cannot be edited from a workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Contact or IM identity not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | IM binding conflict | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/contacts/{contact_id}/im-override
+Reset the IM override for a contact. This endpoint is used to clear the IM identity override for a contact in the workspace.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResetContactIMOverrideResponse](#resetcontactimoverrideresponse)<br> |
+| 403 | Workspace overrides require centrally managed IM bindings | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Contact not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid binding scope | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/contacts/{contact_id}/im-override
+Set or reset the IM override for a contact. This endpoint is used to override the IM identity for a contact in the workspace.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SetContactIMOverrideRequest](#setcontactimoverriderequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SetContactIMOverrideResponse](#setcontactimoverrideresponse)<br> |
+| 403 | Workspace overrides require centrally managed IM bindings | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Contact or IM identity not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | IM binding conflict | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid binding scope | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/im-identities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Free-text search against identity display name, email, or provider user ID. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListIMIdentitiesResponse](#listimidentitiesresponse)<br> |
+| 404 | IM Integration not configured | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/im-sync-runs
+**Start or reuse a workspace run using the authenticated Account ID**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CreateIMSyncRunResponse](#createimsyncrunresponse)<br> |
+| 404 | IM Integration not configured | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | IM Integration revision changed | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM synchronization temporarily unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest
+Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GetLatestIMSyncRunResponse](#getlatestimsyncrunresponse)<br> |
+| 404 | Latest IM sync run not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest/results
+Return one required result bucket from the latest IM sync run using page and limit pagination. There is no all filter; the response contains page, limit, and total metadata without a run summary.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+| result | query | Required result bucket to paginate from the latest sync run. There is no `all` bucket or unfiltered results mode. | Yes | string, <br>**Available values:** "added", "failed", "not_matched", "removed", "skipped" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListLatestIMSyncRunResultsResponse](#listlatestimsyncrunresultsresponse)<br> |
+| 404 | Latest IM sync run not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/node-data-migration
+Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeDataMigrationPayload](#nodedatamigrationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [NodeDataMigrationResponse](#nodedatamigrationresponse)<br> |
+| 400 | Migration failed | **application/json**: [NodeDataMigrationFailureResponse](#nodedatamigrationfailureresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/organization-candidates
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Free-text search against candidate name or email. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListOrganizationCandidatesResponse](#listorganizationcandidatesresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
@@ -15177,6 +16010,9 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access groups retrieved successfully | **application/json**: [NetworkAccessGroupListResponse](#networkaccessgrouplistresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/network-access-groups
@@ -15191,6 +16027,11 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Workspace network access group created successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessInvalidInputError](#networkaccessinvalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessGroupNameConflictError](#networkaccessgroupnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/network-access-groups/current-ip
@@ -15199,7 +16040,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trusted current client IP retrieved without requiring an existing network access group | **application/json**: [NetworkAccessGroupCurrentIPResponse](#networkaccessgroupcurrentipresponse)<br> |
-| 403 | The workspace role does not allow network access policy reads | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | The workspace role does not allow network access policy reads | **application/json**: [NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | A trusted current client IP is unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15216,6 +16057,11 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group deleted successfully | **application/json**: [NetworkAccessGroupDeleteResponse](#networkaccessgroupdeleteresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessGroupBoundError](#networkaccessgroupbounderror)<br>[NetworkAccessVersionConflictError](#networkaccessversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/network-access-groups/{group_id}
@@ -15230,6 +16076,10 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group retrieved successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/network-access-groups/{group_id}
@@ -15250,6 +16100,12 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group updated successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessInvalidInputError](#networkaccessinvalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessGroupNameConflictError](#networkaccessgroupnameconflicterror)<br>[NetworkAccessVersionConflictError](#networkaccessversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/network-access-groups/{group_id}/check-current-ip
@@ -15264,6 +16120,10 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Current client IP checked against the workspace network access group | **application/json**: [NetworkAccessGroupCurrentIPCheckResponse](#networkaccessgroupcurrentipcheckresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/permission
@@ -17696,7 +18556,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Remove custom OAuth client configuration**
+**Remove the workspace's custom OAuth client configuration**
 
 #### Parameters
 
@@ -17712,7 +18572,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Get OAuth client configuration for a provider**
+**Get the masked OAuth client configuration for a provider**
 
 #### Parameters
 
@@ -17725,10 +18585,11 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Configure custom OAuth client for a provider**
+**Configure the workspace's custom OAuth client for a provider**
 
 #### Parameters
 
@@ -17747,6 +18608,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerOauthClientChangedError](#triggeroauthclientchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
@@ -17770,6 +18633,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder built successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [TriggerSubscriptionLimitReachedError](#triggersubscriptionlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionNameConflictError](#triggersubscriptionnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
@@ -17905,10 +18771,12 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
-**Verify credentials for an existing subscription (edit mode only)**
+**Verify credentials against the subscription's own provider without updating it**
 
 #### Parameters
 
@@ -17928,10 +18796,13 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
+| 400 | Bad Request | **application/json**: [TriggerSubscriptionInvalidError](#triggersubscriptioninvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
-**Delete a subscription instance**
+**Delete the subscription and its workflow trigger bindings**
 
 #### Parameters
 
@@ -17944,10 +18815,13 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionChangedError](#triggersubscriptionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update
-**Update a subscription instance**
+**Rename a subscription or rebuild its provider configuration**
 
 #### Parameters
 
@@ -17966,6 +18840,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionChangedError](#triggersubscriptionchangederror)<br>[TriggerSubscriptionNameConflictError](#triggersubscriptionnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
@@ -18047,6 +18924,10 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
+**Return an icon for a tenant UUID and a supported icon type**
+
+Invalid path arguments fail before provider discovery or asset access.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -18407,6 +19288,22 @@ Account not link tenant.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
+
+#### AddPlatformContactsRequest
+
+Request body for adding one or more organization members as platform contacts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_ids | [ string ] | Organization candidate identifiers to project into the current workspace as platform contacts. | Yes |
+
+#### AddPlatformContactsResponse
+
+Response body for adding platform contacts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [HumanInputContact](#humaninputcontact) ] | Contacts created by the current add operation. | Yes |
 
 #### AdvancedChatWorkflowRunForListResponse
 
@@ -20012,6 +20909,7 @@ Visibility and lifecycle scope of an Agent record.
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
+| show_thoughts | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | speech_to_text | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | suggested_questions | [ string ] |  | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) |  | No |
@@ -20410,6 +21308,17 @@ Agent config version not found.
 | ---- | ---- | ----------- | -------- |
 | AgentVersionNotFoundError |  | Agent config version not found. |  |
 
+#### AllWorkspaceContacts
+
+Migration marker preserving legacy whole-workspace recipient intent.
+
+Runtime expansion is deliberately owned by the recipient resolver rather
+than the node-data migration helper.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string, <br>**Default:** all_workspace_contacts |  | No |
+
 #### AllowedExtensionsResponse
 
 | Name | Type | Description | Required |
@@ -20423,6 +21332,12 @@ Auth Token is invalid or account already activated, please check again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AlreadyActivateError |  | Auth Token is invalid or account already activated, please check again. |  |
+
+#### AlreadySubmittedError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AlreadySubmittedError |  |  |  |
 
 #### Annotation
 
@@ -22185,6 +23100,24 @@ ExporleBanner status
 | ---- | ---- | ----------- | -------- |
 | BannerStatus | string | ExporleBanner status |  |
 
+#### BatchGetContactOptionsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact_ids | [ string ] | Contact IDs persisted in workflow recipient configuration. | Yes |
+
+#### BatchGetContactOptionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ContactOption](#contactoption) ] | Selectable contacts resolved in request order. | Yes |
+
+#### BatchGetContactsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [HumanInputContactSummary](#humaninputcontactsummary) ] | List of retrieved human input contacts. | Yes |
+
 #### BatchImportPayload
 
 | Name | Type | Description | Required |
@@ -22218,6 +23151,14 @@ We couldn't complete this request. Please try again. If the problem persists, co
 | code | string |  | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
+
+#### BillingRequestInProgressError
+
+A previous request is still being processed. Please try again shortly.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BillingRequestInProgressError |  | A previous request is still being processed. Please try again shortly. |  |
 
 #### BillingSubscriptionResponse
 
@@ -22262,6 +23203,13 @@ Sandbox file download is unavailable.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | BindingFileDownloadUnavailableError |  | Sandbox file download is unavailable. |  |
+
+#### BoundRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reference_id | string |  | Yes |
+| type | string, <br>**Default:** member |  | No |
 
 #### BrandingModel
 
@@ -22365,6 +23313,67 @@ You cannot transfer ownership to yourself.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | token | string |  | Yes |
+
+#### ChannelConflictResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "provider_configuration_updated", "replacement_required" | *Enum:* `"provider_configuration_updated"`, `"replacement_required"` | Yes |
+| message | string |  | Yes |
+| status | integer, <br>**Default:** 409 |  | No |
+
+#### ChannelDeleteQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_config_version | [ConfigVersion](#configversion) |  | Yes |
+
+#### ChannelDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channel_id | [ChannelId](#channelid) |  | Yes |
+
+#### ChannelId
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ChannelId | string |  |  |
+
+#### ChannelProvider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_mode | string, <br>**Default:** custom_app |  | No |
+| provider | [EmailProviderType](#emailprovidertype)<br>[IMProvider](#improvider) |  | Yes |
+
+#### ChannelStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ChannelStatus | string |  |  |
+
+#### ChannelSummary
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_version | [ConfigVersion](#configversion) | The current opaque configuration version used for optimistic concurrency control. | Yes |
+| created_at | integer | Unix timestamp in seconds | Yes |
+| display_identifier | string | The display identifier of the Channel. | Yes |
+| id | [ChannelId](#channelid) |  | Yes |
+| kind | string, <br>**Available values:** "email", "im" | *Enum:* `"email"`, `"im"` | Yes |
+| provider | [EmailProviderType](#emailprovidertype)<br>[IMProvider](#improvider) | The provider of the Channel. The concrete provider type depends on the `kind` field. | Yes |
+| status | [ChannelStatus](#channelstatus) |  | Yes |
+| status_description | string | Human-readable status description. Empty when the status is `configured` or `connected`. | Yes |
+| updated_at | integer | Unix timestamp in seconds | Yes |
+| webhook_url | string | Webhook URL to configure on the provider side. None when webhook configuration is not required or the provider does not support webhooks. | Yes |
+
+#### ChannelTestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [ChannelStatus](#channelstatus) |  | Yes |
+| status_description | string |  | Yes |
 
 #### ChatConversationQuery
 
@@ -22629,6 +23638,22 @@ Completion request failed.
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
 
+#### ComplianceDocumentNotFoundError
+
+The compliance document was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComplianceDocumentNotFoundError |  | The compliance document was not found. |  |
+
+#### ComplianceDownloadForbiddenError
+
+Your current plan does not allow downloading this compliance document.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComplianceDownloadForbiddenError |  | Your current plan does not allow downloading this compliance document. |  |
+
 #### ComplianceDownloadQuery
 
 | Name | Type | Description | Required |
@@ -22744,6 +23769,12 @@ Condition detail
 | name | string | Metadata field name to compare against. | Yes |
 | value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
+#### ConfigVersion
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConfigVersion | string |  |  |
+
 #### ConfigurateMethod
 
 Enum class for configurate method of provider model.
@@ -22776,6 +23807,27 @@ Enum class for configurate method of provider model.
 | ---- | ---- | ----------- | -------- |
 | ConsoleHumanInputFormSubmitResponse | object |  |  |
 
+#### ConsoleHumanInputV2FormDefinitionResponse
+
+Frozen form definition and effective expiration in UTC epoch seconds.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | Yes |
+| resolved_form | [ResolvedForm](#resolvedform) |  | Yes |
+
+#### ConsoleHumanInputV2SubmitPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| inputs | object |  | Yes |
+
+#### ConsoleHumanInputV2SubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
 #### ConsoleSegmentListResponse
 
 | Name | Type | Description | Required |
@@ -22785,6 +23837,67 @@ Enum class for configurate method of provider model.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 | total_pages | integer |  | Yes |
+
+#### Contact
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact_id | string |  | Yes |
+| type | string, <br>**Default:** contact |  | No |
+
+#### ContactIMBindingDetail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| identity | [ContactIMIdentityDetail](#contactimidentitydetail) |  | Yes |
+| provider | [IMProvider](#improvider) |  | Yes |
+| scope | [IMBindingScope](#imbindingscope) |  | Yes |
+
+#### ContactIMIdentityDetail
+
+Display fields for the identity selected by an effective contact binding.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_name | string |  | Yes |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| provider_user_id | string |  | Yes |
+
+#### ContactListQuery
+
+Query params for listing contacts in the workspace directory.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| group | [HumanInputContactType](#humaninputcontacttype) | Optional contact type filter. None means all contacts. | No |
+| keyword | string | Free-text search against contact name or email. | No |
+| limit | integer, <br>**Default:** 20 | Maximum number of records returned per page. | No |
+| page | integer, <br>**Default:** 1 | 1-based page number. | No |
+
+#### ContactOption
+
+Least-privilege contact projection returned to workflow editors.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string | Signed avatar URL if one is available. | No |
+| email | string | Current deliverable Email, when available. | No |
+| id | string | Unique contact identifier persisted in workflow recipient configuration. | Yes |
+| im_providers | [ [IMProvider](#improvider) ] | Distinct providers of effective IM bindings in the current workspace; not a delivery health check. | Yes |
+| name | string | Display name shown in the contact picker. | Yes |
+| type | [HumanInputContactType](#humaninputcontacttype) | Resolved contact type in the current workspace scope. | Yes |
+
+#### ContactOptionsQuery
+
+Query params for selecting contacts in workflow editors.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Free-text search against selectable contact names. | No |
+| limit | integer, <br>**Default:** 20 | Maximum number of records returned per page. | No |
+| page | integer, <br>**Default:** 1 | 1-based page number. | No |
 
 #### Conversation
 
@@ -22915,11 +24028,11 @@ A name is required when automatic naming is disabled.
 
 #### ConversationNotFoundError
 
-The conversation was not found for this account and app.
+The conversation was not found for this user and app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConversationNotFoundError |  | The conversation was not found for this account and app. |  |
+| ConversationNotFoundError |  | The conversation was not found for this user and app. |  |
 
 #### ConversationPagination
 
@@ -23058,6 +24171,30 @@ The conversation was not found for this account and app.
 | icon_type | [IconType](#icontype) | Icon type | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
+
+#### CreateIMBindingRequest
+
+Request body for setting one workspace-scoped IM override.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identity_id | string | Synced IM identity identifier selected as the workspace override. | Yes |
+
+#### CreateIMBindingResponse
+
+Response body returned after binding one IM identity to the workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContact](#humaninputcontact) | Contact snapshot after the IM identity is bound. | Yes |
+
+#### CreateIMSyncRunResponse
+
+Response body returned after creating one sync run.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| run | [IMSyncRun](#imsyncrun) | Newly created sync run snapshot. | Yes |
 
 #### CreateSnippetPayload
 
@@ -23923,11 +25060,26 @@ Enum class for datasource provider
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
 
+#### DebugChannel
+
+Delivery selection for editor debugging, resolved to current channel configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DebugChannel | string | Delivery selection for editor debugging, resolved to current channel configuration. |  |
+
+#### DebugModeConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channels | [ [DebugChannel](#debugchannel) ] |  | Yes |
+| enabled | boolean |  | No |
+
 #### DeclaredArrayItem
 
 Per-item shape for an ``array``-typed declared output.
 
-PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+The PRD output configuration section limits arrays to one level; nested arrays
 are rejected so the runtime type checker and JSON Schema stay easy to reason
 about. Stage 4 §4.2.
 
@@ -23941,7 +25093,7 @@ about. Stage 4 §4.2.
 
 File-output content check via a model-based comparison against a benchmark file.
 
-Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
+Per the PRD output configuration section, output checks are **file-only** and optional. Stage 4 §4.3.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -24050,6 +25202,25 @@ Default model entity.
 | model_type | [ModelType](#modeltype) |  | Yes |
 | provider | [SimpleProviderEntityResponse](#simpleproviderentityresponse) |  | Yes |
 
+#### DefaultValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| key | string |  | Yes |
+| type | [DefaultValueType](#defaultvaluetype) |  | Yes |
+| value |  |  | No |
+
+#### DefaultValueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DefaultValueType | string |  |  |
+
+#### DeleteIMBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
 #### DeletedTool
 
 | Name | Type | Description | Required |
@@ -24065,6 +25236,33 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
+#### DingTalkCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string | DingTalk application client identifier. | Yes |
+| client_secret | [_RequiredSecret](#_requiredsecret) | DingTalk application client secret. | Yes |
+| corp_id | string | DingTalk corporation identifier. | Yes |
+| provider | string | DingTalk credential discriminator. | Yes |
+
+#### DingTalkCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_secret | [Redacted](#redacted) |  | Yes |
+| corp_id | string |  | Yes |
+| provider | string |  | Yes |
+
+#### DingTalkCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| client_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| corp_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
 
 #### DismissNotificationPayload
 
@@ -24399,6 +25597,21 @@ Portable DSL reference that could not be restored in the target workspace.
 | message | string |  | Yes |
 | path | string |  | Yes |
 
+#### DynamicEmail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | Yes |
+| type | string, <br>**Default:** dynamic_email |  | No |
+
+#### EducationActivateFailedError
+
+We couldn't activate your education discount.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationActivateFailedError |  | We couldn't activate your education discount. |  |
+
 #### EducationActivateLimitError
 
 Rate limit exceeded
@@ -24433,9 +25646,9 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| curr_page | integer |  | No |
-| data | [ string ] |  | No |
-| has_next | boolean |  | No |
+| curr_page | integer |  | Yes |
+| data | [ string ] |  | Yes |
+| has_next | boolean |  | Yes |
 
 #### EducationModel
 
@@ -24448,10 +25661,26 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_refresh | boolean |  | No |
-| expire_at | integer |  | No |
-| is_student | boolean |  | No |
-| result | boolean |  | No |
+| allow_refresh | boolean |  | Yes |
+| can_redeem_discount | boolean | Whether the account can redeem its education discount in the current verification period. | Yes |
+| expire_at | integer |  | Yes |
+| is_student | boolean |  | Yes |
+| result | boolean |  | Yes |
+
+#### EducationVerifyEligibleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string |  | Yes |
+| token | string |  | Yes |
+
+#### EducationVerifyFailedError
+
+We couldn't verify your education status.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationVerifyFailedError |  | We couldn't verify your education status. |  |
 
 #### EducationVerifyLimitError
 
@@ -24461,11 +25690,19 @@ Rate limit exceeded
 | ---- | ---- | ----------- | -------- |
 | EducationVerifyLimitError |  | Rate limit exceeded |  |
 
-#### EducationVerifyResponse
+#### EducationVerifyNotEligibleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| token | string |  | No |
+| status | string |  | Yes |
+
+#### EducationVerifyResponse
+
+Education verification result: a token for an eligible account, none for an ineligible one.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationVerifyResponse | [EducationVerifyEligibleResponse](#educationverifyeligibleresponse)<br>[EducationVerifyNotEligibleResponse](#educationverifynoteligibleresponse) | Education verification result: a token for an eligible account, none for an ineligible one. |  |
 
 #### EmailAlreadyInUseError
 
@@ -24490,6 +25727,46 @@ Too many email change emails have been sent. Please try again in {minutes} minut
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailChangeRateLimitExceededError |  | Too many email change emails have been sent. Please try again in {minutes} minutes. |  |
+
+#### EmailChannelCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [EmailProviderCredentials](#emailprovidercredentials) |  | Yes |
+| sender_email | string |  | Yes |
+| sender_name | [_SenderName](#_sendername) |  | Yes |
+
+#### EmailChannelDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ResendCredentialsResponse](#resendcredentialsresponse) |  | Yes |
+| sender_email | string |  | Yes |
+| sender_name | string |  | Yes |
+| summary | [ChannelSummary](#channelsummary) |  | Yes |
+
+#### EmailChannelMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| summary | [ChannelSummary](#channelsummary) |  | Yes |
+
+#### EmailChannelTestPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [EmailProviderCredentials](#emailprovidercredentials) |  | Yes |
+| sender_email | string |  | Yes |
+| sender_name | [_SenderName](#_sendername) |  | Yes |
+
+#### EmailChannelUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [EmailProviderCredentialsUpdateInput](#emailprovidercredentialsupdateinput) |  | Yes |
+| expected_config_version | [ConfigVersion](#configversion) |  | Yes |
+| sender_email | string<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| sender_name | [_SenderName](#_sendername)<br>[UnchangedInput](#unchangedinput) |  | Yes |
 
 #### EmailCodeAccountDeletionRateLimitExceededError
 
@@ -24550,6 +25827,24 @@ Email code verification is temporarily unavailable. Please try again later.
 | language | string |  | No |
 | turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
+#### EmailDeliveryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| debug_mode | boolean |  | No |
+| recipients | [EmailRecipients](#emailrecipients) |  | Yes |
+| subject | string |  | Yes |
+
+#### EmailDeliveryMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [EmailDeliveryConfig](#emaildeliveryconfig) |  | Yes |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string (uuid) |  | No |
+| type | string, <br>**Default:** email |  | No |
+
 #### EmailDomainSuspendedError
 
 This email domain has been suspended.
@@ -24572,6 +25867,33 @@ Too many failed password reset attempts. Please try again in 24 hours.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+
+#### EmailProviderCredentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailProviderCredentials | [ResendCredentials](#resendcredentials) |  |  |
+
+#### EmailProviderCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailProviderCredentialsUpdateInput | [ResendCredentialsUpdateInput](#resendcredentialsupdateinput) |  |  |
+
+#### EmailProviderType
+
+Email provider supported by organization-level Human Input delivery.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailProviderType | string | Email provider supported by organization-level Human Input delivery. |  |
+
+#### EmailRecipients
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_bound_group | boolean |  | No |
+| items | [ [BoundRecipient](#boundrecipient)<br>[ExternalRecipient](#externalrecipient) ] |  | No |
 
 #### EmailRegisterLimitError
 
@@ -24862,6 +26184,12 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | params | string |  | No |
 | status | integer |  | Yes |
 
+#### ErrorStrategy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ErrorStrategy | string |  |  |
+
 #### EventApiEntity
 
 | Name | Type | Description | Required |
@@ -24935,6 +26263,12 @@ The type of the parameter
 | ---- | ---- | ----------- | -------- |
 | ExecutionContentType | string |  |  |
 
+#### ExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExpiredError |  |  |  |
+
 #### ExploreAppMetaResponse
 
 Metadata consumed by the installed-app chat UI.
@@ -24986,6 +26320,38 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
+
+#### ExternalContactCreateRequest
+
+Request body for creating or updating one external contact.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| email | string | Primary email used for delivery and identity verification. | Yes |
+| name | string | Display name shown in the contact directory. | Yes |
+
+#### ExternalContactCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContact](#humaninputcontact) | The created external contact. | Yes |
+
+#### ExternalContactUpdateRequest
+
+Request body for creating or updating one external contact.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| email | string |  | No |
+| name | string |  | No |
+
+#### ExternalContactUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContact](#humaninputcontact) | The updated external contact. Fields are values after updating. | Yes |
 
 #### ExternalDatasetCreatePayload
 
@@ -25078,6 +26444,13 @@ Flask blueprint initialization.
 | api_key | string |  | No |
 | endpoint | string |  | No |
 
+#### ExternalRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| type | string, <br>**Default:** external |  | No |
+
 #### FeatureModel
 
 Effective feature availability and limits for the current workspace.
@@ -25094,12 +26467,14 @@ Effective feature availability and limits for the current workspace.
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
+| im_centrally_managed | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
+| workflow_collaboration_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
@@ -25118,6 +26493,36 @@ Effective feature availability and limits for the current workspace.
 | ---- | ---- | ----------- | -------- |
 | dislike | integer |  | Yes |
 | like | integer |  | Yes |
+
+#### FeishuCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Feishu or Lark application identifier. | Yes |
+| app_secret | [_RequiredSecret](#_requiredsecret) | Feishu or Lark application secret. | Yes |
+| encrypt_key | [_OptionalSecret](#_optionalsecret) | Optional callback encryption key. | No |
+| provider | string | Feishu credential discriminator. | Yes |
+| verification_token | [_OptionalSecret](#_optionalsecret) | Optional callback verification token. | No |
+
+#### FeishuCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| app_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| encrypt_key | [_OptionalSecret](#_optionalsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
+| verification_token | [_OptionalSecret](#_optionalsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+
+#### FeishuLarkCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_secret | [Redacted](#redacted) |  | Yes |
+| encrypt_key | [Redacted](#redacted) |  | Yes |
+| provider | string, <br>**Available values:** "feishu", "lark" | *Enum:* `"feishu"`, `"lark"` | Yes |
+| verification_token | [Redacted](#redacted) |  | Yes |
 
 #### FetchFrom
 
@@ -25151,6 +26556,18 @@ The file extension is blocked for security reasons.
 | mimetype | string |  | Yes |
 | size | integer |  | Yes |
 
+#### FileInput
+
+Resolved single-file input constraints.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -25158,6 +26575,19 @@ The file extension is blocked for security reasons.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInput
+
+Resolved multi-file input constraints and effective number limit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -25309,6 +26739,12 @@ Model class for form option.
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | value | string |  | Yes |
 
+#### FormPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
+
 #### FormShowOnObject
 
 Model class for form show on.
@@ -25344,6 +26780,23 @@ Enum class for form type.
 | ---- | ---- | ----------- | -------- |
 | GeneratorResponse |  |  |  |
 
+#### GetContactResponse
+
+Response body for one contact resolved in the current workspace scope.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContact](#humaninputcontact) | Contact resolved as workspace, platform, or external. | Yes |
+| im_binding_details | [ [ContactIMBindingDetail](#contactimbindingdetail) ] | Effective IM bindings and their identities in the current workspace, for the contact detail view. | Yes |
+
+#### GetLatestIMSyncRunResponse
+
+Response body for reading the latest IM sync run summary.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| run | [IMSyncRun](#imsyncrun) | Latest sync run summary. | Yes |
+
 #### HitTestingChildChunk
 
 | Name | Type | Description | Required |
@@ -25378,7 +26831,7 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| attachment_ids | [ string ] | Upload file UUIDs to include in the retrieval context. Omit or use an empty list when there are no attachments. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
@@ -25435,6 +26888,40 @@ Enum class for form type.
 | tokens | integer |  | Yes |
 | word_count | integer |  | Yes |
 
+#### HumanInputContact
+
+One contact entity returned by contact-related APIs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string | URL of the contact's avatar. | No |
+| created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
+| id | string | Unique contact identifier. | Yes |
+| im_bindings | [ [IMBinding](#imbinding) ] | IM bindings that are bound to this contact. Currently, only one IM binding is supported. There is at most one IM binding per IM provider. | No |
+| name | string | Display name shown in the contact directory. | Yes |
+| type | [HumanInputContactType](#humaninputcontacttype) | Resolved contact type in the current workspace scope. | Yes |
+
+#### HumanInputContactSummary
+
+A trimmed version of `HumanInputContact` that only includes the fields needed for workflow orchestration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string | URL of the contact's avatar. | No |
+| created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
+| id | string | Unique contact identifier. | Yes |
+| name | string | Display name shown in the contact directory. | Yes |
+
+#### HumanInputContactType
+
+Concrete contact classification resolved in one workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputContactType | string | Concrete contact classification resolved in one workspace. |  |
+
 #### HumanInputContent
 
 | Name | Type | Description | Required |
@@ -25462,6 +26949,7 @@ Enum class for form type.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -25515,6 +27003,8 @@ Enum class for form type.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
@@ -25534,12 +27024,35 @@ This form has already been submitted by another user, form_id={form_id}
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
 
+#### HumanInputNodeData
+
+Human Input node data.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_mode | [DebugModeConfig](#debugmodeconfig) |  | Yes |
+| default_value | [ [DefaultValue](#defaultvalue) ] |  | No |
+| desc | string |  | No |
+| error_strategy | [ErrorStrategy](#errorstrategy) |  | No |
+| form_content | string |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
+| message_template | [MessageTemplateConfig](#messagetemplateconfig) |  | Yes |
+| recipients_spec | [ [Contact](#contact)<br>[DynamicEmail](#dynamicemail)<br>[OnetimeEmail](#onetimeemail)<br>[Initiator](#initiator)<br>[AllWorkspaceContacts](#allworkspacecontacts) ] |  | Yes |
+| retry_config | [RetryConfig](#retryconfig) |  | No |
+| timeout | integer, <br>**Default:** 36 |  | No |
+| timeout_unit | [TimeoutUnit_Strict_strict_False_](#timeoutunit_strict_strict_false_) |  | No |
+| title | string |  | No |
+| type | string, <br>**Default:** human-input |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
+| version | string, <br>**Default:** 2 |  | No |
+
 #### HumanInputPauseTypeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | backstage_input_url | string |  | No |
 | form_id | string |  | Yes |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | type | string |  | Yes |
 
 #### I18nObject
@@ -25552,6 +27065,249 @@ Model class for i18n object.
 | ja_JP | string |  | No |
 | pt_BR | string |  | No |
 | zh_Hans | string |  | No |
+
+#### IMBinding
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string | Unique IM binding identifier. | Yes |
+| provider | [IMProvider](#improvider) | Provider of the IM binding. | Yes |
+| scope | [IMBindingScope](#imbindingscope) | Scope of the IM binding. | Yes |
+
+#### IMBindingScope
+
+Resolution scope of a contact-to-IM-identity binding.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMBindingScope | string | Resolution scope of a contact-to-IM-identity binding. |  |
+
+#### IMChannelCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [IMProviderCredentialsInput](#improvidercredentialsinput) |  | Yes |
+
+#### IMChannelDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [IMProviderCredentialsResponse](#improvidercredentialsresponse) |  | Yes |
+| summary | [ChannelSummary](#channelsummary) |  | Yes |
+
+#### IMChannelMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| summary | [ChannelSummary](#channelsummary) |  | Yes |
+
+#### IMChannelReplacementPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [IMProviderCredentialsInput](#improvidercredentialsinput) |  | Yes |
+| expected_config_version | [ConfigVersion](#configversion) |  | Yes |
+
+#### IMChannelTestPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [IMProviderCredentialsInput](#improvidercredentialsinput) |  | Yes |
+
+#### IMChannelUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [IMProviderCredentialsUpdateInput](#improvidercredentialsupdateinput) |  | Yes |
+| expected_config_version | [ConfigVersion](#configversion) |  | Yes |
+
+#### IMContactSyncErrorResponse
+
+Stable expected application failure returned by IM sync and binding routes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string | Machine-readable application error code. | Yes |
+| message | string | Operator-safe error message. | Yes |
+| status | integer | HTTP status code associated with this failure. | Yes |
+
+#### IMDirectoryEntry
+
+Normalized provider-side account observed during an IM sync run.
+
+The entry is run-scoped input to identity and binding reconciliation. It does
+not represent a stable Dify identity and must not be referenced by bindings
+or runtime authorization. Sync results may retain a snapshot for display,
+diagnostics, and audit; durable references use IMIdentity or IMBinding IDs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_name | string |  | No |
+| email | string |  | No |
+| provider_user_id | string |  | Yes |
+
+#### IMIdentity
+
+One synced IM identity that may be bound or overridden.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_status | [IMIdentityBindingStatus](#imidentitybindingstatus) | Whether this IM identity is currently bound to a contact. | Yes |
+| display_name | string | Display name returned by the provider. | No |
+| email | string | Email returned by the provider, if any. | No |
+| id | string | Internal IM identity record identifier. | Yes |
+| provider | [IMProvider](#improvider) | IM provider that owns this identity. | Yes |
+| provider_user_id | string | Provider-side user identifier. | Yes |
+
+#### IMIdentityBindingStatus
+
+Whether a synchronized IM identity is currently bound.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMIdentityBindingStatus | string | Whether a synchronized IM identity is currently bound. |  |
+
+#### IMIdentitySnapshot
+
+Last known persistent IM identity state retained by a sync result.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_name | string |  | No |
+| email | string |  | No |
+| identity_id | string |  | Yes |
+| provider_user_id | string |  | Yes |
+
+#### IMProvider
+
+IM provider supported by Human Input contact and delivery flows.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMProvider | string | IM provider supported by Human Input contact and delivery flows. |  |
+
+#### IMProviderCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMProviderCredentialsInput | [FeishuCredentialsInput](#feishucredentialsinput)<br>[LarkCredentialsInput](#larkcredentialsinput)<br>[SlackCredentialsInput](#slackcredentialsinput)<br>[DingTalkCredentialsInput](#dingtalkcredentialsinput)<br>[MSTeamsCredentialsInput](#msteamscredentialsinput)<br>[WeComCredentialsInput](#wecomcredentialsinput) |  |  |
+
+#### IMProviderCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMProviderCredentialsResponse | [FeishuLarkCredentialsResponse](#feishularkcredentialsresponse)<br>[SlackCredentialsResponse](#slackcredentialsresponse)<br>[DingTalkCredentialsResponse](#dingtalkcredentialsresponse)<br>[MSTeamsCredentialsResponse](#msteamscredentialsresponse)<br>[WeComCredentialsResponse](#wecomcredentialsresponse) |  |  |
+
+#### IMProviderCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMProviderCredentialsUpdateInput | [FeishuCredentialsUpdateInput](#feishucredentialsupdateinput)<br>[LarkCredentialsUpdateInput](#larkcredentialsupdateinput)<br>[SlackCredentialsUpdateInput](#slackcredentialsupdateinput)<br>[DingTalkCredentialsUpdateInput](#dingtalkcredentialsupdateinput)<br>[MSTeamsCredentialsUpdateInput](#msteamscredentialsupdateinput)<br>[WeComCredentialsUpdateInput](#wecomcredentialsupdateinput) |  |  |
+
+#### IMSyncRemovalReason
+
+Stable reason for removing or replacing a current IM binding.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMSyncRemovalReason | string | Stable reason for removing or replacing a current IM binding. |  |
+
+#### IMSyncResultAdded
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContactSummary](#humaninputcontactsummary) | The contact that associated with this sync result. | Yes |
+| entry | [IMDirectoryEntry](#imdirectoryentry) | Provider directory entry observed during the current sync run. | Yes |
+| type | string, <br>**Default:** added |  | No |
+
+#### IMSyncResultFailed
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entry | [IMDirectoryEntry](#imdirectoryentry) | Provider directory entry observed before this reconciliation failure, if available. | No |
+| reason | string | Reason the binding failed to sync. | Yes |
+| type | string, <br>**Default:** failed |  | No |
+
+#### IMSyncResultItem
+
+One paginated reconciliation result entry for the latest sync run.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string | Unique synchronization result identifier. | Yes |
+| result | [IMSyncResultAdded](#imsyncresultadded)<br>[IMSyncResultRemoved](#imsyncresultremoved)<br>[IMSyncResultFailed](#imsyncresultfailed)<br>[IMSyncResultNotMatched](#imsyncresultnotmatched)<br>[IMSyncResultSkipped](#imsyncresultskipped) | Result bucket this entry belongs to. | Yes |
+
+#### IMSyncResultNotMatched
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entry | [IMDirectoryEntry](#imdirectoryentry) | Provider directory entry that could not be matched, if available. | No |
+| type | string, <br>**Default:** not_matched |  | No |
+
+#### IMSyncResultRemoved
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContactSummary](#humaninputcontactsummary) | The contact that associated with this sync result. | Yes |
+| last_known_identity | [IMIdentitySnapshot](#imidentitysnapshot) | Last known persistent IM identity state before its binding was removed. | Yes |
+| reason | [IMSyncRemovalReason](#imsyncremovalreason) | Reason the existing IM binding was removed. | Yes |
+| type | string, <br>**Default:** removed |  | No |
+
+#### IMSyncResultSkipped
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContactSummary](#humaninputcontactsummary) | The contact that associated with this sync result. | Yes |
+| entry | [IMDirectoryEntry](#imdirectoryentry) | Provider directory entry observed before reconciliation was skipped, if available. | No |
+| type | string, <br>**Default:** skipped |  | No |
+
+#### IMSyncResultType
+
+Stable reconciliation bucket for one synchronized directory entry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMSyncResultType | string | Stable reconciliation bucket for one synchronized directory entry. |  |
+
+#### IMSyncRun
+
+One IM sync run snapshot.
+
+The latest-only UI displays ``finished_at`` as the explicit sync time.
+The initiator display name is resolved from the initiating Dify Account.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channel_config_version | integer | Channel configuration revision captured when the sync run was created. | Yes |
+| channel_id | string | Channel identifier captured when the sync run was created. | Yes |
+| error_message | string | Terminal error message. Present only when the sync run status is `failed`. | No |
+| finished_at | integer | Unix timestamp in seconds when the sync run finished. This is the sync time displayed by the latest-only UI and is None while the run is unfinished. | No |
+| id | string | Unique sync run identifier. | Yes |
+| initiator_display_name | string | Current initiating Account name; empty for EE administrators or an unavailable Account. | Yes |
+| provider | [IMProvider](#improvider) | IM provider associated with the sync run. | Yes |
+| result_counts | [IMSyncRunResultCounts](#imsyncrunresultcounts) | Aggregate reconciliation counts for the current run snapshot. | Yes |
+| started_at | integer | Unix timestamp in seconds when the sync run started. | No |
+| status | [IMSyncRunStatus](#imsyncrunstatus) | Current lifecycle state of the sync run. | Yes |
+
+#### IMSyncRunResultCounts
+
+Aggregate result counts for one IM sync run.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| added | integer | Number of entries newly matched and bound. | Yes |
+| failed | integer | Number of entries that failed to reconcile. | Yes |
+| not_matched | integer | Number of entries that could not be matched. | Yes |
+| removed | integer | Number of entries whose prior binding was removed. | Yes |
+| skipped | integer | Number of entries intentionally skipped. | Yes |
+
+#### IMSyncRunStatus
+
+Lifecycle state of a manual IM directory synchronization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IMSyncRunStatus | string | Lifecycle state of a manual IM directory synchronization. |  |
 
 #### IconInfo
 
@@ -25657,6 +27413,12 @@ Knowledge indexing estimate failed: {message}
 | notion_info_list | [ [NotionInfo](#notioninfo) ] |  | No |
 | website_info_list | [WebsiteInfo](#websiteinfo) |  | No |
 
+#### Initiator
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string, <br>**Default:** initiator |  | No |
+
 #### Inner
 
 | Name | Type | Description | Required |
@@ -25752,6 +27514,49 @@ The app is not available in this app library.
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
 | name | string | App name to search for | No |
 
+#### InstantMessageChannelRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channel_id | string |  | Yes |
+| type | string, <br>**Default:** channel |  | No |
+
+#### InstantMessageDeliveryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | No |
+| provider | [InstantMessageProvider](#instantmessageprovider) |  | Yes |
+| recipients | [InstantMessageRecipients](#instantmessagerecipients) |  | No |
+
+#### InstantMessageDeliveryMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [InstantMessageDeliveryConfig](#instantmessagedeliveryconfig) |  | Yes |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string (uuid) |  | No |
+| type | string, <br>**Default:** im |  | No |
+
+#### InstantMessageProvider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InstantMessageProvider | string |  |  |
+
+#### InstantMessageRecipients
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [InstantMessageChannelRecipient](#instantmessagechannelrecipient)<br>[InstantMessageUserRecipient](#instantmessageuserrecipient) ] |  | No |
+
+#### InstantMessageUserRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string, <br>**Default:** user |  | No |
+| user_id | string |  | Yes |
+
 #### InstructionGeneratePayload
 
 | Name | Type | Description | Required |
@@ -25769,6 +27574,15 @@ The app is not available in this app library.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string | Instruction template type | Yes |
+
+#### InteractiveSurfaceDeliveryMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [_InteractiveSurfaceDeliveryConfig](#_interactivesurfacedeliveryconfig) |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string (uuid) |  | No |
+| type | string, <br>**Default:** webapp |  | No |
 
 #### InvalidAccountDeletionCodeError
 
@@ -25823,6 +27637,12 @@ The email address is not valid.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidFormDataError |  |  |  |
+
+#### InvalidInputError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidInputError |  |  |  |
 
 #### InvalidInvitationCodeError
 
@@ -25914,6 +27734,11 @@ This invitation was sent to another account. Please sign in with the invited acc
 
 #### KnowledgeConfig
 
+Document ingestion configuration with a validated indexing technique.
+
+The indexing technique remains an IndexTechniqueType enum after validation.
+JSON serialization preserves its public economy or high_quality value.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data_source | [DataSource](#datasource) | Document data source configuration. | No |
@@ -25922,7 +27747,7 @@ This invitation was sent to another account. Please sign in with the invited acc
 | duplicate | boolean, <br>**Default:** true | Whether duplicate document content is allowed. | No |
 | embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted.<br>*Enum:* `"economy"`, `"high_quality"` | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | Yes |
 | is_multimodal | boolean | Whether the document uses multimodal indexing. | No |
 | name | string | Document name. | No |
 | original_document_id | string | Original document ID for replacement updates. | No |
@@ -26851,9 +28676,11 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | name | string |  | Yes |
 | page_id | string |  | Yes |
+| parent_id | string |  | No |
 | provider_item_id | string |  | Yes |
 | type | string |  | Yes |
 | workspace_id | string |  | Yes |
@@ -26915,6 +28742,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | documents | [ [KnowledgeFSInitialSourcePreviewDocumentResponse](#knowledgefsinitialsourcepreviewdocumentresponse) ] |  | No |
 | files | [ [KnowledgeFSInitialSourcePreviewFileResponse](#knowledgefsinitialsourcepreviewfileresponse) ] |  | No |
 | kind | string, <br>**Available values:** "online_document", "online_drive", "website_crawl" | *Enum:* `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| next_cursor | string |  | No |
 | next_page_parameters | object |  | No |
 | pages | [ [KnowledgeFSInitialSourcePreviewPageResponse](#knowledgefsinitialsourcepreviewpageresponse) ] |  | No |
 
@@ -28128,6 +29956,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -28140,6 +29969,8 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 
@@ -28576,6 +30407,63 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSUpgradeJobStatus | string |  |  |
 
+#### KnowledgeFSUpgradeModelChoice
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSUpgradeModelErrorDetailsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| issues | [ [KnowledgeFSUpgradeModelIssueResponse](#knowledgefsupgrademodelissueresponse) ] |  | Yes |
+
+#### KnowledgeFSUpgradeModelIssueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| field | string, <br>**Available values:** "embedding", "reasoning", "rerank" | *Enum:* `"embedding"`, `"reasoning"`, `"rerank"` | Yes |
+| model | string |  | No |
+| provider | string |  | No |
+| reason | string, <br>**Available values:** "credential-removed", "deprecated", "disabled", "missing", "no-configure", "no-permission", "not_found", "quota-exceeded" | *Enum:* `"credential-removed"`, `"deprecated"`, `"disabled"`, `"missing"`, `"no-configure"`, `"no-permission"`, `"not_found"`, `"quota-exceeded"` | Yes |
+
+#### KnowledgeFSUpgradeModelRecommendationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| source | string, <br>**Available values:** "legacy", "workspace_default" |  | Yes |
+| unavailable_reason | string, <br>**Available values:** "credential-removed", "deprecated", "disabled", "missing", "no-configure", "no-permission", "not_found", "quota-exceeded" |  | No |
+| value | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+
+#### KnowledgeFSUpgradeModelRecommendationsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+| reasoning | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+| rerank | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+
+#### KnowledgeFSUpgradeModelsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+| reasoning | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+| rerank | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+
+#### KnowledgeFSUpgradePreparationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block_reason | [KnowledgeFSUpgradeBlockReason](#knowledgefsupgradeblockreason) |  | No |
+| can_retry | boolean |  | Yes |
+| can_upgrade | boolean |  | Yes |
+| job | [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse) |  | No |
+| models | [KnowledgeFSUpgradeModelRecommendationsResponse](#knowledgefsupgrademodelrecommendationsresponse) |  | No |
+
 #### KnowledgeFSUpgradeRetryResponse
 
 | Name | Type | Description | Required |
@@ -28588,6 +30476,12 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSUpgradeStage | string |  |  |
+
+#### KnowledgeFSUpgradeStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| models | [KnowledgeFSUpgradeModelsPayload](#knowledgefsupgrademodelspayload) |  | No |
 
 #### KnowledgeFSUploadPartPresignPayload
 
@@ -28750,6 +30644,14 @@ Agent Knowledge Base was not found.
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFsSpaceNotFoundError |  | Agent Knowledge Base was not found. |  |
 
+#### KnowledgeFsUpgradeModelsUnavailableError
+
+One or more selected upgrade models are unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsUpgradeModelsUnavailableError |  | One or more selected upgrade models are unavailable. |  |
+
 #### KnowledgeFsUpstreamUnavailableError
 
 Agent Knowledge Base is unavailable.
@@ -28771,6 +30673,26 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
+
+#### LarkCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Feishu or Lark application identifier. | Yes |
+| app_secret | [_RequiredSecret](#_requiredsecret) | Feishu or Lark application secret. | Yes |
+| encrypt_key | [_OptionalSecret](#_optionalsecret) | Optional callback encryption key. | No |
+| provider | string | Lark credential discriminator. | Yes |
+| verification_token | [_OptionalSecret](#_optionalsecret) | Optional callback verification token. | No |
+
+#### LarkCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| app_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| encrypt_key | [_OptionalSecret](#_optionalsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
+| verification_token | [_OptionalSecret](#_optionalsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
 
 #### LatestPluginCache
 
@@ -28796,6 +30718,24 @@ Enum class for large language model mode.
 | endpoint_id | string |  | Yes |
 | name | string |  | Yes |
 | settings | object |  | Yes |
+
+#### LegacyHITLv1NodeData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | [ [DefaultValue](#defaultvalue) ] |  | No |
+| delivery_methods | [ [InteractiveSurfaceDeliveryMethod](#interactivesurfacedeliverymethod)<br>[EmailDeliveryMethod](#emaildeliverymethod)<br>[InstantMessageDeliveryMethod](#instantmessagedeliverymethod) ] |  | No |
+| desc | string |  | No |
+| error_strategy | [ErrorStrategy](#errorstrategy) |  | No |
+| form_content | string |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
+| retry_config | [RetryConfig](#retryconfig) |  | No |
+| timeout | integer, <br>**Default:** 36 |  | No |
+| timeout_unit | [TimeoutUnit](#timeoutunit) |  | No |
+| title | string |  | No |
+| type | [NodeType](#nodetype) |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
+| version | string, <br>**Default:** 1 |  | No |
 
 #### LicenseLimitationModel
 
@@ -28845,6 +30785,94 @@ Unable to create account because the licensed seats limit was exceeded
 | ---- | ---- | ----------- | -------- |
 | limit | integer |  | Yes |
 | size | integer |  | Yes |
+
+#### ListChannelProvidersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_providers | [ [ChannelProvider](#channelprovider) ] |  | Yes |
+| im_providers | [ [ChannelProvider](#channelprovider) ] |  | Yes |
+
+#### ListChannelsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channels | [ [ChannelSummary](#channelsummary) ] |  | Yes |
+
+#### ListContactOptionsResponse
+
+Paginated editor-safe contact picker response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ContactOption](#contactoption) ] | Selectable contacts returned for the current page. | Yes |
+| limit | integer | Page size used for the current query. | Yes |
+| page | integer | Current 1-based page number. | Yes |
+| total | integer | Total number of candidates matching the current query. | Yes |
+
+#### ListContactsResponse
+
+Paginated response body for contact list APIs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [HumanInputContact](#humaninputcontact) ] | Contacts returned for the current page. | Yes |
+| limit | integer | Page size used for the current query. | Yes |
+| page | integer | Current 1-based page number. | Yes |
+| total | integer | Total number of candidates matching the current query. | Yes |
+
+#### ListIMIdentitiesQuery
+
+Query params for searching synced IM identities.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Free-text search against identity display name, email, or provider user ID. | No |
+| limit | integer, <br>**Default:** 20 | Maximum number of records returned per page. | No |
+| page | integer, <br>**Default:** 1 | 1-based page number. | No |
+
+#### ListIMIdentitiesResponse
+
+Paginated response body for synced IM identity search.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [IMIdentity](#imidentity) ] | IM identities returned for the current page. | Yes |
+| limit | integer | Page size used for the current query. | Yes |
+| page | integer | Current 1-based page number. | Yes |
+| total | integer | Total number of candidates matching the current query. | Yes |
+
+#### ListLatestIMSyncRunResultsQuery
+
+Query params for reading paginated latest-run results.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 | Maximum number of records returned per page. | No |
+| page | integer, <br>**Default:** 1 | 1-based page number. | No |
+| result | [IMSyncResultType](#imsyncresulttype) | Required result bucket to paginate from the latest sync run. There is no `all` bucket or unfiltered results mode. | Yes |
+
+#### ListLatestIMSyncRunResultsResponse
+
+Page-based latest-run results without cursor state or a repeated run summary.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [IMSyncResultItem](#imsyncresultitem) ] | Result entries returned with page, limit, and total metadata for the selected bucket. | Yes |
+| limit | integer | Page size used for the current query. | Yes |
+| page | integer | Current 1-based page number. | Yes |
+| total | integer | Total number of candidates matching the current query. | Yes |
+
+#### ListOrganizationCandidatesResponse
+
+Paginated response body for organization candidate search.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [OrganizationCandidate](#organizationcandidate) ] | Organization member candidates returned for the current page. | Yes |
+| limit | integer | Page size used for the current query. | Yes |
+| page | integer | Current 1-based page number. | Yes |
+| total | integer | Total number of candidates matching the current query. | Yes |
 
 #### LoadBalancingCredentialPayload
 
@@ -28970,6 +30998,42 @@ Unable to create account because the licensed seats limit was exceeded
 | id | string (uuid) | Server ID | Yes |
 | parameters | object | Server parameters configuration | Yes |
 | status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
+
+#### MSTeamsCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string | Microsoft Teams application client identifier. | Yes |
+| client_secret | [_RequiredSecret](#_requiredsecret) | Microsoft Teams application client secret. | Yes |
+| provider | string | Microsoft Teams credential discriminator. | Yes |
+| tenant_id | string | Microsoft Entra tenant identifier. | Yes |
+
+#### MSTeamsCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_secret | [Redacted](#redacted) |  | Yes |
+| provider | string |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### MSTeamsCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | [_UUIDString](#_uuidstring)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| client_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
+| tenant_id | [_UUIDString](#_uuidstring)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+
+#### MarkdownFragment
+
+One source-ordered Markdown fragment in a resolved form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | No |
 
 #### MaxKeysExceededError
 
@@ -29202,6 +31266,29 @@ The message was not found for this account and app.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | MessageNotFoundError |  | The message was not found for this account and app. |  |
+
+#### MessageTemplateConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| subject | string |  | Yes |
+
+#### MessageTemplateTestRequest
+
+Request body for sending one message-template test notification.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channel | [DebugChannel](#debugchannel) | Target debug delivery channel used for the test send. | Yes |
+| inputs | object | Variable values used when rendering the message template preview. | No |
+
+#### MessageTemplateTestResponse
+
+Response body returned after one message-template test send.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 
 #### Meta
 
@@ -29507,6 +31594,14 @@ Need to add ids.
 | ---- | ---- | ----------- | -------- |
 | NeedAddIdsError |  | Need to add ids. |  |
 
+#### NetworkAccessForbiddenError
+
+Network access groups are not available for this workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessForbiddenError |  | Network access groups are not available for this workspace. |  |
+
 #### NetworkAccessGroupAppResponse
 
 | Name | Type | Description | Required |
@@ -29518,6 +31613,14 @@ Need to add ids.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+
+#### NetworkAccessGroupBoundError
+
+This IP policy is still used by one or more apps.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessGroupBoundError |  | This IP policy is still used by one or more apps. |  |
 
 #### NetworkAccessGroupCreatePayload
 
@@ -29561,6 +31664,22 @@ Need to add ids.
 | ---- | ---- | ----------- | -------- |
 | group | [NetworkAccessGroupResponse](#networkaccessgroupresponse) |  | Yes |
 
+#### NetworkAccessGroupNameConflictError
+
+An IP policy with this name already exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessGroupNameConflictError |  | An IP policy with this name already exists. |  |
+
+#### NetworkAccessGroupNotFoundError
+
+Network access group was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessGroupNotFoundError |  | Network access group was not found. |  |
+
 #### NetworkAccessGroupResponse
 
 | Name | Type | Description | Required |
@@ -29587,6 +31706,54 @@ Need to add ids.
 | description | string |  | No |
 | expected_version | integer |  | Yes |
 | name | string |  | Yes |
+
+#### NetworkAccessInvalidInputError
+
+Invalid network access group request.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessInvalidInputError |  | Invalid network access group request. |  |
+
+#### NetworkAccessNotEntitledError
+
+Network access groups are not available for this workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessNotEntitledError |  | Network access groups are not available for this workspace. |  |
+
+#### NetworkAccessRoleDeniedError
+
+Your workspace role does not allow this network access operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessRoleDeniedError |  | Your workspace role does not allow this network access operation. |  |
+
+#### NetworkAccessUnsupportedAccessPointsError
+
+Some access points are not supported for this app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessUnsupportedAccessPointsError |  | Some access points are not supported for this app. |  |
+
+#### NetworkAccessUnsupportedAppModeError
+
+Network access control is not supported for this app mode.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessUnsupportedAppModeError |  | Network access control is not supported for this app mode. |  |
+
+#### NetworkAccessVersionConflictError
+
+The network access resource changed. Refresh it and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessVersionConflictError |  | The network access resource changed. Refresh it and try again. |  |
 
 #### NewAppResponse
 
@@ -29624,6 +31791,63 @@ Please upload your file.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
+
+#### NodeDataMigrationBlocker
+
+Stable node-scoped reason why the backend cannot produce lossless v2 data.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "configured-disabled-method", "conflicting-email-templates", "invalid-default-value", "invalid-email", "invalid-email-configuration", "missing-recipients", "unresolved-member", "unsupported-delivery-method", "unsupported-version" | Machine-readable migration blocker code.<br>*Enum:* `"configured-disabled-method"`, `"conflicting-email-templates"`, `"invalid-default-value"`, `"invalid-email"`, `"invalid-email-configuration"`, `"missing-recipients"`, `"unresolved-member"`, `"unsupported-delivery-method"`, `"unsupported-version"` | Yes |
+| method_id | string | Legacy delivery method related to the blocker. | No |
+| node_id | string | The identifier of the node that failed migration. | Yes |
+| node_title | string | The node title used for actionable frontend feedback. | Yes |
+| value | string | Safe legacy value related to the blocker. | No |
+
+#### NodeDataMigrationFailureResponse
+
+Whole-batch failure response without partial converted node data.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| blockers | [ [NodeDataMigrationBlocker](#nodedatamigrationblocker) ] | Node-scoped blockers that caused the whole batch to fail. | Yes |
+| code | string, <br>**Default:** hitl_node_data_migration_failure |  | No |
+| message | string | overall error messages | Yes |
+| status | integer, <br>**Default:** 400 |  | No |
+
+#### NodeDataMigrationInput
+
+One legacy node submitted through the frontend migration adapter boundary.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_data | [LegacyHITLv1NodeData](#legacyhitlv1nodedata) | The legacy Human Input node data to migrate. | Yes |
+| node_id | string | The identifier of node to migrate. Used to associate between request and response | Yes |
+
+#### NodeDataMigrationPayload
+
+Complete legacy-node batch submitted for one migration attempt.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| nodes | [ [NodeDataMigrationInput](#nodedatamigrationinput) ] |  | Yes |
+
+#### NodeDataMigrationResponse
+
+Successful all-node conversion response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [NodeDataMigrationResult](#nodedatamigrationresult) ] |  | Yes |
+
+#### NodeDataMigrationResult
+
+One converted node returned with its frontend correlation identifier.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_data | [HumanInputNodeData](#humaninputnodedata) | The complete converted Human Input v2 node data. | Yes |
+| node_id | string | The identifier of the migrated node. | Yes |
 
 #### NodeIdQuery
 
@@ -29699,6 +31923,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | NodeStatus | string | Coarse node-level status used by Inspector to pick a banner. |  |
 
+#### NodeType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeType | string |  |  |
+
 #### NormalizedEmailAlreadyInUseError
 
 An account with an equivalent email address already exists.
@@ -29752,9 +31982,9 @@ Only support workflow app.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | body | string |  | Yes |
-| frequency | string |  | No |
+| frequency | string, <br>**Available values:** "every_page_load", "once" | *Enum:* `"every_page_load"`, `"once"` | Yes |
 | lang | string |  | Yes |
-| notification_id | string |  | No |
+| notification_id | string |  | Yes |
 | subtitle | string |  | Yes |
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
@@ -29975,12 +32205,40 @@ OAuth schema
 | redirect_uri | string |  | No |
 | refresh_token | string |  | No |
 
+#### OnetimeEmail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| type | string, <br>**Default:** onetime_email |  | No |
+
 #### Option
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
+
+#### OrganizationCandidate
+
+One organization member candidate that may become a platform contact.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string | Signed avatar URL if one is available. | No |
+| email | string | Primary organization email used for matching. | Yes |
+| id | string | Organization candidate identifier. | Yes |
+| name | string | Display name shown in the candidate list. | Yes |
+
+#### OrganizationCandidatesQuery
+
+Query params for searching organization member candidates.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Free-text search against candidate name or email. | No |
+| limit | integer, <br>**Default:** 20 | Maximum number of records returned per page. | No |
+| page | integer, <br>**Default:** 1 | 1-based page number. | No |
 
 #### OutputErrorStrategy
 
@@ -30065,6 +32323,24 @@ Too many owner transfer emails have been sent. Please try again in {minutes} min
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
+#### PaidPlanRequiredError
+
+This feature requires a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PaidPlanRequiredError |  | This feature requires a paid plan. |  |
+
+#### ParagraphInput
+
+Resolved multiline text input.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### ParagraphInputConfig
 
 Form input definition.
@@ -30111,6 +32387,7 @@ Enum class for parameter type.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
@@ -30476,6 +32753,155 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
+
+#### PersonalAccessTokenCandidateQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | integer |  | No |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+
+#### PersonalAccessTokenCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration | string, <br>**Available values:** "180_days", "30_days", "365_days", "90_days", "never", <br>**Default:** 90_days | *Enum:* `"180_days"`, `"30_days"`, `"365_days"`, `"90_days"`, `"never"` | No |
+| name | string |  | Yes |
+| resource_scope | [PersonalAccessTokenResourceScopePayload](#personalaccesstokenresourcescopepayload) |  | No |
+| workspace_scope | [PersonalAccessTokenWorkspaceScopePayload](#personalaccesstokenworkspacescopepayload) |  | No |
+
+#### PersonalAccessTokenCreatedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| last_used_at | string |  | Yes |
+| name | string |  | Yes |
+| resource_count | integer |  | Yes |
+| resource_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+| secret | string |  | Yes |
+| secret_last_four | string |  | Yes |
+| status | string, <br>**Available values:** "access_issue", "active", "expired" | *Enum:* `"access_issue"`, `"active"`, `"expired"` | Yes |
+| unavailable_count | integer |  | Yes |
+| version | integer |  | Yes |
+| workspace_count | integer |  | Yes |
+| workspace_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+
+#### PersonalAccessTokenDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resources | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | Yes |
+| token | [PersonalAccessTokenResponse](#personalaccesstokenresponse) |  | Yes |
+| workspaces | [ [PersonalAccessTokenWorkspaceResponse](#personalaccesstokenworkspaceresponse) ] |  | Yes |
+
+#### PersonalAccessTokenListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### PersonalAccessTokenListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PersonalAccessTokenResponse](#personalaccesstokenresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### PersonalAccessTokenResourceCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | integer |  | Yes |
+
+#### PersonalAccessTokenResourcePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resource_id | string (uuid) |  | Yes |
+| resource_type | string, <br>**Available values:** "app", "app_deployment", "dataset" | *Enum:* `"app"`, `"app_deployment"`, `"dataset"` | Yes |
+
+#### PersonalAccessTokenResourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_deployments | [ [PersonalAccessTokenResourceResponse](#personalaccesstokenresourceresponse) ] |  | No |
+| available | boolean |  | Yes |
+| display_name | string |  | Yes |
+| parent_app_id | string |  | No |
+| reason | string |  | Yes |
+| resource_id | string |  | Yes |
+| resource_type | string, <br>**Available values:** "app", "app_deployment", "dataset" | *Enum:* `"app"`, `"app_deployment"`, `"dataset"` | Yes |
+| workspace_id | string |  | Yes |
+| workspace_name | string |  | Yes |
+
+#### PersonalAccessTokenResourceScopePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "all", "none", "selected", <br>**Default:** all | *Enum:* `"all"`, `"none"`, `"selected"` | No |
+| resources | [ [PersonalAccessTokenResourcePayload](#personalaccesstokenresourcepayload) ] |  | No |
+
+#### PersonalAccessTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| last_used_at | string |  | Yes |
+| name | string |  | Yes |
+| resource_count | integer |  | Yes |
+| resource_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+| secret_last_four | string |  | Yes |
+| status | string, <br>**Available values:** "access_issue", "active", "expired" | *Enum:* `"access_issue"`, `"active"`, `"expired"` | Yes |
+| unavailable_count | integer |  | Yes |
+| version | integer |  | Yes |
+| workspace_count | integer |  | Yes |
+| workspace_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+
+#### PersonalAccessTokenUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| resource_scope | [PersonalAccessTokenResourceScopePayload](#personalaccesstokenresourcescopepayload) |  | No |
+| version | integer |  | Yes |
+| workspace_scope | [PersonalAccessTokenWorkspaceScopePayload](#personalaccesstokenworkspacescopepayload) |  | No |
+
+#### PersonalAccessTokenWorkspaceCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PersonalAccessTokenWorkspaceResponse](#personalaccesstokenworkspaceresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | integer |  | Yes |
+
+#### PersonalAccessTokenWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| display_name | string |  | Yes |
+| reason | string |  | Yes |
+| role | string |  | Yes |
+| workspace_id | string |  | Yes |
+
+#### PersonalAccessTokenWorkspaceScopePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "all", "none", "selected", <br>**Default:** all | *Enum:* `"all"`, `"none"`, `"selected"` | No |
+| workspace_ids | [ string (uuid) ] |  | No |
 
 #### PipelineDataset
 
@@ -31720,6 +34146,14 @@ Recommended app not found.
 | ---- | ---- | ----------- | -------- |
 | RecursiveJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ [RecursiveJSONValue](#recursivejsonvalue) ] |  |  |
 
+#### Redacted
+
+A configured credential whose stored value is omitted.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string, <br>**Default:** redacted |  | No |
+
 #### RedirectResponse
 
 | Name | Type | Description | Required |
@@ -31813,6 +34247,22 @@ The remote file URL is not allowed.
 | ---- | ---- | ----------- | -------- |
 | RemoteFileUrlBlockedError |  | The remote file URL is not allowed. |  |
 
+#### RemoveContactsRequest
+
+Request body for batch-removing platform or external contacts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact_ids | [ string ] | Contact identifiers selected for removal from the contact directory surface. | Yes |
+
+#### RemoveContactsResponse
+
+Response body returned after batch-removing contacts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| removed_contact_ids | [ string ] | Contact identifiers removed by the current operation. | Yes |
+
 #### ReplaceUserAccessPolicies
 
 | Name | Type | Description | Required |
@@ -31848,6 +34298,46 @@ The remote file URL is not allowed.
 | ---- | ---- | ----------- | -------- |
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
+
+#### ResendCredentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | [_RequiredSecret](#_requiredsecret) | Resend API key. | Yes |
+| provider | string |  | No |
+
+#### ResendCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | [Redacted](#redacted) |  | Yes |
+| provider | string |  | Yes |
+
+#### ResendCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
+
+#### ResetContactIMOverrideResponse
+
+Response body returned after resetting one contact IM override.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContact](#humaninputcontact) | Contact snapshot after the override is cleared. | Yes |
+
+#### ResolvedForm
+
+Immutable authoritative presentation snapshot for one v2 form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [UserAction](#useraction) ] |  | Yes |
+| legacy_form_content | string |  | Yes |
+| parts | [ [FormPart](#formpart) ] |  | Yes |
+| title | string |  | Yes |
 
 #### ResourceAccessTokenCreatePayload
 
@@ -32056,6 +34546,16 @@ The remote file URL is not allowed.
 | summary | string |  | No |
 | title | string |  | No |
 | word_count | integer |  | No |
+
+#### RetryConfig
+
+node retry config
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_retries | integer |  | No |
+| retry_enabled | boolean |  | No |
+| retry_interval | integer |  | No |
 
 #### RoleAlreadyAssignedError
 
@@ -32348,6 +34848,17 @@ The Roster Agent package exceeds the size limit.
 | separator | string, <br>**Default:**
  | Custom separator for splitting text. | No |
 
+#### SelectInput
+
+Resolved single-choice input with immutable concrete options.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### SelectInputConfig
 
 | Name | Type | Description | Required |
@@ -32355,6 +34866,22 @@ The Roster Agent package exceeds the size limit.
 | option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### SetContactIMOverrideRequest
+
+Request body for setting one workspace-scoped IM override.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identity_id | string | Synced IM identity identifier selected as the workspace override. | Yes |
+
+#### SetContactIMOverrideResponse
+
+Response body returned after setting one contact IM override.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| contact | [HumanInputContact](#humaninputcontact) | Contact snapshot after the override is applied. | Yes |
 
 #### ShallowJSONValue
 
@@ -32862,6 +35389,39 @@ How a draft file's content is stored.
 | publish_note | string |  | No |
 | version_name | string |  | No |
 
+#### SlackCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_token | [_OptionalSecret](#_optionalsecret) | Optional Slack app-level token required only for Socket Mode. | No |
+| bot_token | [_RequiredSecret](#_requiredsecret) | Slack bot API token. | Yes |
+| client_id | string | Slack OAuth client identifier. | Yes |
+| client_secret | [_RequiredSecret](#_requiredsecret) | Slack OAuth client secret. | Yes |
+| provider | string | Slack credential discriminator. | Yes |
+| signing_secret | [_RequiredSecret](#_requiredsecret) | Slack callback signing secret. | Yes |
+
+#### SlackCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_token | [Redacted](#redacted) |  | Yes |
+| bot_token | [Redacted](#redacted) |  | Yes |
+| client_id | string |  | Yes |
+| client_secret | [Redacted](#redacted) |  | Yes |
+| provider | string |  | Yes |
+| signing_secret | [Redacted](#redacted) |  | Yes |
+
+#### SlackCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_token | [_OptionalSecret](#_optionalsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| bot_token | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| client_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| client_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
+| signing_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
@@ -33213,7 +35773,7 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interval | string |  | Yes |
+| interval | string, <br>**Available values:** "", "month", "year" | *Enum:* `""`, `"month"`, `"year"` | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 
 #### SubscriptionQuery
@@ -33318,7 +35878,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
@@ -33544,6 +36103,22 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
+
+#### TimeoutUnit
+
+Timeout unit for form expiration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TimeoutUnit | string | Timeout unit for form expiration. |  |
+
+#### TimeoutUnit_Strict_strict_False_
+
+Timeout unit for form expiration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TimeoutUnit_Strict_strict_False_ | string | Timeout unit for form expiration. |  |
 
 #### TokensPerSecondStatisticItem
 
@@ -33782,13 +36357,14 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
+| configured_secrets | [ string ] | Secret fields that hold a value; submit them empty to keep that value | No |
 | created_at | string |  | No |
 | error | string |  | No |
 | has_not_configured | boolean |  | No |
 | id | string |  | No |
 | is_active | boolean |  | No |
 | result | string |  | No |
-| tracing_config | object |  | No |
+| tracing_config | object | Non-secret fields; secrets are write-only and never returned | No |
 | tracing_provider | string |  | No |
 | updated_at | string |  | No |
 
@@ -34250,6 +36826,38 @@ the app is not allowed to be trial.
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
 
+#### TriggerOauthClientChangedError
+
+The trigger OAuth client configuration changed. Reload it before saving again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientChangedError |  | The trigger OAuth client configuration changed. Reload it before saving again. |  |
+
+#### TriggerOauthClientConfigInvalidError
+
+The stored trigger OAuth client configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
+
+#### TriggerOauthContextInvalidError
+
+The trigger OAuth context is missing, expired or invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthContextInvalidError |  | The trigger OAuth context is missing, expired or invalid. |  |
+
+#### TriggerOauthProviderError
+
+The trigger provider could not complete OAuth authorization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthProviderError |  | The trigger provider could not complete OAuth authorization. |  |
+
 #### TriggerProviderApiEntity
 
 | Name | Type | Description | Required |
@@ -34358,6 +36966,54 @@ The identity of the trigger provider
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | No |
 
+#### TriggerSubscriptionChangedError
+
+The trigger subscription changed. Reload it before trying again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionChangedError |  | The trigger subscription changed. Reload it before trying again. |  |
+
+#### TriggerSubscriptionInvalidError
+
+The trigger subscription configuration or credentials are invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionInvalidError |  | The trigger subscription configuration or credentials are invalid. |  |
+
+#### TriggerSubscriptionLimitReachedError
+
+The maximum number of trigger subscriptions for this provider has been reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionLimitReachedError |  | The maximum number of trigger subscriptions for this provider has been reached. |  |
+
+#### TriggerSubscriptionNameConflictError
+
+A trigger subscription with this name already exists for the provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionNameConflictError |  | A trigger subscription with this name already exists for the provider. |  |
+
+#### TriggerSubscriptionNotFoundError
+
+The trigger subscription does not exist in this workspace and provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionNotFoundError |  | The trigger subscription does not exist in this workspace and provider. |  |
+
+#### TriggerSubscriptionProviderError
+
+The trigger provider could not complete the subscription operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionProviderError |  | The trigger provider could not complete the subscription operation. |  |
+
 #### TriggerSubscriptionVerifyPayload
 
 | Name | Type | Description | Required |
@@ -34394,6 +37050,14 @@ Model class for provider unadded model configuration.
 | ---- | ---- | ----------- | -------- |
 | model | string |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
+
+#### UnchangedInput
+
+Retain the addressed saved field; valid only for updates and saved tests.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string |  | Yes |
 
 #### UnsupportedAudioTypeError
 
@@ -34500,6 +37164,16 @@ Payload for updating a snippet.
 | count | integer |  | Yes |
 | is_using | boolean |  | Yes |
 
+#### UserAction
+
+Resolved action values required for presentation and submission validation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
 #### UserActionConfig
 
 User action configuration.
@@ -34554,6 +37228,33 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### WeComCredentialsInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string | WeCom application agent identifier. | Yes |
+| corp_id | string | WeCom corporation identifier. | Yes |
+| provider | string | WeCom credential discriminator. | Yes |
+| secret | [_RequiredSecret](#_requiredsecret) | WeCom application secret. | Yes |
+
+#### WeComCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| corp_id | string |  | Yes |
+| provider | string |  | Yes |
+| secret | [Redacted](#redacted) |  | Yes |
+
+#### WeComCredentialsUpdateInput
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| corp_id | [_Identifier](#_identifier)<br>[UnchangedInput](#unchangedinput) |  | Yes |
+| provider | string |  | Yes |
+| secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
 
 #### WebAppAccessMode
 
@@ -35326,6 +38027,12 @@ tenant's default model. The underlying generator never raises — an empty
 | ---- | ---- | ----------- | -------- |
 | WorkflowNodeJobMode | string |  |  |
 
+#### WorkflowNotActiveError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowNotActiveError |  |  |  |
+
 #### WorkflowOnlineUser
 
 | Name | Type | Description | Required |
@@ -35997,12 +38704,29 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | account_ids | [ string ] |  | No |
 
+#### _Identifier
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| _Identifier | string |  |  |
+
+#### _InteractiveSurfaceDeliveryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
 #### _MembersInRoleList
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [MembersInRole](#membersinrole) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### _OptionalSecret
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| _OptionalSecret | string |  |  |
 
 #### _RBACRoleList
 
@@ -36023,6 +38747,12 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | role_ids | [ string ], <br>**Default:**  |  | No |
+
+#### _RequiredSecret
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| _RequiredSecret | string |  |  |
 
 #### _ResourceAccessScopeRequest
 
@@ -36048,6 +38778,18 @@ Accepts the payload sent by the Create/Edit Role dialog.
 | description | string |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ], <br>**Default:**  |  | No |
+
+#### _SenderName
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| _SenderName | string |  |  |
+
+#### _UUIDString
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| _UUIDString | string |  |  |
 
 ## FastOpenAPI Preview (OpenAPI 3.1)
 

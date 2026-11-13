@@ -15,6 +15,7 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import { Popup } from './popup'
 
@@ -28,7 +29,9 @@ const Publisher = () => {
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const queryClient = useQueryClient()
   const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
     useState(false)
@@ -83,8 +86,11 @@ const Publisher = () => {
             input: { query: { type: 'customized' } },
           }),
         })
-      } catch {
-        toast.error(t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }))
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }),
+        )
       } finally {
         setIsPublishingAsCustomizedPipeline(false)
         hidePublishAsKnowledgePipelineModal()

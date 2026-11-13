@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react'
-import type {
-  EmailConfig,
-  FormInputItem,
-  ParagraphFormInput,
-  SelectFormInput,
-} from '../../../types'
+import type { SelectFormInput } from '../../../shared/types'
+import type { EmailConfig, FormInputItem, ParagraphFormInput } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -55,7 +51,9 @@ const renderWithProviders = (ui: ReactNode) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+      >
         <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
       </EditorResourceScope>
     </QueryClientProvider>,
