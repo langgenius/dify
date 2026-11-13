@@ -871,7 +871,15 @@ class ToolManager:
 
         try:
             credentials = _credentials_adapter.validate_json(provider_obj.credentials_str) or {}
-        except Exception:
+        except Exception as error:
+            # Do not log the payload: it contains credential material. The provider
+            # and exception type are enough to diagnose a broken stored configuration.
+            logger.warning(
+                "Could not parse credentials for API tool provider %s (tenant %s): %s; using empty credentials",
+                provider_name,
+                tenant_id,
+                type(error).__name__,
+            )
             credentials = {}
 
         # package tool provider controller
