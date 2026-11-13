@@ -137,7 +137,6 @@ project-excludes = [
   "core/tools/builtin_tool/test_provider.py",
   "core/tools/builtin_tool/providers/time/tools/test_localtime_to_timestamp.py",
   "core/tools/mcp_tool/test_tool.py",
-  "core/tools/test_tool_engine.py",
   "core/tools/test_tool_manager.py",
   "core/tools/utils/test_message_transformer.py",
   "core/tools/utils/dataset_retriever/test_dataset_multi_retriever_tool.py",
