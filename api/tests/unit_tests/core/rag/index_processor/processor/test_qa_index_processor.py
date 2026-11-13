@@ -150,19 +150,15 @@ class TestQAIndexProcessor:
     ) -> None:
         session = sqlite_session
         document = Document(page_content="   ", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
-        splitter = Mock()
-        splitter.split_documents.return_value = [Document(page_content="   ", metadata={})]
-
         with (
             patch(
                 "core.rag.index_processor.processor.qa_index_processor.Rule.model_validate", return_value=self._rules()
             ),
-            patch.object(processor, "_get_splitter", return_value=splitter),
             patch("core.rag.index_processor.processor.qa_index_processor.CleanProcessor.clean", return_value="   "),
             patch.object(processor, "_format_qa_document") as mock_format,
             patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
         ):
-            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
+            mock_current_app._get_current_object.return_value = fake_flask_app
             result = processor.transform(
                 [document],
                 process_rule=process_rule,
@@ -184,11 +180,10 @@ class TestQAIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.qa_index_processor.Rule.model_validate", return_value=self._rules()
             ),
-            patch.object(processor, "_get_splitter", return_value=Mock()),
             patch.object(processor, "_format_qa_document") as mock_format,
             patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
         ):
-            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
+            mock_current_app._get_current_object.return_value = fake_flask_app
             result = processor.transform(
                 [],
                 process_rule=process_rule,
