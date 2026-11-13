@@ -85,7 +85,20 @@ class InstalledConnectionStore(Protocol):
         graph: InstalledConnectionGraph,
         configuration: InstalledConnectionConfiguration,
         conversation_id: str | None,
-    ) -> None: ...
+    ) -> None:
+        """Atomically replace selections for the admitted member/session scope.
+
+        Require a previously read graph and validate the current tenant, account,
+        membership, installation, publication, conversation ownership, and selected
+        credential visibility before writing. Protect mutable identity/publication
+        facts with shared locks through commit; the configuration owner unique key
+        arbitrates first creation and complete replacements serialize per scope.
+        Independent scopes must not acquire mutually exclusive owner-chain locks.
+        Preserve last-writer-wins semantics, never persist secrets or grant access,
+        and roll back on identity, revision, conversation, or configuration errors.
+        None selects the member's app defaults, not a conversation.
+        """
+        ...
 
 
 class InstalledAppConnectionService:

@@ -442,6 +442,8 @@ def test_activation_starts_at_workspace_commit_and_retries_reuse_membership(
             owner = session.get(Account, account_id)
             assert owner is not None
             assert owner.first_workspace_created_at == workspace.created_at
+            assert owner.initialized_at == workspace.created_at
+            assert owner.status == AccountStatus.ACTIVE
         emitted.append(workspace.id)
 
     signal.connect(observe)
@@ -457,9 +459,31 @@ def test_activation_starts_at_workspace_commit_and_retries_reuse_membership(
     with sqlite_session_factory() as session:
         owner = session.get(Account, account_id)
         assert owner is not None
-        assert owner.initialized_at is None
-        assert owner.status == AccountStatus.UNINITIALIZED
+        assert owner.initialized_at == owner.first_workspace_created_at
+        assert owner.status == AccountStatus.ACTIVE
         assert session.scalars(select(Tenant.id)).all() == [result.workspace_id]
+
+
+@pytest.mark.parametrize("status", [AccountStatus.PENDING, AccountStatus.BANNED, AccountStatus.CLOSED])
+def test_activation_keeps_non_uninitialized_account_lifecycles(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    status: AccountStatus,
+) -> None:
+    service, _ = gateway
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Existing", email="existing@example.com", status=status)
+        session.add(account)
+        account_id = account.id
+
+    result = service.activate(account_id, name="First workspace")
+
+    assert result.workspace_id is not None
+    with sqlite_session_factory() as session:
+        owner = session.get(Account, account_id)
+        assert owner is not None
+        assert owner.status == status
+        assert owner.initialized_at is None
 
 
 def test_invited_membership_does_not_create_a_personal_workspace_or_start_activation(
