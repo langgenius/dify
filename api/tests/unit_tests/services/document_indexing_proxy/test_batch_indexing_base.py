@@ -275,10 +275,10 @@ class TestSendToTenantQueue:
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
         mock_queue.try_set_task_waiting_time.assert_called_once()
         if claimed:
-            cast(MagicMock, task_func.delay).assert_called_once()
+            task_func.delay.assert_called_once()
             mock_queue.push_tasks.assert_not_called()
         else:
-            cast(MagicMock, task_func.delay).assert_not_called()
+            task_func.delay.assert_not_called()
             mock_queue.push_tasks.assert_called_once()
 
 
