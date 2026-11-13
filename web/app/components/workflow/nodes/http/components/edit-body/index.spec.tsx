@@ -1,5 +1,5 @@
 import type { Body, BodyPayload } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -28,6 +28,35 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
       onChange={(event) => onChange(event.target.value)}
     />
   ),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
+  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+    <input
+      aria-label="body-value"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: ({
+    onChange,
+    filterVar,
+  }: {
+    onChange: (value: string[]) => void
+    filterVar?: (payload: { type: VarType }) => boolean
+  }) => {
+    filterVar?.({ type: VarType.file })
+    filterVar?.({ type: VarType.string })
+
+    return (
+      <button type="button" onClick={() => onChange(['start-node', 'uploaded_file'])}>
+        pick-file
+      </button>
+    )
+  },
 }))
 
 const emptyRow = { type: BodyPayloadValueType.text, key: '', value: '' }
@@ -98,5 +127,33 @@ describe('HTTP body row editing', () => {
     expect(rows).toHaveLength(3)
     expect(rows[0]).toMatchObject({ key: 'name', value: '1' })
     expect(rows[1]).toMatchObject({ key: 'page', value: '2' })
+  })
+})
+
+describe('HTTP body type switching', () => {
+  it('should keep the JSON text typed after switching the body type', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<HttpBodySettings onSave={onSave} />)
+
+    await user.click(screen.getByText('JSON'))
+    fireEvent.change(screen.getByLabelText('body-value'), { target: { value: '{"a":1}' } })
+
+    const body = onSave.mock.lastCall![0] as Body
+    expect(body.type).toBe(BodyType.json)
+    expect(bodyRows(body)[0]).toMatchObject({ value: '{"a":1}' })
+  })
+
+  it('should record the file variable selected for a binary body', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<HttpBodySettings onSave={onSave} />)
+
+    await user.click(screen.getByText('binary'))
+    await user.click(screen.getByRole('button', { name: 'pick-file' }))
+
+    const body = onSave.mock.lastCall![0] as Body
+    expect(body.type).toBe(BodyType.binary)
+    expect(bodyRows(body)[0]).toMatchObject({ file: ['start-node', 'uploaded_file'] })
   })
 })
