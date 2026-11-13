@@ -238,7 +238,7 @@ class TestTaskEnqueuing:
     def test_running_tenant_task_queues_followup_work(
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
-        mock_redis.get.return_value = b"1"
+        mock_redis.set.return_value = False
         with (
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
@@ -246,6 +246,12 @@ class TestTaskEnqueuing:
             features.billing.subscription.plan = CloudPlan.PROFESSIONAL
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
+        mock_redis.set.assert_called_once_with(
+            f"tenant_document_indexing_task:{tenant_id}",
+            1,
+            ex=3600,
+            nx=True,
+        )
         mock_redis.lpush.assert_called_once()
         task.delay.assert_not_called()
 
