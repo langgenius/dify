@@ -34,6 +34,30 @@ from services.knowledge.summaries.adapters import SummaryIndexAdapter
 logger = logging.getLogger(__name__)
 
 
+def _clean_block(value: str) -> str:
+    """Trim a captured QA half and collapse its whitespace.
+
+    The emphasis markers that models put around the *labels* (``**Q1:**``)
+    are already consumed by the surrounding pattern, so anything left here
+    belongs to the question or the answer itself. Stripping ``*`` from it
+    would drop the answer's own Markdown emphasis and leave the remaining
+    markers unbalanced.
+
+    Line breaks are kept as single newlines so a multi-line answer keeps
+    its structure.
+
+    Args:
+        value (`str`):
+            The captured question or answer text.
+
+    Returns:
+        `str`:
+            The trimmed text, with runs of whitespace collapsed to a
+            single newline.
+    """
+    return re.sub(r"\n\s*", "\n", value.strip())
+
+
 class QAFormatPreviewDict(TypedDict):
     chunk_structure: str
     qa_preview: list[dict[str, Any]]
@@ -279,7 +303,38 @@ class QAIndexProcessor(BaseIndexProcessor):
             all_qa_documents.extend(format_documents)
 
     def _format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)"
+        """Parse ``Q<n>:``/``A<n>:`` pairs out of generated QA text.
+
+        ``GENERATOR_QA_PROMPT`` asks the model for ``Q1:\\nA1:\\nQ2:\\nA2:``,
+        so both halves may continue on the following lines and a long
+        question routinely wraps. A pattern that cannot cross a line break
+        reads such a question as empty and the pair is discarded by the
+        filter below, silently losing generated content.
+
+        A new pair starts only at a line that begins with ``Q<n>:``, so an
+        answer that happens to mention ``Q2:`` mid-sentence keeps its text
+        instead of being cut there.
+
+        Args:
+            text (`str`):
+                The generated QA text.
+
+        Returns:
+            `list[dict]`:
+                One ``{"question": ..., "answer": ...}`` entry per pair that
+                has both halves. Emphasis markers wrapping the *labels* are
+                consumed by the pattern; the question and answer text keeps
+                its own Markdown untouched.
+        """
+        regex = (
+            r"(?m)^[ \t]*(?:\*\*)?Q(\d+)\s*:(?:\*\*)?[ \t]*([\s\S]*?)"
+            r"\s*^[ \t]*(?:\*\*)?A\1\s*:(?:\*\*)?[ \t]*([\s\S]*?)"
+            r"(?=^[ \t]*(?:\*\*)?Q\d+\s*:(?:\*\*)?|\Z)"
+        )
         matches = re.findall(regex, text, re.UNICODE)
 
-        return [{"question": q, "answer": re.sub(r"\n\s*", "\n", a.strip())} for q, a in matches if q and a]
+        return [
+            {"question": _clean_block(question), "answer": _clean_block(answer)}
+            for _number, question, answer in matches
+            if _clean_block(question) and _clean_block(answer)
+        ]
