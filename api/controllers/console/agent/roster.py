@@ -55,7 +55,6 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
@@ -103,12 +102,16 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
+from services.agent.version_store import (
+    AgentVersionPlanRequiredError,
+    AgentVersionUnavailableError,
+    VersionAgentNotFoundError,
+)
 from services.app.agent_app_contracts import AgentAppDetail, AgentAppNameConflictError, AgentAppNotFoundError
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import UpdateAppParams
-from services.feature_service import FeatureService
 from services.rbac import contracts as rbac_contracts
 from services.system_feature_service import SystemFeatureService
 
@@ -1232,66 +1235,50 @@ class AgentStatisticsSummaryApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/versions")
 class AgentRosterVersionsApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent versions", console_ns.models[AgentConfigSnapshotListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        return dump_response(
-            AgentConfigSnapshotListResponse,
-            {"data": _agent_roster_service(session).list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
-        )
+    @console_ns.response(HTTPStatus.OK, "Agent versions", console_ns.models[AgentConfigSnapshotListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        try:
+            versions = application_services().agent_versions.list_versions(context, str(agent_id))
+        except VersionAgentNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return dump_response(AgentConfigSnapshotListResponse, {"data": versions})
 
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>")
 class AgentRosterVersionDetailApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent version detail", console_ns.models[AgentConfigSnapshotDetailResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID, version_id: UUID):
-        return dump_response(
-            AgentConfigSnapshotDetailResponse,
-            _agent_roster_service(session).get_agent_version_detail(
-                tenant_id=tenant_id,
-                agent_id=str(agent_id),
-                version_id=str(version_id),
-            ),
-        )
+    @console_ns.response(
+        HTTPStatus.OK, "Agent version detail", console_ns.models[AgentConfigSnapshotDetailResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID, version_id: UUID) -> dict[str, object]:
+        try:
+            version = application_services().agent_versions.get_version(context, str(agent_id), str(version_id))
+        except VersionAgentNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentVersionUnavailableError as exc:
+            raise AgentVersionNotFoundError from exc
+        return dump_response(AgentConfigSnapshotDetailResponse, version)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
 class AgentRosterVersionRestoreApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
-        if (
-            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            and not FeatureService.get_workspace_plan(tenant_id).is_paid
-        ):
-            abort(403, description="This feature requires a paid plan.")
-
-        return dump_response(
-            AgentConfigSnapshotRestoreResponse,
-            _agent_roster_service(session).restore_agent_version(
-                tenant_id=tenant_id,
-                agent_id=str(agent_id),
-                version_id=str(version_id),
-                account_id=current_user.id,
-            ),
-        )
+    @console_ns.response(
+        HTTPStatus.OK, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__]
+    )
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId())],
+    )
+    def post(self, context: RequestContext, agent_id: UUID, version_id: UUID) -> dict[str, object]:
+        try:
+            restored = application_services().agent_versions.restore_version(context, str(agent_id), str(version_id))
+        except VersionAgentNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentVersionUnavailableError as exc:
+            raise AgentVersionNotFoundError from exc
+        except AgentVersionPlanRequiredError:
+            abort(HTTPStatus.FORBIDDEN, description="This feature requires a paid plan.")
+        return dump_response(AgentConfigSnapshotRestoreResponse, restored)
