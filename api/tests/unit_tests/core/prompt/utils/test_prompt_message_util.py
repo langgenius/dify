@@ -3,6 +3,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     TextPromptMessageContent,
     ToolPromptMessage,
@@ -109,3 +110,39 @@ def test_prompt_messages_to_prompt_for_saving_completion_mode_with_and_without_f
         ModelMode.COMPLETION, [completion_message_text_only]
     )
     assert prompts == [{"role": "user", "text": "plain text"}]
+
+
+def test_prompt_messages_to_prompt_for_saving_completion_mode_with_non_image_files() -> None:
+    # Completion-mode prompts can carry any uploaded file type, like chat-mode prompts.
+    # Only images have a `detail`, so non-image files must not be saved as images.
+    completion_message = UserPromptMessage(
+        content=[
+            AudioPromptMessageContent(
+                url="https://example.com/audio1.mp3",
+                format="mp3",
+                mime_type="audio/mpeg",
+            ),
+            DocumentPromptMessageContent(
+                url="https://example.com/report.pdf",
+                format="pdf",
+                mime_type="application/pdf",
+            ),
+            TextPromptMessageContent(data="summarize"),
+        ]
+    )
+
+    prompts = PromptMessageUtil.prompt_messages_to_prompt_for_saving(ModelMode.COMPLETION, [completion_message])
+
+    assert prompts == [
+        {
+            "role": "user",
+            "text": "summarize",
+            "files": [
+                {
+                    "type": "audio",
+                    "data": "https://ex...[TRUNCATED]...audio1.mp3",
+                    "format": "mp3",
+                }
+            ],
+        }
+    ]
