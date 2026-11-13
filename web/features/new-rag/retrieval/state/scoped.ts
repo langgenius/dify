@@ -68,8 +68,16 @@ export const retrievalAdmittedResearchTasksAtom = atom<
   Record<string, KnowledgeFsResearchTaskResponse>
 >({})
 export const retrievalResearchRetryPendingAtom = atom(false)
-/** Whether composer images are still uploading; a run must wait for them to be attached. */
-export const retrievalComposerUploadPendingAtom = atom(false)
+export type RetrievalImageUpload = {
+  id: string
+  file: File
+  previewUrl: string
+  progress: number
+  status: 'uploading' | 'failed'
+  selectionKey: string | undefined
+}
+
+export const retrievalComposerUploadsAtom = atom<RetrievalImageUpload[]>([])
 /** History filter: every record, only console retrieval tests, or only workflow-node queries. */
 export type RetrievalHistorySourceFilter = 'all' | 'retrieval_test' | 'workflow'
 export const retrievalHistorySourceFilterAtom = atom<RetrievalHistorySourceFilter>('all')
@@ -85,7 +93,7 @@ export const retrievalScopedAtoms = [
   retrievalResearchEventsAtom,
   retrievalAdmittedResearchTasksAtom,
   retrievalResearchRetryPendingAtom,
-  retrievalComposerUploadPendingAtom,
+  retrievalComposerUploadsAtom,
   retrievalHistorySourceFilterAtom,
   retrievalRuntimeBridgeAtom,
 ] as const

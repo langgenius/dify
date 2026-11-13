@@ -6134,11 +6134,6 @@
       "count": 1
     }
   },
-  "web/features/new-rag/retrieval/composer.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/new-rag/retrieval/history-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2

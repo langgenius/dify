@@ -23,6 +23,7 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
         fetchCompat: true,
         request: normalizedRequest,
         silent: options.context.silent,
+        onUploadProgress: options.context.onUploadProgress,
       })
       options.context.onResponseHeaders?.(response.headers)
       return response
