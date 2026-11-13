@@ -25,6 +25,7 @@ const ConditionInput = ({ value, onChange, disabled, availableNodes }: Condition
       compact
       value={value}
       placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' })}
+      placeholderClassName="truncate"
       workflowVariableBlock={{
         show: true,
         variables: [],

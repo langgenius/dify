@@ -325,6 +325,7 @@ function ParameterItem({
             <PromptEditor
               compact
               className="min-h-5.5 text-[13px]"
+              placeholderClassName="truncate"
               value={renderValue as string}
               onChange={(text) => {
                 handleInputChange(text)

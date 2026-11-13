@@ -60,6 +60,7 @@ const MixedVariableTextInput = ({
         onManageInputField,
       }}
       placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} />}
+      placeholderClassName="truncate"
       onChange={onChange}
     />
   )

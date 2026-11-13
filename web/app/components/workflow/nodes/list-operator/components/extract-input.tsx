@@ -50,7 +50,7 @@ const ExtractInput: FC<Props> = ({ nodeId, readOnly, value, onChange }) => {
             ? t(($) => $['nodes.http.extractListPlaceholder'], { ns: 'workflowIntegrations' })!
             : ''
         }
-        placeholderClassName="leading-[21px]!"
+        placeholderClassName="truncate leading-[21px]!"
       />
     </div>
   )

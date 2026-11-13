@@ -83,7 +83,7 @@ const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, on
         placeholder={
           !readonly ? t(($) => $['nodes.http.apiPlaceholder'], { ns: 'workflowIntegrations' })! : ''
         }
-        placeholderClassName="leading-[21px]!"
+        placeholderClassName="truncate leading-[21px]!"
       />
     </div>
   )

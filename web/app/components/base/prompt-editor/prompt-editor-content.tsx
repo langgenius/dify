@@ -171,11 +171,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           />
         }
         placeholder={
-          <Placeholder
-            value={placeholder}
-            className={cn('truncate', placeholderClassName)}
-            compact={compact}
-          />
+          <Placeholder value={placeholder} className={placeholderClassName} compact={compact} />
         }
         ErrorBoundary={LexicalErrorBoundary}
       />
