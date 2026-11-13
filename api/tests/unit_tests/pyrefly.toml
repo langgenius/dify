@@ -68,7 +68,6 @@ project-excludes = [
   "core/app/app_config/easy_ui_based_app/variables/test_manager.py",
   "core/app/apps/advanced_chat/test_app_generator.py",
   "core/app/apps/advanced_chat/test_app_runner.py",
-  "core/app/apps/advanced_chat/test_generate_response_converter.py",
   "core/app/apps/advanced_chat/test_generate_task_pipeline.py",
   "core/app/apps/agent_app/test_app_generator.py",
   "core/app/apps/agent_app/test_app_runner.py",

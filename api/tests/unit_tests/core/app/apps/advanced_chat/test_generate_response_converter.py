@@ -1,6 +1,7 @@
 from collections.abc import Generator
 
 import pytest
+from pydantic import BaseModel
 
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -18,7 +19,7 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 class TestAdvancedChatGenerateResponseConverter:
-    def test_blocking_simple_response_metadata(self):
+    def test_blocking_simple_response_metadata(self) -> None:
         data = ChatbotAppBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -32,7 +33,7 @@ class TestAdvancedChatGenerateResponseConverter:
         response = AdvancedChatAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
         assert "usage" not in response["metadata"]
 
-    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch):
+    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch) -> None:
         data = AdvancedChatPausedBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -51,8 +52,8 @@ class TestAdvancedChatGenerateResponseConverter:
         )
         original_model_dump = type(data).model_dump
 
-        def _model_dump_with_future_field(self, *args, **kwargs):
-            payload = original_model_dump(self, *args, **kwargs)
+        def _model_dump_with_future_field[**P](self: BaseModel, *args: P.args, **kwargs: P.kwargs) -> dict[str, object]:
+            payload = original_model_dump(self, *args, **kwargs)  # pyrefly: ignore[bad-argument-type]  # ParamSpec forward to the concrete model_dump signature
             payload["future_field"] = "future-value"
             return payload
 
@@ -63,7 +64,7 @@ class TestAdvancedChatGenerateResponseConverter:
 
         assert response["data"]["future_field"] == "future-value"
 
-    def test_stream_simple_response_includes_node_events(self):
+    def test_stream_simple_response_includes_node_events(self) -> None:
         node_start = NodeStartStreamResponse(
             task_id="t1",
             workflow_run_id="r1",
@@ -126,6 +127,9 @@ class TestAdvancedChatGenerateResponseConverter:
 
         converted = list(AdvancedChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
+        assert isinstance(converted[1], dict)
+        assert isinstance(converted[2], dict)
+        assert isinstance(converted[3], dict)
         assert converted[1]["event"] == "node_started"
         assert converted[2]["event"] == "node_finished"
         assert converted[3]["event"] == "error"
