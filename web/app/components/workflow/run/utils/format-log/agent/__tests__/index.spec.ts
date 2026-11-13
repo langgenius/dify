@@ -70,4 +70,42 @@ describe('agent format log', () => {
 
     expect(result!.agentLog).toEqual([])
   })
+
+  it('should read agent process entries recorded by the Agent V2 node', () => {
+    const [result] = format([
+      createTrace([
+        createLog('execution-1-1'),
+        { ...createLog('execution-1-2'), label: 'shell_run', data: { thought: '', tool: 'shell_run' } },
+      ]),
+    ])
+
+    expect(result!.agentLog).toEqual([
+      expect.objectContaining({
+        message_id: 'execution-1-1',
+        label: 'execution-1-1',
+      }),
+      expect.objectContaining({
+        message_id: 'execution-1-2',
+        label: 'shell_run',
+        data: { thought: '', tool: 'shell_run' },
+      }),
+    ])
+  })
+
+  it('should ignore a non-array agent_log written before process entries existed', () => {
+    const [result] = format([
+      createNodeTracing({
+        node_id: 'agent-node',
+        node_type: BlockEnum.Agent,
+        execution_metadata: {
+          total_tokens: 0,
+          total_price: 0,
+          currency: 'USD',
+          agent_log: { agent_backend: { run_id: 'run-1' } },
+        },
+      }),
+    ])
+
+    expect(result!.agentLog).toEqual([])
+  })
 })

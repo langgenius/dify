@@ -38,7 +38,7 @@ from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
-from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter, WorkflowAgentProcessProjection
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -403,6 +403,10 @@ def _drain_event_stream(node: DifyAgentNode):
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
         stream_text=False,
+        process_projection=WorkflowAgentProcessProjection(
+            node_id="agent-node",
+            node_execution_id="execution-1",
+        ),
     )
     while True:
         try:
@@ -514,14 +518,28 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
-    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
-    assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
-    assert agent_log["agent_backend"]["status"] == "succeeded"
+    agent_log = result.metadata
+    assert isinstance(agent_log[WorkflowNodeExecutionMetadataKey.AGENT_LOG], list)
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert "credentials" not in layers["llm"]["config"]
     assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
     assert "output_type_check" not in agent_log
+
+
+def test_agent_node_run_records_process_entries_for_a_successful_run():
+    node = _node(agent_backend_client=AgentMessageDeltaBackendClient())
+    # Text chunks are streamed before the terminal event, so read the last one.
+    result = cast(StreamCompletedEvent, list(node._run())[-1]).node_run_result
+
+    entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+
+    assert isinstance(entries, list) and len(entries) >= 1
+    assert {entry.label for entry in entries} <= {"Thinking", "shell_run", "Message"}
+    # The node binds a fresh execution id per run, so compare against it directly.
+    assert all(entry.node_execution_id == node.execution_id for entry in entries)
+    assert all(entry.status == "succeeded" for entry in entries)
+    assert len({entry.message_id for entry in entries}) == len(entries)
 
 
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
@@ -534,21 +552,9 @@ def test_agent_node_structured_success_preserves_text_and_checks_only_custom_out
         )._run()
     )
 
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
-    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
-    assert agent_log["output_type_check"] == {
-        "passed": True,
-        "results": [
-            {
-                "name": "summary",
-                "type": "string",
-                "status": "ready",
-                "reason": None,
-            }
-        ],
-    }
 
 
 def test_agent_node_structured_output_type_failure_stops_the_node():
@@ -559,11 +565,9 @@ def test_agent_node_structured_output_type_failure_stops_the_node():
         )._run()
     )
 
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "output_type_check_failed"
-    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
-    assert agent_log["output_failure_decision"] == "fail_node"
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
@@ -693,10 +697,15 @@ def test_agent_node_run_streams_agent_message_delta_as_text_chunks():
     result = cast(StreamCompletedEvent, events[2]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert agent_backend["status"] == "succeeded"
-    assert agent_backend["agent_message_delta_count"] == 1
-    assert agent_backend["agent_message_delta_length"] == len("hello ")
+    # The delta bookkeeping gates whether the text stream is emitted at all; the
+    # chunk events above already prove it ran, and the projection keeps the text.
+    message_entries = [
+        entry
+        for entry in result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+        if entry.label == "Message"
+    ]
+    assert len(message_entries) == 1
+    assert message_entries[0].data["answer"] == "hello "
 
 
 def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream():
@@ -709,8 +718,12 @@ def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream(
 
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert agent_backend["agent_message_delta_count"] == 1
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    # The delta is kept as a Message entry instead of leaking into the text stream.
+    entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    message_entries = [entry for entry in entries if entry.label == "Message"]
+    assert len(message_entries) == 1
+    assert message_entries[0].data["answer"] == "hello "
 
 
 def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_text_stream():
@@ -725,8 +738,6 @@ def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_tex
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.outputs == {"text": "hello agent"}
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert agent_backend["agent_message_delta_count"] == 1
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
@@ -840,6 +851,74 @@ def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
     assert result.error == "fake failure"
     assert result.error_type == "unit_test"
     assert store.saved[0][2] == SessionSnapshot(layers={})
+    assert isinstance(result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG], list)
+
+
+def test_agent_node_a_retry_replaces_the_process_entries_of_the_failed_attempt():
+    """A retried run keeps only the winning attempt's entries, not both attempts'."""
+
+    class RetryingProcessBackendClient(FakeAgentBackendRunClient):
+        """First attempt returns a wrong-typed summary; the retry succeeds."""
+
+        attempts = 0
+
+        def __init__(self) -> None:
+            super().__init__(scenario=FakeAgentBackendScenario.SUCCESS)
+            self.output_payload: dict[str, object] = {"summary": 7}
+
+        def _events(self, run_id: str):
+            from dify_agent.protocol.snapshot import SessionSnapshot
+
+            from clients.agent_backend.fake_client import _FIXED_TIME
+
+            type(self).attempts += 1
+            if type(self).attempts > 1:
+                self.output_payload = {"summary": "Recovered summary"}
+            return (
+                RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+                PydanticAIStreamRunEvent(
+                    id="2-0",
+                    run_id=run_id,
+                    created_at=_FIXED_TIME,
+                    data=PartDeltaEvent(
+                        index=0,
+                        delta=TextPartDelta(content_delta=f"attempt {type(self).attempts}"),
+                    ),
+                    agent_message_delta=f"attempt {type(self).attempts}",
+                ),
+                RunSucceededEvent(
+                    id="3-0",
+                    run_id=run_id,
+                    created_at=_FIXED_TIME,
+                    data=RunSucceededEventData(
+                        output=self.output_payload,
+                        session_snapshot=SessionSnapshot(layers={}),
+                    ),
+                ),
+            )
+
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {
+                    "name": "summary",
+                    "type": "string",
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ],
+        }
+    )
+    client = RetryingProcessBackendClient()
+    node = _node(binding_resolver=resolver, agent_backend_client=client)
+
+    events = list(node._run())
+
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert client.attempts == 2
+    assert [entry.data.get("answer") for entry in entries] == ["attempt 2"]
 
 
 def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
@@ -860,10 +939,11 @@ def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
     assert client.request.session_snapshot is existing_snapshot
 
 
-def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_metadata():
-    """A DB-side write failure must not crash the node; it should set
-    ``session_snapshot_persist_error`` in the agent_backend metadata so the
-    incident is observable from the workflow_node_executions record."""
+def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_metadata(
+    caplog: pytest.LogCaptureFixture,
+):
+    """A DB-side write failure must not crash the node; it should log the incident
+    and keep the run succeeding."""
 
     store = ExplodingSessionStore()
     events = list(_node(session_store=store)._run())
@@ -871,13 +951,16 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert agent_backend["session_snapshot_persisted"] is False
-    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
+    assert any(
+        "Failed to persist workflow Agent Binding session snapshot" in record.message
+        for record in caplog.records
+    )
 
 
 @pytest.mark.parametrize("failure_kind", ["backend", "transport"])
-def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kind: str) -> None:
+def test_agent_node_snapshot_save_failure_preserves_original_failure(
+    failure_kind: str, caplog: pytest.LogCaptureFixture
+) -> None:
     store = ExplodingSessionStore()
     client = (
         FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
@@ -894,9 +977,10 @@ def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kin
     else:
         assert result.error == "stream reconnect attempts exhausted"
         assert result.error_type == "agent_backend_stream_error"
-    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
-    assert agent_backend["session_snapshot_persisted"] is False
-    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
+    assert any(
+        "Failed to persist workflow Agent Binding session snapshot" in record.message
+        for record in caplog.records
+    )
     assert store.save_attempts == [SessionSnapshot(layers={})]
 
 
