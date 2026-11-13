@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import time
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from io import BytesIO
 from queue import Empty
+from threading import Barrier
 from uuid import UUID, uuid4
 
 import pytest
@@ -130,7 +132,7 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
         publish=task.delay,
         quota=_get_annotation_import_quota,
         limits=AnnotationImportLimits(
-            min_records=1, max_records=2, requests_per_minute=5, requests_per_hour=20, max_concurrent=3
+            min_records=1, max_records=2, requests_per_minute=5, requests_per_hour=20, max_concurrent=2
         ),
     )
     app.extensions["application_services"] = replace(services, annotation_imports=service)
@@ -278,6 +280,41 @@ def test_concurrency_limit_returns_429_and_preserves_existing_jobs(harness: _Har
     assert response.get_json()["code"] == "too_many_requests"
     assert {job.decode() for job in harness.redis.zrange(active_key, 0, -1)} == existing
     assert harness.publications == []
+    _assert_no_task(harness)
+
+
+def test_concurrent_imports_cannot_exceed_workspace_concurrency_limit(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    active_key = f"annotation_import_active:{harness.target.tenant_id}"
+    now_ms = int(time.time() * 1000)
+    existing: dict[bytes | float | int | str, bytes | float | int | str] = {"active-0": now_ms}
+    harness.redis.zadd(active_key, existing)
+
+    barrier = Barrier(2)
+    original_count_active = RedisAnnotationImportJobRepository.count_active
+
+    def synchronize_admission_check(
+        repository: RedisAnnotationImportJobRepository, *, tenant_id: str, now_ms: int
+    ) -> int:
+        count = original_count_active(repository, tenant_id=tenant_id, now_ms=now_ms)
+        barrier.wait(timeout=10)
+        return count
+
+    monkeypatch.setattr(RedisAnnotationImportJobRepository, "count_active", synchronize_admission_check)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = list(executor.map(lambda _index: harness.request(), range(2)))
+
+    assert sorted(response.status_code for response in responses) == [200, 429]
+    assert harness.redis.zcard(active_key) == 2
+    assert sum(response.status_code == 200 for response in responses) == 1
+    assert len(harness.publications) == 1
+    accepted_job_id = next(response.get_json()["job_id"] for response in responses if response.status_code == 200)
+    with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
+        message = messages.get(block=False)
+        assert message.headers["task"] == batch_import_annotations_task.name
+        assert message.payload[1]["job_id"] == accepted_job_id
+        message.ack()
     _assert_no_task(harness)
 
 

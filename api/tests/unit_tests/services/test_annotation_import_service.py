@@ -1,14 +1,125 @@
 """Exercise annotation CSV validation with real streams and the production parser."""
 
+from collections.abc import Callable
 from io import BytesIO
+from typing import Literal
 
 import pytest
 
 from services.annotation_import_service import (
+    AnnotationImportJob,
+    AnnotationImportLimitError,
+    AnnotationImportLimits,
     AnnotationImportQuota,
+    AnnotationImportService,
     AnnotationImportValidationError,
     parse_annotation_csv,
 )
+
+
+class _AppQuery:
+    def require_app(self, *, tenant_id: str, app_id: str) -> None:
+        del tenant_id, app_id
+
+
+class _JobStore:
+    def __init__(self, *, create_error: Exception | None = None, reservation: bool = True) -> None:
+        self.create_error = create_error
+        self.reservation = reservation
+        self.release_error: Exception | None = None
+        self.released: list[tuple[str, str, str]] = []
+
+    def record_request(self, *, tenant_id: str, window_seconds: Literal[60, 3600], now_ms: int) -> int:
+        del tenant_id, window_seconds, now_ms
+        return 1
+
+    def count_active(self, *, tenant_id: str, now_ms: int) -> int:
+        del tenant_id, now_ms
+        return 0
+
+    def create(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        job_id: str,
+        now_ms: int,
+        max_concurrent: int | None = None,
+    ) -> bool:
+        del tenant_id, app_id, job_id, now_ms, max_concurrent
+        if self.create_error is not None:
+            raise self.create_error
+        return self.reservation
+
+    def release(self, *, tenant_id: str, app_id: str, job_id: str) -> None:
+        self.released.append((tenant_id, app_id, job_id))
+        if self.release_error is not None:
+            raise self.release_error
+
+    def get(self, *, tenant_id: str, app_id: str, job_id: str) -> AnnotationImportJob | None:
+        del tenant_id, app_id, job_id
+        return None
+
+
+class _Publisher:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.published: list[str] = []
+
+    def __call__(self, *, job_id: str, **kwargs: object) -> None:
+        del kwargs
+        self.published.append(job_id)
+        if self.error is not None:
+            raise self.error
+
+
+def _import_service(jobs: _JobStore, publish: Callable[..., object]) -> AnnotationImportService:
+    def no_quota(*, tenant_id: str) -> None:
+        del tenant_id
+
+    return AnnotationImportService(
+        apps=_AppQuery(),
+        jobs=jobs,
+        publish=publish,
+        quota=no_quota,
+        limits=AnnotationImportLimits(
+            min_records=1, max_records=2, requests_per_minute=5, requests_per_hour=20, max_concurrent=2
+        ),
+    )
+
+
+def _csv_stream() -> BytesIO:
+    return BytesIO(b"question,answer\nquestion,answer\n")
+
+
+def test_rejected_atomic_reservation_does_not_publish() -> None:
+    jobs = _JobStore(reservation=False)
+    publish = _Publisher()
+
+    with pytest.raises(AnnotationImportLimitError, match="Maximum 2 concurrent imports"):
+        _import_service(jobs, publish).import_csv(
+            tenant_id="tenant-1", app_id="app-1", account_id="account-1", stream=_csv_stream()
+        )
+
+    assert publish.published == []
+    assert jobs.released == []
+
+
+@pytest.mark.parametrize("cleanup_fails", [False, True])
+def test_reservation_error_releases_owner_and_preserves_original_error(cleanup_fails: bool) -> None:
+    registration_error = RuntimeError("reservation failed")
+    jobs = _JobStore(create_error=registration_error)
+    if cleanup_fails:
+        jobs.release_error = RuntimeError("cleanup failed")
+    publish = _Publisher()
+
+    with pytest.raises(RuntimeError, match="reservation failed"):
+        _import_service(jobs, publish).import_csv(
+            tenant_id="tenant-1", app_id="app-1", account_id="account-1", stream=_csv_stream()
+        )
+
+    assert len(jobs.released) == 1
+    assert publish.published == []
 
 
 def test_preserves_literal_na_and_other_non_nan_text() -> None:
