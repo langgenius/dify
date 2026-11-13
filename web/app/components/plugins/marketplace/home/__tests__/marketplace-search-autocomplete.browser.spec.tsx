@@ -165,7 +165,10 @@ describe('Marketplace search autocomplete', () => {
     vi.clearAllMocks()
     api.searchPlugins.mockResolvedValue({ data: { plugins: [], total: 0 } })
     api.searchTemplates.mockResolvedValue({ data: { templates: [], total: 0 } })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   })
+
+  afterEach(() => vi.useRealTimers())
 
   it('keeps the pinned catalog layout stable while the results popup opens', async () => {
     const screen = await render(
@@ -205,6 +208,7 @@ describe('Marketplace search autocomplete', () => {
     const navigationTop = navigation.getBoundingClientRect().top
 
     await input.fill('open')
+    await vi.advanceTimersByTimeAsync(300)
     await expect.element(screen.getByText('No templates found')).toBeVisible()
 
     expect(scrollContainer.scrollTop).toBe(scrollTop)
@@ -240,6 +244,7 @@ describe('Marketplace search autocomplete', () => {
     const input = screen.getByRole('combobox', { name: 'Search templates' })
 
     await input.fill('open')
+    await vi.advanceTimersByTimeAsync(300)
     await expect.element(screen.getByText('No templates found')).toBeVisible()
     await userEvent.keyboard('{Enter}')
 
@@ -259,6 +264,7 @@ describe('Marketplace search autocomplete', () => {
     const input = screen.getByRole('combobox', { name: 'Search plugins or templates' })
 
     await input.fill('search')
+    await vi.advanceTimersByTimeAsync(300)
     await expect
       .element(screen.getByRole('group', { name: 'Templates' }).getByText('Legal Research Agent'))
       .toBeVisible()
@@ -296,15 +302,18 @@ describe('Marketplace search autocomplete', () => {
     const input = screen.getByRole('combobox', { name: 'Search plugins or templates' })
 
     await input.fill('google')
+    await vi.advanceTimersByTimeAsync(300)
     await expect.element(screen.getByText('Google Search')).toBeVisible()
     await input.fill('google drive')
     await expect.element(screen.getByText('Google Search')).toBeVisible()
+    await vi.advanceTimersByTimeAsync(300)
     await expect.element(screen.getByText('Loading')).toBeVisible()
     await expect.poll(() => typeof resolveRefresh).toBe('function')
 
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
     resolveRefresh({ data: { plugins: [plugin], total: 1 } })
+    await vi.advanceTimersByTimeAsync(0)
     await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
   })
 
@@ -323,10 +332,12 @@ describe('Marketplace search autocomplete', () => {
     const input = screen.getByRole('combobox', { name: 'Search plugins' })
 
     await input.fill('zzzz')
+    await vi.advanceTimersByTimeAsync(300)
     await expect.element(screen.getByText('No integration found')).toBeVisible()
     await expect.element(screen.getByText('Loading')).not.toBeInTheDocument()
     await userEvent.keyboard('{Escape}')
     await screen.getByRole('button', { name: 'Clear Search plugins' }).click()
+    await vi.advanceTimersByTimeAsync(300)
 
     await expect.element(input).toHaveValue('')
     await expect.element(input).toHaveFocus()

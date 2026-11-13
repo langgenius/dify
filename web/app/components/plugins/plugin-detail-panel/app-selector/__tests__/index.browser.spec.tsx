@@ -2,7 +2,7 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppSelectorValue } from '../index'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { beforeEach, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -97,9 +97,13 @@ beforeEach(() => {
   )
 })
 
+afterEach(() => vi.useRealTimers())
+
 it('dismisses only the inner picker with Escape and starts a fresh search after either popover closes', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   const { input, onSubmit } = await renderSelector()
   await input.fill('sales')
+  await vi.advanceTimersByTimeAsync(500)
   await expect.element(page.getByRole('option', { name: /Sales App/ })).toBeVisible()
   await userEvent.keyboard('{Escape}')
   await expect.element(input).not.toBeInTheDocument()
@@ -108,6 +112,7 @@ it('dismisses only the inner picker with Escape and starts a fresh search after 
   await innerTrigger.click()
   await expect.element(input).toHaveValue('')
   await input.fill('missing')
+  await vi.advanceTimersByTimeAsync(500)
   await expect.element(page.getByText('common.noData')).toBeVisible()
   await userEvent.keyboard('{Enter}')
   expect(onSubmit).not.toHaveBeenCalled()
@@ -126,6 +131,7 @@ it('dismisses only the inner picker with Escape and starts a fresh search after 
 })
 
 it('removes a highlighted stale result during remote search and selects the new result with the keyboard', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   const { input, onSelect, onSubmit } = await renderSelector()
   await expect.element(page.getByRole('option', { name: /Support Bot/ })).toBeVisible()
   await userEvent.keyboard('{ArrowDown}')
@@ -141,6 +147,7 @@ it('removes a highlighted stale result during remote search and selects the new 
   await input.fill('sales')
   await expect.element(page.getByRole('option')).not.toBeInTheDocument()
   await userEvent.keyboard('{Enter}')
+  await vi.advanceTimersByTimeAsync(500)
   expect(onSelect).not.toHaveBeenCalled()
   expect(onSubmit).not.toHaveBeenCalled()
   await expect.poll(() => resolveSearch).toBeTypeOf('function')
