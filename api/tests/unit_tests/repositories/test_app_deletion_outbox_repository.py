@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from models.app_deletion_outbox import AppDeletionOutbox
+from models.base import TypeBase
 from repositories.app_deletion_outbox_repository import (
     AppDeletionOutboxRepository,
     _decode_deletion,
@@ -69,7 +70,10 @@ def test_decode_deletion_rejects_non_string_list_items(field: str) -> None:
 def test_mark_succeeded_returns_false_for_a_missing_outbox_row() -> None:
     engine = create_engine("sqlite://")
     try:
-        AppDeletionOutbox.__table__.create(engine)
+        TypeBase.metadata.create_all(
+            engine,
+            tables=[TypeBase.metadata.tables[AppDeletionOutbox.__tablename__]],
+        )
         with Session(engine) as session:
             repository = AppDeletionOutboxRepository(session)
 
