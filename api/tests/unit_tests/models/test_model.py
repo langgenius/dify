@@ -1,9 +1,53 @@
 import importlib
+import json
 import types
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
-from models.model import Message
+from models import model as model_module
+from models.model import App, AppMode, AppModelConfig, Message
+
+
+@pytest.mark.parametrize(
+    ("enabled", "strategy", "expected_mode"),
+    [
+        (True, "react", AppMode.AGENT_CHAT),
+        (True, "function_call", AppMode.AGENT_CHAT),
+        (True, {"type": "function_call"}, AppMode.CHAT),
+        (True, ["react"], AppMode.CHAT),
+        (True, None, AppMode.CHAT),
+        (True, "unknown", AppMode.CHAT),
+        (False, "react", AppMode.CHAT),
+    ],
+)
+def test_legacy_agent_strategy_preserves_invalid_configuration(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool, strategy: object, expected_mode: AppMode
+) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    try:
+        App.__table__.create(engine)
+        AppModelConfig.__table__.create(engine)
+        with Session(engine, expire_on_commit=False) as session:
+            monkeypatch.setattr(model_module.db, "session", session)
+            app = App(tenant_id=str(uuid4()), name="Legacy Agent", mode=AppMode.CHAT)
+            session.add(app)
+            session.flush()
+            config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": enabled, "strategy": strategy}))
+            session.add(config)
+            session.flush()
+            app.app_model_config_id = config.id
+            session.commit()
+
+            assert app.mode_compatible_with_agent == expected_mode
+
+            session.expire_all()
+            assert app.mode == expected_mode
+            assert config.agent_mode_dict["strategy"] == strategy
+    finally:
+        engine.dispose()
 
 
 @pytest.fixture(autouse=True)
