@@ -843,20 +843,36 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 		// symlink/.. must resolve through the symlink before traversing its parent.
 		cwd = s.config.DefaultCwd + string(filepath.Separator) + cwd
 	}
-	realCwd, err := resolveExistingDir(cwd)
+	realCwd, err := filepath.EvalSymlinks(cwd)
 	if err != nil {
 		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
 	}
 	for _, root := range s.config.allowedCwdRoots() {
 		realRoot, err := resolveExistingDir(root)
 		// Optional roots, such as /workspace on non-container hosts, may be absent.
-		if err == nil && isPathWithinRoot(realCwd, realRoot) {
+		if err != nil {
+			continue
+		}
+		if realCwd == realRoot {
+			return realRoot, nil
+		}
+		rootPrefix := realRoot
+		if !strings.HasSuffix(realRoot, string(filepath.Separator)) {
+			rootPrefix += string(filepath.Separator)
+		}
+		// Check the canonical root boundary before inspecting the candidate's type.
+		if strings.HasPrefix(realCwd, rootPrefix) {
+			info, err := os.Stat(realCwd)
+			if err != nil || !info.IsDir() {
+				return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
+			}
 			return realCwd, nil
 		}
 	}
 	return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is outside allowed workspace roots: %s", displayCwd))
 }
 
+// resolveExistingDir canonicalizes and validates a trusted configured root.
 func resolveExistingDir(path string) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", fmt.Errorf("directory path must be absolute: %s", path)
@@ -873,17 +889,6 @@ func resolveExistingDir(path string) (string, error) {
 		return "", fmt.Errorf("not a directory: %s", path)
 	}
 	return realPath, nil
-}
-
-// isPathWithinRoot compares canonical absolute paths at directory boundaries.
-func isPathWithinRoot(path, root string) bool {
-	if path == root {
-		return true
-	}
-	if root == string(filepath.Separator) {
-		return strings.HasPrefix(path, root)
-	}
-	return strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
 func (s *Service) allocateJobDir() (string, string, error) {

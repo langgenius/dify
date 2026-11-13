@@ -30,6 +30,10 @@ func TestResolveCwd(t *testing.T) {
 	if err := os.WriteFile(file, []byte("not a directory"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	outsideFile := filepath.Join(outside, "file")
+	if err := os.WriteFile(outsideFile, []byte("not a directory"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	rootLink := filepath.Join(base, "workspace-link")
 	insideLink := filepath.Join(workspace, "inside-link")
 	outsideLink := filepath.Join(workspace, "outside-link")
@@ -74,6 +78,7 @@ func TestResolveCwd(t *testing.T) {
 		{name: "sibling prefix collision", cwd: strPtr(sibling), wantMessage: "outside allowed workspace roots"},
 		{name: "missing directory", cwd: strPtr(missing), wantMessage: "not a directory"},
 		{name: "regular file", cwd: strPtr(file), wantMessage: "not a directory"},
+		{name: "regular file outside root", cwd: strPtr(outsideFile), wantMessage: "outside allowed workspace roots"},
 		{name: "file parent traversal", cwd: strPtr(file + "/.."), wantMessage: "not a directory"},
 		{name: "broken symlink", cwd: strPtr(brokenLink), wantMessage: "not a directory"},
 		{name: "NUL byte", cwd: strPtr(workspace + "\x00"), wantMessage: "not a directory"},
