@@ -151,7 +151,6 @@ project-excludes = [
   "core/tools/utils/test_web_reader_tool.py",
   "core/tools/workflow_as_tool/test_tool.py",
   "core/workflow/generator/test_runner.py",
-  "core/app/workflow/layers/conftest.py",
   "../helpers/workflow/mock_factory.py",
   "../helpers/workflow/mock_nodes.py",
   "../e2e_tests/contracts/core/workflow/graph_engine/test_parallel_human_input_join_resume.py",
