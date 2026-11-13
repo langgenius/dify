@@ -134,7 +134,7 @@
     "tag": "beta"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "node init && vp pack",
     "prepare": "pnpm run build",
     "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
     "type-check:contracts": "tsc --runExternalCode --noEmit -p examples/repository/tsconfig.json",
