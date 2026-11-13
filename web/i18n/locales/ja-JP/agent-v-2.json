@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "詳細設定",
   "agentDetail.configure.answer.activity.ranCommands": "コマンドを実行しました",
   "agentDetail.configure.answer.activity.runningCommands": "コマンドを実行中",
+  "agentDetail.configure.answer.activity.startingCommands": "コマンドを開始中",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
   "agentDetail.configure.answer.responseEnded": "応答が終了しました",

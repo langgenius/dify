@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Any, override
 
 from dify_agent.protocol import CancelRunRequest
@@ -23,9 +24,14 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.agent_log_events import (
+    AgentLogEvent,
+    NodeRunAgentLogEvent,
+    node_run_agent_log_event,
+)
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.engine_events import NodeRunPauseRequestedEvent
+from graphon.engine_events import NodeEvent, NodeRunPauseRequestedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -49,7 +55,7 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
-from .output_adapter import WorkflowAgentOutputAdapter
+from .output_adapter import STREAM_EXHAUSTED_ERROR, WorkflowAgentOutputAdapter
 from .output_failure_orchestrator import (
     FailedOutput,
     OutputFailureDecision,
@@ -63,6 +69,11 @@ from .runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuildError,
 )
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+from .tool_activity import (
+    FinishStatus,
+    WorkflowAgentToolActivity,
+    WorkflowAgentToolActivityProjector,
+)
 
 if TYPE_CHECKING:
     from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
@@ -136,6 +147,22 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     @override
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
+
+    @override
+    @singledispatchmethod
+    def _dispatch(  # pyrefly: ignore[missing-override-decorator]
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
+        return super()._dispatch(event)
+
+    @_dispatch.register
+    def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
+        return node_run_agent_log_event(
+            event,
+            execution_id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+        )
 
     @override
     def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
@@ -468,7 +495,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         stream_text: bool,
         evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
@@ -485,6 +512,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         the variable pool, so a configured fallback ``text`` would be dropped
         after a partial stream.
 
+        Tool lifecycle stream events are projected into ``AgentLogEvent``
+        payloads so chat UIs can render live tool activity, but only when
+        ``stream_text`` is set: structured-output, output-route, and
+        default-value runs stay fully buffered and do not project logs.
+        ``finish`` closes any still-started calls before this generator
+        returns.
+
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
           or ``None`` if the stream ended without one.
@@ -493,17 +527,34 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
           terminal may accompany it so the caller can persist the final session
           snapshot while preserving the original transport failure.
         """
-        result = yield from self._read_event_stream(
+        projector = (
+            WorkflowAgentToolActivityProjector(
+                node_id=self._node_id,
+                node_execution_id=self.execution_id,
+                node_title=self.title,
+            )
+            if stream_text
+            else None
+        )
+        terminal_event, transport_failure = yield from self._read_event_stream(
             run_id,
             inputs=inputs,
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
             evaluation_trace_collector=evaluation_trace_collector,
+            projector=projector,
         )
+        if projector is not None:
+            finish_status, finish_error = self._tool_activity_finish(
+                terminal_event=terminal_event,
+                transport_failure=transport_failure,
+            )
+            for activity in projector.finish(finish_status, error=finish_error):
+                yield self._agent_log_event(activity)
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
-        return result  # noqa: B901  # StopIteration.value is the generator completion result.
+        return terminal_event, transport_failure  # noqa: B901  # StopIteration.value is the generator completion result.
 
     def _read_event_stream(
         self,
@@ -513,12 +564,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        projector: WorkflowAgentToolActivityProjector | None,
         evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
+        """Read one Agent backend SSE stream into workflow events.
+
+        ``projector=None`` disables tool-activity projection; raw backend
+        event consumption and stream metadata recording remain active.
+        An evaluation trace collector observes every adapted internal event.
+        """
         stream_event_count = 0
         last_event_id: str | None = None
         try:
@@ -537,6 +595,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                            if projector is not None:
+                                for activity in projector.handle(internal_event):
+                                    yield self._agent_log_event(activity)
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
@@ -757,6 +818,44 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         if isinstance(error, AgentBackendTransportError):
             return "agent_backend_transport_error"
         return "agent_backend_error"
+
+    @staticmethod
+    def _tool_activity_finish(
+        *,
+        terminal_event: _TerminalAgentBackendEvent | None,
+        transport_failure: StreamCompletedEvent | None,
+    ) -> tuple[FinishStatus, str | None]:
+        """Map the stream outcome to the projector's terminal status and error.
+
+        A transport failure wins over any accompanying cancellation terminal
+        because it carries the real stream error; a cancellation terminal
+        closes activity as ``cancelled``. A ``None`` terminal with no
+        transport failure mirrors the ``_run_inner`` stream-exhausted path,
+        which fails the node, so unfinished calls close as ``failed``.
+        """
+        if transport_failure is not None:
+            return "failed", transport_failure.node_run_result.error
+        if isinstance(terminal_event, AgentBackendRunSucceededInternalEvent):
+            return "succeeded", None
+        if isinstance(terminal_event, AgentBackendRunFailedInternalEvent):
+            return "failed", terminal_event.error
+        if isinstance(terminal_event, AgentBackendRunCancelledInternalEvent):
+            return "cancelled", terminal_event.message or terminal_event.reason
+        return "failed", STREAM_EXHAUSTED_ERROR
+
+    @staticmethod
+    def _agent_log_event(activity: WorkflowAgentToolActivity) -> AgentLogEvent:
+        return AgentLogEvent(
+            message_id=activity.id,
+            label=activity.label,
+            node_execution_id=activity.node_execution_id,
+            parent_id=None,
+            error=activity.error,
+            status=activity.status,
+            data=activity.data.model_dump(mode="json"),
+            metadata=dict(activity.metadata),
+            node_id=activity.node_id,
+        )
 
     @staticmethod
     def _record_stream_metadata(metadata: dict[str, Any], event: AgentBackendStreamInternalEvent) -> None:

@@ -28,6 +28,8 @@ from testcontainers.redis import RedisContainer
 
 from app_factory import create_app
 from extensions.ext_database import db
+from extensions.ext_redis import RedisClientWrapper, redis_client
+from tests.helpers.unit.config_override import config_overrides_context
 
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -43,10 +45,10 @@ def _wait_for_log_message(message: str, timeout: int) -> LogMessageWaitStrategy:
 
 @dataclass(frozen=True, slots=True)
 class DifyTestContainerEnvironment:
+    """Required database resources; sandbox and plugin daemon are opt-in fixtures."""
+
     postgres: PostgresContainer
     redis: RedisContainer
-    dify_sandbox: DockerContainer
-    dify_plugin_daemon: DockerContainer | None
 
 
 @pytest.fixture(scope="session")
@@ -127,6 +129,27 @@ def redis_container(testcontainers_network: Network) -> Generator[RedisContainer
         yield redis
 
 
+@pytest.fixture
+def application_redis(redis_container: RedisContainer) -> Generator[RedisClientWrapper]:
+    """Bind real Redis without starting the Flask/database application.
+
+    Flush this worker's test database after each consumer and restore the prior
+    global client even when flushing fails. Consumer and cleanup errors propagate.
+    """
+    from redis import Redis
+
+    with Redis(host=redis_container.get_container_host_ip(), port=redis_container.get_exposed_port(6379)) as client:
+        previous_client = redis_client._client
+        redis_client._client = client
+        try:
+            yield redis_client
+        finally:
+            try:
+                client.flushdb()
+            finally:
+                redis_client._client = previous_client
+
+
 @pytest.fixture(scope="session")
 def dify_sandbox_container(testcontainers_network: Network) -> Generator[DockerContainer]:
     """Provide Dify Sandbox with its endpoint environment."""
@@ -154,7 +177,12 @@ def dify_sandbox_container(testcontainers_network: Network) -> Generator[DockerC
             sandbox_host,
             sandbox_port,
         )
-        yield sandbox
+        # Config may already have been read by a database-only Flask fixture.
+        with config_overrides_context(
+            CODE_EXECUTION_ENDPOINT=f"http://{sandbox_host}:{sandbox_port}",
+            CODE_EXECUTION_API_KEY="test_api_key",
+        ):
+            yield sandbox
 
 
 @pytest.fixture(scope="session")
@@ -225,7 +253,11 @@ def dify_plugin_daemon_container(
             plugin_daemon_host,
             plugin_daemon_port,
         )
-        yield plugin_daemon
+        with config_overrides_context(
+            PLUGIN_DAEMON_URL=f"http://{plugin_daemon_host}:{plugin_daemon_port}",
+            PLUGIN_DAEMON_KEY="test_plugin_daemon_key",
+        ):
+            yield plugin_daemon
 
 
 @pytest.fixture(scope="session")
@@ -346,12 +378,10 @@ def _create_app_with_containers() -> Flask:
 def set_up_containers_and_env(
     postgres_container: PostgresContainer,
     redis_container: RedisContainer,
-    dify_sandbox_container: DockerContainer,
-    dify_plugin_daemon_container: DockerContainer | None,
     storage_environment: None,
 ) -> DifyTestContainerEnvironment:
     """
-    Compose the independently managed test container fixtures.
+    Compose required PostgreSQL, Redis and storage settings without auxiliary services.
 
     Pytest owns the dependency graph and finalizes every resource fixture in
     reverse order, including when a later fixture fails during setup.
@@ -364,8 +394,6 @@ def set_up_containers_and_env(
     return DifyTestContainerEnvironment(
         postgres=postgres_container,
         redis=redis_container,
-        dify_sandbox=dify_sandbox_container,
-        dify_plugin_daemon=dify_plugin_daemon_container,
     )
 
 

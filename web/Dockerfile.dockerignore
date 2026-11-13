@@ -2,6 +2,8 @@
 !package.json
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
+!patches/
+!patches/**
 !web/
 !web/**
 !e2e/

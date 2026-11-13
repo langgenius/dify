@@ -321,6 +321,7 @@ def test_missing_default_model_does_not_create_one_or_commit_caller_changes(scen
 
 
 @pytest.mark.parametrize("token_counting", [True, False])
+@pytest.mark.usefixtures("dify_plugin_daemon_container")
 def test_console_missing_plugin_token_error_propagates_but_invocation_returns_empty(
     scenario: _Scenario,
     test_client_with_containers: FlaskClient,

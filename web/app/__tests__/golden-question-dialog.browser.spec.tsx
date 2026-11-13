@@ -2,24 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { GoldenQuestionDialog } from '@/features/new-rag/quality/golden-question-dialog'
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          goldenQuestions: {
-            evidenceMatches: {
-              post: {
-                mutationOptions: () => ({ mutationFn: vi.fn() }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 
 function DialogHarness() {
   const [open, setOpen] = useState(false)
@@ -76,4 +59,8 @@ describe('GoldenQuestionDialog browser interactions', () => {
       .element(screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }))
       .toBeVisible()
   })
+})
+
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })

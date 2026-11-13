@@ -297,6 +297,7 @@ export default interface Resources {
     'agentDetail.configure.advancedSettings.label': 'Advanced Settings'
     'agentDetail.configure.answer.activity.ranCommands': 'Ran commands'
     'agentDetail.configure.answer.activity.runningCommands': 'Running commands'
+    'agentDetail.configure.answer.activity.startingCommands': 'Starting commands'
     'agentDetail.configure.answer.duration.minute': '{{count}}m'
     'agentDetail.configure.answer.duration.second': '{{count}}s'
     'agentDetail.configure.answer.responseEnded': 'Response ended'

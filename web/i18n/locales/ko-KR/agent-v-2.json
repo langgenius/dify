@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "고급 설정",
   "agentDetail.configure.answer.activity.ranCommands": "명령 실행됨",
   "agentDetail.configure.answer.activity.runningCommands": "명령 실행 중",
+  "agentDetail.configure.answer.activity.startingCommands": "명령 시작 중",
   "agentDetail.configure.answer.duration.minute": "{{count}}분",
   "agentDetail.configure.answer.duration.second": "{{count}}초",
   "agentDetail.configure.answer.responseEnded": "응답이 종료되었습니다",
