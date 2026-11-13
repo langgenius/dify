@@ -3,22 +3,28 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import inspect
+import json
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, override
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
+from dify_agent.client import Client
+from dify_agent.protocol import CreateRunRequest, CreateRunResponse
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.agent_app.app_generator as module
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
+from clients.agent_backend import FakeAgentBackendRunClient
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.agent_app import app_generator
 from core.app.apps.agent_app.app_config_manager import AgentAppConfig
@@ -34,7 +40,12 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
+from core.entities.provider_configuration import ProviderModelBundle
+from core.entities.provider_entities import CustomProviderConfiguration
+from core.errors.error import ProviderTokenNotInitError
 from core.moderation.base import ModerationError
+from core.plugin.impl.model import PluginModelClient
+from core.provider_manager import ProviderManager
 from models import Account as _app_generator_Account
 from models import AppModelConfig
 from models.account import Account as _resolve_agent_Account
@@ -44,15 +55,18 @@ from models.agent import (
     AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentConfigVersionKind,
+    AgentDebugConversation,
     AgentScope,
     AgentSource,
     AgentStatus,
     AgentWorkingResourceStatus,
+    AgentWorkspace,
     AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation
+from models.model import App, AppMode, Conversation, Message, MessageAgentThought, MessageAnnotation
 from services.agent.workspace_service import (
     AgentWorkspaceBindingGenerationMismatchError,
     AgentWorkspaceService,
@@ -60,13 +74,11 @@ from services.agent.workspace_service import (
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
-"""Unit tests for AgentAppGenerator.generate() and its worker thread.
+"""Unit tests for AgentAppGenerator chat and finalization.
 
-Mirrors the agent_chat generator tests: every collaborator (config manager,
-model converter, queue manager, thread, response converter, the agent backend
-client stack) is patched at the module level, the generate entity class is
-patched so no real pydantic entity is built, and the worker's flask-context
-manager is replaced with a no-op so the thread body can run inline.
+Legacy chat cases isolate the worker and its collaborators. Finalization cases
+exercise real config validation, draft resolution, workspace storage and runner
+execution with local database records and deterministic backend transport.
 """
 
 
@@ -1289,3 +1301,227 @@ class TestResolveAgentCases:
                     user=_resolve_agent_account(),
                     session=sqlite_session,
                 )
+
+
+@pytest.fixture
+def finalization_model_bundle(monkeypatch: pytest.MonkeyPatch) -> ProviderModelBundle:
+    """Keep real model validation; isolate provider discovery and daemon schema I/O."""
+    config = make_model_config(provider="langgenius/openai/openai", model="gpt-4o-mini", mode="chat")
+    bundle = config.provider_model_bundle
+    bundle.configuration.provider.models = [config.model_schema]
+    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "token"})
+    monkeypatch.setattr(ProviderManager, "get_provider_model_bundle", lambda *_args, **_kwargs: bundle)
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", lambda *_args, **_kwargs: config.model_schema)
+    return bundle
+
+
+@pytest.fixture
+def finalization_records(sqlite_session: Session) -> tuple[App, _app_generator_Account, AgentConfigDraft]:
+    app_model, user = _app_generator_app(), _app_generator_account()
+    soul = AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "langgenius/openai/openai",
+                "model": "gpt-4o-mini",
+            },
+        }
+    )
+    draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant",
+        agent_id="agent1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id=user.id,
+        draft_owner_key=user.id,
+        home_snapshot_id="home-1",
+        config_snapshot=soul,
+        agent_workspace_binding_id="binding-1",
+    )
+    workspace = AgentWorkspace(
+        id="workspace-1",
+        tenant_id="tenant",
+        app_id="app1",
+        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+        owner_id=draft.id,
+        owner_scope_key="root",
+        backend_workspace_ref="backend-workspace-1",
+    )
+    binding = AgentWorkspaceBinding(
+        id="binding-1",
+        tenant_id="tenant",
+        app_id="app1",
+        workspace_id=workspace.id,
+        agent_id="agent1",
+        agent_config_version_id=draft.id,
+        agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        base_home_snapshot_id=draft.home_snapshot_id,
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=SessionSnapshot().model_dump_json(),
+    )
+    sqlite_session.add_all([app_model, _agent(), draft, workspace, binding])
+    sqlite_session.commit()
+    return app_model, user, draft
+
+
+def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    finalization_model_bundle: ProviderModelBundle,
+    finalization_records: tuple[App, _app_generator_Account, AgentConfigDraft],
+) -> None:
+    app_model, user, draft = finalization_records
+    # An unrelated editor's newer draft must not become this account's runtime.
+    sqlite_session.add(
+        AgentConfigDraft(
+            id="other-build",
+            tenant_id="tenant",
+            agent_id="agent1",
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id="other-user",
+            draft_owner_key="other-user",
+            config_snapshot=AgentSoulConfig(),
+        )
+    )
+    mapping = AgentDebugConversation(
+        tenant_id="tenant",
+        agent_id="agent1",
+        app_id="app1",
+        account_id=user.id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        conversation_id="conv",
+    )
+    sqlite_session.add(mapping)
+    sqlite_session.expire_on_commit = True
+
+    class ObservingClient(FakeAgentBackendRunClient):
+        @override
+        def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
+            assert not sqlite_session.in_transaction()
+            with sqlite_session_factory() as observer:
+                assert observer.scalar(select(AgentDebugConversation.conversation_id)) == "conv"
+            return super().create_run(request)
+
+    client = ObservingClient()
+    monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
+
+    def reject_message_path(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Internal finalization entered the user-message path")
+
+    monkeypatch.setattr(AgentAppGenerator, "_run_input_guards", reject_message_path)
+    monkeypatch.setattr(AgentAppGenerator, "_init_generate_records", reject_message_path)
+    generator = AgentAppGenerator()
+    generator.finalize_build_chat(
+        app_model=app_model,
+        user=user,
+        conversation_id="conv",
+        session=sqlite_session,
+        external_trace_id="trace-1",
+    )
+    assert client.request is not None
+    first_request_id = client.request.idempotency_key
+    context = next(layer for layer in client.request.composition.layers if layer.name == "execution_context")
+    assert context.config["agent_config_version_id"] == "build-1"
+    assert context.config["user_from"] == "account"
+    assert context.config["invoke_from"] == "debugger"
+    assert context.config["trace_id"] == "trace-1"
+    generator.finalize_build_chat(app_model=app_model, user=user, conversation_id="conv", session=sqlite_session)
+    assert client.request.idempotency_key != first_request_id
+    with sqlite_session_factory() as observer:
+        assert observer.scalars(select(Conversation)).all() == []
+        assert observer.scalars(select(Message)).all() == []
+        assert observer.scalars(select(MessageAgentThought)).all() == []
+        binding = observer.get(AgentWorkspaceBinding, "binding-1")
+        assert binding is not None
+        assert binding.session_snapshot == SessionSnapshot().model_dump_json()
+
+
+@pytest.mark.parametrize("missing", ["agent", "build_draft", "credentials"])
+def test_finalization_rejects_unavailable_configuration_before_runtime(
+    missing: str,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    finalization_model_bundle: ProviderModelBundle,
+    finalization_records: tuple[App, _app_generator_Account, AgentConfigDraft],
+) -> None:
+    app_model, user, draft = finalization_records
+    if missing == "agent":
+        agent = sqlite_session.get(Agent, "agent1")
+        assert agent is not None
+        agent.status = AgentStatus.ARCHIVED
+    elif missing == "build_draft":
+        draft.account_id = "other-user"
+    else:
+        finalization_model_bundle.configuration.custom_configuration.provider = None
+    sqlite_session.commit()
+    client = FakeAgentBackendRunClient()
+    monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
+    expected = ProviderTokenNotInitError if missing == "credentials" else AgentAppGeneratorError
+    with pytest.raises(expected):
+        AgentAppGenerator().finalize_build_chat(
+            app_model=app_model,
+            user=user,
+            conversation_id="conv",
+            session=sqlite_session,
+        )
+    assert client.request is None
+    assert sqlite_session.scalars(select(Message)).all() == []
+
+
+def test_finalization_before_first_chat_creates_only_build_workspace_state(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    finalization_model_bundle: ProviderModelBundle,
+    finalization_records: tuple[App, _app_generator_Account, AgentConfigDraft],
+) -> None:
+    app_model, user, draft = finalization_records
+    draft.agent_workspace_binding_id = None
+    draft.home_snapshot_id = None
+    binding = sqlite_session.get(AgentWorkspaceBinding, "binding-1")
+    workspace = sqlite_session.get(AgentWorkspace, "workspace-1")
+    assert binding is not None
+    assert workspace is not None
+    sqlite_session.delete(binding)
+    sqlite_session.delete(workspace)
+    sqlite_session.commit()
+
+    def allocate(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/execution-bindings"
+        payload = json.loads(request.content)
+        assert payload["existing_workspace_ref"] is None
+        assert payload["home_snapshot_ref"] is None
+        return httpx.Response(200, json={"workspace_ref": "new-workspace", "binding_ref": "new-binding"})
+
+    client = FakeAgentBackendRunClient()
+    monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
+    with httpx.Client(transport=httpx.MockTransport(allocate)) as http_client:
+        monkeypatch.setattr(
+            AgentWorkspaceService,
+            "_client",
+            staticmethod(lambda: Client(base_url="http://agent", sync_http_client=http_client)),
+        )
+        AgentAppGenerator().finalize_build_chat(
+            app_model=app_model,
+            user=user,
+            conversation_id="conv",
+            session=sqlite_session,
+        )
+    assert client.request is not None
+    with sqlite_session_factory() as observer:
+        saved_draft = observer.get(AgentConfigDraft, "build-1")
+        assert saved_draft is not None
+        assert saved_draft.agent_workspace_binding_id is not None
+        saved_binding = observer.get(AgentWorkspaceBinding, saved_draft.agent_workspace_binding_id)
+        assert saved_binding is not None
+        assert saved_binding.backend_binding_ref == "new-binding"
+        assert saved_binding.session_snapshot is None
+        saved_workspace = observer.get(AgentWorkspace, saved_binding.workspace_id)
+        assert saved_workspace is not None
+        assert saved_workspace.owner_type == AgentWorkspaceOwnerType.BUILD_DRAFT
+        assert saved_workspace.owner_id == "build-1"
+        assert observer.scalars(select(Conversation)).all() == []
+        assert observer.scalars(select(Message)).all() == []
+        assert observer.scalars(select(MessageAgentThought)).all() == []

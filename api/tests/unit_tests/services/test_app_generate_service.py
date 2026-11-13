@@ -1,8 +1,23 @@
+"""Comprehensive unit tests for services.app_generate_service.AppGenerateService.
+
+Covers:
+  - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
+  - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
+                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
+  - finalize_agent_build_chat           (synchronous quota and rate-limit lifecycle on success and failure)
+  - _get_max_active_requests            (all limit combos)
+  - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
+  - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
+  - generate_more_like_this
+  - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
+"""
+
 import json
 import threading
 import uuid
 from collections import defaultdict, deque
 from collections.abc import Callable, Generator
+from contextlib import nullcontext
 from datetime import timedelta
 from typing import Any
 from unittest.mock import MagicMock
@@ -24,26 +39,13 @@ from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.app_generate_service import AppGenerateService
+from services.billing_client import billing
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
-
-"""
-Comprehensive unit tests for services.app_generate_service.AppGenerateService.
-
-Covers:
-  - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
-  - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
-                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
-  - _get_max_active_requests            (all limit combos)
-  - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_more_like_this
-  - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
-"""
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +164,74 @@ class _RateLimitRedis:
     def hdel(self, key: str, *fields: str) -> None:
         for field in fields:
             self.hashes.get(key, {}).pop(field, None)
+
+
+# ---------------------------------------------------------------------------
+# finalize_agent_build_chat
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("failure", [False, True])
+def test_build_chat_finalization_holds_guardrails_until_completion(
+    failure: bool, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], unbound_session: Session
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, APP_MAX_ACTIVE_REQUESTS=1)
+    redis = _RateLimitRedis()
+    monkeypatch.setattr(rate_limit_module, "redis_client", redis)
+    monkeypatch.setattr(RateLimit, "_instance_dict", {})
+    app_model, user = _make_app(AppMode.AGENT, max_active_requests=1), _make_user()
+    billing_actions: list[str] = []
+
+    def reserve(*, body: billing.QuotaReserveReq) -> billing.QuotaReserveReply:
+        assert body.tenant_id == app_model.tenant_id
+        assert body.feature_key == QuotaType.WORKFLOW.billing_key
+        billing_actions.append("reserve")
+        return billing.QuotaReserveReply(reservation_id="reservation-1", available=9, reserved=1)
+
+    def commit(*, body: billing.QuotaCommitReq) -> billing.QuotaCommitReply:
+        assert body.reservation_id == "reservation-1"
+        billing_actions.append("commit")
+        return billing.QuotaCommitReply(available=9, reserved=0, refunded=0)
+
+    def release(*, body: billing.QuotaReleaseReq) -> billing.QuotaReleaseReply:
+        assert body.reservation_id == "reservation-1"
+        billing_actions.append("release")
+        return billing.QuotaReleaseReply(available=10, reserved=0, released=1)
+
+    monkeypatch.setattr(billing, "quota_reserve", reserve)
+    monkeypatch.setattr(billing, "quota_commit", commit)
+    monkeypatch.setattr(billing, "quota_release", release)
+    limiter = RateLimit(app_model.id, 1)
+    received: list[dict[str, object]] = []
+
+    def finalize(_generator: ags_module.AgentAppGenerator, **kwargs: object) -> None:
+        received.append(kwargs)
+        assert redis.hlen(limiter.active_requests_key) == 1
+        assert billing_actions == ["reserve", "commit"]
+        if failure:
+            raise RuntimeError("backend failed")
+
+    monkeypatch.setattr(ags_module.AgentAppGenerator, "finalize_build_chat", finalize)
+    with pytest.raises(RuntimeError, match="backend failed") if failure else nullcontext():
+        assert (
+            AppGenerateService.finalize_agent_build_chat(
+                session=unbound_session,
+                app_model=app_model,
+                user=user,
+                conversation_id="conversation-1",
+                external_trace_id="trace-1",
+            )
+            is None
+        )
+    assert received == [
+        {
+            "session": unbound_session,
+            "app_model": app_model,
+            "user": user,
+            "conversation_id": "conversation-1",
+            "external_trace_id": "trace-1",
+        }
+    ]
+    assert redis.hlen(limiter.active_requests_key) == 0
+    assert billing_actions == (["reserve", "commit", "release"] if failure else ["reserve", "commit"])
 
 
 # ---------------------------------------------------------------------------

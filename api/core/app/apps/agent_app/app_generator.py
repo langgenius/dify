@@ -4,8 +4,8 @@ Agent App turns mirror the agent_chat generator (conversation + message +
 queue + streamed response over the EasyUI chat pipeline), but the backing
 config comes from the bound Agent Soul and the answer is produced by
 ``AgentAppRunner`` calling the dify-agent backend rather than an in-process
-LLM/ReAct loop. Build-chat finalization uses this same streamed path and only
-changes the runtime exit policy carried to the backend.
+LLM/ReAct loop. Build-chat finalization runs synchronously without message
+records, user-input guards, queues, or message traces.
 """
 
 from __future__ import annotations
@@ -218,6 +218,58 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
+    def finalize_build_chat(
+        self,
+        *,
+        app_model: App,
+        user: Account,
+        conversation_id: str,
+        session: Session,
+        external_trace_id: str | None = None,
+    ) -> None:
+        """Validate and finalize the account's DEBUG_BUILD draft without a message.
+
+        Requires an admitted Console account and its resolved debug conversation id.
+        Commits pending conversation mapping creation and ends the read transaction
+        opened by Agent/draft resolution before the external dify-agent stream, so
+        this session's locks and pooled connection are not held for streamed I/O.
+        Model and runtime failures propagate; no input guards or chat persistence run.
+        """
+        agent = self._resolve_bound_agent(app_model, session=session)
+        draft = self._resolve_debug_draft(
+            tenant_id=app_model.tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD.value,
+            account_id=user.id,
+            session=session,
+        )
+        agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        app_config = AgentAppConfigManager.get_app_config(
+            app_model=app_model, agent_soul=agent_soul, annotation_reply=None
+        )
+        ModelConfigConverter.convert(app_config)
+        dify_context = DifyRunContext(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            user_id=user.id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            app_type=CreditUsageAppType.AGENT_V2,
+            trace_session_id=external_trace_id,
+        )
+        # Extract scalar IDs before commit so expire_on_commit cannot refresh ORM
+        # attributes and implicitly reopen a transaction before the backend stream.
+        agent_id, build_draft_id, home_snapshot_id = agent.id, draft.id, draft.home_snapshot_id
+        session.commit()
+        self._build_runner().run_finalization(
+            dify_context=dify_context,
+            agent_id=agent_id,
+            build_draft_id=build_draft_id,
+            agent_soul=agent_soul,
+            home_snapshot_id=home_snapshot_id,
+            conversation_id=conversation_id,
+        )
+
     def _generate_worker(
         self,
         *,
@@ -415,17 +467,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
         return False, query, None
 
-    def _resolve_agent(
-        self,
-        app_model: App,
-        *,
-        invoke_from: InvokeFrom,
-        draft_type: Any,
-        draft_id: str | None = None,
-        user: Account | EndUser,
-        session: Session,
-        conversation: Conversation | None = None,
-    ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
+    @staticmethod
+    def _resolve_bound_agent(app_model: App, *, session: Session) -> Agent:
+        """Read the app's active bound Agent within its tenant or raise if missing."""
         agent = session.scalar(
             select(Agent)
             .where(
@@ -445,6 +489,24 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")
+        return agent
+
+    def _resolve_agent(
+        self,
+        app_model: App,
+        *,
+        invoke_from: InvokeFrom,
+        draft_type: Any,
+        draft_id: str | None = None,
+        user: Account | EndUser,
+        session: Session,
+        conversation: Conversation | None = None,
+    ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
+        """Resolve a scoped debug draft or published conversation generation.
+
+        May create a normal draft; unavailable state raises before chat execution.
+        """
+        agent = self._resolve_bound_agent(app_model, session=session)
         if invoke_from == InvokeFrom.DEBUGGER:
             draft = self._resolve_debug_draft(
                 tenant_id=app_model.tenant_id,

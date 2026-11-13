@@ -138,7 +138,10 @@ class TestBuildForAgentApp:
         assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
 
 
-def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs():
+@pytest.mark.parametrize("collect_message_trace", [True, False])
+def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs(
+    collect_message_trace: bool,
+) -> None:
     from uuid import uuid4
 
     from dify_agent.layers.execution_context import ApplicationTracingContext
@@ -151,7 +154,7 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
         session_id="private-session",
         capture_content=False,
     )
-    context = _ctx(_soul_with_model())
+    context = replace(_ctx(_soul_with_model()), collect_message_trace=collect_message_trace)
     hooks = RecordingTracingHooks(tracing)
     app = Flask(__name__)
     bind_tracing(
@@ -163,12 +166,15 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
     with app.app_context():
         result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
     layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
-    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == (
+        tracing if collect_message_trace else None
+    )
     redacted = next(
         item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
     )
-    assert redacted["config"]["tracing"] == "[REDACTED]"
-    assert hooks.agent_apps == [context]
+    if collect_message_trace:
+        assert redacted["config"]["tracing"] == "[REDACTED]"
+    assert hooks.agent_apps == ([context] if collect_message_trace else [])
 
 
 class _NoToolsBuilder:

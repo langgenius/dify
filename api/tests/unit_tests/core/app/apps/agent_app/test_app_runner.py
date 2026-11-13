@@ -1,15 +1,19 @@
-"""Unit tests for the Agent App runner — verifies the agent-backend event
-stream is republished as chat queue events and the conversation snapshot is
-saved, using the deterministic fake backend client (no live stack)."""
+"""Verify chat event publication and persistence using the deterministic backend.
+
+Ephemeral finalization exercises the real workspace store and preserves chat
+records and binding history across successful and unsuccessful backend turns.
+"""
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from dify_agent.protocol import (
@@ -28,6 +32,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from flask import Flask
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -52,7 +57,7 @@ from clients.agent_backend import (
 from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext, AgentAppRuntimeRequestBuilder
-from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
+from core.app.apps.agent_app.session_store import AgentAppSessionScope, AgentAppWorkspaceStore, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -63,11 +68,24 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
+from extensions.tracing import bind_tracing
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeRateLimitError
+from models.agent import (
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigVersionKind,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
-from models.model import AppMode, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought
+from services.agent.roster_service import AgentRosterService
+from services.tracing.adapters import StoredPolicyTraceScopes
+from tests.helpers.unit.model_factories import make_app, make_conversation
+from tests.helpers.unit.services.tracing_ports import RecordingTracingHooks, untraced_scopes
 
 
 @pytest.fixture(autouse=True)
@@ -1656,3 +1674,168 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
     assert len(contexts) == 1
     assert contexts[0].inputs == inputs
     assert contexts[0].user_query == "hello"
+
+
+class _FinalizationClient(_RecordingFakeAgentBackendRunClient):
+    def __init__(self, outcome: str, *, cancel_fails: bool = False) -> None:
+        super().__init__()
+        self.outcome = outcome
+        self.cancel_fails = cancel_fails
+
+    @override
+    def stream_events(
+        self, run_id: str, *, after: str | None = None, should_stop: Callable[[], bool] | None = None
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        # These real process events would create thoughts on the normal chat path.
+        process_events = iter(_ProcessStreamingFakeAgentBackendRunClient().stream_events(run_id))
+        yield from (event for event in process_events if not isinstance(event, RunSucceededEvent))
+        snapshot = SessionSnapshot(layers={"history": {"finalization": "FINISHED"}})
+        usage = AgentRunUsage(prompt_tokens=13, completion_tokens=8)
+        if self.outcome == "stream_error":
+            raise RuntimeError("finalization stream interrupted")
+        if self.outcome == "success":
+            yield RunSucceededEvent(
+                id="7-0",
+                run_id=run_id,
+                data=RunSucceededEventData(output="FINISHED", session_snapshot=snapshot, usage=usage),
+            )
+        elif self.outcome == "cancelled":
+            yield RunCancelledEvent(
+                id="7-0", run_id=run_id, data=RunCancelledEventData(session_snapshot=snapshot, usage=usage)
+            )
+        elif self.outcome != "eof":
+            yield RunFailedEvent(
+                id="7-0",
+                run_id=run_id,
+                data=RunFailedEventData(
+                    error="finalization failed",
+                    session_snapshot=snapshot,
+                    usage=usage,
+                    reason={"binding_lost": "binding_lost", "provider_auth": "InvokeAuthorizationError"}.get(
+                        self.outcome
+                    ),
+                ),
+            )
+
+    @override
+    def cancel_run_and_wait(
+        self, run_id: str, request: CancelRunRequest | None = None, *, after: str | None = None
+    ) -> RunCancelledEvent:
+        result = super().cancel_run_and_wait(run_id, request, after=after)
+        if self.cancel_fails:
+            raise RuntimeError("cancellation failed")
+        return result
+
+
+@pytest.mark.parametrize(
+    ("outcome", "cancel_fails"),
+    [
+        ("success", False),
+        ("failed", False),
+        ("cancelled", False),
+        ("binding_lost", False),
+        ("provider_auth", False),
+        ("eof", False),
+        ("stream_error", False),
+        ("stream_error", True),
+    ],
+)
+def test_finalization_preserves_chat_records_and_binding_history(
+    outcome: str, cancel_fails: bool, sqlite_session: Session
+) -> None:
+    history = _compatible_session_snapshot()
+    workspace = AgentWorkspace(
+        id="workspace-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+        owner_id="build-1",
+        owner_scope_key="root",
+        backend_workspace_ref="backend-workspace-1",
+    )
+    binding = AgentWorkspaceBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workspace_id=workspace.id,
+        agent_id="agent-1",
+        agent_config_version_id="build-1",
+        agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        base_home_snapshot_id="home-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=history.model_dump_json(),
+    )
+    draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="user-1",
+        config_snapshot=_soul(),
+        home_snapshot_id="home-1",
+        agent_workspace_binding_id=binding.id,
+    )
+    sqlite_session.add_all(
+        [
+            make_app(mode=AppMode.AGENT),
+            make_conversation(
+                conversation_id="conv-1",
+                mode=AppMode.AGENT,
+                dialogue_count=1,
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id="user-1",
+            ),
+            _message_record(),
+            workspace,
+            binding,
+            draft,
+        ]
+    )
+    sqlite_session.commit()
+    before = [
+        sqlite_session.execute(select(model.__table__)).all()
+        for model in (Conversation, Message, MessageAgentThought, AgentWorkspaceBinding)
+    ]
+    hooks = RecordingTracingHooks(None)
+    trace_app = Flask(__name__)
+    bind_tracing(trace_app, scopes=StoredPolicyTraceScopes(untraced_scopes()), hooks=hooks)
+    client = _FinalizationClient(outcome, cancel_fails=cancel_fails)
+    runner = AgentAppRunner(
+        request_builder=AgentAppRuntimeRequestBuilder(),
+        agent_backend_client=client,
+        event_adapter=AgentBackendRunEventAdapter(),
+        session_store=AgentAppWorkspaceStore(),
+        text_delta_debounce_seconds=0,
+    )
+    errors: dict[str, type[Exception]] = {
+        "failed": AgentBackendRunFailedError,
+        "stream_error": RuntimeError,
+        "provider_auth": InvokeAuthorizationError,
+    }
+    expected_error = errors.get(outcome, AgentBackendError)
+    expected_message = "finalization stream interrupted" if outcome == "stream_error" else None
+    expectation = nullcontext() if outcome == "success" else pytest.raises(expected_error, match=expected_message)
+    with trace_app.app_context(), expectation:
+        runner.run_finalization(
+            dify_context=_dify_ctx(),
+            agent_id="agent-1",
+            build_draft_id="build-1",
+            agent_soul=_soul(),
+            home_snapshot_id="home-1",
+            conversation_id="conv-1",
+        )
+    assert client.request is not None
+    assert client.request.session_snapshot == history
+    assert UUID(client.request.idempotency_key).version == 4
+    config_layer = next(layer for layer in client.request.composition.layers if layer.name == "config")
+    assert config_layer.config["config_version"] == {"id": "build-1", "kind": "build_draft", "writable": True}
+    assert client.cancel_after == (["5-0"] if outcome == "stream_error" else [])
+    assert hooks.agent_apps == []
+    assert hooks.terminals == []
+    assert AgentRosterService(sqlite_session).count_agent_app_debug_conversation_messages(conversation_id="conv-1") == 1
+    after = [
+        sqlite_session.execute(select(model.__table__)).all()
+        for model in (Conversation, Message, MessageAgentThought, AgentWorkspaceBinding)
+    ]
+    assert after == before

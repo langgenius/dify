@@ -77,6 +77,14 @@ type _ReferenceFileTransferMethod = Literal["local_file", "tool_file", "datasour
 
 @dataclass(frozen=True, slots=True)
 class AgentAppRuntimeBuildContext:
+    """Validated runtime inputs and their message-tracing identity contract.
+
+    With collect_message_trace=True (the default), idempotency_key must be the
+    persisted Message.id: tracing_hooks.prepare_agent_app uses it as the trace
+    source with source_kind="message". Ephemeral turns using a fresh per-run UUID
+    must set collect_message_trace=False because no Message source record exists.
+    """
+
     dify_context: DifyRunContext
     agent_id: str
     agent_config_snapshot_id: str
@@ -91,6 +99,7 @@ class AgentAppRuntimeBuildContext:
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: SessionSnapshot | None = None
     inputs: Mapping[str, Any] = field(default_factory=dict)
+    collect_message_trace: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +123,11 @@ class AgentAppRuntimeRequestBuilder:
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
     def build(self, context: AgentAppRuntimeBuildContext) -> AgentAppRuntimeRequest:
+        """Build a run request, preparing message traces only for persisted chat turns.
+
+        Requires an Agent Soul with an available model. Invalid runtime configuration
+        raises a build error before a backend run is created.
+        """
         agent_soul = context.agent_soul
         if agent_soul.model is None:
             raise AgentAppRuntimeRequestBuildError(
@@ -201,7 +215,11 @@ class AgentAppRuntimeRequestBuilder:
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
                     trace_id=context.dify_context.trace_session_id,
-                    tracing=tracing_hooks.prepare_agent_app(context) if tracing_hooks is not None else None,
+                    tracing=(
+                        tracing_hooks.prepare_agent_app(context)
+                        if tracing_hooks is not None and context.collect_message_trace
+                        else None
+                    ),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
