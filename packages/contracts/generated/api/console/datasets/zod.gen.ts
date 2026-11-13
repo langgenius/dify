@@ -518,6 +518,16 @@ export const zExternalHitTestingPayload = z.object({
 })
 
 /**
+ * FileScanPolicyResponse
+ */
+export const zFileScanPolicyResponse = z.object({
+  enabled: z.boolean(),
+  on_unavailable: z.string(),
+  on_unscannable: z.string(),
+  provider_id: z.string().nullish(),
+})
+
+/**
  * CompletionRequestError
  *
  * Completion request failed.
@@ -938,6 +948,21 @@ export const zExternalHitTestingRecordResponse = z.object({
 export const zExternalHitTestingResponse = z.object({
   query: zExternalHitTestingQueryResponse,
   records: z.array(zExternalHitTestingRecordResponse),
+})
+
+/**
+ * FileScanFallbackAction
+ */
+export const zFileScanFallbackAction = z.enum(['allow', 'block'])
+
+/**
+ * FileScanPolicyPayload
+ */
+export const zFileScanPolicyPayload = z.object({
+  enabled: z.boolean(),
+  on_unavailable: zFileScanFallbackAction.optional().default('block'),
+  on_unscannable: zFileScanFallbackAction.optional().default('block'),
+  provider_id: z.string().nullish(),
 })
 
 /**
@@ -3091,6 +3116,26 @@ export const zPostDatasetsByDatasetIdExternalHitTestingPath = z.object({
  * External hit testing completed successfully
  */
 export const zPostDatasetsByDatasetIdExternalHitTestingResponse = zExternalHitTestingResponse
+
+export const zGetDatasetsByDatasetIdFileScanPolicyPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetDatasetsByDatasetIdFileScanPolicyResponse = zFileScanPolicyResponse
+
+export const zPutDatasetsByDatasetIdFileScanPolicyBody = zFileScanPolicyPayload
+
+export const zPutDatasetsByDatasetIdFileScanPolicyPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Policy saved
+ */
+export const zPutDatasetsByDatasetIdFileScanPolicyResponse = zFileScanPolicyResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 

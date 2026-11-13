@@ -320,7 +320,7 @@ export const post23Errors = {
   },
 }
 
-export const get36Errors = {
+export const get37Errors = {
   dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
 }
 

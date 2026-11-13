@@ -95,6 +95,8 @@ import {
   zGetDatasetsByDatasetIdEvaluationRunsByRunIdPath,
   zGetDatasetsByDatasetIdEvaluationRunsByRunIdQuery,
   zGetDatasetsByDatasetIdEvaluationRunsByRunIdResponse,
+  zGetDatasetsByDatasetIdFileScanPolicyPath,
+  zGetDatasetsByDatasetIdFileScanPolicyResponse,
   zGetDatasetsByDatasetIdIndexingStatusPath,
   zGetDatasetsByDatasetIdIndexingStatusResponse,
   zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
@@ -240,6 +242,9 @@ import {
   zPutDatasetsByDatasetIdEvaluationBody,
   zPutDatasetsByDatasetIdEvaluationPath,
   zPutDatasetsByDatasetIdEvaluationResponse,
+  zPutDatasetsByDatasetIdFileScanPolicyBody,
+  zPutDatasetsByDatasetIdFileScanPolicyPath,
+  zPutDatasetsByDatasetIdFileScanPolicyResponse,
 } from './zod.gen.ts'
 
 /**
@@ -1702,6 +1707,46 @@ export const externalHitTesting = {
 }
 
 /**
+ * Get the malware scan policy of a Classic Knowledge Base
+ */
+export const get32 = oc
+  .route({
+    description: 'Get the malware scan policy of a Classic Knowledge Base',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdFileScanPolicy',
+    path: '/datasets/{dataset_id}/file-scan-policy',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdFileScanPolicyPath }))
+  .output(zGetDatasetsByDatasetIdFileScanPolicyResponse)
+
+/**
+ * Set the malware scan policy of a Classic Knowledge Base
+ */
+export const put3 = oc
+  .route({
+    description: 'Set the malware scan policy of a Classic Knowledge Base',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putDatasetsByDatasetIdFileScanPolicy',
+    path: '/datasets/{dataset_id}/file-scan-policy',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutDatasetsByDatasetIdFileScanPolicyBody,
+      params: zPutDatasetsByDatasetIdFileScanPolicyPath,
+    }),
+  )
+  .output(zPutDatasetsByDatasetIdFileScanPolicyResponse)
+
+export const fileScanPolicy = {
+  get: get32,
+  put: put3,
+}
+
+/**
  * Test dataset knowledge retrieval
  */
 export const post21 = oc
@@ -1734,7 +1779,7 @@ export const hitTesting = {
 /**
  * Get dataset indexing status
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description: 'Get dataset indexing status',
     inputStructure: 'detailed',
@@ -1747,10 +1792,10 @@ export const get32 = oc
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
 
 export const indexingStatus3 = {
-  get: get32,
+  get: get33,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1774,11 +1819,11 @@ export const post22 = oc
   .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
 
 export const byJobId2 = {
-  get: get33,
+  get: get34,
   post: post22,
 }
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1814,7 +1859,7 @@ export const post23 = oc
   })
 
 export const knowledgeFsUpgrades = {
-  get: get34,
+  get: get35,
   post: post23,
   byJobId: byJobId2,
 }
@@ -1872,7 +1917,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1901,13 +1946,13 @@ export const post25 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get35,
+  get: get36,
   post: post25,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get36 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1920,7 +1965,7 @@ export const get36 = oc
   .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync2 = {
-  get: get36,
+  get: get37,
 }
 
 export const notion2 = {
@@ -1930,7 +1975,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get37 = oc
+export const get38 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1943,13 +1988,13 @@ export const get37 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get37,
+  get: get38,
 }
 
 /**
  * Get dataset query history
  */
-export const get38 = oc
+export const get39 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1967,13 +2012,13 @@ export const get38 = oc
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get38,
+  get: get39,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get39 = oc
+export const get40 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1986,7 +2031,7 @@ export const get39 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get39,
+  get: get40,
 }
 
 /**
@@ -2017,7 +2062,7 @@ export const retry2 = {
 /**
  * Check if dataset is in use
  */
-export const get40 = oc
+export const get41 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -2030,7 +2075,7 @@ export const get40 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get40,
+  get: get41,
 }
 
 export const delete9 = oc
@@ -2048,7 +2093,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get41 = oc
+export const get42 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -2077,7 +2122,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get41,
+  get: get42,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -2086,6 +2131,7 @@ export const byDatasetId = {
   errorDocs,
   evaluation,
   externalHitTesting,
+  fileScanPolicy,
   hitTesting,
   indexingStatus: indexingStatus3,
   knowledgeFsUpgrades,
@@ -2121,7 +2167,7 @@ export const byApiKeyId2 = {
 /**
  * Get all API keys for a dataset
  */
-export const get42 = oc
+export const get43 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
@@ -2151,7 +2197,7 @@ export const post27 = oc
   .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys3 = {
-  get: get42,
+  get: get43,
   post: post27,
   byApiKeyId: byApiKeyId2,
 }
@@ -2163,7 +2209,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get43 = oc
+export const get44 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -2193,7 +2239,7 @@ export const post28 = oc
   .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const datasets = {
-  get: get43,
+  get: get44,
   post: post28,
   apiBaseInfo,
   apiKeys,

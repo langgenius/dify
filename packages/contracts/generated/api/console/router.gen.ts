@@ -22,6 +22,7 @@ import { byEvaluateTargetType } from './evaluate-target-type/orpc.gen.ts'
 import { evaluation } from './evaluation/orpc.gen.ts'
 import { explore } from './explore/orpc.gen.ts'
 import { features } from './features/orpc.gen.ts'
+import { fileScan } from './file-scan/orpc.gen.ts'
 import { files } from './files/orpc.gen.ts'
 import { forgotPassword } from './forgot-password/orpc.gen.ts'
 import { form } from './form/orpc.gen.ts'
@@ -81,6 +82,7 @@ const communityContract = {
   evaluation,
   explore,
   features,
+  fileScan,
   files,
   forgotPassword,
   form,

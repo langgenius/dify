@@ -35,7 +35,8 @@ from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
-from services.app_service import AppListParams, AppResponseView, AppService, CreateAppParams
+from services.app_service import AppResponseView, AppService, CreateAppParams
+from services.entities.app_entities import AppListParams
 from services.rbac import contracts as rbac_contracts
 
 
@@ -638,26 +639,25 @@ class TestAgentAppType:
             active_config_is_published=True,
         )
 
-        service = AppService()
-        published_page = service.get_paginate_apps(
+        published_page = ConsoleAppRepository.get_paginate_apps(
             creator_id,
             tenant_id,
             AppListParams(mode="agent", status="normal", agent_is_published=True),
             sqlite_session,
         )
-        draft_page = service.get_paginate_apps(
+        draft_page = ConsoleAppRepository.get_paginate_apps(
             creator_id,
             tenant_id,
             AppListParams(mode="agent", status="normal", agent_is_published=False),
             sqlite_session,
         )
-        counts = service.get_agent_publication_counts(
+        counts = ConsoleAppRepository.get_agent_publication_counts(
             creator_id,
             tenant_id,
             AppListParams(mode="agent", status="normal", agent_is_published=True),
             sqlite_session,
         )
-        searched_counts = service.get_agent_publication_counts(
+        searched_counts = ConsoleAppRepository.get_agent_publication_counts(
             creator_id,
             tenant_id,
             AppListParams(mode="agent", status="normal", name="Draft", agent_is_published=True),

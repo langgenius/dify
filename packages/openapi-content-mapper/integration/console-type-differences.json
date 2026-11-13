@@ -127,6 +127,8 @@
   "console GET /enterprise/sso/saml/login": ["no-input-schema", "compatible"],
   "console GET /features": ["no-input-schema", "compatible"],
   "console GET /features/vector-space": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /file-scan/provider-types": ["no-input-schema", "compatible"],
+  "console GET /file-scan/providers": ["no-input-schema", "compatible"],
   "console GET /files/support-type": ["no-input-schema", "compatible"],
   "console GET /files/upload": ["no-input-schema", "compatible"],
   "console GET /form/human-input/v2/{form_token}": ["compatible", "parsed-vs-wire-output"],

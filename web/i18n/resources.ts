@@ -16,6 +16,7 @@ export const namespaces = [
   'knowledgeCitation',
   'knowledgeCreate',
   'fileUpload',
+  'fileScan',
   'appGeneration',
   'agentRoster',
   'workflowGenerator',

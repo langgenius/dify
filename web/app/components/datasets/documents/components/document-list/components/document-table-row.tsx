@@ -182,7 +182,7 @@ const DocumentTableRow = React.memo(
         </td>
         <td>
           {isDocumentDisplayStatus(doc.display_status) && (
-            <StatusItem status={doc.display_status} />
+            <StatusItem status={doc.display_status} errorMessage={doc.error ?? undefined} />
           )}
         </td>
         <td>

@@ -1901,6 +1901,24 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            fileScanPolicy: {
+              put: {
+                mutationOptions: {
+                  onSuccess: (policy, variables, _result, context) => {
+                    context.client.setQueryData(
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                      policy,
+                    )
+                    // Each scanner reports how many knowledge bases select it.
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
+              },
+            },
             delete: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
@@ -1956,6 +1974,24 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          fileScanPolicy: {
+            put: {
+              mutationOptions: {
+                onSuccess: (policy, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    policy,
+                  )
+                  // Each scanner reports how many knowledge bases select it.
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _result, context) => {
@@ -2870,6 +2906,55 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
                     oldExtensions?.filter((extension) => extension.id !== variables.params.id),
                 )
+              },
+            },
+          },
+        },
+      },
+      fileScan: {
+        providers: {
+          post: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.fileScan.providers.get.key(),
+                })
+              },
+            },
+          },
+          byProviderId: {
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            test: {
+              post: {
+                // A finished check always stores a new status, including a failing one.
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
               },
             },
           },
