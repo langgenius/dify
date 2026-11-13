@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field, replace
 from http import HTTPStatus
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
