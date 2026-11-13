@@ -485,17 +485,26 @@ def test_missing_workflow_is_optional_only_in_app_detail(
     harness.assert_closed()
 
 
-@pytest.mark.parametrize("legacy_agent", [False, True])
+@pytest.mark.parametrize(
+    ("strategy", "expected_mode"),
+    [
+        ("react", AppMode.AGENT_CHAT),
+        ("function_call", AppMode.AGENT_CHAT),
+        ({"type": "function_call"}, AppMode.CHAT),
+        (["react"], AppMode.CHAT),
+        (None, AppMode.CHAT),
+        ("unknown", AppMode.CHAT),
+    ],
+)
 def test_detail_computes_legacy_mode_without_writes_or_committing_callers_session(
-    harness: _Harness, legacy_agent: bool
+    harness: _Harness, strategy: object, expected_mode: AppMode
 ) -> None:
-    if legacy_agent:
-        with harness.factory.begin() as session:
-            session.execute(
-                update(AppModelConfig)
-                .where(AppModelConfig.id == harness.config.id)
-                .values(agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}))
-            )
+    with harness.factory.begin() as session:
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == harness.config.id)
+            .values(agent_mode=json.dumps({"enabled": True, "strategy": strategy, "tools": []}))
+        )
     with harness.flask_app.app_context():
         caller = db.session()
         account = caller.get(Account, harness.account.id)
@@ -504,7 +513,7 @@ def test_detail_computes_legacy_mode_without_writes_or_committing_callers_sessio
         result = harness.detail()
         assert db.session() is caller
         assert account in caller.dirty
-        assert result.mode == (AppMode.AGENT_CHAT if legacy_agent else AppMode.CHAT)
+        assert result.mode == expected_mode
         harness.assert_read_only()
         with harness.factory() as session:
             assert session.scalar(select(Account.name).where(Account.id == account.id)) == "Viewer"
