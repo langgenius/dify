@@ -39,6 +39,7 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { toExternalAgentListItem } from '@/features/agent-v2/external-agent/model'
 import { consoleQuery } from '@/service/console'
@@ -222,9 +223,7 @@ function EditAgentInfoLoader({
   )
   const [reload, setReload] = useState(0)
   if (!detail.data)
-    return (
-      <DialogBody>{detail.isPending && <SkeletonRectangle className="h-40 w-full" />}</DialogBody>
-    )
+    return <DialogBody>{detail.isPending && <LoadingPlaceholder className="h-40" />}</DialogBody>
   return (
     <EditAgentInfo
       key={reload}
