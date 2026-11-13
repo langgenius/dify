@@ -2,6 +2,7 @@
 
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { useTranslation } from 'react-i18next'
+import { SuspensionNotice } from '@/app/components/app/deploy/shared/suspension-notice'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { EnvironmentServiceApiCard } from './environment-service-api-card'
@@ -33,6 +34,7 @@ type DeployedEnvironmentAccessPointsProps = {
   appId: string
   environmentId: string
   canManageAccessPoint: boolean
+  canDeploy?: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
@@ -40,6 +42,7 @@ export function DeployedEnvironmentAccessPoints({
   appId,
   environmentId,
   canManageAccessPoint,
+  canDeploy = false,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
   const { t } = useTranslation(['deployments', 'tools', 'navigation'])
@@ -63,38 +66,46 @@ export function DeployedEnvironmentAccessPoints({
   }
 
   return (
-    <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-      <EnvironmentWebAppCard
+    <div className="flex flex-col gap-3">
+      <SuspensionNotice
         appId={appId}
         environmentId={environmentId}
-        canManageAccessPoint={canManageAccessPoint}
-        highlighted={highlightedAccessPoint === 'webApp'}
+        accessPoint
+        canDeploy={canDeploy}
       />
-      <EnvironmentServiceApiCard
-        appId={appId}
-        environmentId={environmentId}
-        canManageAccessPoint={canManageAccessPoint}
-        highlighted={highlightedAccessPoint === 'serviceApi'}
-      />
-      {UNSUPPORTED_ACCESS_POINTS.map((accessPoint) => {
-        return (
-          <AccessPointCard
-            key={accessPoint}
-            title={title(accessPoint)}
-            description={description(accessPoint)}
-            icon={ACCESS_POINT_CONFIG[accessPoint].icon}
-            status="unsupported"
-            statusLabel={unsupportedStatusLabel}
-            highlighted={highlightedAccessPoint === accessPoint}
-          >
-            <AccessPointEmptyContent>
-              {t(($) => $['studio.accessPoint.unsupportedInDeployedEnvironment'], {
-                ns: 'deployments',
-              })}
-            </AccessPointEmptyContent>
-          </AccessPointCard>
-        )
-      })}
+      <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+        <EnvironmentWebAppCard
+          appId={appId}
+          environmentId={environmentId}
+          canManageAccessPoint={canManageAccessPoint}
+          highlighted={highlightedAccessPoint === 'webApp'}
+        />
+        <EnvironmentServiceApiCard
+          appId={appId}
+          environmentId={environmentId}
+          canManageAccessPoint={canManageAccessPoint}
+          highlighted={highlightedAccessPoint === 'serviceApi'}
+        />
+        {UNSUPPORTED_ACCESS_POINTS.map((accessPoint) => {
+          return (
+            <AccessPointCard
+              key={accessPoint}
+              title={title(accessPoint)}
+              description={description(accessPoint)}
+              icon={ACCESS_POINT_CONFIG[accessPoint].icon}
+              status="unsupported"
+              statusLabel={unsupportedStatusLabel}
+              highlighted={highlightedAccessPoint === accessPoint}
+            >
+              <AccessPointEmptyContent>
+                {t(($) => $['studio.accessPoint.unsupportedInDeployedEnvironment'], {
+                  ns: 'deployments',
+                })}
+              </AccessPointEmptyContent>
+            </AccessPointCard>
+          )
+        })}
+      </div>
     </div>
   )
 }

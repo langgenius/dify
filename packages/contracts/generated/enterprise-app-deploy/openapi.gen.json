@@ -795,6 +795,110 @@
         ]
       }
     },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:resume": {
+      "post": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_ResumeDeployment",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ResumeDeploymentResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "resumeDeployment"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:suspend": {
+      "post": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_SuspendDeployment",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.SuspendDeploymentResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "suspendDeployment"
+        ]
+      }
+    },
     "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:undeploy": {
       "post": {
         "tags": [
@@ -932,6 +1036,10 @@
           },
           "in_use": {
             "type": "boolean"
+          },
+          "suspended_at": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -1191,7 +1299,8 @@
             "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAccess"
           },
           "deployment_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Stable app/environment deployment identity, independent of published revisions."
           }
         }
       },
@@ -1243,6 +1352,13 @@
           },
           "latest_operation": {
             "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentOperation"
+          },
+          "suspended_at": {
+            "type": "number",
+            "format": "double"
+          },
+          "suspended_by": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Operator"
           }
         }
       },
@@ -1379,7 +1495,9 @@
         "enum": [
           "DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED",
           "DEPLOYMENT_OPERATION_TYPE_DEPLOY",
-          "DEPLOYMENT_OPERATION_TYPE_UNDEPLOY"
+          "DEPLOYMENT_OPERATION_TYPE_UNDEPLOY",
+          "DEPLOYMENT_OPERATION_TYPE_SUSPEND",
+          "DEPLOYMENT_OPERATION_TYPE_RESUME"
         ],
         "type": "string"
       },
@@ -1769,6 +1887,22 @@
           },
           "status": {
             "$ref": "#/components/schemas/DeploymentOperationStatus"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ResumeDeploymentResponse": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOperationReceipt"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.SuspendDeploymentResponse": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOperationReceipt"
           }
         }
       },

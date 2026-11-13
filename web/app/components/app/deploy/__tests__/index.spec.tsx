@@ -2369,7 +2369,7 @@ describe('AppDeploy', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('disables every row action while deployment is in progress', async () => {
+  it('allows suspension while deployment is in progress', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
 
@@ -2387,8 +2387,9 @@ describe('AppDeploy', () => {
     )
 
     const menuItems = within(await screen.findByRole('menu')).getAllByRole('menuitem')
-    expect(menuItems).toHaveLength(1)
-    for (const item of menuItems) expect(item).toHaveAttribute('aria-disabled', 'true')
+    expect(menuItems).toHaveLength(2)
+    expect(menuItems[0]).not.toHaveAttribute('aria-disabled', 'true')
+    expect(menuItems[1]).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('asks for confirmation before undeploying an environment', async () => {

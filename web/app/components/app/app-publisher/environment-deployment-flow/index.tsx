@@ -6,6 +6,7 @@ import type { DeploymentVersion } from '@/app/components/app/deploy/utils/versio
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/shared/environment-deployment-flow'
+import { SuspensionNotice } from '@/app/components/app/deploy/shared/suspension-notice'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   publisherEnvironmentDeploymentPollingAtom,
@@ -79,6 +80,7 @@ export function PublisherEnvironmentFlow({
     >
       {({ deploymentActionsDisabled, deployVersion, showVersionSelection }) => (
         <div>
+          <SuspensionNotice appId={appId} environmentId={environmentId} className="px-4 pt-2" />
           <PublisherEnvironmentSummarySection
             deployment={deployment}
             deploymentActionsDisabled={deploymentActionsDisabled}

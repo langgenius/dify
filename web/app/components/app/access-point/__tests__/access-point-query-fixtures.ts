@@ -7,6 +7,12 @@ export function seedAccessPointQueries(
   environments: string[],
 ) {
   const params = { app_id: appId }
+  queryClient.setQueryData(
+    consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey({
+      input: { params },
+    }),
+    { data: [] },
+  )
   queryClient.setQueryData(consoleQuery.apps.byAppId.server.get.queryKey({ input: { params } }), {
     id: '',
     server_code: '',

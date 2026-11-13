@@ -57,10 +57,56 @@ export const PluginCategory = {
 
 export type PluginCategory = (typeof PluginCategory)[keyof typeof PluginCategory]
 
+export const AppType = {
+  APP_TYPE_UNSPECIFIED: 'APP_TYPE_UNSPECIFIED',
+  APP_TYPE_CHAT: 'APP_TYPE_CHAT',
+  APP_TYPE_AGENT_CHAT: 'APP_TYPE_AGENT_CHAT',
+  APP_TYPE_COMPLETION: 'APP_TYPE_COMPLETION',
+  APP_TYPE_ADVANCED_CHAT: 'APP_TYPE_ADVANCED_CHAT',
+  APP_TYPE_WORKFLOW: 'APP_TYPE_WORKFLOW',
+  APP_TYPE_AGENT: 'APP_TYPE_AGENT',
+} as const
+
+export type AppType = (typeof AppType)[keyof typeof AppType]
+
+export const AppDeploymentStatus = {
+  APP_DEPLOYMENT_STATUS_UNSPECIFIED: 'APP_DEPLOYMENT_STATUS_UNSPECIFIED',
+  APP_DEPLOYMENT_STATUS_RUNNING: 'APP_DEPLOYMENT_STATUS_RUNNING',
+  APP_DEPLOYMENT_STATUS_DEPLOYING: 'APP_DEPLOYMENT_STATUS_DEPLOYING',
+  APP_DEPLOYMENT_STATUS_UNDEPLOYING: 'APP_DEPLOYMENT_STATUS_UNDEPLOYING',
+  APP_DEPLOYMENT_STATUS_FAILED: 'APP_DEPLOYMENT_STATUS_FAILED',
+  APP_DEPLOYMENT_STATUS_ABNORMAL: 'APP_DEPLOYMENT_STATUS_ABNORMAL',
+} as const
+
+export type AppDeploymentStatus = (typeof AppDeploymentStatus)[keyof typeof AppDeploymentStatus]
+
+export const DashboardAppTriggerType = {
+  DASHBOARD_APP_TRIGGER_TYPE_UNSPECIFIED: 'DASHBOARD_APP_TRIGGER_TYPE_UNSPECIFIED',
+  DASHBOARD_APP_TRIGGER_TYPE_WEBHOOK: 'DASHBOARD_APP_TRIGGER_TYPE_WEBHOOK',
+  DASHBOARD_APP_TRIGGER_TYPE_SCHEDULE: 'DASHBOARD_APP_TRIGGER_TYPE_SCHEDULE',
+  DASHBOARD_APP_TRIGGER_TYPE_PLUGIN: 'DASHBOARD_APP_TRIGGER_TYPE_PLUGIN',
+} as const
+
+export type DashboardAppTriggerType =
+  (typeof DashboardAppTriggerType)[keyof typeof DashboardAppTriggerType]
+
+export const DashboardAppTriggerStatus = {
+  DASHBOARD_APP_TRIGGER_STATUS_UNSPECIFIED: 'DASHBOARD_APP_TRIGGER_STATUS_UNSPECIFIED',
+  DASHBOARD_APP_TRIGGER_STATUS_ENABLED: 'DASHBOARD_APP_TRIGGER_STATUS_ENABLED',
+  DASHBOARD_APP_TRIGGER_STATUS_DISABLED: 'DASHBOARD_APP_TRIGGER_STATUS_DISABLED',
+  DASHBOARD_APP_TRIGGER_STATUS_UNAUTHORIZED: 'DASHBOARD_APP_TRIGGER_STATUS_UNAUTHORIZED',
+  DASHBOARD_APP_TRIGGER_STATUS_RATE_LIMITED: 'DASHBOARD_APP_TRIGGER_STATUS_RATE_LIMITED',
+} as const
+
+export type DashboardAppTriggerStatus =
+  (typeof DashboardAppTriggerStatus)[keyof typeof DashboardAppTriggerStatus]
+
 export const DeploymentOperationType = {
   DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED: 'DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED',
   DEPLOYMENT_OPERATION_TYPE_DEPLOY: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY',
   DEPLOYMENT_OPERATION_TYPE_UNDEPLOY: 'DEPLOYMENT_OPERATION_TYPE_UNDEPLOY',
+  DEPLOYMENT_OPERATION_TYPE_SUSPEND: 'DEPLOYMENT_OPERATION_TYPE_SUSPEND',
+  DEPLOYMENT_OPERATION_TYPE_RESUME: 'DEPLOYMENT_OPERATION_TYPE_RESUME',
 } as const
 
 export type DeploymentOperationType =
@@ -116,6 +162,12 @@ export const DeploymentOperationFailureCode = {
     'DEPLOYMENT_OPERATION_FAILURE_CODE_ENVIRONMENT_CPU_POOL_EXHAUSTED',
   DEPLOYMENT_OPERATION_FAILURE_CODE_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED:
     'DEPLOYMENT_OPERATION_FAILURE_CODE_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_SUSPEND:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_SUSPEND',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_SUSPENDED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_SUSPENDED',
+  DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_NOT_SUSPENDED:
+    'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_NOT_SUSPENDED',
 } as const
 
 export type DeploymentOperationFailureCode =
@@ -195,6 +247,13 @@ export type AppEnvironment = {
   description: string
   status: EnvironmentStatus
   in_use: boolean
+  suspended_at?: number
+}
+
+export type AppIcon = {
+  type?: string
+  value?: string
+  background?: string
 }
 
 export type AppRunnerLog = {
@@ -241,15 +300,6 @@ export type CheckSourceVersionDeletableResponse = {
   reason?: string
 }
 
-export type CreateDockerComposeBundleRequest = {
-  environmentId?: string
-  dockerNetwork: string
-}
-
-export type CreateDockerComposeBundleResponse = {
-  bundle: DockerComposeBundle
-}
-
 export type CreateEnvironmentRequest = {
   displayName: string
   description?: string
@@ -261,6 +311,15 @@ export type CreateEnvironmentRequest = {
 
 export type CreateEnvironmentResponse = {
   environment: Environment
+}
+
+export type CreateRunnerRegistrationRequest = {
+  environmentId?: string
+  rotateJoinToken?: boolean
+}
+
+export type CreateRunnerRegistrationResponse = {
+  registration: RunnerRegistration
 }
 
 export type CredentialCandidate = {
@@ -285,6 +344,82 @@ export type CredentialSlot = {
   icon?: string
   icon_dark?: string
   workflow_as_tool_dependency?: WorkflowAsToolDependency
+}
+
+export type DashboardApp = {
+  appId: string
+  name: string
+  type: AppType
+  icon: AppIcon
+  workspace: NamedRef
+  creator?: SimpleAccount
+  createdAt: string
+  environments: Array<DashboardAppEnvironment>
+  invocations?: DashboardAppInvocations
+}
+
+export type DashboardAppAccess = {
+  webApp: DashboardAppChannel
+  serviceApi: DashboardAppChannel
+  mcp: DashboardAppMcpChannel
+  trigger: DashboardAppTriggerChannel
+}
+
+export type DashboardAppChannel = {
+  enabled: boolean
+  endpoint: string
+}
+
+export type DashboardAppDeployment = {
+  environment?: NamedRef
+  builtIn: boolean
+  status: AppDeploymentStatus
+  version?: WorkflowVersion
+  versionsBehind?: number
+  deployedAt?: string
+  access: DashboardAppAccess
+}
+
+export type DashboardAppEnvironment = {
+  environment?: NamedRef
+  builtIn: boolean
+  status: AppDeploymentStatus
+}
+
+export type DashboardAppEnvironmentActivity = {
+  environmentId?: string
+  builtIn: boolean
+  invocationCount: string
+  errorCount: string
+  lastInvokedAt?: string
+}
+
+export type DashboardAppEnvironmentInvocations = {
+  environment?: NamedRef
+  builtIn: boolean
+  count: string
+}
+
+export type DashboardAppInvocations = {
+  total: string
+  environments: Array<DashboardAppEnvironmentInvocations>
+}
+
+export type DashboardAppMcpChannel = {
+  enabled: boolean
+  maskedEndpoint: string
+}
+
+export type DashboardAppTrigger = {
+  type: DashboardAppTriggerType
+  title: string
+  providerName?: string
+  status: DashboardAppTriggerStatus
+}
+
+export type DashboardAppTriggerChannel = {
+  enabled: boolean
+  triggers: Array<DashboardAppTrigger>
 }
 
 export type DeleteEnvironmentApiKeyResponse = {
@@ -335,13 +470,6 @@ export type DeploymentOperationReceipt = {
   id: string
   type: DeploymentOperationType
   status: DeploymentOperationStatus
-}
-
-export type DockerComposeBundle = {
-  filename: string
-  archive: string
-  composeYaml: string
-  configYaml: string
 }
 
 export type Environment = {
@@ -405,6 +533,8 @@ export type EnvironmentDeployedApp = {
   occupiesPool?: boolean
   recentInvocationCount?: string
   versionsBehind?: number
+  suspendedAt?: string
+  suspendedBy?: Operator
 }
 
 export type EnvironmentDeployedAppAttempt = {
@@ -440,6 +570,8 @@ export type EnvironmentDeploymentState = {
   deployed_at?: number
   deployed_by?: Operator
   latest_operation?: EnvironmentDeploymentOperation
+  suspended_at?: number
+  suspended_by?: Operator
 }
 
 export type EnvironmentMcpServer = {
@@ -618,9 +750,10 @@ export type Error = {
     | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED'
     | 'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE'
     | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED'
-    | 'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE'
-    | 'APPDEPLOY_REVISION_RETIRED'
     | 'APPDEPLOY_CREDENTIAL_DENIED_BY_POLICY'
+    | 'APPDEPLOY_NOTHING_TO_SUSPEND'
+    | 'APPDEPLOY_DEPLOYMENT_SUSPENDED'
+    | 'APPDEPLOY_DEPLOYMENT_NOT_SUSPENDED'
     | 'APPDEPLOY_FILE_GRANT_UNAVAILABLE'
     | 'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED'
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
@@ -643,6 +776,16 @@ export type Error = {
   phase?: string
   occurredAt?: string
   detailCode?: string
+}
+
+export type GetAppActivityResponse = {
+  since: string
+  environments: Array<DashboardAppEnvironmentActivity>
+}
+
+export type GetAppResponse = {
+  app: DashboardApp
+  deployments: Array<DashboardAppDeployment>
 }
 
 export type GetAppRunnerLogSummaryResponse = {
@@ -707,6 +850,12 @@ export type ListAppRunnerLogsResponse = {
   data: Array<AppRunnerLog>
   nextPageToken?: string
   previousPageToken?: string
+}
+
+export type ListAppsResponse = {
+  data: Array<DashboardApp>
+  pagination: Pagination
+  invocationsUnavailable: boolean
 }
 
 export type ListDeploymentOperationsResponse = {
@@ -809,8 +958,8 @@ export type ResolveApiTokenRouteResponse = {
   servingRevisionId?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
-  assignmentGeneration?: string
   decision?: string
+  suspended?: boolean
 }
 
 export type ResolveWebAppRouteRequest = {
@@ -830,12 +979,20 @@ export type ResolveWebAppRouteResponse = {
   servingRevisionId?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
-  assignmentGeneration?: string
   userId?: string
   userFrom?: string
   userAuthType?: string
   fileGrant?: string
   fileGrantExpiresAt?: string
+  suspended?: boolean
+}
+
+export type ResumeDeploymentResponse = {
+  operation?: DeploymentOperationReceipt
+}
+
+export type ResumeEnvironmentAppResponse = {
+  operationId?: string
 }
 
 export type RetryEnvironmentBootstrapRequest = {
@@ -850,6 +1007,16 @@ export type RunnerMemory = {
   maxMib?: string
   readonly effectiveMaxMib?: string
   readonly minMib?: string
+}
+
+export type RunnerRegistration = {
+  runnerId: string
+  joinToken: string
+  controlEndpoint: string
+  configYaml: string
+  envVars?: {
+    [key: string]: string
+  }
 }
 
 export type RunnerSizing = {
@@ -871,6 +1038,14 @@ export type SourceVersionDeployment = {
 export type SourceVersionDeploymentEnvironment = {
   id?: string
   name?: string
+}
+
+export type SuspendDeploymentResponse = {
+  operation?: DeploymentOperationReceipt
+}
+
+export type SuspendEnvironmentAppResponse = {
+  operationId?: string
 }
 
 export type TestConnectionRequest = {
@@ -1036,6 +1211,8 @@ export type EnvironmentDeployedAppWritable = {
   occupiesPool?: boolean
   recentInvocationCount?: string
   versionsBehind?: number
+  suspendedAt?: string
+  suspendedBy?: Operator
 }
 
 export type EnvironmentMcpServerWritable = {
@@ -1376,6 +1553,42 @@ export type ConsoleDeploymentServiceDeployWorkflowResponses = {
 
 export type ConsoleDeploymentServiceDeployWorkflowResponse =
   ConsoleDeploymentServiceDeployWorkflowResponses[keyof ConsoleDeploymentServiceDeployWorkflowResponses]
+
+export type ConsoleDeploymentServiceResumeDeploymentData = {
+  body?: never
+  path: {
+    app_id: string
+    workflow_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:resume'
+}
+
+export type ConsoleDeploymentServiceResumeDeploymentResponses = {
+  200: ResumeDeploymentResponse
+}
+
+export type ConsoleDeploymentServiceResumeDeploymentResponse =
+  ConsoleDeploymentServiceResumeDeploymentResponses[keyof ConsoleDeploymentServiceResumeDeploymentResponses]
+
+export type ConsoleDeploymentServiceSuspendDeploymentData = {
+  body?: never
+  path: {
+    app_id: string
+    workflow_id: string
+    environment_id: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:suspend'
+}
+
+export type ConsoleDeploymentServiceSuspendDeploymentResponses = {
+  200: SuspendDeploymentResponse
+}
+
+export type ConsoleDeploymentServiceSuspendDeploymentResponse =
+  ConsoleDeploymentServiceSuspendDeploymentResponses[keyof ConsoleDeploymentServiceSuspendDeploymentResponses]
 
 export type ConsoleDeploymentServiceUndeployWorkflowData = {
   body?: never

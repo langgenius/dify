@@ -157,6 +157,7 @@ function AccessPointContent({
               <DeployedEnvironmentAccessPoints
                 appId={appId}
                 environmentId={selectedEnvironment}
+                canDeploy={canDeploy}
                 canManageAccessPoint={canManageAccessPoint}
                 highlightedAccessPoint={selectedHighlightedAccessPoint}
               />
