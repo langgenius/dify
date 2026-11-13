@@ -27,7 +27,7 @@ from graphon.runtime import VariablePool
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
-def test_fetch_model_reuses_single_model_assembly():
+def test_fetch_model_reuses_single_model_assembly() -> None:
     config = make_model_config(provider="openai", model="gpt-4o-mini", mode="chat")
     provider_model_bundle = config.provider_model_bundle
     provider_model_bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(
@@ -119,14 +119,14 @@ def _make_model_schema_with_defaults() -> AIModelEntity:
     )
 
 
-def test_extract_default_completion_params_collects_rule_defaults():
+def test_extract_default_completion_params_collects_rule_defaults() -> None:
     """_extract_default_completion_params should gather every rule.default."""
     schema = _make_model_schema_with_defaults()
     params = AgentRuntimeSupport._extract_default_completion_params(schema)
     assert params == {"temperature": 0.7, "max_tokens": 2048, "top_p": 1.0}
 
 
-def test_extract_default_completion_params_skips_rules_without_default():
+def test_extract_default_completion_params_skips_rules_without_default() -> None:
     """Rules whose default is None must not appear in the result."""
     schema = AIModelEntity(
         model="test-model",
@@ -155,7 +155,7 @@ def test_extract_default_completion_params_skips_rules_without_default():
     assert params == {"temperature": 0.5}
 
 
-def test_extract_default_completion_params_empty_when_no_defaults():
+def test_extract_default_completion_params_empty_when_no_defaults() -> None:
     """An empty parameter_rules list yields an empty dict."""
     schema = AIModelEntity(
         model="test-model",
@@ -226,7 +226,7 @@ def _tool_with_setting(template: str) -> dict[str, object]:
     }
 
 
-def test_build_parameters_treats_null_variable_value_as_not_provided():
+def test_build_parameters_treats_null_variable_value_as_not_provided() -> None:
     """A canvas-written {type: variable, value: null} entry must not crash the node.
 
     The canvas stores unset optional strategy params as {"type": "variable", "value": null}.
@@ -249,7 +249,7 @@ def test_build_parameters_treats_null_variable_value_as_not_provided():
     assert result["allowed_tools"] is None
 
 
-def test_build_parameters_resolves_set_variable_value():
+def test_build_parameters_resolves_set_variable_value() -> None:
     result = _build_parameters(
         configured={"query": {"type": "variable", "value": ["start", "target"]}},
         declared=[_declared_parameter("query", _ParameterType.STRING)],
@@ -269,7 +269,7 @@ def test_build_parameters_resolves_set_variable_value():
         pytest.param('{"looks": "like json\t"}', id="json-lookalike"),
     ],
 )
-def test_build_parameters_keeps_tool_settings_holding_json_special_characters(raw_value: str):
+def test_build_parameters_keeps_tool_settings_holding_json_special_characters(raw_value: str) -> None:
     """Tool settings referencing a variable must survive values that are illegal inside JSON text."""
     result = _build_parameters(
         configured={"tools": {"type": "constant", "value": [_tool_with_setting("{{#start.target#}}")]}},
@@ -285,7 +285,7 @@ def test_build_parameters_keeps_tool_settings_holding_json_special_characters(ra
     assert tools[0]["settings"]["target"]["value"] == raw_value
 
 
-def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting():
+def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting() -> None:
     # for_log keeps the tools branch away from ToolManager while still resolving settings.
     result = _build_parameters(
         configured={"tools": {"type": "constant", "value": [_tool_with_setting("room {{#start.target#}}!")]}},
@@ -299,7 +299,7 @@ def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting():
     assert tools[0]["settings"]["target"]["value"] == 'room a\t"tabbed"\tname!'
 
 
-def test_build_parameters_preserves_nested_constant_structure():
+def test_build_parameters_preserves_nested_constant_structure() -> None:
     raw_value = 'a "quoted"\ttab'
     result = _build_parameters(
         configured={
@@ -315,7 +315,7 @@ def test_build_parameters_preserves_nested_constant_structure():
     assert result["options"] == [{"label": raw_value, "nested": {"items": [raw_value]}}]
 
 
-def test_build_parameters_keeps_scalar_constant_types():
+def test_build_parameters_keeps_scalar_constant_types() -> None:
     result = _build_parameters(
         configured={
             "maximum_iterations": {"type": "constant", "value": 10},
@@ -336,7 +336,7 @@ def test_build_parameters_keeps_scalar_constant_types():
     assert result["ratio"] == 0.5
 
 
-def test_build_parameters_resolves_plain_string_constant():
+def test_build_parameters_resolves_plain_string_constant() -> None:
     result = _build_parameters(
         configured={"query": {"type": "mixed", "value": 'ask about "{{#start.target#}}"'}},
         declared=[_declared_parameter("query", _ParameterType.STRING)],
@@ -346,7 +346,7 @@ def test_build_parameters_resolves_plain_string_constant():
     assert result["query"] == 'ask about "dify"'
 
 
-def test_build_parameters_selects_log_form_for_nested_leaves_when_logging():
+def test_build_parameters_selects_log_form_for_nested_leaves_when_logging() -> None:
     configured = {"options": {"type": "constant", "value": {"payload": "{{#start.blob#}}"}}}
     declared = [_declared_parameter("options", _ParameterType.ANY)]
     variables = {"blob": {"key": "value"}}
@@ -378,7 +378,7 @@ _SELECTOR_LOOKALIKES = {
         pytest.param("start.target", id="node-output"),
     ],
 )
-def test_build_parameters_keeps_selector_lookalike_tool_arguments_literal(literal: str):
+def test_build_parameters_keeps_selector_lookalike_tool_arguments_literal(literal: str) -> None:
     """A tool argument carrying no {{#...#}} marker is literal text even when it names a variable.
 
     convert_template also looks a bare dotted fragment up as a selector. That stayed dormant while
@@ -398,7 +398,7 @@ def test_build_parameters_keeps_selector_lookalike_tool_arguments_literal(litera
     assert tools[0]["settings"]["target"]["value"] == literal
 
 
-def test_build_parameters_resolves_markers_without_touching_bare_selectors_beside_them():
+def test_build_parameters_resolves_markers_without_touching_bare_selectors_beside_them() -> None:
     result = _build_parameters(
         configured={"tools": {"type": "constant", "value": [_tool_with_setting("env.SECRET{{#start.target#}}")]}},
         declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
@@ -412,7 +412,7 @@ def test_build_parameters_resolves_markers_without_touching_bare_selectors_besid
     assert tools[0]["settings"]["target"]["value"] == "env.SECRETplain"
 
 
-def test_build_parameters_keeps_selector_lookalikes_literal_in_nested_constants():
+def test_build_parameters_keeps_selector_lookalikes_literal_in_nested_constants() -> None:
     result = _build_parameters(
         configured={
             "options": {
@@ -428,7 +428,7 @@ def test_build_parameters_keeps_selector_lookalikes_literal_in_nested_constants(
     assert result["options"] == [{"label": "env.SECRET", "nested": {"items": ["sys.query", "plain"]}}]
 
 
-def test_build_parameters_keeps_top_level_string_lookup_behaviour():
+def test_build_parameters_keeps_top_level_string_lookup_behaviour() -> None:
     """A top-level string is the template itself, so its lookup is deliberately left unchanged."""
     result = _build_parameters(
         configured={"query": {"type": "mixed", "value": "sys.query"}},
