@@ -1065,7 +1065,8 @@ class TestAppResponseModelsCases:
         assert calls == [(sqlite_session, _APP_RESPONSE_MODELS_APP_ID)]
 
     @staticmethod
-    def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session: Session):
+    @pytest.mark.parametrize("strategy", ["react", {"type": "function_call"}, ["react"]])
+    def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session: Session, strategy: object):
         app_pagination = app_models.AppPagination
         item_one = _app(
             app_id="00000000-0000-0000-0000-000000000110",
@@ -1082,6 +1083,13 @@ class TestAppResponseModelsCases:
             icon="🙂",
             created_at=_ts(16),
         )
+        config = AppModelConfig(
+            app_id=item_one.id,
+            agent_mode=json.dumps({"enabled": True, "strategy": strategy}),
+        )
+        sqlite_session.add_all([item_one, config])
+        sqlite_session.flush()
+        item_one.app_model_config_id = config.id
         pagination = PaginatedResult(
             page=2,
             per_page=10,
@@ -1098,6 +1106,8 @@ class TestAppResponseModelsCases:
         assert serialized["limit"] == 10
         assert serialized["has_more"] is True
         assert len(serialized["data"]) == 2
+        assert serialized["data"][0]["mode"] == ("agent-chat" if strategy == "react" else "chat")
+        assert serialized["data"][1]["mode"] == "agent-chat"
         assert serialized["data"][0]["icon_url"] == "signed:first-icon"
         assert serialized["data"][1]["icon_url"] is None
 
