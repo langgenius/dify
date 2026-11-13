@@ -9,7 +9,6 @@ min-severity = "warn"
 # Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
   "dev/test_generate_swagger_specs.py",
-  "controllers/console/app/test_agent_config_inspector.py",
   "controllers/console/app/test_app.py",
   "controllers/console/app/test_audio.py",
   "controllers/console/app/test_generator.py",
@@ -48,7 +47,6 @@ project-excludes = [
   "controllers/service_api/app/test_audio.py",
   "controllers/service_api/app/test_completion.py",
   "controllers/service_api/app/test_file.py",
-  "controllers/service_api/app/test_workflow_events.py",
   "controllers/service_api/dataset/rag_pipeline/test_rag_pipeline_workflow.py",
   "controllers/service_api/dataset/test_segment.py",
   "controllers/service_api/dataset/test_document.py",
@@ -57,7 +55,6 @@ project-excludes = [
   "controllers/trigger/test_trigger.py",
   "controllers/trigger/test_webhook.py",
   "controllers/web/test_human_input_form.py",
-  "controllers/web/test_wraps.py",
   "core/agent/conftest.py",
   "core/agent/output_parser/test_cot_output_parser.py",
   "core/agent/test_cot_agent_runner.py",
@@ -71,7 +68,6 @@ project-excludes = [
   "core/app/apps/advanced_chat/test_generate_response_converter.py",
   "core/app/apps/advanced_chat/test_generate_task_pipeline.py",
   "core/app/apps/agent_app/test_app_generator.py",
-  "core/app/apps/agent_app/test_app_runner.py",
   "core/app/apps/agent_app/test_runtime_request_builder.py",
   "core/app/apps/chat/test_app_config_manager.py",
   "core/app/apps/chat/test_app_generator.py",
