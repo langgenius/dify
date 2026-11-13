@@ -4,7 +4,7 @@ import types
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import Table, create_engine
 from sqlalchemy.orm import Session
 
 from models import model as model_module
@@ -28,11 +28,15 @@ def test_legacy_agent_strategy_preserves_invalid_configuration(
 ) -> None:
     engine = create_engine("sqlite:///:memory:")
     try:
+        assert isinstance(App.__table__, Table)
+        assert isinstance(AppModelConfig.__table__, Table)
         App.__table__.create(engine)
         AppModelConfig.__table__.create(engine)
         with Session(engine, expire_on_commit=False) as session:
             monkeypatch.setattr(model_module.db, "session", session)
-            app = App(tenant_id=str(uuid4()), name="Legacy Agent", mode=AppMode.CHAT)
+            app = App(
+                tenant_id=str(uuid4()), name="Legacy Agent", mode=AppMode.CHAT, enable_site=True, enable_api=False
+            )
             session.add(app)
             session.flush()
             config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": enabled, "strategy": strategy}))
