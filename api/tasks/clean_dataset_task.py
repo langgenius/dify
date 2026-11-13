@@ -24,6 +24,7 @@ from models.dataset import (
     Pipeline,
     SegmentAttachmentBinding,
 )
+from models.file_scan import FileScanPolicy
 from models.model import UploadFile
 from models.workflow import Workflow
 from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
@@ -263,6 +264,14 @@ def _delete_dataset_scoped_rows(session: Session, tenant_id: str, dataset_id: st
     # delete dataset metadata
     session.execute(delete(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id))
     session.execute(delete(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id))
+    # delete the dataset's malware scan policy; scan records stay as an audit trail
+    session.execute(
+        delete(FileScanPolicy).where(
+            FileScanPolicy.tenant_id == tenant_id,
+            FileScanPolicy.scope_type == "dataset",
+            FileScanPolicy.scope_id == dataset_id,
+        )
+    )
     # delete pipeline and workflow
     if pipeline_id:
         session.execute(delete(Pipeline).where(Pipeline.id == pipeline_id))

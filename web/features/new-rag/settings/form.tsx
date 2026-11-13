@@ -6,6 +6,8 @@ import { Form } from '@langgenius/dify-ui/form'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { FileScanSetting } from '@/features/file-scan/file-scan-setting'
+import { useFileScanEnabled } from '@/features/file-scan/provider-types'
 import { BasicInformationSection } from './basic-information'
 import { DeleteKnowledgeAction } from './delete-knowledge'
 import { ExternalAccessSection } from './external-access'
@@ -31,6 +33,7 @@ export function KnowledgeSettingsForm() {
   const saveError = useAtomValue(knowledgeSettingsSaveErrorAtom)
   const save = useSetAtom(saveKnowledgeSettingsAtom)
   const reset = useSetAtom(resetKnowledgeSettingsDraftAtom)
+  const fileScanEnabled = useFileScanEnabled()
 
   if (!space) return null
   const canModify = space.permission_keys.some((permission) =>
@@ -97,6 +100,16 @@ export function KnowledgeSettingsForm() {
         )}
         <BasicInformationSection />
         <ExternalAccessSection />
+        {fileScanEnabled && (
+          <>
+            <div className="h-px bg-divider-subtle" />
+            <FileScanSetting
+              product="knowledge-fs"
+              resourceId={space.control_space_id}
+              readonly={!space.permission_keys.includes('knowledge_space_edit')}
+            />
+          </>
+        )}
         <RetrievalSettingsSection />
         <DeleteKnowledgeAction />
         {saveError && !isSaving && (

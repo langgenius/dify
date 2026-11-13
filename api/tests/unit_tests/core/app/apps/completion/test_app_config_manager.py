@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -18,6 +19,8 @@ from models.model import (
     AppModelConfigDict,
 )
 
+_DISABLED_ANNOTATION_REPLY: AnnotationReplyDisabledConfig = {"enabled": False}
+
 
 def _app() -> App:
     return App(
@@ -35,13 +38,20 @@ def _config() -> AppModelConfig:
     return AppModelConfig(app_id="app1")
 
 
+def _override_config() -> AppModelConfigDict:
+    """Materialize a complete config dict, the only shape ``override_config_dict`` accepts."""
+    return AppModelConfig(
+        app_id="app1",
+        model=json.dumps({"provider": "override", "name": "override", "mode": "completion"}),
+    ).to_dict(annotation_reply=_DISABLED_ANNOTATION_REPLY)
+
+
 class TestCompletionAppConfigManager:
     def test_get_app_config_with_override(self, mocker: MockerFixture) -> None:
         app_model = _app()
         app_model_config = _config()
 
-        override_config: AppModelConfigDict = app_model_config.to_dict(annotation_reply={"enabled": False})
-        override_config["model"] = {"provider": "override", "name": "m", "mode": "completion"}
+        override_config = _override_config()
 
         mocker.patch.object(module.ModelConfigManager, "convert", return_value="model")
         mocker.patch.object(module.PromptTemplateConfigManager, "convert", return_value="prompt")

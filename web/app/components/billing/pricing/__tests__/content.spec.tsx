@@ -1,7 +1,7 @@
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { Dialog } from '@langgenius/dify-ui/dialog'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import {
@@ -11,23 +11,13 @@ import {
   seedFeatures,
 } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import { PricingContent } from '../content'
-
-let billingPopup: {
-  location: { href: string }
-  opener: Window | null
-  close: ReturnType<typeof vi.fn>
-}
-beforeEach(() => {
-  billingPopup = { location: { href: '' }, opener: window, close: vi.fn() }
-  vi.spyOn(window, 'open').mockImplementation(() => billingPopup as unknown as Window)
-})
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
 
-vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({ isCurrentWorkspaceManager: true }))
@@ -61,52 +51,56 @@ it('shows prices and disables purchase buttons while features load', async () =>
   })
   show()
   expect(screen.getByRole('status')).toHaveTextContent('appApi.loading')
-  expect(screen.getByRole('heading', { name: 'billing.plansCommon.title.plans' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Dify Cloud' })).toBeVisible()
   expect(
     screen.getByRole('link', { name: 'billing.plansCommon.comparePlanAndFeatures' }),
   ).toBeVisible()
   expect(screen.getByRole('heading', { name: 'billing.plans.professional.name' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
-  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(
+    screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+  ).toBeDisabled()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.getByText('$59')).toBeVisible()
   expect(screen.getByText('$159')).toBeVisible()
-  await user.click(screen.getByRole('switch'))
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
   expect(screen.getByText('$590')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
-  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
-  expect(await screen.findByText('billing.plans.community.name')).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+  ).toBeDisabled()
   await act(async () => {
     resolveFeatures(
       seedFeatures(createConsoleQueryClient(), { billing: { subscription: { plan: 'team' } } }),
     )
     await request
   })
-  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' }))
   expect(await screen.findByText('billing.plans.team.name')).toBeInTheDocument()
-  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
-it('distinguishes original and discounted annual prices in readable text', async () => {
+it('shows only the payable prices for the selected interval', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient)
   show()
-  expect(screen.queryByText('billing.plansCommon.originalAnnualPrice')).not.toBeInTheDocument()
-  expect(screen.queryByText('billing.plansCommon.discountedAnnualPrice')).not.toBeInTheDocument()
 
-  await user.click(screen.getByRole('switch'))
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+  expect(screen.getByText('$590')).toBeVisible()
+  expect(screen.getByText('$1590')).toBeVisible()
+  expect(screen.queryByText('$708')).not.toBeInTheDocument()
+  expect(screen.queryByText('$1908')).not.toBeInTheDocument()
 
-  for (const amount of ['$708', '$1908']) {
-    expect(screen.getByText(amount)).toHaveTextContent(
-      `billing.plansCommon.originalAnnualPrice${amount}`,
-    )
-  }
-  for (const amount of ['$590', '$1590']) {
-    expect(screen.getByText(amount)).toHaveTextContent(
-      `billing.plansCommon.discountedAnnualPrice${amount}`,
-    )
-  }
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.monthly/ }))
+  expect(screen.getByText('$59')).toBeVisible()
+  expect(screen.getByText('$159')).toBeVisible()
+  expect(screen.queryByText('$590')).not.toBeInTheDocument()
+  expect(screen.queryByText('$1590')).not.toBeInTheDocument()
 })
 
 it('preserves a billing interval selected before education eligibility arrives', async () => {
@@ -123,11 +117,16 @@ it('preserves a billing interval selected before education eligibility arrives',
       }),
   })
   show()
-  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.getByRole('heading', { name: 'billing.plans.professional.name' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
-  await user.click(screen.getByRole('switch'))
-  await user.click(screen.getByRole('switch'))
+  expect(
+    screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+  ).toBeDisabled()
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+  await user.click(screen.getByRole('radio', { name: 'billing.pricing.monthly' }))
   await act(async () => {
     resolveEducation({
       is_student: true,
@@ -139,9 +138,11 @@ it('preserves a billing interval selected before education eligibility arrives',
     await request
   })
   await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
-  expect(screen.getByRole('switch')).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toBeChecked()
   expect(screen.getByText('$59')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeEnabled()
+  expect(
+    screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+  ).toBeEnabled()
   act(() =>
     queryClient.setQueryData(options.queryKey, {
       is_student: true,
@@ -151,7 +152,7 @@ it('preserves a billing interval selected before education eligibility arrives',
       result: true,
     }),
   )
-  expect(screen.getByRole('switch')).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toBeChecked()
 })
 
 it('shows yearly pricing immediately for a cached eligible education account', () => {
@@ -165,22 +166,25 @@ it('shows yearly pricing immediately for a cached eligible education account', (
     expire_at: null,
   })
   show()
-  expect(screen.getByRole('switch')).toBeChecked()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
   expect(screen.getByText('$590')).toBeVisible()
   expect(screen.getByRole('button', { name: 'education.useEducationDiscount' })).toBeEnabled()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
-it.each(['year', 'month'] as const)(
-  'takes an active education subscription directly to Team checkout with %s billing',
-  async (interval) => {
+it.each([
+  ['year', true],
+  ['month', false],
+] as const)(
+  'opens the Team change flow for a paid plan with %s billing and education activated=%s',
+  async (interval, activated) => {
     const user = userEvent.setup()
     const { queryClient, show } = setup()
     seedFeatures(queryClient, {
       billing: { subscription: { plan: 'professional', interval: 'year' } },
-      education: { enabled: true, activated: true },
+      education: { enabled: true, activated },
     })
-    seedEducationStatus(queryClient, { is_student: true })
+    seedEducationStatus(queryClient, { is_student: true, can_redeem_discount: true })
     const checkoutUrl = 'https://billing.example.com/team-checkout'
     const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ url: checkoutUrl }), {
@@ -189,9 +193,10 @@ it.each(['year', 'month'] as const)(
     )
     const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
     show()
-    if (interval === 'month') await user.click(screen.getByRole('switch'))
+    if (interval === 'month')
+      await user.click(screen.getByRole('radio', { name: 'billing.pricing.monthly' }))
 
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' }))
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith(checkoutUrl))
     expect(checkout).toHaveBeenCalledTimes(1)
@@ -207,20 +212,38 @@ it('offers education pricing before Team checkout when the discount has not been
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient, { education: { enabled: true, activated: false } })
-  seedEducationStatus(queryClient, { is_student: true })
-  const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    new Response(JSON.stringify({ url: 'https://billing.example.com/team-checkout' }), {
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  )
+  seedEducationStatus(queryClient, { is_student: true, can_redeem_discount: true })
+  const pending = createDeferred<Response>()
+  const checkout = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise)
   show()
 
-  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' }))
 
   expect(
     await screen.findByRole('dialog', { name: 'education.educationPricingConfirm.title' }),
   ).toBeVisible()
   expect(checkout).not.toHaveBeenCalled()
+  const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+  await user.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))
+  const switchPlan = screen.getByRole('button', {
+    name: 'education.educationPricingConfirm.continue',
+  })
+  expect(switchPlan).toBeDisabled()
+  await user.click(switchPlan)
+  expect(checkout).toHaveBeenCalledTimes(1)
+  await act(async () =>
+    pending.resolve(
+      new Response(JSON.stringify({ url: 'https://billing.example.com/team-checkout' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ),
+  )
+  await waitFor(() =>
+    expect(navigate).toHaveBeenCalledWith('https://billing.example.com/team-checkout'),
+  )
+  const target = new URL((checkout.mock.calls[0]?.[0] as Request).url)
+  expect(target.searchParams.get('plan')).toBe('team')
+  expect(target.searchParams.get('interval')).toBe('year')
 })
 
 it('keeps plan information visible after a request failure and restores billing on retry', async () => {
@@ -242,13 +265,15 @@ it('keeps plan information visible after a request failure and restores billing 
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   expect(await screen.findByRole('heading', { name: 'billing.plans.sandbox.name' })).toBeVisible()
   expect(
-    screen.queryByRole('button', { name: 'billing.plansCommon.currentPlan' }),
+    screen.queryByRole('button', { name: 'billing.plansCommon.startForFree' }),
   ).not.toBeInTheDocument()
   expect(screen.getByText('$59')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
+  expect(
+    screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+  ).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
   expect(
-    await screen.findByRole('button', { name: 'billing.plansCommon.startBuilding' }),
+    await screen.findByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
   ).toBeEnabled()
 })
 
@@ -256,61 +281,33 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('keeps the current paid plan billing action available while education loads or fails', async () => {
-  const user = userEvent.setup()
+it('lets paid subscribers manage or upgrade without requesting education eligibility', async () => {
   const { queryClient, show } = setup()
-  queryClient.setDefaultOptions({
-    queries: { retry: false, retryOnMount: false, staleTime: Infinity },
-  })
   seedFeatures(queryClient, {
-    billing: { subscription: { plan: 'professional', interval: 'month' } },
-    education: { enabled: true },
+    billing: { subscription: { plan: 'professional', interval: 'year' } },
+    education: { enabled: true, activated: false },
   })
-  let rejectEducation!: (error: Error) => void
-  const request = queryClient
-    .query({
-      ...consoleQuery.account.education.get.queryOptions(),
-      queryFn: () =>
-        new Promise<never>((_, reject) => {
-          rejectEducation = reject
-        }),
-    })
-    .catch(() => {})
-  vi.spyOn(globalThis, 'fetch').mockImplementation(
-    async () =>
-      new Response(JSON.stringify({ url: 'https://billing.example.com' }), {
-        headers: { 'Content-Type': 'application/json' },
-      }),
-  )
+  const fetch = vi.spyOn(globalThis, 'fetch')
   show()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
-  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-  await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
-  await act(async () => {
-    rejectEducation(new Error('Unavailable'))
-    await request
-  })
-  expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
+  expect(screen.getByText('billing.plansCommon.currentPlan')).toBeVisible()
+  expect(screen.queryByText('billing.plansCommon.mostPopular')).not.toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }),
+  ).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' })).toBeEnabled()
+  expect(fetch).not.toHaveBeenCalled()
 })
 
-it('uses the visible billing label to name and toggle the switch', async () => {
+it('selects the billing interval using the named options', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient)
   show()
-  const billingSwitch = screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ })
-  expect(billingSwitch).toHaveAccessibleName(
-    screen.getByText(/billing\.plansCommon\.annualBilling/).textContent!,
-  )
-  expect(billingSwitch).not.toBeChecked()
-  await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
-  expect(billingSwitch).toBeChecked()
+  expect(screen.getByRole('radiogroup', { name: 'billing.pricing.billingInterval' })).toBeVisible()
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
   expect(screen.getByText('$590')).toBeVisible()
-  await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
-  expect(billingSwitch).not.toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'billing.pricing.monthly' }))
   expect(screen.getByText('$59')).toBeVisible()
 })
 
@@ -320,7 +317,7 @@ it.each([
   ['team', 'month', 'year'],
   ['team', 'year', 'month'],
 ] as const)(
-  'checks out %s when changing from %s to %s',
+  'confirms the %s cycle change from %s to %s before requesting the selected subscription change',
   async (plan, currentInterval, selectedInterval) => {
     const user = userEvent.setup()
     const { queryClient, show } = setup()
@@ -328,21 +325,42 @@ it.each([
       billing: { subscription: { plan, interval: currentInterval } },
     })
     const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
-    const fetchCheckout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ url: 'https://checkout.example.com' }), {
+    const fetchChange = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://billing.example.com/confirm' }), {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
     show()
-    if (selectedInterval === 'year') await user.click(screen.getByRole('switch'))
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://checkout.example.com'))
-    const request = fetchCheckout.mock.calls[0]?.[0]
-    const requestUrl = request instanceof Request ? request.url : String(request)
-    expect(requestUrl).toContain('/billing/subscription')
-    expect(requestUrl).toContain(`plan=${plan}`)
-    expect(requestUrl).toContain(`interval=${selectedInterval}`)
-    expect(window.open).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('radio', {
+        name:
+          selectedInterval === 'year' ? /billing\.pricing\.annually/ : 'billing.pricing.monthly',
+      }),
+    )
+    expect(screen.queryByText('billing.plansCommon.currentPlan')).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'billing.plansCommon.manageSubscription',
+      }),
+    )
+    expect(fetchChange).not.toHaveBeenCalled()
+    const back = screen.getByRole('button', { name: 'billing.pricing.cycleNotice.back' })
+    await user.click(back)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
+    const dialog = screen.getByRole('dialog')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'billing.plansCommon.manageSubscription' }),
+    )
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith('https://billing.example.com/confirm'),
+    )
+    expect(fetchChange).toHaveBeenCalledTimes(1)
+    const request = fetchChange.mock.calls[0]?.[0] as Request
+    const url = new URL(request.url)
+    expect(url.pathname).toBe('/console/api/billing/subscription')
+    expect(url.searchParams.get('plan')).toBe(plan)
+    expect(url.searchParams.get('interval')).toBe(selectedInterval)
   },
 )
 
@@ -354,28 +372,40 @@ it.each(['month', 'year'] as const)(
     seedFeatures(queryClient, {
       billing: { subscription: { plan: 'professional', interval } },
     })
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ url: 'https://billing.example.com' }), {
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const pending = createDeferred<Response>()
+    const request = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise)
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
     show()
-    if (interval === 'year') await user.click(screen.getByRole('switch'))
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-    await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
+    const manage = screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' })
+    await user.click(manage)
+    expect(manage).toHaveAttribute('aria-disabled', 'true')
+    await user.click(manage)
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(new URL((request.mock.calls[0]?.[0] as Request).url).pathname).toBe(
+      '/console/api/billing/invoices',
+    )
+    expect(navigate).not.toHaveBeenCalled()
+    await act(async () => pending.resolve(Response.json({ url: 'https://billing.example.com' })))
+    expect(navigate).toHaveBeenCalledWith('https://billing.example.com')
+    expect(open).not.toHaveBeenCalled()
   },
 )
-it('includes the marketplace in the Premium purchase link name', async () => {
+
+it('allows retrying subscription management when no portal URL is returned', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
-  seedFeatures(queryClient)
+  seedFeatures(queryClient, {
+    billing: { subscription: { plan: 'professional', interval: 'month' } },
+  })
+  const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ url: '' }))
+    .mockResolvedValueOnce(Response.json({ url: 'https://billing.example.com/retry' }))
   show()
-
-  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
-
-  expect(
-    screen.getByRole('link', {
-      name: 'billing.plans.premium.btnText billing.plans.premium.marketplaceName',
-    }),
-  ).toBeVisible()
+  const manage = screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' })
+  await user.click(manage)
+  expect(navigate).not.toHaveBeenCalled()
+  await user.click(manage)
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://billing.example.com/retry'))
 })
