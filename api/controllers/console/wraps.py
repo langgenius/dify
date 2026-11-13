@@ -21,6 +21,7 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
+from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models import Account
 from models.account import AccountStatus
@@ -169,13 +170,9 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
     """
 
     try:
-        subscription = BillingService.get_info(tenant_id, exclude_vector_space=True).subscription
+        return BillingService.is_cloud_paid_plan(tenant_id)
     except BillingError as exc:
         raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
-    return subscription.plan in (
-        CloudPlan.PROFESSIONAL,
-        CloudPlan.TEAM,
-    )
 
 
 def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -187,6 +184,24 @@ def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         return view(*args, **kwargs)
 
     return decorated
+
+
+def evaluation_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Admit an authenticated Evaluation request only for Cloud paid or self-hosted workspaces.
+
+    The caller must authenticate and initialize the account first. On success the
+    view runs unchanged; Cloud Sandbox raises 403, and billing failures raise 503.
+    """
+
+    @wraps(view)
+    def evaluation_plan_decorated(*args: P.args, **kwargs: P.kwargs):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            _, tenant_id = current_account_with_tenant()
+            if not is_cloud_edition_billing_paid_plan(tenant_id):
+                raise PaidPlanRequiredError()
+        return view(*args, **kwargs)
+
+    return document_errors(evaluation_plan_decorated, PaidPlanRequiredError)
 
 
 def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:

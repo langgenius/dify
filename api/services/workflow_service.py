@@ -111,6 +111,8 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.errors.billing import BillingError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
@@ -757,6 +759,12 @@ class WorkflowService:
         marked_comment: str = "",
         workflow_kind: WorkflowKind | None = None,
     ) -> Workflow:
+        """Publish an existing draft, preserving the active kind unless one is requested.
+
+        The caller supplies the app, account and session. A successful call adds
+        a version with the resolved kind; Cloud evaluator publication requires a
+        paid plan. Entitlement failures add no published version.
+        """
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -771,6 +779,8 @@ class WorkflowService:
             app_model=app_model,
             requested_kind=workflow_kind,
         )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._require_evaluation_paid_plan(app_model.tenant_id)
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
@@ -802,8 +812,9 @@ class WorkflowService:
             draft_workflow=draft_workflow,
         )
 
-        # billing check
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+        # Evaluators already passed the Cloud paid-plan check above; only standard
+        # workflows need the Sandbox trigger limit lookup.
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and workflow_kind != WorkflowKind.EVALUATION:
             limit_info = BillingService.get_info(app_model.tenant_id)
             if limit_info.subscription.plan == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
@@ -880,6 +891,23 @@ class WorkflowService:
             else WorkflowKind.STANDARD
         )
 
+    @staticmethod
+    def _require_evaluation_paid_plan(tenant_id: str) -> None:
+        """Allow a trusted tenant's Evaluation operation only with Cloud paid billing.
+
+        Non-Cloud editions make no billing call. Cloud Sandbox raises a plan
+        error and billing failures raise an unavailable error. Neither changes
+        workflow state; controllers translate these failures to HTTP responses.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        try:
+            paid = BillingService.is_cloud_paid_plan(tenant_id)
+        except BillingError as exc:
+            raise EvaluationEntitlementUnavailableError() from exc
+        if not paid:
+            raise EvaluationPlanRequiredError()
+
     def publish_evaluation_workflow(
         self,
         *,
@@ -931,9 +959,15 @@ class WorkflowService:
         target_kind: WorkflowKind,
         account: Account,
     ) -> Workflow:
-        """Convert the effective published version between standard and evaluation kinds."""
+        """Convert a published version between standard and evaluation kinds.
+
+        The caller supplies a valid target kind, app, account and session. Both
+        conversion directions require Cloud paid billing; denied requests leave
+        the published workflow unchanged.
+        """
         if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
             raise ValueError("target_kind must be either 'standard' or 'evaluation'")
+        self._require_evaluation_paid_plan(app_model.tenant_id)
         if not app_model.workflow_id:
             raise WorkflowNotFoundError("Published workflow not found")
 

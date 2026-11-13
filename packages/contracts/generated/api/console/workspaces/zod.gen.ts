@@ -38,6 +38,18 @@ export const zInvalidRequestError = zErrorResponse.and(
 )
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * SnippetImportPayload
  *
  * Payload for importing snippet from DSL.
@@ -622,18 +634,6 @@ export const zNetworkAccessInvalidInputError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_invalid_input'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 

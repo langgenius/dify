@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException
 
 from controllers.console.app import workflow as workflow_module
+from controllers.console.error import PaidPlanRequiredError
 from enums import WorkflowKind
 from models.model import AppMode
 from services.errors.app import WorkflowNotFoundError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app
 
@@ -75,6 +77,45 @@ def test_publish_evaluation_workflow_route_rejects_invalid_draft(
     assert exc_info.value.code == 400
 
 
+def test_publish_evaluation_workflow_route_maps_plan_denial(
+    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = _service(sqlite_session, monkeypatch)
+
+    def deny_publish(**_kwargs: object) -> None:
+        raise EvaluationPlanRequiredError()
+
+    monkeypatch.setattr(service, "publish_evaluation_workflow_for_app", deny_publish)
+    api = workflow_module.EvaluationPublishedWorkflowApi()
+    with app.test_request_context("/apps/app-1/workflows/publish/evaluation", method="POST"):
+        with pytest.raises(PaidPlanRequiredError):
+            unwrap(api.post)(
+                api, workflow_module.PublishWorkflowPayload(), make_account(), make_app(mode=AppMode.WORKFLOW)
+            )
+
+
+def test_ordinary_publish_route_maps_evaluation_plan_denial(
+    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = _service(sqlite_session, monkeypatch)
+
+    def deny_publish(**_kwargs: object) -> None:
+        raise EvaluationPlanRequiredError()
+
+    monkeypatch.setattr(service, "publish_workflow", deny_publish)
+    monkeypatch.setattr(
+        workflow_module.session_factory,
+        "get_session_maker",
+        lambda: sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+    )
+    api = workflow_module.PublishedWorkflowApi()
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST"):
+        with pytest.raises(PaidPlanRequiredError):
+            unwrap(api.post)(
+                api, workflow_module.PublishWorkflowPayload(), make_account(), make_app(mode=AppMode.WORKFLOW)
+            )
+
+
 def test_convert_workflow_kind_route_maps_query_and_response(
     app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -121,6 +162,39 @@ def test_convert_workflow_kind_route_selects_standard_kind(
 
     assert selected == [WorkflowKind.STANDARD]
     assert response["kind"] == "standard"
+
+
+@pytest.mark.parametrize("target_type", ["evaluation", "workflow"])
+def test_convert_workflow_kind_route_maps_plan_denial_for_both_targets(
+    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, target_type: str
+) -> None:
+    service = _service(sqlite_session, monkeypatch)
+
+    def deny_convert(**_kwargs: object) -> None:
+        raise EvaluationPlanRequiredError()
+
+    monkeypatch.setattr(service, "convert_published_workflow_kind_for_app", deny_convert)
+    api = workflow_module.WorkflowKindConvertApi()
+    with app.test_request_context(f"/apps/app-1/workflows/convert-type?target_type={target_type}", method="POST"):
+        with pytest.raises(PaidPlanRequiredError):
+            unwrap(api.post)(api, make_account(), make_app(mode=AppMode.WORKFLOW))
+
+
+def test_convert_workflow_kind_route_maps_billing_failure_to_service_unavailable(
+    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = _service(sqlite_session, monkeypatch)
+
+    def fail_billing(**_kwargs: object) -> None:
+        raise EvaluationEntitlementUnavailableError()
+
+    monkeypatch.setattr(service, "convert_published_workflow_kind_for_app", fail_billing)
+    api = workflow_module.WorkflowKindConvertApi()
+    with app.test_request_context("/apps/app-1/workflows/convert-type?target_type=workflow", method="POST"):
+        with pytest.raises(HTTPException) as exc_info:
+            unwrap(api.post)(api, make_account(), make_app(mode=AppMode.WORKFLOW))
+
+    assert exc_info.value.code == 503
 
 
 @pytest.mark.parametrize(

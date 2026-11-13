@@ -13,6 +13,11 @@ export type EvaluationConfigPayload = {
   judgment_config?: JudgmentConfig | null
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -225,6 +230,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadDat
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -249,6 +255,7 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationData = {
 }
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -273,6 +280,7 @@ export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationData = {
 }
 
 export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -299,6 +307,7 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsDat
 }
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -324,6 +333,7 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdData
 }
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -351,6 +361,7 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsData = {
 }
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -377,6 +388,7 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsData = {
 }
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -401,6 +413,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoData = {
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -425,6 +438,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunData = {
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -453,6 +467,7 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdData =
 }
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -478,6 +493,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCance
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -503,6 +519,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetry
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -527,6 +544,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsD
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -611,6 +611,11 @@ export type EvaluationConfigResponse = {
   judgment_config?: JudgmentConfig | null
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type EvaluationConfigPayload = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric>
@@ -3174,6 +3179,7 @@ export type GetDatasetsByDatasetIdEvaluationData = {
 }
 
 export type GetDatasetsByDatasetIdEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3197,6 +3203,7 @@ export type PutDatasetsByDatasetIdEvaluationData = {
 }
 
 export type PutDatasetsByDatasetIdEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3221,6 +3228,7 @@ export type GetDatasetsByDatasetIdEvaluationFilesByFileIdData = {
 }
 
 export type GetDatasetsByDatasetIdEvaluationFilesByFileIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3247,6 +3255,7 @@ export type GetDatasetsByDatasetIdEvaluationLogsData = {
 }
 
 export type GetDatasetsByDatasetIdEvaluationLogsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3272,6 +3281,7 @@ export type GetDatasetsByDatasetIdEvaluationMetricsData = {
 }
 
 export type GetDatasetsByDatasetIdEvaluationMetricsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3295,6 +3305,7 @@ export type PostDatasetsByDatasetIdEvaluationRunData = {
 }
 
 export type PostDatasetsByDatasetIdEvaluationRunErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3322,6 +3333,7 @@ export type GetDatasetsByDatasetIdEvaluationRunsByRunIdData = {
 }
 
 export type GetDatasetsByDatasetIdEvaluationRunsByRunIdErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3346,6 +3358,7 @@ export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelData = {
 }
 
 export type PostDatasetsByDatasetIdEvaluationRunsByRunIdCancelErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3370,6 +3383,7 @@ export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3393,6 +3407,7 @@ export type PostDatasetsByDatasetIdEvaluationTemplateDownloadData = {
 }
 
 export type PostDatasetsByDatasetIdEvaluationTemplateDownloadErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 

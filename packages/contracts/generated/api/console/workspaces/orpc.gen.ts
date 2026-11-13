@@ -777,6 +777,7 @@ export const get4 = oc
       .optional(),
   )
   .output(zGetWorkspacesCurrentAvailableEvaluationWorkflowsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const availableEvaluationWorkflows = {
   get: get4,
@@ -1283,6 +1284,7 @@ export const get13 = oc
     z.object({ params: zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsPath }),
   )
   .output(zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const associatedTargets = {
   get: get13,

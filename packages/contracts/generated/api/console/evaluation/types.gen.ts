@@ -8,6 +8,11 @@ export type EvaluationAvailableMetricsResponse = {
   metrics: Array<string>
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -28,6 +33,7 @@ export type GetEvaluationAvailableMetricsData = {
 }
 
 export type GetEvaluationAvailableMetricsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 

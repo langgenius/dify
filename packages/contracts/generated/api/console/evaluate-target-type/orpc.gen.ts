@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zPaidPlanRequiredError } from './zod.gen.ts'
 import {
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsPath,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsQuery,
@@ -55,6 +56,7 @@ export const post = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const download = {
   post,
@@ -79,6 +81,7 @@ export const get = oc
     }),
   )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const defaultMetrics = {
   get,
@@ -96,6 +99,7 @@ export const get2 = oc
     z.object({ params: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdPath }),
   )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byFileId = {
   get: get2,
@@ -120,6 +124,7 @@ export const get3 = oc
     }),
   )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const logs = {
   get: get3,
@@ -140,6 +145,7 @@ export const get4 = oc
     }),
   )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const metrics = {
   get: get4,
@@ -160,6 +166,7 @@ export const post2 = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const nodeInfo = {
   post: post2,
@@ -180,6 +187,7 @@ export const post3 = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const run = {
   post: post3,
@@ -199,6 +207,7 @@ export const post4 = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const cancel = {
   post: post4,
@@ -216,6 +225,7 @@ export const post5 = oc
     z.object({ params: zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryPath }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const retry = {
   post: post5,
@@ -236,6 +246,7 @@ export const get5 = oc
     }),
   )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byRunId = {
   get: get5,
@@ -262,6 +273,7 @@ export const post6 = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const templateColumns = {
   post: post6,
@@ -277,6 +289,7 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationPath }))
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const put = oc
   .route({
@@ -293,6 +306,7 @@ export const put = oc
     }),
   )
   .output(zPutByEvaluateTargetTypeByEvaluateTargetIdEvaluationResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const evaluation = {
   get: get6,

@@ -3846,7 +3846,10 @@ export const post46 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsConvertTypeResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const convertType = {
   post: post46,
@@ -4977,7 +4980,10 @@ export const post66 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsPublishEvaluationResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const evaluation = {
   post: post66,
@@ -5021,7 +5027,10 @@ export const post67 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const publish = {
   get: get81,

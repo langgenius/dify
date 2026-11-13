@@ -4683,6 +4683,7 @@ Convert the active published workflow between standard and evaluation kinds
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow kind converted successfully | **application/json**: [WorkflowKindConvertResponse](#workflowkindconvertresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -5606,6 +5607,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -5629,6 +5631,7 @@ Publish the draft as a reusable evaluation workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7258,6 +7261,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /datasets/{dataset_id}/evaluation
@@ -7278,6 +7282,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/files/{file_id}
@@ -7293,6 +7298,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/logs
@@ -7309,6 +7315,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/metrics
@@ -7324,6 +7331,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/run
@@ -7344,6 +7352,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
@@ -7361,6 +7370,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/cancel
@@ -7376,6 +7386,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/retry
@@ -7391,6 +7402,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
@@ -7405,6 +7417,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base evaluation template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/external-hit-testing
@@ -7870,6 +7883,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available evaluation metrics | **application/json**: [EvaluationAvailableMetricsResponse](#evaluationavailablemetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps
@@ -14674,6 +14688,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available evaluation workflows | **application/json**: [AvailableEvaluationWorkflowPaginationResponse](#availableevaluationworkflowpaginationresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
@@ -15104,6 +15119,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Associated evaluation targets | **application/json**: [EvaluationAssociatedTargetListResponse](#evaluationassociatedtargetlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channel-providers
@@ -19211,6 +19227,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation
@@ -19226,6 +19243,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /{evaluate_target_type}/{evaluate_target_id}/evaluation
@@ -19247,6 +19265,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics
@@ -19263,6 +19282,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default metrics | **application/json**: [EvaluationDefaultMetricsResponse](#evaluationdefaultmetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/files/{file_id}
@@ -19279,6 +19299,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/logs
@@ -19296,6 +19317,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics
@@ -19312,6 +19334,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/node-info
@@ -19333,6 +19356,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation node info | **application/json**: [EvaluationNodeInfoResponse](#evaluationnodeinforesponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/run
@@ -19354,6 +19378,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
@@ -19372,6 +19397,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/cancel
@@ -19388,6 +19414,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry
@@ -19404,6 +19431,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
@@ -19425,6 +19453,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---

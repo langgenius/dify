@@ -1064,7 +1064,10 @@ export const get63Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 
 export const get64Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post46Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post46Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const get65Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -1215,11 +1218,17 @@ export const post65Errors = {
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
 }
 
-export const post66Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post66Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const get81Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post67Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post67Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const get82Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },

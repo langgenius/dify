@@ -17,6 +17,7 @@ import {
   zKnowledgeFsUpgradeModelsUnavailableError,
   zMaxKeysExceededError,
   zModelCurrentlyNotSupportError,
+  zPaidPlanRequiredError,
   zProviderNotInitializeError,
   zProviderQuotaExceededError,
 } from './zod.gen.ts'
@@ -1479,6 +1480,7 @@ export const get27 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdEvaluationFilesByFileIdPath }))
   .output(zGetDatasetsByDatasetIdEvaluationFilesByFileIdResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byFileId = {
   get: get27,
@@ -1503,6 +1505,7 @@ export const get28 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdEvaluationLogsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const logs = {
   get: get28,
@@ -1523,6 +1526,7 @@ export const get29 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdEvaluationMetricsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const metrics = {
   get: get29,
@@ -1543,6 +1547,7 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdEvaluationRunResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const run = {
   post: post16,
@@ -1558,6 +1563,7 @@ export const post17 = oc
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdEvaluationRunsByRunIdCancelPath }))
   .output(zPostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const cancel = {
   post: post17,
@@ -1573,6 +1579,7 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryPath }))
   .output(zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const retry = {
   post: post18,
@@ -1593,6 +1600,7 @@ export const get30 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdEvaluationRunsByRunIdResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byRunId = {
   get: get30,
@@ -1614,6 +1622,7 @@ export const post19 = oc
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdEvaluationTemplateDownloadPath }))
   .output(zPostDatasetsByDatasetIdEvaluationTemplateDownloadResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const download2 = {
   post: post19,
@@ -1633,6 +1642,7 @@ export const get31 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdEvaluationPath }))
   .output(zGetDatasetsByDatasetIdEvaluationResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const put2 = oc
   .route({
@@ -1649,6 +1659,7 @@ export const put2 = oc
     }),
   )
   .output(zPutDatasetsByDatasetIdEvaluationResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const evaluation = {
   get: get31,

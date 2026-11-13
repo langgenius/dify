@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zPaidPlanRequiredError } from './zod.gen.ts'
 import {
   zGetEvaluationAvailableMetricsQuery,
   zGetEvaluationAvailableMetricsResponse,
@@ -17,6 +18,7 @@ export const get = oc
   })
   .input(z.object({ query: zGetEvaluationAvailableMetricsQuery.optional() }).optional())
   .output(zGetEvaluationAvailableMetricsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const availableMetrics = {
   get,

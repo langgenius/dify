@@ -25,6 +25,18 @@ export const zErrorResponse = z.object({
   status: z.int(),
 })
 
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
 export const zGetEvaluationAvailableMetricsQuery = z.object({
   evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
 })

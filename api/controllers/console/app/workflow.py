@@ -17,7 +17,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound, ServiceUnavailable
 
 import services
 from configs import dify_config
@@ -40,6 +40,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
 from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.error import PaidPlanRequiredError
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -95,6 +96,7 @@ from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
 from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
@@ -1339,6 +1341,7 @@ class PublishedWorkflowApi(Resource):
 
         return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
+    @error_responses(PaidPlanRequiredError)
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @setup_required
@@ -1356,13 +1359,18 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with session_factory.get_session_maker().begin() as session:
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_model,
-                account=current_user,
-                marked_name=args.marked_name or "",
-                marked_comment=args.marked_comment or "",
-            )
+            try:
+                workflow = workflow_service.publish_workflow(
+                    session=session,
+                    app_model=app_model,
+                    account=current_user,
+                    marked_name=args.marked_name or "",
+                    marked_comment=args.marked_comment or "",
+                )
+            except EvaluationPlanRequiredError as exc:
+                raise PaidPlanRequiredError() from exc
+            except EvaluationEntitlementUnavailableError as exc:
+                raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
 
             # Update app_model within the same session to ensure atomicity
             app_model_in_session = session.get(App, app_model.id)
@@ -1386,6 +1394,7 @@ class PublishedWorkflowApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish/evaluation")
 class EvaluationPublishedWorkflowApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("publish_evaluation_workflow")
     @console_ns.doc(description="Publish the draft as a reusable evaluation workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -1415,6 +1424,10 @@ class EvaluationPublishedWorkflowApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
 
         response = {"result": "success", "created_at": TimestampField().format(created_at)}
         return dump_response(WorkflowPublishResponse, response)
@@ -1422,6 +1435,7 @@ class EvaluationPublishedWorkflowApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/convert-type")
 class WorkflowKindConvertApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("convert_published_workflow_kind")
     @console_ns.doc(description="Convert the active published workflow between standard and evaluation kinds")
     @console_ns.doc(params=query_params_from_model(WorkflowKindConvertQuery))
@@ -1450,6 +1464,10 @@ class WorkflowKindConvertApi(Resource):
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
 
         response = {
             "result": "success",

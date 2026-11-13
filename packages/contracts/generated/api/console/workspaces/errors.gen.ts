@@ -18,6 +18,14 @@ const zInvalidRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zInvalidRoleError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -183,14 +191,6 @@ const zNetworkAccessInvalidInputError = /* @__PURE__ */ (() =>
     z.object({
       code: z.literal('network_access_invalid_input'),
       status: z.literal(400),
-    }),
-  ))()
-
-const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('paid_plan_required'),
-      status: z.literal(403),
     }),
   ))()
 
@@ -371,6 +371,10 @@ const zAccountNotLinkTenantError = /* @__PURE__ */ (() =>
   ))()
 
 export const putErrors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+
+export const get4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get13Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
 export const post24Errors = {
   invalid_role: { status: 400, data: zInvalidRoleError },

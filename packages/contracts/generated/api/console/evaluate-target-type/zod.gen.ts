@@ -19,6 +19,18 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * EvaluationFileResponse
  */
 export const zEvaluationFileResponse = z.object({

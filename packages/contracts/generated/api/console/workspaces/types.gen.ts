@@ -50,6 +50,11 @@ export type AvailableEvaluationWorkflowPaginationResponse = {
   page: number
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type SnippetPaginationResponse = {
   data: Array<SnippetListItemResponse>
   has_more: boolean
@@ -725,11 +730,6 @@ export type NetworkAccessGroupMutationResponse = {
 export type NetworkAccessInvalidInputError = ErrorResponse & {
   code: 'network_access_invalid_input'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNameConflictError = ErrorResponse & {
@@ -4456,6 +4456,7 @@ export type GetWorkspacesCurrentAvailableEvaluationWorkflowsData = {
 }
 
 export type GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5018,6 +5019,7 @@ export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargets
 }
 
 export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
 

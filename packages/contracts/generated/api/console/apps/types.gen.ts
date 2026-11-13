@@ -8439,6 +8439,7 @@ export type PostAppsByAppIdWorkflowsConvertTypeData = {
 }
 
 export type PostAppsByAppIdWorkflowsConvertTypeErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -9554,6 +9555,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -9578,6 +9580,7 @@ export type PostAppsByAppIdWorkflowsPublishEvaluationData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

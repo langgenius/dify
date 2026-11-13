@@ -1130,6 +1130,11 @@ export type OpenApiFormSubmitPayload = {
   }
 }
 
+export type PaidPlanRequiredError = ErrorBody & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type PermittedExternalAppsListQuery = {
   limit?: number
   mode?: SupportedAppType | null
@@ -3430,6 +3435,7 @@ export type PostAppsByAppIdPublishData = {
 }
 
 export type PostAppsByAppIdPublishErrors = {
+  403: PaidPlanRequiredError | ErrorBody
   422: ErrorBody
   default: ErrorBody
 }

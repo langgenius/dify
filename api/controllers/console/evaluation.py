@@ -29,6 +29,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     evaluation_edition_required,
+    evaluation_paid_plan_required,
     rbac_permission_required,
     setup_required,
 )
@@ -619,6 +620,7 @@ class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session(write=False)
     @evaluation_target_required(
@@ -640,6 +642,7 @@ class EvaluationDetailApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
@@ -652,6 +655,7 @@ class EvaluationDetailApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session
     @evaluation_target_required(
@@ -686,6 +690,7 @@ class EvaluationTemplateColumnsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def post(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
@@ -704,6 +709,7 @@ class EvaluationLogsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
@@ -730,6 +736,7 @@ class EvaluationRunApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session
     @evaluation_target_required(
@@ -757,6 +764,7 @@ class EvaluationRunDetailApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(
@@ -784,6 +792,7 @@ class EvaluationRunCancelApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session
     @evaluation_target_required(
@@ -813,6 +822,7 @@ class EvaluationRunRetryApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session
     @evaluation_target_required(
@@ -843,6 +853,7 @@ class EvaluationMetricsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
@@ -861,6 +872,7 @@ class EvaluationDefaultMetricsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
@@ -884,6 +896,7 @@ class EvaluationNodeInfoApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def post(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
@@ -908,6 +921,7 @@ class EvaluationAvailableMetricsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     def get(self) -> dict[str, Any]:
         query = EvaluationFrameworkQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
@@ -922,6 +936,7 @@ class EvaluationFileDownloadApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(
@@ -952,6 +967,7 @@ class AvailableEvaluationWorkflowsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session(write=False)
     def get(self, session: Session) -> dict[str, Any]:
@@ -1006,6 +1022,7 @@ class EvaluationWorkflowAssociatedTargetsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @with_session(write=False)
     def get(self, session: Session, workflow_id: UUID) -> dict[str, Any]:
@@ -1045,6 +1062,7 @@ class DatasetEvaluationTemplateDownloadApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session(write=False)
     def post(self, session: Session, dataset_id: UUID) -> Response:
@@ -1060,6 +1078,7 @@ class DatasetEvaluationDetailApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID) -> dict[str, Any]:
@@ -1078,6 +1097,7 @@ class DatasetEvaluationDetailApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
     @with_session
@@ -1106,6 +1126,7 @@ class DatasetEvaluationRunApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
@@ -1131,6 +1152,7 @@ class DatasetEvaluationLogsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID) -> dict[str, Any]:
@@ -1158,6 +1180,7 @@ class DatasetEvaluationRunDetailApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID, run_id: UUID) -> dict[str, Any]:
@@ -1180,6 +1203,7 @@ class DatasetEvaluationRunCancelApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
@@ -1201,6 +1225,7 @@ class DatasetEvaluationRunRetryApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
@@ -1223,6 +1248,7 @@ class DatasetEvaluationMetricsApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID) -> dict[str, Any]:
@@ -1245,6 +1271,7 @@ class DatasetEvaluationFileDownloadApi(EvaluationEditionResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @evaluation_paid_plan_required
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID, file_id: UUID) -> dict[str, Any]:

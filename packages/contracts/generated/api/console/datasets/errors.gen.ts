@@ -122,6 +122,14 @@ const zChildChunkDeleteIndexError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zCompletionRequestError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -273,6 +281,26 @@ export const post15Errors = {
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
+
+export const get27Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get28Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get29Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post16Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post17Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post18Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get30Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post19Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get31Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const put2Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
 export const post20Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
