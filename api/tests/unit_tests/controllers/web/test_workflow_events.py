@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
 from core.workflow.human_input_policy import HumanInputSurface
+from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
@@ -55,6 +59,24 @@ def _workflow_run(
     )
     workflow_run.created_at = datetime(2024, 1, 1)
     return workflow_run
+
+
+@pytest.fixture
+def workflow_database(app: Flask, sqlite_engine: Engine, sqlite_session: Session) -> Iterator[None]:
+    """Persist an owned run in SQLite and bind the controller to that database.
+
+    Tests use the real repository; dispose the controller's engine after use.
+    """
+    app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_engine.url
+    db.init_app(app)
+    sqlite_session.add(_workflow_run())
+    sqlite_session.commit()
+    with app.app_context():
+        try:
+            yield
+        finally:
+            db.session.remove()
+            db.engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -171,18 +193,11 @@ class TestWorkflowEventsApi:
             }
         ]
 
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
+    @pytest.mark.usefixtures("workflow_database")
     def test_snapshot_stream_restricts_pending_forms_to_web_app_surface(
-        self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A reconnecting Web App run must not fall back to BACKSTAGE resume tokens."""
-        mock_db.engine = "engine"
-        run = _workflow_run()
-        mock_repo = MagicMock()
-        mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
-        mock_factory.create_api_workflow_run_repository.return_value = mock_repo
-
         snapshot_calls: list[dict[str, object]] = []
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
@@ -199,18 +214,9 @@ class TestWorkflowEventsApi:
         assert snapshot_calls[0]["human_input_surface"] == HumanInputSurface.WEB_APP
         assert snapshot_calls[0]["close_on_pause"] is True
 
-    @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
-    def test_non_snapshot_stream_skips_snapshot_builder(
-        self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    @pytest.mark.usefixtures("workflow_database")
+    def test_non_snapshot_stream_skips_snapshot_builder(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         """Without include_state_snapshot the legacy event path is used unchanged."""
-        mock_db.engine = "engine"
-        run = _workflow_run()
-        mock_repo = MagicMock()
-        mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
-        mock_factory.create_api_workflow_run_repository.return_value = mock_repo
-
         snapshot_calls: list[dict[str, object]] = []
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
@@ -227,4 +233,5 @@ class TestWorkflowEventsApi:
             response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
         assert response.mimetype == "text/event-stream"
+        assert response.get_data(as_text=True) == 'data: {"event":"message"}\n\n'
         assert snapshot_calls == []
