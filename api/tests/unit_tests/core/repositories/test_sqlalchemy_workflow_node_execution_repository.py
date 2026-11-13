@@ -620,21 +620,34 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         assert statements == ["SELECT", "UPDATE"]
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "offload_type",
+        [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.PROCESS_DATA],
+    )
     def test_save_with_execution_data_offloads_values_that_need_truncation(
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session_factory: sessionmaker[Session],
+        offload_type: ExecutionOffLoadType,
     ) -> None:
-        """A value over the truncation limit still goes through save_execution_data and is offloaded."""
+        """A value over the truncation limit still goes through save_execution_data and is offloaded.
+
+        Outputs are checked before anything is written. Process data is only known to be too
+        large once it is merged with the stored row, inside the single-write attempt.
+        """
         monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200)
         monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100)
         repo = _repository(monkeypatch, sqlite_session_factory)
-        execution = _sqlalchemy_workflow_node_execution_repository_execution(outputs={"text": "x" * 5000})
-        assert repo._needs_truncation(execution.outputs)
+        large = {"text": "x" * 5000}
+        if offload_type == ExecutionOffLoadType.OUTPUTS:
+            execution = _sqlalchemy_workflow_node_execution_repository_execution(outputs=large)
+        else:
+            execution = _sqlalchemy_workflow_node_execution_repository_execution(process_data=large)
+        assert repo._needs_truncation(large)
         offload = WorkflowNodeExecutionOffload(
             tenant_id="tenant-1",
             app_id="app-1",
             node_execution_id=execution.id,
-            type_=ExecutionOffLoadType.OUTPUTS,
+            type_=offload_type,
             file_id="file-1",
         )
         uploads: list[ExecutionOffLoadType] = []
@@ -653,21 +666,27 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
 
         repo.save_with_execution_data(execution)
 
-        assert uploads == [ExecutionOffLoadType.OUTPUTS]
+        assert uploads == [offload_type]
         with sqlite_session_factory() as session:
             persisted = session.get(
                 _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel, execution.id
             )
             assert persisted is not None
             assert persisted.status == _RepositoryExecutionStatus.SUCCEEDED
-            assert persisted.outputs_dict == {"text": "truncated"}
+            if offload_type == ExecutionOffLoadType.OUTPUTS:
+                assert persisted.outputs_dict == {"text": "truncated"}
+            else:
+                assert persisted.process_data_dict == {"text": "truncated"}
             offloads = session.scalars(
                 select(WorkflowNodeExecutionOffload).where(
                     WorkflowNodeExecutionOffload.node_execution_id == execution.id
                 )
             ).all()
-            assert [item.type_ for item in offloads] == [ExecutionOffLoadType.OUTPUTS]
-        assert execution.get_truncated_outputs() == {"text": "truncated"}
+            assert [item.type_ for item in offloads] == [offload_type]
+        if offload_type == ExecutionOffLoadType.OUTPUTS:
+            assert execution.get_truncated_outputs() == {"text": "truncated"}
+        else:
+            assert execution.get_truncated_process_data() == {"text": "truncated"}
 
     @staticmethod
     def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(

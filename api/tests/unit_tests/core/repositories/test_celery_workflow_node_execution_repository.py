@@ -845,9 +845,13 @@ class TestWorkflowNodeExecutionBatchCases:
 
 class TestWorkflowNodeExecutionCallersCases:
     @staticmethod
+    @pytest.mark.parametrize("combined_save", [False, True])
     @pytest.mark.parametrize("backend", ["sql", "celery", "logstore"])
     def test_caller_locators_survive_storage_round_trip_and_updates(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, backend: str
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        backend: str,
+        combined_save: bool,
     ) -> None:
         apply_config_overrides(monkeypatch, LOGSTORE_DUAL_WRITE_ENABLED=False)
         logstore_records: list[dict[str, str]] = []
@@ -910,8 +914,11 @@ class TestWorkflowNodeExecutionCallersCases:
         execution.status = _workflow_node_execution_callers_WorkflowNodeExecutionStatus.SUCCEEDED
         execution.process_data = {"result": "no caller identifiers in this payload"}
         execution.finished_at = datetime(2026, 9, 23, 0, 0, 1)
-        repository.save(execution)
-        repository.save_execution_data(execution)
+        if combined_save:
+            repository.save_with_execution_data(execution)
+        else:
+            repository.save(execution)
+            repository.save_execution_data(execution)
 
         if backend == "logstore":
             row = logstore_records[-1]
