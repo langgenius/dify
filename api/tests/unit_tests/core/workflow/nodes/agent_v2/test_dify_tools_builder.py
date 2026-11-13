@@ -334,6 +334,75 @@ def test_builds_core_tool_with_file_llm_parameter():
     assert runtime_provider.last_use_default_for_missing_form_parameters is True
 
 
+def test_builds_workflow_tool_with_files_llm_parameter_schema():
+    """Workflow tools must expose their file inputs, unlike other core-routed tools.
+
+    A workflow tool's file input is a start-node variable; nothing injects it for the
+    caller, so hiding it (the shared core-tool behaviour) makes the child workflow run
+    with ``files=[]``.
+    """
+    runtime_provider = FakeRuntimeProvider(_files_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "workflow-tool-1",
+                    "provider_type": "workflow",
+                    "tool_name": "inspect",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.core_tools is not None
+    prepared = result.core_tools.tools[0]
+    schema = prepared.parameters_json_schema
+    documents_schema = schema["properties"]["documents"]
+    assert documents_schema["type"] == "array"
+    assert documents_schema["items"]["anyOf"][0]["type"] == "string"
+    assert schema["required"] == ["documents"]
+
+
+def test_builds_workflow_tool_with_file_llm_parameter_schema():
+    runtime_provider = FakeRuntimeProvider(_file_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "workflow-tool-1",
+                    "provider_type": "workflow",
+                    "tool_name": "asr",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.core_tools is not None
+    schema = result.core_tools.tools[0].parameters_json_schema
+    assert "anyOf" in schema["properties"]["audio_file"]
+    assert schema["required"] == ["audio_file"]
+
+
 def test_builds_plugin_tool_with_file_llm_parameter_schema():
     runtime_provider = FakeRuntimeProvider(_file_tool())
     builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
