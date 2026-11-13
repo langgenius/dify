@@ -75,7 +75,7 @@ export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
         {!!hasStatusBadge && statusText && (
           <span
             role="status"
-            className="shrink-0 rounded-[4px] bg-state-base-hover px-1 py-0.5 system-xs-medium text-text-tertiary"
+            className="shrink-0 rounded-sm bg-state-base-hover px-1 py-0.5 system-xs-medium text-text-tertiary"
           >
             {statusText}
           </span>

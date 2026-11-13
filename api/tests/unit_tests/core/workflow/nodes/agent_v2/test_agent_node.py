@@ -548,13 +548,13 @@ class CancelFailingStreamBackendClient(FailingStreamBackendClient):
         raise RuntimeError(f"failed to cancel {run_id}")
 
 
-def _drain_event_stream(node: DifyAgentNode):
+def _drain_event_stream(node: DifyAgentNode, *, stream_text: bool):
     stream = node._consume_event_stream(
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
-        stream_text=False,
+        stream_text=stream_text,
     )
     while True:
         try:
@@ -563,13 +563,13 @@ def _drain_event_stream(node: DifyAgentNode):
             return stop.value
 
 
-def _collect_event_stream(node: DifyAgentNode):
+def _collect_event_stream(node: DifyAgentNode, *, stream_text: bool):
     stream = node._consume_event_stream(
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
-        stream_text=False,
+        stream_text=stream_text,
     )
     events = []
     while True:
@@ -1113,7 +1113,7 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
     client = FailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -1127,7 +1127,7 @@ def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() 
     client = FailingAfterStartedStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -1139,7 +1139,7 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
     client = EmptyStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
@@ -1151,7 +1151,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
     client = GenericFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -1166,7 +1166,7 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     node = _node(agent_backend_client=client)
     node.runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert terminal is None
     assert failure is not None
@@ -1187,7 +1187,7 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
     )
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert terminal is None
     assert failure is not None
@@ -1321,47 +1321,115 @@ def test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event():
     assert dispatched.metadata == {"agent_node_version": "2", "kind": "tool"}
 
 
-def test_agent_node_structured_run_still_emits_tool_activity_logs():
+def test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks():
     events = list(
         _node(
             declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
             agent_backend_client=ToolActivityBackendClient(
                 output={"text": "hello agent", "summary": "Short summary"},
-                include_delta=False,
+                include_delta=True,
+                early_start=True,
             ),
         )._run()
     )
 
-    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["running", "succeeded"]
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
     result = cast(StreamCompletedEvent, events[-1]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["run_id"] == "fake-run-1"
+    assert agent_backend["status"] == "succeeded"
 
 
-def test_agent_node_transport_failure_closes_unfinished_tool_calls():
+def test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_chunks():
+    events = list(
+        _node(
+            error_strategy=ErrorStrategy.DEFAULT_VALUE,
+            agent_backend_client=ToolActivityBackendClient(early_start=True),
+        )._run()
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
+
+
+def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks():
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "route-0", "name": "Zero"}, {"id": "route-1", "name": "One"}],
+            }
+        }
+    )
+    events = list(
+        _node(
+            binding_resolver=resolver,
+            agent_backend_client=ToolActivityBackendClient(
+                output={"text": "hello agent", "switch": "route-1"},
+                early_start=True,
+            ),
+        )._run()
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.edge_source_handle == "route-1"
+    assert result.outputs == {"text": "hello agent", "switch": "route-1"}
+
+
+def test_agent_node_non_stream_run_consumes_tool_events_without_logs():
     events, (terminal, failure) = _collect_event_stream(
-        _node(agent_backend_client=ToolCallThenFailingStreamBackendClient())
+        _node(agent_backend_client=ToolActivityBackendClient(early_start=True)),
+        stream_text=False,
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    assert failure is None
+    assert terminal is not None
+
+
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_transport_failure_closes_unfinished_tool_calls(stream_text: bool):
+    events, (terminal, failure) = _collect_event_stream(
+        _node(agent_backend_client=ToolCallThenFailingStreamBackendClient()),
+        stream_text=stream_text,
     )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["running", "failed"]
-    assert agent_logs[1].error == "stream failed mid-tool"
-    assert agent_logs[1].data["tool_call_id"] == "call-1"
+    if stream_text:
+        assert [log.status for log in agent_logs] == ["running", "failed"]
+        assert agent_logs[1].error == "stream failed mid-tool"
+        assert agent_logs[1].data["tool_call_id"] == "call-1"
+    else:
+        assert agent_logs == []
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
     assert failure.node_run_result.error == "stream failed mid-tool"
 
 
-def test_agent_node_cancelled_run_closes_unfinished_tool_calls():
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool):
     events, (terminal, failure) = _collect_event_stream(
-        _node(agent_backend_client=ToolCallThenCancelledBackendClient())
+        _node(agent_backend_client=ToolCallThenCancelledBackendClient()),
+        stream_text=stream_text,
     )
 
     agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in agent_logs] == ["running", "cancelled"]
-    assert agent_logs[1].error == "user_stop"
+    if stream_text:
+        assert [log.status for log in agent_logs] == ["running", "cancelled"]
+        assert agent_logs[1].error == "user_stop"
+    else:
+        assert agent_logs == []
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
 

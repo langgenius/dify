@@ -502,8 +502,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         after a partial stream.
 
         Tool lifecycle stream events are projected into ``AgentLogEvent``
-        payloads so chat UIs can render live tool activity; ``finish`` closes
-        any still-started calls before this generator returns.
+        payloads so chat UIs can render live tool activity, but only when
+        ``stream_text`` is set: structured-output, output-route, and
+        default-value runs stay fully buffered and do not project logs.
+        ``finish`` closes any still-started calls before this generator
+        returns.
 
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
@@ -513,10 +516,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
           terminal may accompany it so the caller can persist the final session
           snapshot while preserving the original transport failure.
         """
-        projector = WorkflowAgentToolActivityProjector(
-            node_id=self._node_id,
-            node_execution_id=self.execution_id,
-            node_title=self.title,
+        projector = (
+            WorkflowAgentToolActivityProjector(
+                node_id=self._node_id,
+                node_execution_id=self.execution_id,
+                node_title=self.title,
+            )
+            if stream_text
+            else None
         )
         terminal_event, transport_failure = yield from self._read_event_stream(
             run_id,
@@ -526,12 +533,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             stream_text=stream_text,
             projector=projector,
         )
-        finish_status, finish_error = self._tool_activity_finish(
-            terminal_event=terminal_event,
-            transport_failure=transport_failure,
-        )
-        for activity in projector.finish(finish_status, error=finish_error):
-            yield self._agent_log_event(activity)
+        if projector is not None:
+            finish_status, finish_error = self._tool_activity_finish(
+                terminal_event=terminal_event,
+                transport_failure=transport_failure,
+            )
+            for activity in projector.finish(finish_status, error=finish_error):
+                yield self._agent_log_event(activity)
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
         return terminal_event, transport_failure  # noqa: B901  # StopIteration.value is the generator completion result.
@@ -544,12 +552,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
-        projector: WorkflowAgentToolActivityProjector,
+        projector: WorkflowAgentToolActivityProjector | None,
     ) -> Generator[
         StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
+        """Read one Agent backend SSE stream into workflow events.
+
+        ``projector=None`` disables tool-activity projection; raw backend
+        event consumption and stream metadata recording remain active.
+        """
         stream_event_count = 0
         last_event_id: str | None = None
         try:
@@ -566,8 +579,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
-                            for activity in projector.handle(internal_event):
-                                yield self._agent_log_event(activity)
+                            if projector is not None:
+                                for activity in projector.handle(internal_event):
+                                    yield self._agent_log_event(activity)
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
