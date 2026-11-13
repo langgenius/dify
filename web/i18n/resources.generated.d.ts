@@ -1912,6 +1912,7 @@ export default interface Resources {
     'operation.openInNewTab': 'Open in new tab'
     'operation.params': 'Params'
     'operation.pause': 'Pause'
+    'operation.pdfLoadFailed': 'Failed to load the PDF. Please try again.'
     'operation.play': 'Play'
     'operation.refresh': 'Restart'
     'operation.regenerate': 'Regenerate'

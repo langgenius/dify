@@ -197,6 +197,7 @@
   "operation.openInNewTab": "新しいタブで開く",
   "operation.params": "パラメータ",
   "operation.pause": "一時停止",
+  "operation.pdfLoadFailed": "PDFの読み込みに失敗しました。再試行してください。",
   "operation.play": "再生",
   "operation.refresh": "リフレッシュ",
   "operation.regenerate": "再生成",

@@ -1224,11 +1224,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/file-uploader/pdf-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/base/file-uploader/store.tsx": {
     "react/only-export-components": {
       "count": 4

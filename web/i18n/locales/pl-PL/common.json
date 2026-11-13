@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Otwórz w nowej karcie",
   "operation.params": "Parametry",
   "operation.pause": "Pauza",
+  "operation.pdfLoadFailed": "Failed to load the PDF. Please try again.",
   "operation.play": "Odtwórz",
   "operation.refresh": "Odśwież",
   "operation.regenerate": "Ponownie wygenerować",
