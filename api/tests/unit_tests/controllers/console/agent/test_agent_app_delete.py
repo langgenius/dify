@@ -233,9 +233,7 @@ def test_cleanup_publish_failure_keeps_durable_retry_after_delete(
     def fail_to_wake_dispatcher() -> None:
         raise RuntimeError("broker unavailable")
 
-    monkeypatch.setattr(
-        "tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", fail_to_wake_dispatcher
-    )
+    monkeypatch.setattr("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", fail_to_wake_dispatcher)
 
     response = harness.client.delete(f"/console/api/agent/{agent_id}", headers=harness.headers)
     assert response.status_code == HTTPStatus.NO_CONTENT
@@ -292,9 +290,7 @@ def test_cleanup_publish_failure_keeps_durable_retry_after_delete(
     )
 
 
-def test_regular_app_delete_records_outbox_before_committing(
-    harness: Harness, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_regular_app_delete_records_outbox_before_committing(harness: Harness, monkeypatch: pytest.MonkeyPatch) -> None:
     app = App(
         tenant_id=harness.tenant_id,
         name="Regular App",
