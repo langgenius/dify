@@ -1002,7 +1002,7 @@ class RetrievalService:
                     continue
                 seen_segment_bindings.add(binding_key)
                 upload_file = upload_file_by_id[attachment_binding.attachment_id]
-                info = attachment_info_by_id.get(upload_file.id)
+                info: AttachmentInfoDict | None = attachment_info_by_id.get(upload_file.id)
                 if info is None:
                     info = {
                         "id": upload_file.id,
