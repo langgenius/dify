@@ -894,11 +894,15 @@ def test_deleting_paused_root_app_retires_and_deletes_nested_participants(
         patch("services.app_service.current_user", None),
         patch("services.app_service.app_was_deleted.send"),
         patch("services.app_service.remove_app_and_related_data_task.delay"),
+        patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay"),
         patch("services.app_service.WorkflowAgentRetirementService.retire_unowned"),
         patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
         patch("services.app_service.enqueue_agent_resource_collection") as collect,
     ):
         AppService().delete_app(app, session=sqlite_session)
+        from tasks.app_deletion_outbox_task import _dispatch
+
+        _dispatch(sqlite_session_factory)
 
     sqlite_session.expire_all()
     assert workspace.status == AgentWorkingResourceStatus.RETIRED

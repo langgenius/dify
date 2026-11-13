@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import cast
 
 import sqlalchemy as sa
 from sqlalchemy import select, update
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from models.app_deletion_outbox import AppDeletionOutbox, AppDeletionOutboxStatus
@@ -170,19 +168,52 @@ def _encode_deletion(deletion: AppDeletion) -> dict[str, object]:
 
 
 def _decode_deletion(payload: dict[str, object]) -> AppDeletion:
-    app_payload = cast(dict[str, str], payload["app"])
+    app_payload = _require_object(payload.get("app"), field="app")
+    app_id = _require_string(app_payload.get("id"), field="app.id")
+    tenant_id = _require_string(app_payload.get("tenant_id"), field="app.tenant_id")
+    mode = _require_string(app_payload.get("mode"), field="app.mode")
+    workflow_agent_ids = _require_string_list(payload.get("workflow_agent_ids"), field="workflow_agent_ids")
+    workspace_ids = _require_string_list(payload.get("workspace_ids"), field="workspace_ids")
+    binding_ids = _require_string_list(payload.get("binding_ids"), field="binding_ids")
+    home_snapshot_ids = _require_string_list(payload.get("home_snapshot_ids"), field="home_snapshot_ids")
+    raw_backing_agent_id = payload.get("backing_agent_id")
+    if raw_backing_agent_id is not None and not isinstance(raw_backing_agent_id, str):
+        raise ValueError("Invalid App deletion outbox field: backing_agent_id")
     return AppDeletion(
-        app=AppEvent(id=app_payload["id"], tenant_id=app_payload["tenant_id"], mode=app_payload["mode"]),
-        workflow_agent_ids=set(cast(list[str], payload["workflow_agent_ids"])),
-        workspace_ids=cast(list[str], payload["workspace_ids"]),
-        binding_ids=cast(list[str], payload["binding_ids"]),
-        home_snapshot_ids=cast(list[str], payload["home_snapshot_ids"]),
-        backing_agent_id=cast(str | None, payload["backing_agent_id"]),
+        app=AppEvent(id=app_id, tenant_id=tenant_id, mode=mode),
+        workflow_agent_ids=set(workflow_agent_ids),
+        workspace_ids=workspace_ids,
+        binding_ids=binding_ids,
+        home_snapshot_ids=home_snapshot_ids,
+        backing_agent_id=raw_backing_agent_id,
     )
 
 
+def _require_object(value: object, *, field: str) -> dict[str, object]:
+    if not isinstance(value, dict) or any(not isinstance(key, str) for key in value):
+        raise ValueError(f"Invalid App deletion outbox field: {field}")
+    return {key: item for key, item in value.items() if isinstance(key, str)}
+
+
+def _require_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"Invalid App deletion outbox field: {field}")
+    return value
+
+
+def _require_string_list(value: object, *, field: str) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"Invalid App deletion outbox field: {field}")
+    result: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ValueError(f"Invalid App deletion outbox field: {field}")
+        result.append(item)
+    return result
+
+
 def _updated_once(session: Session, statement: sa.Update) -> bool:
-    result = cast(CursorResult[object], session.execute(statement))
+    result = session.execute(statement)
     return result.rowcount == 1
 
 

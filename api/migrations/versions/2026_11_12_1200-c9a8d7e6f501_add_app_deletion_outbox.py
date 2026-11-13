@@ -47,8 +47,7 @@ def upgrade() -> None:
             name="app_deletion_outbox_lease_ck",
         ),
         sa.CheckConstraint(
-            "(status = 'succeeded' AND completed_at IS NOT NULL) "
-            "OR (status != 'succeeded' AND completed_at IS NULL)",
+            "(status = 'succeeded' AND completed_at IS NOT NULL) OR (status != 'succeeded' AND completed_at IS NULL)",
             name="app_deletion_outbox_completed_ck",
         ),
     )
