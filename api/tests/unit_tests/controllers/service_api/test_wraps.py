@@ -374,7 +374,7 @@ class TestValidateAppToken:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_fetch_user_arg_releases_request_session_before_provisioning_end_user(
         self,
-        mock_validate_token,
+        mock_validate_token: Mock,
         app: Flask,
         sqlite_session: Session,
         monkeypatch: pytest.MonkeyPatch,
@@ -405,18 +405,23 @@ class TestValidateAppToken:
         monkeypatch.setattr(wraps_module, "user_logged_in", _RecordingSignal())
         expire_on_commit = sqlite_session.expire_on_commit
 
-        @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
-        def protected_view(*, app_model: App, end_user: EndUser) -> App:
-            return app_model
+        admitted_apps: list[App] = []
 
+        @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+        def protected_view(*, app_model: App, end_user: EndUser) -> str:
+            admitted_apps.append(app_model)
+            return end_user.session_id
+
+        app.add_url_rule("/protected", view_func=protected_view)
         with (
-            app.test_request_context("/?user=query-user", method="GET"),
+            app.test_request_context("/protected?user=query-user", method="GET"),
             patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
-            injected_app = protected_view()
+            assert app.dispatch_request() == "query-user"
 
         assert commands.calls == [(tenant_id, app_id, "query-user")]
         assert commands.in_transaction_during_calls == [False]
+        (injected_app,) = admitted_apps
         assert injected_app in sqlite_session
         assert sa_inspect(injected_app).expired_attributes == set()
         # Reading the admitted app must not send a refresh query that takes the connection back.
@@ -429,9 +434,9 @@ class TestValidateAppToken:
     @patch("controllers.service_api.wraps.current_app")
     def test_account_admission_releases_request_session_before_handler(
         self,
-        mock_current_app,
-        mock_validate_token,
-        mock_user_logged_in,
+        mock_current_app: Mock,
+        mock_validate_token: Mock,
+        mock_user_logged_in: Mock,
         app: Flask,
         sqlite_session: Session,
     ) -> None:
@@ -444,18 +449,22 @@ class TestValidateAppToken:
         sqlite_session.commit()
         mock_validate_token.return_value = api_token
 
-        @validate_app_token
-        def protected_view(app_model: App) -> tuple[bool, str, bool]:
-            in_transaction_on_entry = sqlite_session.in_transaction()
-            return in_transaction_on_entry, app_model.id, sqlite_session.in_transaction()
+        observed: list[tuple[bool, str, bool]] = []
 
+        @validate_app_token
+        def protected_view(app_model: App) -> str:
+            in_transaction_on_entry = sqlite_session.in_transaction()
+            observed.append((in_transaction_on_entry, app_model.id, sqlite_session.in_transaction()))
+            return "ok"
+
+        app.add_url_rule("/protected", view_func=protected_view)
         with (
-            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            app.test_request_context("/protected", method="GET", headers={"Authorization": "Bearer test_token"}),
             patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
-            result = protected_view()
+            assert app.dispatch_request() == "ok"
 
-        assert result == (False, app_model.id, False)
+        assert observed == [(False, app_model.id, False)]
         assert account.current_tenant_id == tenant.id
 
     @patch("controllers.service_api.wraps.user_logged_in")
@@ -1002,9 +1011,9 @@ class TestValidateDatasetToken:
     @patch("controllers.service_api.wraps.current_app")
     def test_dataset_admission_releases_request_session_before_handler(
         self,
-        mock_current_app,
-        mock_validate_token,
-        mock_user_logged_in,
+        mock_current_app: Mock,
+        mock_validate_token: Mock,
+        mock_user_logged_in: Mock,
         app: Flask,
         sqlite_session: Session,
     ) -> None:
@@ -1016,17 +1025,21 @@ class TestValidateDatasetToken:
         sqlite_session.add(api_token)
         sqlite_session.commit()
 
-        @validate_dataset_token
-        def protected_view(tenant_id: str) -> tuple[str, bool]:
-            return tenant_id, sqlite_session.in_transaction()
+        observed: list[tuple[str, bool]] = []
 
+        @validate_dataset_token
+        def protected_view(tenant_id: str) -> str:
+            observed.append((tenant_id, sqlite_session.in_transaction()))
+            return "ok"
+
+        app.add_url_rule("/protected", view_func=protected_view)
         with (
-            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            app.test_request_context("/protected", method="GET", headers={"Authorization": "Bearer test_token"}),
             patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
-            result = protected_view()
+            assert app.dispatch_request() == "ok"
 
-        assert result == (tenant.id, False)
+        assert observed == [(tenant.id, False)]
         assert account.current_tenant_id == tenant.id
 
     @patch("controllers.service_api.wraps.user_logged_in")
