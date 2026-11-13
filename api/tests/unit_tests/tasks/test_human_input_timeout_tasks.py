@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
-from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
@@ -131,17 +131,30 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
-    mark_timeout_calls: list[dict[str, object]] = []
+    mark_timeout_calls: list[tuple[str, HumanInputFormStatus, str | None, bool]] = []
     mark_timeout = repo.mark_timeout
 
-    def record_mark_timeout(**kwargs: object):
-        mark_timeout_calls.append(kwargs)
-        return mark_timeout(**kwargs)
+    def record_mark_timeout(
+        *,
+        form_id: str,
+        timeout_status: HumanInputFormStatus,
+        reason: str | None = None,
+        request_resume: bool = False,
+    ) -> HumanInputFormRecord:
+        mark_timeout_calls.append((form_id, timeout_status, reason, request_resume))
+        return mark_timeout(
+            form_id=form_id,
+            timeout_status=timeout_status,
+            reason=reason,
+            request_resume=request_resume,
+        )
 
-    global_timeout_calls: list[dict[str, object]] = []
+    global_timeout_calls: list[tuple[str, str, str, sessionmaker[Session]]] = []
 
-    def record_global_timeout(**kwargs: object) -> None:
-        global_timeout_calls.append(kwargs)
+    def record_global_timeout(
+        *, form_id: str, workflow_run_id: str, node_id: str, session_factory: sessionmaker[Session]
+    ) -> None:
+        global_timeout_calls.append((form_id, workflow_run_id, node_id, session_factory))
 
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
     monkeypatch.setattr(repo, "mark_timeout", record_mark_timeout)
@@ -156,18 +169,17 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
 
     task_module.check_and_handle_human_input_timeouts(limit=100)
 
-    assert {(call["form_id"], call["timeout_status"], call["reason"]) for call in mark_timeout_calls} == {
+    assert {(call[0], call[1], call[2]) for call in mark_timeout_calls} == {
         ("form-global", HumanInputFormStatus.EXPIRED, "global_timeout"),
         ("form-node", HumanInputFormStatus.TIMEOUT, "node_timeout"),
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),
     }
     assert dispatched_limits == [100]
     assert len(global_timeout_calls) == 1
-    global_timeout_call = global_timeout_calls[0]
-    assert global_timeout_call["form_id"] == "form-global"
-    assert global_timeout_call["workflow_run_id"] == "run-global"
-    assert global_timeout_call["node_id"] == "node-global"
-    task_session_maker = global_timeout_call["session_factory"]
+    form_id, workflow_run_id, node_id, task_session_maker = global_timeout_calls[0]
+    assert form_id == "form-global"
+    assert workflow_run_id == "run-global"
+    assert node_id == "node-global"
     assert isinstance(task_session_maker, sessionmaker)
     assert task_session_maker.kw["bind"] is sqlite_engine
     sqlite_session.refresh(pause)
@@ -204,12 +216,23 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
-    mark_timeout_calls: list[dict[str, object]] = []
+    mark_timeout_calls: list[tuple[str, HumanInputFormStatus, str | None, bool]] = []
     mark_timeout = repo.mark_timeout
 
-    def record_mark_timeout(**kwargs: object):
-        mark_timeout_calls.append(kwargs)
-        return mark_timeout(**kwargs)
+    def record_mark_timeout(
+        *,
+        form_id: str,
+        timeout_status: HumanInputFormStatus,
+        reason: str | None = None,
+        request_resume: bool = False,
+    ) -> HumanInputFormRecord:
+        mark_timeout_calls.append((form_id, timeout_status, reason, request_resume))
+        return mark_timeout(
+            form_id=form_id,
+            timeout_status=timeout_status,
+            reason=reason,
+            request_resume=request_resume,
+        )
 
     monkeypatch.setattr(repo, "mark_timeout", record_mark_timeout)
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
@@ -218,9 +241,7 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
 
     task_module.check_and_handle_human_input_timeouts(limit=1)
 
-    assert mark_timeout_calls == [
-        {"form_id": "form-a", "timeout_status": HumanInputFormStatus.TIMEOUT, "reason": "delivery_test_timeout"}
-    ]
+    assert mark_timeout_calls == [("form-a", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout", False)]
     sqlite_session.expire_all()
     assert _require_form(sqlite_session, "form-a").status == HumanInputFormStatus.TIMEOUT
     assert _require_form(sqlite_session, "form-b").status == HumanInputFormStatus.WAITING
@@ -248,17 +269,30 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
-    mark_timeout_calls: list[dict[str, object]] = []
+    mark_timeout_calls: list[tuple[str, HumanInputFormStatus, str | None, bool]] = []
     mark_timeout = repo.mark_timeout
 
-    def record_mark_timeout(**kwargs: object):
-        mark_timeout_calls.append(kwargs)
-        return mark_timeout(**kwargs)
+    def record_mark_timeout(
+        *,
+        form_id: str,
+        timeout_status: HumanInputFormStatus,
+        reason: str | None = None,
+        request_resume: bool = False,
+    ) -> HumanInputFormRecord:
+        mark_timeout_calls.append((form_id, timeout_status, reason, request_resume))
+        return mark_timeout(
+            form_id=form_id,
+            timeout_status=timeout_status,
+            reason=reason,
+            request_resume=request_resume,
+        )
 
-    global_timeout_calls: list[dict[str, object]] = []
+    global_timeout_calls: list[tuple[str, str, str, sessionmaker[Session]]] = []
 
-    def record_global_timeout(**kwargs: object) -> None:
-        global_timeout_calls.append(kwargs)
+    def record_global_timeout(
+        *, form_id: str, workflow_run_id: str, node_id: str, session_factory: sessionmaker[Session]
+    ) -> None:
+        global_timeout_calls.append((form_id, workflow_run_id, node_id, session_factory))
 
     monkeypatch.setattr(repo, "mark_timeout", record_mark_timeout)
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
