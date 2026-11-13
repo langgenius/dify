@@ -4,6 +4,7 @@ from dataclasses import replace
 from typing import Any, cast
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
@@ -38,11 +39,38 @@ from services.app.agent_app_contracts import (
 from services.entities.app_entities import AppListParams
 
 
+def _is_agent_debug_conversation_mapping_conflict(error: IntegrityError) -> bool:
+    """Recognize only the unique conflict used to seed per-account editor conversations."""
+    expected_constraint = "agent_debug_conversation_agent_account_draft_type_unique"
+    constraint_name = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+    if constraint_name == expected_constraint:
+        return True
+    message = str(error.orig).lower()
+    if expected_constraint in message:
+        return True
+    return all(
+        f"agent_debug_conversations.{column}" in message
+        for column in ("tenant_id", "agent_id", "account_id", "draft_type")
+    )
+
+
 class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
     def list_apps(
+        self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        try:
+            return self._list_apps_once(context, params, accessible_agent_ids=accessible_agent_ids)
+        except IntegrityError as error:
+            if not _is_agent_debug_conversation_mapping_conflict(error):
+                raise
+            # A competing first list request may have committed the unique mapping after
+            # this transaction read it as absent. Retry in a fresh transaction to reuse it.
+            return self._list_apps_once(context, params, accessible_agent_ids=accessible_agent_ids)
+
+    def _list_apps_once(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
     ) -> AgentAppListPage:
         """Load an admitted account's Agent App page and commit its Build conversations together.
