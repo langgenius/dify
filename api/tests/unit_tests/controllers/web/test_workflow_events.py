@@ -10,6 +10,7 @@ from flask import Flask
 
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
+from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
@@ -165,6 +166,7 @@ class TestWorkflowEventsApi:
                 "tenant_id": "tenant-1",
                 "app_id": "app-1",
                 "session_maker": ANY,
+                "human_input_surface": HumanInputSurface.WEB_APP,
                 "close_on_pause": False,
             }
         ]
