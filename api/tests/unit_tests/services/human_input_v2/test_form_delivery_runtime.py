@@ -1287,6 +1287,55 @@ def test_timeout_publication_failure_preserves_committed_forms_without_rehandlin
     assert publications == [_RUN, _RUN]
 
 
+def test_timeout_without_active_pause_is_logged_after_form_transition(
+    context: Context, caplog: pytest.LogCaptureFixture
+) -> None:
+    result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
+    with context.sessions.begin() as session:
+        form = session.get_one(HumanInputForm, result.form.id)
+        form.expiration_time = naive_utc_now() - timedelta(seconds=1)
+
+    with caplog.at_level("ERROR", logger="services.human_input_v2.form_service"):
+        context.handle_timeouts()
+
+    with context.sessions() as session:
+        assert session.get_one(HumanInputForm, result.form.id).status == HumanInputFormStatus.TIMEOUT
+        assert session.scalar(sa.select(WorkflowPause).where(WorkflowPause.workflow_run_id == _RUN)) is None
+    assert f"workflow_run_id={_RUN}" in caplog.text
+
+
+def test_resume_dispatch_logs_claim_release_failure_without_hiding_publish_failure(
+    context: Context, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+    from tasks import human_input_timeout_tasks
+
+    _add_pause(context, paused=True)
+    result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
+    with context.sessions.begin() as session:
+        session.get_one(HumanInputForm, result.form.id).expiration_time = naive_utc_now() - timedelta(seconds=1)
+    context.handle_timeouts()
+
+    def fail_release(*, pause_id: str, **_kwargs: object) -> None:
+        raise ConnectionError(f"cannot release {pause_id}")
+
+    def fail_publish(**_kwargs: object) -> None:
+        raise ConnectionError("broker unavailable")
+
+    monkeypatch.setattr(DifyAPISQLAlchemyWorkflowRunRepository, "release_workflow_resume_dispatch_claim", fail_release)
+    monkeypatch.setattr(
+        human_input_timeout_tasks.resume_app_execution,
+        "apply_async",
+        fail_publish,
+    )
+
+    with caplog.at_level("ERROR", logger="tasks.human_input_timeout_tasks"):
+        human_input_timeout_tasks._dispatch_pending_human_input_resumes(limit=1, workflow_run_id=_RUN)
+
+    assert "broker unavailable" in caplog.text
+    assert "Failed to release workflow resume dispatch claim" in caplog.text
+
+
 def test_resume_dispatch_lease_suppresses_concurrent_claim_and_expires_for_retry(context: Context) -> None:
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
