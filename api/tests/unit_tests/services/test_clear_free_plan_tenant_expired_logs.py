@@ -54,6 +54,7 @@ from models.workflow import (
 from services import clear_free_plan_tenant_expired_logs as service_module
 from services.billing_client import billing
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from tasks.collect_agent_resources_task import collect_agent_resources, reconcile_retired_agent_workspaces
 from tests.helpers import billing_builders as builders
 
 
@@ -531,17 +532,17 @@ def test_process_tenant_processes_and_persists_all_batches(
     monkeypatch.setattr(service_module.click, "style", lambda message, **_kwargs: message)
     clear_related = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", clear_related)
+    enqueue_attempts = 0
     enqueued_collections: list[dict[str, object]] = []
 
-    def enqueue_and_verify_commit(**kwargs: object) -> None:
-        with Session(sqlite_engine) as verification_session:
-            for workspace_id in ("workspace-old", "workspace-old-2"):
-                workspace = verification_session.get(AgentWorkspace, workspace_id)
-                assert workspace is not None
-                assert workspace.status == AgentWorkingResourceStatus.RETIRED
+    def publish_collection(**kwargs: object) -> None:
+        nonlocal enqueue_attempts
+        enqueue_attempts += 1
+        if enqueue_attempts == 1:
+            raise RuntimeError("broker unavailable")
         enqueued_collections.append(kwargs)
 
-    monkeypatch.setattr(service_module, "enqueue_agent_resource_collection", enqueue_and_verify_commit)
+    monkeypatch.setattr(collect_agent_resources, "delay", publish_collection)
 
     node_execution = _create_workflow_node_execution("node-execution-1")
     node_repo = MagicMock()
@@ -564,6 +565,24 @@ def test_process_tenant_processes_and_persists_all_batches(
         lambda _session_maker: run_repo,
     )
 
+    with pytest.raises(RuntimeError, match="broker unavailable"):
+        ClearFreePlanTenantExpiredLogs.process_tenant(
+            flask_app,
+            "tenant-1",
+            days=7,
+            batch=1,
+            session=sqlite_session,
+        )
+
+    with Session(sqlite_engine) as verification_session:
+        assert verification_session.get(Conversation, "conversation-old") is None
+        for workspace_id in ("workspace-old", "workspace-old-2"):
+            workspace = verification_session.get(AgentWorkspace, workspace_id)
+            assert workspace is not None
+            assert workspace.status == AgentWorkingResourceStatus.RETIRED
+
+    # A second retention pass cannot rediscover the deleted conversation; the
+    # periodic retired-workspace reconciliation must recover the failed publish.
     ClearFreePlanTenantExpiredLogs.process_tenant(
         flask_app,
         "tenant-1",
@@ -571,6 +590,7 @@ def test_process_tenant_processes_and_persists_all_batches(
         batch=1,
         session=sqlite_session,
     )
+    assert reconcile_retired_agent_workspaces.run() == 2
 
     assert clear_related.call_count == 1
     related_session, related_tenant_id, message_ids = clear_related.call_args.args

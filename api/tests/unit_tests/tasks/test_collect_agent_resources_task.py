@@ -1,13 +1,17 @@
+from datetime import datetime
 from typing import Protocol, cast
 
 import pytest
+from sqlalchemy.orm import Session
 
+from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
 from services.agent.deletion_service import AgentDeletionService
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
 from tasks.collect_agent_resources_task import (
     collect_agent_resources,
     enqueue_agent_resource_collection,
+    reconcile_retired_agent_workspaces,
 )
 
 
@@ -204,4 +208,50 @@ def test_enqueue_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
             "Failed to enqueue retired Agent resource collection",
             {"tenant_id": "tenant-1", **payload},
         )
+    ]
+
+
+def test_reconciliation_retries_retired_workspace_after_broker_recovery(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = AgentWorkspace(
+        id="workspace-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+        owner_id="conversation-deleted",
+        owner_scope_key="root",
+        backend_workspace_ref="backend-workspace-1",
+        status=AgentWorkingResourceStatus.RETIRED,
+        active_guard=None,
+        retired_at=datetime(2026, 11, 1),
+    )
+    sqlite_session.add(workspace)
+    sqlite_session.commit()
+
+    attempts = 0
+    delivered: list[dict[str, object]] = []
+
+    def delay(**kwargs: object) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("broker unavailable")
+        delivered.append(kwargs)
+
+    monkeypatch.setattr(collect_agent_resources, "delay", delay)
+
+    assert reconcile_retired_agent_workspaces.run() == 0
+    assert delivered == []
+    assert sqlite_session.get(AgentWorkspace, "workspace-1") is not None
+
+    assert reconcile_retired_agent_workspaces.run() == 1
+    assert delivered == [
+        {
+            "tenant_id": "tenant-1",
+            "binding_ids": [],
+            "workspace_ids": ["workspace-1"],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": [],
+        }
     ]
