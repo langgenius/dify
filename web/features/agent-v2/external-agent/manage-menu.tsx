@@ -71,7 +71,7 @@ export function ExternalAgentManageMenu({
         onOpenChange={setOpen}
         onRequest={setRequest}
         fallbackFocus={triggerRef}
-        onDeleted={() => router.push('/agents?agent_type=external')}
+        onDeleted={() => router.replace('/agents?agent_type=external')}
       />
     </>
   )

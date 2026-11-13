@@ -3,14 +3,16 @@
 import type { AgentMonitoringPeriod } from '../../agent-detail/monitoring/time-range-picker'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { AgentMonitoringTimeRangePicker } from '../../agent-detail/monitoring/time-range-picker'
 import { ExternalAgentRequestState } from '../request-state'
 import { MonitoringAppsFilter } from './apps-filter'
@@ -20,6 +22,7 @@ import { ExternalAgentTracingConfiguration } from './tracing-configuration'
 
 function MonitoringSession({ agentId, timezone }: { agentId: string; timezone: string }) {
   const { t } = useTranslation(['agentRoster', 'common'])
+  const router = useRouter()
   const locale = useLocale()
   const docLink = useDocLink()
   const [period, setPeriod] = useState<AgentMonitoringPeriod>(() => getDefaultMonitoringPeriod())
@@ -36,6 +39,11 @@ function MonitoringSession({ agentId, timezone }: { agentId: string; timezone: s
       retry: false,
     }),
   )
+  const status = getHttpErrorStatus(monitoring.error)
+  const missing = status === 404 || status === 410
+  useEffect(() => {
+    if (missing) router.replace('/agents?agent_type=external')
+  }, [missing, router])
   const formatNumber = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   const data = monitoring.isError ? undefined : monitoring.data
   const summary = data?.summary
@@ -43,6 +51,8 @@ function MonitoringSession({ agentId, timezone }: { agentId: string; timezone: s
   const value = (number: number | null | undefined) =>
     number === null || number === undefined ? '—' : formatNumber.format(number)
   const empty = summary?.calls === 0
+
+  if (missing) return null
 
   return (
     <div className="my-1 me-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-lg bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2">

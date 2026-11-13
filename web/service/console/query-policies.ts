@@ -139,7 +139,8 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           delete: {
             mutationOptions: {
               retry: false,
-              onSettled: async (_data, _error, variables, _onMutateResult, context) => {
+              onSettled: async (_data, error, variables, _onMutateResult, context) => {
+                const refetchType = error ? 'active' : 'none'
                 await Promise.all([
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.externalAgents.get.key(),
@@ -148,11 +149,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     queryKey: consoleQuery.externalAgents.byAgentId.get.queryKey({
                       input: { params: variables.params },
                     }),
+                    refetchType,
                   }),
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.externalAgents.byAgentId.references.get.queryKey({
                       input: { params: variables.params },
                     }),
+                    refetchType,
                   }),
                 ])
               },

@@ -277,6 +277,7 @@ export function ExternalAgentActions({
     consoleQuery.externalAgents.byAgentId.delete.mutationOptions({
       context: { silent: true },
       retry: false,
+      onSuccess: () => onDeleted?.(),
     }),
   )
   const references = useQuery(
@@ -432,12 +433,7 @@ export function ExternalAgentActions({
                 if (deleting)
                   deletion.mutate(
                     { params: { agent_id: agent.key } },
-                    {
-                      onSuccess: () => {
-                        onOpenChange(false)
-                        onDeleted?.()
-                      },
-                    },
+                    { onSuccess: () => onOpenChange(false) },
                   )
                 else
                   toggle.mutate(

@@ -37,14 +37,16 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.externalAgents.byAgentId.tracingConfig.byProvider.delete
     >(),
+  replace: vi.fn(),
 }))
 
 // boundary: the actual i18n provider supplies labels for all real form and overlay controls.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
-// boundary: Browser Mode has no application router; the page reads its current route only.
+// boundary: Browser Mode has no application router; redirects are observed at the router boundary.
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   usePathname: () => '/external-agent/22222222-2222-4222-8222-222222222222/monitoring',
+  useRouter: () => ({ replace: api.replace }),
 }))
 // boundary: generated server responses replace HTTP; date conversion, permissions, forms and cache policies stay real.
 vi.mock('@/service/console', async (importOriginal) => {
@@ -102,7 +104,8 @@ function configuration(
 async function setup({
   role = 'owner',
   timezone = 'America/Los_Angeles',
-}: { role?: 'owner' | 'normal'; timezone?: string } = {}) {
+  waitForHeading = true,
+}: { role?: 'owner' | 'normal'; timezone?: string; waitForHeading?: boolean } = {}) {
   await page.viewport(1512, 982)
   const i18n = createInstance()
   await i18n.init({
@@ -127,7 +130,10 @@ async function setup({
       </NuqsTestingAdapter>
     </QueryProvider>,
   )
-  await expect.element(page.getByRole('heading', { name: 'Monitoring', exact: true })).toBeVisible()
+  if (waitForHeading)
+    await expect
+      .element(page.getByRole('heading', { name: 'Monitoring', exact: true }))
+      .toBeVisible()
 }
 function metric(name: RegExp) {
   return page.getByRole('article', { name })
@@ -155,6 +161,16 @@ beforeEach(({ onTestFinished }) => {
   api.getConfig.mockReset().mockResolvedValue({ configuration: null })
   api.putConfig.mockReset()
   api.deleteConfig.mockReset().mockResolvedValue(undefined)
+  api.replace.mockReset()
+})
+
+it.each([404, 410])('returns to the external roster when monitoring answers %i', async (status) => {
+  api.monitoring.mockRejectedValue(new ORPCError('NOT_FOUND', { status }))
+  await setup({ waitForHeading: false })
+  await expect.poll(() => api.replace.mock.calls).toEqual([['/agents?agent_type=external']])
+  await expect
+    .element(page.getByRole('heading', { name: 'Monitoring', exact: true }))
+    .not.toBeInTheDocument()
 })
 
 it('keeps Today consistent with the browser calendar while requesting account-timezone App metrics across DST', async () => {

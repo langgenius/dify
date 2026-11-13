@@ -27,6 +27,8 @@ const requests = vi.hoisted(() => ({
   tracing: vi.fn<ConsoleClient['externalAgents']['byAgentId']['tracing']['put']>(),
   members: vi.fn<ConsoleClient['workspaces']['current']['members']['get']>(),
   leave: vi.fn<ConsoleClient['externalAgentTests']['leavePage']['post']>(),
+  remove: vi.fn<ConsoleClient['externalAgents']['byAgentId']['delete']>(),
+  replace: vi.fn(),
 }))
 // boundary: replace backend responses while preserving generated options and mutation invalidation.
 vi.mock('@/service/console', async (original) => {
@@ -40,6 +42,7 @@ vi.mock('@/service/console', async (original) => {
       'externalAgents.byAgentId.references.get': requests.references,
       'externalAgents.capabilities.get': requests.capabilities,
       'externalAgents.byAgentId.tracing.put': requests.tracing,
+      'externalAgents.byAgentId.delete': requests.remove,
       'workspaces.current.members.get': requests.members,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -47,10 +50,10 @@ vi.mock('@/service/console', async (original) => {
     }),
   }
 })
-// boundary: this component test has no application router; navigation is inspected through links.
+// boundary: this component test has no application router; redirects are observed at the router boundary.
 vi.mock('@/next/navigation', async (original) => ({
   ...(await original<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: requests.replace }),
 }))
 
 let detail: ReturnType<typeof createExternalAgentDetail>
@@ -100,6 +103,7 @@ beforeEach(({ onTestFinished }) => {
   )
   requests.members.mockResolvedValue({ accounts: [] })
   requests.leave.mockResolvedValue({ result: 'success' })
+  requests.remove.mockReset().mockResolvedValue(undefined)
   requests.tracing.mockImplementation(async ({ body }) => {
     detail = { ...detail, asset: { ...detail.asset, tracing_enabled: body.enabled } }
     return detail.asset
@@ -144,16 +148,37 @@ it('renders saved asset and service declarations and waits for the server before
   })
 })
 
-it('does not replace missing or forbidden server data with sample agents', async () => {
-  requests.detail.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+it.each([404, 410])('returns to the external roster when the agent answers %i', async (status) => {
+  requests.detail.mockRejectedValue(new ORPCError('NOT_FOUND', { status }))
   await setup()
-  await expect
-    .element(page.getByRole('alert'))
-    .toHaveTextContent('This external agent is no longer available.')
+  await expect.poll(() => requests.replace.mock.calls).toEqual([['/agents?agent_type=external']])
   await expect
     .element(page.getByRole('heading', { name: 'Contract Review Agent', exact: true }))
     .not.toBeInTheDocument()
   expect(requests.references).not.toHaveBeenCalled()
+})
+
+it('returns to the external roster as soon as the current agent is deleted', async () => {
+  await setup()
+  await expect.element(page.getByRole('heading', { name: 'Live Reviewer' })).toBeVisible()
+  const detailRequests = requests.detail.mock.calls.length
+  requests.detail.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+
+  await page.getByRole('button', { name: 'Manage agent', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Delete agent', exact: true }).click()
+  const dialog = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
+  await expect.element(dialog.getByRole('button', { name: 'Delete agent' })).toBeEnabled()
+  const referenceRequests = requests.references.mock.calls.length
+  requests.references.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+  await dialog.getByRole('button', { name: 'Delete agent' }).click()
+
+  await expect.poll(() => requests.replace.mock.calls).toEqual([['/agents?agent_type=external']])
+  expect(requests.remove).toHaveBeenCalledExactlyOnceWith({
+    params: { agent_id: detail.asset.id },
+  })
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(requests.detail).toHaveBeenCalledTimes(detailRequests)
+  expect(requests.references).toHaveBeenCalledTimes(referenceRequests)
 })
 
 it('keeps detail, references and test requests unavailable for the aggregate-only role', async () => {
@@ -164,4 +189,5 @@ it('keeps detail, references and test requests unavailable for the aggregate-onl
   expect(requests.detail).not.toHaveBeenCalled()
   expect(requests.references).not.toHaveBeenCalled()
   expect(requests.capabilities).not.toHaveBeenCalled()
+  expect(requests.replace).not.toHaveBeenCalled()
 })

@@ -2,10 +2,13 @@
 
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { toExternalAgentOverview } from '../model'
 import { ExternalAgentRequestState } from '../request-state'
 import { ExternalAgentOverviewActions } from './actions'
@@ -14,6 +17,7 @@ import { ExternalAgentIdentity } from './identity'
 
 export function ExternalAgentOverviewPage({ agentId }: { agentId: string }) {
   const { t } = useTranslation(['agentRoster'])
+  const router = useRouter()
   const workspace = useAtomValue(currentWorkspaceAtom)
   const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
   const canRead = !workspaceLoading && ['owner', 'admin', 'editor'].includes(workspace.role)
@@ -22,7 +26,13 @@ export function ExternalAgentOverviewPage({ agentId }: { agentId: string }) {
       input: canRead ? { params: { agent_id: agentId } } : skipToken,
     }),
   )
+  const status = getHttpErrorStatus(detail.error)
+  const missing = status === 404 || status === 410
+  useEffect(() => {
+    if (missing) router.replace('/agents?agent_type=external')
+  }, [missing, router])
   useDocumentTitle(detail.data?.asset.name ?? t(($) => $['external.overview.title']))
+  if (missing) return null
   if (!canRead || detail.isPending || detail.isError) {
     return (
       <ExternalAgentRequestState
