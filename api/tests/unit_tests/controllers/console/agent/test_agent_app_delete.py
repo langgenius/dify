@@ -320,7 +320,9 @@ def test_regular_app_delete_records_outbox_before_committing(harness: Harness, m
         outbox = session.scalar(select(AppDeletionOutbox).where(AppDeletionOutbox.app_id == app_id))
         assert outbox is not None
         assert outbox.status == AppDeletionOutboxStatus.PENDING
-        assert outbox.deletion_payload["app"]["mode"] == AppMode.CHAT.value
+        app_payload = outbox.deletion_payload.get("app")
+        assert isinstance(app_payload, dict)
+        assert app_payload["mode"] == AppMode.CHAT.value
 
 
 def test_delete_rejects_cross_tenant_and_wrong_app_mode(harness: Harness, cleanup: RecordedCleanup) -> None:

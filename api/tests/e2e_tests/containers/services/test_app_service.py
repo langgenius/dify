@@ -5,7 +5,7 @@ import pytest
 import sqlalchemy as sa
 from faker import Faker
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.model_template import default_app_templates
 from models import Account
@@ -915,13 +915,21 @@ class TestAppService:
         app_id = app.id
 
         # Mock the async deletion task
-        with patch("services.app_service.remove_app_and_related_data_task") as mock_delete_task:
+        with (
+            patch("services.app_service.remove_app_and_related_data_task") as mock_delete_task,
+            patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay") as mock_dispatch,
+        ):
             mock_delete_task.delay.return_value = None
 
             # Delete app
             app_service.delete_app(app, session=db_session_with_containers)
 
-            # Verify async deletion task was called
+            mock_dispatch.assert_called_once_with()
+            from tasks.app_deletion_outbox_task import _dispatch
+
+            _dispatch(sessionmaker(bind=db_session_with_containers.get_bind()))
+
+            # Verify the outbox worker delivered the async deletion task.
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
 
         # Verify app was deleted from database
@@ -970,13 +978,21 @@ class TestAppService:
         mock_external_service_dependencies["feature_service"].is_webapp_auth_enabled.return_value = True
 
         # Mock the async deletion task
-        with patch("services.app_service.remove_app_and_related_data_task") as mock_delete_task:
+        with (
+            patch("services.app_service.remove_app_and_related_data_task") as mock_delete_task,
+            patch("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay") as mock_dispatch,
+        ):
             mock_delete_task.delay.return_value = None
 
             # Delete app
             app_service.delete_app(app, session=db_session_with_containers)
 
-            # Verify webapp auth cleanup was called
+            mock_dispatch.assert_called_once_with()
+            from tasks.app_deletion_outbox_task import _dispatch
+
+            _dispatch(sessionmaker(bind=db_session_with_containers.get_bind()))
+
+            # Verify webapp auth cleanup was delivered by the outbox worker.
             mock_external_service_dependencies["enterprise_service"].WebAppAuth.cleanup_webapp.assert_called_once_with(
                 app_id
             )
