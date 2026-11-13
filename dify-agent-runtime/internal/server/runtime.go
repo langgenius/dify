@@ -27,7 +27,7 @@ func ParseJobID(raw string) (JobID, error) {
 	}
 	for i := 0; i < len(raw); i++ {
 		c := raw[i]
-		if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return "", NewServerError(http.StatusBadRequest, "invalid_job_id", "job id must be 16 lowercase hexadecimal characters")
 		}
 	}
