@@ -9,13 +9,13 @@ from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
-from models.model import App, IconType
+from models.enums import TagType
+from models.model import App, IconType, Tag, TagBinding
 from repositories.app.console_repository import ConsoleAppRepository
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
 from tests.e2e_tests.containers.helpers import generate_valid_password
 
 # Delay import of AppService to avoid circular dependency
-# from services.app_service import AppService, AppListParams, CreateAppParams
 
 
 class TestAppService:
@@ -169,7 +169,8 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
 
@@ -189,7 +190,9 @@ class TestAppService:
         # Get paginated apps
         params = AppListParams(page=1, limit=10, mode="chat")
 
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
+            account.id, tenant.id, params, db_session_with_containers
+        )
 
         # Verify pagination results
         assert paginated_apps is not None
@@ -220,7 +223,8 @@ class TestAppService:
         account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
         oldest_created = app_service.create_app(
@@ -253,7 +257,7 @@ class TestAppService:
             )
         db_session_with_containers.commit()
 
-        last_modified_apps = app_service.get_paginate_apps(
+        last_modified_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert last_modified_apps is not None
@@ -263,7 +267,7 @@ class TestAppService:
             "Oldest Created",
         ]
 
-        recently_created_apps = app_service.get_paginate_apps(
+        recently_created_apps = ConsoleAppRepository.get_paginate_apps(
             account.id,
             tenant.id,
             AppListParams(page=1, limit=10, mode="chat", sort_by="recently_created"),
@@ -276,7 +280,7 @@ class TestAppService:
             "Oldest Created",
         ]
 
-        earliest_created_apps = app_service.get_paginate_apps(
+        earliest_created_apps = ConsoleAppRepository.get_paginate_apps(
             account.id,
             tenant.id,
             AppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created"),
@@ -308,7 +312,8 @@ class TestAppService:
         tenant = account.current_tenant
 
         from models import AppStar
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
         starred_app = app_service.create_app(
@@ -333,7 +338,7 @@ class TestAppService:
         )
         assert star_count == 1
 
-        paginated_apps = app_service.get_paginate_apps(
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert paginated_apps is not None
@@ -344,7 +349,7 @@ class TestAppService:
         ConsoleAppRepository.unstar_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
         db_session_with_containers.commit()
 
-        paginated_apps = app_service.get_paginate_apps(
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert paginated_apps is not None
@@ -475,7 +480,8 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
 
@@ -501,21 +507,21 @@ class TestAppService:
         app_service.create_app(tenant.id, completion_app_params, account, session=db_session_with_containers)
 
         # Test filter by mode
-        chat_apps = app_service.get_paginate_apps(
+        chat_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert len(chat_apps.items) == 1
         assert chat_apps.items[0].mode == "chat"
 
         # Test filter by name
-        filtered_apps = app_service.get_paginate_apps(
+        filtered_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", name="Chat"), db_session_with_containers
         )
         assert len(filtered_apps.items) == 1
         assert "Chat" in filtered_apps.items[0].name
 
         # Test filter by created_by_me
-        my_apps = app_service.get_paginate_apps(
+        my_apps = ConsoleAppRepository.get_paginate_apps(
             account.id,
             tenant.id,
             AppListParams(page=1, limit=10, mode="completion", is_created_by_me=True),
@@ -548,7 +554,8 @@ class TestAppService:
             session=db_session_with_containers,
         )
 
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
         app_params = CreateAppParams(
@@ -570,7 +577,7 @@ class TestAppService:
         )
         app_service.create_app(tenant.id, other_app_params, second_account, session=db_session_with_containers)
 
-        filtered_apps = app_service.get_paginate_apps(
+        filtered_apps = ConsoleAppRepository.get_paginate_apps(
             first_account.id,
             tenant.id,
             AppListParams(page=1, limit=10, mode="chat", creator_ids=[second_account.id]),
@@ -601,7 +608,8 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
 
@@ -616,35 +624,28 @@ class TestAppService:
         )
         app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
-        # Mock TagService to return the app ID for tag filtering
-        with patch("services.app_service.TagService.get_target_ids_by_tag_ids") as mock_tag_service:
-            mock_tag_service.return_value = [app.id]
+        tags = [
+            Tag(tenant_id=tenant.id, type=TagType.APP, name=name, created_by=account.id)
+            for name in ("first", "second", "unbound")
+        ]
+        db_session_with_containers.add_all(tags)
+        db_session_with_containers.add_all(
+            [
+                TagBinding(tenant_id=tenant.id, tag_id=tag.id, target_id=app.id, created_by=account.id)
+                for tag in tags[:2]
+            ]
+        )
+        db_session_with_containers.flush()
 
-            # Test with tag filter
-            params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["tag1", "tag2"])
+        params = AppListParams(page=1, limit=10, mode="chat", tag_ids=[tag.id for tag in tags[:2]])
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
+            account.id, tenant.id, params, db_session_with_containers
+        )
+        assert paginated_apps is not None
+        assert [item.id for item in paginated_apps.items] == [app.id]
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
-
-            # Verify tag service was called
-            mock_tag_service.assert_called_once_with(
-                "app", tenant.id, ["tag1", "tag2"], db_session_with_containers, match_all=True
-            )
-
-            # Verify results
-            assert paginated_apps is not None
-            assert len(paginated_apps.items) == 1
-            assert paginated_apps.items[0].id == app.id
-
-        # Test with tag filter that returns no results
-        with patch("services.app_service.TagService.get_target_ids_by_tag_ids") as mock_tag_service:
-            mock_tag_service.return_value = []
-
-            params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["nonexistent_tag"])
-
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
-
-            # Should return None when no apps match tag filter
-            assert paginated_apps is None
+        params = AppListParams(page=1, limit=10, mode="chat", tag_ids=[tag.id for tag in tags])
+        assert ConsoleAppRepository.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers) is None
 
     def test_update_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -1044,7 +1045,8 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppListParams, AppService, CreateAppParams
+        from services.app_service import AppService, CreateAppParams
+        from services.entities.app_entities import AppListParams
 
         app_service = AppService()
 
@@ -1115,7 +1117,7 @@ class TestAppService:
         )
 
         # Test 1: Search with % character
-        paginated_apps = app_service.get_paginate_apps(
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
@@ -1124,7 +1126,7 @@ class TestAppService:
         assert paginated_apps.items[0].name == "App with 50% discount"
 
         # Test 2: Search with _ character
-        paginated_apps = app_service.get_paginate_apps(
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
             account.id,
             tenant.id,
             AppListParams(name="test_data", mode="chat", page=1, limit=10),
@@ -1136,7 +1138,7 @@ class TestAppService:
         assert paginated_apps.items[0].name == "test_data_app"
 
         # Test 3: Search with \ character
-        paginated_apps = app_service.get_paginate_apps(
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
             account.id,
             tenant.id,
             AppListParams(name="path\\to\\app", mode="chat", page=1, limit=10),
@@ -1148,7 +1150,7 @@ class TestAppService:
         assert paginated_apps.items[0].name == "path\\to\\app"
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
-        paginated_apps = app_service.get_paginate_apps(
+        paginated_apps = ConsoleAppRepository.get_paginate_apps(
             account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None

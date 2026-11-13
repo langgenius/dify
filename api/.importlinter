@@ -1630,3 +1630,39 @@ source_modules =
 forbidden_modules =
     services.agent.version_service
 allow_indirect_imports = True
+
+[importlinter:contract:agent-roster-repository-boundary]
+name = Agent roster persistence depends on contracts rather than application services
+type = forbidden
+source_modules =
+    repositories.agent_roster_repository
+forbidden_modules =
+    services.agent.roster_service
+    services.agent.invite_options
+allow_indirect_imports = True
+
+[importlinter:contract:agent-invite-options-service-boundary]
+name = Agent invite options use case and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.agent.invite_options
+    services.agent.invite_options_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-legacy-roster-service-boundary]
+name = Legacy Agent roster service does not depend on the new roster repository
+type = forbidden
+source_modules =
+    services.agent.roster_service
+forbidden_modules =
+    repositories.agent_roster_repository
+allow_indirect_imports = True

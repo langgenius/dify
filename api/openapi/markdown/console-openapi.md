@@ -452,6 +452,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
+**Return visible Workflow-callable Agents and their current workflow usage**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
