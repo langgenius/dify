@@ -531,7 +531,7 @@ def test_process_tenant_processes_and_persists_all_batches(
     monkeypatch.setattr(service_module.click, "style", lambda message, **_kwargs: message)
     clear_related = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", clear_related)
-    enqueue_collection = MagicMock()
+    enqueued_collections: list[dict[str, object]] = []
 
     def enqueue_and_verify_commit(**kwargs: object) -> None:
         with Session(sqlite_engine) as verification_session:
@@ -539,7 +539,7 @@ def test_process_tenant_processes_and_persists_all_batches(
                 workspace = verification_session.get(AgentWorkspace, workspace_id)
                 assert workspace is not None
                 assert workspace.status == AgentWorkingResourceStatus.RETIRED
-        enqueue_collection(**kwargs)
+        enqueued_collections.append(kwargs)
 
     monkeypatch.setattr(service_module, "enqueue_agent_resource_collection", enqueue_and_verify_commit)
 
@@ -606,9 +606,9 @@ def test_process_tenant_processes_and_persists_all_batches(
         assert verification_session.get(Conversation, "conversation-other") is not None
         assert verification_session.get(WorkflowAppLog, "log-recent") is not None
         assert verification_session.get(WorkflowAppLog, "log-other") is not None
-    enqueue_collection.assert_called_once()
-    assert enqueue_collection.call_args.kwargs["tenant_id"] == "tenant-1"
-    assert set(enqueue_collection.call_args.kwargs["workspace_ids"]) == {"workspace-old", "workspace-old-2"}
+    assert len(enqueued_collections) == 1
+    assert enqueued_collections[0]["tenant_id"] == "tenant-1"
+    assert set(enqueued_collections[0]["workspace_ids"]) == {"workspace-old", "workspace-old-2"}
 
 
 def test_serialize_record_falls_back_to_table_columns() -> None:

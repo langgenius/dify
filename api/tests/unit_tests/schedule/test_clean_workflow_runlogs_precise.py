@@ -5,11 +5,11 @@ from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock
+from types import ModuleType
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import Connection, create_engine, event, select
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
@@ -430,55 +430,58 @@ def test_delete_batch_retires_conversation_owned_agent_workspace(
 
 def test_cleanup_enqueues_retired_workspace_after_commit(
     cleanup_module: ModuleType,
-    session_maker: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    with session_maker.begin() as session:
-        run = _seed_batch(session)
-        run.created_at = datetime.now() - timedelta(days=90)
-        conversation_id = session.scalar(select(Message.conversation_id).where(Message.workflow_run_id == run.id))
-        assert conversation_id is not None
-        workspace_id, binding_id = str(uuid4()), str(uuid4())
-        session.add_all(
-            [
-                AgentWorkspace(
-                    id=workspace_id,
-                    tenant_id=run.tenant_id,
-                    app_id=run.app_id,
-                    owner_type=AgentWorkspaceOwnerType.CONVERSATION,
-                    owner_id=conversation_id,
-                    owner_scope_key="root",
-                    backend_workspace_ref="backend-workspace",
-                    status=AgentWorkingResourceStatus.ACTIVE,
-                    active_guard=1,
-                ),
-                AgentWorkspaceBinding(
-                    id=binding_id,
-                    tenant_id=run.tenant_id,
-                    app_id=run.app_id,
-                    workspace_id=workspace_id,
-                    agent_id=str(uuid4()),
-                    base_home_snapshot_id=None,
-                    agent_config_version_id=str(uuid4()),
-                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-                    backend_binding_ref="backend-binding",
-                    status=AgentWorkingResourceStatus.ACTIVE,
-                ),
-            ]
-        )
+    flask_app = Flask("test-clean-workflow-runlogs-precise")
+    flask_app.config.update(SQLALCHEMY_DATABASE_URI="sqlite://", SQLALCHEMY_TRACK_MODIFICATIONS=False)
+    cleanup_module.db.init_app(flask_app)
+    with flask_app.app_context():
+        engine = cleanup_module.db.engine
+        Base.metadata.create_all(engine, tables=TABLES)
+        session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+        with session_factory.begin() as session:
+            run = _seed_batch(session)
+            run.created_at = datetime.now() - timedelta(days=90)
+            conversation_id = session.scalar(select(Message.conversation_id).where(Message.workflow_run_id == run.id))
+            assert conversation_id is not None
+            workspace_id, binding_id = str(uuid4()), str(uuid4())
+            session.add_all(
+                [
+                    AgentWorkspace(
+                        id=workspace_id,
+                        tenant_id=run.tenant_id,
+                        app_id=run.app_id,
+                        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                        owner_id=conversation_id,
+                        owner_scope_key="root",
+                        backend_workspace_ref="backend-workspace",
+                        status=AgentWorkingResourceStatus.ACTIVE,
+                        active_guard=1,
+                    ),
+                    AgentWorkspaceBinding(
+                        id=binding_id,
+                        tenant_id=run.tenant_id,
+                        app_id=run.app_id,
+                        workspace_id=workspace_id,
+                        agent_id=str(uuid4()),
+                        base_home_snapshot_id=None,
+                        agent_config_version_id=str(uuid4()),
+                        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                        backend_binding_ref="backend-binding",
+                        status=AgentWorkingResourceStatus.ACTIVE,
+                    ),
+                ]
+            )
 
-    monkeypatch.setattr(cleanup_module, "db", SimpleNamespace(engine=session_maker.kw["bind"]))
-    enqueue = MagicMock()
+        enqueued: list[dict[str, object]] = []
 
-    def enqueue_after_commit(**kwargs: object) -> None:
-        with session_maker() as session:
-            workspace = session.get(AgentWorkspace, workspace_id)
-            assert workspace is not None
-            assert workspace.status == AgentWorkingResourceStatus.RETIRED
-        enqueue(**kwargs)
+        def enqueue_after_commit(**kwargs: object) -> None:
+            with session_factory() as session:
+                workspace = session.get(AgentWorkspace, workspace_id)
+                assert workspace is not None
+                assert workspace.status == AgentWorkingResourceStatus.RETIRED
+            enqueued.append(kwargs)
 
-    monkeypatch.setattr(cleanup_module, "enqueue_agent_resource_collection", enqueue_after_commit)
+        cleanup_module.enqueue_agent_resource_collection = enqueue_after_commit
+        cleanup_module.clean_workflow_runlogs_precise()
 
-    cleanup_module.clean_workflow_runlogs_precise()
-
-    enqueue.assert_called_once_with(tenant_id=run.tenant_id, workspace_ids=[workspace_id])
+        assert enqueued == [{"tenant_id": run.tenant_id, "workspace_ids": [workspace_id]}]
