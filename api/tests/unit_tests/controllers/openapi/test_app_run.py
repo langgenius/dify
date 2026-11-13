@@ -3,13 +3,16 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import replace
+from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
+from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import event
 from sqlalchemy.orm import Session
@@ -118,6 +121,11 @@ def _make_account() -> Account:
     return account
 
 
+def _post_handler(api: Resource) -> Callable[..., Response]:
+    # The per-mode run resources are created dynamically, so pyrefly only sees `Resource`.
+    return unwrap(api.post)  # pyrefly: ignore[missing-attribute]
+
+
 def _subject(token_type: TokenType = TokenType.OAUTH_ACCOUNT) -> Subject:
     return subject_from_auth(
         AuthContext(
@@ -191,14 +199,10 @@ def test_stop_task_enforces_resolved_caller_ownership(
     allowed = owns_task or subject.caller_role == CreatorUserRole.ACCOUNT
     with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/{task_id}:stop", method="POST"):
         if allowed:
-            assert api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-                api, ctx, app_id="app-1", task_id=task_id
-            ) == TaskStopResponse(result="success")
+            assert unwrap(api.post)(api, ctx, app_id="app-1", task_id=task_id) == TaskStopResponse(result="success")
         else:
             with pytest.raises(NotFound, match="Task not found"):
-                api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-                    api, ctx, app_id="app-1", task_id=task_id
-                )
+                unwrap(api.post)(api, ctx, app_id="app-1", task_id=task_id)
     if allowed:
         assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
     else:
@@ -257,11 +261,9 @@ def test_run_reads_everything_off_the_context_before_streaming(
     api = AdvancedChatRunApi()
     body = AdvancedChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
-        response = api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-            api, ctx, app_id=_TEST_APP_ID, body=body
-        )
+        response = _post_handler(api)(api, ctx, app_id=_TEST_APP_ID, body=body)
         ctx.seal()
-        body = "".join(response.response)
+        body = "".join(part.decode() if isinstance(part, bytes) else part for part in response.response)
 
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
@@ -274,9 +276,7 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         with pytest.raises(AppModeMismatch):
-            api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-                api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body
-            )
+            _post_handler(api)(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
     generate_mock.assert_not_called()
 
 
@@ -309,9 +309,7 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     )
     api = CompletionRunApi()
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
-        api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-            api, _ctx(AppMode.COMPLETION, sqlite_session), app_id=_TEST_APP_ID, body=body
-        )
+        _post_handler(api)(api, _ctx(AppMode.COMPLETION, sqlite_session), app_id=_TEST_APP_ID, body=body)
 
     # The read transaction ends before the first object-storage write (api/AGENTS.md).
     assert operations == ["commit", "upload", "upload"]
@@ -334,9 +332,7 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        response = api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-            api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body
-        )
+        response = _post_handler(api)(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
         chunks = list(response.response)
     assert chunks[0] == message
     assert json.loads(chunks[1][len("data: ") :])["hints"] == [
@@ -356,9 +352,7 @@ def test_chat_route_passes_a_message_end_without_conversation_through(
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
-        response = api.post.__handler__(  # pyrefly: ignore[missing-attribute]
-            api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body
-        )
+        response = _post_handler(api)(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
         assert list(response.response) == [end]
 
 
