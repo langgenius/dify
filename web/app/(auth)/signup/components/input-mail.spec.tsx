@@ -122,6 +122,18 @@ describe('InputMail Form', () => {
 
   // Validation and failure paths.
   describe('Edge Cases', () => {
+    it('should disable native validation so the translated error is shown', () => {
+      // Regression for #39011: the email input is type="email", so the
+      // browser runs native constraint validation on submit and reports
+      // its own message in the browser language before the app's
+      // translated error.emailInValid can run. The form must opt out.
+      const { container } = renderForm()
+      const form = container.querySelector('form')
+
+      expect(form).not.toBeNull()
+      expect(form).toHaveProperty('noValidate', true)
+    })
+
     it('should block submission when email is invalid', async () => {
       const user = userEvent.setup()
       renderForm()
