@@ -1520,7 +1520,7 @@ export const zAppDetailSiteResponse = z.object({
  * This leaves room for future non-Dify agent implementations while keeping
  * the current roster/workflow APIs scoped to Dify Agent.
  */
-export const zAgentKind = z.enum(['dify_agent'])
+export const zAgentKind = z.enum(['dify_agent', 'external_a2a'])
 
 /**
  * AgentPublishedReferenceResponse

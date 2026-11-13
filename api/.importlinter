@@ -13,10 +13,32 @@ root_packages =
     libs
     machinery
     models
+    providers
     repositories
     tasks
     services
 include_external_packages = True
+
+[importlinter:contract:external-agents-application]
+name = External Agent application services use consumer ports and plain records
+type = forbidden
+source_modules =
+    services.external_agents
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    enterprise
+    extensions
+    flask
+    models
+    providers
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+allow_indirect_imports = True
 
 [importlinter:contract:domain-boundary]
 name = Domain code depends on no application, persistence, framework, configuration, queue, transport, or legacy kernel code
@@ -50,6 +72,14 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    # Legacy workflow composition selects the External adapter; application
+    # policy/state stays in the framework-neutral external_agents slice.
+    core.workflow.node_factory -> extensions.ext_application_services
+    core.workflow.node_factory -> providers.a2a.workflow_node
+    core.workflow.workflow_entry -> extensions.ext_application_services
+    core.workflow.workflow_entry -> providers.a2a.workflow_budget
+    core.workflow.nodes.agent_v2.validators -> services.external_agents.workflow_runtime
+    core.workflow.nodes.agent_v2.validators -> providers.a2a.workflow_node
     # The Dify node factory composes the Human Input runtime for workflow execution.
     core.workflow.node_factory -> services.human_input_v2.composition
     # Legacy generators delegate configured file defaults to the application owner during core migration.

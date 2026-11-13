@@ -406,6 +406,36 @@ services:
       - ssrf_proxy_network
       - default
 
+  # Bounded outbound A2A I/O stays on a dedicated queue and worker pool.
+  worker_external_agents:
+    <<: *shared-worker-config
+    image: langgenius/dify-api:1.19.0
+    profiles:
+      - external-agents
+    environment:
+      # The entrypoint resolves EXTERNAL_AGENTS_QUEUE from the common container
+      # environment, including api-worker.env, just like API and Beat do.
+      MODE: external_agent_worker
+      CELERY_WORKER_POOL: prefork
+      CELERY_WORKER_CONCURRENCY: ${EXTERNAL_AGENTS_WORKER_CONCURRENCY:-4}
+      CELERY_PREFETCH_MULTIPLIER: 1
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # Dedicated worker for click-time Dataset snapshots and KnowledgeFS upgrade orchestration.
   # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
   worker_knowledge_fs_upgrade:

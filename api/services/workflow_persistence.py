@@ -490,6 +490,20 @@ class WorkflowPersistenceLayer(Layer):
                 domain_execution.process_data,
             )
 
+        agent_log = (domain_execution.metadata or {}).get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+        if (
+            status
+            in {
+                WorkflowNodeExecutionStatus.SUCCEEDED,
+                WorkflowNodeExecutionStatus.FAILED,
+                WorkflowNodeExecutionStatus.EXCEPTION,
+            }
+            and isinstance(agent_log, Mapping)
+            and isinstance(agent_log.get("invocation_id"), str)
+        ):
+            # An async/LogStore append is not acknowledgement of consuming the
+            # durable External result. Mirror the exact caller terminal in SQL.
+            self._workflow_node_execution_repository.save_synchronously(domain_execution)
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
 

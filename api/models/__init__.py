@@ -66,6 +66,27 @@ from .enums import (
     WorkflowTriggerStatus,
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
+from .external_agent import (
+    ExternalAgentCommand,
+    ExternalAgentConnectionRevision,
+    ExternalAgentContextSlot,
+    ExternalAgentFileLease,
+    ExternalAgentHead,
+    ExternalAgentInvocation,
+    ExternalAgentOperation,
+    ExternalAgentVerification,
+    ExternalWorkflowBudget,
+)
+from .external_agent_trace import (
+    ExternalAgentDataTombstone,
+    ExternalAgentTraceDelivery,
+    ExternalAgentTraceReceipt,
+    ExternalAgentTraceRecord,
+    ExternalAgentTraceStep,
+    ExternalAgentTraceTarget,
+    ExternalAgentTraceUsageSummary,
+    ExternalAgentTracingConfig,
+)
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .human_input_v2 import (
     ContactSubjectType,
@@ -307,8 +328,25 @@ __all__ = [
     "EndUser",
     "ExecutionExtraContent",
     "ExporleBanner",
+    "ExternalAgentCommand",
+    "ExternalAgentConnectionRevision",
+    "ExternalAgentContextSlot",
+    "ExternalAgentDataTombstone",
+    "ExternalAgentFileLease",
+    "ExternalAgentHead",
+    "ExternalAgentInvocation",
+    "ExternalAgentOperation",
+    "ExternalAgentTraceDelivery",
+    "ExternalAgentTraceReceipt",
+    "ExternalAgentTraceRecord",
+    "ExternalAgentTraceStep",
+    "ExternalAgentTraceTarget",
+    "ExternalAgentTraceUsageSummary",
+    "ExternalAgentTracingConfig",
+    "ExternalAgentVerification",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "ExternalWorkflowBudget",
     "HumanInputContactIdentity",
     "HumanInputContent",
     "HumanInputEmailProvider",

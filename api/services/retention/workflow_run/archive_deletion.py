@@ -2,7 +2,7 @@
 
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from uuid import UUID
 
 from libs.archive_storage import ArchiveStorage, ArchiveStorageError
@@ -39,11 +39,13 @@ class WorkflowRunArchiveDeleter:
         archive_storage_provider: Callable[[], ArchiveStorage],
         download_storage_provider: Callable[[], ArchiveStorage],
         month_lock: WorkflowRunArchiveMonthLock,
+        external_run_cleanup: Callable[[str, Sequence[str]], None] | None = None,
     ) -> None:
         self._bundles = bundles
         self._archive_storage_provider = archive_storage_provider
         self._download_storage_provider = download_storage_provider
         self._month_lock = month_lock
+        self._external_run_cleanup = external_run_cleanup
 
     def delete(self, *, tenant_id: str, year: int, month: int) -> WorkflowRunArchiveDeletionTask:
         """Keep all requested indexes until archive objects and temporary downloads are successfully removed."""
@@ -95,7 +97,13 @@ class WorkflowRunArchiveDeleter:
             lease.assert_owned()
             prefix = _bundle_prefix(tenant_id=tenant_id, record=record)
             logger.info("Permanently deleting workflow run archive bundle: tenant=%s prefix=%s", tenant_id, prefix)
-            self._delete_bundle(archive_storage, tenant_id=tenant_id, record=record, prefix=prefix)
+            self._delete_bundle(
+                archive_storage,
+                tenant_id=tenant_id,
+                record=record,
+                prefix=prefix,
+                external_run_cleanup=self._external_run_cleanup,
+            )
 
         # The month lease serializes ZIP uploads with this cleanup, including interrupted upload workers.
         # Remove ZIPs before the last durable marker disappears.
@@ -131,7 +139,12 @@ class WorkflowRunArchiveDeleter:
 
     @staticmethod
     def _delete_bundle(
-        storage: ArchiveStorage, *, tenant_id: str, record: WorkflowRunArchiveBundleRecord, prefix: str
+        storage: ArchiveStorage,
+        *,
+        tenant_id: str,
+        record: WorkflowRunArchiveBundleRecord,
+        prefix: str,
+        external_run_cleanup: Callable[[str, Sequence[str]], None] | None = None,
     ) -> None:
         keys = _list_scoped_objects(storage, prefix)
         manifest_key = f"{prefix}{ARCHIVE_BUNDLE_MANIFEST_NAME}"
@@ -153,6 +166,8 @@ class WorkflowRunArchiveDeleter:
                 )
                 if actual != expected:
                     raise ValueError("Archive manifest identity does not match the requested bundle")
+                if external_run_cleanup is not None:
+                    external_run_cleanup(tenant_id, manifest["run_ids"])
         for key in keys:
             if key != manifest_key:
                 storage.delete_object(key)

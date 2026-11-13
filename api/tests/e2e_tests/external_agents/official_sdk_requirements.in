@@ -1,0 +1,4 @@
+# This optional peer environment is separate from Dify's runtime dependencies.
+a2a-sdk[http-server]==1.3.0
+uvicorn==0.38.0
+httpx==0.28.1

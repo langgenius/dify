@@ -1,0 +1,122 @@
+[project]
+name = 'graphon'
+version = '0.8.0'
+description = 'Graph execution engine for agentic AI workflows.'
+readme = 'README.md'
+license = 'Apache-2.0'
+license-files = ['LICENSE']
+# Keep Python support aligned with `unstructured`, which currently declares
+# `Requires-Python: <3.14,>=3.11`.
+requires-python = '>=3.12,<3.14'
+dependencies = [
+    'charset-normalizer>=2.1',
+    'defusedxml>=0.7',
+    'httpx>=0.28',
+    'json-repair>=0.55',
+    'jsonschema>=4.18',
+    'odfdo>=3.22.8',
+    'orjson>=3',
+    'pandas[excel]>=2.1',
+    'pydantic>=2.7',
+    'pydantic-extra-types>=2',
+    'pypdf>=6.14.2',
+    'pypdfium2>=5',
+    'python-docx>=1.2',
+    'pyyaml>=6',
+    'tiktoken>=0.12',
+    'transformers>=4',
+    'typing-extensions>=4.10.0',
+    'unstructured[docx,md,ppt,pptx]>=0.21',
+    'webvtt-py>=0.5',
+]
+
+[project.urls]
+source = 'https://github.com/langgenius/graphon'
+homepage = 'https://github.com/langgenius/graphon'
+issues = 'https://github.com/langgenius/graphon/issues'
+
+[dependency-groups]
+dev = [
+    'pytest',
+    'pytest-benchmark',
+    'pytest-cov',
+    'pytest-mock',
+    'pytest-xdist',
+    'ruff',
+    'prek',
+    'ty',
+    'gevent>=26.8.0',
+    "import-linter>=2.15",
+]
+
+[build-system]
+requires = ['uv_build>=0.12.2,<0.13']
+build-backend = 'uv_build'
+
+[tool.uv]
+default-groups = ['dev']
+prerelease = 'disallow'
+
+[tool.ruff]
+fix = true
+preview = true
+required-version = '>=0.15'
+
+[tool.ruff.lint]
+select = ['ALL']
+ignore = [
+    'missing-trailing-comma', # Conflicts with `ruff format`.
+    'commented-out-code', # False positives are common.
+    'TC', # Runtime use of typing constructs is common now.
+    'CPY', # Covered by the standalone LICENSE file.
+    'too-many-arguments', # Explicit is better than implicit.
+    'too-many-positional-arguments', # Complex is better than complicated.
+    'no-self-use', # Violates the usual practice.
+    'D', # Too verbose.
+    'FBT', # Too strict.
+    'relative-imports', # Too absolute.
+    'any-type', # We hope to enforce this, but typing is still evolving.
+]
+
+[tool.ruff.lint.pydoclint]
+ignore-one-line-docstrings = true
+
+[tool.ruff.lint.per-file-ignores]
+'tests/**/*.py' = [
+    'assert', # Assert statements used for pytest.
+    'magic-value-comparison', # Magic value used in test cases.
+    'import-private-name', # Allow import private members from graphon module.
+    'compare-to-empty-string', # be more precise about assertion in tests.
+
+    # permit calls of private methods until we separate
+    # public interface tests from implementation tests.
+    'private-member-access', # allow calls of private class methods in tests
+]
+
+[tool.ty.environment]
+python-platform = 'linux'
+
+[tool.importlinter]
+root_package = 'graphon'
+exclude_type_checking_imports = false
+
+[[tool.importlinter.contracts]]
+id = 'architecture-layers'
+name = 'Packages import within their layer or below'
+type = 'layers'
+containers = ['graphon']
+exhaustive = true
+layers = [
+    'dsl',
+    'engine',
+    'protocols : errors',
+    'graph : nodes : runtime : utils : variable_loader',
+    'engine_events : node_events',
+    'entities : variables : file : http : model_runtime : enums : prompt_entities : template_rendering : workflow_type_encoder',
+]
+broken_contract_guidance = 'Depend on the same or a lower architectural layer. Inject dependencies from the composition layer, and classify every new top-level module in this contract. See ARCHITECTURE.md#import-boundaries.'
+
+[tool.pytest]
+minversion = '9.0'
+addopts = ['--benchmark-disable', '-n', 'auto']
+testpaths = ['tests']

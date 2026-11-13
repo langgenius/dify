@@ -1762,7 +1762,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.201.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=2.7.0,<3.0.0" },
-    { name = "graphon", git = "https://github.com/langgenius/graphon?rev=4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" },
+    { name = "graphon", directory = "../packages/graphon" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -3132,7 +3132,7 @@ grpc = [
 [[package]]
 name = "graphon"
 version = "0.8.0"
-source = { git = "https://github.com/langgenius/graphon?rev=4fa22141774dff80e90e4dfa98ea3e6fbf0421bb#4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" }
+source = { directory = "../packages/graphon" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },
@@ -3153,6 +3153,43 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unstructured", extra = ["docx", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "charset-normalizer", specifier = ">=2.1" },
+    { name = "defusedxml", specifier = ">=0.7" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "json-repair", specifier = ">=0.55" },
+    { name = "jsonschema", specifier = ">=4.18" },
+    { name = "odfdo", specifier = ">=3.22.8" },
+    { name = "orjson", specifier = ">=3" },
+    { name = "pandas", extras = ["excel"], specifier = ">=2.1" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "pydantic-extra-types", specifier = ">=2" },
+    { name = "pypdf", specifier = ">=6.14.2" },
+    { name = "pypdfium2", specifier = ">=5" },
+    { name = "python-docx", specifier = ">=1.2" },
+    { name = "pyyaml", specifier = ">=6" },
+    { name = "tiktoken", specifier = ">=0.12" },
+    { name = "transformers", specifier = ">=4" },
+    { name = "typing-extensions", specifier = ">=4.10.0" },
+    { name = "unstructured", extras = ["docx", "md", "ppt", "pptx"], specifier = ">=0.21" },
+    { name = "webvtt-py", specifier = ">=0.5" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "gevent", specifier = ">=26.8.0" },
+    { name = "import-linter", specifier = ">=2.15" },
+    { name = "prek" },
+    { name = "pytest" },
+    { name = "pytest-benchmark" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "ty" },
 ]
 
 [[package]]

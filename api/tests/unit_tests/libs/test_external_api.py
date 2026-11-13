@@ -319,6 +319,8 @@ class _Schema(BaseModel):
 
     ref: str | None = Field(default=None, alias="$ref")
     anyOf: list["_Schema"] = Field(default_factory=list)
+    properties: dict[str, "_Schema"] = Field(default_factory=dict)
+    enum: list[str | int] = Field(default_factory=list)
 
 
 class _MediaType(BaseModel):
@@ -705,6 +707,25 @@ class _EnumConflictError(BaseHTTPException):
     error_code = "enum_conflict"
     code = 409
     details_model = _EnumConflictDetails
+
+
+class _StringEnumConflictDetails(BaseModel):
+    state: Literal["retry", "configure"]
+
+
+class _StringEnumConflictError(BaseHTTPException):
+    error_code = "string_enum_conflict"
+    code = 409
+    details_model = _StringEnumConflictDetails
+
+
+def test_details_added_by_document_finisher_have_deterministic_enum_order() -> None:
+    """Finalized typed error details expose the same stable enum order as exported specs."""
+    document = _documented_operation(ExternalApi(Blueprint("enum_details", __name__)), _StringEnumConflictError)
+
+    details = _Schema.model_validate(document.components.schemas["_StringEnumConflictDetails"])
+    assert details.properties["state"].enum == ["configure", "retry"]
+    assert _error_options(document, "409") == ["StringEnumConflictError"]
 
 
 def test_details_model_reuses_registered_schema_with_reordered_enum_values() -> None:
