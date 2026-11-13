@@ -4,6 +4,7 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import * as reactI18next from 'react-i18next'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import {
   createEdge,
@@ -11,6 +12,7 @@ import {
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import translations from '@/i18n/locales/en-US/workflow-human-input.json'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodItem from '../method-item'
@@ -23,25 +25,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.members.get': () => ({ accounts: [] }),
     }),
-  }
-})
-
-vi.mock('react-i18next', async () => {
-  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
-  const { createInstance } = await vi.importActual<typeof import('i18next')>('i18next')
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: translations } = await import('@/i18n/locales/en-US/workflow-human-input.json')
-  const i18n = createInstance()
-  await i18n.init({
-    lng: 'en-US',
-    fallbackLng: false,
-    keySeparator: false,
-    resources: { 'en-US': { workflowHumanInput: translations } },
-  })
-  return {
-    ...actual,
-    ...createReactI18nextMock(),
-    Trans: (props: ComponentProps<typeof actual.Trans>) => <actual.Trans {...props} i18n={i18n} />,
   }
 })
 
@@ -151,6 +134,25 @@ const renderMethod = (initialMethod: DeliveryMethod, readonly = false) => {
 const savedMethod = () => screen.getByRole('status', { name: 'Saved delivery method' })
 
 describe('human-input/delivery-method/method-item', () => {
+  beforeEach(async () => {
+    const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+    const { createInstance } = await vi.importActual<typeof import('i18next')>('i18next')
+    const i18n = createInstance()
+    await i18n.init({
+      lng: 'en-US',
+      fallbackLng: false,
+      keySeparator: false,
+      resources: { 'en-US': { workflowHumanInput: translations } },
+    })
+    vi.spyOn(reactI18next, 'Trans').mockImplementation(
+      (props: ComponentProps<typeof actual.Trans>) => <actual.Trans {...props} i18n={i18n} />,
+    )
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('toggles and deletes a webapp delivery method through controlled owner state', async () => {
     const user = userEvent.setup()
     renderMethod({ id: 'webapp-1', type: DeliveryMethodType.WebApp, enabled: true })
@@ -170,8 +172,6 @@ describe('human-input/delivery-method/method-item', () => {
 
   it('uses the real test sender and saves subject and body edits from the real configuration form', async () => {
     const user = userEvent.setup()
-    // The jump button exists only for non-debug email with specific recipients; a debug fixture
-    // cannot reach this production branch.
     renderMethod({
       id: 'email-1',
       type: DeliveryMethodType.Email,
@@ -188,9 +188,11 @@ describe('human-input/delivery-method/method-item', () => {
     await user.click(testButton)
     sender = screen.getByRole('dialog', { name: /emailSender.title/ })
     await user.click(within(sender).getByRole('button', { name: 'enable Debug Mode' }))
-    const configure = await screen.findByRole('dialog', { name: /emailConfigure.title/ })
+    const configureFromSender = await screen.findByRole('dialog', { name: /emailConfigure.title/ })
     expect(screen.queryByRole('dialog', { name: /emailSender.title/ })).not.toBeInTheDocument()
-    await user.click(within(configure).getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(
+      within(configureFromSender).getByRole('button', { name: 'common.operation.cancel' }),
+    )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.configure' }))

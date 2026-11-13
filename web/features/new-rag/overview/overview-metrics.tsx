@@ -3,10 +3,11 @@
 import type { MetricChange } from './overview-format'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import ReactECharts from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react/esm/core'
 import { useAtomValueRawSync } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { echarts } from './echarts'
 import { compactNumber, formatDuration, formatMetricChange } from './overview-format'
 import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
 import { buildQueryOutcomesChartOptions } from './query-outcomes-chart-options'
@@ -192,7 +193,7 @@ export function QueryOutcomesChart() {
             <Infotip>
               <InfotipTrigger
                 aria-label={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
-                className="ml-1 inline-flex size-4 align-middle"
+                className="ms-1 inline-flex size-4 align-middle"
               />
               <InfotipContent className="max-w-[260px]">
                 {t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
@@ -220,7 +221,7 @@ export function QueryOutcomesChart() {
           <Infotip>
             <InfotipTrigger
               aria-label={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
-              className="ml-1 inline-flex size-4 align-middle"
+              className="ms-1 inline-flex size-4 align-middle"
             />
             <InfotipContent className="max-w-[260px]">
               {t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
@@ -247,6 +248,7 @@ export function QueryOutcomesChart() {
               {t(($) => $['overview.queryOutcomes'], { ns: 'knowledgeOverview' })}: {buckets.length}
             </p>
             <ReactECharts
+              echarts={echarts}
               option={chartOptions}
               opts={{ renderer: 'svg' }}
               style={{ height: 285, width: '100%' }}

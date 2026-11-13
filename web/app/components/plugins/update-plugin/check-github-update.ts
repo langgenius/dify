@@ -1,5 +1,6 @@
 import type { PluginDetail } from '../types'
 import type { useModalContext } from '@/context/modal-context'
+import { getI18n } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 
@@ -17,8 +18,11 @@ export async function checkGitHubPluginUpdate(
 
   const owner = meta.repo.split('/')[0] || author
   const repo = meta.repo.split('/')[1] || name
-  const fetchedReleases = await fetchReleases(owner, repo)
-  if (fetchedReleases.length === 0) return
+  const fetchedReleases = await fetchReleases(owner, repo).catch(() => {
+    toast.error(getI18n().t(($) => $['error.fetchReleasesError'], { ns: 'plugin' }))
+    return undefined
+  })
+  if (!fetchedReleases?.length) return
 
   const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
   toast(toastProps.message, { type: toastProps.type })

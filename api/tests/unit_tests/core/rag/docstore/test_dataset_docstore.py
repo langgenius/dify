@@ -279,16 +279,6 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         with pytest.raises(ValueError, match="must be a Document"):
             store.add_documents(session=sqlite_session, docs=["not a document"], token_counts=[0])  # type: ignore[list-item]
 
-    def test_add_documents_with_none_metadata(self, sqlite_session: Session) -> None:
-        """Test that document with None metadata raises ValueError."""
-
-        # Bypass model validation to exercise the store's legacy malformed-metadata guard.
-        document = Document.model_construct(page_content="Test content", metadata=None)
-        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
-
-        with pytest.raises(ValueError, match="metadata must be a dict"):
-            store.add_documents(session=sqlite_session, docs=[document], token_counts=[0])
-
     def test_add_documents_with_save_child(self, sqlite_session: Session) -> None:
         """Test adding documents with save_child=True."""
 

@@ -1,3 +1,4 @@
+import type { BlockDefaultValue } from '../../block-selector/types'
 import type { AvailableNodesMetaData } from '../../hooks-store'
 import type { Edge, Node } from '../../types'
 import type { consoleClient } from '@/service/console'
@@ -13,14 +14,24 @@ import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { WORKFLOW_COMMON_NODES } from '../../constants/node'
 import { HooksStoreContext } from '../../hooks-store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
+import AgentV2Default from '../../nodes/agent-v2/default'
 import endDefault from '../../nodes/end/default'
-import { BlockEnum } from '../../types'
+import { createDefaultFormInputByType } from '../../nodes/human-input/types'
+import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
+import { BlockEnum, InputVarType } from '../../types'
 import { writeWorkflowClipboard } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
 const createAgent = vi.hoisted(() =>
   vi.fn<typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put>(),
 )
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -107,8 +118,92 @@ async function paste(
   return test
 }
 beforeEach(async () => {
+  releaseGate.enabled = true
   createAgent.mockReset()
   await navigator.clipboard.writeText('')
+})
+
+it.each(['add', 'replace'] as const)(
+  'restores legacy approval %s without migration when the release gate is off',
+  (command) => {
+    releaseGate.enabled = false
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy')
+    const { result } = setup({ nodes: [legacy, codeNode('target')] })
+
+    act(() => {
+      if (command === 'add')
+        result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInput }, { prevNodeId: 'legacy' })
+      else result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source')
+    })
+
+    const approvals = result.current.nodes.filter((node) => node.data.type === BlockEnum.HumanInput)
+    expect(approvals).toHaveLength(2)
+    expect(approvals.every((node) => !('version' in node.data))).toBe(true)
+    expect(
+      approvals.every(
+        (node) => 'delivery_methods' in node.data && Array.isArray(node.data.delivery_methods),
+      ),
+    ).toBe(true)
+  },
+)
+
+it.each(['paste', 'duplicate'] as const)(
+  'restores ordinary legacy approval %s when the release gate is off',
+  async (command) => {
+    releaseGate.enabled = false
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy')
+    const test =
+      command === 'paste'
+        ? await paste([legacy], [], { nodes: [legacy] })
+        : setup({ nodes: [legacy] })
+    if (command === 'duplicate') {
+      await act(async () => test.result.current.handleNodesDuplicate('legacy'))
+      await waitFor(() => expect(test.result.current.nodes).toHaveLength(2))
+    }
+
+    expect(test.result.current.nodes).toHaveLength(2)
+    expect(test.result.current.nodes.every((node) => !('version' in node.data))).toBe(true)
+  },
+)
+
+it.each(['add', 'replace'] as const)(
+  'rejects %s overrides that smuggle V2 data through the legacy catalog when the release gate is off',
+  (command) => {
+    releaseGate.enabled = false
+    const { result, sync } = setup({ nodes: [codeNode('target')] })
+    const before = result.current.nodes
+    const override = {
+      ...AgentV2Default.defaultValue,
+      agent_binding: { binding_type: 'inline_agent' },
+      agent_node_kind: 'dify_agent',
+      version: '2',
+    } satisfies BlockDefaultValue
+
+    act(() => {
+      if (command === 'add')
+        result.current.handleNodeAdd(
+          { nodeType: BlockEnum.HumanInput, pluginDefaultValue: override },
+          {},
+        )
+      else result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source', override)
+    })
+
+    expect(result.current.nodes).toEqual(before)
+    expect(sync).not.toHaveBeenCalled()
+  },
+)
+
+it('rejects pasted V2 approvals without changing existing wire data when the release gate is off', async () => {
+  releaseGate.enabled = false
+  const v2 = workflowNode(BlockEnum.HumanInputV2, 'v2', {
+    data: { type: BlockEnum.HumanInput, version: '2', recipients_spec: [{ type: 'initiator' }] },
+  })
+  const before = structuredClone(v2)
+  const { result, sync } = await paste([v2], [], { nodes: [codeNode('target')] })
+
+  expect(result.current.nodes.map((node) => node.id)).toEqual(['target'])
+  expect(v2).toEqual(before)
+  expect(sync).not.toHaveBeenCalled()
 })
 
 it('selects a different node for inspection and clears the inspector selection', () => {
@@ -393,6 +488,61 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
   },
 )
 
+it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
+  'requires migration before duplicating a legacy approval with a supported %s field',
+  async (type) => {
+    const input = createDefaultFormInputByType(type, 'decision')
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
+    const { result } = setup({ nodes: [legacy] })
+
+    await act(async () => result.current.handleNodesDuplicate('legacy'))
+
+    expect(result.current.nodes).toHaveLength(1)
+    expect(result.current.nodes[0]?.data).toMatchObject({ inputs: [input] })
+  },
+)
+
+it('duplicates a legacy approval without changing its input when the release gate is off', async () => {
+  releaseGate.enabled = false
+  const input = createDefaultFormInputByType(InputVarType.select, 'decision')
+  const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
+  const { result } = setup({ nodes: [legacy] })
+
+  await act(async () => result.current.handleNodesDuplicate('legacy'))
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+
+  expect(result.current.nodes.find((node) => node.id !== legacy.id)?.data).toMatchObject({
+    type: BlockEnum.HumanInput,
+    inputs: [input],
+  })
+})
+
+it.each(['add', 'replace'] as const)(
+  'allows legacy %s while blocking v2 when the release gate is off',
+  (command) => {
+    releaseGate.enabled = false
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', {
+      data: { inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')] },
+    })
+    const { result } = setup({ nodes: [legacy, codeNode('target')] })
+
+    act(() => {
+      if (command === 'add') {
+        result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInput }, { prevNodeId: 'legacy' })
+      } else {
+        result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source')
+      }
+    })
+    expect(
+      result.current.nodes.filter((node) => node.data.type === BlockEnum.HumanInput),
+    ).toHaveLength(2)
+    const count = result.current.nodes.length
+
+    act(() => result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, {}))
+    expect(result.current.nodes).toHaveLength(count)
+  },
+)
+
 it('creates an inline Agent through the service boundary and resolves the pending graph node', async () => {
   const request = createDeferred<Awaited<ReturnType<typeof createAgent>>>()
   createAgent.mockReturnValue(request.promise)
@@ -440,4 +590,84 @@ it('creates an inline Agent through the service boundary and resolves the pendin
   )
   expect(result.current.nodes.find((node) => node.id === nodeId)?.data._isTempNode).toBeUndefined()
   expect(sync).toHaveBeenCalledTimes(2)
+})
+
+it('remaps a copied ordinary node dependency and edge while the HITL gate is off', async () => {
+  releaseGate.enabled = false
+  const source = codeNode('source-copy')
+  const target = codeNode('target-copy', {
+    data: {
+      variables: [{ variable: 'topic', value_selector: ['source-copy', 'result'] }],
+    },
+  })
+  const connection = createEdge({ id: 'copied-connection', source: source.id, target: target.id })
+  const original = structuredClone({ source, target, connection })
+  const { result } = await paste([source, target], [connection], { nodes: [] })
+  const copiedSource = result.current.nodes.find((node) => node.data.title === source.data.title)!
+  const copiedTarget = result.current.nodes.find((node) => node.data.title === target.data.title)!
+  expect(copiedSource.id).not.toBe(source.id)
+  expect(copiedTarget.id).not.toBe(target.id)
+  expect(copiedTarget.data).toMatchObject({
+    variables: [{ variable: 'topic', value_selector: [copiedSource.id, 'result'] }],
+  })
+  expect(result.current.edges).toEqual([
+    expect.objectContaining({ source: copiedSource.id, target: copiedTarget.id }),
+  ])
+  expect({ source, target, connection }).toEqual(original)
+})
+
+it('remaps iteration children and their internal references while the HITL gate is off', async () => {
+  releaseGate.enabled = false
+  const parent = workflowNode(BlockEnum.Iteration, 'iteration-copy', {
+    data: {
+      start_node_id: 'child-start',
+      _children: [
+        { nodeId: 'child-source', nodeType: BlockEnum.Code },
+        { nodeId: 'child-target', nodeType: BlockEnum.Code },
+      ],
+    },
+  })
+  const start = createNode({
+    id: 'child-start',
+    type: CUSTOM_ITERATION_START_NODE,
+    parentId: parent.id,
+    data: { type: BlockEnum.IterationStart, isInIteration: true, iteration_id: parent.id },
+  })
+  const source = codeNode('child-source', {
+    parentId: parent.id,
+    data: { isInIteration: true, iteration_id: parent.id },
+  })
+  const target = codeNode('child-target', {
+    parentId: parent.id,
+    data: {
+      isInIteration: true,
+      iteration_id: parent.id,
+      variables: [{ variable: 'topic', value_selector: [source.id, 'result'] }],
+    },
+  })
+  const { result } = await paste(
+    [parent, start, source, target],
+    [createEdge({ source: source.id, target: target.id })],
+    { nodes: [] },
+  )
+  const copiedParent = result.current.nodes.find((node) => node.data.type === BlockEnum.Iteration)!
+  const copiedSource = result.current.nodes.find((node) => node.data.title === source.data.title)!
+  const copiedTarget = result.current.nodes.find((node) => node.data.title === target.data.title)!
+  expect(copiedParent.id).not.toBe(parent.id)
+  expect(copiedSource.parentId).toBe(copiedParent.id)
+  expect(copiedTarget.parentId).toBe(copiedParent.id)
+  const startNodeId = Reflect.get(copiedParent.data, 'start_node_id')
+  expect(startNodeId).not.toBe('child-source')
+  expect(result.current.nodes.find((node) => node.id === startNodeId)).toMatchObject({
+    parentId: copiedParent.id,
+    data: { type: BlockEnum.IterationStart },
+  })
+  expect(copiedTarget.data).toMatchObject({
+    iteration_id: copiedParent.id,
+    variables: [{ variable: 'topic', value_selector: [copiedSource.id, 'result'] }],
+  })
+  expect(result.current.edges[0]).toMatchObject({
+    source: copiedSource.id,
+    target: copiedTarget.id,
+  })
 })

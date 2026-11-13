@@ -224,6 +224,47 @@ describe('Logs Container', () => {
       })
     })
 
+    it('should start each period on the current date after the page stays open past midnight', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+      try {
+        const user = userEvent.setup()
+        mockedUseWorkflowLogs.mockResolvedValue(createMockLogsResponse([], 0))
+        renderWithQueryClient(<Logs {...defaultProps} />)
+        const selectPeriod = async (current: string, next: string) => {
+          await user.click(
+            screen.getByRole('combobox', { name: `appLog.filter.period.${current}` }),
+          )
+          await user.click(await screen.findByText(`appLog.filter.period.${next}`))
+        }
+        const expectStart = (date: Date) =>
+          waitFor(() =>
+            expect(dayjs(String(getMockCallParams()?.params?.created_at__after)).valueOf()).toBe(
+              date.getTime(),
+            ),
+          )
+
+        // The page has been open since earlier days; each request uses the date of the request.
+        vi.setSystemTime(new Date(2026, 11, 1, 9))
+        await selectPeriod('last7days', 'monthToDate')
+        await expectStart(new Date(2026, 11, 1))
+        await selectPeriod('monthToDate', 'quarterToDate')
+        await expectStart(new Date(2026, 9, 1))
+        await selectPeriod('quarterToDate', 'last3months')
+        await expectStart(new Date(2026, 8, 1))
+
+        vi.setSystemTime(new Date(2027, 0, 1, 9))
+        await selectPeriod('last3months', 'yearToDate')
+        await expectStart(new Date(2027, 0, 1))
+
+        // Twelve months before February 29 is the last day of the shorter February.
+        vi.setSystemTime(new Date(2028, 1, 29, 9))
+        await selectPeriod('yearToDate', 'last12months')
+        await expectStart(new Date(2027, 1, 28))
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
       const user = userEvent.setup()
       mockPlanState.value = 'sandbox'

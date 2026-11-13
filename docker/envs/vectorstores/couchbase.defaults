@@ -1,0 +1,14 @@
+# Defaults for couchbase-server. Copy this file to couchbase.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+COUCHBASE_PASSWORD=${COUCHBASE_PASSWORD-password}
+COUCHBASE_BUCKET_NAME=${COUCHBASE_BUCKET_NAME-Embeddings}
+COUCHBASE_SCOPE_NAME=${COUCHBASE_SCOPE_NAME-_default}
+COUCHBASE_CONNECTION_STRING=${COUCHBASE_CONNECTION_STRING-couchbase://couchbase-server}
+COUCHBASE_USER=${COUCHBASE_USER-Administrator}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+COUCHBASE_ADMINISTRATOR_USERNAME=${COUCHBASE_USER:-Administrator}
+COUCHBASE_ADMINISTRATOR_PASSWORD=${COUCHBASE_PASSWORD:-password}
+COUCHBASE_BUCKET=${COUCHBASE_BUCKET_NAME:-Embeddings}

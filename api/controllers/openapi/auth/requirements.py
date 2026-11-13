@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from constants.oauth_bearer import Scope
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import (
@@ -27,6 +27,7 @@ from controllers.openapi._errors import (
     MemberLimitExceeded,
     PluginInstallForbidden,
     ServiceApiDisabled,
+    SkillsDisabled,
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import Hint
@@ -133,6 +134,9 @@ class CheckScope(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if subject.auth.token_type is TokenType.PERSONAL_ACCESS:
+            # PAT domains are checked separately; OAuth scopes grant nothing to PATs.
+            return
         if Scope.FULL in subject.scopes or self.scope in subject.scopes:
             return
         raise Forbidden("insufficient_scope")
@@ -264,6 +268,17 @@ class CheckPluginInstallSetting(Requirement):
                 raise PluginInstallForbidden("Plugin install is turned off in this workspace.")
             case unknown:
                 raise PluginInstallForbidden(f"Plugin install setting {unknown!r} is not known to this server.")
+
+
+class CheckSkillEnabled(Requirement):
+    """Ranked ahead of membership and permission checks so every caller gets 503 while Skills is off."""
+
+    rank = Rank.EARLY
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not dify_config.ENABLE_SKILL:
+            raise SkillsDisabled()
 
 
 class CheckAppAccess(Requirement):

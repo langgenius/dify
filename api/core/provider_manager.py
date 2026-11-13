@@ -7,12 +7,12 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -36,7 +36,7 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -113,8 +113,7 @@ class _ProviderModelCacheEntry:
     encrypted_config: str | None
 
     @classmethod
-    def from_record(cls, record: ProviderModel) -> _ProviderModelCacheEntry:
-        credential = record.__dict__.get("credential")
+    def from_record(cls, record: ProviderModel, credential: ProviderModelCredential | None) -> _ProviderModelCacheEntry:
         return cls(
             id=record.id,
             provider_name=record.provider_name,
@@ -441,33 +440,38 @@ def _get_cached_or_load_records[T: _CacheEntry](
     return records
 
 
-def _attach_active_credentials(
-    *,
-    session: Any,
-    records: Sequence[Provider | ProviderModel],
-    credential_model_cls: type[ProviderCredential | ProviderModelCredential],
-) -> None:
-    credential_ids = [record.credential_id for record in records if getattr(record, "credential_id", None)]
-    if not credential_ids:
-        return
+def _load_provider_model_credentials(
+    *, session: Session, provider_models: Sequence[ProviderModel]
+) -> dict[str, ProviderModelCredential]:
+    """Load the credentials referenced by ``provider_models`` through the caller's session.
 
-    credentials = session.scalars(select(credential_model_cls).where(credential_model_cls.id.in_(credential_ids))).all()
-    credential_by_id = {credential.id: credential for credential in credentials}
-    for record in records:
-        if getattr(record, "credential_id", None):
-            record.__dict__["credential"] = credential_by_id.get(record.credential_id)
+    Precondition: ``session`` is open.
+    Postcondition: the result maps each credential ID that still exists to its row.
+    """
+    credential_ids = [
+        provider_model.credential_id for provider_model in provider_models if provider_model.credential_id
+    ]
+    if not credential_ids:
+        return {}
+
+    credentials = session.scalars(
+        select(ProviderModelCredential).where(ProviderModelCredential.id.in_(credential_ids))
+    ).all()
+    return {credential.id: credential for credential in credentials}
 
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
         stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
-        _attach_active_credentials(
-            session=session,
-            records=provider_models,
-            credential_model_cls=ProviderModelCredential,
-        )
-        return [_ProviderModelCacheEntry.from_record(provider_model) for provider_model in provider_models]
+        credentials = _load_provider_model_credentials(session=session, provider_models=provider_models)
+        return [
+            _ProviderModelCacheEntry.from_record(
+                provider_model,
+                credentials.get(provider_model.credential_id) if provider_model.credential_id else None,
+            )
+            for provider_model in provider_models
+        ]
 
 
 def _load_preferred_model_provider_cache_entries(tenant_id: str) -> list[_TenantPreferredModelProviderCacheEntry]:
@@ -877,17 +881,17 @@ class ProviderManager:
         )
 
     def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
-        """
-        Get names of first model and its provider
+        """Return the first active model of the requested type in this workspace.
 
-        :param tenant_id: workspace id
-        :param model_type: model type
-        :return: provider name, model name
+        Precondition: ``tenant_id`` identifies the workspace whose provider catalog
+        is being read. Postcondition: a returned provider/model pair is active in
+        that catalog; if none is active, return ``(None, None)``. This read does not
+        create or update the workspace's saved default model.
         """
         provider_configurations = self.get_configurations(tenant_id)
 
         # get available models from provider_configurations
-        all_models = provider_configurations.get_models(model_type=model_type, only_active=False)
+        all_models = provider_configurations.get_models(model_type=model_type, only_active=True)
 
         if not all_models:
             return None, None
@@ -981,13 +985,12 @@ class ProviderManager:
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
-            providers = list(session.scalars(stmt))
-            _attach_active_credentials(
-                session=session,
-                records=providers,
-                credential_model_cls=ProviderCredential,
+            stmt = (
+                select(Provider)
+                .where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
+                .options(selectinload(Provider.credential))
             )
+            providers = list(session.scalars(stmt))
             for provider in providers:
                 # Use provider name with prefix after the data migration
                 provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
@@ -1236,6 +1239,8 @@ class ProviderManager:
                                 existed_provider_record.is_valid = True
                                 db.session.commit()
 
+                            # Load the credential after the commit above, which expires loaded attributes.
+                            db.session.refresh(existed_provider_record, ["credential"])
                             provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
@@ -1472,7 +1477,7 @@ class ProviderManager:
 
         try:
             credentials = _credentials_adapter.validate_json(encrypted_config)
-        except (ValueError, JSONDecodeError):
+        except ValueError:
             return {}
 
         # Decrypt secret variables
@@ -1534,20 +1539,20 @@ class ProviderManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
+            credit_pool_type = (
+                ProviderQuotaType.TRIAL
+                if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX
+                else ProviderQuotaType.PAID
+            )
             with session_factory.create_session() as session:
-                trail_pool = CreditPoolService.get_pool(
+                credit_pool = CreditPoolService.get_pool(
                     tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.TRIAL,
-                    session=session,
-                )
-                paid_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.PAID,
+                    pool_type=credit_pool_type,
                     session=session,
                 )
         else:
-            trail_pool = None
-            paid_pool = None
+            credit_pool_type = None
+            credit_pool = None
 
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
@@ -1570,23 +1575,13 @@ class ProviderManager:
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
                 match provider_quota.quota_type:
-                    case ProviderQuotaType.TRIAL if trail_pool is not None:
+                    case quota_type if quota_type == credit_pool_type and credit_pool is not None:
                         quota_configuration = QuotaConfiguration(
                             quota_type=provider_quota.quota_type,
                             quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=trail_pool.quota_used,
-                            quota_limit=trail_pool.quota_limit,
-                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case ProviderQuotaType.PAID if paid_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=paid_pool.quota_used,
-                            quota_limit=paid_pool.quota_limit,
-                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                            quota_used=credit_pool.quota_used,
+                            quota_limit=credit_pool.quota_limit,
+                            is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
                             restrict_models=provider_quota.restrict_models,
                         )
 
@@ -1606,7 +1601,7 @@ class ProviderManager:
         if len(quota_configurations) == 0:
             return SystemConfiguration(enabled=False)
 
-        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
+        current_quota_type = credit_pool_type or self._choice_current_using_quota_type(quota_configurations)
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:
@@ -1772,7 +1767,7 @@ class ProviderManager:
                                 provider_model_credentials = _credentials_adapter.validate_json(
                                     load_balancing_model_config.encrypted_config
                                 )
-                            except (ValueError, JSONDecodeError):
+                            except ValueError:
                                 continue
 
                             # Get decoding context for decrypting credentials

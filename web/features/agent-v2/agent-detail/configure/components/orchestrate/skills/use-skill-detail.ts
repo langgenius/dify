@@ -13,6 +13,7 @@ import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { getDriveFileIconType, hasFileDataPreview } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 
 const skillFileContentQueryKey = (url?: string) => ['agent-v2', 'skill-file-content', url] as const
 
@@ -401,6 +402,7 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
+                context: { silent: true },
                 input: {
                   params: { app_id: apiContext.trialAppId, name: skill.name },
                   query: { path, version_id: apiContext.versionId },
@@ -417,6 +419,7 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
+                context: { silent: true },
                 input: {
                   params: {
                     app_id: apiContext.workflow.appId,
@@ -440,6 +443,7 @@ export function useAgentSkillDetail({
 
         const result = await queryClient.query({
           ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
+            context: { silent: true },
             input: {
               params: {
                 agent_id: apiContext.agentId,
@@ -456,8 +460,8 @@ export function useAgentSkillDetail({
         })
         const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
         downloadBlob({ data, fileName: file.name })
-      } catch {
-        toast.error(tCommon(($) => $['operation.downloadFailed']))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? tCommon(($) => $['operation.downloadFailed']))
       } finally {
         setDownloadActionLoadingTarget(null)
       }

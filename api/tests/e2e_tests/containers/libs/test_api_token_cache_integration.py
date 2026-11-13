@@ -6,12 +6,16 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.enums import ApiTokenType
 from models.model import ApiToken
 from services.api_token_service import ApiTokenCache, CachedApiToken, record_token_usage
 
-pytestmark = pytest.mark.usefixtures("set_up_containers_and_env")
+
+@pytest.fixture(autouse=True)
+def _bind_redis_before_cache_lifecycle(application_redis: RedisClientWrapper) -> None:
+    """Keep real Redis bound around class-level setup and teardown cleanup."""
+    assert application_redis is redis_client
 
 
 def _api_token(

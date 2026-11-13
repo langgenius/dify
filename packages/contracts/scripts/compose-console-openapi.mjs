@@ -52,6 +52,9 @@ export function composeConsoleDocuments(sources) {
           continue
         }
         operation.operationId = `${name}_${method}_${path}`
+        // Keep the new kebab-case segment from renaming legacy human_input client members.
+        if (name === 'console' && path === '/form/human-input/v2/{form_token}')
+          operation['x-client-path'] = ['form', 'humanInput', 'v2', 'byFormToken', method]
         // Preserve source-level servers when operations do not override them.
         if (!operation.servers && !item.servers && document.servers)
           operation.servers = document.servers

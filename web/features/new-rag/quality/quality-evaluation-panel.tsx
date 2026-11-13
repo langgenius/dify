@@ -5,6 +5,7 @@ import type {
   KnowledgeFsQualityReplayResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RetrievalMode } from '../components/retrieval-mode-segmented-control'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -31,6 +32,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { formatQualityEvaluationCreatedAt, formatQualityReportCreatedAt } from './quality-model'
@@ -174,9 +176,11 @@ export function EvaluationReport({
       </div>
 
       {run.error && (
-        <div className="mt-4 rounded-lg border border-state-destructive-border bg-state-destructive-hover p-3 system-xs-regular text-text-destructive">
-          {t(($) => $['qualityPage.evaluation.executionFailed'], { ns: 'knowledgeQuality' })}
-        </div>
+        <Alert type="error" className="mt-4">
+          <AlertTitle>
+            {t(($) => $['qualityPage.evaluation.executionFailed'], { ns: 'knowledgeQuality' })}
+          </AlertTitle>
+        </Alert>
       )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -536,7 +540,9 @@ function RunEvaluationForm({
   // the submitted payload until the server definitively answers or the payload changes.
   const submissionRef = useRef<{ idempotencyKey: string; mode: RetrievalMode }>(undefined)
   const createMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const startEvaluation = async () => {
@@ -558,6 +564,7 @@ function RunEvaluationForm({
       const detailOptions =
         consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions(
           {
+            context: { silent: true },
             input: { params: { control_space_id: knowledgeSpaceId, run_id: run.id } },
           },
         )
@@ -575,7 +582,10 @@ function RunEvaluationForm({
     } catch (error) {
       const status = getHttpErrorStatus(error)
       if (status !== undefined && status < 500) submissionRef.current = undefined
-      toast.error(t(($) => $['qualityPage.evaluation.startError'], { ns: 'knowledgeQuality' }))
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['qualityPage.evaluation.startError'], { ns: 'knowledgeQuality' }),
+      )
     }
   }
 

@@ -1765,7 +1765,7 @@ describe('AgentSkills', () => {
     )
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('common.operation.downloadFailed')
+      expect(toast.error).toHaveBeenCalledWith('Failed to download skill file: 401')
     })
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
   })

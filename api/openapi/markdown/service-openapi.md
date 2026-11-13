@@ -1504,6 +1504,8 @@ Delete a logical document and its historical revisions. Use the logical document
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -5434,7 +5436,7 @@ You don't have the permission to access the requested resource.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| attachment_ids | [ string ] | Upload file UUIDs to include in the retrieval context. Omit or use an empty list when there are no attachments. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
@@ -5511,6 +5513,7 @@ You don't have the permission to access the requested resource.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -5545,12 +5548,16 @@ You don't have the permission to access the requested resource.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### HumanInputFormSubmitPayloadWithUser
+
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -6775,6 +6782,7 @@ Dify owns datasource secrets; clients supply an opaque binding in configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -6787,6 +6795,8 @@ Dify owns datasource secrets; clients supply an opaque binding in configuration.
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 
@@ -7375,6 +7385,7 @@ Form input definition.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |

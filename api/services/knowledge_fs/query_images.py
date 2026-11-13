@@ -476,7 +476,7 @@ def _decode_workflow_query_image_grant(
             "upload_file",
         }:
             raise ValueError("unsupported grant")
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+    except (KeyError, TypeError, ValueError) as exc:
         raise KnowledgeFSQueryImageError("QUERY_IMAGE_GRANT_INVALID", "Workflow query image grant is invalid") from exc
     if grant.expires_at <= int(time.time()):
         raise KnowledgeFSQueryImageError("QUERY_IMAGE_GRANT_EXPIRED", "Workflow query image grant has expired")

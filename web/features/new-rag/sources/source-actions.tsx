@@ -28,6 +28,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { SourceEditDialog } from './source-edit-dialog'
@@ -93,7 +94,11 @@ export function SourceActions({
         result = await mutation()
       } catch (error) {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.sourcesErrorDescription))
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : (getErrorMessage(error) ?? t(($) => $.sourcesErrorDescription)),
+        )
         try {
           await queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
@@ -167,13 +172,16 @@ export function SourceActions({
       'toggle',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-            body: {
-              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-              status: source.status === 'disabled' ? 'active' : 'disabled',
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
+            {
+              body: {
+                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+                status: source.status === 'disabled' ? 'active' : 'disabled',
+              },
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
             },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          }),
+            { context: { silent: true } },
+          ),
         ),
       (updatedSource) => {
         const nextSyncWorkflow =
@@ -194,10 +202,13 @@ export function SourceActions({
       'edit',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-            body: values,
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          }),
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
+            {
+              body: values,
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            },
+            { context: { silent: true } },
+          ),
           { useResponseStatus: true },
         ),
       acceptSourceSnapshot,
@@ -208,12 +219,15 @@ export function SourceActions({
       'remove',
       async () => {
         if (source.version === undefined) throw new Error('Source version is required')
-        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
-          body: { expectedRevision: source.version },
-          headers: { 'Idempotency-Key': createIdempotencyKey() },
-          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          query: { documents: 'keep' },
-        })
+        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete(
+          {
+            body: { expectedRevision: source.version },
+            headers: { 'Idempotency-Key': createIdempotencyKey() },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            query: { documents: 'keep' },
+          },
+          { context: { silent: true } },
+        )
       },
       () => removeSourceFromList(source.id),
     )

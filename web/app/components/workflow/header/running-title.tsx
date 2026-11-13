@@ -14,7 +14,7 @@ const RunningTitle = () => {
     <div className="flex h-4.5 items-center text-xs text-gray-500">
       <span
         aria-hidden
-        className="mr-1 i-custom-vender-line-time-clock-play size-3 text-gray-500"
+        className="me-1 i-custom-vender-line-time-clock-play size-3 text-gray-500"
       />
       <span>
         {isChatflow
@@ -22,7 +22,7 @@ const RunningTitle = () => {
           : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at, historyWorkflowData?.status)}`}
       </span>
       <span className="mx-1">·</span>
-      <span className="ml-1 flex h-4.5 items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-2xs font-semibold text-indigo-600 uppercase">
+      <span className="ms-1 flex h-4.5 items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-2xs font-semibold text-indigo-600 uppercase">
         {t(($) => $['common.viewOnly'], { ns: 'workflow' })}
       </span>
     </div>

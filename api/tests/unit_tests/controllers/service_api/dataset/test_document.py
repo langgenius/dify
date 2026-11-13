@@ -20,6 +20,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from io import BytesIO
 from typing import cast
 from unittest.mock import Mock, PropertyMock, patch
 
@@ -2301,3 +2302,100 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
         account = mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["account"]
         assert isinstance(account, Account)
         assert account.id == "user-1"
+
+
+class TestDocumentTextDefaultDocForm(SQLiteControllerTest):
+    @pytest.mark.parametrize("entry", ["create", "update"])
+    @pytest.mark.parametrize(
+        ("existing_doc_form", "sent_doc_form", "expected"),
+        [
+            ("hierarchical_model", None, "hierarchical_model"),
+            (None, None, "text_model"),
+            ("hierarchical_model", "text_model", "text_model"),
+        ],
+    )
+    def test_omitted_doc_form_defaults_to_dataset_doc_form(
+        self,
+        app: Flask,
+        entry: str,
+        existing_doc_form: str | None,
+        sent_doc_form: str | None,
+        expected: str,
+    ) -> None:
+        dataset = make_dataset()
+        self._persist_dataset(dataset)
+
+        if existing_doc_form is not None:
+            document = make_serializable_document(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                doc_form=existing_doc_form,
+            )
+            self.session.add(document)
+            self.session.commit()
+
+        body = {"name": "a.txt", "text": "hello", "indexing_technique": "economy"}
+        if sent_doc_form is not None:
+            body["doc_form"] = sent_doc_form
+
+        with (
+            patch.object(document_module.FileService, "upload_text", autospec=True, return_value=_upload_file()),
+            patch.object(
+                DocumentService,
+                "save_document_with_dataset_id",
+                autospec=True,
+                return_value=([make_serializable_document()], "batch-1"),
+            ) as save,
+            app.test_request_context("/", method="POST", json=body),
+        ):
+            if entry == "create":
+                document_module._create_document_by_text(self.session, dataset.tenant_id, uuid.UUID(dataset.id))
+            else:
+                document_module._update_document_by_text(
+                    self.session, dataset.tenant_id, uuid.UUID(dataset.id), uuid.uuid4()
+                )
+
+        assert save.call_args.kwargs["knowledge_config"].doc_form == expected
+
+
+class TestDocumentFileDefaultDocForm(SQLiteControllerTest):
+    @pytest.mark.parametrize("entry", ["create", "update"])
+    def test_omitted_doc_form_defaults_to_dataset_doc_form(self, app: Flask, entry: str) -> None:
+        dataset = make_dataset()
+        self._persist_dataset(dataset)
+
+        document = make_serializable_document(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            doc_form="hierarchical_model",
+        )
+        self.session.add(document)
+        self.session.commit()
+        data = {
+            "file": (BytesIO(b"content"), "a.txt", "text/plain"),
+            "data": json.dumps({"process_rule": {"mode": "automatic", "rules": None}}),
+        }
+        with (
+            patch.object(
+                document_module.FeatureService, "get_knowledge_file_size_limit", autospec=True, return_value=15
+            ),
+            patch.object(document_module.FileService, "upload_file", autospec=True, return_value=_upload_file()),
+            patch.object(
+                DocumentService,
+                "save_document_with_dataset_id",
+                autospec=True,
+                return_value=([make_serializable_document()], "batch-1"),
+            ) as save,
+            app.test_request_context("/", method="POST", content_type="multipart/form-data", data=data),
+        ):
+            if entry == "create":
+                api = DocumentAddByFileApi()
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, self.session, tenant_id=dataset.tenant_id, dataset_id=dataset.id
+                )
+            else:
+                document_module._update_document_by_file(
+                    self.session, dataset.tenant_id, uuid.UUID(dataset.id), uuid.uuid4()
+                )
+
+        assert save.call_args.kwargs["knowledge_config"].doc_form == "hierarchical_model"

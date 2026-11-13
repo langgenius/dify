@@ -3,11 +3,11 @@ import { render } from 'vitest-browser-react'
 import { seedAppNetworkAccessGroup, seedNetworkAccessGroups } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { AccessControlEntry } from '..'
 
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-
 async function renderEntry() {
+  onTestFinished(guardUnexpectedFetch())
   const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
     systemFeatures: { deployment_edition: 'CLOUD' },

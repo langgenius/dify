@@ -40,7 +40,10 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import {
+  agentComposerKnowledgeRetrievalsAtom,
+  getVisibleKnowledgeRetrievals,
+} from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
   addProviderToolsAtom,
@@ -825,6 +828,19 @@ export function AgentPromptEditor() {
     [getConfiguredToolIcon, tools],
   )
 
+  const getRosterReferenceLabel = useCallback(
+    (token: RosterReferenceToken) => {
+      if (token.kind !== 'skill') return undefined
+
+      return skills.find((skill) =>
+        [skill.id, skill.skillMdKey].some(
+          (id) => id !== undefined && (id === token.id || encodeURIComponent(id) === token.id),
+        ),
+      )?.name
+    },
+    [skills],
+  )
+
   const getRosterReferenceWarning = useCallback(
     (token: RosterReferenceToken) => {
       const warning = t(($) => $['agentDetail.configure.prompt.referenceMissing'], {
@@ -1020,15 +1036,11 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    ...(knowledgeEnabled || retrievals.some((item) => !item.controlSpaceId)
-      ? [
-          {
-            key: 'knowledge' as const,
-            label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
-            icon: 'i-ri-book-open-line',
-          },
-        ]
-      : []),
+    {
+      key: 'knowledge',
+      label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
+      icon: 'i-ri-book-open-line',
+    },
   ]
   const handleOpenSlashMenuCategory = (view: Exclude<SlashMenuView, 'main'>) => {
     parentSlashMenuItemIndexRef.current = Math.max(
@@ -1067,10 +1079,10 @@ export function AgentPromptEditor() {
           onAddProviderTools={addProviderTools}
           onAddCliTool={addActions.cli}
           onAddFile={addActions.files}
-          onAddKnowledge={knowledgeEnabled ? addActions.knowledge : undefined}
+          onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
           canAddWorkspaceSkill={enableSkill === true}
-          knowledgeRetrievals={retrievals}
+          knowledgeRetrievals={getVisibleKnowledgeRetrievals(retrievals, knowledgeEnabled)}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
           onInsertToken={handleSlashSelect}
@@ -1153,6 +1165,7 @@ export function AgentPromptEditor() {
               }}
               rosterReferenceBlock={{
                 show: true,
+                getLabel: getRosterReferenceLabel,
                 renderIcon: renderRosterReferenceIcon,
                 getWarning: getRosterReferenceWarning,
               }}

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, NotRequired, Protocol, TypedDict, runtime_checkable
 
-from core.ops.entities.trace_entity import TraceTaskName
+from dify_trace_sdk.events import DraftNodeExecuted, PromptGenerated, TracePayload, json_safe
+
 from enterprise.telemetry.contracts import SignalType, TelemetryCase
 
 # ---------------------------------------------------------------------------
@@ -70,10 +72,11 @@ class PromptGenerationPayload(TypedDict):
     completion_tokens: int
     total_tokens: int
     latency: float
-    total_price: NotRequired[float | None]
-    currency: NotRequired[str | None]
-    timer: NotRequired[dict]
-    error: NotRequired[str | None]
+    total_price: float | None
+    currency: str | None
+    error: str | None
+    started_at: datetime
+    ended_at: datetime
 
 
 class FeedbackCreatedPayload(TypedDict):
@@ -126,8 +129,13 @@ class TelemetryEvent(Protocol):
     def signal_type(self) -> SignalType: ...
     @property
     def ce_eligible(self) -> bool: ...
-    @property
-    def trace_task_name(self) -> TraceTaskName | None: ...
+
+
+@runtime_checkable
+class TraceSignalEvent(TelemetryEvent, Protocol):
+    """A ``SignalType.TRACE`` event, delivered through the trace pipeline."""
+
+    def trace_payload(self) -> TracePayload: ...
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +150,10 @@ class DraftNodeExecutionTraceEvent:
     case: TelemetryCase = TelemetryCase.DRAFT_NODE_EXECUTION
     signal_type: SignalType = SignalType.TRACE
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
+
+    def trace_payload(self) -> TracePayload:
+        node_execution = self.payload["node_execution_data"]
+        return DraftNodeExecuted(node_execution={key: json_safe(value) for key, value in node_execution.items()})
 
 
 @dataclass(frozen=True)
@@ -152,7 +163,25 @@ class PromptGenerationEvent:
     case: TelemetryCase = TelemetryCase.PROMPT_GENERATION
     signal_type: SignalType = SignalType.TRACE
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = TraceTaskName.PROMPT_GENERATION_TRACE
+
+    def trace_payload(self) -> TracePayload:
+        payload = self.payload
+        return PromptGenerated(
+            operation_type=payload["operation_type"],
+            instruction=payload["instruction"],
+            generated_output=payload["generated_output"],
+            model_provider=payload["model_provider"],
+            model_name=payload["model_name"],
+            prompt_tokens=payload["prompt_tokens"],
+            completion_tokens=payload["completion_tokens"],
+            total_tokens=payload["total_tokens"],
+            latency=payload["latency"],
+            total_price=payload["total_price"],
+            currency=payload["currency"],
+            error=payload["error"],
+            started_at=payload["started_at"],
+            ended_at=payload["ended_at"],
+        )
 
 
 @dataclass(frozen=True)
@@ -162,7 +191,6 @@ class AppCreatedEvent:
     case: TelemetryCase = TelemetryCase.APP_CREATED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None
 
 
 @dataclass(frozen=True)
@@ -172,7 +200,6 @@ class AppUpdatedEvent:
     case: TelemetryCase = TelemetryCase.APP_UPDATED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None
 
 
 @dataclass(frozen=True)
@@ -182,7 +209,6 @@ class AppDeletedEvent:
     case: TelemetryCase = TelemetryCase.APP_DELETED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None
 
 
 @dataclass(frozen=True)
@@ -192,4 +218,3 @@ class FeedbackCreatedEvent:
     case: TelemetryCase = TelemetryCase.FEEDBACK_CREATED
     signal_type: SignalType = SignalType.METRIC_LOG
     ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = None

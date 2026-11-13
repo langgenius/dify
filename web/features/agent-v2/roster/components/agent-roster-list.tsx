@@ -1,8 +1,7 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { ScrollAreaViewportProps } from '@langgenius/dify-ui/scroll-area'
-import type { RefObject } from 'react'
+import type { ComponentProps, RefObject } from 'react'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -19,13 +18,6 @@ import {
 } from '@langgenius/dify-ui/context-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useMutation } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -63,7 +55,7 @@ export type AgentRosterListState =
 
 type AgentRosterListProps = {
   state: AgentRosterListState
-} & Pick<ScrollAreaViewportProps, 'aria-labelledby'>
+} & Pick<ComponentProps<'div'>, 'aria-labelledby'>
 
 type DeleteAgentDialogPayload = Pick<AgentAppPartial, 'id' | 'name'> & {
   fallbackFocus: RefObject<HTMLElement | null>
@@ -106,9 +98,9 @@ function AgentRosterSkeleton() {
               <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
             </div>
           </div>
-          <div className="flex items-center pt-2 pr-3 pb-3 pl-4">
+          <div className="flex items-center ps-4 pe-3 pt-2 pb-3">
             <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
-            <SkeletonRectangle className="my-0 ml-2.5 h-3 w-28 rounded-md opacity-10" />
+            <SkeletonRectangle className="my-0 ms-2.5 h-3 w-28 rounded-md opacity-10" />
           </div>
         </div>
       ))}
@@ -412,7 +404,7 @@ function AgentRosterItem({
           </div>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
             <AgentWorkflowReferencesMenu
@@ -469,98 +461,88 @@ export function AgentRosterList({
   const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
-  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const regionRef = useRef<HTMLDivElement>(null)
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
   )
 
   return (
     <>
-      <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
-        <ScrollAreaViewport
-          ref={scrollViewportRef}
-          role="region"
-          aria-labelledby={ariaLabelledBy}
-          aria-busy={isBusy}
-          className="overscroll-contain"
-          style={{ overflowX: 'hidden' }}
-        >
-          <ScrollAreaContent
-            className="min-h-full w-full max-w-full px-2 pt-2 pb-8 sm:px-8"
-            style={{ minWidth: 0 }}
+      <div
+        ref={regionRef}
+        role="region"
+        aria-labelledby={ariaLabelledBy}
+        aria-busy={isBusy}
+        tabIndex={-1}
+        className="min-w-0 px-2 pt-2 pb-8 outline-hidden sm:px-8"
+      >
+        {state.status === 'pending' && (
+          <div className={AGENT_ROSTER_GRID_CLASS_NAME}>
+            <AgentRosterSkeleton />
+          </div>
+        )}
+        {state.status === 'error' && (
+          <AgentRosterPlaceholderState
+            onRetry={state.onRetry}
+            role="alert"
+            title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
+          />
+        )}
+        {state.status === 'ready' && state.agents.length === 0 && (
+          <AgentRosterPlaceholderState
+            role={state.emptyState === 'filtered' ? 'status' : undefined}
+            title={
+              state.emptyState === 'filtered'
+                ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
+                : t(($) => $['roster.empty'], { ns: 'agentRoster' })
+            }
+          />
+        )}
+        {state.status === 'ready' && state.agents.length > 0 && (
+          <ul
+            // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+            // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+            role="list"
+            aria-label={t(($) => $['roster.listLabel'])}
+            className={AGENT_ROSTER_GRID_CLASS_NAME}
           >
-            {state.status === 'pending' && (
-              <div className={AGENT_ROSTER_GRID_CLASS_NAME}>
-                <AgentRosterSkeleton />
-              </div>
-            )}
-            {state.status === 'error' && (
-              <AgentRosterPlaceholderState
-                onRetry={state.onRetry}
-                role="alert"
-                title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
+            {state.agents.map((agent) => (
+              <AgentRosterItem
+                key={agent.id}
+                agent={agent}
+                onDelete={(item) => {
+                  deleteDialog.openWithPayload({
+                    id: agent.id,
+                    name: agent.name,
+                    adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                      sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                    ),
+                    fallbackFocus: { current: null },
+                  })
+                }}
               />
-            )}
-            {state.status === 'ready' && state.agents.length === 0 && (
-              <AgentRosterPlaceholderState
-                role={state.emptyState === 'filtered' ? 'status' : undefined}
-                title={
-                  state.emptyState === 'filtered'
-                    ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
-                    : t(($) => $['roster.empty'], { ns: 'agentRoster' })
-                }
-              />
-            )}
-            {state.status === 'ready' && state.agents.length > 0 && (
-              <ul
-                // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
-                // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
-                role="list"
-                aria-label={t(($) => $['roster.listLabel'])}
-                className={AGENT_ROSTER_GRID_CLASS_NAME}
-              >
-                {state.agents.map((agent) => (
-                  <AgentRosterItem
-                    key={agent.id}
-                    agent={agent}
-                    onDelete={(item) => {
-                      deleteDialog.openWithPayload({
-                        id: agent.id,
-                        name: agent.name,
-                        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
-                          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
-                        ),
-                        fallbackFocus: { current: null },
-                      })
-                    }}
-                  />
-                ))}
-              </ul>
-            )}
-            {state.status === 'ready' && state.footer.status === 'error' && (
-              <div
-                className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
-                role="alert"
-              >
-                <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
-                <Button size="small" variant="secondary" onClick={state.footer.onRetry}>
-                  {tCommon(($) => $['operation.retry'])}
-                </Button>
-              </div>
-            )}
-            {state.status === 'ready' && state.footer.status === 'load-more' && (
-              <div className="flex justify-center pt-1">
-                <Button loading={state.footer.isLoading} onClick={state.footer.onLoadMore}>
-                  {t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
-                </Button>
-              </div>
-            )}
-          </ScrollAreaContent>
-        </ScrollAreaViewport>
-        <ScrollAreaScrollbar>
-          <ScrollAreaThumb />
-        </ScrollAreaScrollbar>
-      </ScrollArea>
+            ))}
+          </ul>
+        )}
+        {state.status === 'ready' && state.footer.status === 'error' && (
+          <div
+            className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
+            role="alert"
+          >
+            <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
+            <Button size="small" variant="secondary" onClick={state.footer.onRetry}>
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          </div>
+        )}
+        {state.status === 'ready' && state.footer.status === 'load-more' && (
+          <div className="flex justify-center pt-1">
+            <Button loading={state.footer.isLoading} onClick={state.footer.onLoadMore}>
+              {t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
+            </Button>
+          </div>
+        )}
+      </div>
       <AlertDialog
         handle={deleteDialog}
         onOpenChange={(open, details) => {
@@ -593,7 +575,7 @@ export function AgentRosterList({
                     { params: { agent_id: payload.id } },
                     {
                       onSuccess: () => {
-                        payload.fallbackFocus.current = scrollViewportRef.current
+                        payload.fallbackFocus.current = regionRef.current
                         deleteDialog.close()
                       },
                     },

@@ -5,6 +5,8 @@ import type {
   KnowledgeFsSpaceCreateResponse,
   KnowledgeFsSpaceDetailResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { CreationModelSelections } from './use-creation-models'
+import type { ModelSelectorValue } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import { consoleClient } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../constants'
@@ -21,6 +23,7 @@ type CreateKnowledgeValues = {
   initialSource?: NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
   members?: KnowledgeFsSpaceCreatePayload['members']
   name: string
+  models?: CreationModelSelections
   onCreated: (knowledgeSpace: KnowledgeFsSpaceCreateResponse) => void
   visibility: KnowledgeVisibility
 }
@@ -113,50 +116,30 @@ export function isDefinitiveCreationRejection(error: unknown) {
   return status === 400 || status === 401 || status === 403 || status === 422
 }
 
-function modelSelection(model: string, canonicalProvider: string): KnowledgeFsModelIntent {
-  const providerParts = canonicalProvider.split('/').filter(Boolean)
+function modelSelection(selection: ModelSelectorValue): KnowledgeFsModelIntent {
+  const { model } = selection
+  const providerParts = selection.provider.split('/').filter(Boolean)
   const provider = providerParts.pop()
-  const pluginId = providerParts.join('/')
+  const pluginId = selection.plugin_id || providerParts.join('/')
   if (!model.trim() || !pluginId || !provider)
-    throw new Error('The default model provider identity is incomplete')
+    throw new Error('The selected model provider identity is incomplete')
 
   return { model, plugin_id: pluginId, provider }
 }
 
-async function getDefaultModelSelection(
-  modelType: 'llm' | 'rerank' | 'text-embedding',
-): Promise<KnowledgeFsModelIntent | undefined> {
-  const response = await consoleClient.workspaces.current.defaultModel.get({
-    query: { model_type: modelType },
-  })
-  if (!response.data) return undefined
-  return modelSelection(response.data.model, response.data.provider.provider)
-}
-
-async function initialModelConfiguration(): Promise<
-  Partial<Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>>
-> {
-  const [embeddingResult, reasoningModelResult, rerankModelResult] = await Promise.allSettled([
-    getDefaultModelSelection('text-embedding'),
-    getDefaultModelSelection('llm'),
-    getDefaultModelSelection('rerank'),
-  ])
-  const embedding = embeddingResult.status === 'fulfilled' ? embeddingResult.value : undefined
-  const reasoningModel =
-    reasoningModelResult.status === 'fulfilled' ? reasoningModelResult.value : undefined
-  const rerankModel = rerankModelResult.status === 'fulfilled' ? rerankModelResult.value : undefined
-  if (!embedding || !reasoningModel || !rerankModel) return {}
+function initialModelConfiguration(models: CreationModelSelections | undefined) {
+  if (!models) throw new Error('Select the reasoning, embedding, and rerank models before creation')
 
   return {
-    embedding,
+    embedding: modelSelection(models.embedding),
     retrieval: {
       default_mode: 'fast',
-      reasoning_model: reasoningModel,
-      rerank: { enabled: true, model: rerankModel },
+      reasoning_model: modelSelection(models.reasoning),
+      rerank: { enabled: true, model: modelSelection(models.rerank) },
       score_threshold: { enabled: false, stage: 'rerank' },
       top_k: 10,
     },
-  }
+  } satisfies Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>
 }
 
 function knowledgeSlug(name: string, idempotencyKey: string) {
@@ -180,7 +163,7 @@ export async function createKnowledge(
   if (!created) {
     let modelConfiguration: Partial<Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>>
     try {
-      modelConfiguration = await initialModelConfiguration()
+      modelConfiguration = initialModelConfiguration(values.models)
     } catch (error) {
       throw new KnowledgeCreationError(error, 'preflight')
     }

@@ -1,4 +1,5 @@
 {
+  "activateFailed": "We konden je onderwijskorting niet activeren. Je huidige onderwijsverificatie is mogelijk nog actief, of dit e-mailadres komt niet meer in aanmerking.",
   "applied.activeSubscription.description": "U heeft een actief abonnement. U kunt de onderwijskorting gebruiken nadat uw abonnement is verlopen. Bevestig uw abonnement in <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "U heeft geen betalingsrechten in deze werkruimte. Schakel over naar een werkruimte waar u facturering kunt beheren om de onderwijskorting te gebruiken.",
   "applied.noPaymentPermission.returnHome": "Terug naar Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "exclusive 100% coupon",
   "toVerifiedTip.end": "for the Dify Professional Plan.",
   "toVerifiedTip.front": "You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an",
-  "useEducationDiscount": "Gebruik onderwijskorting"
+  "tooManyAttempts": "Te veel pogingen. Probeer het later opnieuw.",
+  "useEducationDiscount": "Gebruik onderwijskorting",
+  "verifyFailed": "We konden je onderwijsstatus niet verifiëren. Als je onlangs bent geverifieerd, is je huidige onderwijsverificatie mogelijk nog actief. Probeer het anders later opnieuw."
 }
