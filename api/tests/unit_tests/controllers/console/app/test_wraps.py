@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from inspect import getsource
 from uuid import uuid4
 
@@ -38,7 +39,8 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_ses
     def handler(app_model: App) -> str:
         return app_model.id
 
-    assert handler(app_id=app_model.id) == app_model.id  # pyrefly: ignore[missing-argument,unexpected-keyword]
+    decorated: Callable[..., str] = handler
+    assert decorated(app_id=app_model.id) == app_model.id
 
 
 def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -50,8 +52,9 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlit
     def handler(app_model: App) -> str:
         return app_model.id
 
+    decorated: Callable[..., str] = handler
     with pytest.raises(AppNotFoundError):
-        handler(app_id=app_model.id)  # pyrefly: ignore[missing-argument,unexpected-keyword]
+        decorated(app_id=app_model.id)
 
 
 def test_get_app_model_requires_app_id() -> None:
@@ -59,8 +62,9 @@ def test_get_app_model_requires_app_id() -> None:
     def handler(app_model: App) -> str:
         return app_model.id
 
+    decorated: Callable[..., str] = handler
     with pytest.raises(ValueError, match="missing app_id in path parameters"):
-        handler()  # pyrefly: ignore[missing-argument]
+        decorated()
 
 
 def test_wraps_with_session_reexports_common_session_decorator() -> None:
@@ -83,7 +87,8 @@ def test_get_app_model_prefers_injected_session(
     # request Session was preferred over the legacy scoped-session fallback.
     with Session() as scoped_session:
         monkeypatch.setattr(wraps_module.db, "session", scoped_session)
-        assert Handler().get(sqlite_session, app_id=app_model.id) == app_model.id  # pyrefly: ignore[missing-argument,unexpected-keyword]
+        decorated: Callable[..., str] = Handler().get
+        assert decorated(sqlite_session, app_id=app_model.id) == app_model.id
 
 
 @pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
@@ -119,11 +124,12 @@ def test_get_app_model_hides_only_workflow_backing_apps(
             return app_model.id
 
     args = (sqlite_session,) if inject_session else ()
+    decorated: Callable[..., str] = Handler().get
     if workflow_only:
         with pytest.raises(AppNotFoundError):
-            Handler().get(*args, app_id=app_model.id)  # pyrefly: ignore[missing-argument,unexpected-keyword]
+            decorated(*args, app_id=app_model.id)
     else:
-        assert Handler().get(*args, app_id=app_model.id) == app_model.id  # pyrefly: ignore[missing-argument,unexpected-keyword]
+        assert decorated(*args, app_id=app_model.id) == app_model.id
 
 
 @pytest.mark.parametrize(
