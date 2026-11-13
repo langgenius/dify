@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, runtime_checkable
 
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ModerationChecked, json_safe
@@ -17,6 +17,7 @@ from libs.datetime_utils import measure_time
 logger = logging.getLogger(__name__)
 
 
+@runtime_checkable
 class AppModeration(Protocol):
     """Stateless app policy port injected once at startup, never bound to an invocation or tenant."""
 
@@ -32,10 +33,16 @@ class AppModeration(Protocol):
 
 
 def get_app_moderation() -> AppModeration | None:
-    """Return the startup-injected port; standalone kernel callers may have no application container."""
+    """Return the injected port or None outside app execution.
+
+    Malformed registrations raise TypeError rather than bypassing checks.
+    """
     if not has_app_context():
         return None
-    return cast(AppModeration | None, current_app.extensions.get("app_moderation"))
+    moderation = current_app.extensions.get("app_moderation")
+    if moderation is not None and not isinstance(moderation, AppModeration):
+        raise TypeError("Invalid app moderation policy registration.")
+    return moderation
 
 
 def evaluate_app_input(

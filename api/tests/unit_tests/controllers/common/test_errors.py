@@ -23,6 +23,7 @@ from controllers.console import api as console_api
 from controllers.inner_api import api as inner_api
 from controllers.service_api import api as service_api
 from controllers.web import api as web_api
+from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.credentials.refresh import CredentialRefreshUnavailableError
@@ -31,6 +32,8 @@ from services.errors.workspace import WorkspaceApplicationError
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
+    PlatformModerationInputRejectedInvocationError,
+    PlatformModerationOutputRejectedInvocationError,
 )
 
 
@@ -118,6 +121,18 @@ def test_refresh_unavailability_has_one_documented_response(source_api: External
             "moderation_unavailable",
             "This message can’t be processed right now. Please try again later.",
         ),
+        (
+            PlatformModerationInputRejectedInvocationError("Input rejected"),
+            400,
+            "moderation_rejected",
+            "Input rejected",
+        ),
+        (
+            PlatformModerationOutputRejectedInvocationError("Output rejected"),
+            400,
+            "moderation_rejected",
+            "Output rejected",
+        ),
     ],
 )
 def test_moderation_errors_have_matching_http_and_stream_contracts(
@@ -136,6 +151,7 @@ def test_moderation_errors_have_matching_http_and_stream_contracts(
 
     assert response.status_code == status
     assert response.json == {"code": code, "message": message, "status": status}
+    assert AppGenerateResponseConverter._error_to_stream_response(error) == response.json
     assert source_api.resolve_error(type(error)) == (status, code)
     assert code in source_api.implicit_error_codes(status)
 

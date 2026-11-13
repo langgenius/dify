@@ -326,7 +326,6 @@ def test_unavailable_direct_fallback_fails_closed_without_trying_a_tenant_provid
         )
         with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
             guard.check_inputs([UserPromptMessage(content="content")])
-    assert unavailable.value.status_code == 503
     assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
     assert len(requests) == 1
 
@@ -468,12 +467,10 @@ def test_guard_maps_checker_failures_without_delivering_content(mode: str, failu
         assert caught.value.phase == phase
         assert str(caught.value) == "Content violates the safety policy."
         assert caught.value.error_code == "moderation_rejected"
-        assert caught.value.status_code == 400
     else:
         assert isinstance(caught.value, ModerationUnavailableInvocationError)
         assert str(caught.value) == "This message can’t be processed right now. Please try again later."
         assert caught.value.error_code == "moderation_unavailable"
-        assert caught.value.status_code == 503
     assert events == (["closed"] if mode == "segmented_stream" else [])
 
 

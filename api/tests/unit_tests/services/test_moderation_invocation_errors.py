@@ -17,7 +17,7 @@ def test_rejection_preserves_use_case_identity_and_safe_fallback(phase: Moderati
     assert error.phase == phase
     assert str(error) == f"Model {phase} was rejected by moderation."
     assert error.error_code == "moderation_rejected"
-    assert error.status_code == 400
+    assert not hasattr(error, "status_code")
 
 
 def test_unavailable_error_exposes_only_a_safe_retry_message() -> None:
@@ -27,4 +27,4 @@ def test_unavailable_error_exposes_only_a_safe_retry_message() -> None:
     assert isinstance(error, ModerationError)
     assert str(error) == "This message can’t be processed right now. Please try again later."
     assert error.error_code == "moderation_unavailable"
-    assert error.status_code == 503
+    assert not hasattr(error, "status_code")

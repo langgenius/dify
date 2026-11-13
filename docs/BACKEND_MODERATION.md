@@ -183,6 +183,12 @@ Model-bound guards adapt moderation failures to the existing `AppGenerateError`
 contract, so task error handling preserves them and response converters emit
 the usual SSE `error` event. Console clients use their existing error toast:
 
+Application errors carry stable moderation identifiers and safe messages, not
+HTTP status codes or response payloads. HTTP handlers and the SSE response
+converter own status mapping. Keyword/API input and output backend failures are
+adapted to the same unavailable error; private diagnostics remain in the cause
+and server logs, never in the client-facing response.
+
 | Condition | Code | Event status | Message |
 | --- | --- | --- | --- |
 | Content rejected | `moderation_rejected` | 400 | The configured rejection message, or the phase-specific fallback |

@@ -178,7 +178,7 @@ class RecordingAppService:
         )
 
 
-class TransientOutputFailureGateway:
+class TransientAppFailureGateway:
     def __init__(self) -> None:
         self.calls = 0
 
@@ -186,9 +186,9 @@ class TransientOutputFailureGateway:
         self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
     ) -> ModerationVerdict:
         assert context.tenant_id == "tenant-1"
-        assert rule.type == "api"
+        assert rule.type in {"keywords", "api"}
         assert isinstance(request.text, str)
-        assert phase == "output"
+        assert phase in {"input", "output"}
         self.calls += 1
         if self.calls == 1:
             raise ValueError("request timeout: private backend diagnostic")
@@ -314,7 +314,6 @@ def test_admitted_app_model_checks_fail_closed_without_exposing_backend_errors(
     with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
         check_phase(guard, phase, phase)
     assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
-    assert unavailable.value.status_code == 503
     assert unavailable.value.__cause__ is not None
     assert len(client.calls) == (0 if failure == "missing_credentials" else 1)
 
@@ -404,6 +403,31 @@ def test_input_moderation_delegates_to_the_shared_use_case(monkeypatch: pytest.M
     assert inputs == {"input_key": "rewritten"}
     assert query == "rewritten query"
     assert len(service.calls) == 1
+
+
+@pytest.mark.parametrize("backend", ["keywords", "api"])
+def test_app_input_backend_failure_exposes_only_the_safe_unavailable_error(
+    monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
+    gateway = TransientAppFailureGateway()
+    service = ModerationService(gateway=gateway)
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
+    config = app_config(backend)
+    with pytest.raises(ModerationUnavailableInvocationError) as failure:
+        InputModeration().check(
+            app_id=config.app_id,
+            tenant_id=config.tenant_id,
+            app_config=config,
+            inputs={},
+            query="query",
+            message_id="message-1",
+            trace_scope=None,
+        )
+    assert str(failure.value) == "This message can’t be processed right now. Please try again later."
+    assert isinstance(failure.value.__cause__, ValueError)
+    assert "private backend diagnostic" in str(failure.value.__cause__)
+    assert app_rejection_replacement(config, failure.value) is None
+    assert gateway.calls == 1
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -594,7 +618,7 @@ def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events
 def test_output_failure_emits_safe_error_and_persists_message_status(
     sqlite_session_factory: sessionmaker[Session], advanced: bool, background: bool, stream: bool
 ) -> None:
-    gateway = TransientOutputFailureGateway()
+    gateway = TransientAppFailureGateway()
     flask_app = Flask(__name__)
     flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
     mode = AppMode.ADVANCED_CHAT if advanced else AppMode.CHAT
@@ -722,7 +746,7 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
 
 
 def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
-    gateway = TransientOutputFailureGateway()
+    gateway = TransientAppFailureGateway()
     flask_app = Flask(__name__)
     flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
     config = app_config("api")

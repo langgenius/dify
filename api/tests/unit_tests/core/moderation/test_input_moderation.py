@@ -5,10 +5,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ModerationChecked, TraceCorrelation, TraceEvent
+from flask import Flask
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
-from core.moderation.input_moderation import InputModeration
+from core.moderation.input_moderation import InputModeration, get_app_moderation
+from extensions.application_services.app_moderation import AppModeration
 from models.model import AppMode
 
 
@@ -33,6 +35,18 @@ def _trace_scope(recorder: _Recorder) -> TraceScope:
 
 
 class TestInputModeration:
+    def test_policy_registration_is_validated_without_a_request_scope(self) -> None:
+        app = Flask(__name__)
+        assert get_app_moderation() is None
+        with app.app_context():
+            app.extensions["app_moderation"] = object()
+            with pytest.raises(TypeError, match="Invalid app moderation policy registration"):
+                get_app_moderation()
+            policy = AppModeration()
+            app.extensions["app_moderation"] = policy
+            assert get_app_moderation() is policy
+        assert get_app_moderation() is None
+
     @pytest.fixture
     def app_config(self) -> AppConfig:
         return AppConfig(tenant_id="test_tenant_id", app_id="test_app_id", app_mode=AppMode.CHAT)

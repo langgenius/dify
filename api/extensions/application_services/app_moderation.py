@@ -105,7 +105,11 @@ def _app_rule(rule: SensitiveWordAvoidanceEntity) -> ModerationRule:
 def evaluate_app_input(
     app_config: AppConfig, inputs: Mapping[str, object], query: str
 ) -> ModerationInputsResult | None:
-    """Evaluate keyword/API inputs; App OpenAI configuration only renders later model failures."""
+    """Evaluate an admitted app rule, exposing backend failures only as safe unavailable errors.
+
+    Disabled and OpenAI app rules perform no backend I/O. Keyword/API failures
+    retain their private cause in logs and never become approvals or preset replies.
+    """
     rule = app_config.sensitive_word_avoidance
     if rule is None:
         return None
@@ -120,12 +124,18 @@ def evaluate_app_input(
             inputs=dict(inputs),
             query=query,
         )
-    verdict = _app_service().evaluate(
-        AppRequestContext(tenant_id=app_config.tenant_id, app_id=app_config.app_id),
-        rule=_app_rule(rule),
-        request=ModerationRequest(text=_input_text(inputs, query), inputs=dict(inputs), query=query),
-        phase="input",
-    )
+    try:
+        verdict = _app_service().evaluate(
+            AppRequestContext(tenant_id=app_config.tenant_id, app_id=app_config.app_id),
+            rule=_app_rule(rule),
+            request=ModerationRequest(text=_input_text(inputs, query), inputs=dict(inputs), query=query),
+            phase="input",
+        )
+    except ModerationUnavailableInvocationError:
+        raise
+    except Exception as error:
+        logger.exception("App input moderation failed. tenant_id=%s app_id=%s", app_config.tenant_id, app_config.app_id)
+        raise ModerationUnavailableInvocationError() from error
     return _inputs_result_from_verdict(verdict, inputs, query)
 
 

@@ -617,7 +617,6 @@ def test_chatflow_moderation_result_survives_workflow_terminal(
             with pytest.raises(ModerationUnavailableInvocationError) as failure:
                 pipeline.process()
             assert failure.value.error_code == "moderation_unavailable"
-            assert failure.value.status_code == 503
         else:
             response = pipeline.process()
             assert isinstance(response, ChatbotAppBlockingResponse)
