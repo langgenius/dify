@@ -20529,6 +20529,7 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 | from_end_user_id | string |  | No |
 | id | string |  | Yes |
 | latency | number |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | No |
 | message_id | string |  | Yes |
 | message_tokens | integer |  | Yes |
 | query | string |  | Yes |

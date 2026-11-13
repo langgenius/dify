@@ -2851,6 +2851,7 @@ describe('useChat', () => {
                 id: 'history-thought',
                 thought: 'history thought',
                 answer: 'history agent answer',
+                files: ['history-file', 'deleted-file'],
                 tool: '',
                 tool_input: '',
                 observation: '',
@@ -2861,8 +2862,13 @@ describe('useChat', () => {
               {
                 id: 'history-file',
                 belongs_to: 'assistant',
-                type: 'image',
-                url: 'history.png',
+                filename: 'report.pdf',
+                mime_type: 'application/pdf',
+                size: 42,
+                transfer_method: 'tool_file',
+                upload_file_id: 'tool-file',
+                type: 'document',
+                url: 'https://files.test/report.pdf?sign=report',
               },
             ],
             retriever_resources: [{ id: 'history-citation', content: 'history citation' }],
@@ -2940,6 +2946,18 @@ describe('useChat', () => {
           id: 'history-thought',
           thought: 'history thought',
           answer: 'history agent answer',
+          message_files: [
+            expect.objectContaining({
+              id: 'history-file',
+              name: 'report.pdf',
+              supportFileType: 'document',
+              transferMethod: 'tool_file',
+              type: 'application/pdf',
+              size: 42,
+              url: 'https://files.test/report.pdf?sign=report',
+              uploadedId: 'tool-file',
+            }),
+          ],
         }),
       ])
     })

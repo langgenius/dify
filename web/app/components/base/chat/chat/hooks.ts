@@ -4,7 +4,6 @@ import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
-import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -142,18 +141,13 @@ function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: T
   })
 }
 
+/** Resolve persisted thought file IDs to the same display-ready attachments as answer files. */
 function getHistoryAgentThoughts(responseItem: HistoryConversationMessage) {
   if (!Array.isArray(responseItem.agent_thoughts)) return []
 
-  const messageFiles: VisionFile[] =
-    responseItem.message_files?.map((file) => ({
-      id: file.id,
-      type: file.type || '',
-      transfer_method: file.transfer_method || TransferMethod.remote_url,
-      url: file.url || '',
-      upload_file_id: file.upload_file_id || '',
-      belongs_to: file.belongs_to,
-    })) || []
+  const messageFiles = getProcessedFilesFromResponse(
+    (responseItem.message_files ?? []).map(toHistoryFileResponse),
+  )
 
   return addFileInfos(sortAgentSorts(responseItem.agent_thoughts), messageFiles)
 }

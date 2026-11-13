@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from dify_agent.protocol import (
@@ -60,14 +61,17 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
     QueueRetrieverResourcesEvent,
 )
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
+from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import ConversationFromSource
-from models.model import AppMode, Message, MessageAgentThought
+from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.model import AppMode, Message, MessageAgentThought, MessageFile
+from models.tools import ToolFile
 
 
 @pytest.fixture(autouse=True)
@@ -991,6 +995,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 
@@ -1033,6 +1038,7 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
     receipt = {
@@ -1063,11 +1069,183 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     assert _thought_rows(sqlite_session)[0].tool == "shell_run"
 
 
+@pytest.mark.parametrize("conversation_id", [None, "conv-1"])
+def test_plugin_blob_files_are_owned_persisted_and_published_once(sqlite_session: Session, conversation_id) -> None:
+    files = [
+        ToolFile(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            conversation_id=conversation_id,
+            file_key="generated/chart",
+            name="chart.png",
+            mimetype="image/png",
+            size=10,
+        ),
+        ToolFile(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            conversation_id=conversation_id,
+            file_key="generated/report",
+            name="report",
+            mimetype="application/pdf",
+            size=20,
+        ),
+    ]
+    sqlite_session.add_all(files)
+    sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    part = ToolReturnPart(
+        tool_name="create",
+        tool_call_id="create-call",
+        content="Files delivered",
+        metadata={
+            "dify_plugin_blob_files": [
+                files[0].id,
+                files[0].id.upper(),
+                "invalid",
+                None,
+                {},
+                *[file.id for file in files],
+            ],
+            "url": f"/files/tools/{uuid4()}.exe",
+            "extension": ".exe",
+            "mime_type": "text/html",
+        },
+    )
+    wire_event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+    stream_event = AgentBackendStreamInternalEvent(run_id="run-1", data=wire_event.model_dump(mode="json")["data"])
+    published_with_files = []
+
+    def record_commit(session: Session) -> None:
+        # At the attachment commit, the database and thought both have the files;
+        # no file event may escape before that commit has completed.
+        pending_files = [row for row in session.new if isinstance(row, MessageFile)]
+        if pending_files:
+            assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
+            thought = next(row for row in session.dirty if isinstance(row, MessageAgentThought))
+            assert thought.files == [row.id for row in pending_files]
+            published_with_files.extend(pending_files)
+
+    event.listen(sqlite_session, "before_commit", record_commit)
+    try:
+        recorder.handle_stream_event(stream_event)
+        recorder.handle_stream_event(stream_event)
+    finally:
+        event.remove(sqlite_session, "before_commit", record_commit)
+
+    attachments = list(sqlite_session.scalars(select(MessageFile).order_by(MessageFile.url)))
+    assert len(attachments) == len(published_with_files) == 2
+    by_upload_id = {file.upload_file_id: file for file in attachments}
+    assert by_upload_id[files[0].id].url == f"/files/tools/{files[0].id}.png"
+    assert by_upload_id[files[1].id].url == f"/files/tools/{files[1].id}.pdf"
+    assert by_upload_id[files[0].id].type == FileType.IMAGE
+    assert by_upload_id[files[1].id].type == FileType.DOCUMENT
+    for attachment in attachments:
+        assert attachment.message_id == "msg-1"
+        assert attachment.belongs_to == MessageFileBelongsTo.ASSISTANT
+        assert attachment.transfer_method == FileTransferMethod.TOOL_FILE
+        assert attachment.created_by == "user-1"
+        assert attachment.created_by_role == CreatorUserRole.END_USER
+    assert _thought_rows(sqlite_session)[0].files == [by_upload_id[file.id].id for file in files]
+    file_events = [item for item in qm.events if isinstance(item, QueueMessageFileEvent)]
+    assert [item.message_file_id for item in file_events] == [by_upload_id[file.id].id for file in files]
+
+
+@pytest.mark.parametrize("invalid_owner", ["missing", "tenant", "user", "conversation"])
+def test_unowned_plugin_blob_files_are_not_delivered(sqlite_session: Session, invalid_owner: str) -> None:
+    file = ToolFile(
+        tenant_id="foreign-tenant" if invalid_owner == "tenant" else "tenant-1",
+        user_id="foreign-user" if invalid_owner == "user" else "user-1",
+        conversation_id="foreign-conversation" if invalid_owner == "conversation" else "conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+    )
+    if invalid_owner != "missing":
+        sqlite_session.add(file)
+        sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "tool_name": "create",
+                    "content": "Still observable",
+                    "metadata": {"dify_plugin_blob_files": [file.id]},
+                },
+            },
+        )
+    )
+    assert list(sqlite_session.scalars(select(MessageFile))) == []
+    assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
+    assert _thought_rows(sqlite_session)[0].observation == "Still observable"
+
+
+def test_failed_blob_attachment_commit_can_be_retried(sqlite_session: Session) -> None:
+    file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+    )
+    sqlite_session.add(file)
+    sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    stream_event = AgentBackendStreamInternalEvent(
+        run_id="run-1",
+        data={
+            "event_kind": "function_tool_result",
+            "part": {"tool_name": "create", "content": "Saved", "metadata": {"dify_plugin_blob_files": [file.id]}},
+        },
+    )
+
+    def fail_attachment_commit(session: Session) -> None:
+        if any(isinstance(row, MessageFile) for row in session.new):
+            raise RuntimeError("attachment commit failed")
+
+    event.listen(sqlite_session, "before_commit", fail_attachment_commit)
+    try:
+        with pytest.raises(RuntimeError, match="attachment commit failed"):
+            recorder.handle_stream_event(stream_event)
+        sqlite_session.rollback()
+    finally:
+        event.remove(sqlite_session, "before_commit", fail_attachment_commit)
+    assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
+    assert list(sqlite_session.scalars(select(MessageFile))) == []
+
+    recorder.handle_stream_event(stream_event)
+    assert len(list(sqlite_session.scalars(select(MessageFile)))) == 1
+    assert len([item for item in qm.events if isinstance(item, QueueMessageFileEvent)]) == 1
+
+
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 
@@ -1084,6 +1262,7 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 
@@ -1143,6 +1322,7 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 
@@ -1201,6 +1381,7 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 
@@ -1245,6 +1426,7 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 
@@ -1318,6 +1500,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,  # type: ignore[arg-type]
     )
 

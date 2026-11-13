@@ -1,6 +1,7 @@
 import type { MessageDetailResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { describe, expect, it } from 'vite-plus/test'
 import { getFormattedAgentDebugChatTree } from '../chat-history'
+import { createAgentFileHistoryMessage } from './chat-history-fixtures'
 
 describe('Agent history knowledge evidence', () => {
   it('preserves trusted receipt identity, source content and version on history reload', () => {
@@ -57,4 +58,23 @@ describe('Agent history knowledge evidence', () => {
         ?.children?.[0]?.citation,
     ).toBeUndefined()
   })
+})
+
+it('normalizes historical thought attachments and omits deleted message files', () => {
+  const message = createAgentFileHistoryMessage()
+  const answer = getFormattedAgentDebugChatTree([message])[0]?.children?.[0]
+  expect(answer?.agent_thoughts?.[0]?.message_files).toEqual([
+    expect.objectContaining({
+      id: 'message-file',
+      name: 'report.pdf',
+      size: 42,
+      type: 'application/pdf',
+      supportFileType: 'document',
+      transferMethod: 'tool_file',
+      url: 'https://files.test/report.pdf?sign=report',
+      uploadedId: 'tool-file',
+    }),
+  ])
+  expect(answer?.agent_thoughts?.[0]?.message_files).toEqual(answer?.message_files)
+  expect(message.agent_thoughts[0]).not.toHaveProperty('message_files')
 })

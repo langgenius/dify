@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy import and_, func, or_, select
@@ -14,12 +16,18 @@ from sqlalchemy.orm import aliased
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.tools.tool_file_manager import resolve_extension
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
+from factories.file_factory.remote import extract_filename
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import FileTransferMethod
+from graphon.file import helpers as file_helpers
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
-from models.model import App, Conversation, Message, MessageFeedback
+from models.model import App, Conversation, Message, MessageFeedback, MessageFile, UploadFile
+from models.tools import ToolFile
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,
@@ -150,7 +158,13 @@ class AgentObservabilityService:
         message: Message,
         conversation: Conversation | None = None,
         feedbacks: Sequence[MessageFeedback] = (),
+        message_files: Sequence[Mapping[str, Any]] = (),
     ) -> dict[str, Any]:
+        """Serialize a loaded message and pre-resolved attachments without I/O.
+
+        Callers supply files already scoped to the app's tenant. No ORM state is
+        changed, including legacy attachments whose references need resolving.
+        """
         invoke_from = message.invoke_from.value if message.invoke_from else None
         return {
             "id": message.id,
@@ -167,6 +181,7 @@ class AgentObservabilityService:
             "from_account_id": message.from_account_id,
             "feedback_enabled": True,
             "feedbacks": [cls._serialize_message_feedback(feedback) for feedback in feedbacks],
+            "message_files": list(message_files),
             "message_tokens": int(message.message_tokens or 0),
             "answer_tokens": int(message.answer_tokens or 0),
             "total_tokens": cls._total_tokens(message),
@@ -211,6 +226,11 @@ class AgentObservabilityService:
     def list_log_messages(
         self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
     ) -> dict[str, Any]:
+        """List authorized app/node messages using read-only batch file resolution.
+
+        Requires an admitted app and agent identity. Missing file records are
+        omitted; this use case never commits or repairs legacy attachment rows.
+        """
         source_filters = self.resolve_source_filters(params.sources)
         rows: list[dict[str, Any]] = []
         for source_filter in source_filters:
@@ -222,10 +242,12 @@ class AgentObservabilityService:
                     source_filter=source_filter,
                 )
                 feedbacks_by_message = self._list_message_feedbacks(app=app, messages=messages)
+                files_by_message = self._list_message_files(app=app, messages=messages)
                 rows.extend(
                     self.serialize_log_message(
                         message,
                         feedbacks=feedbacks_by_message.get(message.id, ()),
+                        message_files=files_by_message.get(message.id, ()),
                     )
                     for message in messages
                 )
@@ -372,6 +394,119 @@ class AgentObservabilityService:
         stmt = select(Message).where(Message.app_id == app.id, Message.conversation_id == conversation_id)
         stmt = self._apply_message_filters(stmt, params=params, source_filter=source_filter)
         return list(self._session.scalars(stmt.order_by(Message.created_at.desc(), Message.id.desc())).all())
+
+    def _list_message_files(self, *, app: App, messages: Sequence[Message]) -> dict[str, list[dict[str, Any]]]:
+        """Batch-resolve attachments for loaded messages belonging to the app.
+
+        All underlying file reads are tenant-scoped. Legacy tool IDs are resolved
+        only in memory; no ORM mutation or commit occurs. Missing files are
+        skipped and URLs are signed from authoritative file records.
+        """
+        message_ids = [message.id for message in messages if message.app_id == app.id]
+        if not message_ids:
+            return {}
+        message_files = self._session.scalars(
+            select(MessageFile)
+            .where(MessageFile.message_id.in_(message_ids))
+            .order_by(MessageFile.created_at.asc(), MessageFile.id.asc())
+        ).all()
+        upload_ids = {
+            file.upload_file_id
+            for file in message_files
+            if file.transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL}
+            and file.upload_file_id is not None
+        }
+        tool_ids_by_file = {
+            file.id: self._message_file_tool_id(file)
+            for file in message_files
+            if file.transfer_method == FileTransferMethod.TOOL_FILE
+        }
+        tool_ids = {file_id for file_id in tool_ids_by_file.values() if file_id is not None}
+        uploads = (
+            self._session.scalars(
+                select(UploadFile).where(UploadFile.tenant_id == app.tenant_id, UploadFile.id.in_(upload_ids))
+            ).all()
+            if upload_ids
+            else ()
+        )
+        tools = (
+            self._session.scalars(
+                select(ToolFile).where(ToolFile.tenant_id == app.tenant_id, ToolFile.id.in_(tool_ids))
+            ).all()
+            if tool_ids
+            else ()
+        )
+        uploads_by_id = {file.id: file for file in uploads}
+        tools_by_id = {file.id: file for file in tools}
+        files_by_message: dict[str, list[dict[str, Any]]] = {}
+        for message_file in message_files:
+            tool_id = tool_ids_by_file.get(message_file.id)
+            serialized = self._serialize_message_file(
+                message_file,
+                upload_file=uploads_by_id.get(message_file.upload_file_id or ""),
+                tool_file=tools_by_id.get(tool_id or ""),
+            )
+            if serialized is not None:
+                files_by_message.setdefault(message_file.message_id, []).append(serialized)
+        return files_by_message
+
+    @staticmethod
+    def _message_file_tool_id(message_file: MessageFile) -> str | None:
+        """Read a tool attachment's UUID, accepting legacy URLs without mutation.
+
+        Invalid/missing references yield None and never reach a database query.
+        """
+        value = message_file.upload_file_id or ToolFileMessageTransformer._extract_tool_file_id(message_file.url)
+        try:
+            return str(UUID(value)) if value else None
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _serialize_message_file(
+        message_file: MessageFile, *, upload_file: UploadFile | None, tool_file: ToolFile | None
+    ) -> dict[str, Any] | None:
+        """Render an attachment from preloaded, tenant-verified file records.
+
+        Returns None for missing underlying records or unsupported transfers.
+        Pure remote URLs need no record; all stored-file URLs come from their
+        authoritative rows. The ORM objects are never changed.
+        """
+        upload_file_id = message_file.upload_file_id
+        if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
+            if tool_file is None:
+                return None
+            filename, mime_type, size = tool_file.name, tool_file.mimetype, tool_file.size
+            upload_file_id = tool_file.id
+            url = file_helpers.get_signed_tool_file_url(
+                tool_file_id=tool_file.id, extension=resolve_extension(filename=filename, mimetype=mime_type)
+            )
+        elif message_file.transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL}:
+            if upload_file_id is not None:
+                if upload_file is None:
+                    return None
+                filename, mime_type, size = upload_file.name, upload_file.mime_type, upload_file.size
+                url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
+            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL and message_file.url:
+                url = message_file.url
+                filename = extract_filename(url, None) or ""
+                mime_type = mimetypes.guess_type(filename)[0]
+                size = 0
+            else:
+                return None
+        else:
+            return None
+        return {
+            "id": message_file.id,
+            "filename": filename,
+            "type": message_file.type,
+            "url": url,
+            "mime_type": mime_type,
+            "size": size,
+            "transfer_method": message_file.transfer_method,
+            "belongs_to": message_file.belongs_to,
+            "upload_file_id": upload_file_id,
+        }
 
     def _list_message_feedbacks(self, *, app: App, messages: Sequence[Message]) -> dict[str, list[MessageFeedback]]:
         message_ids = [message.id for message in messages]
@@ -732,6 +867,12 @@ class AgentObservabilityService:
 
     @classmethod
     def serialize_workflow_node_message(cls, node_execution: WorkflowNodeExecutionModel) -> dict[str, Any]:
+        """Project a loaded workflow-node execution into a log message without I/O.
+
+        Callers supply an authorized, fully loaded execution. The result always
+        has empty message_files because executions do not own MessageFile rows.
+        No queries, commits or ORM mutations occur; source state stays unchanged.
+        """
         inputs = cls._json_mapping(node_execution.inputs)
         outputs = cls._json_mapping(node_execution.outputs)
         metadata = cls._json_mapping(node_execution.execution_metadata)
@@ -762,6 +903,7 @@ class AgentObservabilityService:
             ),
             "feedback_enabled": False,
             "feedbacks": [],
+            "message_files": [],
             "message_tokens": prompt_tokens,
             "answer_tokens": completion_tokens,
             "total_tokens": total_tokens,

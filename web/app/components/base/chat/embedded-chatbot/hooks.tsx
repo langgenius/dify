@@ -25,6 +25,7 @@ import { useGetTryAppParams } from '@/service/use-try-app'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
+import { toFileResponse } from '../message-files'
 import {
   buildChatItemTree,
   getProcessedInputsFromUrlParams,
@@ -53,7 +54,7 @@ function getFormattedChatList(messages: any[]) {
       content: item.answer,
       agent_thoughts: addFileInfos(
         item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
-        item.message_files,
+        getProcessedFilesFromResponse((item.message_files ?? []).map(toFileResponse)),
       ),
       feedback: item.feedback,
       isAnswer: true,

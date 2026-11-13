@@ -3,8 +3,11 @@
 This layer consumes API-prepared plugin tool declarations. The API side is
 responsible for resolving daemon declarations, applying runtime-parameter
 overrides, and producing the clean LLM-facing JSON schema. At run time the layer
-only validates hidden/manual inputs, prepares invocation arguments, and maps
-daemon responses into agent-friendly observations.
+validates hidden/manual inputs, prepares invocation arguments, persists binary
+outputs through signed Dify file uploads, and maps daemon responses into
+agent-friendly observations. Successful uploads add ToolFile UUID strings to
+ToolReturn metadata for API attachment delivery. URL-bearing IMAGE and IMAGE_LINK
+messages retain their existing observation behavior.
 
 Like the LLM layer, this layer never owns live HTTP clients. The runtime passes
 the FastAPI lifespan-owned shared plugin-daemon and Dify API clients into
@@ -16,17 +19,19 @@ from __future__ import annotations
 from copy import deepcopy
 import json
 import mimetypes
+import posixpath
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import ClassVar, override
 from urllib.parse import urlparse
 
 import httpx
-from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
-from pydantic_ai import RunContext, Tool
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
+from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 
 from pydantic_ai.toolsets import FunctionToolset
+from dify_agent.agent_stub.server.agent_stub_files import is_safe_dify_file_uri
 from dify_agent.runtime.context import Deps
 from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolConfig,
@@ -76,9 +81,19 @@ class _DownloadFileResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class _UploadedPluginBlobFile(BaseModel):
+    id: str = Field(min_length=1)
+    reference: str = Field(min_length=1)
+    name: str
+    size: int
+    mime_type: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+
 @dataclass(slots=True)
 class _DifyPluginToolFileClient:
-    """Resolve Dify file mappings into signed URLs for plugin file parameters."""
+    """Resolve file parameters and persist binary outputs through signed Dify APIs."""
 
     base_url: str
     api_key: str = field(repr=False)
@@ -86,6 +101,60 @@ class _DifyPluginToolFileClient:
 
     def __post_init__(self) -> None:
         self.base_url = self.base_url.rstrip("/")
+
+    async def upload_blob(
+        self,
+        *,
+        execution_context: DifyExecutionContextLayerConfig,
+        blob: bytes,
+        filename: str,
+        mime_type: str,
+    ) -> _UploadedPluginBlobFile:
+        """Save one binary output for an identified user in the current run.
+
+        Requires user identity and normalized file metadata. Only an origin-free
+        signed Dify file URI may receive bytes. Returns the API's durable file
+        identity; expected HTTP and schema failures become tool-client errors.
+        The borrowed HTTP client remains open on both success and failure.
+        """
+        if execution_context.user_id is None or execution_context.user_from is None:
+            raise DifyPluginToolsClientConfigurationError("Binary outputs require user_id and user_from.")
+
+        try:
+            response = await self.http_client.post(
+                f"{self.base_url}/inner/api/agent/files/upload-request",
+                headers={"X-Inner-Api-Key": self.api_key},
+                json={
+                    "tenant_id": execution_context.tenant_id,
+                    "user_id": execution_context.user_id,
+                    "user_from": execution_context.user_from,
+                    "conversation_id": execution_context.conversation_id,
+                    "filename": filename,
+                    "mimetype": mime_type,
+                    "max_size": len(blob),
+                },
+                follow_redirects=False,
+            )
+            response.raise_for_status()
+            data = response.json()
+            upload_uri = data.get("upload_uri") if isinstance(data, dict) else None
+            if not isinstance(upload_uri, str) or not is_safe_dify_file_uri(upload_uri):
+                raise DifyPluginToolClientError("Dify API returned an unsafe or missing upload_uri.")
+
+            uploaded = await self.http_client.post(
+                f"{self.base_url}{upload_uri}",
+                files={"file": (filename, blob, mime_type)},
+                follow_redirects=False,
+            )
+            if uploaded.status_code != 201:
+                raise DifyPluginToolClientError(
+                    f"Dify API file upload returned HTTP {uploaded.status_code}.", status_code=uploaded.status_code
+                )
+            return _UploadedPluginBlobFile.model_validate_json(uploaded.text)
+        except httpx.TimeoutException as exc:
+            raise DifyPluginToolClientError("Dify API file upload timed out.") from exc
+        except (httpx.HTTPError, httpx.InvalidURL, ValueError) as exc:
+            raise DifyPluginToolClientError("Dify API file upload failed or returned invalid data.") from exc
 
     async def request_download(
         self,
@@ -233,11 +302,20 @@ def _build_pydantic_ai_tool(
     effective_parameters: Sequence[DifyPluginToolParameter],
     file_context: "_PluginToolFileContext",
 ) -> Tool[Deps]:
+    """Build a native tool from API-prepared config and a run-scoped file context.
+
+    BLOB payloads, including merged BLOB_CHUNK outputs, are uploaded and rewritten
+    as TEXT summaries before observation conversion so bytes never reach its
+    string fallback. Successful uploads return ToolReturn with a ToolFile UUID
+    list in metadata["dify_plugin_blob_files"]; API AgentAppRunner verifies their
+    ownership before delivering attachments. Failed uploads yield non-binary
+    text. IMAGE and IMAGE_LINK pass through untouched (#40455 scope boundary).
+    """
     tool_name = tool_config.name or tool_config.tool_name
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str | ToolReturn:
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -252,7 +330,43 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return _convert_tool_response_to_text(messages)
+            observation_messages: list[DifyPluginToolInvokeMessage] = []
+            uploaded_tool_file_ids: list[str] = []
+            blob_index = 0
+            for response in messages:
+                if response.type is DifyPluginToolInvokeMessage.MessageType.BLOB and isinstance(
+                    response.message, DifyPluginToolInvokeMessage.BlobMessage
+                ):
+                    blob_index += 1
+                    filename, mime_type = _resolve_blob_file_info(
+                        response.meta, tool_name=tool_name, blob_index=blob_index
+                    )
+                    blob = response.message.blob
+                    try:
+                        uploaded = await file_context.upload_blob(blob=blob, filename=filename, mime_type=mime_type)
+                        mapping = {"transfer_method": "tool_file", "reference": uploaded.reference}
+                        text = (
+                            f"File {uploaded.name} ({uploaded.mime_type or mime_type}, {uploaded.size} bytes) "
+                            "has been created and sent to the user already. Tell the user to check it. "
+                            f"Reuse this file with {json.dumps(mapping)}.\n"
+                        )
+                        uploaded_tool_file_ids.append(uploaded.id)
+                    except (DifyPluginToolClientError, DifyPluginToolsClientConfigurationError) as exc:
+                        text = f"binary output ({filename}, {mime_type}, {len(blob)} bytes) could not be saved: {exc}\n"
+                    observation_messages.append(
+                        DifyPluginToolInvokeMessage(
+                            type=DifyPluginToolInvokeMessage.MessageType.TEXT,
+                            message=DifyPluginToolInvokeMessage.TextMessage(text=text),
+                        )
+                    )
+                else:
+                    observation_messages.append(response)
+            observation_text = _convert_tool_response_to_text(observation_messages)
+            if uploaded_tool_file_ids:
+                return ToolReturn(
+                    return_value=observation_text, metadata={"dify_plugin_blob_files": uploaded_tool_file_ids}
+                )
+            return observation_text
         except DifyPluginToolClientError as exc:
             return _tool_error_text(tool_name=tool_name, error=exc)
         except ValueError as exc:
@@ -320,6 +434,12 @@ class _PluginToolFileContext:
     execution_context: DifyExecutionContextLayerConfig
     deps: Deps
     shell: str | None
+
+    async def upload_blob(self, *, blob: bytes, filename: str, mime_type: str) -> _UploadedPluginBlobFile:
+        """Persist bytes under this run's identity or propagate a file-client error."""
+        return await self.file_client.upload_blob(
+            execution_context=self.execution_context, blob=blob, filename=filename, mime_type=mime_type
+        )
 
     async def to_plugin_file_parameter(self, value: object) -> dict[str, object]:
         if isinstance(value, str):
@@ -583,6 +703,27 @@ def _parse_uploaded_file_mapping(output: str) -> dict[str, object]:
     return {"transfer_method": "tool_file", "reference": reference}
 
 
+def _resolve_blob_file_info(meta: Mapping[str, object] | None, *, tool_name: str, blob_index: int) -> tuple[str, str]:
+    """Normalize plugin filename/MIME metadata, inferring missing values for upload.
+
+    Accepts absent or incomplete plugin metadata and a one-based output index.
+    Returns a basename with an extension and a MIME essence without parameters.
+    """
+    metadata = meta or {}
+    raw_filename = metadata.get("filename")
+    filename = posixpath.basename(raw_filename.replace("\\", "/").strip()) if isinstance(raw_filename, str) else ""
+    if filename in {".", ".."}:
+        filename = ""
+    raw_mime_type = metadata.get("mime_type")
+    mime_type = raw_mime_type.partition(";")[0].strip().lower() if isinstance(raw_mime_type, str) else ""
+    mime_type = mime_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    extension = mimetypes.guess_extension(mime_type) or ".bin"
+    filename = filename or f"{tool_name}_output_{blob_index}{extension}"
+    if not posixpath.splitext(filename)[1]:
+        filename += extension
+    return filename, mime_type
+
+
 def _tool_error_text(*, tool_name: str, error: DifyPluginToolClientError) -> str:
     """Map expected daemon/tool failures into agent-visible observation text.
 
@@ -610,6 +751,9 @@ def _normalized_json_part(text: str) -> str:
 
 def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeMessage]) -> str:
     """Convert daemon stream messages into the plain-text tool observation.
+
+    The caller rewrites BLOB payloads into TEXT summaries before calling this
+    helper, keeping binary bytes out of the fallback string conversion.
 
     This preserves the user-facing semantics Dify's agent tool runtime relies on:
     text is appended directly, links/images become user-check instructions, JSON

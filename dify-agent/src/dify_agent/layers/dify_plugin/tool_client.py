@@ -47,6 +47,7 @@ class FileChunk:
     total_length: int
     bytes_written: int = field(default=0, init=False)
     data: bytearray = field(init=False)
+    meta: dict[str, object] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self.data = bytearray(self.total_length)
@@ -287,7 +288,9 @@ def merge_blob_chunks(
     """Merge streamed blob chunks into complete blob messages.
 
     This mirrors Dify API's plugin-daemon chunk-merging behavior before the
-    higher-level observation conversion logic sees tool stream messages.
+    higher-level observation conversion logic sees tool stream messages. Metadata
+    from every chunk is retained; later values override earlier ones for the same
+    file, including when the final chunk has no metadata.
     """
     files: dict[str, FileChunk] = {}
     merged_messages: list[DifyPluginToolInvokeMessage] = []
@@ -310,6 +313,9 @@ def merge_blob_chunks(
                     raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
+            if isinstance(resp.meta, Mapping):
+                files[chunk_id].meta.update(resp.meta)
+
             if files[chunk_id].bytes_written + len(blob_data) > max_file_size:
                 del files[chunk_id]
                 raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
@@ -328,7 +334,7 @@ def merge_blob_chunks(
                         message=DifyPluginToolInvokeMessage.BlobMessage(
                             blob=bytes(files[chunk_id].data[: files[chunk_id].bytes_written])
                         ),
-                        meta=resp.meta,
+                        meta=files[chunk_id].meta or None,
                     )
                 )
                 del files[chunk_id]

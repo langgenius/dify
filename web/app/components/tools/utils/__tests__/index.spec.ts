@@ -29,8 +29,9 @@ describe('tools/utils', () => {
       const file1 = { id: 'file-1', name: 'doc.pdf' } as FileEntity
       const file2 = { id: 'file-2', name: 'img.png' } as FileEntity
       const items = [
-        { id: '1', files: ['file-2', 'file-1'] },
+        { id: '1', files: ['file-2', 'deleted-file', 'file-1'] },
         { id: '2', files: [] },
+        { id: '3', files: ['deleted-file'] },
       ] as unknown as ThoughtItem[]
 
       const result = addFileInfos(items, [file1, file2])
@@ -39,6 +40,7 @@ describe('tools/utils', () => {
         file1,
       ])
       expect(result[1]).toEqual(items[1])
+      expect(result[2]?.message_files).toEqual([])
       expect(items[0]).not.toHaveProperty('message_files')
     })
 
