@@ -13,21 +13,9 @@ from core.repositories.human_input_repository import HumanInputFormSubmissionRep
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
+from models.workflow import WorkflowPause
 from tasks import human_input_timeout_tasks as task_module
 from tests.helpers.unit.config_override import apply_config_overrides
-
-
-class _FakeService:
-    def __init__(self) -> None:
-        self.enqueued: list[str] = []
-        self.agent_app_resumed: list[tuple[str, str]] = []
-
-    def enqueue_resume(self, workflow_run_id: str | None) -> None:
-        if workflow_run_id is not None:
-            self.enqueued.append(workflow_run_id)
-
-    def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
-        self.agent_app_resumed.append((conversation_id, form_id))
 
 
 def _build_form(
@@ -101,7 +89,7 @@ def test_is_global_timeout_uses_created_at() -> None:
     assert task_module._is_global_timeout(form, 0, now=now) is False
 
 
-@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm, WorkflowPause)], indirect=True)
 def test_check_and_handle_human_input_timeouts_marks_and_routes(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_task_database: None,
@@ -139,18 +127,20 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
         ),
     ]
     sqlite_session.add_all(forms)
+    pause = WorkflowPause(workflow_id="workflow-1", workflow_run_id="run-node", state_object_key="pause-state")
+    sqlite_session.add(pause)
     sqlite_session.commit()
 
     repo = HumanInputFormSubmissionRepository()
     mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
     monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
-    service = _FakeService()
-    service_factory = MagicMock(return_value=service)
     global_timeout_handler = MagicMock()
 
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "HumanInputService", service_factory)
     monkeypatch.setattr(task_module, "_handle_global_timeout", global_timeout_handler)
+    dispatch_pending = MagicMock()
+    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", dispatch_pending)
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", MagicMock())
 
     task_module.check_and_handle_human_input_timeouts(limit=100)
 
@@ -162,7 +152,7 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
         ("form-node", HumanInputFormStatus.TIMEOUT, "node_timeout"),
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),
     }
-    assert service.enqueued == ["run-node"]
+    dispatch_pending.assert_called_once_with(100)
     global_timeout_handler.assert_called_once()
     global_timeout_call = global_timeout_handler.call_args.kwargs
     assert global_timeout_call["form_id"] == "form-global"
@@ -171,7 +161,8 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     task_session_maker = global_timeout_call["session_factory"]
     assert isinstance(task_session_maker, sessionmaker)
     assert task_session_maker.kw["bind"] is sqlite_engine
-    service_factory.assert_called_once_with(task_session_maker, form_repository=repo)
+    sqlite_session.refresh(pause)
+    assert pause.resume_requested_at is not None
 
     sqlite_session.expire_all()
     assert _require_form(sqlite_session, "form-global").status == HumanInputFormStatus.EXPIRED
@@ -207,7 +198,8 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
     mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
     monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "HumanInputService", MagicMock(return_value=_FakeService()))
+    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", MagicMock())
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", MagicMock())
 
     task_module.check_and_handle_human_input_timeouts(limit=1)
 
@@ -246,7 +238,8 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
     monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "HumanInputService", MagicMock(return_value=_FakeService()))
+    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", MagicMock())
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", MagicMock())
     global_timeout_handler = MagicMock()
     monkeypatch.setattr(task_module, "_handle_global_timeout", global_timeout_handler)
 

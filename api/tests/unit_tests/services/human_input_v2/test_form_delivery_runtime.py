@@ -186,6 +186,16 @@ def _node(*recipients: Contact | DynamicEmail | Initiator | OnetimeEmail) -> Hum
     )
 
 
+def _add_pause(context: Context, *, paused: bool = False) -> WorkflowPause:
+    with context.sessions.begin() as session:
+        run = session.get_one(WorkflowRun, _RUN)
+        if paused:
+            run.status = WorkflowExecutionStatus.PAUSED
+        pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="pause")
+        session.add(pause)
+    return pause
+
+
 @pytest.mark.parametrize("with_empty_disabled_email", [False, True])
 def test_migrated_webapp_node_creates_waiting_form_with_initiator(
     context: Context, with_empty_disabled_email: bool
@@ -1024,7 +1034,7 @@ def test_timeout_scan_fans_out_one_task_for_a_run_without_settling_its_forms(
 
 @pytest.mark.parametrize("outcome", ["submitted", "extended", "globally_expired"])
 def test_timeout_task_reloads_changes_made_while_it_was_queued(
-    context: Context, monkeypatch: pytest.MonkeyPatch, timeout_publications: list[dict[str, str]], outcome: str
+    context: Context, timeout_publications: list[dict[str, str]], outcome: str
 ) -> None:
     from tasks import human_input_timeout_tasks
 
@@ -1052,8 +1062,6 @@ def test_timeout_task_reloads_changes_made_while_it_was_queued(
     def resume(run_id: str) -> None:
         resume_calls.append(run_id)
 
-    monkeypatch.setattr("services.human_input_v2.form_service._enqueue_resume", resume)
-
     human_input_timeout_tasks.handle_human_input_v2_timeout(**timeout_publications[-1])
 
     expected_status = {
@@ -1070,30 +1078,33 @@ def test_timeout_task_reloads_changes_made_while_it_was_queued(
 
 
 def test_repeated_timeout_task_requests_only_one_resume(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tasks import human_input_timeout_tasks
     from tasks.human_input_timeout_tasks import handle_human_input_v2_timeout
 
+    _add_pause(context, paused=True)
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
         session.get_one(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
-    resume_calls: list[str] = []
-
-    def resume(run_id: str) -> None:
-        resume_calls.append(run_id)
-
-    monkeypatch.setattr("services.human_input_v2.form_service._enqueue_resume", resume)
+    resume_calls: list[dict[str, str]] = []
+    monkeypatch.setattr(
+        human_input_timeout_tasks.resume_app_execution, "apply_async", lambda **kwargs: resume_calls.append(kwargs)
+    )
 
     handle_human_input_v2_timeout(tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
     handle_human_input_v2_timeout(tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
 
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.TIMEOUT
-    assert resume_calls == [_RUN]
+    assert len(resume_calls) == 1
+    assert resume_calls[0]["kwargs"]["payload"]["workflow_run_id"] == _RUN
+    with context.sessions() as session:
+        pause = session.scalar(sa.select(WorkflowPause).where(WorkflowPause.workflow_run_id == _RUN))
+        assert pause is not None
+        assert pause.resume_requested_at is not None
 
 
 @pytest.mark.parametrize("mismatched_field", ["tenant_id", "app_id", "workflow_run_id"])
-def test_timeout_task_does_not_handle_a_run_outside_its_owner_scope(
-    context: Context, monkeypatch: pytest.MonkeyPatch, mismatched_field: str
-) -> None:
+def test_timeout_task_does_not_handle_a_run_outside_its_owner_scope(context: Context, mismatched_field: str) -> None:
     from tasks.human_input_timeout_tasks import handle_human_input_v2_timeout
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
@@ -1104,7 +1115,6 @@ def test_timeout_task_does_not_handle_a_run_outside_its_owner_scope(
     def resume(run_id: str) -> None:
         resume_calls.append(run_id)
 
-    monkeypatch.setattr("services.human_input_v2.form_service._enqueue_resume", resume)
     task_arguments = {"tenant_id": _TENANT, "app_id": _APP, "workflow_run_id": _RUN}
     task_arguments[mismatched_field] = str(uuid4())
 
@@ -1125,8 +1135,9 @@ def test_scheduled_timeouts_commit_all_due_forms_before_one_resume(
     context: Context, monkeypatch: pytest.MonkeyPatch, limit: int, dispatch_timeouts: Callable[..., None]
 ) -> None:
     from core.db.session_factory import session_factory
-    from services.human_input_v2 import form_service
+    from tasks import human_input_timeout_tasks
 
+    _add_pause(context, paused=True)
     forms = [
         context.service.prepare_form(
             node_execution_id=str(uuid4()),
@@ -1139,24 +1150,20 @@ def test_scheduled_timeouts_commit_all_due_forms_before_one_resume(
         for form in forms:
             session.get_one(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
 
-    def enqueue(run_id: str) -> None:
-        assert run_id == _RUN
+    def enqueue(**kwargs: object) -> None:
+        assert kwargs["kwargs"] == {"payload": {"workflow_run_id": _RUN}}
         with context.sessions() as session:
             assert all(
                 session.get_one(HumanInputForm, form.id).status == HumanInputFormStatus.TIMEOUT for form in forms
             )
 
-    resume_calls: list[str] = []
-    original_enqueue = enqueue
-
-    def enqueue_resume(run_id: str) -> None:
-        resume_calls.append(run_id)
-        original_enqueue(run_id)
-
+    monkeypatch.setattr(human_input_timeout_tasks.resume_app_execution, "apply_async", enqueue)
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue_resume)
     dispatch_timeouts(limit=limit)
-    assert resume_calls == [_RUN]
+    with context.sessions() as session:
+        pause = session.scalar(sa.select(WorkflowPause).where(WorkflowPause.workflow_run_id == _RUN))
+        assert pause is not None
+        assert pause.resume_requested_at is not None
 
 
 @pytest.mark.parametrize("limit", [1, 100])
@@ -1164,7 +1171,6 @@ def test_scheduled_global_expiration_wins_over_an_earlier_node_timeout(
     context: Context, monkeypatch: pytest.MonkeyPatch, limit: int, dispatch_timeouts: Callable[..., None]
 ) -> None:
     from core.db.session_factory import session_factory
-    from services.human_input_v2 import form_service
 
     node_form = context.prepare(_node(OnetimeEmail(email="person@example.com"))).form
     global_form = context.service.prepare_form(
@@ -1182,7 +1188,6 @@ def test_scheduled_global_expiration_wins_over_an_earlier_node_timeout(
         enqueue_calls.append(run_id)
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     dispatch_timeouts(limit=limit)
     with context.sessions() as session:
         assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.STOPPED
@@ -1194,8 +1199,6 @@ def test_node_timeout_batch_rolls_back_all_forms_if_a_later_write_fails(
     context: Context, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from sqlalchemy.exc import SQLAlchemyError
-
-    from services.human_input_v2 import form_service
 
     forms = [
         context.service.prepare_form(
@@ -1223,7 +1226,6 @@ def test_node_timeout_batch_rolls_back_all_forms_if_a_later_write_fails(
         enqueue_calls.append(run_id)
 
     monkeypatch.setattr(SQLAlchemyFormRepository, "timeout_form", fail_later_write)
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     with pytest.raises(SQLAlchemyError, match="Write failed"):
         context.handle_timeouts()
     with context.sessions() as session:
@@ -1232,10 +1234,7 @@ def test_node_timeout_batch_rolls_back_all_forms_if_a_later_write_fails(
 
 
 @pytest.mark.parametrize("status", [WorkflowExecutionStatus.STOPPED, WorkflowExecutionStatus.SUCCEEDED])
-def test_node_timeout_never_resumes_a_terminal_run(
-    context: Context, monkeypatch: pytest.MonkeyPatch, status: WorkflowExecutionStatus
-) -> None:
-    from services.human_input_v2 import form_service
+def test_node_timeout_never_resumes_a_terminal_run(context: Context, status: WorkflowExecutionStatus) -> None:
 
     form = context.prepare(_node(OnetimeEmail(email="person@example.com"))).form
     with context.sessions.begin() as session:
@@ -1246,7 +1245,6 @@ def test_node_timeout_never_resumes_a_terminal_run(
     def enqueue(run_id: str) -> None:
         enqueue_calls.append(run_id)
 
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     context.handle_timeouts()
     with context.sessions() as session:
         assert session.get_one(WorkflowRun, _RUN).status == status
@@ -1257,7 +1255,9 @@ def test_node_timeout_never_resumes_a_terminal_run(
 def test_timeout_publication_failure_preserves_committed_forms_without_rehandling(
     context: Context, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from services.human_input_v2 import form_service
+    from tasks import human_input_timeout_tasks
+
+    _add_pause(context, paused=True)
 
     result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
@@ -1273,17 +1273,48 @@ def test_timeout_publication_failure_preserves_committed_forms_without_rehandlin
         if len(publications) == 1:
             raise ConnectionError("queue unavailable")
 
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
-    with pytest.raises(ConnectionError):
-        context.handle_timeouts()
-    context.handle_timeouts()
-    assert publications == [_RUN]
+    monkeypatch.setattr(
+        human_input_timeout_tasks.resume_app_execution,
+        "apply_async",
+        lambda **kwargs: enqueue(kwargs["kwargs"]["payload"]["workflow_run_id"]),
+    )
+    # The timeout transaction persists the intent before the dispatcher attempts delivery.
+    from services.human_input_v2.form_service import handle_form_timeouts
+
+    handle_form_timeouts(session_factory=context.sessions, tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
+    human_input_timeout_tasks._dispatch_pending_human_input_resumes(limit=1, workflow_run_id=_RUN)
+    human_input_timeout_tasks._dispatch_pending_human_input_resumes(limit=1, workflow_run_id=_RUN)
+    assert publications == [_RUN, _RUN]
 
 
-def test_global_expiration_stops_run_without_requesting_node_resume(
-    context: Context, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from services.human_input_v2 import form_service
+def test_resume_dispatch_lease_suppresses_concurrent_claim_and_expires_for_retry(context: Context) -> None:
+    from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+
+    pause = _add_pause(context, paused=True)
+    now = naive_utc_now()
+    repo = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
+    with context.sessions.begin() as session:
+        assert repo.request_workflow_pause_resume(session, workflow_run_id=_RUN)
+
+    first = repo.claim_pending_workflow_resume_dispatches(
+        now=now, lease_expires_at=now + timedelta(minutes=5), limit=1, workflow_run_id=_RUN
+    )
+    concurrent = repo.claim_pending_workflow_resume_dispatches(
+        now=now, lease_expires_at=now + timedelta(minutes=5), limit=1, workflow_run_id=_RUN
+    )
+    expired_retry = repo.claim_pending_workflow_resume_dispatches(
+        now=now + timedelta(minutes=6),
+        lease_expires_at=now + timedelta(minutes=11),
+        limit=1,
+        workflow_run_id=_RUN,
+    )
+
+    assert [dispatch.pause_id for dispatch in first] == [pause.id]
+    assert concurrent == ()
+    assert [dispatch.pause_id for dispatch in expired_retry] == [pause.id]
+
+
+def test_global_expiration_stops_run_without_requesting_node_resume(context: Context) -> None:
 
     result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
@@ -1300,7 +1331,6 @@ def test_global_expiration_stops_run_without_requesting_node_resume(
     def enqueue(run_id: str) -> None:
         enqueue_calls.append(run_id)
 
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     context.handle_timeouts()
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, result.form.id).status == HumanInputFormStatus.EXPIRED
@@ -1311,8 +1341,7 @@ def test_global_expiration_stops_run_without_requesting_node_resume(
     assert not enqueue_calls
 
 
-def test_timeout_handling_uses_persisted_global_deadlines(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
-    from services.human_input_v2 import form_service
+def test_timeout_handling_uses_persisted_global_deadlines(context: Context) -> None:
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
@@ -1324,8 +1353,6 @@ def test_timeout_handling_uses_persisted_global_deadlines(context: Context, monk
     def enqueue(run_id: str) -> None:
         enqueue_calls.append(run_id)
 
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
-
     context.handle_timeouts()
     with context.sessions() as session:
         assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.STOPPED
@@ -1333,16 +1360,13 @@ def test_timeout_handling_uses_persisted_global_deadlines(context: Context, monk
     assert not enqueue_calls
 
 
-def test_timeout_handling_preserves_forms_that_are_not_due(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
-    from services.human_input_v2 import form_service
+def test_timeout_handling_preserves_forms_that_are_not_due(context: Context) -> None:
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     enqueue_calls: list[str] = []
 
     def enqueue(run_id: str) -> None:
         enqueue_calls.append(run_id)
-
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
 
     context.handle_timeouts()
     with context.sessions() as session:
@@ -1360,8 +1384,10 @@ def test_scheduled_expiration_uses_v2_deadlines(
     dispatch_timeouts: Callable[..., None],
 ) -> None:
     from core.db.session_factory import session_factory
-    from services.human_input_v2 import form_service
+    from tasks import human_input_timeout_tasks
 
+    if node_timed_out and not globally_expired:
+        _add_pause(context, paused=True)
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
         record = session.get_one(HumanInputForm, created.form.id)
@@ -1370,12 +1396,10 @@ def test_scheduled_expiration_uses_v2_deadlines(
         if globally_expired:
             record.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    enqueue_calls: list[str] = []
-
-    def enqueue(run_id: str) -> None:
-        enqueue_calls.append(run_id)
-
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
+    enqueue_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        human_input_timeout_tasks.resume_app_execution, "apply_async", lambda **kwargs: enqueue_calls.append(kwargs)
+    )
     dispatch_timeouts()
     with context.sessions() as session:
         record = session.get_one(HumanInputForm, created.form.id)
@@ -1383,16 +1407,14 @@ def test_scheduled_expiration_uses_v2_deadlines(
     if globally_expired:
         assert not enqueue_calls
     else:
-        assert enqueue_calls == [_RUN]
+        assert len(enqueue_calls) == 1
 
 
 def test_scheduled_timeout_does_not_rescan_terminal_forms(
     context: Context, monkeypatch: pytest.MonkeyPatch, dispatch_timeouts: Callable[..., None]
 ) -> None:
-    from kombu.exceptions import OperationalError
-
     from core.db.session_factory import session_factory
-    from services.human_input_v2 import form_service
+    from tasks import human_input_timeout_tasks
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
@@ -1413,13 +1435,16 @@ def test_scheduled_timeout_does_not_rescan_terminal_forms(
     def enqueue(run_id: str) -> None:
         resume_calls.append(run_id)
         if len(resume_calls) == 1:
-            raise OperationalError("broker unavailable")
+            raise ConnectionError("broker unavailable")
 
-    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
-    with pytest.raises(OperationalError, match="broker unavailable"):
-        dispatch_timeouts()
+    monkeypatch.setattr(
+        human_input_timeout_tasks.resume_app_execution,
+        "apply_async",
+        lambda **kwargs: enqueue(kwargs["kwargs"]["payload"]["workflow_run_id"]),
+    )
     dispatch_timeouts()
-    assert resume_calls == [_RUN]
+    dispatch_timeouts()
+    assert resume_calls == [_RUN, _RUN]
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.TIMEOUT
 
