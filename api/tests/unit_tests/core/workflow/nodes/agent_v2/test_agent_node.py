@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -21,7 +21,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
-from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPartDelta, ThinkingPart, ThinkingPartDelta
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
@@ -56,7 +56,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent, StreamReasoningEvent
 from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
@@ -275,7 +275,8 @@ class PlainTextOutputBackendClient(FakeAgentBackendRunClient):
 
 
 class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
-    def _events(self, run_id: str):
+    @override
+    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         return (
             RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
@@ -283,7 +284,7 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
                 id="2-0",
                 run_id=run_id,
                 created_at=created_at,
-                data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+                data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="hello ")),
                 agent_message_delta="hello ",
             ),
             RunSucceededEvent(
@@ -295,6 +296,29 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
                     session_snapshot=SessionSnapshot(layers={}),
                 ),
             ),
+        )
+
+
+class ThinkingBackendClient(AgentMessageDeltaBackendClient):
+    @override
+    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
+        started, text, succeeded = super()._events(run_id)
+        return (
+            started,
+            PydanticAIStreamRunEvent(
+                id="1-1",
+                run_id=run_id,
+                created_at=started.created_at,
+                data=PartStartEvent(index=0, part=ThinkingPart(content="plan ")),
+            ),
+            text,
+            PydanticAIStreamRunEvent(
+                id="2-1",
+                run_id=run_id,
+                created_at=started.created_at,
+                data=PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta="then act")),
+            ),
+            succeeded,
         )
 
 
@@ -697,6 +721,159 @@ def test_agent_node_run_streams_agent_message_delta_as_text_chunks():
     assert agent_backend["status"] == "succeeded"
     assert agent_backend["agent_message_delta_count"] == 1
     assert agent_backend["agent_message_delta_length"] == len("hello ")
+
+
+def test_agent_node_streams_reasoning_in_order_and_closes_once():
+    events = list(_node(agent_backend_client=ThinkingBackendClient())._run())
+
+    assert events[:3] == [
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="plan ", is_final=False),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="then act", is_final=False),
+    ]
+    assert [event for event in events if isinstance(event, StreamReasoningEvent)] == [
+        events[0],
+        events[2],
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="", is_final=True),
+    ]
+    assert [event for event in events if isinstance(event, StreamChunkEvent)] == [
+        events[1],
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    assert events[-3:-1] == [
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="", is_final=True),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    assert isinstance(events[-1], StreamCompletedEvent)
+    assert events[-1].node_run_result.outputs == {"text": "hello agent"}
+    metadata = events[-1].node_run_result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert metadata["last_stream_event_id"] == "2-1"
+    assert metadata["last_stream_event_kind"] == "part_delta"
+    assert metadata["agent_message_delta_count"] == 1
+
+
+@pytest.mark.parametrize("second_start_content", ["second", ""])
+def test_agent_node_separates_thinking_parts(second_start_content: str):
+    client = ThinkingBackendClient()
+    started, first, text, _, succeeded = client._events("run-1")
+    second = PydanticAIStreamRunEvent(
+        id="2-1",
+        run_id="run-1",
+        created_at=started.created_at,
+        data=PartStartEvent(index=2, part=ThinkingPart(content=second_start_content)),
+    )
+    delta = PydanticAIStreamRunEvent(
+        id="2-2",
+        run_id="run-1",
+        created_at=started.created_at,
+        data=PartDeltaEvent(index=2, delta=ThinkingPartDelta(content_delta=" continued")),
+    )
+
+    class MultiPartThinkingBackendClient(ThinkingBackendClient):
+        @override
+        def _events(self, run_id: str) -> tuple[RunEvent, ...]:
+            return (started, first, text, second, delta, succeeded)
+
+    events = list(_node(agent_backend_client=MultiPartThinkingBackendClient())._run())
+    chunks = [event.chunk for event in events if isinstance(event, StreamReasoningEvent) and not event.is_final]
+    expected = ["plan ", "\n\nsecond", " continued"] if second_start_content else ["plan ", "\n\n continued"]
+    assert chunks == expected
+
+
+def test_agent_node_without_thinking_emits_no_reasoning():
+    events = list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())
+    assert not any(isinstance(event, StreamReasoningEvent) for event in events)
+
+
+@pytest.mark.parametrize("stream_text", [False, True])
+def test_agent_node_reasoning_follows_stream_text(stream_text: bool):
+    node = _node(agent_backend_client=ThinkingBackendClient())
+    metadata: dict[str, object] = {}
+    events = list(
+        node._consume_event_stream(
+            "run-1",
+            inputs={},
+            process_data={},
+            metadata=metadata,
+            stream_text=stream_text,
+        )
+    )
+    assert len([event for event in events if isinstance(event, StreamReasoningEvent)]) == (3 if stream_text else 0)
+    assert len([event for event in events if isinstance(event, StreamChunkEvent)]) == (2 if stream_text else 0)
+
+
+@pytest.mark.parametrize("mode", ["custom_outputs", "output_routes", "default_value"])
+def test_agent_node_buffered_modes_suppress_reasoning(mode: str):
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [{"name": "summary", "type": "string"}] if mode == "custom_outputs" else [],
+            "output_routes": {
+                "enabled": mode == "output_routes",
+                "routes": [{"id": "route-1", "name": "First"}, {"id": "route-2", "name": "Second"}],
+            },
+        }
+    )
+    events = list(
+        _node(
+            binding_resolver=resolver,
+            agent_backend_client=ThinkingBackendClient(),
+            error_strategy=ErrorStrategy.DEFAULT_VALUE if mode == "default_value" else None,
+        )._run()
+    )
+    assert not any(isinstance(event, StreamReasoningEvent | StreamChunkEvent) for event in events)
+    assert isinstance(events[-1], StreamCompletedEvent)
+    metadata = events[-1].node_run_result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert metadata["last_stream_event_id"] == "2-1"
+
+
+@pytest.mark.parametrize("raise_error", [False, True])
+def test_agent_node_closes_reasoning_after_interrupted_stream(raise_error: bool):
+    client = ThinkingBackendClient()
+    node = _node(agent_backend_client=client)
+
+    def interrupted_events():
+        yield from client._events("run-1")[:-1]
+        if raise_error:
+            raise AgentBackendStreamError("interrupted")
+
+    with patch.object(client, "stream_events", return_value=interrupted_events()):
+        events = list(
+            node._consume_event_stream(
+                "run-1",
+                inputs={},
+                process_data={},
+                metadata={},
+                stream_text=True,
+            )
+        )
+    reasoning = [event for event in events if isinstance(event, StreamReasoningEvent)]
+    assert reasoning == [
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="plan ", is_final=False),
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="then act", is_final=False),
+        StreamReasoningEvent(selector=["agent-node", "reasoning_content"], chunk="", is_final=True),
+    ]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        None,
+        {},
+        {"event_kind": "part_delta", "delta": None},
+        {"event_kind": "part_start", "part": []},
+        {"event_kind": "part_delta", "delta": {"part_delta_kind": "thinking", "content_delta": ""}},
+        {"event_kind": "part_delta", "delta": {"part_delta_kind": "thinking", "content_delta": 1}},
+        {"event_kind": "part_start", "part": {"part_kind": "thinking", "content": ""}},
+        {"event_kind": "part_start", "part": {"part_kind": "thinking", "content": None}},
+        {"event_kind": "part_delta", "delta": {"part_delta_kind": "text", "content_delta": "answer"}},
+        {"event_kind": "part_start", "part": {"part_kind": "tool-call", "content": "tool"}},
+        {"event_kind": "part_end", "part": {"part_kind": "thinking", "content": "already sent"}},
+    ],
+)
+def test_agent_node_ignores_non_thinking_or_empty_content(data: dict[str, object] | None) -> None:
+    event = AgentBackendStreamInternalEvent(run_id="run-1", data=data)
+    assert DifyAgentNode._thinking_chunk(event) is None
 
 
 def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream():
