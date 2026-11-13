@@ -62,8 +62,9 @@ def list_operator_node() -> ListOperatorNode:
     )
 
     node = _build_list_operator_node(node_data, graph_init_params)
-    node.runtime_state = MagicMock()
-    node.runtime_state.variable_pool = MagicMock()
+    runtime_state: MagicMock = MagicMock()
+    runtime_state.variable_pool = MagicMock()
+    node.runtime_state = runtime_state
     return node
 
 
@@ -100,7 +101,8 @@ def test_filter_files_by_type(list_operator_node: ListOperatorNode) -> None:
         ),
     ]
     variable = ArrayFileSegment(value=files)
-    list_operator_node.runtime_state.variable_pool.get.return_value = variable
+    variable_pool: MagicMock = list_operator_node.runtime_state.variable_pool
+    variable_pool.get.return_value = variable
 
     # Run the node
     result = list_operator_node._run()
