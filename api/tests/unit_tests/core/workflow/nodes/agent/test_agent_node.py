@@ -103,8 +103,15 @@ def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
     )
 
 
-def test_run_continues_when_tool_snapshot_capture_fails(
-    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("capture_evaluation_trace", "fail_capture"),
+    [(False, True), (True, False), (True, True)],
+)
+def test_run_captures_tool_snapshots_only_for_evaluation(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    capture_evaluation_trace: bool,
+    fail_capture: bool,
 ) -> None:
     strategy = _RecordingStrategy()
     parameters = {"query": "hello"}
@@ -114,11 +121,17 @@ def test_run_continues_when_tool_snapshot_capture_fails(
     def build_parameters(**_kwargs: object) -> dict[str, str]:
         return parameters
 
-    def fail_snapshot(**_kwargs: object) -> None:
-        raise RuntimeError("snapshot failed")
+    snapshot_calls = 0
+
+    def build_snapshot(**_kwargs: object) -> list[dict[str, str]]:
+        nonlocal snapshot_calls
+        snapshot_calls += 1
+        if fail_capture:
+            raise RuntimeError("snapshot failed")
+        return [{"tool_ref": "provider/tool"}]
 
     monkeypatch.setattr(runtime_support, "build_parameters", build_parameters)
-    monkeypatch.setattr(runtime_support, "build_model_visible_tool_snapshots", fail_snapshot)
+    monkeypatch.setattr(runtime_support, "build_model_visible_tool_snapshots", build_snapshot)
     monkeypatch.setattr(runtime_support, "build_credentials", lambda **_kwargs: None)
 
     completed_event = StreamCompletedEvent(node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED))
@@ -148,6 +161,7 @@ def test_run_continues_when_tool_snapshot_capture_fails(
                     user_id="user-id",
                     user_from=UserFrom.ACCOUNT,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    capture_agent_evaluation_trace=capture_evaluation_trace,
                 )
             },
             call_depth=0,
@@ -177,9 +191,12 @@ def test_run_continues_when_tool_snapshot_capture_fails(
     transform_kwargs = transform_calls[0]
     assert transform_kwargs["messages"] is strategy.message_stream
     assert transform_kwargs["parameters_for_log"] == parameters_for_log
-    assert transform_kwargs["tool_info"] == {
+    expected_tool_info: dict[str, object] = {
         "icon": "agent-icon",
         "agent_strategy": "strategy",
-        "available_tools": None,
     }
-    assert "continuing without the snapshot" in caplog.text
+    if capture_evaluation_trace:
+        expected_tool_info["available_tools"] = None if fail_capture else [{"tool_ref": "provider/tool"}]
+    assert transform_kwargs["tool_info"] == expected_tool_info
+    assert snapshot_calls == int(capture_evaluation_trace)
+    assert ("continuing without the snapshot" in caplog.text) is (capture_evaluation_trace and fail_capture)

@@ -101,6 +101,11 @@ class AgentNode(Node[AgentNodeData]):
 
     @override
     def _run(self) -> Generator[NodeEventPayload]:
+        """Run the Agent node, adding best-effort tool metadata only for evaluation.
+
+        Normal executions retain their existing tool metadata; a snapshot failure
+        during evaluation does not interrupt the Agent invocation.
+        """
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -145,16 +150,17 @@ class AgentNode(Node[AgentNodeData]):
             for_log=True,
         )
         available_tools: list[dict[str, Any]] | None = None
-        try:
-            available_tools = self._runtime_support.build_model_visible_tool_snapshots(
-                agent_parameters=agent_parameters,
-                resolved_parameters=parameters,
-            )
-        except Exception:
-            logger.warning(
-                "Failed to capture model-visible tools for Agent evaluation; continuing without the snapshot",
-                exc_info=True,
-            )
+        if dify_ctx.capture_agent_evaluation_trace:
+            try:
+                available_tools = self._runtime_support.build_model_visible_tool_snapshots(
+                    agent_parameters=agent_parameters,
+                    resolved_parameters=parameters,
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to capture model-visible tools for Agent evaluation; continuing without the snapshot",
+                    exc_info=True,
+                )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
         conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
@@ -187,7 +193,7 @@ class AgentNode(Node[AgentNodeData]):
                         agent_strategy_provider_name=self.node_data.agent_strategy_provider_name,
                     ),
                     "agent_strategy": self.node_data.agent_strategy_name,
-                    "available_tools": available_tools,
+                    **({"available_tools": available_tools} if dify_ctx.capture_agent_evaluation_trace else {}),
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=dify_ctx.user_id,
