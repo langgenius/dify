@@ -4,7 +4,7 @@ import unittest
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from decimal import Decimal
-from typing import cast
+from typing import cast, override
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -62,6 +62,7 @@ from ._test_support import (
     build_stream_response,
     make_usage,
     single_text_chunk,
+    wrap_plugin_daemon_stream_item,
 )
 
 _OMIT_ID = object()
@@ -169,15 +170,16 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             http_client=http_client,
         )
 
-    def make_streaming_adapter(self, body: _TrackingResponseBody) -> DifyLLMAdapterModel:
-        """Exercise HTTPX's real stream cleanup, which mock_gateway_stream bypasses."""
+    def make_streaming_adapter(self, *bodies: _TrackingResponseBody) -> DifyLLMAdapterModel:
+        """Serve bodies in request order, exercising HTTPX cleanup that mock_gateway_stream bypasses."""
+        response_bodies = iter(bodies)
 
         async def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 200,
                 request=request,
                 headers={"content-type": "text/event-stream"},
-                stream=body,
+                stream=next(response_bodies),
             )
 
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler), trust_env=False)
@@ -187,6 +189,53 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             self.make_provider(http_client=http_client),
             model_provider="openai",
         )
+
+    async def cancel_request_after_first_chunk(
+        self,
+        inflight_chunk: LLMResultChunk,
+        *,
+        stream: bool,
+        completed_chunk: LLMResultChunk | None = None,
+    ) -> DifyLLMAdapterModel:
+        """Cancel while awaiting the next gateway chunk, optionally after a completed round."""
+        read_blocked = asyncio.Event()
+
+        class BlockingResponseBody(_TrackingResponseBody):
+            @override
+            async def __aiter__(self) -> AsyncGenerator[bytes, None]:
+                async for payload in super().__aiter__():
+                    yield payload
+                read_blocked.set()
+                await asyncio.Event().wait()
+
+        inflight_body = BlockingResponseBody([build_stream_response(inflight_chunk).content])
+        bodies: list[_TrackingResponseBody] = []
+        if completed_chunk is not None:
+            bodies.append(_TrackingResponseBody([build_stream_response(completed_chunk).content]))
+        bodies.append(inflight_body)
+        adapter = self.make_streaming_adapter(*bodies)
+        messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
+        if completed_chunk is not None:
+            await adapter.request(messages, None, ModelRequestParameters())
+
+        async def consume_request() -> None:
+            if stream:
+                async with adapter.request_stream(messages, None, ModelRequestParameters()) as response:
+                    async for _event in response:
+                        pass
+            else:
+                await adapter.request(messages, None, ModelRequestParameters())
+
+        async with asyncio.timeout(5), asyncio.TaskGroup() as tasks:
+            task = tasks.create_task(consume_request())
+            await read_blocked.wait()
+            task.cancel("run stopped")
+            with self.assertRaises(asyncio.CancelledError) as cancellation:
+                await task
+
+        self.assertEqual(cancellation.exception.args, ("run stopped",))
+        self.assertEqual(inflight_body.close_count, 1)
+        return adapter
 
     @asynccontextmanager
     async def mock_gateway_stream(self, handler: httpx.MockTransport):
@@ -575,6 +624,134 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage.time_to_first_token, 0.2)
         self.assertEqual(usage.time_to_generate, 0.6)
 
+    async def test_request_stream_records_usage_when_the_consumer_fails_after_stream_eof(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            with self.assertRaises(RuntimeError):
+                async with adapter.request_stream(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                ) as stream:
+                    events = [event async for event in stream]
+                    raise RuntimeError("the run was stopped")
+
+        self.assertTrue(events)
+        usage = adapter.accumulated_usage
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 11)
+        self.assertEqual(usage.completion_tokens, 7)
+
+    async def test_request_records_usage_when_the_response_stream_aborts(self) -> None:
+        body = wrap_plugin_daemon_stream_item(single_text_chunk("partial", prompt_tokens=11, completion_tokens=7)[0])
+
+        async def byte_stream():
+            yield body.encode("utf-8")
+            raise httpx.ReadError("connection lost")
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                headers={"content-type": "text/event-stream"},
+                content=byte_stream(),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            with self.assertRaises(ModelHTTPError):
+                _ = await adapter.request(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                )
+
+        usage = adapter.accumulated_usage
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 11)
+        self.assertEqual(usage.completion_tokens, 7)
+
+    async def test_request_accumulates_inflight_usage_on_cancellation_after_a_completed_round(self) -> None:
+        completed_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="done"),
+                usage=make_usage(
+                    prompt_tokens=10,
+                    completion_tokens=2,
+                    prompt_price=Decimal("0.000050"),
+                    completion_price=Decimal("0.000060"),
+                    total_price=Decimal("0.000110"),
+                ),
+            ),
+        )
+        inflight_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="partial"),
+                usage=make_usage(
+                    prompt_tokens=20,
+                    completion_tokens=3,
+                    prompt_price=Decimal("0.000100"),
+                    completion_price=Decimal("0.000090"),
+                    total_price=Decimal("0.000190"),
+                ),
+            ),
+        )
+
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                adapter = await self.cancel_request_after_first_chunk(
+                    inflight_chunk, stream=stream, completed_chunk=completed_chunk
+                )
+                usage = adapter.accumulated_usage
+                assert usage is not None
+                self.assertEqual(usage.prompt_tokens, 30)
+                self.assertEqual(usage.completion_tokens, 5)
+                self.assertEqual(usage.total_tokens, 35)
+                self.assertEqual(usage.prompt_price, Decimal("0.000150"))
+                self.assertEqual(usage.completion_price, Decimal("0.000150"))
+                self.assertEqual(usage.total_price, Decimal("0.000300"))
+
+    async def test_request_cancellation_before_usage_leaves_accumulated_usage_unchanged(self) -> None:
+        completed_usage = make_usage(prompt_tokens=10, completion_tokens=2, total_price=Decimal("0.000110"))
+        completed_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="done"),
+                usage=completed_usage,
+            ),
+        )
+        text_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="partial")),
+        )
+
+        for stream in (False, True):
+            for with_previous_usage in (False, True):
+                with self.subTest(stream=stream, with_previous_usage=with_previous_usage):
+                    adapter = await self.cancel_request_after_first_chunk(
+                        text_chunk,
+                        stream=stream,
+                        completed_chunk=completed_chunk if with_previous_usage else None,
+                    )
+                    self.assertEqual(adapter.accumulated_usage, completed_usage if with_previous_usage else None)
+
     async def test_request_falls_back_to_tool_name_when_description_is_missing(self) -> None:
         """Some providers (e.g. Bedrock's Converse API) reject an empty toolSpec description."""
         messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
@@ -927,73 +1104,85 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage.completion_tokens, 4)
 
     async def test_request_stream_flushes_pending_thinking_tags_only_after_natural_eof(self) -> None:
+        inflight_usage = make_usage(prompt_tokens=6, completion_tokens=2)
+        final_usage = make_usage(prompt_tokens=6, completion_tokens=4)
         cases = [
             ("answer</thi", "text", "answer"),
             ("<think>plan</thi", "thinking", "plan"),
         ]
         for content, part_kind, initial_content in cases:
             for content_list in (False, True):
-                for stop_early in (False, True):
-                    with self.subTest(content=content, content_list=content_list, stop_early=stop_early):
-                        chunks = [
-                            LLMResultChunk(
-                                model="demo-model",
-                                delta=LLMResultChunkDelta(
-                                    index=0,
-                                    message=AssistantPromptMessage(
-                                        content=[TextPromptMessageContent(data=content)] if content_list else content,
+                for usage_in_first_chunk in (False, True):
+                    for stop_early in (False, True):
+                        with self.subTest(
+                            content=content,
+                            content_list=content_list,
+                            usage_in_first_chunk=usage_in_first_chunk,
+                            stop_early=stop_early,
+                        ):
+                            chunks = [
+                                LLMResultChunk(
+                                    model="demo-model",
+                                    delta=LLMResultChunkDelta(
+                                        index=0,
+                                        message=AssistantPromptMessage(
+                                            content=[TextPromptMessageContent(data=content)]
+                                            if content_list
+                                            else content,
+                                        ),
+                                        usage=inflight_usage if usage_in_first_chunk else None,
                                     ),
                                 ),
-                            ),
-                            LLMResultChunk(
-                                model="demo-model",
-                                delta=LLMResultChunkDelta(
-                                    index=1,
-                                    message=AssistantPromptMessage(content=""),
-                                    usage=make_usage(prompt_tokens=6, completion_tokens=4),
-                                    finish_reason="stop",
+                                LLMResultChunk(
+                                    model="demo-model",
+                                    delta=LLMResultChunkDelta(
+                                        index=1,
+                                        message=AssistantPromptMessage(content=""),
+                                        usage=final_usage,
+                                        finish_reason="stop",
+                                    ),
                                 ),
-                            ),
-                        ]
-                        body = _TrackingResponseBody([build_stream_response(chunk).content for chunk in chunks])
-                        adapter = self.make_streaming_adapter(body)
-                        streamed_parts: list[tuple[str, str]] = []
+                            ]
+                            body = _TrackingResponseBody([build_stream_response(chunk).content for chunk in chunks])
+                            adapter = self.make_streaming_adapter(body)
+                            streamed_parts: list[tuple[str, str]] = []
 
-                        async with adapter.request_stream(
-                            [ModelRequest(parts=[UserPromptPart("hello")])], None, ModelRequestParameters()
-                        ) as stream:
-                            async for event in stream:
-                                # Final part snapshots can mask a missing flush delta.
-                                if isinstance(event, PartStartEvent):
-                                    assert isinstance(event.part, TextPart | ThinkingPart)
-                                    streamed_parts.append((event.part.part_kind, event.part.content))
-                                elif isinstance(event, PartDeltaEvent):
-                                    assert isinstance(event.delta, TextPartDelta | ThinkingPartDelta)
-                                    previous_kind, previous_content = streamed_parts[event.index]
-                                    self.assertEqual(event.delta.part_delta_kind, previous_kind)
-                                    streamed_parts[event.index] = (
-                                        previous_kind,
-                                        previous_content + (event.delta.content_delta or ""),
-                                    )
-                                if stop_early:
-                                    break
+                            async with adapter.request_stream(
+                                [ModelRequest(parts=[UserPromptPart("hello")])], None, ModelRequestParameters()
+                            ) as stream:
+                                async for event in stream:
+                                    # Final part snapshots can mask a missing flush delta.
+                                    if isinstance(event, PartStartEvent):
+                                        assert isinstance(event.part, TextPart | ThinkingPart)
+                                        streamed_parts.append((event.part.part_kind, event.part.content))
+                                    elif isinstance(event, PartDeltaEvent):
+                                        assert isinstance(event.delta, TextPartDelta | ThinkingPartDelta)
+                                        previous_kind, previous_content = streamed_parts[event.index]
+                                        self.assertEqual(event.delta.part_delta_kind, previous_kind)
+                                        streamed_parts[event.index] = (
+                                            previous_kind,
+                                            previous_content + (event.delta.content_delta or ""),
+                                        )
+                                    if stop_early:
+                                        break
 
-                        response = stream.get()
-                        expected_parts = [(part_kind, initial_content if stop_early else initial_content + "</thi")]
-                        self.assertEqual(streamed_parts, expected_parts)
-                        self.assertEqual(
-                            [(part.part_kind, cast(TextPart | ThinkingPart, part).content) for part in response.parts],
-                            expected_parts,
-                        )
-                        self.assertEqual(body.close_count, 1)
-                        if stop_early:
-                            self.assertIsNone(adapter.accumulated_usage)
-                        else:
-                            usage = adapter.accumulated_usage
-                            self.assertIsNotNone(usage)
-                            assert usage is not None
-                            self.assertEqual(usage.prompt_tokens, 6)
-                            self.assertEqual(usage.completion_tokens, 4)
+                            response = stream.get()
+                            expected_parts = [(part_kind, initial_content if stop_early else initial_content + "</thi")]
+                            self.assertEqual(streamed_parts, expected_parts)
+                            self.assertEqual(
+                                [
+                                    (part.part_kind, cast(TextPart | ThinkingPart, part).content)
+                                    for part in response.parts
+                                ],
+                                expected_parts,
+                            )
+                            self.assertEqual(body.close_count, 1)
+                            if stop_early:
+                                self.assertEqual(
+                                    adapter.accumulated_usage, inflight_usage if usage_in_first_chunk else None
+                                )
+                            else:
+                                self.assertEqual(adapter.accumulated_usage, final_usage)
 
     async def test_request_stream_closes_gateway_body_after_consumer_error_without_masking_it(self) -> None:
         body = _TrackingResponseBody(
@@ -1020,7 +1209,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(context.exception, original_error)
         self.assertEqual(body.close_count, 1)
         self.assertIn("gateway response close failed", "\n".join(original_error.__notes__))
-        self.assertIsNone(adapter.accumulated_usage)
+        self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_stream_closes_gateway_body_when_cancelled(self) -> None:
         for close_error in (None, RuntimeError("gateway response close failed")):
@@ -1059,27 +1248,32 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(task.cancelled())
                 self.assertTrue(held_streams)
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
                 if close_error is not None:
                     self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
     async def test_request_stream_closes_gateway_body_after_caller_breaks(self) -> None:
-        body = _TrackingResponseBody(_stream_lifecycle_payloads())
-        adapter = self.make_streaming_adapter(body)
-        event_count = 0
+        for usage_in_first_chunk in (False, True):
+            with self.subTest(usage_in_first_chunk=usage_in_first_chunk):
+                body = _TrackingResponseBody(_stream_lifecycle_payloads(usage_in_first_chunk=usage_in_first_chunk))
+                adapter = self.make_streaming_adapter(body)
+                event_count = 0
 
-        async with adapter.request_stream(
-            [ModelRequest(parts=[UserPromptPart("hello")])],
-            model_settings=None,
-            model_request_parameters=ModelRequestParameters(),
-        ) as stream:
-            async for _event in stream:
-                event_count += 1
-                break
+                async with adapter.request_stream(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                ) as stream:
+                    async for _event in stream:
+                        event_count += 1
+                        break
 
-        self.assertEqual(event_count, 1)
-        self.assertEqual(body.close_count, 1)
-        self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(event_count, 1)
+                self.assertEqual(body.close_count, 1)
+                if usage_in_first_chunk:
+                    self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
+                else:
+                    self.assertIsNone(adapter.accumulated_usage)
 
     async def test_request_stream_propagates_gateway_close_error_after_caller_breaks(self) -> None:
         close_errors = [
@@ -1114,7 +1308,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 else:
                     self.assertIs(context.exception, close_error)
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_closes_gateway_body_after_mapping_error_without_masking_it(self) -> None:
         chunk = LLMResultChunk(
@@ -1150,7 +1344,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                             await adapter.request(messages, None, ModelRequestParameters())
 
                     self.assertEqual(body.close_count, 1)
-                    self.assertIsNone(adapter.accumulated_usage)
+                    self.assertEqual(adapter.accumulated_usage, make_usage())
                     if close_error is not None:
                         self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
@@ -1193,7 +1387,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
                     self.assertTrue(task.cancelled())
                     self.assertEqual(body.close_count, 1)
-                    self.assertIsNone(adapter.accumulated_usage)
+                    self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
                     if close_error is not None:
                         self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
@@ -1221,7 +1415,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
                 self.assertEqual(body.close_count, 1)
                 self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_stream_propagates_cancellation_arriving_during_cleanup(self) -> None:
         for failure_source in ("consumer", "gateway"):
@@ -1261,7 +1455,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(task.cancelled())
                 self.assertTrue(held_streams)
                 self.assertEqual(body.close_count, 1)
-                self.assertIsNone(adapter.accumulated_usage)
+                self.assertEqual(adapter.accumulated_usage, make_usage(prompt_tokens=6, completion_tokens=4))
 
     async def test_request_stream_splits_embedded_thinking_tags_from_text_content_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:

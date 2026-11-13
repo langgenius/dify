@@ -128,7 +128,10 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
     @property
     def accumulated_usage(self) -> LLMUsage | None:
-        """Return complete Dify usage accumulated across successful model requests."""
+        """Return complete Dify usage reported by the gateway across this run's requests.
+
+        Includes usage received before cancellation, failure, or early exit.
+        """
         return self._accumulated_usage
 
     @override
@@ -167,7 +170,10 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             yield response
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
-        """Add one completed Dify request to this run's usage total."""
+        """Add one request's gateway-reported complete Dify usage to this run's total.
+
+        Includes usage received before cancellation, failure, or early exit; missing usage is a no-op.
+        """
         if usage is None:
             return
         if self._accumulated_usage is None:
@@ -188,8 +194,9 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
         Close chunks here: ``StreamedResponse.close_stream()`` is a concurrent cancellation
         hook that may run during ``__anext__()``, when generator ``aclose()`` is unsafe.
-        Preserve primary failures, attaching secondary cleanup Exceptions with ``add_note``;
-        record usage only after the body and cleanup both succeed.
+        Preserve primary failures, attaching secondary cleanup Exceptions with ``add_note``.
+        Record gateway-reported complete Dify usage once before awaiting cleanup, retaining
+        usage received before cancellation, failure, or early exit even if cleanup fails or is cancelled.
         """
         prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
         chunks = self.dify_provider.client.iter_llm_result_chunks(
@@ -215,13 +222,13 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             primary_error = exc
             raise
         finally:
+            self._record_usage(response.dify_usage)
             try:
                 await chunks.aclose()
             except Exception as close_error:
                 if primary_error is None:
                     raise
                 primary_error.add_note(f"Closing the Dify LLM stream also failed: {close_error!r}")
-        self._record_usage(response.dify_usage)
 
 
 @dataclass
@@ -272,6 +279,7 @@ class DifyStreamedResponse(StreamedResponse):
             raise
 
     async def _iterate_gateway_events(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        """Retain delivered usage before mapping content; flush pending tag prefixes only at natural EOF."""
         chunk_sequence = 0
         async for chunk in self.chunks:
             self._observe_trace_usage(chunk)
@@ -932,7 +940,7 @@ class _EmbeddedThinkingParser:
 
     ``parse`` tracks open thinking blocks and buffers incomplete tag prefixes in
     ``_pending``. The owning response calls ``flush`` only after natural EOF to
-    emit unfinished prefixes in the active channel; early exits only close the stream.
+    emit unfinished prefixes in the active channel; early exits leave buffered prefixes unflushed.
     """
 
     _pending: str = ""
