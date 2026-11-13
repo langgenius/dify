@@ -118,6 +118,16 @@ def test_delete_archives_agent_and_removes_access_grants_before_cleanup(
     assert published.backing_agent_id == agent_id
 
 
+@dataclass
+class RecordedCall:
+    """Capture one task publication boundary without replacing it with a mock."""
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def __call__(self, **kwargs: object) -> None:
+        self.calls.append(kwargs)
+
+
 def test_delete_retires_resources_and_preserves_shared_tokens(harness: Harness, cleanup: RecordedCleanup) -> None:
     agent_id, app_id = harness.create_agent()
     shared_token_id = _create_access_token(harness, app_id)
@@ -266,8 +276,8 @@ def test_cleanup_publish_failure_keeps_durable_retry_after_delete(
         assert outbox.last_error_message is not None
         assert "broker unavailable" in outbox.last_error_message
 
-    publish_cleanup = Mock()
-    collect_resources = Mock()
+    publish_cleanup = RecordedCall()
+    collect_resources = RecordedCall()
     monkeypatch.setattr("services.app_service.remove_app_and_related_data_task.delay", publish_cleanup)
     monkeypatch.setattr("services.app_service.enqueue_agent_resource_collection", collect_resources)
     from datetime import timedelta
@@ -280,14 +290,16 @@ def test_cleanup_publish_failure_keeps_durable_retry_after_delete(
         assert outbox is not None
         assert outbox.status == AppDeletionOutboxStatus.SUCCEEDED
         assert outbox.attempt_count == 2
-    publish_cleanup.assert_called_once_with(tenant_id=harness.tenant_id, app_id=app_id)
-    collect_resources.assert_called_once_with(
-        tenant_id=harness.tenant_id,
-        workspace_ids=[],
-        binding_ids=[],
-        home_snapshot_ids=[],
-        purge_agent_ids=[agent_id],
-    )
+    assert publish_cleanup.calls == [{"tenant_id": harness.tenant_id, "app_id": app_id}]
+    assert collect_resources.calls == [
+        {
+            "tenant_id": harness.tenant_id,
+            "workspace_ids": [],
+            "binding_ids": [],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": [agent_id],
+        }
+    ]
 
 
 def test_regular_app_delete_records_outbox_before_committing(harness: Harness, monkeypatch: pytest.MonkeyPatch) -> None:
