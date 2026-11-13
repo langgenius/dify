@@ -1,5 +1,5 @@
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -118,6 +118,25 @@ describe('Logs', () => {
     await user.click(await screen.findByRole('button', { name: 'Go to page 2' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
+  })
+
+  it('should go back to the first page when the page size changes', async () => {
+    const user = userEvent.setup()
+    mockSearchParams = new URLSearchParams('page=3')
+    getChatConversations.mockResolvedValue({
+      total: APP_PAGE_LIMIT * 3,
+      data: [],
+      page: 3,
+      limit: APP_PAGE_LIMIT,
+      has_more: false,
+    })
+
+    render(<Logs appDetail={createAppDetailFixture({ id: 'app-4', mode: 'chat' })} />)
+
+    const pageSize = await screen.findByRole('radiogroup', { name: /pagination\.perPage/ })
+    await user.click(within(pageSize).getByRole('radio', { name: '50' }))
+
+    expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs', { scroll: false })
   })
 
   it('should query the last 30 days when a Sandbox user selects the longest period', async () => {

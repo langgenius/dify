@@ -329,6 +329,50 @@ describe('Logs Container', () => {
       await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
       await waitFor(() => expect(getMockCallParams()?.params?.page).toBe(2))
     })
+
+    it('should go back to the first page when a filter changes', async () => {
+      const user = userEvent.setup()
+      const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
+        createMockWorkflowLog({ id: `log-${i}` }),
+      )
+      mockedUseWorkflowLogs.mockResolvedValue(createMockLogsResponse(logs, APP_PAGE_LIMIT + 10))
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await screen.findByRole('table')
+      await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+      await waitFor(() => expect(getMockCallParams()?.params?.page).toBe(2))
+
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.failed'))
+
+      await waitFor(() =>
+        expect(getMockCallParams()?.params).toMatchObject({ status: 'failed', page: 1 }),
+      )
+    })
+
+    it('should go back to the first page when the page size changes', async () => {
+      const user = userEvent.setup()
+      const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
+        createMockWorkflowLog({ id: `log-${i}` }),
+      )
+      mockedUseWorkflowLogs.mockResolvedValue(createMockLogsResponse(logs, APP_PAGE_LIMIT + 10))
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await screen.findByRole('table')
+      await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+      await waitFor(() => expect(getMockCallParams()?.params?.page).toBe(2))
+
+      await user.click(
+        within(screen.getByRole('radiogroup', { name: 'common.pagination.perPage' })).getByRole(
+          'radio',
+          { name: '50' },
+        ),
+      )
+
+      await waitFor(() => expect(getMockCallParams()?.params).toMatchObject({ limit: 50, page: 1 }))
+    })
   })
 
   describe('List Rendering', () => {
