@@ -1,6 +1,7 @@
 import json
 import logging
 import threading
+from collections.abc import Sequence
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -58,12 +59,15 @@ class TestRagPipelineTaskProxyCases:
         dispatch_mock.assert_called_once()
 
     @staticmethod
-    def test_concurrent_tenant_dispatches_only_start_one_task(mocker: MockerFixture) -> None:
+    def test_concurrent_tenant_dispatches_only_start_one_task() -> None:
         """Concurrent first submissions must not both bypass the tenant queue."""
         barrier = threading.Barrier(2)
 
-        class InterleavingQueue:
-            def try_set_task_waiting_time(self):
+        class InterleavingQueue(TenantIsolatedTaskQueue):
+            def __init__(self) -> None:
+                super().__init__("tenant-1", "pipeline")
+
+            def try_set_task_waiting_time(self) -> bool:
                 barrier.wait(timeout=5)
                 with lock:
                     nonlocal claimed
@@ -72,22 +76,30 @@ class TestRagPipelineTaskProxyCases:
                     claimed = True
                     return True
 
-            def set_task_waiting_time(self):
+            def set_task_waiting_time(self, ttl: int = 3600) -> None:
                 return None
 
-            def push_tasks(self, tasks):
+            def push_tasks(self, tasks: Sequence[object]) -> None:
                 queued.extend(tasks)
+
+        class RecordingTask:
+            def __init__(self) -> None:
+                self.calls: list[dict[str, str]] = []
+
+            def delay(self, **kwargs: str) -> None:
+                self.calls.append(kwargs)
 
         queued = []
         claimed = False
         lock = threading.Lock()
         queue = InterleavingQueue()
-        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue", return_value=queue)
         proxies = [
-            RagPipelineTaskProxy("tenant-1", "user-1", [Mock()]),
-            RagPipelineTaskProxy("tenant-1", "user-2", [Mock()]),
+            RagPipelineTaskProxy("tenant-1", "user-1", []),
+            RagPipelineTaskProxy("tenant-1", "user-2", []),
         ]
-        dispatches = [Mock(), Mock()]
+        for proxy in proxies:
+            proxy._tenant_isolated_task_queue = queue
+        dispatches = [RecordingTask(), RecordingTask()]
 
         threads = [
             threading.Thread(target=proxy._send_to_tenant_queue, args=(f"file-{i}", dispatches[i]))
@@ -99,7 +111,7 @@ class TestRagPipelineTaskProxyCases:
             thread.join(timeout=5)
 
         assert not any(thread.is_alive() for thread in threads)
-        assert sum(dispatch.delay.call_count for dispatch in dispatches) == 1
+        assert sum(len(dispatch.calls) for dispatch in dispatches) == 1
         assert len(queued) == 1
 
     # --- _dispatch ---
