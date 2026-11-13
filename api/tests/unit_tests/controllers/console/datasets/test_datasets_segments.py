@@ -1,7 +1,9 @@
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
+from typing import Never
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -23,7 +25,12 @@ from controllers.console.datasets.datasets_segments import (
     DatasetDocumentSegmentUpdateApi,
     SegmentCreatePayload,
     SegmentUpdatePayload,
+    _raise_child_chunk_create_error,
+    _raise_child_chunk_delete_error,
+    _raise_child_chunk_write_error,
+    _raise_segment_embedding_error,
     _raise_segment_error,
+    _raise_segment_status_error,
 )
 from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError
 from machinery.context import RequestContext
@@ -278,7 +285,11 @@ def test_batch_import_status_preserves_missing_job_contract(app: Flask) -> None:
     method = unwrap(DatasetDocumentSegmentBatchImportStatusApi.get)
 
     segments.get_batch_import_status.side_effect = SegmentBatchImportNotFoundError("The job does not exist.")
-    with app.test_request_context("/"), _patch_services(segments), pytest.raises(ValueError):
+    with (
+        app.test_request_context("/"),
+        _patch_services(segments),
+        pytest.raises(ValueError, match="The job does not exist\\."),
+    ):
         method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "job-1")
 
     segments.get_batch_import_status.side_effect = None
@@ -355,23 +366,37 @@ def test_child_chunk_mutations_delegate(app: Flask) -> None:
 
 
 @pytest.mark.parametrize(
-    ("error", "expected"),
+    ("translate", "error", "expected"),
     [
-        (SegmentDatasetNotFoundError(), NotFound),
-        (SegmentDocumentNotFoundError(), NotFound),
-        (SegmentNotFoundError(), NotFound),
-        (ChildChunkNotFoundError(), NotFound),
-        (SegmentUploadFileNotFoundError(), NotFound),
-        (SegmentPermissionDeniedError(), Forbidden),
-        (SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
-        (SegmentDatasetModelUnavailableError(), ValueError),
-        (SegmentDocumentIndexingError(), InvalidActionError),
-        (SegmentStatusUpdateError(), InvalidActionError),
-        (SegmentInvalidFileTypeError(), ValueError),
-        (ChildChunkIndexingApplicationError(), ChildChunkIndexingError),
-        (ChildChunkDeleteIndexApplicationError(), ChildChunkDeleteIndexError),
+        (_raise_segment_error, SegmentDatasetNotFoundError(), NotFound),
+        (_raise_segment_error, SegmentDocumentNotFoundError(), NotFound),
+        (_raise_segment_error, SegmentNotFoundError(), NotFound),
+        (_raise_segment_error, ChildChunkNotFoundError(), NotFound),
+        (_raise_segment_error, SegmentUploadFileNotFoundError(), NotFound),
+        (_raise_segment_error, SegmentPermissionDeniedError(), Forbidden),
+        (_raise_segment_error, SegmentDatasetModelUnavailableError(), ValueError),
+        (_raise_segment_error, SegmentInvalidFileTypeError(), ValueError),
+        (_raise_segment_embedding_error, SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
+        (_raise_segment_status_error, SegmentDocumentIndexingError(), InvalidActionError),
+        (_raise_segment_status_error, SegmentStatusUpdateError(), InvalidActionError),
+        (_raise_segment_status_error, SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
+        (_raise_child_chunk_write_error, ChildChunkIndexingApplicationError(), ChildChunkIndexingError),
+        (_raise_child_chunk_create_error, ChildChunkIndexingApplicationError(), ChildChunkIndexingError),
+        (_raise_child_chunk_create_error, SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
+        (_raise_child_chunk_delete_error, ChildChunkDeleteIndexApplicationError(), ChildChunkDeleteIndexError),
+        # Every narrow translator falls back to the shared scope mapping.
+        (_raise_child_chunk_delete_error, SegmentNotFoundError(), NotFound),
     ],
 )
-def test_segment_application_errors_map_to_existing_http_contract(error: Exception, expected: type[Exception]) -> None:
+def test_segment_application_errors_map_to_existing_http_contract(
+    translate: Callable[[Exception], Never], error: Exception, expected: type[Exception]
+) -> None:
     with pytest.raises(expected):
+        translate(error)
+
+
+def test_scope_translator_does_not_map_other_operations_errors() -> None:
+    error = ChildChunkIndexingApplicationError()
+    with pytest.raises(ChildChunkIndexingApplicationError) as raised:
         _raise_segment_error(error)
+    assert raised.value is error

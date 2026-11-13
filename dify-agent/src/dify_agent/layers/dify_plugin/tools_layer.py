@@ -110,6 +110,8 @@ class _DifyPluginToolFileClient:
             "user_from": execution_context.user_from,
             "invoke_from": execution_context.invoke_from,
             "file": dict(file_mapping),
+            # The plugin daemon fetches this URL inside the deployment network, so ask for the internal base URL.
+            "for_external": False,
         }
         try:
             response = await self.http_client.post(
@@ -168,7 +170,7 @@ class Toolset(FunctionToolset[Deps]):
             services = ctx.deps.services
             if services.dify_api_http_client.is_closed:
                 raise RuntimeError("Plugin tools require an open shared Dify API HTTP client.")
-            tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
+            tool_clients: dict[tuple[str, str | None], DifyPluginDaemonToolClient] = {}
             file_context = _PluginToolFileContext(
                 file_client=_DifyPluginToolFileClient(
                     base_url=services.inner_api_url,
@@ -182,15 +184,17 @@ class Toolset(FunctionToolset[Deps]):
                 shell=config.shell,
             )
             for tool_config in config.tools:
-                client = tool_clients.get(tool_config.plugin_id)
+                plugin_identity = (tool_config.plugin_id, tool_config.plugin_unique_identifier)
+                client = tool_clients.get(plugin_identity)
                 if client is None:
                     client = ExecutionContextCapability.create_tool_client(
                         ctx.deps,
                         config.execution_context,
                         plugin_id=tool_config.plugin_id,
+                        plugin_unique_identifier=tool_config.plugin_unique_identifier,
                         http_client=services.plugin_daemon_http_client,
                     )
-                    tool_clients[tool_config.plugin_id] = client
+                    tool_clients[plugin_identity] = client
                 effective_parameters = [parameter.model_copy(deep=True) for parameter in tool_config.parameters]
                 _validate_required_hidden_parameters(tool_config, effective_parameters)
                 self.add_tool(
@@ -596,6 +600,14 @@ def _tool_error_text(*, tool_name: str, error: DifyPluginToolClientError) -> str
     return f"tool invoke error: {error}"
 
 
+def _normalized_json_part(text: str) -> str:
+    """Render one part as canonical JSON so formatting differences do not hide duplicates."""
+    try:
+        return json.dumps(json.loads(text), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    except (ValueError, RecursionError):
+        return text
+
+
 def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeMessage]) -> str:
     """Convert daemon stream messages into the plain-text tool observation.
 
@@ -636,8 +648,8 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
             parts.append(str(response.message))
 
     if json_parts:
-        existing_parts = set(parts)
-        parts.extend(part for part in json_parts if part not in existing_parts)
+        existing_parts = {_normalized_json_part(part) for part in parts}
+        parts.extend(part for part in json_parts if _normalized_json_part(part) not in existing_parts)
     return "".join(parts)
 
 

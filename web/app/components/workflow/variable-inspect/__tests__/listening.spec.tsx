@@ -1,4 +1,7 @@
-import { fireEvent, screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
 import { createTriggerNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -14,16 +17,18 @@ vi.mock('../../hooks/use-tool-icon', () => ({
   useGetToolIcon: () => () => 'tool-icon',
 }))
 
-describe('variable inspect listening', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+function ListeningPanel(props: ComponentProps<typeof Listening>) {
+  const nodes = useNodes()
+  return nodes.length ? <Listening {...props} /> : null
+}
 
-  it('renders the listening message and forwards the stop action', () => {
+describe('variable inspect listening', () => {
+  it('copies the listening trigger debug URL and lets the user stop listening', async () => {
+    const user = userEvent.setup()
     const onStop = vi.fn()
 
     renderWorkflowFlowComponent(
-      <Listening onStop={onStop} message="Waiting for webhook payload" />,
+      <ListeningPanel onStop={onStop} message="Waiting for webhook payload" />,
       {
         nodes: [
           createTriggerNode(BlockEnum.TriggerWebhook, {
@@ -44,9 +49,16 @@ describe('variable inspect listening', () => {
       },
     )
 
-    expect(screen.getByText('Waiting for webhook payload')).toBeInTheDocument()
+    expect(await screen.findByText('Waiting for webhook payload')).toBeInTheDocument()
 
-    fireEvent.click(
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowIntegrations.nodes.triggerWebhook.debugUrlCopy',
+      }),
+    )
+    expect(mockCopy).toHaveBeenCalledWith('https://example.com/debug')
+
+    await user.click(
       screen.getByRole('button', {
         name: 'workflowDebug.debug.variableInspect.listening.stopButton',
       }),

@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -19,7 +20,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
+import TextGenerationMenu from '@/app/components/share/text-generation/text-generation-menu'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
@@ -46,7 +47,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     handleDeleteConversation,
     sidebarCollapseState,
     handleSidebarCollapse,
-    isMobile,
+    isBelowSm,
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
@@ -82,9 +83,8 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     },
     [showRename, handleRenameConversation, handleCancelRename],
   )
-  const pinnedTitle = t(($) => $['chat.pinnedTitle'], { ns: 'share' }) || ''
-  const deleteConversationContent =
-    t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''
+  const pinnedTitle = t(($) => $['chat.pinnedTitle'], { ns: 'share' })
+  const deleteConversationContent = t(($) => $['chat.deleteConversation.content'], { ns: 'share' })
 
   return (
     <div
@@ -94,20 +94,14 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           'rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg shadow-lg',
       )}
     >
-      <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
+      <div className={cn('flex shrink-0 items-center gap-3 p-3 pe-2')}>
         <div className="shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appData?.site.icon_type}
-            icon={appData?.site.icon}
-            background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
-          />
+          <AppIcon size="large" icon={appData?.site} />
         </div>
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}
         </div>
-        {!isMobile && isSidebarCollapsed && (
+        {!isBelowSm && isSidebarCollapsed && (
           <IconButton
             aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
             size="lg"
@@ -116,7 +110,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
             <span aria-hidden className="i-ri-expand-right-line h-4.5 w-4.5" />
           </IconButton>
         )}
-        {!isMobile && !isSidebarCollapsed && (
+        {!isBelowSm && !isSidebarCollapsed && (
           <IconButton
             ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
@@ -167,7 +161,12 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between p-3">
-        <MenuDropdown hideLogout={isInstalledApp} placement="top-start" data={appData?.site} />
+        <TextGenerationMenu
+          hideLogout={isInstalledApp}
+          side="top"
+          align="start"
+          data={appData?.site}
+        />
         {/* powered by */}
         <div className="shrink-0">
           {!appData?.custom_config?.remove_webapp_brand && (
@@ -195,14 +194,12 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         </div>
         <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {deleteConversationContent}
-              </AlertDialogDescription>
-            </div>
+              <AlertDialogDescription>{deleteConversationContent}</AlertDialogDescription>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

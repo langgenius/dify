@@ -1,11 +1,11 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
-const JSON_SCHEMA_CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const JSON_SCHEMA_CONFIRM_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 type AdvancedActionsProps = {
   target: RefObject<HTMLDivElement | null>

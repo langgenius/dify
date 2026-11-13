@@ -1,6 +1,6 @@
 import type { ISavedItemsProps } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SavedItems from '../index'
 
@@ -25,32 +25,35 @@ const baseProps: ISavedItemsProps = {
 }
 
 describe('SavedItems', () => {
+  it('starts creating content from an empty saved list', async () => {
+    const user = userEvent.setup()
+    const onStartCreateContent = vi.fn()
+    render(<SavedItems {...baseProps} list={[]} onStartCreateContent={onStartCreateContent} />)
+    await user.click(
+      screen.getByRole('button', { name: 'share.generation.savedNoData.startCreateContent' }),
+    )
+    expect(onStartCreateContent).toHaveBeenCalledOnce()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.delete' }),
+    ).not.toBeInTheDocument()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('renders saved answers with metadata and controls', () => {
-    const { container } = render(<SavedItems {...baseProps} />)
-
-    const markdownElement = container.querySelector('.markdown-body')
-    expect(markdownElement)!.toBeInTheDocument()
-    expect(screen.getByText('11 common.unit.char'))!.toBeInTheDocument()
-
-    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
-  })
-
-  it('copies content and triggers remove callback', () => {
+  it('copies content and triggers remove callback', async () => {
+    const user = userEvent.setup()
     const handleRemove = vi.fn()
     render(<SavedItems {...baseProps} onRemove={handleRemove} />)
 
     const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
     const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
-    fireEvent.click(copyButton)
+    await user.click(copyButton)
     expect(mockCopy).toHaveBeenCalledWith('hello world')
 
-    fireEvent.click(deleteButton)
+    await user.click(deleteButton)
     expect(handleRemove).toHaveBeenCalledWith('1')
   })
 })

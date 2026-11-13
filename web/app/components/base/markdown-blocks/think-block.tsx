@@ -3,45 +3,44 @@ import { useChatContext } from '../chat/chat/context'
 import ThinkingDetails from './thinking-details'
 import { useElapsedTimer } from './use-elapsed-timer'
 
-const hasEndThink = (children: any): boolean => {
+const hasEndThink = (children: React.ReactNode): boolean => {
   if (typeof children === 'string') return children.includes('[ENDTHINKFLAG]')
 
   if (Array.isArray(children)) return children.some((child) => hasEndThink(child))
 
-  if (children?.props?.children) return hasEndThink(children.props.children)
+  if (React.isValidElement<{ children?: React.ReactNode }>(children))
+    return hasEndThink(children.props.children)
 
   return false
 }
 
-const removeEndThink = (children: any): any => {
+const removeEndThink = (children: React.ReactNode): React.ReactNode => {
   if (typeof children === 'string') return children.replace('[ENDTHINKFLAG]', '')
 
   if (Array.isArray(children)) return children.map((child) => removeEndThink(child))
 
-  if (children?.props?.children) {
-    return React.cloneElement(children, {
-      ...children.props,
-      children: removeEndThink(children.props.children),
-    })
-  }
+  if (React.isValidElement<{ children?: React.ReactNode }>(children))
+    return React.cloneElement(children, undefined, removeEndThink(children.props.children))
 
   return children
 }
 
-const useThinkTimer = (children: any) => {
+const useThinkTimer = (children: React.ReactNode, responseState?: 'active' | 'complete') => {
   const { isResponding } = useChatContext()
   const endThinkDetected = hasEndThink(children)
+  const responseActive = responseState ? responseState === 'active' : isResponding === true
   // Stop when the marker arrives (normal completion) or the response is no longer
   // active (false = user stopped, undefined = historical conversation).
-  return useElapsedTimer(endThinkDetected || !isResponding)
+  return useElapsedTimer(endThinkDetected || !responseActive)
 }
 
 type ThinkBlockProps = React.ComponentProps<'details'> & {
   'data-think'?: boolean
+  responseState?: 'active' | 'complete'
 }
 
-const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
-  const { elapsedTime, isComplete } = useThinkTimer(children)
+const ThinkBlock = ({ children, responseState, ...props }: ThinkBlockProps) => {
+  const { elapsedTime, hasStarted, isComplete } = useThinkTimer(children, responseState)
   const displayContent = removeEndThink(children)
   const { 'data-think': isThink = false, className, open, ...rest } = props
 
@@ -54,7 +53,7 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
       className={className}
       open={open}
       isComplete={isComplete}
-      elapsedTime={elapsedTime}
+      elapsedTime={hasStarted ? elapsedTime : undefined}
     >
       {displayContent}
     </ThinkingDetails>

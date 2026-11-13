@@ -1,4 +1,4 @@
-import { KnowledgeSpaceShell } from '@/features/new-rag/knowledge-space-shell'
+import { KnowledgeSpaceShell } from '@/features/new-rag/space/shell'
 
 export default async function Layout({
   children,

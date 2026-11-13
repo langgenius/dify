@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import {
   createSkillDetail,
   getLiveMarkdownEditor,
@@ -21,7 +22,7 @@ describe('SkillDetailPage autosave', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -42,7 +43,7 @@ describe('SkillDetailPage autosave', () => {
     const { unmount } = renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -74,7 +75,7 @@ describe('SkillDetailPage autosave', () => {
       ],
     })
 
-    const conflict = {
+    const conflict = createHttpError(new Response(null, { status: 409 }), {
       code: 'skill_conflict',
       details: {
         current_file_hash: 'hash-2',
@@ -82,12 +83,12 @@ describe('SkillDetailPage autosave', () => {
         current_file_content: latestDetail.files?.[0]?.content ?? '',
         expected_updated_at: 1784638487,
       },
-    }
+    })
     mocks.saveDraftFileMutationFn.mockRejectedValueOnce(conflict)
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -148,14 +149,16 @@ describe('SkillDetailPage autosave', () => {
         },
       ],
     })
-    mocks.saveDraftFileMutationFn.mockRejectedValueOnce({
-      code: 'skill_conflict',
-      details: {
-        current_file_content: latestDetail.files?.[0]?.content ?? '',
-        current_updated_at: latestDetail.updated_at,
-        expected_updated_at: 1784638487,
-      },
-    })
+    mocks.saveDraftFileMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'skill_conflict',
+        details: {
+          current_file_content: latestDetail.files?.[0]?.content ?? '',
+          current_updated_at: latestDetail.updated_at,
+          expected_updated_at: 1784638487,
+        },
+      }),
+    )
     renderSkillDetailPage()
 
     const livePreview = await screen.findByRole('textbox', {
@@ -184,26 +187,28 @@ describe('SkillDetailPage autosave', () => {
   it('uses conflict details from response errors without retrying autosave', async () => {
     const user = userEvent.setup()
     mocks.saveDraftFileMutationFn.mockRejectedValueOnce(
-      new Response(
-        JSON.stringify({
-          code: 'skill_conflict',
-          message: 'skill has been modified by another user',
-          details: {
-            current_file_hash: 'hash-2',
-            current_updated_at: 1784638499,
-            expected_updated_at: 1784638487,
+      await httpErrorFromResponse(
+        new Response(
+          JSON.stringify({
+            code: 'skill_conflict',
+            message: 'skill has been modified by another user',
+            details: {
+              current_file_hash: 'hash-2',
+              current_updated_at: 1784638499,
+              expected_updated_at: 1784638487,
+            },
+          }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
           },
-        }),
-        {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        },
+        ),
       ),
     )
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -227,23 +232,18 @@ describe('SkillDetailPage autosave', () => {
 
   it('shows a save failure when conflict recovery cannot determine the latest timestamp', async () => {
     const user = userEvent.setup()
-    const conflict = new Error('skill has been modified by another user') as Error & {
-      code: string
-      details: {
-        current_file_hash: string
-      }
-    }
-    conflict.code = 'skill_conflict'
-    conflict.details = {
-      current_file_hash: 'hash-2',
-    }
+    const conflict = createHttpError(new Response(null, { status: 409 }), {
+      code: 'skill_conflict',
+      message: 'skill has been modified by another user',
+      details: { current_file_hash: 'hash-2' },
+    })
     mocks.saveDraftFileMutationFn.mockRejectedValueOnce(conflict)
     mocks.skillDetailGetFn.mockRejectedValueOnce(new Error('refresh failed'))
 
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -264,7 +264,7 @@ describe('SkillDetailPage autosave', () => {
 
     renderSkillDetailPage()
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )

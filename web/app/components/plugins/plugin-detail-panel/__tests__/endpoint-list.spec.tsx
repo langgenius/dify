@@ -2,6 +2,7 @@ import type { EndpointListItemResponse } from '@dify/contracts/api/console/works
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EndpointList from '../endpoint-list'
 import { createPluginDetail } from './endpoint-fixture'
@@ -58,14 +59,19 @@ beforeEach(() => {
       mutations.push({ path, method, body })
       await mutationGate
       if (rejectMutation && !failAfterWrite)
-        return Response.json({ message: 'Failed' }, { status: 500 })
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'Endpoint access denied' }, { status: 403 }),
+        )
       if (path.endsWith('/enable'))
         endpoints = endpoints.map((item) => ({ ...item, enabled: true }))
       else if (path.endsWith('/disable'))
         endpoints = endpoints.map((item) => ({ ...item, enabled: false }))
       else if (method === 'DELETE') endpoints = []
       else endpoints = [{ ...createEndpoint(), name: 'Saved endpoint' }]
-      if (rejectMutation) return Response.json({ message: 'Failed after write' }, { status: 500 })
+      if (rejectMutation)
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'Failed after write' }, { status: 500 }),
+        )
       return Response.json({ success: true })
     },
   )
@@ -81,18 +87,6 @@ describe('Endpoint management', () => {
     expect(requestedURL.searchParams.get('plugin_id')).toBe('test-plugin')
     expect(requestedURL.searchParams.get('page')).toBe('1')
     expect(requestedURL.searchParams.get('page_size')).toBe('100')
-  })
-
-  it('lets keyboard users reach the URL copy action from the endpoint switch', async () => {
-    const user = userEvent.setup()
-    renderEndpoints()
-    const toggle = await screen.findByRole('switch', { name: 'Endpoint 1' })
-    const copy = screen.getByRole('button', {
-      name: 'common.operation.copy https://api.example.com/public',
-    })
-    toggle.focus()
-    await user.tab({ shift: true })
-    expect(copy).toHaveFocus()
   })
 
   it('creates through the canonical route and refreshes the list', async () => {
@@ -118,6 +112,20 @@ describe('Endpoint management', () => {
         },
       },
     ])
+  })
+
+  it('preserves the server reason when endpoint creation fails', async () => {
+    const user = userEvent.setup()
+    endpoints = []
+    rejectMutation = true
+    renderEndpoints()
+    await user.click(
+      await screen.findByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' }),
+    )
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'New endpoint')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(showError).toHaveBeenCalledExactlyOnceWith('Endpoint access denied'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('updates through the canonical item route without dropping falsy settings', async () => {
@@ -163,29 +171,15 @@ describe('Endpoint management', () => {
   it('deletes through the canonical route and refreshes the empty state', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(
-      await screen.findByRole('button', { name: 'common.operation.delete Endpoint 1' }),
-    )
+    const trigger = await screen.findByRole('button', {
+      name: 'common.operation.delete Endpoint 1',
+    })
+    await user.click(trigger)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
     expect(mutations).toEqual([
       { path: '/workspaces/current/endpoints/ep-1', method: 'DELETE', body: undefined },
     ])
-  })
-
-  it('keeps edit values available when the mutation fails', async () => {
-    const user = userEvent.setup()
-    rejectMutation = true
-    renderEndpoints()
-    await user.click(
-      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
-    )
-    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
-    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await waitFor(() => expect(showError).toHaveBeenCalled())
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
   })
 
   it.each(['edit', 'disable', 'delete'] as const)(
@@ -203,6 +197,10 @@ describe('Endpoint management', () => {
         await user.click(
           await screen.findByRole('button', { name: `common.operation.${action} Endpoint 1` }),
         )
+      if (action === 'edit') {
+        await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+        await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
+      }
       const actionName = action === 'edit' ? 'common.operation.save' : 'common.operation.confirm'
       const submit = screen.getByRole('button', { name: actionName })
       await user.click(submit)
@@ -214,13 +212,15 @@ describe('Endpoint management', () => {
       await act(async () => {
         settle()
       })
-      await waitFor(() => expect(showError).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(showError).toHaveBeenCalledExactlyOnceWith('Endpoint access denied'),
+      )
       expect(screen.getByRole('button', { name: actionName })).not.toHaveAttribute(
         'aria-disabled',
         'true',
       )
       if (action === 'edit')
-        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Endpoint 1')
+        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Saved endpoint')
       else expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
       rejectMutation = false

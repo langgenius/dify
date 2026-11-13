@@ -3,10 +3,9 @@ import type {
   AccessPolicyResourceType,
   AccessPolicyWithBindings,
   GetAppAccessPolicyByAppIdResponse,
-  GetAppUserAccessSettingsResponse,
   GetDatasetAccessPolicyByDatasetIdResponse,
-  GetDatasetUserAccessSettingsResponse,
   ResourceUserAccessSetting,
+  ResourceUserAccessSettingsResponse,
   Role,
 } from '@/models/access-control'
 
@@ -142,7 +141,7 @@ const normalizeResourceUserAccessSetting = (
 const normalizeResourceUserAccessPolicies = (
   response: GeneratedResourceUserAccessPoliciesResponse,
   fallbackResourceType: AccessPolicyResourceType,
-): GetAppUserAccessSettingsResponse | GetDatasetUserAccessSettingsResponse => ({
+): ResourceUserAccessSettingsResponse | ResourceUserAccessSettingsResponse => ({
   data: (response.data ?? []).map((setting) =>
     normalizeResourceUserAccessSetting(setting, fallbackResourceType),
   ),
@@ -174,12 +173,12 @@ export const normalizeDatasetAccessMatrix = (
 
 export const normalizeAppUserAccessPolicies = (
   response: GeneratedResourceUserAccessPoliciesResponse,
-): GetAppUserAccessSettingsResponse => {
+): ResourceUserAccessSettingsResponse => {
   return normalizeResourceUserAccessPolicies(response, 'app')
 }
 
 export const normalizeDatasetUserAccessPolicies = (
   response: GeneratedResourceUserAccessPoliciesResponse,
-): GetDatasetUserAccessSettingsResponse => {
+): ResourceUserAccessSettingsResponse => {
   return normalizeResourceUserAccessPolicies(response, 'dataset')
 }

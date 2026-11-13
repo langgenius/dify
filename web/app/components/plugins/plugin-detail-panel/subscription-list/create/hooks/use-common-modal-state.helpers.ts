@@ -46,7 +46,7 @@ type BuildPayloadParams = {
   manualPropertiesFormValues?: FormValuesResult
 }
 
-export const DEFAULT_FORM_VALUES: FormValuesResult = { values: {}, isCheckValidated: false }
+const DEFAULT_FORM_VALUES: FormValuesResult = { values: {}, isCheckValidated: false }
 
 export const getFormValues = (formRef: React.RefObject<FormRefObject | null>) => {
   return formRef.current?.getFormValues({}) || DEFAULT_FORM_VALUES

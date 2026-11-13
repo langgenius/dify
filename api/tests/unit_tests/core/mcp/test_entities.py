@@ -1,5 +1,6 @@
 """Unit tests for MCP entities module."""
 
+from dataclasses import dataclass
 from queue import Queue
 
 from core.mcp.entities import (
@@ -131,9 +132,9 @@ class TestRequestContext:
         assert isinstance(context_dict.lifespan_context, dict)
 
         # Create context with custom object lifespan context
+        @dataclass(eq=False, repr=False)
         class CustomLifespan:
-            def __init__(self, data: str) -> None:
-                self.data = data
+            data: str
 
         custom_lifespan = CustomLifespan("test-data")
         context_custom = RequestContext[_ClientSideSession, CustomLifespan](

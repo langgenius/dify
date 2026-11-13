@@ -15,6 +15,7 @@ describe('/create slash command', () => {
         'create-workflow',
         'create-chatflow',
       ])
+      expect(results[0]!.data.args).toEqual({ mode: 'advanced-chat', auto: true, instruction: '' })
     })
 
     it('should filter by query and attach the right command payload', async () => {
@@ -24,23 +25,9 @@ describe('/create slash command', () => {
       expect(results[0]!.data.args).toEqual({ mode: 'advanced-chat', auto: false, instruction: '' })
     })
 
-    it('should flag the auto option so the planner picks the app type', async () => {
-      const results = await createCommand.search('', context)
-      expect(results[0]!.id).toBe('create-auto')
-      expect(results[0]!.data.args).toEqual({ mode: 'advanced-chat', auto: true, instruction: '' })
-    })
-
     it('should return an empty list when a single-token query matches nothing', async () => {
       const results = await createCommand.search('zzz', context)
       expect(results).toEqual([])
-    })
-
-    it('should source titles and descriptions from i18n keys', async () => {
-      const results = await createCommand.search('', context)
-      expect(results[1]!.title).toBe('gotoAnything.actions.createWorkflow')
-      expect(results[1]!.description).toBe('gotoAnything.actions.createWorkflowDesc')
-      expect(results[2]!.title).toBe('gotoAnything.actions.createChatflow')
-      expect(results[2]!.description).toBe('gotoAnything.actions.createChatflowDesc')
     })
 
     it('should filter by the localised label, not just the id', async () => {
@@ -57,6 +44,12 @@ describe('/create slash command', () => {
         instruction: 'summarize a URL',
       })
       expect(results[0]!.description).toBe('summarize a URL')
+      await createCommand.execute(results[0]!.data.args!, context)
+      expect(context.openGenerator).toHaveBeenCalledWith({
+        mode: 'workflow',
+        autoMode: false,
+        initialInstruction: 'summarize a URL',
+      })
     })
 
     it('should keep all options with the full text when no leading mode word', async () => {
@@ -67,7 +60,7 @@ describe('/create slash command', () => {
         'create-chatflow',
       ])
       results.forEach((r) => {
-        expect((r.data.args as { instruction: string }).instruction).toBe('summarize a URL')
+        expect(r.data.args).toMatchObject({ instruction: 'summarize a URL' })
       })
     })
   })
@@ -80,16 +73,6 @@ describe('/create slash command', () => {
         mode: 'workflow',
         autoMode: false,
         initialInstruction: '',
-      })
-    })
-
-    it('should thread the captured instruction through to the generator', async () => {
-      await createCommand.execute({ mode: 'workflow', instruction: 'summarize a URL' }, context)
-
-      expect(context.openGenerator).toHaveBeenCalledWith({
-        mode: 'workflow',
-        autoMode: false,
-        initialInstruction: 'summarize a URL',
       })
     })
 

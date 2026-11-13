@@ -1,0 +1,17 @@
+# Defaults for db_mysql. Copy this file to db-mysql.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+# For bundled MySQL, set DB_TYPE=mysql, DB_HOST=db_mysql, DB_PORT=3306 and DB_USERNAME=root
+# in docker/.env, and replace postgresql with mysql in COMPOSE_PROFILES.
+
+MYSQL_INNODB_LOG_FILE_SIZE=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
+MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+MYSQL_MAX_CONNECTIONS=${MYSQL_MAX_CONNECTIONS:-1000}
+MYSQL_INNODB_BUFFER_POOL_SIZE=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+# Set MYSQL_HOST_VOLUME in docker/.env; Compose needs it before loading service files.
+DB_DATABASE=${DB_DATABASE:-dify}
+DB_PASSWORD=${DB_PASSWORD:-difyai123456}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+MYSQL_DATABASE=${DB_DATABASE:-dify}
+MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-difyai123456}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "gaps": [],
+  "internalKfsOperationExclusions": [
+    {
+      "kfsOperationId": "activateDifyWorkspaceIntegration",
+      "reasonCode": "INTERNAL_CONTROL_PLANE_ONLY",
+      "reason": "Workspace activation is an internal cutover control-plane operation and is never exposed as a product operation."
+    },
+    {
+      "kfsOperationId": "freezeDifyWorkspaceIntegration",
+      "reasonCode": "INTERNAL_CONTROL_PLANE_ONLY",
+      "reason": "Workspace maintenance freeze is an internal cutover control-plane operation and is never exposed as a product operation."
+    }
+  ]
+}

@@ -66,7 +66,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
 
   return (
     <>
-      {elements.reference && (
+      {linkAnchorElement && elements.reference && (
         <FloatingPortal root={containerElement}>
           <div
             {...getFloatingProps()}
@@ -94,7 +94,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                       if (url) handleSaveLink(url)
                     }
                   }}
-                  placeholder={t(($) => $['nodes.note.editor.enterUrl'], { ns: 'workflow' }) || ''}
+                  placeholder={t(($) => $['nodes.note.editor.enterUrl'], { ns: 'workflow' })}
                   autoFocus
                 />
                 <Button

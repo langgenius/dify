@@ -18,14 +18,8 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -34,10 +28,10 @@ import {
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
+import { useMarketplace } from '@/features/marketplace/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { getMarketplaceUrl } from '@/utils/var'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../step-by-step-tour/target-registry'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
@@ -52,7 +46,6 @@ import {
 
 type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
-  onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
   syncDocumentTitle?: boolean
 }
@@ -77,15 +70,6 @@ const headerDescriptionDocPaths = {
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 } satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
 
-const compactNavigationQuery = '(width < 48rem)'
-const subscribeToCompactNavigation = (onChange: () => void) => {
-  const mediaQuery = window.matchMedia(compactNavigationQuery)
-  mediaQuery.addEventListener('change', onChange)
-  return () => mediaQuery.removeEventListener('change', onChange)
-}
-const getCompactNavigationSnapshot = () => window.matchMedia(compactNavigationQuery).matches
-const getServerCompactNavigationSnapshot = () => false
-
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
   href: string
@@ -97,7 +81,7 @@ const DescriptionWithLearnMore = ({ children, href, label }: DescriptionWithLear
 
   return (
     <span className="inline-flex max-w-full min-w-0 items-center gap-0.5">
-      <span className="min-w-0 break-words whitespace-normal sm:truncate" title={title}>
+      <span className="min-w-0 wrap-break-word whitespace-normal sm:truncate" title={title}>
         {children}
       </span>
       <Link
@@ -107,7 +91,7 @@ const DescriptionWithLearnMore = ({ children, href, label }: DescriptionWithLear
         rel="noopener noreferrer"
       >
         {label}
-        <span aria-hidden className="i-ri-external-link-line size-3" />
+        <span aria-hidden className="i-ri-external-link-line size-3 [&:dir(rtl)]:-scale-x-100" />
       </Link>
     </span>
   )
@@ -143,17 +127,12 @@ function ToolsDisclosureIcon({ className }: { className?: string }) {
 
 export default function IntegrationsPage({
   onSectionChange,
-  onSwitchToMarketplace,
   section: routeSection,
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
   const { t } = useTranslation(['navigation', 'modelProvider', 'common'])
   const navigationTitleId = useId()
-  const isCompact = useSyncExternalStore(
-    subscribeToCompactNavigation,
-    getCompactNavigationSnapshot,
-    getServerCompactNavigationSnapshot,
-  )
+  const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
@@ -170,7 +149,11 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const [isNavigationOpen, setIsNavigationOpen] = useState(false)
+  const [navigationOpenedOn, setNavigationOpenedOn] = useState<{
+    section: IntegrationSection
+  } | null>(null)
+  if (isAtLeastMd && navigationOpenedOn) setNavigationOpenedOn(null)
+  const navigationOpen = navigationOpenedOn?.section === section
   const showInstallAction = canInstallPlugin
   const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
@@ -187,13 +170,11 @@ export default function IntegrationsPage({
   const sectionTitle = integrationHeader?.title ?? activeItem?.label ?? integrationsTitle
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
-  useEffect(() => {
-    if (!isToolSection) return undefined
-
-    const animationFrame = window.requestAnimationFrame(() => setIsToolsExpanded(true))
-
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [isToolSection])
+  const [wasToolSection, setWasToolSection] = useState(isToolSection)
+  if (wasToolSection !== isToolSection) {
+    setWasToolSection(isToolSection)
+    if (isToolSection) setIsToolsExpanded(true)
+  }
   const useFillLayout =
     section === 'provider' ||
     section === 'data-source' ||
@@ -217,6 +198,7 @@ export default function IntegrationsPage({
         <UpdateSettingDialog category={pluginSettingCategory} />
       </div>
     ) : undefined
+  const marketplace = useMarketplace()
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription =
     integrationHeader?.description ??
@@ -236,20 +218,17 @@ export default function IntegrationsPage({
       headerDescription
     )
   const handleSwitchToMarketplace = () => {
-    if (onSwitchToMarketplace) {
-      onSwitchToMarketplace(marketplaceUrlPath)
-      return
-    }
+    if (!marketplace) return
 
     window.open(
-      getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }),
+      marketplace.page(marketplaceUrlPath, undefined, window.location.origin),
       '_blank',
       'noopener,noreferrer',
     )
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
+    setNavigationOpenedOn(null)
     if (onSectionChange) {
-      setIsNavigationOpen(false)
       onSectionChange(nextSection)
       return
     }
@@ -277,103 +256,105 @@ export default function IntegrationsPage({
     </>
   )
 
-  const sidebar = (
-    <div
-      className={cn(
-        'flex shrink-0 flex-col bg-components-panel-bg px-2 py-2 transition-[width]',
-        isCompact
-          ? 'h-full w-full items-stretch overflow-y-auto'
-          : 'w-50 items-end border-r border-divider-burn',
-      )}
-      data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
-    >
+  const renderSidebar = (placement: 'inline' | 'drawer') => {
+    const inDrawer = placement === 'drawer'
+    const titleId = `${navigationTitleId}-${placement}`
+
+    return (
       <div
-        className={cn('flex min-h-0 flex-1 flex-col gap-0.5 pb-4', isCompact ? 'w-full' : 'w-46')}
+        className={cn(
+          'flex shrink-0 flex-col bg-components-panel-bg px-2 py-2 transition-[width]',
+          inDrawer
+            ? 'h-full w-full items-stretch overflow-y-auto'
+            : 'w-50 items-end border-e border-divider-burn max-md:hidden',
+        )}
+        data-step-by-step-tour-target={inDrawer ? undefined : STEP_BY_STEP_TOUR_TARGETS.integration}
       >
         <div
-          className={cn(
-            'flex shrink-0 items-start pr-0 pl-2.5',
-            reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
-          )}
+          className={cn('flex min-h-0 flex-1 flex-col gap-0.5 pb-4', inDrawer ? 'w-full' : 'w-46')}
         >
-          <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
-            <div
-              id={navigationTitleId}
-              className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
-            >
-              {t(($) => $['settings.integrations'], { ns: 'navigation' })}
+          <div
+            className={cn(
+              'flex shrink-0 items-start ps-2.5 pe-0',
+              reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+            )}
+          >
+            <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
+              <div id={titleId} className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                {t(($) => $['settings.integrations'], { ns: 'navigation' })}
+              </div>
             </div>
           </div>
-        </div>
-        {showInstallAction && (
-          <IntegrationSidebarActions
-            canManagement={canInstallPlugin}
-            installContextCategory={getPluginCategoryBySection(section)}
-            onSwitchToMarketplace={handleSwitchToMarketplace}
-          />
-        )}
-        {!showInstallAction && reserveInstallActionSlot && (
-          <div aria-hidden="true" className="h-8 w-full shrink-0" />
-        )}
-        <nav
-          aria-labelledby={navigationTitleId}
-          className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
-        >
-          <IntegrationSidebarNavItem
-            item={providerItem}
-            onSelect={onSectionChange ? handleSelectSection : undefined}
-            section={section}
-          />
-          <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
-            <CollapsibleTrigger
-              className={cn(
-                toolsNavItemClassName,
-                'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
-              )}
-            >
-              {toolsNavItemContent}
-            </CollapsibleTrigger>
-            <CollapsiblePanel className="relative space-y-px before:absolute before:-top-px before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
-              {toolItems.map((item) => (
-                <IntegrationSidebarNavItem
-                  key={item.label}
-                  item={item}
-                  onSelect={onSectionChange ? handleSelectSection : undefined}
-                  section={section}
-                />
-              ))}
-            </CollapsiblePanel>
-          </Collapsible>
-          <IntegrationSidebarNavItem
-            item={dataSourceItem}
-            onSelect={onSectionChange ? handleSelectSection : undefined}
-            section={section}
-          />
-          {secondaryItems.map((item) => (
+          {showInstallAction && (
+            <IntegrationSidebarActions
+              canManagement={canInstallPlugin}
+              installContextCategory={getPluginCategoryBySection(section)}
+              onSwitchToMarketplace={handleSwitchToMarketplace}
+            />
+          )}
+          {!showInstallAction && reserveInstallActionSlot && (
+            <div aria-hidden="true" className="h-8 w-full shrink-0" />
+          )}
+          <nav
+            aria-labelledby={titleId}
+            className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
+          >
             <IntegrationSidebarNavItem
-              key={item.label}
-              item={item}
+              item={providerItem}
               onSelect={onSectionChange ? handleSelectSection : undefined}
               section={section}
             />
-          ))}
-          <IntegrationSidebarNavItem
-            item={customEndpointItem}
-            onSelect={onSectionChange ? handleSelectSection : undefined}
-            section={section}
+            <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
+              <CollapsibleTrigger
+                className={cn(
+                  toolsNavItemClassName,
+                  'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
+                )}
+              >
+                {toolsNavItemContent}
+              </CollapsibleTrigger>
+              <CollapsiblePanel className="relative space-y-px before:absolute before:inset-s-[17.5px] before:-top-px before:bottom-0 before:w-px before:bg-divider-regular">
+                {toolItems.map((item) => (
+                  <IntegrationSidebarNavItem
+                    key={item.label}
+                    item={item}
+                    onSelect={onSectionChange ? handleSelectSection : undefined}
+                    section={section}
+                  />
+                ))}
+              </CollapsiblePanel>
+            </Collapsible>
+            <IntegrationSidebarNavItem
+              item={dataSourceItem}
+              onSelect={onSectionChange ? handleSelectSection : undefined}
+              section={section}
+            />
+            {secondaryItems.map((item) => (
+              <IntegrationSidebarNavItem
+                key={item.label}
+                item={item}
+                onSelect={onSectionChange ? handleSelectSection : undefined}
+                section={section}
+              />
+            ))}
+            <IntegrationSidebarNavItem
+              item={customEndpointItem}
+              onSelect={onSectionChange ? handleSelectSection : undefined}
+              section={section}
+            />
+          </nav>
+        </div>
+        {showUtilityActions && (
+          <IntegrationSidebarUtilityActions
+            canDebugger={canDebugger}
+            permission={permission}
+            showPermissionQuickPanel={showPermissionQuickPanel}
+            onPermissionChange={handlePermissionChange}
           />
-        </nav>
+        )}
       </div>
-      {showUtilityActions && (
-        <IntegrationSidebarUtilityActions
-          canDebugger={canDebugger}
-          permission={permission}
-          showPermissionQuickPanel={showPermissionQuickPanel}
-          onPermissionChange={handlePermissionChange}
-        />
-      )}
-    </div>
-  )
+    )
+  }
 
   return (
     <div
@@ -383,88 +364,84 @@ export default function IntegrationsPage({
       {syncDocumentTitle && (
         <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
       )}
-      {isCompact ? (
-        <div className="shrink-0 border-b border-divider-burn px-2 pb-2">
-          <Drawer swipeDirection="left" open={isNavigationOpen} onOpenChange={setIsNavigationOpen}>
-            <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
-              <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
-              <span className="truncate">
-                {integrationsTitle}: {sectionTitle}
-              </span>
-            </DrawerTrigger>
-            <DrawerPortal>
-              <DrawerBackdrop className="fixed" />
-              <DrawerViewport>
-                <DrawerPopup className="data-[swipe-direction=left]:w-80 data-[swipe-direction=left]:max-w-full">
-                  <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
-                    <DrawerTitle className="system-md-semibold">{integrationsTitle}</DrawerTitle>
-                    <DrawerClose
-                      render={
-                        <IconButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          size="lg"
-                        >
-                          <span aria-hidden="true" className="i-ri-close-line size-4" />
-                        </IconButton>
-                      }
-                    />
-                  </div>
-                  <DrawerContent className="min-h-0 flex-1 p-0 pb-0">{sidebar}</DrawerContent>
-                </DrawerPopup>
-              </DrawerViewport>
-            </DrawerPortal>
-          </Drawer>
-        </div>
-      ) : (
-        sidebar
-      )}
+      <div className="shrink-0 border-b border-divider-burn px-2 pb-2 md:hidden">
+        <Drawer
+          swipeDirection="left"
+          open={navigationOpen}
+          onOpenChange={(open) => setNavigationOpenedOn(open ? { section } : null)}
+        >
+          <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
+            <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
+            <span className="truncate">
+              {integrationsTitle}: {sectionTitle}
+            </span>
+          </DrawerTrigger>
+          <DrawerPortal>
+            <DrawerBackdrop className="fixed" />
+            <DrawerViewport>
+              <DrawerPopup className="data-[swipe-direction=left]:w-80 data-[swipe-direction=left]:max-w-full">
+                <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
+                  <DrawerTitle className="system-md-semibold">{integrationsTitle}</DrawerTitle>
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="lg"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                </div>
+                <DrawerContent>{renderSidebar('drawer')}</DrawerContent>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
+        </Drawer>
+      </div>
+      {renderSidebar('inline')}
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
         {useFillLayout ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
-            <IntegrationSectionRenderer
-              key={section}
-              section={section}
-              title={integrationHeader?.title ?? activeItem?.label}
-              description={headerDescriptionWithLink}
-              scrollAreaLabel={scrollAreaLabel}
-              providerSearchText={providerSearchText}
-              onProviderSearchTextChange={setProviderSearchText}
-              onSwitchToMarketplace={handleSwitchToMarketplace}
-              canInstallPlugin={canInstallPlugin}
-              canDeletePlugin={canDeletePlugin}
-              isInstallPermissionLoading={isReferenceSettingLoading}
-              canUpdatePlugin={canUpdatePlugin}
-              pluginCategoryToolbarAction={pluginSettingAction}
-            />
+            <Suspense key={section} fallback={null}>
+              <IntegrationSectionRenderer
+                section={section}
+                title={integrationHeader?.title ?? activeItem?.label}
+                description={headerDescriptionWithLink}
+                scrollAreaLabel={scrollAreaLabel}
+                providerSearchText={providerSearchText}
+                onProviderSearchTextChange={setProviderSearchText}
+                onSwitchToMarketplace={handleSwitchToMarketplace}
+                canInstallPlugin={canInstallPlugin}
+                canDeletePlugin={canDeletePlugin}
+                isInstallPermissionLoading={isReferenceSettingLoading}
+                canUpdatePlugin={canUpdatePlugin}
+                pluginCategoryToolbarAction={pluginSettingAction}
+              />
+            </Suspense>
           </div>
         ) : (
-          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
-            <ScrollAreaViewport
-              aria-label={scrollAreaLabel}
-              className="overscroll-contain"
-              role={scrollAreaLabel ? 'region' : undefined}
-            >
-              <ScrollAreaContent className="min-h-full">
-                <IntegrationSectionRenderer
-                  key={section}
-                  section={section}
-                  title={integrationHeader?.title ?? activeItem?.label}
-                  description={headerDescriptionWithLink}
-                  providerSearchText={providerSearchText}
-                  onProviderSearchTextChange={setProviderSearchText}
-                  onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canInstallPlugin}
-                  canDeletePlugin={canDeletePlugin}
-                  isInstallPermissionLoading={isReferenceSettingLoading}
-                  canUpdatePlugin={canUpdatePlugin}
-                  pluginCategoryToolbarAction={pluginSettingAction}
-                />
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
+          <div
+            aria-label={scrollAreaLabel}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            role={scrollAreaLabel ? 'region' : undefined}
+          >
+            <Suspense key={section} fallback={null}>
+              <IntegrationSectionRenderer
+                section={section}
+                title={integrationHeader?.title ?? activeItem?.label}
+                description={headerDescriptionWithLink}
+                providerSearchText={providerSearchText}
+                onProviderSearchTextChange={setProviderSearchText}
+                onSwitchToMarketplace={handleSwitchToMarketplace}
+                canInstallPlugin={canInstallPlugin}
+                canDeletePlugin={canDeletePlugin}
+                isInstallPermissionLoading={isReferenceSettingLoading}
+                canUpdatePlugin={canUpdatePlugin}
+                pluginCategoryToolbarAction={pluginSettingAction}
+              />
+            </Suspense>
+          </div>
         )}
       </section>
     </div>

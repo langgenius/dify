@@ -89,7 +89,9 @@ async function pollWithRetry(
 ): Promise<PollResult> {
   let backoff = POLL_RETRY_INITIAL_MS
   for (let attempt = 1; attempt <= POLL_RETRY_ATTEMPTS; attempt++) {
+    if (clock.isCancelled()) throw cancelledError()
     const result = await api.pollOnce(req)
+    if (clock.isCancelled()) throw cancelledError()
     if (result.status !== 'retry_5xx') return result
     if (attempt === POLL_RETRY_ATTEMPTS) break
     await clock.sleepMs(backoff)

@@ -1,76 +1,94 @@
-import type { Dirent } from 'node:fs'
-import { readdir, readFile, stat } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import type { EmbeddedFile } from '@/sys'
+import { readFile, stat } from 'node:fs/promises'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { versionInfo } from '@/version/info'
-import { GITHUB_ORIGIN, openGitHub } from './github'
+import { embeddedFiles, isCompiledBinary } from '@/sys'
+import { ENTRY_KIND, walkTree } from '@/sys/tree'
 
+export const SKILL_NAME = 'difyctl'
 export const SKILL_FILE = 'SKILL.md'
-const EXECUTABLE_BITS = 0o111
-const URL_RE = /^https?:\/\//
+const EMBED_PREFIX = `${SKILL_NAME}/`
+const REPO_SKILL_DIR = fileURLToPath(new URL(`../../../skills/${EMBED_PREFIX}`, import.meta.url))
+const NO_EMBEDDED_SKILL =
+  'this difyctl build has no embedded skill; reinstall difyctl or pass --from <folder>'
 
-export type SkillEntry = { readonly path: string; readonly executable: boolean }
+const EXECUTABLE_MODE = 0o755
+const FILE_MODE = 0o644
+const PERMISSION_BITS = 0o777
+const SHEBANG = [0x23, 0x21]
 
-export type SkillSource = {
-  readonly entries: readonly SkillEntry[]
-  readonly read: (path: string) => Promise<Uint8Array>
+export type SkillFile = {
+  readonly bytes: Uint8Array
+  readonly mode: number
 }
 
-export const DEFAULT_SOURCE = `${GITHUB_ORIGIN}/langgenius/dify/tree/${versionInfo.commit}/skills`
+export type SkillSource = {
+  readonly paths: readonly string[]
+  readonly read: (path: string) => Promise<SkillFile>
+}
+
+// Embedded files carry no permission bits, so a script is recognised by its shebang.
+function embeddedMode(bytes: Uint8Array): number {
+  return SHEBANG.every((byte, i) => bytes[i] === byte) ? EXECUTABLE_MODE : FILE_MODE
+}
+
+async function readLocal(abs: string): Promise<SkillFile> {
+  const [bytes, info] = await Promise.all([readFile(abs), stat(abs)])
+  return { bytes, mode: info.mode & PERMISSION_BITS }
+}
 
 export const FROM_FIELD = z
   .string()
   .min(1)
-  .default(DEFAULT_SOURCE)
-  .describe('Where the skills come from: a GitHub folder URL or a local folder')
+  .optional()
+  .describe('A local skill folder to install instead of the one built into difyctl')
 
-async function hasSkillFile(dir: string): Promise<boolean> {
-  return stat(join(dir, SKILL_FILE)).then(
+export async function openDir(root: string): Promise<SkillSource> {
+  const found = await stat(join(root, SKILL_FILE)).then(
     () => true,
     () => false,
   )
-}
-
-async function walk(root: string, dir: string): Promise<SkillEntry[]> {
-  const entries: SkillEntry[] = []
-  for (const entry of await readdir(dir, { recursive: true, withFileTypes: true })) {
-    if (!entry.isFile()) continue
-    const abs = join(entry.parentPath, entry.name)
-    const executable = ((await stat(abs)).mode & EXECUTABLE_BITS) !== 0
-    entries.push({ path: relative(root, abs).split(sep).join('/'), executable })
-  }
-  return entries
-}
-
-async function openDir(root: string): Promise<SkillSource> {
-  let children: Dirent[]
-  try {
-    children = await readdir(root, { withFileTypes: true })
-  } catch (cause) {
+  if (!found) {
     throw new BaseError({
       code: ErrorCode.UsageInvalidFlag,
-      message: `cannot read folder "${root}"`,
-      cause,
+      message: `no ${SKILL_FILE} in "${root}"`,
     })
   }
-  const dirs = (await hasSkillFile(root))
-    ? [root]
-    : children.filter((child) => child.isDirectory()).map((child) => join(root, child.name))
-  const entries: SkillEntry[] = []
-  for (const dir of dirs) if (await hasSkillFile(dir)) entries.push(...(await walk(root, dir)))
-  return { entries, read: (path) => readFile(join(root, path)) }
+  const paths: string[] = []
+  for await (const entry of walkTree(root)) {
+    if (entry.kind === ENTRY_KIND.File) paths.push(entry.path)
+  }
+  return { paths, read: (path) => readLocal(join(root, path)) }
 }
 
-export function openSource(from: string): Promise<SkillSource> {
-  if (from.startsWith(`${GITHUB_ORIGIN}/`)) return openGitHub(from)
-  if (URL_RE.test(from)) {
-    throw new BaseError({
-      code: ErrorCode.UsageInvalidFlag,
-      message: `unsupported --from URL "${from}"`,
-      hint: `use a ${GITHUB_ORIGIN} folder URL or a local folder`,
-    })
+function embeddedSource(files: readonly EmbeddedFile[]): SkillSource {
+  const byPath = new Map(files.map((file) => [file.name.slice(EMBED_PREFIX.length), file]))
+  return {
+    paths: [...byPath.keys()],
+    read: async (path) => {
+      const file = byPath.get(path)
+      if (file === undefined)
+        throw new BaseError({
+          code: ErrorCode.SkillMissing,
+          message: `the embedded skill has no ${path}`,
+        })
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      return { bytes, mode: embeddedMode(bytes) }
+    },
   }
-  return openDir(from)
+}
+
+async function defaultSource(): Promise<SkillSource> {
+  const files = embeddedFiles().filter((file) => file.name.startsWith(EMBED_PREFIX))
+  if (files.length > 0) return embeddedSource(files)
+  if (isCompiledBinary())
+    throw new BaseError({ code: ErrorCode.SkillMissing, message: NO_EMBEDDED_SKILL })
+  return openDir(REPO_SKILL_DIR)
+}
+
+export function openSource(from: string | undefined): Promise<SkillSource> {
+  return from === undefined ? defaultSource() : openDir(from)
 }

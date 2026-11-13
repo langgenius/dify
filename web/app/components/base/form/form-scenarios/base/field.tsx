@@ -1,11 +1,11 @@
 import type { BaseConfiguration } from './types'
-import { useStore } from '@tanstack/react-form'
+import { useSelector } from '@tanstack/react-form'
 import * as React from 'react'
 import { withForm } from '../..'
 import { BaseFieldType } from './types'
 
 type BaseFieldProps = {
-  initialData?: Record<string, any>
+  initialData?: Record<string, unknown>
   config: BaseConfiguration
 }
 
@@ -33,12 +33,12 @@ const BaseField = ({ initialData, config }: BaseFieldProps) =>
         unit,
       } = config
 
-      const isAllConditionsMet = useStore(form.store, (state) => {
+      const isAllConditionsMet = useSelector(form.store, (state) => {
         const fieldValues = state.values
         if (!showConditions.length) return true
         return showConditions.every((condition) => {
           const { variable, value } = condition
-          const fieldValue = fieldValues[variable as keyof typeof fieldValues]
+          const fieldValue = fieldValues[variable]
           return fieldValue === value
         })
       })

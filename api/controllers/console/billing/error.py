@@ -6,7 +6,6 @@ from services.errors.billing import (
     BillingError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
-    ComplianceRateLimitExceededError,
 )
 
 
@@ -40,6 +39,24 @@ class ComplianceRateLimitError(BaseHTTPException):
     code = 429
 
 
+class ComplianceDocumentNotFoundError(BaseHTTPException):
+    error_code = "compliance_document_not_found"
+    description = "The compliance document was not found."
+    code = 404
+
+
+class ComplianceDownloadForbiddenError(BaseHTTPException):
+    error_code = "compliance_download_forbidden"
+    description = "Your current plan does not allow downloading this compliance document."
+    code = 403
+
+
+class BillingRequestInProgressError(BaseHTTPException):
+    error_code = "billing_request_in_progress"
+    description = "A previous request is still being processed. Please try again shortly."
+    code = 429
+
+
 class BillingOperationFailedError(BaseHTTPException):
     error_code = "billing_operation_failed"
     description = "We couldn't complete this request. Please try again. If the problem persists, contact support."
@@ -53,8 +70,6 @@ class BillingUnavailableError(BaseHTTPException):
 
 
 def to_billing_request_error(error: BillingError) -> BaseHTTPException:
-    if isinstance(error, ComplianceRateLimitExceededError):
-        return ComplianceRateLimitError()
     if isinstance(error, BillingUpstreamInvalidResponseError):
         return BillingOperationFailedError()
     if isinstance(error, BillingUpstreamUnavailableError):

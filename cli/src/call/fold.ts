@@ -1,15 +1,15 @@
 import type { ExitCodeValue } from '@/errors/codes'
 import type { FoldResult } from '@/protocol/fold'
 import { ExitCode } from '@/errors/codes'
-import { FOLD_STATUS, FOLD_TABLE } from '@/protocol/fold'
+import { FOLD_STATUS, FOLD_TABLE, foldAnyEvent } from '@/protocol/fold'
 
 export function newFoldResult(): FoldResult {
   return { status: FOLD_STATUS.Incomplete, text: { answer: '' }, hints: [] }
 }
 
 export function foldEvent(result: FoldResult, name: string, event: Record<string, unknown>): void {
-  const handler = FOLD_TABLE[name]
-  if (handler !== undefined) handler(result, event)
+  foldAnyEvent(result, event)
+  FOLD_TABLE[name]?.(result, event)
 }
 
 export function finishFold(result: FoldResult): FoldResult {

@@ -99,7 +99,7 @@ export const getHasChildren = (schema: Field) => {
     )
 }
 
-const getTypeOf = (target: any) => {
+const getTypeOf = (target: unknown) => {
   if (target === null) return 'null'
   if (typeof target !== 'object') {
     return typeof target
@@ -108,7 +108,7 @@ const getTypeOf = (target: any) => {
   }
 }
 
-const inferType = (value: any): Type => {
+const inferType = (value: unknown): Type => {
   const type = getTypeOf(value)
   if (type === 'array') return Type.array
   // type boolean will be treated as string
@@ -141,12 +141,12 @@ export const jsonToSchema = (json: any): Field => {
 }
 
 export const checkJsonDepth = (json: any) => {
-  if (!json || getTypeOf(json) !== 'object') return 0
+  if (!json || typeof json !== 'object') return 0
 
   let maxDepth = 0
 
   if (getTypeOf(json) === 'array') {
-    if (json[0] && getTypeOf(json[0]) === 'object') maxDepth = checkJsonDepth(json[0])
+    maxDepth = checkJsonDepth(json[0]) + 1
   } else if (getTypeOf(json) === 'object') {
     const propertyDepths = Object.values(json).map((value) => checkJsonDepth(value))
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
@@ -165,8 +165,8 @@ export const checkJsonSchemaDepth = (schema: Field) => {
       checkJsonSchemaDepth(value),
     )
     maxDepth = propertyDepths.length ? Math.max(...propertyDepths) + 1 : 1
-  } else if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
-    maxDepth = checkJsonSchemaDepth(schema.items) + 1
+  } else if (schema.type === Type.array) {
+    maxDepth = (schema.items ? checkJsonSchemaDepth(schema.items) : 0) + 1
   }
 
   return maxDepth

@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zBillingOperationFailedError, zBillingUnavailableError } from './zod.gen.ts'
 import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
@@ -17,6 +18,10 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetBillingInvoicesResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const invoices = {
   get,
@@ -32,6 +37,10 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const subscription = {
   get: get2,

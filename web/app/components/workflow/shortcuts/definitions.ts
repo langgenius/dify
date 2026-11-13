@@ -1,8 +1,7 @@
-import type { Hotkey, IndividualKey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord, IndividualKey } from '@tanstack/react-hotkeys'
 
 export type WorkflowCanvasHotkeyMeta = {
   id: WorkflowCanvasShortcutId
-  scope: 'workflow-canvas'
   name: string
   description: string
 }
@@ -13,8 +12,8 @@ type WorkflowCanvasShortcutDefinitionBase = {
 }
 
 export type WorkflowCanvasHotkeyDefinition = WorkflowCanvasShortcutDefinitionBase & {
-  hotkeys: readonly [Hotkey, ...Hotkey[]]
-  displayHotkey?: Hotkey
+  hotkeys: readonly [HotkeyChord, ...HotkeyChord[]]
+  displayHotkey?: HotkeyChord
 }
 
 type WorkflowCanvasHoldKeyDefinition = WorkflowCanvasShortcutDefinitionBase & {
@@ -130,7 +129,7 @@ export type WorkflowCanvasHotkeyId = {
 
 export const getWorkflowCanvasShortcutDisplayKey = (
   id: WorkflowCanvasShortcutId,
-): Hotkey | IndividualKey => {
+): HotkeyChord | IndividualKey => {
   const shortcut = WORKFLOW_CANVAS_SHORTCUTS[id]
 
   if ('displayHotkey' in shortcut && shortcut.displayHotkey) return shortcut.displayHotkey

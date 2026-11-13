@@ -1,67 +1,10 @@
 import type { VariableAssignerNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
-
-type MockVarGroupItemProps = {
-  payload: {
-    group_name?: string
-    output_type: VarType
-    variables: string[][]
-  }
-  groupEnabled: boolean
-}
-
-const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockVarGroupItemRender = vi.hoisted(() => vi.fn())
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('../components/var-group-item', () => ({
-  __esModule: true,
-  default: (props: MockVarGroupItemProps) => {
-    mockVarGroupItemRender(props)
-    return (
-      <div>{`${props.payload.group_name || 'root'}:${props.payload.output_type}:${props.groupEnabled}`}</div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type, description }: { name: string; type: string; description: string }) => (
-    <div>{`${name}:${type}:${description}`}</div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
-  __esModule: true,
-  default: ({
-    isShow,
-    onCancel,
-    onConfirm,
-  }: {
-    isShow: boolean
-    onCancel: () => void
-    onConfirm: () => void
-  }) =>
-    isShow ? (
-      <div>
-        <button type="button" onClick={onCancel}>
-          cancel-remove
-        </button>
-        <button type="button" onClick={onConfirm}>
-          confirm-remove
-        </button>
-      </div>
-    ) : null,
-}))
 
 const createData = (
   overrides: Partial<VariableAssignerNodeType> = {},
@@ -91,96 +34,104 @@ const createData = (
   ...overrides,
 })
 
-const panelProps = {} as PanelProps
-
-describe('variable-assigner/panel', () => {
-  const handleGroupEnabledChange = vi.fn()
-  const handleAddGroup = vi.fn()
-  const hideRemoveVarConfirm = vi.fn()
-  const onRemoveVarConfirm = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      inputs: createData(),
-      handleListOrTypeChange: vi.fn(),
-      isEnableGroup: true,
-      handleGroupEnabledChange,
-      handleAddGroup,
-      handleListOrTypeChangeInGroup: vi.fn(() => vi.fn()),
-      handleGroupRemoved: vi.fn(() => vi.fn()),
-      handleVarGroupNameChange: vi.fn(() => vi.fn()),
-      isShowRemoveVarConfirm: true,
-      hideRemoveVarConfirm,
-      onRemoveVarConfirm,
-      getAvailableVars: vi.fn(() => []),
-      filterVar: vi.fn(() => vi.fn(() => true)),
-    })
+const source = createNode({
+  id: 'source-node',
+  data: {
+    type: BlockEnum.Code,
+    title: 'Source',
+    outputs: { rootVar: { type: VarType.string }, groupVar: { type: VarType.string } },
+  },
+})
+const renderPanel = (data = createData(), readOnly = false) =>
+  renderNodePanel(Panel, data, {
+    nodes: [source, createNode({ id: 'node', data })],
+    edges: [createEdge({ source: source.id, target: 'node' })],
+    initialStoreState: { canvasReadOnly: readOnly },
   })
 
-  it('renders grouped panels, output vars, and confirm actions when aggregation is enabled', async () => {
+describe('variable-assigner/panel', () => {
+  it('adds aggregation groups and preserves the first group when aggregation is disabled', async () => {
     const user = userEvent.setup()
-
-    render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
-
-    expect(screen.getByText('Group1:string:true')).toBeInTheDocument()
-    expect(screen.getByText('Group2:number:true')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /Group1\.output:string:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /Group2\.output:number:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
-      ),
-    ).toBeInTheDocument()
-
+    const { data } = renderPanel()
+    expect(screen.getByText('Group1')).toBeInTheDocument()
+    expect(screen.getByText('Group2')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+    expect(screen.getByText('Group1.output')).toBeInTheDocument()
+    expect(screen.getByText('Group2.output')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.variableAssigner.addGroup' }),
+    )
+    expect(data().advanced_settings?.groups).toEqual([
+      ...createData().advanced_settings!.groups,
+      expect.objectContaining({ group_name: 'Group3', output_type: VarType.any, variables: [] }),
+    ])
+    expect(screen.getByText('Group3')).toBeInTheDocument()
     await user.click(screen.getByRole('switch'))
-    await user.click(screen.getByText('workflowLogic.nodes.variableAssigner.addGroup'))
-    await user.click(screen.getByRole('button', { name: 'cancel-remove' }))
-    await user.click(screen.getByRole('button', { name: 'confirm-remove' }))
-
-    expect(handleGroupEnabledChange).toHaveBeenCalled()
-    expect(handleAddGroup).toHaveBeenCalledTimes(1)
-    expect(hideRemoveVarConfirm).toHaveBeenCalledTimes(1)
-    expect(onRemoveVarConfirm).toHaveBeenCalledTimes(1)
+    expect(data()).toMatchObject({
+      advanced_settings: { group_enabled: false },
+      variables: [['source-node', 'groupVar']],
+      output_type: VarType.string,
+    })
+    expect(screen.queryByText('Group1.output')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflowLogic.nodes.variableAssigner.addGroup' }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders a single root group and hides output vars when aggregation is disabled', () => {
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      inputs: createData({
-        advanced_settings: {
-          group_enabled: false,
-          groups: [],
-        },
-      }),
-      handleListOrTypeChange: vi.fn(),
-      isEnableGroup: false,
-      handleGroupEnabledChange,
-      handleAddGroup,
-      handleListOrTypeChangeInGroup: vi.fn(() => vi.fn()),
-      handleGroupRemoved: vi.fn(() => vi.fn()),
-      handleVarGroupNameChange: vi.fn(() => vi.fn()),
-      isShowRemoveVarConfirm: false,
-      hideRemoveVarConfirm,
-      onRemoveVarConfirm,
-      getAvailableVars: vi.fn(() => []),
-      filterVar: vi.fn(() => vi.fn(() => true)),
-    })
-
-    render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
-
-    expect(screen.getByText('root:string:false')).toBeInTheDocument()
+    renderPanel(createData({ advanced_settings: { group_enabled: false, groups: [] } }))
+    expect(screen.getByText('rootVar')).toBeInTheDocument()
     expect(
       screen.getByText('workflowLogic.nodes.variableAssigner.aggregationGroup'),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByText(
-        /Group1\.output:string:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
-      ),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Group1.output')).not.toBeInTheDocument()
   })
+
+  it('prevents adding or renaming groups in read-only mode', async () => {
+    const user = userEvent.setup()
+    const { data } = renderPanel(createData(), true)
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.queryByRole('button', { name: 'workflowLogic.nodes.variableAssigner.addGroup' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByText('Group1'))
+    expect(screen.queryByDisplayValue('Group1')).not.toBeInTheDocument()
+    expect(data()).toMatchObject(createData())
+  })
+
+  it.each(['cancel', 'confirm'])(
+    'handles %s when disabling groups would remove a referenced output',
+    async (action) => {
+      const user = userEvent.setup()
+      const initial = createData()
+      const consumer = createNode({
+        id: 'consumer',
+        data: {
+          type: BlockEnum.TemplateTransform,
+          variables: [{ variable: 'value', value_selector: ['node', 'Group2', 'output'] }],
+          template: '{{ value }}',
+        },
+      })
+      const { data, getNode } = renderNodePanel(Panel, initial, {
+        nodes: [source, createNode({ id: 'node', data: initial }), consumer],
+        edges: [
+          createEdge({ source: source.id, target: 'node' }),
+          createEdge({ source: 'node', target: 'consumer' }),
+        ],
+      })
+      await user.click(screen.getByRole('switch'))
+      expect(data().advanced_settings?.group_enabled).toBe(true)
+      await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
+      expect(data().advanced_settings?.group_enabled).toBe(action === 'cancel')
+      expect(getNode('consumer')?.data.variables).toEqual([
+        {
+          variable: 'value',
+          value_selector: action === 'confirm' ? [] : ['node', 'Group2', 'output'],
+        },
+      ])
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
+    },
+  )
 })

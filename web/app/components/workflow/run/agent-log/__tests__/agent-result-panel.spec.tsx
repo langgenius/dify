@@ -25,10 +25,6 @@ vi.mock('@/context/workspace-state', async () => {
 })
 
 describe('AgentResultPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('renders the real child items, shows the circular warning, and opens nested action logs', async () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()

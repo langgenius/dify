@@ -78,9 +78,6 @@ class WorkspaceService:
     def find_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot | None:
         return self._workspaces.find_membership(account_id, workspace_id)
 
-    def switch_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot:
-        return self._workspaces.switch(account_id=account_id, workspace_id=workspace_id)
-
     def iter_member_account_id_batches(self, workspace_id: str, batch_size: int) -> Iterator[tuple[str, ...]]:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
@@ -114,8 +111,11 @@ class WorkspaceService:
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
         return self._features.get_effective_credit_pool(workspace_id)
 
+    def switch_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot:
+        return self._workspaces.switch(account_id=account_id, workspace_id=workspace_id)
+
     def switch(self, context: RequestContext, workspace_id: str) -> dict[str, object]:
-        workspace = self._workspaces.switch(account_id=context.account_id, workspace_id=workspace_id)
+        workspace = self.switch_membership(context.account_id, workspace_id)
         return self._tenant_info(workspace)
 
     def custom_config(self, context: RequestContext) -> WorkspaceCustomConfig:

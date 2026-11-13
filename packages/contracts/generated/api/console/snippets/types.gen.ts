@@ -10,6 +10,16 @@ export type WorkflowRunPaginationResponse = {
   limit: number
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -44,9 +54,7 @@ export type SnippetWorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type SnippetWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
@@ -74,6 +82,11 @@ export type SnippetWorkflowResponse = {
   version_number?: number | null
 }
 
+export type DraftWorkflowNotExistError = ErrorResponse & {
+  code: 'draft_workflow_not_exist'
+  status: 404
+}
+
 export type SnippetDraftSyncPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
@@ -91,6 +104,11 @@ export type WorkflowRestoreResponse = {
   hash: string
   result: string
   updated_at: number
+}
+
+export type DraftWorkflowNotSyncError = ErrorResponse & {
+  code: 'draft_workflow_not_sync'
+  status: 409
 }
 
 export type SnippetDraftConfigResponse = {
@@ -111,7 +129,7 @@ export type SnippetIterationNodeRunPayload = {
   } | null
 }
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type SnippetLoopNodeRunPayload = {
   inputs?: {
@@ -142,6 +160,16 @@ export type WorkflowAgentComposerResponse = {
   workflow_id?: string | null
 }
 
+export type AgentNotFoundError = ErrorResponse & {
+  code: 'agent_not_found_error'
+  status: 404
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
 export type ComposerSavePayload = {
   agent_soul?: AgentSoulConfig | null
   binding?: ComposerBindingPayload | null
@@ -160,6 +188,26 @@ export type ComposerSavePayload = {
   version_note?: string | null
 }
 
+export type AgentSoulLockedError = ErrorResponse & {
+  code: 'agent_soul_locked_error'
+  status: 400
+}
+
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status: 400
+}
+
+export type PlaintextSecretNotAllowedError = ErrorResponse & {
+  code: 'plaintext_secret_not_allowed_error'
+  status: 400
+}
+
+export type AgentNameConflictError = ErrorResponse & {
+  code: 'agent_name_conflict_error'
+  status: 409
+}
+
 export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
@@ -172,6 +220,11 @@ export type WorkflowComposerCopyFromRosterPayload = {
   idempotency_key?: string | null
   source_agent_id: string
   source_snapshot_id?: string | null
+}
+
+export type AgentVersionConflictError = ErrorResponse & {
+  code: 'agent_version_conflict_error'
+  status: 409
 }
 
 export type AgentComposerImpactResponse = {
@@ -246,7 +299,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -256,7 +309,7 @@ export type WorkflowDraftVariableUpdatePayload = {
   value?: unknown | null
 }
 
-export type PublishWorkflowPayload = {
+export type SnippetPublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
   } | null
@@ -299,6 +352,13 @@ export type SimpleEndUser = {
   id: string
   is_anonymous: boolean
   session_id?: string | null
+  type: string
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
   type: string
 }
 
@@ -348,7 +408,7 @@ export type EnvironmentVariableItemResponse = {
   visible: boolean
 }
 
-export type JsonValue =
+export type ShallowJsonValue =
   | string
   | number
   | number
@@ -546,6 +606,17 @@ export type WorkflowDraftVariableFullContentResponse = {
   value_type: string
 }
 
+export type RecursiveJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValue
+    }
+  | Array<RecursiveJsonValue>
+  | null
+
 export type AgentScope = 'roster' | 'workflow_only'
 
 export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
@@ -557,6 +628,7 @@ export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  show_thoughts?: AgentFeatureToggleConfig | null
   speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
@@ -604,6 +676,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -763,9 +836,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -871,6 +946,14 @@ export type AgentKnowledgeSetConfig = {
   retrieval: AgentKnowledgeRetrievalConfig
 }
 
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
+}
+
 export type AgentMemoryArtifactConfig = {
   id?: string | null
   name?: string | null
@@ -889,7 +972,7 @@ export type AgentSoulModelSettings = {
   frequency_penalty?: number | null
   max_tokens?: number | null
   presence_penalty?: number | null
-  response_format?: AgentModelResponseFormatConfig | null
+  response_format?: string | AgentModelResponseFormatConfig | null
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
@@ -1138,6 +1221,13 @@ export type GetSnippetsBySnippetIdWorkflowRunsData = {
   url: '/snippets/{snippet_id}/workflow-runs'
 }
 
+export type GetSnippetsBySnippetIdWorkflowRunsErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowRunsError =
+  GetSnippetsBySnippetIdWorkflowRunsErrors[keyof GetSnippetsBySnippetIdWorkflowRunsErrors]
+
 export type GetSnippetsBySnippetIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
@@ -1156,8 +1246,12 @@ export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopError =
+  PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopErrors[keyof PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopErrors]
 
 export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -1177,8 +1271,12 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdError =
+  GetSnippetsBySnippetIdWorkflowRunsByRunIdErrors[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdErrors]
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
@@ -1196,6 +1294,13 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsData = {
   query?: never
   url: '/snippets/{snippet_id}/workflow-runs/{run_id}/node-executions'
 }
+
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsError =
+  GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsErrors[keyof GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsErrors]
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponses = {
   200: WorkflowRunNodeExecutionListResponse
@@ -1216,6 +1321,13 @@ export type GetSnippetsBySnippetIdWorkflowsData = {
   url: '/snippets/{snippet_id}/workflows'
 }
 
+export type GetSnippetsBySnippetIdWorkflowsErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsError =
+  GetSnippetsBySnippetIdWorkflowsErrors[keyof GetSnippetsBySnippetIdWorkflowsErrors]
+
 export type GetSnippetsBySnippetIdWorkflowsResponses = {
   200: SnippetWorkflowPaginationResponse
 }
@@ -1231,6 +1343,13 @@ export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsData = {
   query?: never
   url: '/snippets/{snippet_id}/workflows/default-workflow-block-configs'
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsError =
+  GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsErrors[keyof GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
   200: DefaultBlockConfigsResponse
@@ -1249,8 +1368,12 @@ export type GetSnippetsBySnippetIdWorkflowsDraftData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftErrors = {
-  404: unknown
+  404: DraftWorkflowNotExistError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDraftError =
+  GetSnippetsBySnippetIdWorkflowsDraftErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftResponses = {
   200: SnippetWorkflowResponse
@@ -1269,8 +1392,13 @@ export type PostSnippetsBySnippetIdWorkflowsDraftData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftErrors = {
-  400: unknown
+  400: ErrorResponse
+  409: DraftWorkflowNotSyncError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftError =
+  PostSnippetsBySnippetIdWorkflowsDraftErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftResponses = {
   200: WorkflowRestoreResponse
@@ -1288,6 +1416,13 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConfigData = {
   url: '/snippets/{snippet_id}/workflows/draft/config'
 }
 
+export type GetSnippetsBySnippetIdWorkflowsDraftConfigErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftConfigError =
+  GetSnippetsBySnippetIdWorkflowsDraftConfigErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftConfigErrors]
+
 export type GetSnippetsBySnippetIdWorkflowsDraftConfigResponses = {
   200: SnippetDraftConfigResponse
 }
@@ -1303,6 +1438,13 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesData = {
   query?: never
   url: '/snippets/{snippet_id}/workflows/draft/conversation-variables'
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesError =
+  GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -1321,8 +1463,12 @@ export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: unknown
+  404: DraftWorkflowNotExistError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesError =
+  GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: EnvironmentVariableListResponse
@@ -1342,8 +1488,12 @@ export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunData =
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunError =
+  PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -1363,8 +1513,12 @@ export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunError =
+  PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -1385,6 +1539,14 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
 
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerError =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors]
+
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
 }
@@ -1401,6 +1563,20 @@ export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
   query?: never
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
+
+export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerError =
+  PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors[keyof PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors]
 
 export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
@@ -1419,6 +1595,13 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandid
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates'
 }
 
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesError =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors]
+
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses = {
   200: AgentComposerCandidatesResponse
 }
@@ -1435,6 +1618,16 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyF
   query?: never
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster'
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors = {
+  400: InvalidComposerConfigError | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterError =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses =
   {
@@ -1454,6 +1647,13 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpac
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact'
 }
 
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors = {
+  default: ErrorResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactError =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors]
+
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses = {
   200: AgentComposerImpactResponse
 }
@@ -1471,6 +1671,20 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveT
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster'
 }
 
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors = {
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterError =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors]
+
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses = {
   200: WorkflowAgentComposerResponse
 }
@@ -1487,6 +1701,18 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValid
   query?: never
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate'
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors = {
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateError =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses = {
   200: AgentComposerValidateResponse
@@ -1506,8 +1732,12 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunError =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -1527,8 +1757,12 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunError =
+  PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -1547,6 +1781,13 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = 
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables'
 }
 
+export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesError =
+  DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors]
+
 export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: void
 }
@@ -1563,6 +1804,13 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
   query?: never
   url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables'
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesError =
+  GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -1581,8 +1829,12 @@ export type PostSnippetsBySnippetIdWorkflowsDraftRunData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftRunErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsDraftRunError =
+  PostSnippetsBySnippetIdWorkflowsDraftRunErrors[keyof PostSnippetsBySnippetIdWorkflowsDraftRunErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
@@ -1600,6 +1852,13 @@ export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesData = {
   url: '/snippets/{snippet_id}/workflows/draft/system-variables'
 }
 
+export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesError =
+  GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesErrors]
+
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses = {
   200: WorkflowDraftVariableListResponse
 }
@@ -1615,6 +1874,13 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesData = {
   query?: never
   url: '/snippets/{snippet_id}/workflows/draft/variables'
 }
+
+export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesError =
+  DeleteSnippetsBySnippetIdWorkflowsDraftVariablesErrors[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesErrors]
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
   204: void
@@ -1635,6 +1901,14 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
   url: '/snippets/{snippet_id}/workflows/draft/variables'
 }
 
+export type GetSnippetsBySnippetIdWorkflowsDraftVariablesErrors = {
+  404: DraftWorkflowNotExistError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetSnippetsBySnippetIdWorkflowsDraftVariablesError =
+  GetSnippetsBySnippetIdWorkflowsDraftVariablesErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesErrors]
+
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValueResponse
 }
@@ -1653,8 +1927,12 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdError =
+  DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: void
@@ -1674,8 +1952,12 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdError =
+  GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -1695,8 +1977,12 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdError =
+  PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors[keyof PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -1716,8 +2002,12 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetData =
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetError =
+  PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors[keyof PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors]
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariableResponse
@@ -1737,8 +2027,12 @@ export type GetSnippetsBySnippetIdWorkflowsPublishData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsPublishErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetSnippetsBySnippetIdWorkflowsPublishError =
+  GetSnippetsBySnippetIdWorkflowsPublishErrors[keyof GetSnippetsBySnippetIdWorkflowsPublishErrors]
 
 export type GetSnippetsBySnippetIdWorkflowsPublishResponses = {
   200: SnippetWorkflowResponse
@@ -1748,7 +2042,7 @@ export type GetSnippetsBySnippetIdWorkflowsPublishResponse =
   GetSnippetsBySnippetIdWorkflowsPublishResponses[keyof GetSnippetsBySnippetIdWorkflowsPublishResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsPublishData = {
-  body: PublishWorkflowPayload
+  body: SnippetPublishWorkflowPayload
   path: {
     snippet_id: string
   }
@@ -1757,8 +2051,12 @@ export type PostSnippetsBySnippetIdWorkflowsPublishData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsPublishErrors = {
-  400: unknown
+  400: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsPublishError =
+  PostSnippetsBySnippetIdWorkflowsPublishErrors[keyof PostSnippetsBySnippetIdWorkflowsPublishErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
   200: WorkflowPublishResponse
@@ -1778,9 +2076,13 @@ export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdError =
+  DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors[keyof DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors]
 
 export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
   204: void
@@ -1800,9 +2102,13 @@ export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdError =
+  PatchSnippetsBySnippetIdWorkflowsByWorkflowIdErrors[keyof PatchSnippetsBySnippetIdWorkflowsByWorkflowIdErrors]
 
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
   200: SnippetWorkflowResponse
@@ -1822,9 +2128,13 @@ export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreError =
+  PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreErrors[keyof PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreErrors]
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponses = {
   200: WorkflowRestoreResponse

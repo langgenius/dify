@@ -61,7 +61,7 @@ class FileGrantRepository:
                     tenant_id=tenant_id,
                     app_id=app_id,
                     type=EndUserType.APP_DEPLOY,
-                    is_anonymous=is_anonymous,
+                    _is_anonymous=is_anonymous,
                     session_id=session_id,
                     external_user_id=external_user_id,
                 )

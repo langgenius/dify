@@ -7,9 +7,12 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
@@ -21,8 +24,7 @@ import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
-import PluginInfo from '../plugin-page/plugin-info'
-import { PluginSource } from '../types'
+import PluginInfoContent from '../plugin-page/plugin-info'
 
 const i18nPrefix = 'action'
 
@@ -61,8 +63,11 @@ const Action: FC<Props> = ({
   const handleFetchNewVersion = async () => {
     const owner = meta!.repo.split('/')[0] || author
     const repo = meta!.repo.split('/')[1] || pluginName
-    const fetchedReleases = await fetchReleases(owner, repo)
-    if (fetchedReleases.length === 0) return
+    const fetchedReleases = await fetchReleases(owner, repo).catch(() => {
+      toast.error(t(($) => $['error.fetchReleasesError'], { ns: 'plugin' }))
+      return undefined
+    })
+    if (!fetchedReleases?.length) return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     toast(toastProps.message, { type: toastProps.type })
     if (needUpdate) {
@@ -71,7 +76,6 @@ const Action: FC<Props> = ({
           invalidateInstalledPluginList(category)
         },
         payload: {
-          type: PluginSource.github,
           category,
           github: {
             originalPackageInfo: {
@@ -167,27 +171,32 @@ const Action: FC<Props> = ({
         </Tooltip>
       )}
 
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={meta!.repo}
-          release={meta!.version}
-          packageName={meta!.package}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <Dialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+      >
+        <DialogContent className="w-120">
+          <PluginInfoContent
+            repository={meta?.repo}
+            release={meta?.version}
+            packageName={meta?.package}
+          />
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $[`${i18nPrefix}.deleteContentLeft`], { ns: 'plugin' })}
               <span className="system-md-semibold">{pluginName}</span>
               {t(($) => $[`${i18nPrefix}.deleteContentRight`], { ns: 'plugin' })}
-              <br />
-            </div>
-          </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

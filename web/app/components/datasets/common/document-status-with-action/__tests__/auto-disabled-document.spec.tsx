@@ -1,187 +1,54 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { toast } from '@/app/notifications'
-import { useAutoDisabledDocuments } from '@/service/knowledge/use-document'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import AutoDisabledDocument from '../auto-disabled-document'
 
-const { mockToastSuccess } = vi.hoisted(() => ({
-  mockToastSuccess: vi.fn(),
+const { getLogs, enable, successToast } = vi.hoisted(() => ({
+  getLogs: vi.fn(),
+  enable: vi.fn(),
+  successToast: vi.fn(),
 }))
-
-type AutoDisabledDocumentsResponse = { document_ids: string[] }
-
-const createMockQueryResult = (
-  data: AutoDisabledDocumentsResponse | undefined,
-  isLoading: boolean,
-) =>
-  ({
-    data,
-    isLoading,
-  }) as ReturnType<typeof useAutoDisabledDocuments>
-
-const mockMutateAsync = vi.fn()
-const mockInvalidDisabledDocument = vi.fn()
-
-vi.mock('@/service/knowledge/use-document', () => ({
-  useAutoDisabledDocuments: vi.fn(),
-  useDocumentEnable: vi.fn(() => ({
-    mutateAsync: mockMutateAsync,
-  })),
-  useInvalidDisabledDocument: vi.fn(() => mockInvalidDisabledDocument),
+vi.mock('@/app/notifications', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/notifications')>()),
+  toast: { success: successToast },
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.autoDisableLogs.get': getLogs,
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': enable,
+    }),
+  }
+})
 
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: mockToastSuccess,
-  },
-}))
-
-const mockUseAutoDisabledDocuments = vi.mocked(useAutoDisabledDocuments)
-
-describe('AutoDisabledDocument', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockMutateAsync.mockResolvedValue({})
+it('offers enable only after disabled documents load, then refreshes their status', async () => {
+  const user = userEvent.setup()
+  const response = { document_ids: ['doc1', 'doc2'], count: 2 }
+  const pending = createDeferred<typeof response>()
+  getLogs.mockReturnValueOnce(pending.promise).mockResolvedValue({ document_ids: [], count: 0 })
+  enable.mockResolvedValue({ result: 'success' })
+  render(<AutoDisabledDocument datasetId="dataset-1" />)
+  expect(screen.queryByRole('button', { name: 'dataset.enable' })).not.toBeInTheDocument()
+  await act(async () => pending.resolve(response))
+  await user.click(await screen.findByRole('button', { name: 'dataset.enable' }))
+  expect(enable).toHaveBeenCalledWith({
+    params: { dataset_id: 'dataset-1', action: 'enable' },
+    query: { document_id: ['doc1', 'doc2'] },
   })
+  await waitFor(() => expect(getLogs).toHaveBeenCalledTimes(2))
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'dataset.enable' })).not.toBeInTheDocument(),
+  )
+  expect(successToast).not.toHaveBeenCalled()
+})
 
-  describe('Rendering', () => {
-    it('should render nothing when loading', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(createMockQueryResult(undefined, true))
-
-      const { container } = render(<AutoDisabledDocument datasetId="test-dataset" />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should render nothing when no disabled documents', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: [] }, false),
-      )
-
-      const { container } = render(<AutoDisabledDocument datasetId="test-dataset" />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should render nothing when document_ids is undefined', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(createMockQueryResult(undefined, false))
-
-      const { container } = render(<AutoDisabledDocument datasetId="test-dataset" />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should render StatusWithAction when disabled documents exist', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: ['doc1', 'doc2'] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="test-dataset" />)
-      expect(screen.getByText(/enable/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should pass datasetId to useAutoDisabledDocuments', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: [] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="my-dataset-id" />)
-      expect(mockUseAutoDisabledDocuments).toHaveBeenCalledWith('my-dataset-id')
-    })
-  })
-
-  it('enables the current document IDs after the initial query completes', async () => {
-    const user = userEvent.setup()
-    mockUseAutoDisabledDocuments.mockImplementation(() =>
-      useQuery(
-        queryOptions({
-          queryKey: ['disabled-documents'],
-          queryFn: () => new Promise<AutoDisabledDocumentsResponse>(() => {}),
-        }),
-      ),
-    )
-    const { wrapper, queryClient } = createConsoleQueryWrapper()
-    render(<AutoDisabledDocument datasetId="dataset" />, { wrapper })
-    expect(screen.queryByRole('button', { name: /enable/i })).not.toBeInTheDocument()
-    await act(async () => {
-      queryClient.setQueryData(['disabled-documents'], { document_ids: ['returned-document'] })
-    })
-    await user.click(await screen.findByRole('button', { name: /enable/i }))
-    expect(mockMutateAsync).toHaveBeenCalledWith({
-      datasetId: 'dataset',
-      documentIds: ['returned-document'],
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call enableDocument when action button is clicked', async () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: ['doc1', 'doc2'] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="test-dataset" />)
-
-      const actionButton = screen.getByText(/enable/i)
-      fireEvent.click(actionButton)
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith({
-          datasetId: 'test-dataset',
-          documentIds: ['doc1', 'doc2'],
-        })
-      })
-    })
-
-    it('should invalidate cache after enabling documents', async () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: ['doc1'] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="test-dataset" />)
-
-      const actionButton = screen.getByText(/enable/i)
-      fireEvent.click(actionButton)
-
-      await waitFor(() => {
-        expect(mockInvalidDisabledDocument).toHaveBeenCalled()
-      })
-    })
-
-    it('should show success toast after enabling documents', async () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: ['doc1'] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="test-dataset" />)
-
-      const actionButton = screen.getByText(/enable/i)
-      fireEvent.click(actionButton)
-
-      await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle single disabled document', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: ['doc1'] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="test-dataset" />)
-      expect(screen.getByText(/enable/i)).toBeInTheDocument()
-    })
-
-    it('should handle multiple disabled documents', () => {
-      mockUseAutoDisabledDocuments.mockReturnValue(
-        createMockQueryResult({ document_ids: ['doc1', 'doc2', 'doc3', 'doc4', 'doc5'] }, false),
-      )
-
-      render(<AutoDisabledDocument datasetId="test-dataset" />)
-      expect(screen.getByText(/enable/i)).toBeInTheDocument()
-    })
-  })
+it('does not offer enable when no documents were automatically disabled', async () => {
+  getLogs.mockResolvedValue({ document_ids: [], count: 0 })
+  const { queryClient } = render(<AutoDisabledDocument datasetId="dataset-1" />)
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  expect(screen.queryByRole('button', { name: 'dataset.enable' })).not.toBeInTheDocument()
 })

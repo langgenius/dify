@@ -1,0 +1,72 @@
+import os
+from collections.abc import Generator
+
+import pytest
+from qcloud_cos import CosS3Client
+from qcloud_cos.streambody import StreamBody
+
+from tests.helpers.unit.oss.__mock.base import (
+    get_example_bucket,
+    get_example_data,
+    get_example_filename,
+    get_example_filepath,
+    object_response,
+)
+
+# CosS3Client returns the response headers as a dict.
+type _CosHeaders = dict[str, str | int | bool]
+
+
+class MockTencentCosClass:
+    def __init__(self, *_args: object, **_kwargs: object) -> None:
+        self.bucket_name = get_example_bucket()
+        self.key = get_example_filename()
+        self.content = get_example_data()
+        self.filepath = get_example_filepath()
+        self.resp: _CosHeaders = {
+            "ETag": "ee8de918d05640145b18f70f4c3aa602",
+            "Server": "tencent-cos",
+            "x-cos-hash-crc64ecma": 16749565679157681890,
+            "x-cos-request-id": "NWU5MDNkYzlfNjRiODJhMDlfMzFmYzhfMTFm****",
+        }
+
+    def put_object(self, Bucket: str, Body: bytes, Key: str) -> _CosHeaders:  # noqa: N803
+        assert Bucket == self.bucket_name
+        assert Key == self.key
+        assert Body == self.content
+        return self.resp
+
+    def get_object(self, Bucket: str, Key: str) -> dict[str, StreamBody]:  # noqa: N803
+        assert Bucket == self.bucket_name
+        assert Key == self.key
+
+        return {"Body": StreamBody(object_response(self.content))}
+
+    def object_exists(self, Bucket: str, Key: str) -> bool:  # noqa: N803
+        assert Bucket == self.bucket_name
+        assert Key == self.key
+        return True
+
+    def delete_object(self, Bucket: str, Key: str) -> _CosHeaders:  # noqa: N803
+        assert Bucket == self.bucket_name
+        assert Key == self.key
+        self.resp.update({"x-cos-delete-marker": True})
+        return self.resp
+
+
+MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
+
+
+@pytest.fixture
+def setup_tencent_cos_mock(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
+    if MOCK:
+        monkeypatch.setattr(CosS3Client, "__init__", MockTencentCosClass.__init__)
+        monkeypatch.setattr(CosS3Client, "put_object", MockTencentCosClass.put_object)
+        monkeypatch.setattr(CosS3Client, "get_object", MockTencentCosClass.get_object)
+        monkeypatch.setattr(CosS3Client, "object_exists", MockTencentCosClass.object_exists)
+        monkeypatch.setattr(CosS3Client, "delete_object", MockTencentCosClass.delete_object)
+
+    yield
+
+    if MOCK:
+        monkeypatch.undo()

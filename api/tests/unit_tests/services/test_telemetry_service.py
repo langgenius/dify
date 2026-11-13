@@ -43,8 +43,9 @@ def test_telemetry_is_disabled_for_enterprise(config_overrides: Callable[..., No
         ("TELEMETRY_ENDPOINT", ""),
     ],
 )
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_telemetry_is_disabled_when_a_required_condition_is_not_met(
-    telemetry_enabled: None, config_overrides: Callable[..., None], setting: str, value: str | bool
+    config_overrides: Callable[..., None], setting: str, value: str | bool
 ) -> None:
     config_overrides(**{setting: value})
 
@@ -52,15 +53,16 @@ def test_telemetry_is_disabled_when_a_required_condition_is_not_met(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_reporting_without_setup_is_skipped(sqlite_session: Session, telemetry_enabled: None) -> None:
+@pytest.mark.usefixtures("telemetry_enabled")
+def test_reporting_without_setup_is_skipped(sqlite_session: Session) -> None:
     assert CommunityTelemetryService.report_install(session=sqlite_session) is False
     assert CommunityTelemetryService.report_heartbeat(session=sqlite_session) is False
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_install_marks_reported_at(
     sqlite_session: Session,
-    telemetry_enabled: None,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> None:
@@ -71,7 +73,7 @@ def test_report_install_marks_reported_at(
 
     sent_payloads: list[dict[str, str | int]] = []
 
-    def fake_post(url: str, json: dict[str, str | int], timeout: int) -> httpx.Response:
+    def fake_post(url: str, json: dict[str, str | int], **_kwargs: object) -> httpx.Response:
         sent_payloads.append(json)
         return httpx.Response(204, request=httpx.Request("POST", url))
 
@@ -89,16 +91,15 @@ def test_report_install_marks_reported_at(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_report_install_generates_missing_instance_id(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.usefixtures("telemetry_enabled")
+def test_report_install_generates_missing_instance_id(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     setup = DifySetup(version="installed-version")
     sqlite_session.add(setup)
     sqlite_session.commit()
     monkeypatch.setattr(
         telemetry_service.httpx,
         "post",
-        lambda url, json, timeout: httpx.Response(204, request=httpx.Request("POST", url)),
+        lambda url, **_kwargs: httpx.Response(204, request=httpx.Request("POST", url)),
     )
 
     assert CommunityTelemetryService.report_install(session=sqlite_session) is True
@@ -108,8 +109,9 @@ def test_report_install_generates_missing_instance_id(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_heartbeat_generates_missing_instance_id(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = DifySetup(version="1.0.0", install_reported_at=datetime(2026, 7, 12, 8, 0, 0))
     sqlite_session.add(setup)
@@ -117,7 +119,7 @@ def test_report_heartbeat_generates_missing_instance_id(
     monkeypatch.setattr(
         telemetry_service.httpx,
         "post",
-        lambda url, json, timeout: httpx.Response(204, request=httpx.Request("POST", url)),
+        lambda url, **_kwargs: httpx.Response(204, request=httpx.Request("POST", url)),
     )
 
     assert (
@@ -129,14 +131,13 @@ def test_report_heartbeat_generates_missing_instance_id(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_report_install_failure_keeps_install_pending(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.usefixtures("telemetry_enabled")
+def test_report_install_failure_keeps_install_pending(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     setup = DifySetup(version="1.0.0", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
 
-    def fake_post(url: str, json: dict[str, str | int], timeout: int) -> httpx.Response:
+    def fake_post(url: str, **_kwargs: object) -> httpx.Response:
         raise httpx.ConnectError("offline", request=httpx.Request("POST", url))
 
     monkeypatch.setattr(telemetry_service.httpx, "post", fake_post)
@@ -149,8 +150,9 @@ def test_report_install_failure_keeps_install_pending(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_install_uses_fallback_endpoint_after_network_failure(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = DifySetup(version="1.0.0", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
@@ -158,7 +160,7 @@ def test_report_install_uses_fallback_endpoint_after_network_failure(
 
     urls: list[str] = []
 
-    def fake_post(url: str, json: dict[str, str | int], timeout: int) -> httpx.Response:
+    def fake_post(url: str, **_kwargs: object) -> httpx.Response:
         urls.append(url)
         if url == telemetry_service.dify_config.TELEMETRY_ENDPOINT:
             raise httpx.ConnectError("offline", request=httpx.Request("POST", url))
@@ -174,8 +176,9 @@ def test_report_install_uses_fallback_endpoint_after_network_failure(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_install_does_not_use_fallback_endpoint_after_http_error(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = DifySetup(version="1.0.0", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
@@ -194,9 +197,9 @@ def test_report_install_does_not_use_fallback_endpoint_after_http_error(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_heartbeat_retries_pending_install_before_heartbeat(
     sqlite_session: Session,
-    telemetry_enabled: None,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> None:
@@ -207,7 +210,7 @@ def test_report_heartbeat_retries_pending_install_before_heartbeat(
 
     sent_payloads: list[dict[str, str | int]] = []
 
-    def fake_post(url: str, json: dict[str, str | int], timeout: int) -> httpx.Response:
+    def fake_post(url: str, json: dict[str, str | int], **_kwargs: object) -> httpx.Response:
         sent_payloads.append(json)
         return httpx.Response(204, request=httpx.Request("POST", url))
 
@@ -226,8 +229,9 @@ def test_report_heartbeat_retries_pending_install_before_heartbeat(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_heartbeat_skips_when_already_sent_today(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = DifySetup(
         version="1.0.0",
@@ -248,8 +252,9 @@ def test_report_heartbeat_skips_when_already_sent_today(
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_report_heartbeat_failure_does_not_mark_the_day_reported(
-    sqlite_session: Session, telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = DifySetup(
         version="1.0.0",
@@ -259,7 +264,7 @@ def test_report_heartbeat_failure_does_not_mark_the_day_reported(
     sqlite_session.add(setup)
     sqlite_session.commit()
 
-    def fake_post(url: str, json: dict[str, str | int], timeout: int) -> httpx.Response:
+    def fake_post(url: str, **_kwargs: object) -> httpx.Response:
         raise httpx.ConnectError("offline", request=httpx.Request("POST", url))
 
     monkeypatch.setattr(telemetry_service.httpx, "post", fake_post)
@@ -281,12 +286,13 @@ def test_send_event_skips_when_telemetry_is_disabled(
     post_mock.assert_not_called()
 
 
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_send_event_skips_an_empty_fallback_endpoint(
-    telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     config_overrides(TELEMETRY_FALLBACK_ENDPOINT="")
 
-    def fake_post(url: str, json: dict[str, str], timeout: int) -> httpx.Response:
+    def fake_post(url: str, **_kwargs: object) -> httpx.Response:
         raise httpx.ConnectError("offline", request=httpx.Request("POST", url))
 
     monkeypatch.setattr(telemetry_service.httpx, "post", fake_post)
@@ -294,8 +300,9 @@ def test_send_event_skips_an_empty_fallback_endpoint(
     assert CommunityTelemetryService._send_event({"event": "heartbeat"}) is False
 
 
+@pytest.mark.usefixtures("telemetry_enabled")
 def test_send_event_does_not_retry_the_same_endpoint(
-    telemetry_enabled: None, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     config_overrides(TELEMETRY_FALLBACK_ENDPOINT=telemetry_service.dify_config.TELEMETRY_ENDPOINT)
     post_mock = Mock(

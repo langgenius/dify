@@ -2,7 +2,13 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ComponentType, FC } from 'react'
 import type { Credential, ModelItem, ModelProvider } from '../declarations'
 import type { ModelLoadBalancingModalProps } from './model-load-balancing-modal'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,19 +28,23 @@ const ModelLoadBalancingLoadingDialog = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
-      <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
-        </DialogTitle>
-        <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-          <span className="system-sm-regular text-text-secondary">
-            {t(($) => $.loading, { ns: 'common' })}
-          </span>
-        </div>
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+            />
+            <span className="system-sm-regular text-text-secondary">
+              {t(($) => $.loading, { ns: 'common' })}
+            </span>
+          </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )
@@ -126,11 +136,11 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
     <>
       <div className="rounded-b-xl px-2 pb-2">
         <div className="rounded-lg bg-components-panel-bg py-1">
-          <div className="flex items-center pr-0.75 pl-1">
-            <span className="mr-2 flex shrink-0 items-center">
+          <div className="flex items-center ps-1 pe-0.75">
+            <span className="me-2 flex shrink-0 items-center">
               <button
                 type="button"
-                className="inline-flex h-6 cursor-pointer items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="inline-flex h-6 cursor-pointer items-center rounded-lg border-none bg-transparent ps-1 pe-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 aria-expanded="true"
                 onClick={() => onCollapse()}
               >
@@ -138,7 +148,7 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
                   ns: 'modelProvider',
                   num: models.length,
                 })}
-                <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
+                <span className="me-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
               </button>
             </span>
             {isConfigurable && canConfigureModels && (

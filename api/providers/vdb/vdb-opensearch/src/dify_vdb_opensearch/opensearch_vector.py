@@ -3,7 +3,7 @@ import logging
 from typing import Any, override
 from uuid import uuid4
 
-from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
+from opensearchpy import NotFoundError, OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
@@ -192,7 +192,7 @@ class OpenSearchVector(BaseVector):
         try:
             self._client.get(index=self._collection_name.lower(), id=id)
             return True
-        except Exception:
+        except NotFoundError:
             return False
 
     @override
@@ -205,7 +205,7 @@ class OpenSearchVector(BaseVector):
         if not all(isinstance(x, float) for x in query_vector):
             raise ValueError("All elements in query_vector should be floats")
 
-        query = {
+        query: dict[str, Any] = {
             "size": kwargs.get("top_k", 4),
             "query": {"knn": {Field.VECTOR: {Field.VECTOR: query_vector, "k": kwargs.get("top_k", 4)}}},
         }

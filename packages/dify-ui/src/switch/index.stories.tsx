@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { SwitchProps } from '.'
 import * as React from 'react'
 import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
@@ -46,7 +47,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 type SwitchDemoProps = Partial<
-  Omit<React.ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>
+  Omit<SwitchProps, 'checked' | 'defaultChecked' | 'onCheckedChange'>
 > & {
   checked?: boolean
 }
@@ -121,9 +122,10 @@ function AllStatesDemo() {
     <div style={{ width: '600px' }} className="space-y-6">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-gray-500">
+          <tr className="text-start text-gray-500">
             <th className="pb-3 font-medium">Size</th>
             <th className="pb-3 font-medium">Default</th>
+            <th className="pb-3 font-medium">Read-only</th>
             <th className="pb-3 font-medium">Disabled</th>
             <th className="pb-3 font-medium">Loading</th>
             <th className="pb-3 font-medium">Skeleton</th>
@@ -146,6 +148,22 @@ function AllStatesDemo() {
                     checked={true}
                     onCheckedChange={() => {}}
                     aria-label={`${size} checked switch`}
+                  />
+                </div>
+              </td>
+              <td className="py-3">
+                <div className="flex gap-2">
+                  <Switch
+                    size={size}
+                    checked={false}
+                    readOnly
+                    aria-label={`${size} read-only unchecked switch`}
+                  />
+                  <Switch
+                    size={size}
+                    checked={true}
+                    readOnly
+                    aria-label={`${size} read-only checked switch`}
                   />
                 </div>
               </td>

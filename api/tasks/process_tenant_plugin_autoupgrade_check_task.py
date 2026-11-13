@@ -1,7 +1,6 @@
 import json
 import logging
 import operator
-import typing
 
 import click
 from celery import shared_task
@@ -27,7 +26,7 @@ CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
 
 # A cached miss is stored as JSON null, so None has to stay a valid payload.
-_CACHED_MANIFEST_ADAPTER = TypeAdapter(typing.Union[MarketplacePluginSnapshot, None])
+_CACHED_MANIFEST_ADAPTER = TypeAdapter(MarketplacePluginSnapshot | None)
 
 
 def _get_redis_cache_key(plugin_id: str) -> str:
@@ -35,7 +34,7 @@ def _get_redis_cache_key(plugin_id: str) -> str:
     return f"{CACHE_REDIS_KEY_PREFIX}{plugin_id}"
 
 
-def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapshot, None, bool]:
+def _get_cached_manifest(plugin_id: str) -> MarketplacePluginSnapshot | None | bool:
     """
     Get cached plugin manifest from Redis.
     Returns:

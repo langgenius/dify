@@ -17,7 +17,10 @@ const { request } = vi.hoisted(() => ({
       ) => Promise<Response>
     >(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 
 const pluginInfo = { pluginUniqueIdentifier: 'org/plugin:1.0.0@hash', pluginId: 'org/plugin' }
 const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
@@ -52,7 +55,7 @@ const renderImage = (src: string, info = pluginInfo) =>
 it('shares normalized resource requests between image and paragraph consumers and caches binary bytes', async () => {
   render(
     <QueryClientProvider client={queryClient}>
-      <PluginImg src="./_assets/logo.png" pluginInfo={pluginInfo} />
+      <PluginImg src="/_assets/logo.png" pluginInfo={pluginInfo} />
       <PluginParagraph
         pluginInfo={pluginInfo}
         node={{

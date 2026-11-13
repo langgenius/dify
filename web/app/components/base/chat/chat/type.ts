@@ -1,3 +1,4 @@
+import type { KnowledgeFsCitation } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
@@ -17,7 +18,6 @@ export type FeedbackType = {
 }
 
 export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<void>
-export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<any>
 
 export type ToolInfoInThought = {
   name: string
@@ -28,6 +28,7 @@ export type ToolInfoInThought = {
 }
 
 export type ThoughtItem = {
+  task_id?: string
   id: string
   tool: string // plugin or dataset. May has multi.
   thought: string
@@ -53,12 +54,16 @@ type AgentResponsePart =
     }
 
 export type CitationItem = {
+  knowledge_fs_citation?: KnowledgeFsCitation | null
   content: string
   data_source_type: string
   dataset_name: string
   dataset_id: string
+  document_asset_id?: string | null
   document_id: string
   document_name: string
+  document_revision?: number | null
+  document_version?: number | null
   hit_count: number
   index_node_hash: string
   segment_id: string
@@ -78,13 +83,14 @@ type SubmittedHumanInputExtraContent = {
   type: 'human_input'
   submitted: true
   form_definition?: HumanInputFormData
-  form_submission_data: HumanInputFilledFormData
+  form_submission_data: Omit<HumanInputFilledFormData, 'form_id'>
   workflow_run_id?: string
 }
 
 export type ExtraContent = PendingHumanInputExtraContent | SubmittedHumanInputExtraContent
 
 export type IChatItem = {
+  isError?: boolean
   id: string
   content: string
   citation?: CitationItem[]
@@ -134,7 +140,7 @@ export type IChatItem = {
   extra_contents?: ExtraContent[]
 }
 
-export type Metadata = {
+type Metadata = {
   retriever_resources?: CitationItem[]
   annotation_reply: {
     id: string

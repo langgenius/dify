@@ -5,7 +5,6 @@ import type { IconInfo } from '@/models/datasets'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 
 export type RagPipelineSliceShape = {
-  pipelineId: string
   knowledgeName: string
   knowledgeIcon?: IconInfo
   showInputFieldPanel: boolean
@@ -30,7 +29,6 @@ export const createRagPipelineSliceSlice: StateCreator<
   [],
   RagPipelineSliceShape
 > = (set) => ({
-  pipelineId: '',
   knowledgeName: '',
   showInputFieldPanel: false,
   setShowInputFieldPanel: (showInputFieldPanel) => set(() => ({ showInputFieldPanel })),

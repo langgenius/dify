@@ -31,10 +31,10 @@ def _document(
     *,
     workspace_id: str = "workspace-1",
     dataset_id: str = "dataset-1",
-    source_type: str = DataSourceType.NOTION_IMPORT,
+    source_type: DataSourceType = DataSourceType.NOTION_IMPORT,
     enabled: bool = True,
     archived: bool = False,
-    status: str = IndexingStatus.COMPLETED,
+    status: IndexingStatus = IndexingStatus.COMPLETED,
     batch: str = "batch-1",
 ) -> Document:
     source_info = (
@@ -42,7 +42,7 @@ def _document(
         if source_type == DataSourceType.NOTION_IMPORT
         else {"upload_file_id": f"file-{document_id}"}
     )
-    return Document(
+    row = Document(
         id=document_id,
         tenant_id=workspace_id,
         dataset_id=dataset_id,
@@ -53,8 +53,6 @@ def _document(
         name=f"Document {document_id}",
         created_from=DocumentCreatedFrom.API,
         created_by="account-1",
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 1),
         indexing_status=status,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
         word_count=1,
@@ -62,6 +60,9 @@ def _document(
         archived=archived,
         is_paused=False,
     )
+    row.created_at = datetime(2026, 1, 1)
+    row.updated_at = datetime(2026, 1, 1)
+    return row
 
 
 def test_document_queries_enforce_the_complete_owner_chain(

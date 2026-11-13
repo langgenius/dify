@@ -131,8 +131,8 @@ export const useTextGenerationAppState = ({
       if (!appData || !appParams) return
       const { app_id: nextAppId, site, custom_config } = appData
       setAppId(nextAppId)
-      setSiteInfo(site as SiteInfo)
-      setCustomConfig((custom_config || null) as TextGenerationCustomConfig | null)
+      setSiteInfo(site)
+      setCustomConfig(custom_config || null)
       await changeLanguage(site.default_language)
       const { user_input_form, more_like_this, file_upload, text_to_speech } =
         appParams as unknown as ShareAppParams

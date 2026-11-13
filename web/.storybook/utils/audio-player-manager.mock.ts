@@ -49,7 +49,7 @@ class MockAudioPlayerManager {
 }
 
 export const ensureMockAudioManager = () => {
-  const managerAny = AudioPlayerManager as unknown as {
+  const managerAny = AudioPlayerManager as {
     getInstance: () => AudioPlayerManager
     __isStorybookMockInstalled?: boolean
   }

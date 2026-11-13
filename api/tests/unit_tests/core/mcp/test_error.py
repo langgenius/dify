@@ -192,7 +192,7 @@ class TestErrorHierarchy:
         assert error1 != error3
 
         # But they have the same type
-        assert type(error1) == type(error2) == type(error3)
+        assert type(error1) is type(error2) is type(error3)
 
     def test_error_representation(self) -> None:
         """Test error string representation."""

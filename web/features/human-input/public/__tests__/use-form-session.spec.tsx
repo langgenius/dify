@@ -1,0 +1,412 @@
+import type { PropsWithChildren } from 'react'
+import type { HumanInputV2FormTransport } from '../types'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
+import { useHumanInputV2FormSession } from '../use-form-session'
+import { createHumanInputV2Error } from './fixtures/errors'
+import {
+  createHumanInputV2MockScenario,
+  createMockHumanInputV2FormTransport,
+  HUMAN_INPUT_V2_MOCK_OTP,
+} from './fixtures/mock-transport'
+
+const strictWrapper = ({ children }: PropsWithChildren) => <StrictMode>{children}</StrictMode>
+
+const deferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
+const withOverrides = (
+  overrides: Partial<HumanInputV2FormTransport>,
+): HumanInputV2FormTransport => ({
+  ...createMockHumanInputV2FormTransport(),
+  ...overrides,
+})
+
+describe('useHumanInputV2FormSession', () => {
+  it('requests access exactly once in Strict Mode across rerenders, input changes, and browser events', async () => {
+    const transport = createMockHumanInputV2FormTransport()
+    const getForm = vi.spyOn(transport, 'getForm')
+    const requestAccess = vi.spyOn(transport, 'requestAccess')
+    const { result, rerender } = renderHook(
+      () => useHumanInputV2FormSession({ token: 'form-token', transport }),
+      { wrapper: strictWrapper },
+    )
+
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    act(() => result.current.setOtpCode('123456'))
+    rerender()
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+      window.dispatchEvent(new Event('online'))
+    })
+
+    expect(getForm).toHaveBeenCalledTimes(1)
+    expect(requestAccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not auto-request access after a definition or terminal failure', async () => {
+    const requestAccess = vi.fn<HumanInputV2FormTransport['requestAccess']>()
+    const transport = withOverrides({
+      getForm: vi
+        .fn()
+        .mockRejectedValue(createHumanInputV2Error('not-found', 'human_input_form_not_found', 404)),
+      requestAccess,
+    })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'missing-token',
+        transport,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.state.phase).toBe('terminal'))
+    expect(requestAccess).not.toHaveBeenCalled()
+  })
+
+  it('supports an explicit access retry after the automatic attempt fails', async () => {
+    const requestAccess = vi
+      .fn<HumanInputV2FormTransport['requestAccess']>()
+      .mockRejectedValueOnce(createHumanInputV2Error('access-delivery-failed'))
+      .mockResolvedValueOnce({
+        challengeToken: 'challenge-retry',
+        resendAfterSeconds: 30,
+        expiresInSeconds: 300,
+      })
+    const transport = withOverrides({ requestAccess })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.state.phase).toBe('access-error'))
+    expect(requestAccess).toHaveBeenCalledTimes(1)
+
+    act(() => result.current.retryAccess())
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    expect(requestAccess).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the access failure when an action is submitted before a code exists', async () => {
+    const submit = vi.fn<HumanInputV2FormTransport['submit']>()
+    const transport = withOverrides({
+      requestAccess: vi
+        .fn<HumanInputV2FormTransport['requestAccess']>()
+        .mockRejectedValue(createHumanInputV2Error('access-delivery-failed')),
+      submit,
+    })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.state.phase).toBe('access-error'))
+    await act(() => result.current.submit({}, 'approve'))
+
+    expect(result.current.state).toMatchObject({
+      phase: 'access-error',
+      error: 'access-delivery-failed',
+    })
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('derives absolute cooldown/expiry deadlines and never auto-resends after expiry', async () => {
+    vi.useFakeTimers()
+    let currentTime = 10_000
+    const now = () => currentTime
+    const transport = createMockHumanInputV2FormTransport({
+      now,
+      scenario: { resendAfterSeconds: 10, expiresInSeconds: 20 },
+    })
+    const requestAccess = vi.spyOn(transport, 'requestAccess')
+    const submit = vi.spyOn(transport, 'submit')
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+        now,
+      }),
+    )
+    await act(async () => Promise.resolve())
+    await act(async () => Promise.resolve())
+    expect(result.current.state.phase).toBe('awaiting-otp')
+    expect(result.current.state.challenge?.resendAt).toBe(20_000)
+    expect(result.current.state.challenge?.expiresAt).toBe(30_000)
+
+    currentTime += 20_000
+    act(() => window.dispatchEvent(new Event('focus')))
+
+    expect(result.current.state.phase).toBe('challenge-expired')
+    expect(result.current.state.challenge).toBeUndefined()
+    expect(requestAccess).toHaveBeenCalledTimes(1)
+    await act(async () => result.current.submit({}, 'approve'))
+    expect(submit).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('replaces proof on resend and preserves an older unexpired challenge on transient failure', async () => {
+    let currentTime = 1_000
+    const now = () => currentTime
+    const firstTransport = createMockHumanInputV2FormTransport({
+      now,
+      scenario: { resendAfterSeconds: 5, expiresInSeconds: 60 },
+    })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport: firstTransport,
+        now,
+      }),
+    )
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    const firstChallenge = result.current.state.challenge!.challengeToken
+    act(() => result.current.setOtpCode('123456'))
+
+    currentTime += 5_000
+    act(() => result.current.resendAccess())
+    await waitFor(() => {
+      expect(result.current.state.challenge?.challengeToken).not.toBe(firstChallenge)
+    })
+    expect(result.current.state.otpCode).toBe('')
+
+    const previousChallenge = result.current.state.challenge
+    const requestAccess = vi
+      .fn<HumanInputV2FormTransport['requestAccess']>()
+      .mockRejectedValue(createHumanInputV2Error('network'))
+    const failingTransport = withOverrides({ requestAccess })
+    const { result: failingResult } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'second-token',
+        transport: failingTransport,
+        now,
+      }),
+    )
+    await waitFor(() => expect(failingResult.current.state.phase).toBe('access-error'))
+
+    requestAccess.mockResolvedValueOnce({
+      challengeToken: previousChallenge!.challengeToken,
+      resendAfterSeconds: 0,
+      expiresInSeconds: 60,
+    })
+    act(() => failingResult.current.retryAccess())
+    await waitFor(() => expect(failingResult.current.state.challenge).toBeDefined())
+    const challengeBeforeFailure = failingResult.current.state.challenge
+    requestAccess.mockRejectedValueOnce(createHumanInputV2Error('network'))
+    act(() => failingResult.current.resendAccess())
+    await waitFor(() => expect(failingResult.current.state.error).toBe('network'))
+    expect(failingResult.current.state.challenge).toEqual(challengeBeforeFailure)
+  })
+
+  it('submits an atomic payload once and clears proof on success', async () => {
+    const submitDeferred = deferred<void>()
+    const submit = vi
+      .fn<HumanInputV2FormTransport['submit']>()
+      .mockReturnValue(submitDeferred.promise)
+    const transport = withOverrides({ submit })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+      }),
+    )
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    act(() => result.current.setOtpCode(HUMAN_INPUT_V2_MOCK_OTP))
+    await waitFor(() => expect(result.current.canSubmit).toBe(true))
+
+    act(() => {
+      void result.current.submit({ response: 'approved' }, 'approve')
+      void result.current.submit({ response: 'rejected' }, 'reject')
+    })
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(submit).toHaveBeenCalledWith(
+      'form-token',
+      {
+        inputs: { response: 'approved' },
+        action: 'approve',
+        otp_code: HUMAN_INPUT_V2_MOCK_OTP,
+        challenge_token: 'mock-challenge-1',
+      },
+      { signal: expect.any(AbortSignal) },
+    )
+
+    await act(async () => submitDeferred.resolve())
+    expect(result.current.state).toMatchObject({ phase: 'success', otpCode: '' })
+    expect(result.current.state.challenge).toBeUndefined()
+  })
+
+  it.each(['success', 'failure'] as const)(
+    'keeps the completed form after a late access %s in the same session',
+    async (accessOutcome) => {
+      const submitDeferred = deferred<void>()
+      const accessDeferred =
+        deferred<Awaited<ReturnType<HumanInputV2FormTransport['requestAccess']>>>()
+      const requestAccess = vi
+        .fn<HumanInputV2FormTransport['requestAccess']>()
+        .mockResolvedValueOnce({
+          challengeToken: 'original-challenge',
+          resendAfterSeconds: 0,
+          expiresInSeconds: 300,
+        })
+        .mockReturnValueOnce(accessDeferred.promise)
+      const submit = vi
+        .fn<HumanInputV2FormTransport['submit']>()
+        .mockReturnValueOnce(submitDeferred.promise)
+      const transport = withOverrides({ requestAccess, submit })
+      const { result } = renderHook(() =>
+        useHumanInputV2FormSession({ token: 'form-token', transport }),
+      )
+      await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+      act(() => result.current.setOtpCode(HUMAN_INPUT_V2_MOCK_OTP))
+
+      act(() => result.current.resendAccess())
+      expect(requestAccess).toHaveBeenCalledTimes(2)
+      act(() => {
+        void result.current.submit({ response: 'approved' }, 'approve')
+      })
+      expect(result.current.state.phase).toBe('submitting')
+
+      await act(async () => submitDeferred.resolve())
+      expect(result.current.state.phase).toBe('success')
+
+      await act(async () => {
+        if (accessOutcome === 'success') {
+          accessDeferred.resolve({
+            challengeToken: 'late-challenge',
+            resendAfterSeconds: 30,
+            expiresInSeconds: 300,
+          })
+        } else {
+          accessDeferred.reject(createHumanInputV2Error('network'))
+        }
+      })
+
+      expect(result.current.state).toMatchObject({ phase: 'success', otpCode: '' })
+      expect(result.current.state.challenge).toBeUndefined()
+      expect(result.current.state.error).toBeUndefined()
+      expect(result.current.canSubmit).toBe(false)
+      expect(submit).toHaveBeenCalledWith(
+        'form-token',
+        {
+          inputs: { response: 'approved' },
+          action: 'approve',
+          otp_code: HUMAN_INPUT_V2_MOCK_OTP,
+          challenge_token: 'original-challenge',
+        },
+        { signal: expect.any(AbortSignal) },
+      )
+    },
+  )
+
+  it('keeps form and challenge for invalid OTP, then allows correction', async () => {
+    const transport = createMockHumanInputV2FormTransport()
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+      }),
+    )
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    const challenge = result.current.state.challenge
+    act(() => result.current.setOtpCode('000000'))
+    await act(async () => result.current.submit({}, 'approve'))
+
+    expect(result.current.state).toMatchObject({
+      phase: 'proof-error',
+      error: 'invalid-otp',
+      challenge,
+    })
+
+    act(() => result.current.setOtpCode(HUMAN_INPUT_V2_MOCK_OTP))
+    await act(async () => result.current.submit({}, 'approve'))
+    expect(result.current.state.phase).toBe('success')
+  })
+
+  it('aborts a pending definition on unmount without sending a verification email afterwards', async () => {
+    const definition = deferred<ReturnType<typeof createHumanInputV2MockScenario>['definition']>()
+    const requestAccess = vi.fn<HumanInputV2FormTransport['requestAccess']>()
+    const getForm = vi
+      .fn<HumanInputV2FormTransport['getForm']>()
+      .mockReturnValue(definition.promise)
+    const { unmount } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'leaving',
+        transport: withOverrides({ getForm, requestAccess }),
+      }),
+    )
+    unmount()
+    expect(getForm.mock.calls[0]?.[1]?.signal?.aborted).toBe(true)
+    await act(async () => definition.resolve(createHumanInputV2MockScenario().definition))
+    expect(requestAccess).not.toHaveBeenCalled()
+  })
+
+  it('does not persist or log OTP and Challenge values', async () => {
+    const setLocalStorage = vi.spyOn(Storage.prototype, 'setItem')
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const transport = createMockHumanInputV2FormTransport()
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+      }),
+    )
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    act(() => result.current.setOtpCode(HUMAN_INPUT_V2_MOCK_OTP))
+
+    expect(setLocalStorage).not.toHaveBeenCalled()
+    expect(consoleLog).not.toHaveBeenCalled()
+    expect(window.location.href).not.toContain(HUMAN_INPUT_V2_MOCK_OTP)
+    expect(window.location.href).not.toContain('mock-challenge-1')
+    consoleLog.mockRestore()
+    setLocalStorage.mockRestore()
+  })
+
+  it.each([
+    ['already-submitted', 'success'],
+    ['already-submitted', 'failure'],
+    ['form-expired', 'success'],
+    ['form-expired', 'failure'],
+  ] as const)('keeps terminal %s after a late access %s', async (category, accessOutcome) => {
+    const access = deferred<Awaited<ReturnType<HumanInputV2FormTransport['requestAccess']>>>()
+    const requestAccess = vi
+      .fn<HumanInputV2FormTransport['requestAccess']>()
+      .mockResolvedValueOnce({
+        challengeToken: 'original',
+        resendAfterSeconds: 0,
+        expiresInSeconds: 300,
+      })
+      .mockReturnValueOnce(access.promise)
+    const submit = vi
+      .fn<HumanInputV2FormTransport['submit']>()
+      .mockRejectedValueOnce(createHumanInputV2Error(category))
+    const transport = withOverrides({ requestAccess, submit })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({ token: 'form-token', transport }),
+    )
+    await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+    act(() => result.current.setOtpCode(HUMAN_INPUT_V2_MOCK_OTP))
+    act(() => result.current.resendAccess())
+    expect(requestAccess).toHaveBeenCalledTimes(2)
+    await act(async () => result.current.submit({ response: 'reviewed' }, 'approve'))
+    expect(result.current.state).toMatchObject({ phase: 'terminal', error: category, otpCode: '' })
+    await act(async () => {
+      if (accessOutcome === 'success')
+        access.resolve({ challengeToken: 'late', resendAfterSeconds: 30, expiresInSeconds: 300 })
+      else access.reject(createHumanInputV2Error('network'))
+    })
+    expect(result.current.state).toMatchObject({ phase: 'terminal', error: category, otpCode: '' })
+    expect(result.current.state.challenge).toBeUndefined()
+    expect(result.current.canSubmit).toBe(false)
+    expect(submit).toHaveBeenCalledTimes(1)
+  })
+})

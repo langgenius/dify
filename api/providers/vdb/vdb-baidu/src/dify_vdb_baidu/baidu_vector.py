@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import numpy as np
 from pydantic import BaseModel, model_validator
@@ -38,6 +38,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from pymochow.model.schema import IndexField
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +126,7 @@ class BaiduVector(BaseVector):
     @override
     def text_exists(self, id: str) -> bool:
         res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY: id})
-        if res and res.code == 0:
-            return True
-        return False
+        return bool(res and res.code == 0)
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -238,7 +239,7 @@ class BaiduVector(BaseVector):
 
     def _table_existed(self) -> bool:
         try:
-            table = self._db.table(self._collection_name)
+            self._db.table(self._collection_name)
         except ServerError as e:
             if e.code == ServerErrCode.TABLE_NOT_EXIST:
                 return False
@@ -275,43 +276,44 @@ class BaiduVector(BaseVector):
 
             # Construct field schema
             fields = []
-            fields.append(
-                Field(
-                    VDBField.PRIMARY_KEY,
-                    FieldType.STRING,
-                    primary_key=True,
-                    partition_key=True,
-                    auto_increment=False,
-                    not_null=True,
+            fields.extend(
+                (
+                    Field(
+                        VDBField.PRIMARY_KEY,
+                        FieldType.STRING,
+                        primary_key=True,
+                        partition_key=True,
+                        auto_increment=False,
+                        not_null=True,
+                    ),
+                    Field(VDBField.CONTENT_KEY, FieldType.TEXT, not_null=False),
+                    Field(VDBField.METADATA_KEY, FieldType.JSON, not_null=False),
+                    Field(VDBField.VECTOR, FieldType.FLOAT_VECTOR, not_null=True, dimension=dimension),
                 )
             )
-            fields.append(Field(VDBField.CONTENT_KEY, FieldType.TEXT, not_null=False))
-            fields.append(Field(VDBField.METADATA_KEY, FieldType.JSON, not_null=False))
-            fields.append(Field(VDBField.VECTOR, FieldType.FLOAT_VECTOR, not_null=True, dimension=dimension))
 
             # Construct vector index params
-            indexes = []
-            indexes.append(
-                VectorIndex(
-                    index_name=self.vector_index,
-                    index_type=index_type,
-                    field=VDBField.VECTOR,
-                    metric_type=metric_type,
-                    params=HNSWParams(m=16, efconstruction=200),
-                    auto_build=True,
-                    auto_build_index_policy=AutoBuildRowCountIncrement(
-                        row_count_increment=self._client_config.auto_build_row_count_increment,
-                        row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+            indexes: list[IndexField] = []
+            indexes.extend(
+                [
+                    VectorIndex(
+                        index_name=self.vector_index,
+                        index_type=index_type,
+                        field=VDBField.VECTOR,
+                        metric_type=metric_type,
+                        params=HNSWParams(m=16, efconstruction=200),
+                        auto_build=True,
+                        auto_build_index_policy=AutoBuildRowCountIncrement(
+                            row_count_increment=self._client_config.auto_build_row_count_increment,
+                            row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+                        ),
                     ),
-                )
-            )
-
-            # Filtering index
-            indexes.append(
-                FilteringIndex(
-                    index_name=self.filtering_index,
-                    fields=[VDBField.METADATA_KEY],
-                )
+                    # Filtering index
+                    FilteringIndex(
+                        index_name=self.filtering_index,
+                        fields=[VDBField.METADATA_KEY],
+                    ),
+                ]
             )
 
             # Get analyzer and parse_mode from config

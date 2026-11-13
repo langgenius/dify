@@ -2,9 +2,16 @@
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { IconInfo } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
@@ -67,27 +74,21 @@ const PublishAsKnowledgePipelineModal = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-full max-w-120! overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="w-120">
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleConfirm()
           }}
         >
-          <div className="relative flex items-center p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
-            </DialogTitle>
-            <IconButton
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['common.publishAs'], { ns: 'pipeline' })}</DialogTitle>
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-              onClick={onCancel}
-            >
-              <span aria-hidden="true" className="i-ri-close-line size-4" />
-            </IconButton>
-          </div>
-          <div className="px-6 py-3">
+            />
+          </DialogHeader>
+          <DialogBody>
             <div className="mb-5 flex">
               <Field className="mr-3 grow" name="name">
                 <FieldLabel>
@@ -97,10 +98,9 @@ const PublishAsKnowledgePipelineModal = ({
                   autoComplete="off"
                   value={pipelineName}
                   onChange={(e) => setPipelineName(e.target.value)}
-                  placeholder={
-                    t(($) => $['common.publishAsPipeline.namePlaceholder'], { ns: 'pipeline' }) ||
-                    ''
-                  }
+                  placeholder={t(($) => $['common.publishAsPipeline.namePlaceholder'], {
+                    ns: 'pipeline',
+                  })}
                 />
               </Field>
               <IconPicker
@@ -135,17 +135,15 @@ const PublishAsKnowledgePipelineModal = ({
               <Textarea
                 autoComplete="off"
                 className="resize-none"
-                placeholder={
-                  t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
-                    ns: 'pipeline',
-                  }) || ''
-                }
+                placeholder={t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
+                  ns: 'pipeline',
+                })}
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />
             </Field>
-          </div>
-          <div className="flex items-center justify-end gap-2 px-6 py-5">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" onClick={onCancel}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
@@ -156,7 +154,7 @@ const PublishAsKnowledgePipelineModal = ({
             >
               {t(($) => $['common.publish'], { ns: 'workflow' })}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

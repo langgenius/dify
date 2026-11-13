@@ -7,21 +7,23 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { InheritedTracingSummary } from '@/app/components/app/tracing/inherited-tracing-summary'
 import {
   createAgentOutputConfig,
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {
@@ -79,7 +81,7 @@ function FloatingOutputEditor({
 
   return createPortal(
     <div
-      className="fixed z-50 w-100"
+      className="fixed w-100"
       style={{
         left: position.left,
         top: position.top,
@@ -136,7 +138,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
-  const configsMap = useHooksStore((state) => state.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
@@ -190,12 +192,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isAgentBindingPending =
     isInlineAgentPending || isInlineAgentWaitingForCreation || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
-  const saveToRosterTarget =
-    configsMap?.flowId &&
-    (configsMap.flowType === FlowType.appFlow || configsMap.flowType === FlowType.snippet)
-      ? { flowId: configsMap.flowId, flowType: configsMap.flowType }
-      : null
-  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!saveToRosterTarget
+  const inlineAgentResource =
+    resource.kind === 'app' || resource.kind === 'snippet' ? resource : null
+  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!inlineAgentResource
   const inlineComposerStateForPanel = inlineAgentQuery.data
   const displayedAgent =
     rosterAgentQuery.data ??
@@ -340,7 +339,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   )
 
   const handleMakeRosterCopy = useCallback(() => {
-    if (!configsMap?.flowId || !rosterAgentId || isCopyingFromRoster) return
+    if (!rosterAgentId || isCopyingFromRoster) return
 
     const body = {
       source_agent_id: rosterAgentId,
@@ -349,11 +348,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       onSuccess: handleRosterCopySuccess,
     }
 
-    if (configsMap.flowType === FlowType.snippet) {
+    if (resource.kind === 'snippet') {
       copyFromRosterSnippet(
         {
           params: {
-            snippet_id: configsMap.flowId,
+            snippet_id: resource.snippetId,
             node_id: id,
           },
           body,
@@ -363,11 +362,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       return
     }
 
-    if (configsMap.flowType === FlowType.appFlow) {
+    if (resource.kind === 'app') {
       copyFromRosterApp(
         {
           params: {
-            app_id: configsMap.flowId,
+            app_id: resource.appId,
             node_id: id,
           },
           body,
@@ -376,8 +375,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       )
     }
   }, [
-    configsMap?.flowId,
-    configsMap?.flowType,
+    resource,
     copyFromRosterApp,
     copyFromRosterSnippet,
     handleRosterCopySuccess,
@@ -650,7 +648,17 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         onCancel={() => setEditingOutputFromTask(null)}
         onChange={handleDeclaredOutputsChange}
       />
-      <div className="border-b border-divider-subtle">
+      {inlineAgentResource && inlineAgent && (
+        <SaveInlineAgentToRosterDialog
+          resource={inlineAgentResource}
+          initialAgent={inlineAgent}
+          nodeId={id}
+          open={isSaveToRosterDialogOpen}
+          onOpenChange={setIsSaveToRosterDialogOpen}
+          onSaved={handleInlineSavedToRoster}
+        />
+      )}
+      <div className="divide-y divide-divider-subtle">
         <AgentRosterField
           agent={
             isInlineAgentWaitingForCreation || isInlineAgentLoadError ? undefined : displayedAgent
@@ -673,11 +681,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
               isInlineAgentReady || isInlineAgentPending ? (
                 <WorkflowInlineAgentConfigureWorkspace
                   agentId={inlineAgentId ?? undefined}
-                  flowId={configsMap?.flowId}
-                  flowType={configsMap?.flowType}
+                  resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
                   nodeId={id}
-                  onClose={() => handleAgentPanelOpenChange(false)}
                   onSaved={handleInlineAgentSaved}
                   onSaveInlineToRoster={
                     canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined
@@ -707,24 +713,14 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
-        {saveToRosterTarget && inlineAgent && (
-          <SaveInlineAgentToRosterDialog
-            flowId={saveToRosterTarget.flowId}
-            flowType={saveToRosterTarget.flowType}
-            initialAgent={inlineAgent}
-            nodeId={id}
-            open={isSaveToRosterDialogOpen}
-            onOpenChange={setIsSaveToRosterDialogOpen}
-            onSaved={handleInlineSavedToRoster}
-          />
-        )}
-      </div>
-      <div
-        aria-disabled={isInlineAgentPending}
-        inert={isInlineAgentPending ? true : undefined}
-        className={isInlineAgentPending ? 'pointer-events-none' : undefined}
-      >
-        <div className="border-b border-divider-subtle">
+        <div
+          aria-disabled={isInlineAgentPending}
+          inert={isInlineAgentPending ? true : undefined}
+          className={cn(
+            'divide-y divide-divider-subtle',
+            isInlineAgentPending && 'pointer-events-none',
+          )}
+        >
           <AgentTaskField
             id={id}
             data={inputs}
@@ -733,9 +729,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onEditOutput={handleEditTaskOutput}
             onOutputsChange={handleDeclaredOutputsChange}
           />
-        </div>
-        <AgentOutputRoutes id={id} data={inputs} />
-        <div>
+          <AgentOutputRoutes id={id} data={inputs} />
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}
             outputs={declaredOutputs}
@@ -743,6 +737,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onChange={handleDeclaredOutputsChange}
           />
         </div>
+        {resource.kind === 'app' && (
+          <InheritedTracingSummary
+            resource={{ kind: 'app', appId: resource.appId, mode: resource.mode }}
+          />
+        )}
       </div>
     </div>
   )

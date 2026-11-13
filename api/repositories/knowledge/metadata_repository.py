@@ -5,9 +5,15 @@ from collections.abc import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
+from models.dataset import (
+    Dataset,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    Document,
+    build_built_in_field_values,
+)
 from repositories.knowledge.dataset_read_repository import get_document_uploader
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.metadata.application import MetadataList, MetadataOperation, MetadataRecord
@@ -59,8 +65,11 @@ class SQLAlchemyMetadataRepository:
         )
 
     @classmethod
-    def _check_name(cls, session: Session, ref: DatasetRef, name: str) -> None:
-        if session.scalar(cls._fields(ref).where(DatasetMetadata.name == name).limit(1)) is not None:
+    def _check_name(cls, session: Session, ref: DatasetRef, name: str, exclude_id: str | None = None) -> None:
+        stmt = cls._fields(ref).where(DatasetMetadata.name == name)
+        if exclude_id is not None:
+            stmt = stmt.where(DatasetMetadata.id != exclude_id)
+        if session.scalar(stmt.limit(1)) is not None:
             raise ValueError("Metadata name already exists.")
 
     def create(self, ref: DatasetRef, *, name: str, field_type: str, actor_id: str) -> MetadataRecord:
@@ -77,7 +86,7 @@ class SQLAlchemyMetadataRepository:
     def rename(self, ref: DatasetRef, metadata_id: str, *, name: str, actor_id: str) -> MetadataRecord:
         with self._sessions.begin() as session:
             self._dataset(session, ref, write=True)
-            self._check_name(session, ref, name)
+            self._check_name(session, ref, name, exclude_id=metadata_id)
             row = session.scalar(self._fields(ref).where(DatasetMetadata.id == metadata_id))
             if row is None:
                 raise MetadataResourceNotFoundError("Metadata not found.")
@@ -115,14 +124,14 @@ class SQLAlchemyMetadataRepository:
             return self._record(row)
 
     @staticmethod
-    def _built_in(session: Session, document: Document) -> dict[str, str | int | float | None]:
-        return {
-            BuiltInField.document_name: document.name,
-            BuiltInField.uploader: get_document_uploader(document, session=session),
-            BuiltInField.upload_date: document.upload_date.timestamp(),
-            BuiltInField.last_update_date: document.last_update_date.timestamp(),
-            BuiltInField.source: MetadataDataSource[document.data_source_type],
-        }
+    def _built_in(session: Session, document: Document) -> dict[str, str | float | None]:
+        return build_built_in_field_values(
+            document_name=document.name,
+            uploader=get_document_uploader(document, session=session),
+            upload_date=document.upload_date,
+            last_update_date=document.last_update_date,
+            data_source_type=document.data_source_type,
+        )
 
     def set_built_in(self, ref: DatasetRef, *, enabled: bool) -> None:
         with self._sessions.begin() as session:

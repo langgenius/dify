@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useQueryErrorResetBoundary } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
-import { isLegacyBase401 } from '@/features/account-profile/client'
+import { isUnauthorizedError } from '@/service/http-error'
 
 type Props = Readonly<{
   error: Error & { digest?: string }
@@ -17,7 +17,7 @@ export default function AppError({ error, retry }: Props) {
 
   console.error(error)
 
-  if (isLegacyBase401(error)) return <FullScreenLoading />
+  if (isUnauthorizedError(error)) return <FullScreenLoading />
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background-body">

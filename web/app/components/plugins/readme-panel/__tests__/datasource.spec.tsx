@@ -40,7 +40,6 @@ describe('datasource Readme', () => {
       expect(screen.getByText('Datasource display name')).toBeInTheDocument()
       expect(screen.getByText('Load files')).toBeInTheDocument()
       expect(document.querySelector('img[src="/datasource.svg"]')).toBeInTheDocument()
-      expect(useReadmePanelStore.getState().currentPanel?.detail).toBe(provider)
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const [request] = fetchMock.mock.calls[0]!
       const url = new URL(request instanceof Request ? request.url : String(request))
@@ -53,7 +52,11 @@ describe('datasource Readme', () => {
         screen.queryByRole('button', { name: 'plugin.detailPanel.operation.update' }),
       ).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-      await waitFor(() => expect(useReadmePanelStore.getState().currentPanel).toBeUndefined())
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('heading', { name: 'Datasource documentation' }),
+        ).not.toBeInTheDocument(),
+      )
       await waitFor(() => expect(trigger).toHaveFocus())
     },
   )

@@ -2,11 +2,15 @@
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { formLabelClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type SliderRootValue = NonNullable<BaseSlider.Root.Props['value']>
 type SliderProps<Value extends SliderRootValue = SliderRootValue> = BaseSlider.Root.Props<Value>
+type SliderChangeEventReason = BaseSlider.Root.ChangeEventReason
+type SliderChangeEventDetails = BaseSlider.Root.ChangeEventDetails
+type SliderCommitEventReason = BaseSlider.Root.CommitEventReason
+type SliderCommitEventDetails = BaseSlider.Root.CommitEventDetails
 
 function Slider<Value extends SliderRootValue = SliderRootValue>({
   className,
@@ -123,6 +127,10 @@ export {
 }
 
 export type {
+  SliderChangeEventDetails,
+  SliderChangeEventReason,
+  SliderCommitEventDetails,
+  SliderCommitEventReason,
   SliderControlProps,
   SliderIndicatorProps,
   SliderLabelProps,

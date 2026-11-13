@@ -9,7 +9,7 @@ from machinery.context import RequestContext
 from models.account import AccountIntegrate
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from services.account_integration_service import AccountIntegrationService
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def test_list_merges_configured_providers_with_persisted_integrations(

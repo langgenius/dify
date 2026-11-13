@@ -63,7 +63,7 @@ export const get = oc
     path: '/resource-access-tokens',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetResourceAccessTokensQuery.optional() }))
+  .input(z.object({ query: zGetResourceAccessTokensQuery.optional() }).optional())
   .output(zGetResourceAccessTokensResponse)
 
 export const post = oc

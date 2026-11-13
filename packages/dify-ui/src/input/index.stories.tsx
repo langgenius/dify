@@ -25,20 +25,10 @@ type Story = StoryObj<typeof meta>
 
 export const Basic: Story = {
   render: () => (
-    <div className="w-80">
-      <label
-        htmlFor="workspace-name"
-        className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary"
-      >
-        Workspace name
-      </label>
-      <Input
-        id="workspace-name"
-        name="workspaceName"
-        autoComplete="organization"
-        placeholder="e.g. Acme workspace…"
-      />
-    </div>
+    <Field name="workspaceName" className="w-80">
+      <FieldLabel>Workspace name</FieldLabel>
+      <Input autoComplete="organization" placeholder="e.g. Acme workspace…" />
+    </Field>
   ),
 }
 

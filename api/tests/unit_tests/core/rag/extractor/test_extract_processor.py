@@ -12,8 +12,8 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
 from models.model import UploadFile
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _upload_file(*, key: str, file_id: str = "upload-file-1") -> UploadFile:
@@ -121,6 +121,35 @@ class TestExtractProcessorLoaders:
                 "",
             ),
             ("https://example.com/no_suffix", {}, ""),
+            # Query strings and fragments are not part of the file name and must
+            # not leak into the derived suffix (see issue #43333).
+            (
+                "https://example.com/file.pdf?token=abc",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/file.pdf#page=2",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/file.pdf?token=abc#page=2",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            # A misleading extension inside the query string or fragment must
+            # not win over the response headers either.
+            (
+                "https://example.com/no_suffix?filename=report.txt",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/no_suffix#report.txt",
+                {"Content-Disposition": 'attachment; filename="report.md"'},
+                ".md",
+            ),
         ],
     )
     def test_load_from_url_builds_temp_file_with_correct_suffix(
@@ -139,10 +168,10 @@ class TestExtractProcessorLoaders:
         monkeypatch.setattr(ExtractProcessor, "extract", fake_extract)
 
         docs = ExtractProcessor.load_from_url(url, return_text=False)
-        assert captured["file_path_docs"].endswith(expected_suffix)
+        assert Path(captured["file_path_docs"]).suffix == expected_suffix
 
         text = ExtractProcessor.load_from_url(url, return_text=True)
-        assert captured["file_path_text"].endswith(expected_suffix)
+        assert Path(captured["file_path_text"]).suffix == expected_suffix
 
         assert len(docs) == 2
         assert text == "u1\nu2"

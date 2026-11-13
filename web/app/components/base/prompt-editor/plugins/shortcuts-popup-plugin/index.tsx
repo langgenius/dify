@@ -1,4 +1,4 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { LexicalCommand } from 'lexical'
 import type { CSSProperties } from 'react'
 import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/react'
@@ -17,7 +17,7 @@ export type ShortcutPopupInsertHandler = <Payload>(
 export type ShortcutPopupDisplayMode = 'selection' | 'workflow-panel-adjacent-center'
 
 type ShortcutPopupPluginProps = {
-  hotkey?: Hotkey
+  hotkey?: HotkeyChord
   children?:
     | React.ReactNode
     | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
@@ -276,7 +276,8 @@ export default function ShortcutsPopupPlugin({
         right: fixedPlacementState.right,
         top: fixedPlacementState.top,
         transform: 'translateY(-50%)',
-        zIndex: 50,
+        // Inside an app container it must clear sibling content; at body level DOM order stacks it.
+        zIndex: useContainer ? 50 : undefined,
         overflow: 'visible',
         visibility: 'visible',
         '--shortcut-popup-max-width': `${Math.min(POPUP_MAX_WIDTH, fixedPlacementState.availableWidth)}px`,
@@ -306,7 +307,6 @@ export default function ShortcutsPopupPlugin({
           ? fixedPanelAdjacentStyles
           : {
               ...floatingStyles,
-              zIndex: useContainer ? undefined : 50,
               overflow: 'visible',
               visibility: isPositioned ? 'visible' : 'hidden',
             }

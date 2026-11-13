@@ -16,9 +16,13 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
+from fields.base import ResponseModel
+from libs.exception import RelayedHTTPError
+from libs.helper import dump_response
 from models.agent_config_entities import validate_config_name, validate_config_skill_name
 from services.agent_config_service import (
     AgentConfigService,
@@ -83,6 +87,22 @@ class _ConfigEnvUpdateRequest(_ConfigMutationRequest):
 
 class _ConfigNoteUpdateRequest(_ConfigMutationRequest):
     note: str
+
+
+class AgentConfigPromptUpdatePayload(_ConfigMutationRequest):
+    """Replace the raw system prompt; missing/null text is never a clear request."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str
+
+
+class AgentConfigPromptResponse(ResponseModel):
+    prompt: str
+
+
+register_schema_models(inner_api_ns, AgentConfigPromptUpdatePayload)
+register_response_schema_models(inner_api_ns, AgentConfigPromptResponse)
 
 
 def _target_query_from_request() -> _ConfigTargetQuery:
@@ -236,3 +256,48 @@ class AgentConfigNoteApi(Resource):
             return {"code": "invalid_request", "message": str(exc)}, 400
         except AgentConfigServiceError as exc:
             return _error_response(exc)
+
+
+@inner_api_ns.route("/agent-config/<string:agent_id>/prompt")
+class AgentConfigPromptApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @inner_api_ns.doc("agent_config_prompt_get", params=query_params_from_model(_ConfigTargetQuery))
+    @inner_api_ns.response(200, "Raw system prompt", inner_api_ns.models[AgentConfigPromptResponse.__name__])
+    def get(self, agent_id: str):
+        try:
+            query = _target_query_from_request()
+            result = AgentConfigService().get_prompt(
+                tenant_id=query.tenant_id,
+                agent_id=agent_id,
+                user_id=query.user_id,
+                config_version_id=query.config_version_id,
+                config_version_kind=query.config_version_kind,
+            )
+            return dump_response(AgentConfigPromptResponse, result)
+        except ValidationError as exc:
+            raise RelayedHTTPError(status=400, error_code="invalid_request", message=str(exc)) from exc
+        except AgentConfigServiceError as exc:
+            raise RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message) from exc
+
+    @setup_required
+    @plugin_inner_api_only
+    @inner_api_ns.doc("agent_config_prompt_put")
+    @inner_api_ns.expect(inner_api_ns.models[AgentConfigPromptUpdatePayload.__name__])
+    @inner_api_ns.response(200, "Saved system prompt", inner_api_ns.models[AgentConfigPromptResponse.__name__])
+    def put(self, agent_id: str):
+        try:
+            body = AgentConfigPromptUpdatePayload.model_validate(request.get_json(silent=True) or {})
+            result = AgentConfigService().update_prompt(
+                tenant_id=body.tenant_id,
+                agent_id=agent_id,
+                user_id=body.user_id,
+                config_version_id=body.config_version_id,
+                config_version_kind=body.config_version_kind,
+                prompt=body.prompt,
+            )
+            return dump_response(AgentConfigPromptResponse, result)
+        except ValidationError as exc:
+            raise RelayedHTTPError(status=400, error_code="invalid_request", message=str(exc)) from exc
+        except AgentConfigServiceError as exc:
+            raise RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message) from exc

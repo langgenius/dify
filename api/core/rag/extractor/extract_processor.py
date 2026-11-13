@@ -2,7 +2,7 @@ import re
 import tempfile
 from pathlib import Path
 from typing import Literal, overload
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 from sqlalchemy.orm import Session
 
@@ -83,7 +83,10 @@ class ExtractProcessor:
         response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            suffix = Path(url).suffix
+            # Derive the suffix from the URL path only: query strings and fragments
+            # (e.g. "?token=..." / "#page=2") are not part of the file name and
+            # would otherwise leak into the suffix and misroute the extractor.
+            suffix = Path(urlsplit(url).path).suffix
             if not suffix and suffix != ".":
                 # get content-type
                 content_type = response.headers.get("Content-Type")
@@ -96,10 +99,7 @@ class ExtractProcessor:
                     if filename_match:
                         filename = unquote(filename_match.group(1))
                         match = re.search(r"\.(\w+)$", filename)
-                        if match:
-                            suffix = "." + match.group(1)
-                        else:
-                            suffix = ""
+                        suffix = "." + match.group(1) if match else ""
             # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
             # Generate a temporary filename under the created temp_dir and ensure the directory exists
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
@@ -156,6 +156,7 @@ class ExtractProcessor:
                             file_path,
                             upload_file.tenant_id if upload_file else None,
                             upload_file.created_by if upload_file else None,
+                            source_file_id=upload_file.id if upload_file else None,
                             session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
@@ -206,6 +207,7 @@ class ExtractProcessor:
                             file_path,
                             upload_file.tenant_id if upload_file else None,
                             upload_file.created_by if upload_file else None,
+                            source_file_id=upload_file.id if upload_file else None,
                             session=session,
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:

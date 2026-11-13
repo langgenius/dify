@@ -59,7 +59,7 @@ export async function loadIgnoreRules(root = ROOT): Promise<IgnoreRule[]> {
     await fs.readFile(path.join(root, 'packages/image-resources/ignore.json'), 'utf8'),
   )
   if (!Array.isArray(rules))
-    throw new Error('ignore.json must contain an array of pattern/reason objects')
+    throw new TypeError('ignore.json must contain an array of pattern/reason objects')
   return (rules as unknown[]).map((rule): IgnoreRule => {
     if (
       !rule ||

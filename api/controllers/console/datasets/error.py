@@ -1,10 +1,26 @@
 from libs.exception import BaseHTTPException
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSUpgradeModelErrorDetailsResponse,
+    KnowledgeFSUpgradeModelIssueResponse,
+)
 
 
 class DatasetNotInitializedError(BaseHTTPException):
     error_code = "dataset_not_initialized"
     description = "The dataset is still being initialized or indexing. Please wait a moment."
     code = 400
+
+
+class KnowledgeFSUpgradeModelsUnavailableHTTPError(BaseHTTPException):
+    error_code = "knowledge_fs_upgrade_models_unavailable"
+    description = "One or more selected upgrade models are unavailable."
+    code = 422
+    details_model = KnowledgeFSUpgradeModelErrorDetailsResponse
+
+    def __init__(self, issues: list[KnowledgeFSUpgradeModelIssueResponse]) -> None:
+        super().__init__()
+        assert self.data is not None
+        self.data["details"] = KnowledgeFSUpgradeModelErrorDetailsResponse(issues=issues).model_dump(mode="json")
 
 
 class ArchivedDocumentImmutableError(BaseHTTPException):
@@ -53,12 +69,6 @@ class WebsiteCrawlError(BaseHTTPException):
     error_code = "crawl_failed"
     description = "{message}"
     code = 500
-
-
-class DatasetInUseError(BaseHTTPException):
-    error_code = "dataset_in_use"
-    description = "The dataset is being used by some apps. Please remove the dataset from the apps before deleting it."
-    code = 409
 
 
 class IndexingEstimateError(BaseHTTPException):

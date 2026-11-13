@@ -82,7 +82,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
     }
 
     if (!userInput) {
-      const startNode = getWorkflowEntryNode(nodes as any[])
+      const startNode = getWorkflowEntryNode(nodes)
       if (startNode && startNode.data?.type === BlockEnum.Start) {
         userInput = {
           id: startNode.id,

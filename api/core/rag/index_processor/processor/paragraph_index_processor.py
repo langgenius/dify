@@ -1,5 +1,6 @@
 """Paragraph index processor."""
 
+import contextlib
 import logging
 import re
 import uuid
@@ -42,6 +43,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.nodes.llm.reasoning import split_reasoning
 from libs import helper
 from models import UploadFile
 from models.account import Account
@@ -436,7 +438,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         document_language: str | None,
         image_loader: Callable[[], list[File]],
     ) -> tuple[str, LLMUsage]:
-        """Generate a summary after an explicit loader materializes any required images."""
+        """Generate summary text with model reasoning removed.
+
+        Requires enabled settings naming a provider and model. The image loader
+        materializes images only for vision-capable models. Returns cleaned text
+        and the original LLMUsage object; output containing only reasoning returns
+        empty text for the caller to handle. Invalid settings or a response other
+        than LLMResult raise ValueError.
+        """
         if not summary_index_setting or not summary_index_setting.get("enable"):
             raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
 
@@ -459,11 +468,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         # This is especially important for image-only chunks where text is empty or minimal
         if is_default_prompt:
             language_for_prompt = document_language or "the same language as the input content"
-            try:
+            # If default prompt doesn't have {language} placeholder, use it as-is
+            with contextlib.suppress(KeyError):
                 summary_prompt = summary_prompt.format(language=language_for_prompt)
-            except KeyError:
-                # If default prompt doesn't have {language} placeholder, use it as-is
-                pass
 
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
@@ -521,7 +528,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not isinstance(result, LLMResult):
             raise ValueError("Expected LLMResult when stream=False")
 
-        summary_content = result.message.get_text_content()
+        summary_content, _ = split_reasoning(result.message.get_text_content(), "separated")
         usage = result.usage
 
         return summary_content, usage

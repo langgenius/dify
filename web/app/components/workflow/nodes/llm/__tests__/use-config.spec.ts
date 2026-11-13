@@ -1,508 +1,133 @@
-import type { MutableRefObject } from 'react'
+import type { EnvironmentVariable } from '../../../types'
 import type { LLMNodeType } from '../types'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum, Resolution } from '@/types/app'
-import useConfigVision from '../../../hooks/use-config-vision'
-import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
-import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import useLLMInputManager from '../hooks/use-llm-input-manager'
-import useLLMPromptConfig from '../hooks/use-llm-prompt-config'
-import useLLMStructuredOutputConfig from '../hooks/use-llm-structured-output-config'
+import { act, waitFor } from '@testing-library/react'
+import {
+  ModelFeatureEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { BlockEnum, EditionType, PromptRole } from '../../../types'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
 
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
+  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
+    currentProvider: { provider: 'openai' },
+    currentModel: { model: 'text-model', model_properties: { mode: 'chat' } },
+  }),
+  useTextGenerationCurrentProviderAndModelAndModelList: ({ model }: { model: string }) => ({
+    currentModel: { features: model === 'vision-model' ? [ModelFeatureEnum.vision] : [] },
+  }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: vi.fn(),
-}))
-
-vi.mock('../../_base/hooks/use-available-var-list', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../../../hooks/use-config-vision', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../hooks/use-llm-input-manager', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../hooks/use-llm-prompt-config', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../hooks/use-llm-structured-output-config', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
-const mockUseInspectVarsCrud = vi.mocked(useInspectVarsCrud)
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-)
-const mockUseStore = vi.mocked(useStore)
-const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseConfigVision = vi.mocked(useConfigVision)
-const mockUseLLMInputManager = vi.mocked(useLLMInputManager)
-const mockUseLLMPromptConfig = vi.mocked(useLLMPromptConfig)
-const mockUseLLMStructuredOutputConfig = vi.mocked(useLLMStructuredOutputConfig)
-
+const prompt = { role: PromptRole.user, text: 'Default prompt', edition_type: EditionType.basic }
+const defaults = {
+  prompt_templates: {
+    chat_model: { prompts: [prompt] },
+    completion_model: {
+      prompt,
+      conversation_histories_role: { user_prefix: 'User', assistant_prefix: 'Assistant' },
+    },
+  },
+}
 const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   type: BlockEnum.LLM,
   title: 'LLM',
   desc: '',
   model: {
     provider: 'openai',
-    name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
-    completion_params: {
-      temperature: 0.7,
-    },
+    name: 'vision-model',
+    mode: 'chat',
+    completion_params: { temperature: 0.7 },
   },
-  prompt_template: [],
-  context: {
-    enabled: false,
-    variable_selector: [],
-  },
-  vision: {
-    enabled: false,
-  },
+  prompt_template: [prompt],
+  context: { enabled: false, variable_selector: [] },
+  vision: { enabled: true },
   ...overrides,
 })
+const sharedModel = {
+  id: 'shared',
+  name: 'shared',
+  value_type: 'llm',
+  description: '',
+  value: {
+    provider: 'shared-provider',
+    name: 'shared-model',
+    mode: 'completion',
+    completion_params: { top_p: 0.9 },
+  },
+} satisfies EnvironmentVariable
+const setup = (payload = createPayload(), environmentVariables: EnvironmentVariable[] = []) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+    { data: [] },
+  )
+  return renderNodeConfig(useConfig, payload, {
+    queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    initialStoreState: { environmentVariables, nodesDefaultConfigs: { [BlockEnum.LLM]: defaults } },
+  })
+}
 
-describe('llm/use-config', () => {
-  const setInputs = vi.fn()
-  const appendDefaultPromptConfig = vi.fn()
-  const deleteNodeInspectorVars = vi.fn()
-  const handleVisionConfigAfterModelChanged = vi.fn()
-  const handleVisionResolutionEnabledChange = vi.fn()
-  const handleVisionResolutionChange = vi.fn()
-  const inputRef = { current: createPayload() } as MutableRefObject<LLMNodeType>
-  let latestVisionOptions: {
-    onChange: (payload: LLMNodeType['vision']) => void
-  } | null = null
-  const promptConfig = {
-    hasSetBlockStatus: {
-      history: false,
-      query: true,
-      context: true,
-    },
-    shouldShowContextTip: false,
-    isShowVars: true,
-    handleVarListChange: vi.fn(),
-    handleVarNameChange: vi.fn(),
-    handleAddVariable: vi.fn(),
-    handleAddEmptyVariable: vi.fn(),
-    handleContextVarChange: vi.fn(),
-    handlePromptChange: vi.fn(),
-    handleMemoryChange: vi.fn(),
-    handleSyeQueryChange: vi.fn(),
-    filterInputVar: vi.fn(),
-    filterJinja2InputVar: vi.fn(),
-    filterVar: vi.fn(),
+it('keeps model and completion edits after real vision reconciliation', async () => {
+  const { result } = setup()
+  act(() =>
+    result.current.config.handleModelChanged(
+      { provider: 'openai', modelId: 'text-model', mode: 'chat' },
+      { temperature: 0.3 },
+    ),
+  )
+  await waitFor(() => expect(result.current.config.inputs.vision.enabled).toBe(false))
+  act(() => result.current.config.handleCompletionParamsChange({ top_p: 0.5 }))
+  expect(result.current.flow.getNode('node')?.data).toEqual(
+    expect.objectContaining({
+      model: {
+        provider: 'openai',
+        name: 'text-model',
+        mode: 'chat',
+        completion_params: { top_p: 0.5 },
+      },
+      vision: { enabled: false },
+    }),
+  )
+})
+
+it('hydrates an unconfigured model and real prompt defaults from the provider catalog', async () => {
+  const { result } = setup(
+    createPayload({ model: { provider: '', name: '', mode: 'completion', completion_params: {} } }),
+  )
+  await waitFor(() => expect(result.current.config.inputs.model.name).toBe('text-model'))
+  expect(result.current.config.inputs.prompt_template).toEqual([prompt])
+  expect(result.current.config.inputs.vision.enabled).toBe(false)
+})
+
+it('binds a shared environment model and applies completion prompt defaults', async () => {
+  const { result } = setup(createPayload(), [sharedModel])
+  act(() => result.current.config.handleModelSelectorChange(['env', 'shared'], { max_tokens: 42 }))
+  await waitFor(() => expect(result.current.config.inputs.vision.enabled).toBe(false))
+  expect(result.current.config.model).toEqual(sharedModel.value)
+  expect(result.current.config.inputs.prompt_template).toEqual(prompt)
+  expect(result.current.flow.getNode('node')?.data.model_selector).toEqual(['env', 'shared'])
+})
+
+it('resolves updated shared metadata and preserves its latest identity when returning to direct input', () => {
+  const chatModel = { ...sharedModel, value: { ...sharedModel.value, mode: 'chat' as const } }
+  const { result, store } = setup(createPayload({ model_selector: ['env', 'shared'] }), [chatModel])
+  expect(result.current.config.model).toEqual(chatModel.value)
+  const latest = {
+    provider: 'latest-provider',
+    name: 'latest-model',
+    mode: 'chat' as const,
+    completion_params: { temperature: 0.8 },
   }
-  const structuredOutputConfig = {
-    isModelSupportStructuredOutput: true,
-    handleStructureOutputChange: vi.fn(),
-    structuredOutputCollapsed: false,
-    setStructuredOutputCollapsed: vi.fn(),
-    handleStructureOutputEnableChange: vi.fn(),
-    handleReasoningFormatChange: vi.fn(),
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    inputRef.current = createPayload()
-    latestVisionOptions = null
-    setInputs.mockImplementation((nextInputs: LLMNodeType) => {
-      inputRef.current = nextInputs
-    })
-
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    mockUseIsChatMode.mockReturnValue(true)
-    mockUseNodeCrud.mockImplementation(() => ({
-      inputs: inputRef.current,
-      setInputs: vi.fn(),
-    }))
-    mockUseInspectVarsCrud.mockReturnValue({
-      deleteNodeInspectorVars,
-    } as unknown as ReturnType<typeof useInspectVarsCrud>)
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-      currentProvider: undefined,
-      currentModel: undefined,
-    } as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>)
-    mockUseStore.mockImplementation((selector) => {
-      return selector({
-        environmentVariables: [],
-        nodesDefaultConfigs: {
-          [BlockEnum.LLM]: {
-            prompt_templates: {
-              chat_model: { prompts: [] },
-              completion_model: {
-                prompt: { text: 'default completion prompt' },
-                conversation_histories_role: {
-                  user_prefix: 'User',
-                  assistant_prefix: 'Assistant',
-                },
-              },
-            },
-          },
-        },
-      } as never)
-    })
-    mockUseAvailableVarList.mockReturnValue({
-      availableVars: [{ nodeId: 'previous-node', title: 'Previous', vars: [] }],
-      availableNodes: [],
-      availableNodesWithParent: [{ id: 'previous-node', data: { title: 'Previous' } }],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
-    mockUseConfigVision.mockImplementation((_model, options) => {
-      latestVisionOptions = options as typeof latestVisionOptions
-      return {
-        isVisionModel: false,
-        handleVisionResolutionEnabledChange,
-        handleVisionResolutionChange,
-        handleModelChanged: handleVisionConfigAfterModelChanged,
-      }
-    })
-    mockUseLLMInputManager.mockReturnValue({
-      inputRef,
-      setInputs,
-      appendDefaultPromptConfig,
-    } as ReturnType<typeof useLLMInputManager>)
-    mockUseLLMPromptConfig.mockReturnValue(promptConfig as ReturnType<typeof useLLMPromptConfig>)
-    mockUseLLMStructuredOutputConfig.mockReturnValue(
-      structuredOutputConfig as ReturnType<typeof useLLMStructuredOutputConfig>,
-    )
-  })
-
-  it('composes the helper hooks, forwards filterVar to available vars, and updates completion params', () => {
-    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.isChatMode).toBe(true)
-    expect(result.current.isChatModel).toBe(true)
-    expect(result.current.isCompletionModel).toBe(false)
-    expect(result.current.availableVars).toEqual([
-      { nodeId: 'previous-node', title: 'Previous', vars: [] },
-    ])
-    expect(result.current.availableNodesWithParent).toEqual([
-      { id: 'previous-node', data: { title: 'Previous' } },
-    ])
-    expect(mockUseAvailableVarList).toHaveBeenCalledWith('llm-node', {
-      onlyLeafNodeVar: false,
-      filterVar: promptConfig.filterVar,
-    })
-    expect(mockUseLLMInputManager).toHaveBeenCalledWith({
-      inputs: inputRef.current,
-      doSetInputs: expect.any(Function),
-      defaultConfig: expect.objectContaining({
-        prompt_templates: expect.any(Object),
-      }),
-      isChatModel: true,
-    })
-
-    act(() => {
-      latestVisionOptions?.onChange({
-        enabled: true,
-        configs: {
-          detail: Resolution.high,
-          variable_selector: ['sys', 'files'],
-        },
-      })
-      result.current.handleCompletionParamsChange({ top_p: 0.5 })
-      result.current.handleModelChanged(
-        {
-          provider: 'openai',
-          modelId: 'gpt-4.1',
-          mode: AppModeEnum.CHAT,
-        },
-        { temperature: 0.3 },
-      )
-    })
-
-    expect(setInputs).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        vision: {
-          enabled: true,
-          configs: {
-            detail: Resolution.high,
-            variable_selector: ['sys', 'files'],
-          },
-        },
-      }),
-    )
-    expect(setInputs).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        model: expect.objectContaining({
-          completion_params: { top_p: 0.5 },
-        }),
-      }),
-    )
-    expect(setInputs).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
-        model: expect.objectContaining({
-          provider: 'openai',
-          name: 'gpt-4.1',
-          mode: AppModeEnum.CHAT,
-          completion_params: { temperature: 0.3 },
-        }),
-      }),
-    )
-    expect(appendDefaultPromptConfig).not.toHaveBeenCalled()
-  })
-
-  it('hydrates the model from the current provider, appends mode-specific defaults, and triggers the vision follow-up effect', async () => {
-    inputRef.current = createPayload({
-      model: {
-        provider: '',
-        name: '',
-        mode: AppModeEnum.COMPLETION,
-        completion_params: {},
-      },
-    })
-    mockUseNodeCrud.mockImplementation(() => ({
-      inputs: inputRef.current,
-      setInputs: vi.fn(),
-    }))
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-      currentProvider: { provider: 'anthropic' },
-      currentModel: {
-        model: 'claude-sonnet',
-        model_properties: {
-          mode: AppModeEnum.CHAT,
-        },
-      },
-    } as unknown as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>)
-
-    renderHook(() => useConfig('llm-node', inputRef.current))
-
-    await waitFor(() => {
-      expect(appendDefaultPromptConfig).toHaveBeenCalled()
-      expect(appendDefaultPromptConfig.mock.calls[0]![1]).toEqual(
-        expect.objectContaining({
-          prompt_templates: expect.any(Object),
-        }),
-      )
-      expect(appendDefaultPromptConfig.mock.calls[0]![2]).toBe(true)
-      expect(setInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: expect.objectContaining({
-            provider: 'anthropic',
-            name: 'claude-sonnet',
-            mode: AppModeEnum.CHAT,
-          }),
-        }),
-      )
-      expect(handleVisionConfigAfterModelChanged).toHaveBeenCalled()
-    })
-  })
-
-  it('resolves a referenced environment model with its shared completion params', () => {
-    inputRef.current = createPayload({
-      model_selector: ['env', 'for_summarize'],
-      model: {
-        provider: 'cached-provider',
-        name: 'cached-model',
-        mode: AppModeEnum.CHAT,
-        completion_params: { temperature: 0.2 },
-      },
-    })
-    mockUseNodeCrud.mockImplementation(() => ({
-      inputs: inputRef.current,
-      setInputs: vi.fn(),
-    }))
-    mockUseStore.mockImplementation((selector) =>
-      selector({
-        environmentVariables: [
-          {
-            id: 'env-1',
-            name: 'for_summarize',
-            value_type: 'llm',
-            value: {
-              provider: 'shared-provider',
-              name: 'shared-model',
-              mode: AppModeEnum.CHAT,
-              completion_params: { temperature: 0.8 },
-            },
-            description: '',
-          },
-        ],
-        nodesDefaultConfigs: {},
-      } as never),
-    )
-
-    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
-
-    expect(result.current.model).toEqual({
-      provider: 'shared-provider',
-      name: 'shared-model',
-      mode: AppModeEnum.CHAT,
-      completion_params: { temperature: 0.8 },
-    })
-    expect(result.current.isEnvironmentModelSource).toBe(true)
-    expect(mockUseConfigVision).toHaveBeenCalledWith(
-      expect.objectContaining({ provider: 'shared-provider', name: 'shared-model' }),
-      expect.any(Object),
-    )
-    expect(mockUseLLMStructuredOutputConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: expect.objectContaining({ provider: 'shared-provider', name: 'shared-model' }),
-      }),
-    )
-  })
-
-  it('copies a newly bound environment identity and applies mode-specific prompt defaults', () => {
-    mockUseStore.mockImplementation((selector) =>
-      selector({
-        environmentVariables: [
-          {
-            id: 'env-1',
-            name: 'for_research',
-            value_type: 'llm',
-            value: {
-              provider: 'shared-provider',
-              name: 'shared-completion-model',
-              mode: AppModeEnum.COMPLETION,
-              completion_params: { top_p: 0.9 },
-            },
-            description: '',
-          },
-        ],
-        nodesDefaultConfigs: {
-          [BlockEnum.LLM]: {
-            prompt_templates: {
-              chat_model: { prompts: [] },
-              completion_model: {
-                prompt: { text: 'default completion prompt' },
-                conversation_histories_role: {
-                  user_prefix: 'User',
-                  assistant_prefix: 'Assistant',
-                },
-              },
-            },
-          },
-        },
-      } as never),
-    )
-
-    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
-
-    act(() => {
-      result.current.handleModelSelectorChange(['env', 'for_research'], { max_tokens: 42 })
-    })
-
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model_selector: ['env', 'for_research'],
-        model: expect.objectContaining({
-          provider: 'shared-provider',
-          name: 'shared-completion-model',
-          mode: AppModeEnum.COMPLETION,
-          completion_params: { top_p: 0.9 },
-        }),
-      }),
-    )
-    expect(appendDefaultPromptConfig).toHaveBeenCalled()
-    expect(appendDefaultPromptConfig.mock.calls[0]![1]).toEqual(
-      expect.objectContaining({ prompt_templates: expect.any(Object) }),
-    )
-    expect(appendDefaultPromptConfig.mock.calls[0]![2]).toBe(false)
-  })
-
-  it('switches back to direct input with the latest resolved environment identity', () => {
-    inputRef.current = createPayload({
-      model_selector: ['env', 'for_summarize'],
-      model: {
-        provider: 'cached-provider',
-        name: 'cached-model',
-        mode: AppModeEnum.CHAT,
-        completion_params: { temperature: 0.4 },
-      },
-    })
-    mockUseNodeCrud.mockImplementation(() => ({
-      inputs: inputRef.current,
-      setInputs: vi.fn(),
-    }))
-    mockUseStore.mockImplementation((selector) =>
-      selector({
-        environmentVariables: [
-          {
-            id: 'env-1',
-            name: 'for_summarize',
-            value_type: 'llm',
-            value: {
-              provider: 'latest-provider',
-              name: 'latest-model',
-              mode: AppModeEnum.CHAT,
-              completion_params: { temperature: 0.8 },
-            },
-            description: '',
-          },
-        ],
-        nodesDefaultConfigs: {},
-      } as never),
-    )
-
-    const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
-
-    act(() => {
-      result.current.handleModelSourceChange(false)
-    })
-
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: {
-          provider: 'latest-provider',
-          name: 'latest-model',
-          mode: AppModeEnum.CHAT,
-          completion_params: { temperature: 0.8 },
-        },
-        model_selector: undefined,
-      }),
-    )
-    const updatedInputs = setInputs.mock.calls[0]![0]
-    expect(updatedInputs).toHaveProperty('model_selector', undefined)
-  })
+  act(() => store.setState({ environmentVariables: [{ ...sharedModel, value: latest }] }))
+  expect(result.current.config.model).toEqual(latest)
+  act(() => result.current.config.handleModelSourceChange(false))
+  expect(result.current.flow.getNode('node')?.data).toEqual(
+    expect.objectContaining({ model: latest, model_selector: undefined }),
+  )
 })

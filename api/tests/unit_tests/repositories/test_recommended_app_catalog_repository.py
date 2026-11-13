@@ -9,7 +9,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Tenant, TenantStatus
-from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, RecommendedApp, Site
@@ -89,8 +96,8 @@ def test_agent_package_link_only_exposes_current_public_version(
             tenant_id=app.tenant_id,
             app_id=app.id,
             name="Template",
-            scope="roster",
-            source="agent_app",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
             active_config_snapshot_id=version_id,
             active_config_is_published=False,
         )

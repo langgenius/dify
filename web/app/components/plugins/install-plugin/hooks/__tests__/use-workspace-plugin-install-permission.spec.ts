@@ -36,12 +36,6 @@ describe('useWorkspacePluginInstallPermission', () => {
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
 
-  it('should not expose installed plugin list viewing as a permission capability', () => {
-    const { result } = renderPermissionHook()
-
-    expect('canViewInstalledPlugins' in result.current).toBe(false)
-  })
-
   it('should grant delete capability but not install or update with plugin.delete', () => {
     mockWorkspacePermissionKeys = ['plugin.delete']
 

@@ -1,105 +1,41 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import VersionMismatchModal from '../version-mismatch-modal'
 
-describe('VersionMismatchModal', () => {
-  const mockOnClose = vi.fn()
-  const mockOnConfirm = vi.fn()
+const versions = { importedVersion: '0.8.0', systemVersion: '1.0.0' }
 
-  const defaultVersions = {
-    importedVersion: '0.8.0',
-    systemVersion: '1.0.0',
-  }
+it.each(['Cancel', 'Confirm'] as const)(
+  'shows the version mismatch and handles %s',
+  async (action) => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const onConfirm = vi.fn()
+    render(
+      <VersionMismatchModal isShow versions={versions} onClose={onClose} onConfirm={onConfirm} />,
+    )
+    const dialog = screen.getByRole('alertdialog', { name: 'app.newApp.appCreateDSLErrorTitle' })
+    expect(within(dialog).getByText('0.8.0')).toBeInTheDocument()
+    expect(within(dialog).getByText('1.0.0')).toBeInTheDocument()
 
-  const defaultProps = {
-    isShow: true,
-    versions: defaultVersions,
-    onClose: mockOnClose,
-    onConfirm: mockOnConfirm,
-  }
+    await user.click(within(dialog).getByRole('button', { name: `app.newApp.${action}` }))
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-  })
+    if (action === 'Cancel') {
+      expect(onClose).toHaveBeenCalledOnce()
+      expect(onConfirm).not.toHaveBeenCalled()
+    } else {
+      expect(onConfirm).toHaveBeenCalledOnce()
+    }
+  },
+)
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  describe('rendering', () => {
-    it('should render dialog when isShow is true', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    })
-
-    it('should not render dialog when isShow is false', () => {
-      render(<VersionMismatchModal {...defaultProps} isShow={false} />)
-
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    })
-
-    it('should render error title', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-    })
-
-    it('should render all error description parts', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      expect(screen.getByText('app.newApp.appCreateDSLErrorPart1')).toBeInTheDocument()
-      expect(screen.getByText('app.newApp.appCreateDSLErrorPart2')).toBeInTheDocument()
-      expect(screen.getByText('app.newApp.appCreateDSLErrorPart3')).toBeInTheDocument()
-      expect(screen.getByText('app.newApp.appCreateDSLErrorPart4')).toBeInTheDocument()
-    })
-
-    it('should display imported and system version numbers', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      expect(screen.getByText('0.8.0')).toBeInTheDocument()
-      expect(screen.getByText('1.0.0')).toBeInTheDocument()
-    })
-
-    it('should render cancel and confirm buttons', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      expect(screen.getByRole('button', { name: /app\.newApp\.Cancel/ })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /app\.newApp\.Confirm/ })).toBeInTheDocument()
-    })
-  })
-
-  describe('user interactions', () => {
-    it('should call onClose when cancel button is clicked', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Cancel/ }))
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onConfirm when confirm button is clicked', () => {
-      render(<VersionMismatchModal {...defaultProps} />)
-
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Confirm/ }))
-
-      expect(mockOnConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle undefined versions gracefully', () => {
-      render(<VersionMismatchModal {...defaultProps} versions={undefined} />)
-
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-    })
-
-    it('should handle empty version strings', () => {
-      const emptyVersions = { importedVersion: '', systemVersion: '' }
-      render(<VersionMismatchModal {...defaultProps} versions={emptyVersions} />)
-
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-    })
-  })
+it('keeps a closed mismatch dialog out of the page', () => {
+  render(
+    <VersionMismatchModal
+      isShow={false}
+      versions={versions}
+      onClose={vi.fn()}
+      onConfirm={vi.fn()}
+    />,
+  )
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 })

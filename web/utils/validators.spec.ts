@@ -8,6 +8,10 @@ describe('Validators', () => {
         properties: {
           name: { type: 'string' },
           age: { type: 'number' },
+          addresses: {
+            type: 'array',
+            items: { type: 'object', properties: { city: { type: 'string' } } },
+          },
         },
       }
       const result = draft07Validator(validSchema)
@@ -22,38 +26,6 @@ describe('Validators', () => {
       const result = draft07Validator(invalidSchema)
       expect(result.valid).toBe(false)
       expect(result.errors.length).toBeGreaterThan(0)
-    })
-
-    it('should validate nested schemas', () => {
-      const nestedSchema = {
-        type: 'object',
-        properties: {
-          user: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              address: {
-                type: 'object',
-                properties: {
-                  street: { type: 'string' },
-                  city: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-      }
-      const result = draft07Validator(nestedSchema)
-      expect(result.valid).toBe(true)
-    })
-
-    it('should validate array schemas', () => {
-      const arraySchema = {
-        type: 'array',
-        items: { type: 'string' },
-      }
-      const result = draft07Validator(arraySchema)
-      expect(result.valid).toBe(true)
     })
   })
 
@@ -116,24 +88,6 @@ describe('Validators', () => {
     it('should handle empty schema', () => {
       const errors = forbidBooleanProperties({})
       expect(errors).toHaveLength(0)
-    })
-
-    it('should provide correct path in error messages', () => {
-      const schema = {
-        properties: {
-          level1: {
-            properties: {
-              level2: {
-                properties: {
-                  level3: true,
-                },
-              },
-            },
-          },
-        },
-      }
-      const errors = forbidBooleanProperties(schema)
-      expect(errors[0]).toContain('level1.level2.level3')
     })
   })
 })

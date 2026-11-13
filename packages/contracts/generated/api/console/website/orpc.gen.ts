@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zCrawlFailedError } from './zod.gen.ts'
 import {
   zGetWebsiteCrawlStatusByJobIdPath,
   zGetWebsiteCrawlStatusByJobIdQuery,
@@ -29,6 +30,7 @@ export const get = oc
     }),
   )
   .output(zGetWebsiteCrawlStatusByJobIdResponse)
+  .errors({ crawl_failed: { status: 500, data: zCrawlFailedError } })
 
 export const byJobId = {
   get,
@@ -52,6 +54,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostWebsiteCrawlBody }))
   .output(zPostWebsiteCrawlResponse)
+  .errors({ crawl_failed: { status: 500, data: zCrawlFailedError } })
 
 export const crawl = {
   post,

@@ -19,7 +19,6 @@ export type ResourceCandidate = ResourceAccessTokenResourcePayload & {
 export type TokenTableRow = {
   tokenId: string
   name: string
-  trackId: string
   maskedToken: string
   createdAt?: number | null
   relations: ResourceAccessTokenRowResponse[]

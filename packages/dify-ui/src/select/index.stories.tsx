@@ -100,12 +100,22 @@ export const Default: Story = {
       await expect(body.getByRole('option', { name: 'Tokyo' })).toBeVisible()
     })
 
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
-    await expect(trigger).toHaveTextContent('Tokyo')
-
-    await userEvent.keyboard('{Escape}')
+    const listbox = body.getByRole('listbox')
     await waitFor(async () => {
-      await expect(body.queryByRole('listbox', { name: 'City options' })).not.toBeInTheDocument()
+      await expect(body.getByRole('option', { name: 'Seattle' })).toHaveFocus()
+    })
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'New York' })).toHaveFocus()
+    })
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'Tokyo' })).toHaveFocus()
+    })
+    await userEvent.keyboard('{Enter}')
+    await expect(trigger).toHaveTextContent('Tokyo')
+    await waitFor(async () => {
+      await expect(listbox).not.toBeVisible()
     })
   },
 }

@@ -1,18 +1,5 @@
-import type {
-  AgentIconType,
-  AgentLogSourceResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import AppIcon from '@/app/components/base/app-icon'
-
-const getLogSourceImageUrl = (source?: AgentLogSourceResponse | null) =>
-  source?.app_icon_type === 'image' || source?.app_icon_type === 'link'
-    ? source.app_icon
-    : undefined
-
-const getLogSourceIconType = (source?: AgentLogSourceResponse | null) => {
-  const imageUrl = getLogSourceImageUrl(source)
-  return (imageUrl ? 'image' : source?.app_icon_type) as AgentIconType | null | undefined
-}
 
 export function LogSourceIcon({ source }: { source?: AgentLogSourceResponse | null }) {
   if (!source)
@@ -21,12 +8,14 @@ export function LogSourceIcon({ source }: { source?: AgentLogSourceResponse | nu
   return (
     <AppIcon
       size="xs"
-      rounded
-      iconType={getLogSourceIconType(source)}
-      icon={source.app_icon ?? undefined}
-      background={source.app_icon_background}
-      imageUrl={getLogSourceImageUrl(source)}
       className="size-5 text-sm"
+      shape="circle"
+      icon={{
+        icon_type: source.app_icon_type,
+        icon: source.app_icon,
+        icon_url: source.app_icon,
+        icon_background: source.app_icon_background,
+      }}
     />
   )
 }

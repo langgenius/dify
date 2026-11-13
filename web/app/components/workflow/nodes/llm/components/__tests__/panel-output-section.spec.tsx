@@ -1,59 +1,21 @@
-import type { ReactNode } from 'react'
-import type { LLMNodeType, StructuredOutput } from '../../types'
+import type { LLMNodeType } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppModeEnum } from '@/types/app'
+import { useState } from 'react'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { Type } from '../../types'
 import PanelOutputSection from '../panel-output-section'
-
-const mockOutputVars = vi.hoisted(() => vi.fn())
-const mockStructureOutput = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: ({
-    children,
-    operations,
-    collapsed,
-  }: {
-    children: ReactNode
-    operations?: ReactNode
-    collapsed?: boolean
-  }) => {
-    mockOutputVars({ collapsed })
-    return (
-      <div>
-        <div data-testid="output-vars-operations">{operations}</div>
-        <div data-testid="output-vars-children">{children}</div>
-      </div>
-    )
-  },
-  VarItem: ({ name }: { name: string }) => <div>{name}</div>,
-}))
-
-vi.mock('../structure-output', () => ({
-  __esModule: true,
-  StructureOutput: (props: {
-    className?: string
-    readOnly: boolean
-    value?: StructuredOutput
-    onChange: (value: StructuredOutput) => void
-  }) => {
-    mockStructureOutput(props)
-    return <div data-testid="structure-output">structured-output</div>
-  },
-}))
 
 const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   title: 'LLM',
   desc: '',
-  type: 'llm' as LLMNodeType['type'],
+  type: BlockEnum.LLM,
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
-  } as LLMNodeType['model'],
+  },
   prompt_template: [],
   context: {
     enabled: false,
@@ -67,31 +29,31 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
 })
 
 describe('llm/panel-output-section', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('renders the default output vars and keeps structured output collapsed state', () => {
-    render(
-      <PanelOutputSection
-        readOnly={false}
-        inputs={createInputs()}
-        isModelSupportStructuredOutput={true}
-        structuredOutputCollapsed={true}
-        setStructuredOutputCollapsed={vi.fn()}
-        handleStructureOutputEnableChange={vi.fn()}
-        handleStructureOutputChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('text')).toBeInTheDocument()
+  it('expands output details through the real section control', async () => {
+    const user = userEvent.setup()
+    const Harness = () => {
+      const [collapsed, setCollapsed] = useState(true)
+      return (
+        <PanelOutputSection
+          readOnly={false}
+          inputs={createInputs()}
+          isModelSupportStructuredOutput
+          structuredOutputCollapsed={collapsed}
+          setStructuredOutputCollapsed={setCollapsed}
+          handleStructureOutputEnableChange={vi.fn()}
+          handleStructureOutputChange={vi.fn()}
+        />
+      )
+    }
+    render(<Harness />)
+    expect(screen.queryByText('reasoning_content')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
     expect(screen.getByText('reasoning_content')).toBeInTheDocument()
     expect(screen.getByText('usage')).toBeInTheDocument()
-    expect(mockOutputVars).toHaveBeenCalledWith({ collapsed: true })
-    expect(screen.queryByTestId('structure-output')).not.toBeInTheDocument()
+    expect(screen.queryByText('structured_output')).not.toBeInTheDocument()
   })
 
-  it('passes the read-only permission to configured output', () => {
+  it('shows configured output as read-only and disables its switch', () => {
     render(
       <PanelOutputSection
         readOnly={true}
@@ -100,7 +62,19 @@ describe('llm/panel-output-section', () => {
           structured_output: {
             schema: {
               type: Type.object,
-              properties: {},
+              properties: {
+                result: {
+                  type: Type.object,
+                  description: 'Result details',
+                  properties: {
+                    answer: {
+                      type: Type.string,
+                      description: 'Final answer',
+                    },
+                  },
+                  required: ['answer'],
+                },
+              },
               additionalProperties: false,
             },
           },
@@ -113,29 +87,38 @@ describe('llm/panel-output-section', () => {
       />,
     )
 
-    expect(screen.getByTestId('structure-output')).toBeInTheDocument()
-    expect(mockStructureOutput).toHaveBeenCalledWith(expect.objectContaining({ readOnly: true }))
+    expect(screen.getByText('structured_output')).toBeInTheDocument()
+    expect(screen.getByText('result')).toBeInTheDocument()
+    expect(screen.getByText('Final answer')).toBeInTheDocument()
+    expect(screen.getByText('app.structOutput.required')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'app.structOutput.configure' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
   })
   it('opens the model warning with the keyboard without changing structured output', async () => {
     const user = userEvent.setup()
-    const onEnable = vi.fn()
-    render(
-      <PanelOutputSection
-        readOnly={false}
-        inputs={createInputs({ structured_output_enabled: true })}
-        isModelSupportStructuredOutput={false}
-        structuredOutputCollapsed={false}
-        setStructuredOutputCollapsed={vi.fn()}
-        handleStructureOutputEnableChange={onEnable}
-        handleStructureOutputChange={vi.fn()}
-      />,
-    )
-    await user.tab()
-    expect(screen.getByRole('button', { name: 'app.structOutput.modelNotSupported' })).toHaveFocus()
+    const Harness = () => {
+      const [enabled, setEnabled] = useState(true)
+      return (
+        <PanelOutputSection
+          readOnly={false}
+          inputs={createInputs({ structured_output_enabled: enabled })}
+          isModelSupportStructuredOutput={false}
+          structuredOutputCollapsed={false}
+          setStructuredOutputCollapsed={() => undefined}
+          handleStructureOutputEnableChange={setEnabled}
+          handleStructureOutputChange={() => undefined}
+        />
+      )
+    }
+    render(<Harness />)
+    expect(screen.getByRole('switch')).toBeChecked()
+    screen.getByRole('button', { name: 'app.structOutput.modelNotSupported' }).focus()
     await user.keyboard('{Enter}')
     expect(await screen.findByRole('dialog')).toHaveTextContent(
       'app.structOutput.modelNotSupportedTip',
     )
-    expect(onEnable).not.toHaveBeenCalled()
+    expect(screen.getByRole('switch')).toBeChecked()
   })
 })

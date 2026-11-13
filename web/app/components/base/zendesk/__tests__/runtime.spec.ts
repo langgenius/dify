@@ -22,12 +22,11 @@ describe('Zendesk runtime', () => {
     const firstOpen = runtime.open('CLOUD')
     const secondOpen = runtime.open('CLOUD')
 
-    expect(firstOpen).toBe(secondOpen)
     expect(runtime.getSnapshot()).toEqual({ attempt: 1, status: 'loading' })
     expect(api).not.toHaveBeenCalled()
 
     runtime.markReady()
-    await firstOpen
+    await Promise.all([firstOpen, secondOpen])
 
     expect(api).toHaveBeenCalledWith(
       'messenger:set',

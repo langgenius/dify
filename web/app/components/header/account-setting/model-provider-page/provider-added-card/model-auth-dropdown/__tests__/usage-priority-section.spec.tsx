@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PreferredProviderTypeEnum } from '../../../declarations'
 import UsagePrioritySection from '../usage-priority-section'
 
@@ -11,13 +12,14 @@ describe('UsagePrioritySection', () => {
     vi.clearAllMocks()
   })
 
-  it('reflects the selected priority and reports a new selection', () => {
+  it('reflects the selected priority and reports a new selection', async () => {
+    const user = userEvent.setup()
     render(<UsagePrioritySection value="credits" onSelect={onSelect} />)
 
     expect(getAiCreditsButton()).toHaveAttribute('aria-pressed', 'true')
     expect(getApiKeyButton()).toHaveAttribute('aria-pressed', 'false')
 
-    fireEvent.click(getApiKeyButton())
+    await user.click(getApiKeyButton())
 
     expect(onSelect).toHaveBeenCalledWith(PreferredProviderTypeEnum.custom)
   })

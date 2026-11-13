@@ -4,7 +4,12 @@ import { readFile } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { runCommand } from '../scripts/common.ts'
 import { runCucumber } from '../scripts/run-cucumber.ts'
-import { resetState, startMiddleware, stopMiddleware } from '../scripts/setup.ts'
+import {
+  getManagedSandboxEnvironment,
+  resetState,
+  startMiddleware,
+  stopMiddleware,
+} from '../scripts/setup.ts'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process.ts'
 import { startWebBuildDownload } from '../support/web-build.ts'
 import { startWebServer, stopWebServer } from '../support/web-server.ts'
@@ -18,6 +23,7 @@ vi.mock('../scripts/common.ts', () => ({
   runCommand: vi.fn(),
 }))
 vi.mock('../scripts/setup.ts', () => ({
+  getManagedSandboxEnvironment: vi.fn(),
   resetState: vi.fn(),
   startMiddleware: vi.fn(),
   stopMiddleware: vi.fn(),
@@ -46,6 +52,11 @@ describe('core E2E preparation', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.stubEnv('E2E_START_AGENT_BACKEND', '')
+    vi.stubEnv('E2E_AGENT_BACKEND_URL', '')
+    vi.stubEnv('AGENT_BACKEND_BASE_URL', '')
+    vi.stubEnv('E2E_SHELLCTL_URL', '')
+    vi.stubEnv('DIFY_AGENT_SHELLCTL_ENTRYPOINT', '')
+    vi.stubEnv('DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT', '')
     vi.mocked(startLoggedProcess).mockImplementation(async () => managedProcess())
     vi.mocked(readFile).mockResolvedValue('{"testCaseStarted":{}}')
     vi.mocked(runCommand).mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
@@ -136,5 +147,63 @@ describe('core E2E preparation', () => {
 
     vi.mocked(readFile).mockResolvedValue('')
     await expect(runCucumber(['--full', '--download-web-build'])).rejects.toThrow('zero scenarios')
+  })
+
+  it('resolves one token and forwards it to both setup children and Cucumber', async () => {
+    vi.stubEnv('E2E_START_AGENT_BACKEND', '1')
+    const environment = {
+      E2E_SHELLCTL_AUTH_TOKEN: 'one-lifecycle-token',
+      DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: 'one-lifecycle-token',
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: 'one-lifecycle-token',
+    }
+    vi.mocked(getManagedSandboxEnvironment).mockReturnValue(environment)
+
+    await runCucumber([])
+
+    expect(getManagedSandboxEnvironment).toHaveBeenCalledOnce()
+    for (const command of ['shellctl-sandbox', 'agent-backend']) {
+      expect(startLoggedProcess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: ['./scripts/setup.ts', command],
+          env: expect.objectContaining(environment),
+        }),
+      )
+    }
+    expect(runCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ env: expect.objectContaining(environment) }),
+    )
+  })
+
+  it('does not start or stop an independently managed sandbox', async () => {
+    vi.stubEnv('E2E_START_AGENT_BACKEND', '1')
+    vi.stubEnv('E2E_SHELLCTL_URL', 'http://existing.example.test')
+    vi.mocked(getManagedSandboxEnvironment).mockReturnValue({
+      E2E_SHELLCTL_AUTH_TOKEN: 'existing-token',
+      DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: 'existing-token',
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: 'existing-token',
+    })
+
+    await runCucumber([])
+
+    expect(startLoggedProcess).not.toHaveBeenCalledWith(
+      expect.objectContaining({ args: ['./scripts/setup.ts', 'shellctl-sandbox'] }),
+    )
+    expect(startLoggedProcess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: ['./scripts/setup.ts', 'agent-backend'],
+        env: expect.objectContaining({ DIFY_AGENT_SHELLCTL_AUTH_TOKEN: 'existing-token' }),
+      }),
+    )
+  })
+
+  it('fails before resetting or starting services when sandbox credentials are invalid', async () => {
+    vi.stubEnv('E2E_START_AGENT_BACKEND', '1')
+    vi.mocked(getManagedSandboxEnvironment).mockImplementation(() => {
+      throw new Error('sandbox credentials required')
+    })
+
+    await expect(runCucumber(['--full'])).rejects.toThrow('sandbox credentials required')
+    expect(resetState).not.toHaveBeenCalled()
+    expect(startLoggedProcess).not.toHaveBeenCalled()
   })
 })

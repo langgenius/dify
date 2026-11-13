@@ -12,6 +12,16 @@ export type ResourceAccessTokenListResponse = {
   total: number
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ResourceAccessTokenCreatePayload = {
   name: string
   resources: Array<ResourceAccessTokenResourcePayload>
@@ -59,6 +69,13 @@ export type GetResourceAccessTokensData = {
   url: '/resource-access-tokens'
 }
 
+export type GetResourceAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type GetResourceAccessTokensError =
+  GetResourceAccessTokensErrors[keyof GetResourceAccessTokensErrors]
+
 export type GetResourceAccessTokensResponses = {
   200: ResourceAccessTokenListResponse
 }
@@ -72,6 +89,13 @@ export type PostResourceAccessTokensData = {
   query?: never
   url: '/resource-access-tokens'
 }
+
+export type PostResourceAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type PostResourceAccessTokensError =
+  PostResourceAccessTokensErrors[keyof PostResourceAccessTokensErrors]
 
 export type PostResourceAccessTokensResponses = {
   201: ResourceAccessTokenCreateResponse
@@ -89,6 +113,13 @@ export type PatchResourceAccessTokensByTokenIdData = {
   url: '/resource-access-tokens/{token_id}'
 }
 
+export type PatchResourceAccessTokensByTokenIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchResourceAccessTokensByTokenIdError =
+  PatchResourceAccessTokensByTokenIdErrors[keyof PatchResourceAccessTokensByTokenIdErrors]
+
 export type PatchResourceAccessTokensByTokenIdResponses = {
   200: ResourceAccessTokenListResponse
 }
@@ -105,6 +136,13 @@ export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdData = {
   query?: never
   url: '/resource-access-tokens/{token_id}/relations/{relation_id}'
 }
+
+export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdError =
+  DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors[keyof DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors]
 
 export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponses = {
   204: void

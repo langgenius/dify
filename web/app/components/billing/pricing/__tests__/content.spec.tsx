@@ -1,3 +1,4 @@
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
@@ -12,17 +13,20 @@ import {
 import { render } from '@/test/console/render'
 import { PricingContent } from '../content'
 
-const openBillingWindow = vi.hoisted(() => vi.fn())
-vi.mock('@/hooks/use-async-window-open', () => ({ useAsyncWindowOpen: () => openBillingWindow }))
+let billingPopup: {
+  location: { href: string }
+  opener: Window | null
+  close: ReturnType<typeof vi.fn>
+}
+beforeEach(() => {
+  billingPopup = { location: { href: '' }, opener: window, close: vi.fn() }
+  vi.spyOn(window, 'open').mockImplementation(() => billingPopup as unknown as Window)
+})
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
 vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -109,11 +113,7 @@ it('preserves a billing interval selected before education eligibility arrives',
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient, { education: { enabled: true } })
-  let resolveEducation!: (data: {
-    is_student: boolean
-    allow_refresh: boolean
-    expire_at: null
-  }) => void
+  let resolveEducation!: (data: EducationStatusResponse) => void
   const options = consoleQuery.account.education.get.queryOptions()
   const request = queryClient.query({
     ...options,
@@ -129,7 +129,13 @@ it('preserves a billing interval selected before education eligibility arrives',
   await user.click(screen.getByRole('switch'))
   await user.click(screen.getByRole('switch'))
   await act(async () => {
-    resolveEducation({ is_student: true, allow_refresh: false, expire_at: null })
+    resolveEducation({
+      is_student: true,
+      allow_refresh: false,
+      can_redeem_discount: true,
+      expire_at: null,
+      result: true,
+    })
     await request
   })
   await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
@@ -140,7 +146,9 @@ it('preserves a billing interval selected before education eligibility arrives',
     queryClient.setQueryData(options.queryKey, {
       is_student: true,
       allow_refresh: true,
+      can_redeem_discount: true,
       expire_at: null,
+      result: true,
     }),
   )
   expect(screen.getByRole('switch')).not.toBeChecked()
@@ -152,6 +160,8 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, {
     is_student: true,
     allow_refresh: false,
+    can_redeem_discount: true,
+    result: true,
     expire_at: null,
   })
   show()
@@ -244,7 +254,6 @@ it('keeps plan information visible after a request failure and restores billing 
 
 afterEach(() => {
   vi.restoreAllMocks()
-  openBillingWindow.mockReset()
 })
 
 it('keeps the current paid plan billing action available while education loads or fails', async () => {
@@ -273,12 +282,11 @@ it('keeps the current paid plan billing action available while education loads o
         headers: { 'Content-Type': 'application/json' },
       }),
   )
-  openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
   show()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-  await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+  await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   await act(async () => {
     rejectEducation(new Error('Unavailable'))
     await request
@@ -334,7 +342,7 @@ it.each([
     expect(requestUrl).toContain('/billing/subscription')
     expect(requestUrl).toContain(`plan=${plan}`)
     expect(requestUrl).toContain(`interval=${selectedInterval}`)
-    expect(openBillingWindow).not.toHaveBeenCalled()
+    expect(window.open).not.toHaveBeenCalled()
   },
 )
 
@@ -351,11 +359,10 @@ it.each(['month', 'year'] as const)(
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-    openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
     show()
     if (interval === 'year') await user.click(screen.getByRole('switch'))
     await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-    await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+    await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   },
 )
 it('includes the marketplace in the Premium purchase link name', async () => {

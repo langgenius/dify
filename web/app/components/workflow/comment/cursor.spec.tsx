@@ -22,7 +22,9 @@ vi.mock('../store', () => ({
 
 describe('CommentCursor', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockState.controlMode = ControlMode.Pointer
+    mockState.isCommentPlacing = false
+    mockState.mousePosition = { elementX: 10, elementY: 20 }
   })
 
   it('renders nothing when not in comment mode', () => {

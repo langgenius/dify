@@ -149,9 +149,10 @@ describe('AgentAccessConfigPage', () => {
   })
 
   it('updates automatic inclusion and refreshes resource permissions', async () => {
+    const user = userEvent.setup()
     const { queryClient, detailKey } = setup()
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-    await userEvent.click(inclusionSwitch())
+    await user.click(inclusionSwitch())
     await waitFor(() => expect(inclusionSwitch()).toHaveAttribute('aria-checked', 'true'))
     await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: detailKey }))
     const mutation = sent.find((req) => req.method === 'PUT')!
@@ -160,9 +161,10 @@ describe('AgentAccessConfigPage', () => {
   })
 
   it('adds a workspace member with the default permission set', async () => {
+    const user = userEvent.setup()
     setup()
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: /Mia/ }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.click(await screen.findByRole('menuitem', { name: /Mia/ }))
     await waitFor(() => expect(screen.getByRole('row', { name: /Mia/ })).toBeInTheDocument())
     const mutation = sent.find((req) => req.method === 'PUT')!
     expect(new URL(mutation.url).pathname).toMatch(/\/users\/mia\/access-policies$/)
@@ -170,9 +172,10 @@ describe('AgentAccessConfigPage', () => {
   })
 
   it('updates a member policy using the selected policy id', async () => {
+    const user = userEvent.setup()
     setup({ users: [createUser('evan', 'Evan', [])] })
-    await userEvent.click(screen.getByRole('combobox'))
-    await userEvent.click(screen.getByRole('option', { name: policy.name }))
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: policy.name }))
     await waitFor(() => expect(sent.some((req) => req.method === 'PUT')).toBe(true))
     expect(await sent.find((req) => req.method === 'PUT')!.json()).toEqual({
       access_policy_ids: [policy.id],
@@ -180,10 +183,11 @@ describe('AgentAccessConfigPage', () => {
   })
 
   it('batch removes members by their policy bindings', async () => {
+    const user = userEvent.setup()
     setup({ users: [createUser('evan', 'Evan'), createUser('mia', 'Mia', [])] })
-    await userEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
-    await userEvent.click(
+    await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', {
         name: 'common.operation.sure',
       }),
@@ -203,6 +207,7 @@ describe('AgentAccessConfigPage', () => {
   })
 
   it('shows and protects a workspace admin in resource access', async () => {
+    const user = userEvent.setup()
     const admin = zResourceUserAccessPolicies.parse({
       ...createUser('admin', 'Workspace Admin'),
       roles: [
@@ -227,12 +232,12 @@ describe('AgentAccessConfigPage', () => {
     expect(within(adminRow).getByRole('combobox')).toBeDisabled()
     expect(within(adminRow).getByRole('button', { name: 'common.operation.remove' })).toBeDisabled()
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
     expect(within(adminRow).getByRole('checkbox', { name: 'Workspace Admin' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Mia' })).toBeChecked()
 
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
-    await userEvent.click(
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', {
         name: 'common.operation.sure',
       }),
@@ -245,30 +250,32 @@ describe('AgentAccessConfigPage', () => {
   })
 
   it('returns to the previous page after removing its last member', async () => {
+    const user = userEvent.setup()
     const users = Array.from({ length: RESOURCE_ACCESS_SETTINGS_PAGE_SIZE + 1 }, (_, i) =>
       createUser(`user-${i}`, `Member ${i}`),
     )
     setup({ users })
-    await userEvent.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     const lastRow = await screen.findByRole('row', {
       name: new RegExp(`Member ${RESOURCE_ACCESS_SETTINGS_PAGE_SIZE}`),
     })
-    await userEvent.click(within(lastRow).getByRole('button', { name: 'common.operation.remove' }))
+    await user.click(within(lastRow).getByRole('button', { name: 'common.operation.remove' }))
     await screen.findByRole('row', { name: /Member 0/ })
     expect(screen.getByRole('button', { name: 'common.pagination.previous' })).toBeDisabled()
   })
 
   it('shows a retry action when member pagination fails', async () => {
+    const user = userEvent.setup()
     const { state } = setup({
       users: Array.from({ length: RESOURCE_ACCESS_SETTINGS_PAGE_SIZE + 1 }, (_, i) =>
         createUser(`user-${i}`, `Member ${i}`),
       ),
     })
     state.failUsers = true
-    await userEvent.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     await screen.findByRole('alert')
     state.failUsers = false
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     await screen.findByRole('row', {
       name: new RegExp(`Member ${RESOURCE_ACCESS_SETTINGS_PAGE_SIZE}`),
     })

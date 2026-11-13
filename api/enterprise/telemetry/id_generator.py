@@ -1,5 +1,3 @@
-from typing import override
-
 """Custom OTEL ID Generator for correlation-based trace/span ID derivation.
 
 Uses contextvars for thread-safe correlation_id -> trace_id mapping.
@@ -11,6 +9,7 @@ without depending on span creation order.
 import random
 import uuid
 from contextvars import ContextVar
+from typing import override
 
 from opentelemetry.sdk.trace.id_generator import IdGenerator
 

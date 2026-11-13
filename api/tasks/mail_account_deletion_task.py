@@ -76,9 +76,7 @@ def send_account_deletion_verification_code(to: str, code: str, language: str = 
         end_at = time.perf_counter()
         logger.info(
             click.style(
-                "Send account deletion verification code email to {} succeeded: latency: {}".format(
-                    to, end_at - start_at
-                ),
+                f"Send account deletion verification code email to {to} succeeded: latency: {end_at - start_at}",
                 fg="green",
             )
         )

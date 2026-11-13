@@ -1,6 +1,6 @@
 import { TZDate, tzOffset, tzScan } from '@date-fns/tz'
-import { parseDateValue } from '../date-picker/date-value'
-import { parseTimeValue } from '../time-picker/time-value'
+import { parseDateValue } from '../internal/date-value'
+import { parseTimeValue } from '../internal/time-value'
 
 type ZonedWallTime = { date: string; time: string }
 

@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types.ts'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
@@ -13,10 +14,11 @@ import { formatNumber } from '@/utils/format'
 import Action from './action'
 
 type Props = Readonly<{
+  marketplace: MarketplaceLinks
   payload: Plugin
 }>
 
-function Item({ payload }: Props) {
+function Item({ marketplace, payload }: Props) {
   const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const language = useGetLanguage()
@@ -67,6 +69,7 @@ function Item({ payload }: Props) {
             </Button>
           )}
           <Action
+            marketplace={marketplace}
             open={open}
             onOpenChange={setOpen}
             author={payload.org}

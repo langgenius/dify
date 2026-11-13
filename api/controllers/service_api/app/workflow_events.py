@@ -25,6 +25,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
+from libs.external_api import error_responses
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
@@ -61,6 +62,7 @@ register_response_schema_model(service_api_ns, EventStreamResponse)
 class WorkflowEventsApi(Resource):
     """Service API for getting workflow execution events after resume."""
 
+    @error_responses(NotWorkflowAppError)
     @service_api_ns.doc(
         summary="Stream Workflow Events",
         description=(
@@ -134,11 +136,11 @@ class WorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
+                generator = AdvancedChatAppGenerator
             elif app_mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator
             else:
                 raise NotWorkflowAppError()
 

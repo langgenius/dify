@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from collections.abc import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -8,8 +9,17 @@ from graphon.file import File, FileTransferMethod, FileType
 from models.tools import ToolFile
 
 
+def _stream(messages: list[DatasourceMessage]) -> Generator[DatasourceMessage]:
+    yield from messages
+
+
+def _text(message: DatasourceMessage) -> str:
+    assert isinstance(message.message, DatasourceMessage.TextMessage)
+    return message.message.text
+
+
 class TestDatasourceFileMessageTransformer:
-    def test_transform_text_and_link_messages(self):
+    def test_transform_text_and_link_messages(self) -> None:
         # Setup
         messages = [
             DatasourceMessage(
@@ -24,20 +34,22 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
         # Verify
         assert len(result) == 2
         assert result[0].type == DatasourceMessage.MessageType.TEXT
-        assert result[0].message.text == "hello"
+        assert _text(result[0]) == "hello"
         assert result[1].type == DatasourceMessage.MessageType.LINK
-        assert result[1].message.text == "https://example.com"
+        assert _text(result[1]) == "https://example.com"
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
     @patch("core.datasource.utils.message_transformer.guess_extension")
-    def test_transform_image_message_success(self, mock_guess_ext, mock_tool_file_manager_cls):
+    def test_transform_image_message_success(
+        self, mock_guess_ext: MagicMock, mock_tool_file_manager_cls: MagicMock
+    ) -> None:
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
         mock_tool_file = ToolFile(
@@ -62,21 +74,21 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1", conversation_id="conv1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1", conversation_id="conv1"
             )
         )
 
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.IMAGE_LINK
-        assert result[0].message.text == "/files/datasources/file_id_123.png"
+        assert _text(result[0]) == "/files/datasources/file_id_123.png"
         assert result[0].meta == {"some": "meta"}
         mock_manager.create_file_by_url.assert_called_once_with(
             user_id="user1", tenant_id="tenant1", file_url="https://example.com/image.png", conversation_id="conv1"
         )
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
-    def test_transform_image_message_failure(self, mock_tool_file_manager_cls):
+    def test_transform_image_message_failure(self, mock_tool_file_manager_cls: MagicMock) -> None:
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
         mock_manager.create_file_by_url.side_effect = Exception("Download failed")
@@ -91,19 +103,21 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.TEXT
-        assert "Failed to download image" in result[0].message.text
-        assert "Download failed" in result[0].message.text
+        assert "Failed to download image" in _text(result[0])
+        assert "Download failed" in _text(result[0])
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
     @patch("core.datasource.utils.message_transformer.guess_extension")
-    def test_transform_blob_message_image(self, mock_guess_ext, mock_tool_file_manager_cls):
+    def test_transform_blob_message_image(
+        self, mock_guess_ext: MagicMock, mock_tool_file_manager_cls: MagicMock
+    ) -> None:
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
         mock_tool_file = ToolFile(
@@ -129,22 +143,22 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.IMAGE_LINK
-        assert result[0].message.text == "/files/datasources/blob_id_456.jpg"
+        assert _text(result[0]) == "/files/datasources/blob_id_456.jpg"
         mock_manager.create_file_by_raw.assert_called_once()
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
     @patch("core.datasource.utils.message_transformer.guess_extension")
     @patch("core.datasource.utils.message_transformer.guess_type")
     def test_transform_blob_message_binary_guess_mimetype(
-        self, mock_guess_type, mock_guess_ext, mock_tool_file_manager_cls
-    ):
+        self, mock_guess_type: MagicMock, mock_guess_ext: MagicMock, mock_tool_file_manager_cls: MagicMock
+    ) -> None:
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
         mock_tool_file = ToolFile(
@@ -171,16 +185,16 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.BINARY_LINK
-        assert result[0].message.text == "/files/datasources/blob_id_789.pdf"
+        assert _text(result[0]) == "/files/datasources/blob_id_789.pdf"
 
-    def test_transform_blob_message_invalid_type(self):
+    def test_transform_blob_message_invalid_type(self) -> None:
         # Setup
         messages = [
             DatasourceMessage(
@@ -192,11 +206,11 @@ class TestDatasourceFileMessageTransformer:
         with pytest.raises(ValueError, match="unexpected message type"):
             list(
                 DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                    messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                    messages=_stream(messages), user_id="user1", tenant_id="tenant1"
                 )
             )
 
-    def test_transform_file_tool_file_image(self):
+    def test_transform_file_tool_file_image(self) -> None:
         # Setup
         file = File(
             transfer_method=FileTransferMethod.TOOL_FILE,
@@ -216,16 +230,16 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.IMAGE_LINK
-        assert result[0].message.text == "/files/datasources/related_123.png"
+        assert _text(result[0]) == "/files/datasources/related_123.png"
 
-    def test_transform_file_tool_file_binary(self):
+    def test_transform_file_tool_file_binary(self) -> None:
         # Setup
         file = File(
             transfer_method=FileTransferMethod.TOOL_FILE,
@@ -245,16 +259,16 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.LINK
-        assert result[0].message.text == "/files/datasources/related_456.txt"
+        assert _text(result[0]) == "/files/datasources/related_456.txt"
 
-    def test_transform_file_other_transfer_method(self):
+    def test_transform_file_other_transfer_method(self) -> None:
         # Setup
         file = File(
             transfer_method=FileTransferMethod.REMOTE_URL,
@@ -272,7 +286,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
@@ -280,7 +294,7 @@ class TestDatasourceFileMessageTransformer:
         assert len(result) == 1
         assert result[0] == msg
 
-    def test_transform_other_message_type(self):
+    def test_transform_other_message_type(self) -> None:
         # JSON type is yielded by the default 'else' block or the 'yield message' at the end
         msg = DatasourceMessage(
             type=DatasourceMessage.MessageType.JSON, message=DatasourceMessage.JsonMessage(json_object={"k": "v"})
@@ -290,7 +304,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 
@@ -298,7 +312,7 @@ class TestDatasourceFileMessageTransformer:
         assert len(result) == 1
         assert result[0] == msg
 
-    def test_get_datasource_file_url(self):
+    def test_get_datasource_file_url(self) -> None:
         # Test with extension
         url = DatasourceFileMessageTransformer.get_datasource_file_url("file1", ".jpg")
         assert url == "/files/datasources/file1.jpg"
@@ -307,7 +321,7 @@ class TestDatasourceFileMessageTransformer:
         url = DatasourceFileMessageTransformer.get_datasource_file_url("file2", None)
         assert url == "/files/datasources/file2.bin"
 
-    def test_transform_blob_message_no_meta_filename(self):
+    def test_transform_blob_message_no_meta_filename(self) -> None:
         # This tests line 70 where filename might be None
         with patch("core.datasource.utils.message_transformer.ToolFileManager") as mock_tool_file_manager_cls:
             mock_manager = mock_tool_file_manager_cls.return_value
@@ -332,16 +346,16 @@ class TestDatasourceFileMessageTransformer:
 
             result = list(
                 DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                    messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                    messages=_stream(messages), user_id="user1", tenant_id="tenant1"
                 )
             )
 
             assert len(result) == 1
             assert result[0].type == DatasourceMessage.MessageType.BINARY_LINK
-            assert result[0].message.text == "/files/datasources/blob_id_no_name.bin"
+            assert _text(result[0]) == "/files/datasources/blob_id_no_name.bin"
 
-    @patch("core.datasource.utils.message_transformer.ToolFileManager")
-    def test_transform_image_message_not_text_message(self, mock_tool_file_manager_cls):
+    @patch("core.datasource.utils.message_transformer.ToolFileManager", new=MagicMock())
+    def test_transform_image_message_not_text_message(self) -> None:
         # This tests line 24-26 where it checks if message is instance of TextMessage
         messages = [
             DatasourceMessage(
@@ -352,7 +366,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=_stream(messages), user_id="user1", tenant_id="tenant1"
             )
         )
 

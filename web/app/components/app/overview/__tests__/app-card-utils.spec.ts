@@ -1,3 +1,4 @@
+import { gunzipSync } from 'node:zlib'
 import { InputVarType } from '@/app/components/workflow/types'
 import { basePath } from '@/utils/var'
 import {
@@ -122,7 +123,6 @@ describe('app-card-utils', () => {
       inputValues: {},
     })
 
-    expect(snippet).toContain('// You can define the inputs from the Start node here')
     expect(snippet).not.toContain('isDev: true')
   })
 
@@ -139,113 +139,44 @@ describe('app-card-utils', () => {
   })
 
   it('should compress and encode base64 using CompressionStream when available', async () => {
-    const result = await compressAndEncodeBase64('hello')
-    expect(typeof result).toBe('string')
-    expect(result.length).toBeGreaterThan(0)
+    const result = await compressAndEncodeBase64('Hello 世界')
+    const bytes = Uint8Array.from(atob(result), (char) => char.charCodeAt(0))
+    expect(gunzipSync(bytes).toString('utf8')).toBe('Hello 世界')
   })
 
   it('should fallback to plain base64 when CompressionStream is unavailable', async () => {
-    const original = globalThis.CompressionStream
-    // @ts-expect-error remove for test
-    delete globalThis.CompressionStream
-
-    const result = await compressAndEncodeBase64('hello')
-    expect(result).toBe(btoa('hello'))
-
-    globalThis.CompressionStream = original
+    vi.stubGlobal('CompressionStream', undefined)
+    try {
+      const result = await compressAndEncodeBase64('Hello 世界')
+      const bytes = Uint8Array.from(atob(result), (char) => char.charCodeAt(0))
+      expect(new TextDecoder().decode(bytes)).toBe('Hello 世界')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
-  it('should identify supported workflow launch input types', () => {
+  it.each([
+    ...[
+      InputVarType.textInput,
+      InputVarType.paragraph,
+      InputVarType.select,
+      InputVarType.number,
+      InputVarType.checkbox,
+      InputVarType.json,
+      InputVarType.jsonObject,
+      InputVarType.url,
+    ].map((type) => ({ type, supported: true })),
+    ...[InputVarType.files, InputVarType.singleFile].map((type) => ({ type, supported: false })),
+  ])('supports $type for launch inputs: $supported', ({ type, supported }) => {
     expect(
       isWorkflowLaunchInputSupported({
         variable: 'v',
         label: 'V',
-        type: InputVarType.textInput,
+        type,
         hide: true,
         required: false,
       }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.paragraph,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.select,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.number,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.checkbox,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.json,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.jsonObject,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.url,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(true)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.files,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(false)
-    expect(
-      isWorkflowLaunchInputSupported({
-        variable: 'v',
-        label: 'V',
-        type: InputVarType.singleFile,
-        hide: true,
-        required: false,
-      }),
-    ).toBe(false)
+    ).toBe(supported)
   })
 
   it('should coerce numeric defaults to string in createWorkflowLaunchInitialValues', () => {

@@ -40,7 +40,9 @@ const FeatureBar = ({
   return (
     <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
       {noFeatureEnabled && (
-        <div
+        <button
+          type="button"
+          disabled={disabled || hideEditEntrance}
           className="flex cursor-pointer items-end gap-1"
           onClick={() => onFeatureBarClick?.(true)}
         >
@@ -49,7 +51,7 @@ const FeatureBar = ({
             {t(($) => $['feature.bar.empty'], { ns: 'appDebug' })}
           </div>
           <RiArrowRightLine className="size-3.5 text-text-accent" />
-        </div>
+        </button>
       )}
       {!noFeatureEnabled && (
         <div className="flex items-center gap-2">
@@ -223,6 +225,7 @@ const FeatureBar = ({
             <Button
               className="shrink-0"
               variant="ghost-accent"
+              disabled={disabled}
               size="small"
               onClick={() => onFeatureBarClick?.(true)}
             >

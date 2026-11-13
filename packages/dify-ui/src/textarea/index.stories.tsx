@@ -26,19 +26,10 @@ type Story = StoryObj<typeof meta>
 
 export const Basic: Story = {
   render: () => (
-    <div className="w-80">
-      <label
-        htmlFor="workspace-description"
-        className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary"
-      >
-        Workspace description
-      </label>
-      <Textarea
-        id="workspace-description"
-        name="workspaceDescription"
-        placeholder="Describe how this workspace is used..."
-      />
-    </div>
+    <Field name="workspaceDescription" className="w-80">
+      <FieldLabel>Workspace description</FieldLabel>
+      <Textarea placeholder="Describe how this workspace is used..." />
+    </Field>
   ),
 }
 
@@ -197,7 +188,7 @@ function CharacterCounterDemo() {
           rows={4}
           className="resize-y pb-8"
         />
-        <div className="pointer-events-none absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-xs-medium text-text-quaternary">
+        <div className="pointer-events-none absolute inset-e-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-xs-medium text-text-quaternary">
           <span>{value.length}</span>/<span className="text-text-tertiary">{maxLength}</span>
         </div>
       </div>

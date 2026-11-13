@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -21,6 +22,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import {
@@ -100,24 +102,32 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
   const resetAccessTokenMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: (updatedSite) => {
           queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
           setShowRegenerate(false)
           toast.success(t(($) => $['actionMsg.generatedSuccessfully'], { ns: 'common' }))
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),
@@ -166,19 +176,7 @@ export function EnvironmentWebAppCard({
         description={t(($) => $['studio.accessPoint.webAppDescription'], {
           ns: 'deployments',
         })}
-        icon={
-          appInfo ? (
-            <AppIcon
-              size="large"
-              iconType={appInfo.icon_type}
-              icon={appInfo.icon ?? undefined}
-              background={appInfo.icon_background}
-              imageUrl={appInfo.icon_url}
-            />
-          ) : (
-            'i-ri-robot-2-line'
-          )
-        }
+        icon={appInfo ? <AppIcon size="large" icon={appInfo} /> : 'i-ri-robot-2-line'}
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}
@@ -255,16 +253,16 @@ export function EnvironmentWebAppCard({
       )}
       <AlertDialog open={showRegenerate} onOpenChange={setShowRegenerate}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['overview.appInfo.regenerateNotice'], {
                 ns: 'appOverview',
               })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

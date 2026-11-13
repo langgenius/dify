@@ -1,10 +1,10 @@
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -19,15 +19,9 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Suspense, useState } from 'react'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import {
@@ -54,12 +48,6 @@ type AgentRosterDisplayData = {
   role?: string | null
 }
 
-const getAppIconType = (iconType?: string | null): AppIconType | null => {
-  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link') return iconType
-
-  return null
-}
-
 function AgentRosterAvatar({
   agent,
   size = 'lg',
@@ -71,16 +59,7 @@ function AgentRosterAvatar({
 }) {
   const iconSize = size === 'md' ? 'medium' : size === 'xs' ? 'tiny' : 'small'
 
-  return (
-    <AppIcon
-      size={iconSize}
-      iconType={getAppIconType(agent.icon_type)}
-      icon={agent.icon ?? undefined}
-      background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
-      className={className}
-    />
-  )
+  return <AppIcon size={iconSize} className={className} icon={{ ...agent, icon_url: agent.icon }} />
 }
 
 function InlineSetupAvatar({ className }: { className?: string }) {
@@ -151,23 +130,24 @@ function AgentRosterDrawer({
       }}
     >
       <DrawerPortal container={portalContainerRef}>
-        <DrawerViewport className="pointer-events-none">
+        {/* Portaled into the panel, not body: keep a layer above the panel's positioned content. */}
+        <DrawerViewport className="pointer-events-none z-50">
           <DrawerPopup
-            className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
+            className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5 data-[swipe-direction=right]:ring-divider-subtle"
             style={{
               right: 'var(--workflow-node-panel-right, 4px)',
               width: 'var(--workflow-node-panel-width, 400px)',
             }}
           >
-            <DrawerContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+            <DrawerContent className="h-full overflow-hidden">
               <header
                 className={cn(
                   'flex shrink-0 flex-col border-b border-divider-subtle bg-components-panel-bg',
                   isSetup
                     ? 'h-16 px-4 py-3'
                     : showDetailActions
-                      ? 'h-27 gap-3 py-3 pr-4 pl-3'
-                      : 'py-3 pr-4 pl-3',
+                      ? 'h-27 gap-3 py-3 ps-3 pe-4'
+                      : 'py-3 ps-3 pe-4',
                 )}
               >
                 <div className="flex min-w-0 items-start justify-between">
@@ -220,21 +200,21 @@ function AgentRosterDrawer({
                   <div className="flex shrink-0 items-center gap-1 py-1">
                     {showInlineActions && (
                       <>
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger
-                            aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
-                              ns: 'workflowAgent',
-                            })}
-                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
-                          >
-                            <span aria-hidden className="i-ri-more-fill size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            placement="bottom-end"
-                            sideOffset={4}
-                            className="w-max min-w-44"
-                          >
-                            <DropdownMenuItem
+                        <Menu modal={false}>
+                          <MenuTrigger
+                            render={
+                              <IconButton
+                                aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
+                                  ns: 'workflowAgent',
+                                })}
+                                className="data-popup-open:bg-state-base-hover"
+                              >
+                                <span aria-hidden className="i-ri-more-fill size-4" />
+                              </IconButton>
+                            }
+                          />
+                          <MenuContent align="end" className="w-max min-w-44">
+                            <MenuItem
                               className="gap-2 whitespace-nowrap"
                               onClick={onSaveInlineToRoster}
                             >
@@ -245,9 +225,9 @@ function AgentRosterDrawer({
                               <span>
                                 {t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}
                               </span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </MenuItem>
+                          </MenuContent>
+                        </Menu>
                         <div className="flex h-3.5 items-start px-1">
                           <div className="h-full w-px bg-divider-regular" />
                         </div>
@@ -266,7 +246,7 @@ function AgentRosterDrawer({
                   </div>
                 </div>
                 {!isSetup && showDetailActions && (
-                  <div className="flex h-8 gap-2 pl-1">
+                  <div className="flex h-8 gap-2 ps-1">
                     {showConsoleLink && canConfigureAgent && (
                       <EditInConsoleLink agentId={agent.id} />
                     )}
@@ -316,19 +296,31 @@ function AgentRosterInlineConfigureDialog({
   trigger: ReactElement
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation(['workflow', 'workflowAgent'])
+  const { t } = useTranslation(['workflow', 'workflowAgent', 'common'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogTrigger render={trigger} />
-      <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden p-0">
+      <DialogContent className="h-190 w-280 overflow-hidden">
         <DialogTitle className="sr-only">{agent.name}</DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflowAgent' })}
         </DialogDescription>
-        <Suspense fallback={<InlineAgentLoading />}>
-          {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
-        </Suspense>
+        <div className="contents [--agent-preview-header-end:4.625rem] max-sm:[--agent-preview-header-end:3.5rem]">
+          <Suspense fallback={<InlineAgentLoading />}>
+            {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+          </Suspense>
+          <div className="absolute inset-e-5 top-3 flex items-center max-sm:inset-e-3">
+            <span aria-hidden className="mx-3 h-3.5 w-px bg-divider-regular max-sm:hidden" />
+            <DialogClose
+              render={
+                <IconButton size="lg" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -378,6 +370,7 @@ export function AgentRosterField({
   onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation(['common', 'workflow', 'workflowAgent', 'agentRoster'])
+  const labelId = useId()
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
@@ -418,7 +411,7 @@ export function AgentRosterField({
       type="button"
       aria-label={t(($) => $[`${i18nPrefix}.roster.openPanel`], { ns: 'workflowAgent', name })}
       aria-busy={isLoading || undefined}
-      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       onClick={onClick}
     >
       {isLoading ? loadingContent : agentContent}
@@ -429,11 +422,14 @@ export function AgentRosterField({
   )
 
   return (
-    <Field name="agent_binding" className="gap-1 px-4 py-2">
+    <div role="group" aria-labelledby={labelId} className="grid min-w-0 gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
-        <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
+        <span
+          id={labelId}
+          className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase text-text-secondary"
+        >
           {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
-        </FieldLabel>
+        </span>
         <AgentSelectorMenu>
           <AgentSelectorMenuTrigger
             render={
@@ -447,17 +443,13 @@ export function AgentRosterField({
           >
             {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
           </AgentSelectorMenuTrigger>
-          <AgentSelectorMenuContent
-            placement="bottom-end"
-            onSelect={onChange}
-            onStartFromScratch={onStartFromScratch}
-          />
+          <AgentSelectorMenuContent onSelect={onChange} onStartFromScratch={onStartFromScratch} />
         </AgentSelectorMenu>
       </div>
       {errorMessage ? (
         <div
           role="alert"
-          className="flex min-h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-2 pl-2 text-left shadow-xs shadow-shadow-shadow-3"
+          className="flex min-h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-2 text-start shadow-xs shadow-shadow-shadow-3"
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
             <span aria-hidden className="i-ri-error-warning-line size-4" />
@@ -510,19 +502,19 @@ export function AgentRosterField({
             )}
           </>
         ) : (
-          <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+          <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3">
             {agentContent}
           </div>
         )
       ) : isPending || agentId ? (
         <div
           aria-busy="true"
-          className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3"
+          className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3"
         >
           {loadingContent}
         </div>
       ) : (
-        <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+        <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 ps-2 pe-4 text-start shadow-xs shadow-shadow-shadow-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
             <span aria-hidden className="i-ri-error-warning-line size-4" />
           </span>
@@ -531,6 +523,6 @@ export function AgentRosterField({
           </span>
         </div>
       )}
-    </Field>
+    </div>
   )
 }

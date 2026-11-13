@@ -1,435 +1,288 @@
-import { render, screen } from '@testing-library/react'
+import type { Shape as HooksStore } from '../hooks-store/store'
+import type { AgentV2NodeType } from '../nodes/agent-v2/types'
+import type { Node } from '../types'
+import type { consoleClient } from '@/service/console'
+import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useStoreApi } from 'reactflow'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { createDeferred } from '@/test/deferred'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
 import CandidateNodeMain from '../candidate-node-main'
-import { CUSTOM_NODE } from '../constants'
-import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import { WORKFLOW_COMMON_NODES } from '../constants/node'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import agentDefault from '../nodes/agent-v2/default'
+import webhookDefault from '../nodes/trigger-webhook/default'
+import { useOperator } from '../operator/hooks'
+import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
 
-const mockUseEventListener = vi.hoisted(() => vi.fn())
-const mockUseStoreApi = vi.hoisted(() => vi.fn())
-const mockUseReactFlow = vi.hoisted(() => vi.fn())
-const mockUseViewport = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
-const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
-const mockUseHooks = vi.hoisted(() => vi.fn())
-const mockCustomNode = vi.hoisted(() => vi.fn())
-const mockCustomNoteNode = vi.hoisted(() => vi.fn())
-const mockGetIterationStartNode = vi.hoisted(() => vi.fn())
-const mockGetLoopStartNode = vi.hoisted(() => vi.fn())
-const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
-const mockSetOpenInlineAgentPanelNodeId = vi.hoisted(() => vi.fn())
-
-vi.mock('ahooks', () => ({
-  useEventListener: (...args: unknown[]) => mockUseEventListener(...args),
+const { webhook, createBinding } = vi.hoisted(() => ({
+  webhook: vi.fn<typeof consoleClient.apps.byAppId.workflows.triggers.webhook.get>(),
+  createBinding:
+    vi.fn<typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put>(),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggers.get': async () => [],
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.triggers.webhook.get': webhook,
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': createBinding,
+      'agent.byAgentId.get': async () => createAgentFixture({ id: 'agent-1' }),
+    }),
+  }
+})
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => mockUseStoreApi(),
-  useReactFlow: () => mockUseReactFlow(),
-  useViewport: () => mockUseViewport(),
-  Position: {
-    Left: 'left',
-    Right: 'right',
-  },
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (
-    selector: (state: {
-      mousePosition: {
-        pageX: number
-        pageY: number
-        elementX: number
-        elementY: number
-      }
-    }) => unknown,
-  ) => mockUseStore(selector),
-  useWorkflowStore: () => mockUseWorkflowStore(),
-}))
-
-vi.mock('../hooks/use-auto-generate-webhook-url', () => ({
-  useAutoGenerateWebhookUrl: () => mockUseHooks().useAutoGenerateWebhookUrl(),
-}))
-
-vi.mock('../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => mockUseHooks().useNodesInteractions(),
-}))
-
-vi.mock('../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => mockUseHooks().useNodesSyncDraft(),
-}))
-
-vi.mock('../hooks/use-workflow-history', () => ({
-  useWorkflowHistory: () => mockUseHooks().useWorkflowHistory(),
-  WorkflowHistoryEvent: {
-    NodeAdd: 'NodeAdd',
-    NoteAdd: 'NoteAdd',
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes', () => ({
-  __esModule: true,
-  default: (props: { id: string }) => {
-    mockCustomNode(props)
-    return <div data-testid="candidate-custom-node">{props.id}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/note-node', () => ({
-  __esModule: true,
-  default: (props: { id: string }) => {
-    mockCustomNoteNode(props)
-    return <div data-testid="candidate-note-node">{props.id}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/agent-v2/hooks', () => ({
-  useCreateInlineAgentBinding: () => ({
-    createInlineAgentBinding: mockCreateInlineAgentBinding,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getIterationStartNode: (...args: unknown[]) => mockGetIterationStartNode(...args),
-  getLoopStartNode: (...args: unknown[]) => mockGetLoopStartNode(...args),
-}))
-
-describe('CandidateNodeMain', () => {
-  const mockSetNodes = vi.fn()
-  const mockHandleNodeSelect = vi.fn()
-  const mockSaveStateToHistory = vi.fn()
-  const mockHandleSyncWorkflowDraft = vi.fn()
-  const mockAutoGenerateWebhookUrl = vi.fn()
-  const mockWorkflowStoreSetState = vi.fn()
-  const createNodesInteractions = () => ({
-    handleNodeSelect: mockHandleNodeSelect,
+const candidate = (type: BlockEnum, id = 'candidate') => {
+  const definition = [...WORKFLOW_COMMON_NODES, webhookDefault].find(
+    (node) => node.metaData.type === type,
+  )!
+  return createNode({
+    id,
+    data: { ...definition.defaultValue, type, title: 'Candidate', _isCandidate: true },
   })
-  const createWorkflowHistory = () => ({
-    saveStateToHistory: mockSaveStateToHistory,
+}
+const inlineCandidate = (overrides: Partial<AgentV2NodeType> = {}) =>
+  createNode({
+    id: 'inline-agent',
+    data: {
+      ...agentDefault.defaultValue,
+      type: BlockEnum.Agent,
+      title: 'Inline agent',
+      _isCandidate: true,
+      ...overrides,
+    },
   })
-  const createNodesSyncDraft = () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  })
-  const createAutoGenerateWebhookUrl = () => mockAutoGenerateWebhookUrl
-  const eventHandlers: Partial<
-    Record<'click' | 'contextmenu', (event: { preventDefault: () => void }) => void>
-  > = {}
-  let nodes = [createNode({ id: 'existing-node' })]
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    nodes = [createNode({ id: 'existing-node' })]
-    eventHandlers.click = undefined
-    eventHandlers.contextmenu = undefined
-
-    mockUseEventListener.mockImplementation(
-      (
-        event: 'click' | 'contextmenu',
-        handler: (event: { preventDefault: () => void }) => void,
-      ) => {
-        eventHandlers[event] = handler
-      },
+function setup(candidateNode?: Node) {
+  let flow: ReturnType<typeof useStoreApi>
+  function Canvas() {
+    flow = useStoreApi()
+    const pending = useStore((state) => state.candidateNode)
+    const { handleHistoryBack } = useNodesInteractions()
+    const { handleAddNote } = useOperator()
+    return (
+      <>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            handleAddNote()
+          }}
+        >
+          Add note
+        </button>
+        <button type="button" onClick={handleHistoryBack}>
+          Undo
+        </button>
+        <section aria-label="Workflow canvas">
+          {pending && <CandidateNodeMain candidateNode={pending} />}
+        </section>
+      </>
     )
-    mockSetNodes.mockImplementation((nextNodes) => {
-      nodes = nextNodes
-    })
-    mockUseStoreApi.mockReturnValue({
-      getState: () => ({
-        getNodes: () => nodes,
-        setNodes: mockSetNodes,
+  }
+  const initialNodes = [candidate(BlockEnum.Code, 'existing-node')]
+  initialNodes[0]!.data._isCandidate = false
+  const sync = vi.fn<HooksStore['doSyncWorkflowDraft']>(async (_force, callbacks) => {
+    callbacks?.onSuccess?.()
+  })
+  const result = renderWorkflowEditor(
+    <EventEmitterContextProvider>
+      <Canvas />
+    </EventEmitterContextProvider>,
+    {
+      nodes: initialNodes,
+      edges: [],
+      historyStore: { nodes: initialNodes, edges: [] },
+      initialStoreState: {
+        candidateNode,
+        mousePosition: { pageX: 100, pageY: 200, elementX: 30, elementY: 40 },
+      },
+      reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 1 } },
+      hooksStoreProps: { doSyncWorkflowDraft: sync },
+    },
+  )
+  const user = userEvent.setup()
+  return {
+    ...result,
+    sync,
+    user,
+    place: () => user.click(screen.getByRole('region', { name: 'Workflow canvas' })),
+    nodes: () => flow.getState().getNodes(),
+  }
+}
+
+beforeEach(() => {
+  webhook.mockReset().mockResolvedValue({
+    id: 'hook-1',
+    node_id: 'webhook',
+    webhook_id: 'webhook-1',
+    webhook_url: 'https://example.com/webhook',
+    webhook_debug_url: 'https://example.com/debug',
+  })
+  createBinding.mockReset()
+})
+
+it('places one webhook and generates its URL only after the draft is saved', async () => {
+  const request = createDeferred()
+  const { user, store, sync, place, nodes } = setup(candidate(BlockEnum.TriggerWebhook, 'webhook'))
+  sync.mockImplementationOnce(async (_force, callbacks) => {
+    await request.promise
+    callbacks?.onSuccess?.()
+  })
+  await place()
+  expect(store.getState().candidateNode).toBeUndefined()
+  expect(nodes().find((node) => node.id === 'webhook')).toMatchObject({
+    position: { x: 100, y: 200 },
+    data: { _isCandidate: false, webhook_url: '' },
+  })
+  expect(sync).toHaveBeenCalledOnce()
+  expect(webhook).not.toHaveBeenCalled()
+  await act(async () => request.resolve())
+  await waitFor(() =>
+    expect(nodes().find((node) => node.id === 'webhook')?.data).toMatchObject({
+      webhook_url: 'https://example.com/webhook',
+      webhook_debug_url: 'https://example.com/debug',
+    }),
+  )
+  expect(webhook).toHaveBeenCalledWith({
+    params: { app_id: 'app-1' },
+    query: { node_id: 'webhook' },
+  })
+  await place()
+  expect(nodes().map((node) => node.id)).toEqual(['existing-node', 'webhook'])
+  await waitFor(() => expect(store.temporal.getState().pastStates).toHaveLength(1))
+  await user.click(screen.getByRole('button', { name: 'Undo' }))
+  expect(nodes().map((node) => node.id)).toEqual(['existing-node'])
+})
+
+it('selects a placed note and can undo its insertion', async () => {
+  const { user, store, place, nodes } = setup()
+  await user.click(screen.getByRole('button', { name: 'Add note' }))
+  const noteId = store.getState().candidateNode!.id
+  await place()
+  expect(nodes().find((node) => node.id === noteId)).toMatchObject({
+    selected: true,
+    data: { selected: true, text: '', _isCandidate: false },
+  })
+  await waitFor(() => expect(store.temporal.getState().pastStates).toHaveLength(1))
+  await user.click(screen.getByRole('button', { name: 'Undo' }))
+  expect(nodes().map((node) => node.id)).toEqual(['existing-node'])
+})
+
+it('keeps a roster binding when placing an agent without creating an inline agent', async () => {
+  const { place, nodes, sync } = setup(
+    inlineCandidate({
+      agent_binding: { binding_type: 'roster_agent', agent_id: 'agent-1' },
+    }),
+  )
+  await place()
+  expect(nodes().find((node) => node.id === 'inline-agent')?.data).toMatchObject({
+    agent_binding: { binding_type: 'roster_agent', agent_id: 'agent-1' },
+    _isCandidate: false,
+  })
+  expect(sync).toHaveBeenCalledOnce()
+  expect(createBinding).not.toHaveBeenCalled()
+})
+
+it.each(['success', 'failure'] as const)(
+  'settles a temporary inline agent after the binding request %s',
+  async (outcome) => {
+    const request =
+      createDeferred<
+        Awaited<
+          ReturnType<
+            typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put
+          >
+        >
+      >()
+    createBinding.mockReturnValue(request.promise)
+    const { store, place, nodes, sync } = setup(inlineCandidate())
+    await place()
+    expect(createBinding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { app_id: 'app-1', node_id: 'inline-agent' },
+        body: expect.objectContaining({
+          variant: 'workflow',
+          binding: { binding_type: 'inline_agent' },
+          save_strategy: 'node_job_only',
+        }),
       }),
+    )
+    expect(nodes().find((node) => node.id === 'inline-agent')?.data).toMatchObject({
+      _isTempNode: true,
+      selected: true,
     })
-    mockUseReactFlow.mockReturnValue({
-      screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x: x + 10, y: y + 20 }),
-    })
-    mockUseViewport.mockReturnValue({ zoom: 1.5 })
-    mockUseStore.mockImplementation(
-      (
-        selector: (state: {
-          mousePosition: {
-            pageX: number
-            pageY: number
-            elementX: number
-            elementY: number
-          }
-        }) => unknown,
-      ) =>
-        selector({
-          mousePosition: {
-            pageX: 100,
-            pageY: 200,
-            elementX: 30,
-            elementY: 40,
+    expect(store.getState().openInlineAgentPanelNodeId).toBe('inline-agent')
+    if (outcome === 'failure') {
+      await act(async () => request.reject(new Error('Unavailable')))
+      await waitFor(() => expect(nodes().map((node) => node.id)).toEqual(['existing-node']))
+      return
+    }
+    const binding = {
+      binding_type: 'inline_agent',
+      agent_id: 'bound-agent',
+      current_snapshot_id: 'snapshot',
+    }
+    await act(async () =>
+      request.resolve(
+        zWorkflowAgentComposerResponse.parse({
+          variant: 'workflow',
+          agent_soul: { schema_version: 1, prompt: { system_prompt: '' } },
+          node_job: {},
+          save_options: [],
+          soul_lock: { locked: false },
+          binding: {
+            ...binding,
+            id: 'binding-1',
+            node_id: 'inline-agent',
+            workflow_id: 'workflow-1',
           },
         }),
+      ),
     )
-    mockUseWorkflowStore.mockReturnValue({
-      getState: () => ({
-        setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
-      }),
-      setState: mockWorkflowStoreSetState,
-    })
-    mockUseHooks.mockReturnValue({
-      useNodesInteractions: createNodesInteractions,
-      useWorkflowHistory: createWorkflowHistory,
-      useNodesSyncDraft: createNodesSyncDraft,
-      useAutoGenerateWebhookUrl: createAutoGenerateWebhookUrl,
-    })
-    mockHandleSyncWorkflowDraft.mockImplementation(
-      (_isSync: boolean, _force: boolean, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      },
-    )
-    mockCreateInlineAgentBinding.mockImplementation(
-      (
-        _nodeId: string,
-        options?: {
-          onSuccess?: (binding: {
-            binding_type: 'inline_agent'
-            agent_id: string
-            current_snapshot_id: string
-          }) => void
-        },
-      ) => {
-        options?.onSuccess?.({
-          binding_type: 'inline_agent',
-          agent_id: 'inline-agent-1',
-          current_snapshot_id: 'inline-snapshot-1',
-        })
-      },
-    )
-    mockGetIterationStartNode.mockReturnValue(createNode({ id: 'iteration-start' }))
-    mockGetLoopStartNode.mockReturnValue(createNode({ id: 'loop-start' }))
-  })
-
-  it('should render the candidate node and commit a webhook node on click', () => {
-    const candidateNode = createNode({
-      id: 'candidate-webhook',
-      type: CUSTOM_NODE,
-      data: {
-        type: BlockEnum.TriggerWebhook,
-        title: 'Webhook Candidate',
-        _isCandidate: true,
-      },
-    })
-
-    const { container } = render(<CandidateNodeMain candidateNode={candidateNode} />)
-
-    expect(screen.getByTestId('candidate-custom-node'))!.toHaveTextContent('candidate-webhook')
-    expect(container.firstChild)!.toHaveStyle({
-      left: '30px',
-      top: '40px',
-      transform: 'scale(1.5)',
-    })
-
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-
-    expect(mockSetNodes).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'existing-node' }),
-        expect.objectContaining({
-          id: 'candidate-webhook',
-          position: { x: 110, y: 220 },
-          data: expect.objectContaining({ _isCandidate: false }),
-        }),
-      ]),
-    )
-    expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeAdd', { nodeId: 'candidate-webhook' })
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ candidateNode: undefined })
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(
-      true,
-      true,
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
+    await waitFor(() =>
+      expect(nodes().find((node) => node.id === 'inline-agent')?.data).toMatchObject({
+        agent_binding: binding,
       }),
     )
-    expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith('candidate-webhook')
-    expect(mockHandleNodeSelect).not.toHaveBeenCalled()
+    expect(nodes().find((node) => node.id === 'inline-agent')?.data._isTempNode).toBeUndefined()
+    expect(sync).toHaveBeenCalledTimes(2)
+  },
+)
+
+it.each([
+  [BlockEnum.Iteration, BlockEnum.IterationStart, 'isInIteration'],
+  [BlockEnum.Loop, BlockEnum.LoopStart, 'isInLoop'],
+] as const)('places a %s with its required start node', async (type, startType, flag) => {
+  const { place, nodes } = setup(candidate(type))
+  await place()
+  expect(nodes()).toHaveLength(3)
+  expect(nodes()).toContainEqual(
+    expect.objectContaining({
+      parentId: 'candidate',
+      data: expect.objectContaining({ type: startType, [flag]: true }),
+    }),
+  )
+})
+
+it('cancels placement without changing the graph or history', async () => {
+  const { user, store, nodes, sync } = setup(candidate(BlockEnum.Code))
+  await user.pointer({
+    keys: '[MouseRight]',
+    target: screen.getByRole('region', { name: 'Workflow canvas' }),
   })
-
-  it('should save note candidates as notes and select the inserted note', () => {
-    const candidateNode = createNode({
-      id: 'candidate-note',
-      type: CUSTOM_NOTE_NODE,
-      data: {
-        type: BlockEnum.Code,
-        title: 'Note Candidate',
-        _isCandidate: true,
-      },
-    })
-
-    render(<CandidateNodeMain candidateNode={candidateNode} />)
-
-    expect(screen.getByTestId('candidate-note-node'))!.toHaveTextContent('candidate-note')
-
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-
-    expect(mockSaveStateToHistory).toHaveBeenCalledWith('NoteAdd', { nodeId: 'candidate-note' })
-    expect(mockHandleNodeSelect).toHaveBeenCalledWith('candidate-note')
-  })
-
-  it('should sync draft immediately when committing an Agent v2 node', () => {
-    const candidateNode = createNode({
-      id: 'candidate-agent-v2',
-      type: CUSTOM_NODE,
-      data: {
-        type: BlockEnum.Agent,
-        title: 'Agent Candidate',
-        agent_binding: {
-          binding_type: 'roster_agent',
-          agent_id: 'agent-1',
-        },
-        agent_node_kind: 'dify_agent',
-        version: '2',
-        _isCandidate: true,
-      },
-    })
-
-    render(<CandidateNodeMain candidateNode={candidateNode} />)
-
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-
-    expect(mockSetNodes).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 'candidate-agent-v2',
-          data: expect.objectContaining({
-            agent_binding: {
-              binding_type: 'roster_agent',
-              agent_id: 'agent-1',
-            },
-            agent_node_kind: 'dify_agent',
-            version: '2',
-            _isCandidate: false,
-          }),
-        }),
-      ]),
-    )
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
-  })
-
-  it('should create inline binding before syncing a start-from-scratch Agent v2 node', () => {
-    const candidateNode = createNode({
-      id: 'candidate-inline-agent-v2',
-      type: CUSTOM_NODE,
-      data: {
-        type: BlockEnum.Agent,
-        title: 'Agent Candidate',
-        agent_binding: {
-          binding_type: 'inline_agent',
-        },
-        agent_node_kind: 'dify_agent',
-        version: '2',
-        _isCandidate: true,
-      },
-    })
-
-    render(<CandidateNodeMain candidateNode={candidateNode} />)
-
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-
-    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
-      'candidate-inline-agent-v2',
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    expect(mockSetNodes.mock.calls[0]?.[0]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 'candidate-inline-agent-v2',
-          data: expect.objectContaining({
-            agent_binding: {
-              binding_type: 'inline_agent',
-            },
-            selected: true,
-            _isTempNode: true,
-          }),
-        }),
-      ]),
-    )
-    expect(mockSetNodes).toHaveBeenLastCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 'candidate-inline-agent-v2',
-          data: expect.objectContaining({
-            agent_binding: {
-              binding_type: 'inline_agent',
-              agent_id: 'inline-agent-1',
-              current_snapshot_id: 'inline-snapshot-1',
-            },
-            selected: true,
-          }),
-        }),
-      ]),
-    )
-    const finalNodes = mockSetNodes.mock.calls.at(-1)?.[0]
-    const finalAgentNode = finalNodes.find(
-      (node: { id: string }) => node.id === 'candidate-inline-agent-v2',
-    )
-    expect(finalAgentNode.data._isTempNode).toBeUndefined()
-    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('candidate-inline-agent-v2')
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
-  })
-
-  it('should append iteration and loop start helper nodes for control-flow candidates', () => {
-    const iterationNode = createNode({
-      id: 'candidate-iteration',
-      type: CUSTOM_NODE,
-      data: {
-        type: BlockEnum.Iteration,
-        title: 'Iteration Candidate',
-        _isCandidate: true,
-      },
-    })
-    const loopNode = createNode({
-      id: 'candidate-loop',
-      type: CUSTOM_NODE,
-      data: {
-        type: BlockEnum.Loop,
-        title: 'Loop Candidate',
-        _isCandidate: true,
-      },
-    })
-
-    const { rerender } = render(<CandidateNodeMain candidateNode={iterationNode} />)
-
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-    expect(mockGetIterationStartNode).toHaveBeenCalledWith('candidate-iteration')
-    expect(mockSetNodes.mock.calls[0]![0]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'candidate-iteration' }),
-        expect.objectContaining({ id: 'iteration-start' }),
-      ]),
-    )
-
-    rerender(<CandidateNodeMain candidateNode={loopNode} />)
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-
-    expect(mockGetLoopStartNode).toHaveBeenCalledWith('candidate-loop')
-    expect(mockSetNodes.mock.calls[1]![0]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'candidate-loop' }),
-        expect.objectContaining({ id: 'loop-start' }),
-      ]),
-    )
-  })
-
-  it('should clear the candidate node on contextmenu', () => {
-    const candidateNode = createNode({
-      id: 'candidate-context',
-      type: CUSTOM_NODE,
-      data: {
-        type: BlockEnum.Code,
-        title: 'Context Candidate',
-        _isCandidate: true,
-      },
-    })
-
-    render(<CandidateNodeMain candidateNode={candidateNode} />)
-
-    eventHandlers.contextmenu?.({ preventDefault: vi.fn() })
-
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ candidateNode: undefined })
-  })
+  expect(store.getState().candidateNode).toBeUndefined()
+  expect(nodes().map((node) => node.id)).toEqual(['existing-node'])
+  expect(store.temporal.getState().pastStates).toHaveLength(0)
+  expect(sync).not.toHaveBeenCalled()
 })

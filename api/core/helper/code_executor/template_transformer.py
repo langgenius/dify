@@ -54,12 +54,12 @@ class TemplateTransformer(ABC):
             result_str = cls.extract_result_str_from_response(response)
             result = json.loads(result_str)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON response: {str(e)}.")
+            raise ValueError(f"Failed to parse JSON response: {str(e)}.") from e
         except ValueError as e:
             # Re-raise ValueError from extract_result_str_from_response
             raise e
         except Exception as e:
-            raise ValueError(f"Unexpected error during response transformation: {str(e)}")
+            raise ValueError(f"Unexpected error during response transformation: {str(e)}") from e
 
         if not isinstance(result, dict):
             raise ValueError(f"Result must be a dict, got {type(result).__name__}")

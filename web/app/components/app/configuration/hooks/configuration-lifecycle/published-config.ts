@@ -2,9 +2,10 @@ import type {
   AppModelConfigResponse,
   DeletedTool,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ConfigurationPublishConfig } from './types'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Collection } from '@/app/components/tools/types'
-import type { DataSet } from '@/models/datasets'
 import type { AnnotationReplyConfig, DatasetConfigs, ModelConfig } from '@/models/debug'
 import {
   zAppExternalDataToolPayload,
@@ -12,7 +13,7 @@ import {
 } from '@dify/contracts/api/console/apps/zod.gen'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING } from '@/config'
 import { PromptMode } from '@/models/debug'
-import { AgentStrategy, AppModeEnum } from '@/types/app'
+import { AgentStrategy } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { matchesProviderReference } from '@/utils/provider-reference'
@@ -50,8 +51,8 @@ function buildPublishedModelConfig({
   backendModelConfig: AppModelConfigResponse
   collectionList: Collection[]
   deletedTools?: DeletedTool[]
-  mode: AppModeEnum
-  nextDataSets: DataSet[]
+  mode: ConfigurationAppMode
+  nextDataSets: DatasetDetailWithPartialMembersResponse[]
 }): ModelConfig {
   const model = backendModelConfig.model
   const externalDataTools = backendModelConfig.external_data_tools.map((tool) => {
@@ -107,7 +108,7 @@ function buildPublishedModelConfig({
     external_data_tools: externalDataTools,
     dataSets: nextDataSets,
     agentConfig:
-      mode === AppModeEnum.AGENT_CHAT
+      mode === 'agent-chat'
         ? {
             ...backendModelConfig.agent_mode,
             enabled: true,
@@ -170,8 +171,8 @@ export function buildPublishedConfig({
   collectionList: Collection[]
   datasetConfigs: DatasetConfigs
   deletedTools?: DeletedTool[]
-  mode: AppModeEnum
-  nextDataSets: DataSet[]
+  mode: ConfigurationAppMode
+  nextDataSets: DatasetDetailWithPartialMembersResponse[]
 }): ConfigurationPublishConfig {
   const modelConfig = buildPublishedModelConfig({
     backendModelConfig,

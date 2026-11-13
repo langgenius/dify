@@ -1,4 +1,5 @@
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from '../utils'
 
@@ -38,7 +39,7 @@ describe('workflow-app utils', () => {
     expect(coerceReplayUserInputs(null)).toBeNull()
   })
 
-  it('should build initial features with file-upload and feature fallbacks', () => {
+  it('preserves upload settings and explicit feature flags', () => {
     const result = buildInitialFeatures(
       {
         file_upload: {
@@ -61,7 +62,7 @@ describe('workflow-app utils', () => {
         retriever_resource: { enabled: true },
         sensitive_word_avoidance: { enabled: true },
       },
-      { enabled: true } as never,
+      createFileUploadConfigFixture({ image_file_size_limit: 8 }),
     )
 
     expect(result).toMatchObject({
@@ -71,7 +72,7 @@ describe('workflow-app utils', () => {
         allowed_file_extensions: ['.png'],
         allowed_file_upload_methods: [TransferMethod.local_file],
         number_limits: 2,
-        fileUploadConfig: { enabled: true },
+        fileUploadConfig: { image_file_size_limit: 8 },
         image: {
           enabled: true,
           number_limits: 5,

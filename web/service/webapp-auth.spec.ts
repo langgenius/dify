@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 const getPublicMock = vi.hoisted(() => vi.fn())
 
 vi.mock('./base', () => ({
@@ -16,9 +16,15 @@ const {
 } = await import('./webapp-auth')
 
 describe('webAppLoginStatus', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     getPublicMock.mockReset()
     getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: true })
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+  afterEach(() => {
+    window.history.replaceState({}, '', originalUrl)
     localStorage.clear()
     sessionStorage.clear()
   })
@@ -32,14 +38,7 @@ describe('webAppLoginStatus', () => {
 
     expect(getWebAppPassport(environment)).toBe('environment-passport')
     expect(getWebAppPassport(ordinary)).toBe('ordinary-passport')
-  })
-
-  it('keeps the ordinary webapp passport storage key unchanged', () => {
-    const address = { kind: 'default' as const, code: 'workflow-app' }
-
-    setWebAppPassport(address, 'passport')
-
-    expect(localStorage.getItem('passport-workflow-app')).toBe('passport')
+    expect(localStorage.getItem('passport-workflow-app')).toBe('ordinary-passport')
   })
 
   it('keeps a stable user id for each environment', () => {

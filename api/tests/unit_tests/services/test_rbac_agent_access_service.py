@@ -5,7 +5,7 @@ from collections.abc import Callable
 import pytest
 
 from services import rbac_agent_access_service
-from tests.unit_tests.rbac_fakes import Initialization, RBACDomain
+from tests.helpers.unit.rbac_fakes import Initialization, RBACDomain
 
 
 def test_initialize_agent_rbac_access_seeds_scope_members_and_creator_policy(

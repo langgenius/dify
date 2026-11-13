@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -184,6 +185,7 @@ def test_get_account_returns_active_account_without_requiring_workspace_membersh
         interface_language="en-US",
         timezone="UTC",
         status=OAuthProviderAccountStatus.ACTIVE,
+        created_at=datetime(2024, 1, 2, 3, 4, 5),
     )
 
     assert oauth_server.get_account(client_id="client-1", access_token="access-1") == OAuthProviderAccount(
@@ -193,6 +195,7 @@ def test_get_account_returns_active_account_without_requiring_workspace_membersh
         avatar=None,
         interface_language="en-US",
         timezone="UTC",
+        created_at=datetime(2024, 1, 2, 3, 4, 5),
     )
     tokens.resolve_account_id.assert_called_once_with("client-1", "access-1")
     repository.get_account_by_id.assert_called_once_with("account-1")
@@ -244,6 +247,7 @@ def test_get_account_rejects_inactive_account(
         interface_language=None,
         timezone=None,
         status=status,
+        created_at=datetime(2024, 1, 2, 3, 4, 5),
     )
 
     with pytest.raises(OAuthServerUnauthorizedError, match=message):

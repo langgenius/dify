@@ -24,25 +24,10 @@ function AgentPreviewChatEmptyState({
       input: { params: { agent_id: agentId } },
     }),
   )
-  const imageUrl =
-    agent?.icon_type === 'image'
-      ? agent.icon_url
-      : agent?.icon_type === 'link'
-        ? agent.icon
-        : undefined
-  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <>
-      <AppIcon
-        size="xxl"
-        rounded
-        iconType={iconType}
-        icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
-        background={agent?.icon_background}
-        imageUrl={imageUrl}
-        className="bg-background-default"
-      />
+      <AppIcon size="xxl" className="bg-background-default" shape="circle" icon={agent} />
       <div className="mt-3 max-w-full truncate system-md-medium text-text-secondary">
         {agent?.name || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName'])}
       </div>

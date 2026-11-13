@@ -5,9 +5,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -17,7 +21,7 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+import EditAnnotationDialog from '@/app/components/app/annotation/edit-annotation-modal'
 import Log from '@/app/components/base/chat/chat/log'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
@@ -88,35 +92,27 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
   const feedbackTextareaId = useId()
   return (
     <form
-      className="flex max-h-[80dvh] flex-col"
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         const content = new FormData(event.currentTarget).get('feedback-content')
         onSubmit(typeof content === 'string' ? content : '')
       }}
     >
-      <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogHeader>
+        <DialogTitle>
           {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
         </DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription>
           {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
             'Please tell us what went wrong with this response'}
         </DialogDescription>
-        <DialogClose
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={isSubmitting}
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
         />
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+      </DialogHeader>
+      <DialogBody>
         <label
           htmlFor={feedbackTextareaId}
           className="mb-2 block system-sm-semibold text-text-secondary"
@@ -134,15 +130,15 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
           rows={4}
           className="w-full"
         />
-      </div>
-      <div className="flex shrink-0 justify-end p-6 pt-5">
+      </DialogBody>
+      <DialogFooter>
         <DialogClose disabled={isSubmitting} render={<Button />}>
           {t(($) => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
         </DialogClose>
-        <Button type="submit" className="ml-2" variant="primary" loading={isSubmitting}>
+        <Button type="submit" variant="primary" loading={isSubmitting}>
           {t(($) => $['operation.submit'], { ns: 'common' }) || 'Submit'}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -170,7 +166,6 @@ function Operation({
     showRegenerate,
     readonly,
   } = useChatContext()
-  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   // Submitting replaces the dialog trigger with the current rating button.
   const feedbackRef = useRef<HTMLButtonElement>(null)
   const feedbackActionsRef = useRef<DialogActions>(null)
@@ -296,8 +291,8 @@ function Operation({
       <div
         className={cn(
           'absolute flex justify-end gap-1',
-          hasWorkflowProcess && 'right-2 -bottom-4',
-          !positionRight && 'right-2 -bottom-4',
+          hasWorkflowProcess && 'inset-e-2 -bottom-4',
+          !positionRight && 'inset-e-2 -bottom-4',
           !hasWorkflowProcess && positionRight && 'top-2.25!',
         )}
         style={!hasWorkflowProcess && positionRight ? { left: contentWidth + 8 } : {}}
@@ -313,7 +308,7 @@ function Operation({
           {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
             <div
               className={cn(
-                'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+                'ms-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
                 hasUserFeedback ? 'flex' : feedbackActionsClassName,
               )}
             >
@@ -372,7 +367,7 @@ function Operation({
           {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
             <div
               className={cn(
-                'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+                'ms-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
                 hasAdminFeedback || hasUserFeedback ? 'flex' : feedbackActionsClassName,
               )}
             >
@@ -466,11 +461,7 @@ function Operation({
               )}
             </div>
           )}
-          <DialogContent
-            finalFocus={feedbackRef}
-            backdropProps={{ forceRender: true }}
-            className="p-0"
-          >
+          <DialogContent finalFocus={feedbackRef} backdropProps={{ forceRender: true }}>
             <FeedbackForm isSubmitting={isSubmittingFeedback} onSubmit={handleFeedbackSubmit} />
           </DialogContent>
         </Dialog>
@@ -482,7 +473,7 @@ function Operation({
         {!isOpeningStatement && (
           <div
             className={cn(
-              'ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+              'ms-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
               answerActiveFlexClassName,
             )}
             data-testid="operation-actions"
@@ -500,38 +491,31 @@ function Operation({
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </IconButton>
             )}
-            {shouldShowAnnotationAction && (
-              <AnnotationCtrlButton
-                appId={config?.appId || ''}
-                messageId={id}
-                cached={!!annotation?.id}
-                query={question}
-                answer={content}
-                onAdded={(id, authorName) =>
-                  onAnnotationAdded?.(id, authorName, question, content, index)
-                }
-                onEdit={() => setIsShowReplyModal(true)}
-              />
-            )}
+            {shouldShowAnnotationAction &&
+              (annotation?.id ? (
+                <EditAnnotationDialog
+                  appId={config?.appId || ''}
+                  annotationId={annotation.id}
+                  question={question}
+                  answer={content}
+                  createdAt={annotation.created_at}
+                  onEdited={(question, answer) => onAnnotationEdited?.(question, answer, index)}
+                  onRemoved={() => onAnnotationRemoved?.(index)}
+                />
+              ) : (
+                <AnnotationCtrlButton
+                  appId={config?.appId || ''}
+                  messageId={id}
+                  query={question}
+                  answer={content}
+                  onAdded={(id, authorName) =>
+                    onAnnotationAdded?.(id, authorName, question, content, index)
+                  }
+                />
+              ))}
           </div>
         )}
       </div>
-      {canManageAnnotation && annotation?.id && isShowReplyModal && (
-        <EditReplyModal
-          isShow
-          onHide={() => setIsShowReplyModal(false)}
-          query={question}
-          answer={content}
-          onEdited={(editedQuery, editedAnswer) =>
-            onAnnotationEdited?.(editedQuery, editedAnswer, index)
-          }
-          appId={config?.appId || ''}
-          messageId={id}
-          annotationId={annotation.id}
-          createdAt={annotation?.created_at}
-          onRemove={() => onAnnotationRemoved?.(index)}
-        />
-      )}
     </>
   )
 }

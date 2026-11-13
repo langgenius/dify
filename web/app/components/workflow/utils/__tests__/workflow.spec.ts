@@ -24,6 +24,7 @@ describe('canRunBySingle', () => {
     BlockEnum.ParameterExtractor,
     BlockEnum.Iteration,
     BlockEnum.Agent,
+    BlockEnum.AgentV2,
     BlockEnum.DocExtractor,
     BlockEnum.Loop,
     BlockEnum.Start,
@@ -70,12 +71,16 @@ describe('isSupportCustomRunForm', () => {
 })
 
 describe('hasErrorHandleNode', () => {
-  it.each([BlockEnum.LLM, BlockEnum.Tool, BlockEnum.HttpRequest, BlockEnum.Code, BlockEnum.Agent])(
-    'should return true for %s',
-    (type) => {
-      expect(hasErrorHandleNode(type)).toBe(true)
-    },
-  )
+  it.each([
+    BlockEnum.LLM,
+    BlockEnum.Tool,
+    BlockEnum.HttpRequest,
+    BlockEnum.Code,
+    BlockEnum.Agent,
+    BlockEnum.AgentV2,
+  ])('should return true for %s', (type) => {
+    expect(hasErrorHandleNode(type)).toBe(true)
+  })
 
   it('should return false for non-error-handle types', () => {
     expect(hasErrorHandleNode(BlockEnum.Start)).toBe(false)
@@ -193,27 +198,46 @@ describe('getNodesConnectedSourceOrTargetHandleIdsMap', () => {
       [node1, node2, node3],
     )
 
-    expect(result.a._connectedSourceHandleIds).toContain('h1')
-    expect(result.a._connectedSourceHandleIds).toContain('h2')
+    expect(result.a._connectedSourceHandleIds).toEqual(['h1', 'h2'])
+    expect(node1.data._connectedSourceHandleIds ?? []).toEqual([])
+  })
+})
+
+describe('removing connection handles', () => {
+  it('preserves unrelated handles when the removed edge is no longer tracked', () => {
+    const nodes = [
+      createNode({ id: 'a', data: { _connectedSourceHandleIds: ['keep-source'] } }),
+      createNode({ id: 'b', data: { _connectedTargetHandleIds: ['keep-target'] } }),
+    ]
+    const result = getNodesConnectedSourceOrTargetHandleIdsMap(
+      [
+        {
+          type: 'remove',
+          edge: createEdge({
+            source: 'a',
+            target: 'b',
+            sourceHandle: 'missing',
+            targetHandle: 'missing',
+          }),
+        },
+      ],
+      nodes,
+    )
+    expect(result.a._connectedSourceHandleIds).toEqual(['keep-source'])
+    expect(result.b._connectedTargetHandleIds).toEqual(['keep-target'])
   })
 
-  it('should fallback to empty arrays when node data has no handle id arrays', () => {
-    const node1 = createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })
-    const node2 = createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } })
-    Reflect.deleteProperty(node1.data, '_connectedSourceHandleIds')
-    Reflect.deleteProperty(node1.data, '_connectedTargetHandleIds')
-    Reflect.deleteProperty(node2.data, '_connectedSourceHandleIds')
-    Reflect.deleteProperty(node2.data, '_connectedTargetHandleIds')
-
-    const edge = createEdge({ source: 'a', target: 'b', sourceHandle: 'h1', targetHandle: 'h2' })
-
-    const result = getNodesConnectedSourceOrTargetHandleIdsMap(
-      [{ type: 'add', edge }],
-      [node1, node2],
-    )
-
-    expect(result.a._connectedSourceHandleIds).toContain('h1')
-    expect(result.b._connectedTargetHandleIds).toContain('h2')
+  it('removes default handles while preserving other connections and caller data', () => {
+    const nodes = [
+      createNode({ id: 'a', data: { _connectedSourceHandleIds: ['source', 'keep-source'] } }),
+      createNode({ id: 'b', data: { _connectedTargetHandleIds: ['target', 'keep-target'] } }),
+    ]
+    const edge = createEdge({ source: 'a', target: 'b', sourceHandle: null, targetHandle: null })
+    const result = getNodesConnectedSourceOrTargetHandleIdsMap([{ type: 'remove', edge }], nodes)
+    expect(result.a._connectedSourceHandleIds).toEqual(['keep-source'])
+    expect(result.b._connectedTargetHandleIds).toEqual(['keep-target'])
+    expect(nodes[0]!.data._connectedSourceHandleIds).toEqual(['source', 'keep-source'])
+    expect(nodes[1]!.data._connectedTargetHandleIds).toEqual(['target', 'keep-target'])
   })
 })
 
@@ -318,7 +342,7 @@ describe('getValidTreeNodes', () => {
     ]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes).toHaveLength(3)
+    expect(result.validNodes.map((node) => node.id)).toEqual(['start', 'a', 'b'])
   })
 
   it('should exclude disconnected nodes', () => {
@@ -345,9 +369,7 @@ describe('getValidTreeNodes', () => {
     ]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map((n) => n.id)).toContain('start1')
-    expect(result.validNodes.map((n) => n.id)).toContain('trigger')
-    expect(result.validNodes.map((n) => n.id)).toContain('shared')
+    expect(result.validNodes.map((node) => node.id).sort()).toEqual(['shared', 'start1', 'trigger'])
   })
 
   it('should not increase maxDepth when visiting nodes at same or lower depth', () => {

@@ -7,7 +7,7 @@ import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
@@ -15,26 +15,18 @@ import { useTranslation } from 'react-i18next'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { useMarketplace } from '@/features/marketplace/client'
+import { consoleQuery } from '@/service/console'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-  useInvalidateAllCustomTools,
-  useInvalidateAllMCPTools,
-  useInvalidateAllWorkflowTools,
-} from '@/service/use-tools'
 
 const ToolBrowser = dynamic(() => import('./tool-browser'), {
   loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
 })
 
 type Props = Readonly<
-  Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+  Pick<PopoverContentProps, 'side' | 'align' | 'sideOffset'> & {
     disabled: boolean
     trigger: ReactElement
     isShow: boolean
@@ -69,24 +61,34 @@ export function ToolPickerContent({
   const [tags, setTags] = useState<string[]>([])
   const canManageTools = useCanManageTools()
 
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
-  const { data: buildInTools } = useAllBuiltInTools()
+  const enable_marketplace = useMarketplace() !== null
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
   const installedPluginIds = useMemo(
     () => new Set(buildInTools?.map((provider) => provider.plugin_id || provider.id)),
     [buildInTools],
   )
   const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
-  const { data: customTools } = useAllCustomTools(shouldFetchCustomTools)
-  const invalidateCustomTools = useInvalidateAllCustomTools()
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: shouldFetchCustomTools,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const queryClient = useQueryClient()
   const shouldFetchWorkflowTools = scope !== 'plugins' && scope !== 'custom'
-  const { data: workflowTools } = useAllWorkflowTools(shouldFetchWorkflowTools)
-  const { data: mcpTools } = useAllMCPTools()
-  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
-  const invalidateWorkflowTools = useInvalidateAllWorkflowTools()
-  const invalidateMcpTools = useInvalidateAllMCPTools()
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: shouldFetchWorkflowTools,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   const { plugins: featuredPlugins = [], isLoading: isFeaturedLoading } =
     useFeaturedToolsRecommendations(enable_marketplace)
@@ -138,7 +140,9 @@ export function ToolPickerContent({
 
     await createCustomCollection(data)
     hideEditCustomCollectionModal()
-    invalidateCustomTools()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.api.get.queryKey(),
+    })
   }
 
   if (isShowEditCollectionToolModal && canManageTools) {
@@ -202,10 +206,11 @@ export function ToolPickerContent({
         featuredLoading={isFeaturedLoading}
         showFeatured={scope === 'all' && enable_marketplace}
         onFeaturedInstallSuccess={async () => {
-          invalidateBuiltInTools()
-          invalidateCustomTools()
-          invalidateWorkflowTools()
-          invalidateMcpTools()
+          const tools = consoleQuery.workspaces.current.tools
+          queryClient.invalidateQueries({ queryKey: tools.builtin.get.queryKey() })
+          queryClient.invalidateQueries({ queryKey: tools.api.get.queryKey() })
+          queryClient.invalidateQueries({ queryKey: tools.workflow.get.queryKey() })
+          queryClient.invalidateQueries({ queryKey: tools.mcp.get.queryKey() })
         }}
       />
     </div>
@@ -215,7 +220,8 @@ export function ToolPickerContent({
 function ToolPicker({
   disabled,
   trigger,
-  placement = 'right-start',
+  side = 'right',
+  align = 'start',
   sideOffset = 0,
   isShow,
   onShowChange,
@@ -231,7 +237,8 @@ function ToolPicker({
       <PopoverTrigger disabled={disabled} render={trigger} />
 
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         className="border-none bg-transparent shadow-none"
       >

@@ -5,8 +5,11 @@ import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -77,8 +80,10 @@ export function ParameterDialog(props: Props) {
           </IconButton>
         }
       />
-      <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">{triggerLabel}</DialogTitle>
+      <DialogContent className="w-100">
+        <DialogHeader>
+          <DialogTitle>{triggerLabel}</DialogTitle>
+        </DialogHeader>
         <ParameterForm {...props} onSaved={() => actionsRef.current?.close()} />
       </DialogContent>
     </Dialog>
@@ -156,13 +161,14 @@ function ParameterForm({ type, payload, onSave, onSaved }: Props & { onSaved: ()
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
         handleSave()
       }}
     >
-      <div className="space-y-2">
+      <DialogBody className="space-y-2">
         <Field title={nameLabel}>
           <Input
             aria-label={nameLabel}
@@ -243,17 +249,17 @@ function ParameterForm({ type, payload, onSave, onSaved }: Props & { onSaved: ()
             />
           </>
         </Field>
-      </div>
-      <div className="mt-4 flex justify-end space-x-2">
-        <DialogClose render={<Button className="w-23.75!" />}>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button className="min-w-24" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" className="w-23.75!" variant="primary">
+        <Button type="submit" className="min-w-24" variant="primary">
           {isAdd
             ? t(($) => $['operation.add'], { ns: 'common' })
             : t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }

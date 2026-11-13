@@ -68,8 +68,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           manifest: GitHubPackage.manifest,
         })
       })
-    } catch (e: any) {
-      if (e.response?.message) onFailed(e.response?.message)
+    } catch (e) {
+      if (e instanceof Error && e.message) onFailed(e.message)
       else onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     } finally {
       setIsUploading(false)

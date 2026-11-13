@@ -139,7 +139,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 raise ValueError("The CSV file is empty.")
 
         except Exception as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
         return text_docs
 
     @override

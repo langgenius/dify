@@ -1,5 +1,6 @@
 import type { Plugin } from './types'
-import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 
 const hasUrlProtocol = (value: string) => /^[a-z][a-z\d+.-]*:/i.test(value)
 
@@ -14,10 +15,8 @@ export const getPluginCardIconUrl = (
 
   if (hasUrlProtocol(icon) || icon.startsWith('/')) return icon
 
-  if (plugin.from === 'marketplace') {
-    const basePath = plugin.type === 'bundle' ? 'bundles' : 'plugins'
-    return `${MARKETPLACE_API_PREFIX}/${basePath}/${plugin.org}/${plugin.name}/icon`
-  }
+  if (plugin.from === 'marketplace')
+    return getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`, plugin.type)
 
   if (!tenantId) return icon
 

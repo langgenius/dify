@@ -18,11 +18,12 @@ type FrequencyOption = {
 }
 
 type FrequencySelectorProps = {
+  disabled?: boolean
   frequency: ScheduleFrequency
   onChange: (frequency: ScheduleFrequency) => void
 }
 
-const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
+const FrequencySelector = ({ frequency, onChange, disabled }: FrequencySelectorProps) => {
   const { t } = useTranslation(['workflow', 'workflowIntegrations'])
   const groupLabel = t(($) => $['nodes.triggerSchedule.frequency.label'], {
     ns: 'workflowIntegrations',
@@ -56,6 +57,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
 
   return (
     <Select
+      disabled={disabled}
       key={`${frequency}-${groupLabel}`}
       value={frequency}
       onValueChange={handleFrequencyChange}

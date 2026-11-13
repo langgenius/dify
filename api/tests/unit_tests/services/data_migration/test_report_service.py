@@ -2,7 +2,7 @@ from services.data_migration.entities import ReportContext, ResourceIdMapping, R
 from services.data_migration.report_service import MigrationReportService
 
 
-def test_report_summarizes_by_resource_type_and_status():
+def test_report_summarizes_by_resource_type_and_status() -> None:
     lines = MigrationReportService().render(
         [
             ResourceReportItem(ResourceType.WORKFLOW, "app-1", "App", "exported"),
@@ -16,7 +16,7 @@ def test_report_summarizes_by_resource_type_and_status():
     assert "dependency dependency-only: 1" in lines
 
 
-def test_report_includes_actionable_lines_for_skipped_and_unresolved_items():
+def test_report_includes_actionable_lines_for_skipped_and_unresolved_items() -> None:
     lines = MigrationReportService().render(
         [
             ResourceReportItem(ResourceType.WORKFLOW, "app-1", "App", "skipped", "App already exists"),
@@ -31,7 +31,7 @@ def test_report_includes_actionable_lines_for_skipped_and_unresolved_items():
     assert "dependency mcp-1: MCP provider not found" in lines
 
 
-def test_report_dependency_detail_uses_type_and_name_when_available():
+def test_report_dependency_detail_uses_type_and_name_when_available() -> None:
     lines = MigrationReportService().render(
         [
             ResourceReportItem(
@@ -61,7 +61,7 @@ def test_report_dependency_detail_uses_type_and_name_when_available():
     ) in lines
 
 
-def test_report_includes_dependency_only_detail_lines():
+def test_report_includes_dependency_only_detail_lines() -> None:
     lines = MigrationReportService().render(
         [
             ResourceReportItem(
@@ -78,7 +78,7 @@ def test_report_includes_dependency_only_detail_lines():
     assert "dependency mcp-1: Configure manually in target tenant." in lines
 
 
-def test_report_includes_export_and_import_context():
+def test_report_includes_export_and_import_context() -> None:
     lines = MigrationReportService().render(
         [],
         context=ReportContext(

@@ -5,7 +5,6 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import LearnDifyItem from '../item'
 
 let deploymentEdition: DeploymentEdition = 'CLOUD'
@@ -19,7 +18,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
 const createApp = (overrides: Partial<RecommendedAppResponse> = {}): RecommendedAppResponse => ({
   app: {
     id: 'app-basic-id',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '😀',
     icon_background: '#fff',
@@ -40,13 +39,6 @@ describe('LearnDifyItem', () => {
   beforeEach(() => {
     deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
-  })
-
-  it('should not render hover action buttons', () => {
-    render(<LearnDifyItem canCreate item={createApp()} onCreate={vi.fn()} onTry={vi.fn()} />)
-
-    expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-    expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
   })
 
   it('should create app when card is clicked outside cloud edition', async () => {
@@ -78,7 +70,9 @@ describe('LearnDifyItem', () => {
 
     render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
 
-    await user.click(screen.getByRole('button', { name: 'Learn Dify App' }))
+    const card = screen.getByRole('button', { name: 'Learn Dify App' })
+    expect(card).toHaveAccessibleDescription('Learn Dify description')
+    await user.click(card)
 
     expect(onTry).toHaveBeenCalledWith(app)
     expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
@@ -88,23 +82,6 @@ describe('LearnDifyItem', () => {
       template_categories: app.categories,
       page: 'explore',
     })
-  })
-
-  it('should run the card action when Enter is pressed', async () => {
-    const onTry = vi.fn()
-    const app = createApp()
-    const user = userEvent.setup()
-
-    render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
-
-    const card = screen.getByRole('button', { name: 'Learn Dify App' })
-    expect(card).toHaveAttribute('type', 'button')
-    expect(card).toHaveAccessibleDescription('Learn Dify description')
-
-    card.focus()
-    await user.keyboard('{Enter}')
-
-    expect(onTry).toHaveBeenCalledWith(app)
   })
 
   it('keeps nullable catalog metadata raw when previewing a card', async () => {

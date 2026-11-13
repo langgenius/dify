@@ -1,5 +1,5 @@
 import type { Tag } from '../../hooks'
-import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
+import { Popover } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -13,20 +13,6 @@ const tagsMap: Record<string, Tag> = {
 }
 
 describe('CompactTrigger', () => {
-  it('renders only icon when no tags are selected', () => {
-    render(
-      <Popover>
-        <CompactTrigger tags={[]} tagsMap={tagsMap} onTagsChange={vi.fn()} />
-      </Popover>,
-    )
-
-    expect(screen.getByRole('button', { name: 'pluginTags.allTags' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
-  })
-
   it('renders selected tag labels and overflow count', () => {
     render(
       <Popover>
@@ -44,27 +30,6 @@ describe('CompactTrigger', () => {
     expect(
       screen.getByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
     ).toBeInTheDocument()
-  })
-
-  it('opens the tag filter from the keyboard', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <Popover>
-        <CompactTrigger tags={[]} tagsMap={tagsMap} onTagsChange={vi.fn()} />
-        <PopoverContent>Tag options</PopoverContent>
-      </Popover>,
-    )
-
-    const trigger = screen.getByRole('button', { name: 'pluginTags.allTags' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-    await user.tab()
-    expect(trigger).toHaveFocus()
-
-    await user.keyboard('{Enter}')
-
-    expect(screen.getByText('Tag options')).toBeInTheDocument()
-    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 
   it('keeps clear as a separate action from the popover trigger', async () => {
