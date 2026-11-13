@@ -909,6 +909,8 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from core.moderation.input_moderation import AppModeration as AppModerationPort
+    from extensions.application_services.app_moderation import AppModeration
     from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
@@ -924,6 +926,8 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app_moderation: AppModerationPort = AppModeration()
+    app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
     bind_account_only_loader(app, services.accounts.identity.get_account_by_id)

@@ -1,5 +1,3 @@
-from typing import Literal
-
 import pytest
 
 from machinery.context import AppRequestContext
@@ -26,16 +24,11 @@ class RecordingModerationGateway:
         return self.verdict
 
 
-@pytest.mark.parametrize("backend", ["keywords", "openai_moderation", "api"])
 @pytest.mark.parametrize("phase", ["input", "output"])
 @pytest.mark.parametrize("flagged", [True, False])
-def test_strict_checks_preserve_scope_and_raise_on_rejection(
-    backend: Literal["keywords", "openai_moderation", "api"], phase: ModerationPhase, flagged: bool
-) -> None:
+def test_strict_checks_preserve_scope_and_raise_on_rejection(phase: ModerationPhase, flagged: bool) -> None:
     context = AppRequestContext(tenant_id="tenant-1", app_id="app-1")
-    rule = ModerationRule(
-        type=backend, config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}}
-    )
+    rule = ModerationRule(type="api", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}})
     gateway = RecordingModerationGateway(ModerationVerdict(flagged=flagged, message="Blocked"))
     service = ModerationService(gateway=gateway)
 

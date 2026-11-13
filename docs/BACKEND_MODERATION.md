@@ -85,20 +85,34 @@ than disabling it. When the switch is off, only the explicit policy applies.
 
 ## App-level ownership and replacement
 
-App generations create isolated tenant/app moderation sessions shared with model
-producers and one response consumer. Each model guard exclusively owns its input
+Each model guard exclusively owns its input
 and output checks. App Model Moderation never proactively invokes OpenAI, selects
 credentials, or caches approved content. Its configuration only selects a reply
 for a real platform rejection. Disabling an app phase does not disable mandatory
 platform checks. Different model invocations remain independent even when their
 text is identical.
 
-The session transports real failures through a thread-safe queue. The response
-consumer alone owns terminal lookup maps. The session does not execute checks,
-hold network locks, or coordinate once-only execution. Parallel workflow model
-calls therefore do not serialize their moderation requests. Guards publish
-platform rejections before raising, preserving configured Chatflow replies after
-workflow events stringify errors.
+App checks and reply selection are stateless functions of the admitted app
+configuration. There is no moderation scope, context variable, failure queue,
+observer, or cross-thread model-to-response side channel. Parallel workflow model
+calls do not serialize their moderation requests.
+Startup injects one stateless policy port into the application container; response
+pipelines retain that port, not an invocation-scoped session. The kernel does not
+import service implementations or require a moderation wrapper around each entry.
+
+Graphon node results retain exception type names, but terminal graph events only
+carry display text. The Dify workflow runner propagates the failing node's type
+through an internal field on its terminal queue event. Container failures inherit
+their failed child's type; handled failures and retries do not classify a later
+terminal failure. Platform input and output rejections have distinct exception
+types so phase-specific presets survive this boundary without parsing messages.
+Because Graphon has no terminal failure source ID, container error text correlates
+its selected failure with typed child events. Text never supplies a type or phase;
+conflicting child types retain the generic error instead of inventing a verdict.
+The internal field is excluded from serialization and does not change public SSE.
+The parameter-extraction node has a small compatibility adapter because Graphon
+currently drops even the exception type when catching model invocation failures.
+It retains only that type during one node run and clears it on every exit.
 
 Keyword and API app rules still use `ModerationService.evaluate` and retain their
 direct-reply and text-override semantics. They are independent policies, not
@@ -111,20 +125,20 @@ later deltas. Blocking output uses the non-stream segment size. Segments have no
 overlap or cross-boundary context. The existing app-level display-then-replace
 behavior remains distinct from the platform guard's check-before-delivery guarantee.
 
-App generation binds the shared scope before input and output work starts. A
-direct legacy caller without a bound scope retains the factory fallback; it is
-not used by app generation and cannot share platform verdicts.
+Application entry points call the same stateless app adapters; no request wrapper
+is required to enable the correct behavior. Standalone kernel callers without an
+application container retain the keyword/API factory fallback. Their App OpenAI
+toggle is still a no-op and never selects an independent tenant provider.
 Independent use of the OpenAI capability retains tenant credentials, accounting,
-and failure behavior even inside an app scope. It is an explicit independent
+and failure behavior. It is an explicit independent
 operation, not an execution path selected by the App Model Moderation toggle.
 
-The plugin `/invoke/app` entry also binds a fresh scope before dispatching to
-the app generator. Invocation validates tenant ownership before model work;
-copied producer contexts and captured output evaluators retain that scope after
-dispatch returns. Nested or subsequent requests never inherit its verdicts.
+The plugin `/invoke/app` entry uses the same app generator behavior. Invocation
+validates tenant ownership before model work. Each workflow runner owns its
+event state, so nested or subsequent requests cannot inherit another run's failures.
 
-Error coordination is process-local. Remote Agent LLM gateway calls do not
-inherit the app session. Local App Model Moderation never issues hosted or tenant
+Remote Agent LLM gateway calls do not transport local workflow node error types.
+Local App Model Moderation never issues hosted or tenant
 checks and cannot infer a typed remote verdict from text. Other configured app
 rules remain independent. A client-provided approval flag must never skip platform checks.
 
@@ -141,20 +155,18 @@ Chat replies use the existing `message` or `message_replace` event followed by
 entire answer, including any previously delivered prefix, and the stored answer
 matches the replacement. Rendering it does not invoke a model or estimate token
 usage again. A failed chatflow retains its failed workflow status while rendering
-the matching invocation-local rejection with its preset or default reply.
+the failing node's platform rejection with its preset or default reply.
 The reply and `message_end` precede the failed `workflow_finished` event because
 the Redis/SSE subscriber stops reading at that terminal event; sending the reply
 afterwards would persist it without ever delivering it to the WebApp client.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
-Chatflow model guards record real unavailable failures in their invocation-local
-session before workflow events stringify them. Only an exact recorded terminal
-failure restores the typed `moderation_unavailable` error; matching text alone
-cannot classify an unrelated failure or reuse another app invocation's state.
+Chatflow restores the typed `moderation_unavailable` error from the failing node's
+error type. Error text alone cannot classify an unrelated failure, and no request
+state is shared between invocations.
 The error event precedes `workflow_finished` so public subscribers receive its
 503 payload, while blocking requests raise the typed error for HTTP mapping.
-This failure record is not a cached verdict and does not prevent later checks
-from retrying. No unavailable check becomes a preset or default chat reply.
+No unavailable check becomes a preset or default chat reply.
 Explicit non-platform model policy failures are also preserved. Completion,
 Workflow, RAG, and other non-chat paths retain the normal moderation error when
 there is no matching preset. Remote New Agent errors retain their existing
@@ -248,6 +260,10 @@ The assembly owner supplies a trusted scope for explicit policies. Automatic
 selection uses trusted deployment and provider quota configuration, never
 caller-provided request metadata. Raw plugin runtime/client interfaces remain
 infrastructure, not moderated business entry points.
+
+Both segment limits are required when constructing a guard. Production assembly
+always provides the configured positive limits; there is no alternate unbounded
+whole-stream buffering mode selected by an omitted limit.
 
 ## Guarantees and trade-offs
 

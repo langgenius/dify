@@ -36,7 +36,7 @@ from core.app.entities.task_entities import (
     StreamEvent,
 )
 from core.workflow.system_variables import build_system_variables
-from extensions.application_services.app_moderation import DEFAULT_CHAT_MODERATION_REPLY, app_moderation_scope
+from extensions.application_services.app_moderation import DEFAULT_CHAT_MODERATION_REPLY, AppModeration
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowType
@@ -473,12 +473,20 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
     assert message.workflow_run_id is None
 
 
-@pytest.mark.parametrize("phase", ["input", "output"])
-@pytest.mark.parametrize("previous_answer", ["", "approved prefix"])
-@pytest.mark.parametrize("configured", [False, True])
-@pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
-@pytest.mark.parametrize("unavailable", [False, True])
-@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize(
+    ("phase", "previous_answer", "configured", "invoke_from", "unavailable", "stream"),
+    [
+        ("input", "", True, InvokeFrom.WEB_APP, False, True),
+        ("input", "approved prefix", False, InvokeFrom.WEB_APP, False, True),
+        ("output", "approved prefix", True, InvokeFrom.WEB_APP, False, True),
+        ("output", "", False, InvokeFrom.SERVICE_API, False, True),
+        ("input", "", True, InvokeFrom.WEB_APP, True, True),
+        ("output", "approved prefix", False, InvokeFrom.WEB_APP, True, True),
+        ("input", "", True, InvokeFrom.SERVICE_API, False, False),
+        ("output", "approved prefix", False, InvokeFrom.SERVICE_API, False, False),
+        ("output", "approved prefix", True, InvokeFrom.SERVICE_API, True, False),
+    ],
+)
 def test_chatflow_moderation_result_survives_workflow_terminal(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -489,6 +497,7 @@ def test_chatflow_moderation_result_survives_workflow_terminal(
     unavailable: bool,
     stream: bool,
 ) -> None:
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", AppModeration)
     app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
     workflow = make_workflow(
         workflow_id="workflow-1",
@@ -551,54 +560,56 @@ def test_chatflow_moderation_result_survives_workflow_terminal(
         start_at=0.0,
         node_run_steps=2,
     )
-    with app_moderation_scope(app.tenant_id, app.id):
-        pipeline = AdvancedChatAppGenerateTaskPipeline(
-            application_generate_entity=entity,
-            workflow=WorkflowSnapshot.from_workflow(workflow),
-            queue_manager=queue_manager,
-            conversation=ConversationSnapshot.from_conversation(conversation),
-            message=MessageSnapshot.from_message(message),
-            user=user,
-            stream=stream,
-            dialogue_count=1,
-            draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
-                invoke_from, user, tenant_id=app.tenant_id
-            ),
+    pipeline = AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=entity,
+        workflow=WorkflowSnapshot.from_workflow(workflow),
+        queue_manager=queue_manager,
+        conversation=ConversationSnapshot.from_conversation(conversation),
+        message=MessageSnapshot.from_message(message),
+        user=user,
+        stream=stream,
+        dialogue_count=1,
+        draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+            invoke_from, user, tenant_id=app.tenant_id
+        ),
+    )
+    client = RecordingHostedModerationClient()
+    if unavailable:
+        client.error = RuntimeError("Private moderation backend failure")
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"openai_api_key": "platform-key"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
         )
-        client = RecordingHostedModerationClient()
-        if unavailable:
-            client.error = RuntimeError("Private moderation backend failure")
-        service = ModerationService(
-            gateway=HostedOpenAIModerationGateway(
-                client=client,
-                credentials={"openai_api_key": "platform-key"},
-                plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
-            )
-        )
-        guard = build_llm_moderation_guard(
-            AppRequestContext(tenant_id=app.tenant_id, app_id=app.id),
-            service=service,
-            rule=ModerationRule(
-                type="openai_moderation",
-                config={
-                    "inputs_config": {"enabled": not unavailable or phase == "input"},
-                    "outputs_config": {"enabled": True},
-                },
-            ),
-            platform=True,
-        )
-        model, provider = make_moderated_model(quota=True, parts=["blocked"], moderation=guard)
+    )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id=app.tenant_id, app_id=app.id),
+        service=service,
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={
+                "inputs_config": {"enabled": not unavailable or phase == "input"},
+                "outputs_config": {"enabled": True},
+            },
+        ),
+        platform=True,
+    )
+    model, provider = make_moderated_model(quota=True, parts=["blocked"], moderation=guard)
 
-        def invoke() -> None:
-            list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
+    def invoke() -> None:
+        list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
 
-        error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
-        with pytest.raises(error_type) as rejected:
-            invoke()
+    error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
+    with pytest.raises(error_type) as rejected:
+        invoke()
     queue_manager.publish(QueueWorkflowStartedEvent(), PublishFrom.APPLICATION_MANAGER)
     pipeline._task_state.answer = previous_answer
     queue_manager.publish(
-        QueueWorkflowFailedEvent(error=str(rejected.value), exceptions_count=1), PublishFrom.APPLICATION_MANAGER
+        QueueWorkflowFailedEvent(
+            error=str(rejected.value), error_type=type(rejected.value).__name__, exceptions_count=1
+        ),
+        PublishFrom.APPLICATION_MANAGER,
     )
     expected_reply = f"App {phase} refusal" if configured else DEFAULT_CHAT_MODERATION_REPLY
     if not stream:

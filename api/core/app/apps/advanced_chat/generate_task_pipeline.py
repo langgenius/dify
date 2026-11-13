@@ -759,7 +759,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Preserve rejection replies and emit scoped unavailable errors before terminal workflow delivery."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
-        replacement = self._base_task_pipeline.workflow_moderation_replacement(event.error)
+        moderation_error = self._base_task_pipeline.workflow_moderation_error(event.error_type)
+        replacement = self._base_task_pipeline.moderation_replacement(moderation_error) if moderation_error else None
         if replacement is not None:
             # Terminal workflow events stop the public topic reader. Emit and
             # persist the replacement before that boundary so WebApp clients can
@@ -788,7 +789,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             yield workflow_finish_resp
             return
 
-        moderation_error = self._base_task_pipeline.workflow_moderation_error(event.error)
         with self._database_session() as session:
             err_event = QueueErrorEvent(error=moderation_error or ValueError(f"Run failed: {event.error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)

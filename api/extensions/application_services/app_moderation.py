@@ -1,18 +1,16 @@
-"""Compose single-owner app checks and invocation-local model failure rendering."""
+"""Evaluate app rules and render structured model failures without invocation-local state."""
 
 import logging
-from collections.abc import Callable, Generator, Mapping
-from contextlib import contextmanager
-from functools import wraps
-from inspect import signature
+from collections.abc import Callable, Mapping
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
-from core.model_context import get_app_moderation_runtime, use_app_moderation_runtime
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from machinery.context import AppRequestContext
-from models.model import App, AppMode
+from models.model import AppMode
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
+    PlatformModerationInputRejectedInvocationError,
+    PlatformModerationOutputRejectedInvocationError,
     PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import (
@@ -22,85 +20,27 @@ from services.moderation_service import (
     ModerationService,
     ModerationVerdict,
 )
-from services.moderation_session import ModerationSession
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_CHAT_MODERATION_REPLY = "This message can’t be processed."
 
 
-class ScopedAppModerationRuntime:
-    """Implement the injected app coordination port without exposing service dependencies to the kernel."""
-
-    def __init__(self, session: ModerationSession) -> None:
-        """Bind one admitted session without provider I/O or process-wide caching."""
-        self.session = session
-
-    def evaluate_input(
-        self, app_config: AppConfig, inputs: Mapping[str, object], query: str
-    ) -> ModerationInputsResult | None:
-        """Evaluate app input through the same use case used by model invocation."""
-        return evaluate_app_input(self.session, app_config, inputs, query)
-
-    def evaluate_output(self, app_config: AppConfig, text: str) -> ModerationOutputsResult | None:
-        """Evaluate app output through the same use case used by model invocation."""
-        return evaluate_app_output(self.session, app_config, text)
-
-    def output_evaluator(self, app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None:
-        """Capture matching keyword/API evaluation for the single response consumer."""
-        return app_output_evaluator(app_config)
-
-    def replacement(self, app_config: AppConfig, error: Exception) -> tuple[str, str] | None:
-        """Resolve a matching app preset or chat default for platform rejection, never backend failures."""
-        if app_config.tenant_id != self.session.tenant_id or app_config.app_id != self.session.app_id:
-            return None
-        return app_rejection_replacement(app_config, error)
-
-    def workflow_replacement(self, app_config: AppConfig) -> Callable[[str], tuple[str, str] | None]:
-        """Capture exact scoped verdict matching before workflow contexts detach."""
-        return workflow_rejection_handler(app_config)
-
-    def workflow_error(self, app_config: AppConfig, message: str) -> ModerationUnavailableInvocationError | None:
-        """Recover only a recorded failure owned by this app invocation, even after its context detaches."""
-        if app_config.tenant_id != self.session.tenant_id or app_config.app_id != self.session.app_id:
-            return None
-        error = self.session.unavailable_error(message)
-        return error if isinstance(error, ModerationUnavailableInvocationError) else None
-
-
-@contextmanager
-def app_moderation_scope(tenant_id: str, app_id: str) -> Generator[ModerationSession]:
-    """Create one isolated scope; copied worker contexts retain it after the caller's context resets."""
-    session = ModerationSession(tenant_id, app_id)
-    with use_app_moderation_runtime(ScopedAppModerationRuntime(session)):
-        yield session
-
-
-def current_moderation_session(tenant_id: str) -> ModerationSession | None:
-    """Return the current session only when its admitted tenant matches."""
-    runtime = get_app_moderation_runtime()
-    session = runtime.session if isinstance(runtime, ScopedAppModerationRuntime) else None
-    return session if session is not None and session.tenant_id == tenant_id else None
-
-
-def with_app_moderation_scope[**Parameters, ResultT](
-    method: Callable[Parameters, ResultT],
-) -> Callable[Parameters, ResultT]:
-    """Bind scope while constructing app workers and response pipelines, without leaking it to later requests."""
-
-    method_signature = signature(method)
-
-    @wraps(method)
-    def wrapped(*args: Parameters.args, **kwargs: Parameters.kwargs) -> ResultT:
-        app_model: App = method_signature.bind(*args, **kwargs).arguments["app_model"]
-        with app_moderation_scope(app_model.tenant_id, app_model.id):
-            return method(*args, **kwargs)
-
-    return wrapped
+def workflow_moderation_error(
+    error_type: str,
+) -> PlatformModerationRejectedInvocationError | ModerationUnavailableInvocationError | None:
+    """Restore public classification from trusted node error types, never from error message text."""
+    if error_type == PlatformModerationInputRejectedInvocationError.__name__:
+        return PlatformModerationInputRejectedInvocationError("Model input was rejected by moderation.")
+    if error_type == PlatformModerationOutputRejectedInvocationError.__name__:
+        return PlatformModerationOutputRejectedInvocationError("Model output was rejected by moderation.")
+    if error_type == ModerationUnavailableInvocationError.__name__:
+        return ModerationUnavailableInvocationError()
+    return None
 
 
 def _app_service() -> ModerationService:
-    """Resolve the composition-root service lazily so scope creation stays free of app wiring."""
+    """Resolve the shared use case only when a keyword or API app check actually runs."""
     from extensions.ext_application_services import application_services
 
     return application_services().moderation
@@ -163,11 +103,9 @@ def _app_rule(rule: SensitiveWordAvoidanceEntity) -> ModerationRule:
 
 
 def evaluate_app_input(
-    session: ModerationSession, app_config: AppConfig, inputs: Mapping[str, object], query: str
+    app_config: AppConfig, inputs: Mapping[str, object], query: str
 ) -> ModerationInputsResult | None:
     """Evaluate keyword/API inputs; App OpenAI configuration only renders later model failures."""
-    if app_config.tenant_id != session.tenant_id or app_config.app_id != session.app_id:
-        return None
     rule = app_config.sensitive_word_avoidance
     if rule is None:
         return None
@@ -191,10 +129,8 @@ def evaluate_app_input(
     return _inputs_result_from_verdict(verdict, inputs, query)
 
 
-def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text: str) -> ModerationOutputsResult | None:
+def evaluate_app_output(app_config: AppConfig, text: str) -> ModerationOutputsResult | None:
     """Evaluate keyword/API output without scheduling an independent OpenAI request."""
-    if app_config.tenant_id != session.tenant_id or app_config.app_id != session.app_id:
-        return None
     rule = app_config.sensitive_word_avoidance
     if rule is None:
         return None
@@ -216,24 +152,25 @@ def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text:
 
 
 def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None:
-    """Capture an active scope and adapt output failures to a safe invocation error.
+    """Capture an admitted app rule and adapt output failures to a safe invocation error.
 
-    Unrelated apps receive no evaluator. Backend and configuration failures are
+    OpenAI rules receive no evaluator. Backend and configuration failures are
     never approvals or preset replies; provider diagnostics remain in logs only.
     """
-    session = current_moderation_session(app_config.tenant_id)
     rule = app_config.sensitive_word_avoidance
-    if session is None or session.app_id != app_config.app_id or rule is None or rule.type == "openai_moderation":
+    if rule is None or rule.type == "openai_moderation":
         return None
 
     def evaluate(text: str) -> ModerationOutputsResult | None:
         """Evaluate the captured app rule and preserve its verdict or safe failure classification."""
         try:
-            return evaluate_app_output(session, app_config, text)
+            return evaluate_app_output(app_config, text)
         except ModerationUnavailableInvocationError:
             raise
         except Exception as error:
-            logger.exception("App output moderation failed. tenant_id=%s app_id=%s", session.tenant_id, session.app_id)
+            logger.exception(
+                "App output moderation failed. tenant_id=%s app_id=%s", app_config.tenant_id, app_config.app_id
+            )
             raise ModerationUnavailableInvocationError() from error
 
     return evaluate
@@ -266,16 +203,10 @@ def _platform_rejection_response(app_config: AppConfig, phase: ModerationPhase) 
     return None
 
 
-def workflow_rejection_handler(app_config: AppConfig) -> Callable[[str], tuple[str, str] | None]:
-    """Capture invocation-local verdicts before worker contexts detach; match exact terminal workflow errors only."""
-    session = current_moderation_session(app_config.tenant_id)
-    if session is not None and session.app_id != app_config.app_id:
-        session = None
+class AppModeration:
+    """Expose stateless app adapters through the kernel's injected policy port, without invocation state."""
 
-    def replacement(message: str) -> tuple[str, str] | None:
-        phase = session.rejected_phase(message) if session is not None else None
-        if phase is None:
-            return None
-        return app_rejection_replacement(app_config, PlatformModerationRejectedInvocationError(phase, message))
-
-    return replacement
+    evaluate_input = staticmethod(evaluate_app_input)
+    output_evaluator = staticmethod(app_output_evaluator)
+    replacement = staticmethod(app_rejection_replacement)
+    workflow_error = staticmethod(workflow_moderation_error)

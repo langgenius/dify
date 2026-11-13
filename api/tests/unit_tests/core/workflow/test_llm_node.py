@@ -8,6 +8,32 @@ import pytest
 from core.workflow.llm_node import DifyLLMNode
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
+from services.moderation_invocation_errors import (
+    ModerationUnavailableInvocationError,
+    PlatformModerationInputRejectedInvocationError,
+    PlatformModerationOutputRejectedInvocationError,
+)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        PlatformModerationInputRejectedInvocationError("Rejected"),
+        PlatformModerationOutputRejectedInvocationError("Rejected"),
+        ModerationUnavailableInvocationError(),
+    ],
+)
+def test_llm_failure_result_retains_moderation_type(monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
+    node = object.__new__(DifyLLMNode)
+
+    def prepare(*, node_inputs: dict[str, object]) -> Generator[object]:
+        assert node_inputs == {}
+        raise error
+
+    monkeypatch.setattr(node, "_prepare_run_prompt", prepare)
+    [completed] = list(node._run())
+    assert completed.node_run_result.error_type == type(error).__name__
+    assert completed.node_run_result.error == str(error)
 
 
 def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -23,10 +23,9 @@ from core.moderation.base import (
 )
 from core.moderation.keywords.keywords import KeywordsModeration
 from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
-from extensions.application_services.app_moderation import app_moderation_scope
 
 
-def test_app_scope_does_not_silently_approve_an_independent_openai_check(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_independent_openai_check_propagates_tenant_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def unavailable_tenant(*, tenant_id: str) -> ModelManager:
         assert tenant_id == "tenant-1"
         raise RuntimeError("Independent tenant provider unavailable")
@@ -40,9 +39,8 @@ def test_app_scope_does_not_silently_approve_an_independent_openai_check(monkeyp
             "outputs_config": {"enabled": True, "preset_response": "Rejected"},
         },
     )
-    with app_moderation_scope("tenant-1", "app-1"):
-        with pytest.raises(RuntimeError, match="Independent tenant provider unavailable"):
-            backend.moderation_for_inputs({}, "content")
+    with pytest.raises(RuntimeError, match="Independent tenant provider unavailable"):
+        backend.moderation_for_inputs({}, "content")
 
 
 class TestKeywordsModeration:
