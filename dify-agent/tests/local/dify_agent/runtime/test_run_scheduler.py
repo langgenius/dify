@@ -247,7 +247,7 @@ class FailingObserverStore(FakeStore):
 
 class CancellationDuringShutdownFailureStore(FakeStore):
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
-        if isinstance(event, RunFailedEvent) and event.data.reason == "shutdown":
+        if isinstance(event, RunFailedEvent):
             _ = await self.request_cancellation(
                 event.run_id,
                 CancelRunRequest(reason="concurrent_shutdown_cancel"),
@@ -427,7 +427,7 @@ class CompetingFailureRunner(SnapshotlessRunner):
             await self.release.wait()
         except asyncio.CancelledError:
             pass
-        _ = await emit_run_failed(self.store, run_id=self.run_id, error="runner failed", reason="model_error")
+        _ = await emit_run_failed(self.store, run_id=self.run_id, error="runner failed")
         self.failure_attempted.set()
 
 
@@ -548,6 +548,9 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
             assert store.statuses[record.run_id] == "failed"
             assert store.errors[record.run_id] == "run cancelled during server shutdown"
             assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunFailedEvent)
+            assert terminal.data.error_type is None
 
     asyncio.run(scenario())
 
@@ -603,6 +606,9 @@ def test_cancellation_observer_failure_stops_runner_and_finalizes_failed() -> No
             assert store.statuses[record.run_id] == "failed"
             assert store.errors[record.run_id] == "run cancellation observer failed: redis read failed"
             assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunFailedEvent)
+            assert terminal.data.error_type is None
             assert runner_finished.is_set()
             assert store.observer_finished.is_set()
             await asyncio.sleep(0)

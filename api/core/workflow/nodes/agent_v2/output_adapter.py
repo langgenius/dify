@@ -93,6 +93,12 @@ class WorkflowAgentOutputAdapter:
         process_data: dict[str, Any],
         metadata: dict[str, Any],
     ) -> NodeRunResult:
+        """Accept a validated failed/cancelled event and return a failed result.
+
+        Preserve failed-run diagnostic text and its stable type, using
+        ``agent_backend_run_failed`` when unclassified. Cancellation keeps its
+        own type. Inputs are not mutated and this conversion performs no I/O.
+        """
         status = WorkflowNodeExecutionStatus.FAILED
         error = "Agent backend run failed."
         error_type = "agent_backend_run_failed"
@@ -101,7 +107,7 @@ class WorkflowAgentOutputAdapter:
         match event:
             case AgentBackendRunFailedInternalEvent():
                 error = event.error
-                error_type = event.error_type or event.reason or "agent_backend_run_failed"
+                error_type = event.error_type or "agent_backend_run_failed"
                 terminal_status = "failed"
             case AgentBackendRunCancelledInternalEvent():
                 error = event.message or "Agent backend run was cancelled."

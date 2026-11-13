@@ -145,13 +145,13 @@ def test_success_output_adapter_preserves_dict_output():
     }
 
 
-def test_failure_output_adapter_preserves_backend_failed_reason():
+def test_failure_output_adapter_preserves_classification_and_terminal_metadata() -> None:
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(
             run_id="run-1",
             source_event_id="2-0",
             error="bad request",
-            reason="validation",
+            error_type=RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
             session_snapshot=SessionSnapshot(layers={}),
             usage={
                 "prompt_tokens": 13,
@@ -168,7 +168,7 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "bad request"
-    assert result.error_type == "validation"
+    assert result.error_type == "model_invoke_bad_request_error"
     assert result.llm_usage.total_tokens == 21
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 21
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == Decimal("0.000210")
@@ -177,29 +177,13 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     }
 
 
-def test_failure_output_adapter_prefers_run_failure_type_over_reason():
+@pytest.mark.parametrize("error", ["backend failed", "InvokeRateLimitError", "invalid_request", "binding_lost"])
+def test_failure_output_adapter_uses_default_error_type_without_backend_classification(error: str) -> None:
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(
             run_id="run-1",
-            error="run limit reached",
-            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-            reason="runtime",
-        ),
-        inputs={},
-        process_data={},
-        metadata={},
-    )
-
-    assert result.error_type == "agent_run_limit_exceeded"
-
-
-def test_failure_output_adapter_uses_default_error_type_without_backend_classification():
-    result = WorkflowAgentOutputAdapter().build_failure_result(
-        event=AgentBackendRunFailedInternalEvent(
-            run_id="run-1",
-            error="backend failed",
+            error=error,
             error_type=None,
-            reason=None,
         ),
         inputs={},
         process_data={},
@@ -207,6 +191,7 @@ def test_failure_output_adapter_uses_default_error_type_without_backend_classifi
     )
 
     assert result.error_type == "agent_backend_run_failed"
+    assert result.error == error
 
 
 def test_success_output_adapter_normalizes_string_and_scalar_outputs():

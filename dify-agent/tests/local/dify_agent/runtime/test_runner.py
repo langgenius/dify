@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from pydantic_ai import Agent, Tool
-from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
+from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import (
     UserPromptPart,
     ModelRequest,
@@ -22,6 +22,7 @@ from pydantic_ai.tools import DeferredToolRequests
 from dify_agent.adapters.shell.protocols import ShellCommandResult
 from dify_agent.layers import history
 from dify_agent.layers.dify_plugin import llm_layer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
     RunComposition,
@@ -35,7 +36,7 @@ from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.runner import AgentRunRunner
-from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLayout
+from dify_agent.runtime_backend import BindingLostError, RuntimeBackendProfile, RuntimeLayout
 
 
 def request(*extra, snapshot=None, instruction="Current instruction", user="hello"):
@@ -197,12 +198,200 @@ async def test_failure_saves_user_history_and_classified_event(monkeypatch):
         terminal = sink.events["test"][-1]
         assert isinstance(terminal, RunFailedEvent)
         assert terminal.data.error == "quota exceeded"
-        assert terminal.data.reason == "InvokeRateLimitError"
+        assert terminal.data.error_type is RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR
         assert terminal.data.session_snapshot is not None
         saved = history.State.model_validate(terminal.data.session_snapshot.layers["history"])
         assert isinstance(saved.messages[0], ModelRequest)
         assert saved.messages[0].instructions is None
         assert saved.messages[-1].state == "interrupted"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("status_code", "body", "error_type", "expected_error"),
+    [
+        (
+            401,
+            {"error_type": "InvokeAuthorizationError", "message": "authorization failed"},
+            RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR,
+            "authorization failed",
+        ),
+        (
+            400,
+            {"error_type": "InvokeBadRequestError", "message": "invalid model request"},
+            RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
+            "invalid model request",
+        ),
+        (
+            400,
+            {"error_type": "CredentialsValidateFailedError", "message": "credentials invalid"},
+            RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
+            "credentials invalid",
+        ),
+        (
+            503,
+            {"error_type": "InvokeConnectionError", "message": "connection failed"},
+            RunFailureType.MODEL_INVOKE_CONNECTION_ERROR,
+            "connection failed",
+        ),
+        (
+            429,
+            {"error_type": "InvokeRateLimitError", "message": "model rate limited"},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "model rate limited",
+        ),
+        (
+            429,
+            {"error_type": "AgentLLMQuotaExceededError", "message": "agent quota exceeded"},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "agent quota exceeded",
+        ),
+        (
+            429,
+            {"error_type": "QuotaExceededError", "message": "provider quota exceeded"},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "provider quota exceeded",
+        ),
+        (
+            503,
+            {"error_type": "InvokeServerUnavailableError", "message": "model unavailable"},
+            RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR,
+            "model unavailable",
+        ),
+        (429, {"message": "quota exceeded"}, RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR, "quota exceeded"),
+        (
+            429,
+            {"error_type": "", "message": ""},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "status_code: 429, model_name: demo, body: {'error_type': '', 'message': ''}",
+        ),
+        (
+            429,
+            {"error_type": None, "message": None},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "status_code: 429, model_name: demo, body: {'error_type': None, 'message': None}",
+        ),
+        (
+            429,
+            {"error_type": 42, "message": 42},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "status_code: 429, model_name: demo, body: {'error_type': 42, 'message': 42}",
+        ),
+        (
+            429,
+            "too many requests",
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "status_code: 429, model_name: demo, body: too many requests",
+        ),
+        (
+            429,
+            None,
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "status_code: 429, model_name: demo, body: None",
+        ),
+        (
+            429,
+            {"error_type": "InvokeAuthorizationError"},
+            RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR,
+            "status_code: 429, model_name: demo, body: {'error_type': 'InvokeAuthorizationError'}",
+        ),
+        (
+            500,
+            {"error_type": "InvokeRateLimitError"},
+            RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+            "status_code: 500, model_name: demo, body: {'error_type': 'InvokeRateLimitError'}",
+        ),
+        (429, {"error_type": "PluginDaemonInnerError", "message": "daemon failed"}, None, "daemon failed"),
+        (500, {"error_type": "PluginDaemonInnerError", "message": "daemon failed"}, None, "daemon failed"),
+        (404, {"error_type": "PluginNotFoundError", "message": "plugin missing"}, None, "plugin missing"),
+        (
+            503,
+            "Agent LLM Gateway request failed",
+            None,
+            "status_code: 503, model_name: demo, body: Agent LLM Gateway request failed",
+        ),
+        (
+            504,
+            "Agent LLM Gateway timed out",
+            None,
+            "status_code: 504, model_name: demo, body: Agent LLM Gateway timed out",
+        ),
+        (503, {"error_type": None, "message": "gateway unavailable"}, None, "gateway unavailable"),
+    ],
+)
+async def test_model_http_failure_classification_preserves_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
+    body: object | None,
+    error_type: RunFailureType | None,
+    expected_error: str,
+) -> None:
+    exc = ModelHTTPError(status_code, "demo", body)
+
+    async def stream(messages, info):
+        raise exc
+        yield "unreachable"
+
+    async with httpx.AsyncClient() as client:
+        runner, sink = run_runner(request(), Services(client, client), monkeypatch, stream)
+        with pytest.raises(ModelHTTPError):
+            await runner.run()
+
+    terminal = sink.events["test"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error == expected_error
+    assert terminal.data.error_type is error_type
+    assert sink.error_types["test"] is error_type
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("exc", "error_type", "expected_error"),
+    [
+        (
+            UsageLimitExceeded("model request budget exceeded"),
+            RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            "model request budget exceeded. Consider raising the limit, or see the docs on usage limits "
+            "for budget-aware patterns: https://pydantic.dev/docs/ai/core-concepts/agent/#usage-limits",
+        ),
+        (
+            BindingLostError("Binding 'internal-ref' no longer exists"),
+            RunFailureType.BINDING_LOST,
+            "Binding 'internal-ref' no longer exists",
+        ),
+        (
+            DifyKnowledgeBaseClientError(
+                "Knowledge retrieval failed (HTTP 403, dataset_tenant_mismatch)",
+                status_code=403,
+                error_code="dataset_tenant_mismatch",
+                retryable=False,
+            ),
+            None,
+            "Knowledge retrieval failed (HTTP 403, dataset_tenant_mismatch)",
+        ),
+        (DifyKnowledgeBaseClientError("invalid response", retryable=False), None, "invalid response"),
+        (ModelAPIError("demo", "unrecognized model failure"), None, "unrecognized model failure"),
+        (RuntimeError("unhandled failure"), None, "unhandled failure"),
+        (RuntimeError(), None, "RuntimeError"),
+    ],
+)
+async def test_runtime_failure_classification_preserves_diagnostics(
+    monkeypatch: pytest.MonkeyPatch, exc: Exception, error_type: RunFailureType | None, expected_error: str
+) -> None:
+    async def stream(messages, info):
+        raise exc
+        yield "unreachable"
+
+    async with httpx.AsyncClient() as client:
+        runner, sink = run_runner(request(), Services(client, client), monkeypatch, stream)
+        with pytest.raises(type(exc)):
+            await runner.run()
+
+    terminal = sink.events["test"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error == expected_error
+    assert terminal.data.error_type is error_type
+    assert sink.error_types["test"] is error_type
 
 
 class FailingAppendSink(InMemoryRunEventSink):

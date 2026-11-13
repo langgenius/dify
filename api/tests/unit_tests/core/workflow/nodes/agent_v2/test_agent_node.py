@@ -830,7 +830,7 @@ def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_map
     assert [item.reference for item in attachments.value] == [first_reference, second_reference]
 
 
-def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
+def test_agent_node_run_maps_failed_agent_backend_run_to_node_result() -> None:
     store = FakeSessionStore()
     events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
 
@@ -838,7 +838,7 @@ def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "fake failure"
-    assert result.error_type == "unit_test"
+    assert result.error_type == "agent_backend_run_failed"
     assert store.saved[0][2] == SessionSnapshot(layers={})
 
 
@@ -890,7 +890,7 @@ def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kin
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     if failure_kind == "backend":
-        assert (result.error, result.error_type) == ("fake failure", "unit_test")
+        assert (result.error, result.error_type) == ("fake failure", "agent_backend_run_failed")
     else:
         assert result.error == "stream reconnect attempts exhausted"
         assert result.error_type == "agent_backend_stream_error"

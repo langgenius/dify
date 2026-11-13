@@ -34,7 +34,6 @@ from dify_agent.layers.dify_plugin import llm_layer as llm_module
 from dify_agent.layers.output import output_layer as output_module
 from dify_agent.layers.user_prompt import layer as user_prompt_module
 from dify_agent.layers.knowledge import layer as knowledge_module
-from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge_fs import layer as knowledge_fs_module
 from dify_agent.layers.knowledge_fs.history import without_historical_knowledge_evidence
 from dify_agent.protocol.schemas import (
@@ -67,6 +66,16 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
 _MAX_AGENT_STEPS_PER_RUN = 500
 DEFAULT_AGENT_RUN_TIMEOUT_SECONDS = 60 * 60
+_MODEL_HTTP_FAILURE_TYPE_BY_ERROR_TYPE: Mapping[str, RunFailureType] = {
+    "InvokeAuthorizationError": RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR,
+    "InvokeBadRequestError": RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
+    "CredentialsValidateFailedError": RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
+    "InvokeConnectionError": RunFailureType.MODEL_INVOKE_CONNECTION_ERROR,
+    "InvokeRateLimitError": RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+    "AgentLLMQuotaExceededError": RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+    "QuotaExceededError": RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+    "InvokeServerUnavailableError": RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR,
+}
 logger = logging.getLogger(__name__)
 
 
@@ -80,18 +89,22 @@ class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
 
 
-def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | None, str | None]:
-    """Return the public failed-run error text, type, and structured reason."""
+def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | None]:
+    """Return diagnostic text and a stable category for a runtime exception.
+
+    Unrecognized failures remain unclassified. HTTP 429 supplies a rate-limit
+    category only when the model error body has no non-empty error type.
+    """
     message = str(exc) or type(exc).__name__
-    reason: str | None = None
 
     if isinstance(exc, UsageLimitExceeded):
-        return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
+        return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
 
     if isinstance(exc, BindingLostError):
-        return message, None, "binding_lost"
+        return message, RunFailureType.BINDING_LOST
 
     if isinstance(exc, ModelHTTPError):
+        body_error_type: str | None = None
         body = exc.body
         if isinstance(body, Mapping):
             body_message = body.get("message")
@@ -100,15 +113,14 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
 
             error_type = body.get("error_type")
             if isinstance(error_type, str) and error_type:
-                reason = error_type
+                body_error_type = error_type
 
-        if reason is None and exc.status_code == 429:
-            reason = "InvokeRateLimitError"
+        if body_error_type is not None:
+            return message, _MODEL_HTTP_FAILURE_TYPE_BY_ERROR_TYPE.get(body_error_type)
+        if exc.status_code == 429:
+            return message, RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR
 
-    if isinstance(exc, DifyKnowledgeBaseClientError):
-        reason = exc.error_code or "DifyKnowledgeBaseClientError"
-
-    return message, None, reason
+    return message, None
 
 
 def _extract_agent_message_delta(event: AgentStreamEvent) -> str | None:
@@ -228,13 +240,12 @@ class AgentRunRunner:
         except Exception as exc:
             if self.is_cancelled():
                 return
-            message, error_type, reason = _run_failed_error_payload(exc)
+            message, error_type = _run_failed_error_payload(exc)
             finalization = await emit_run_failed(
                 self.sink,
                 run_id=self.run_id,
                 error=message,
                 error_type=error_type,
-                reason=reason,
                 session_snapshot=self._terminal_session_snapshot,
                 usage=self._terminal_usage,
             )
