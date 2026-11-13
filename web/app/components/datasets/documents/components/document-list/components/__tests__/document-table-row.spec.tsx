@@ -156,6 +156,25 @@ describe('DocumentTableRow', () => {
     })
   })
 
+  it('explains why a document failed from the list, without opening the document', async () => {
+    const user = userEvent.setup()
+    const reason =
+      '"test-document.txt" was blocked by the malware scan: Evil.A detected. The original file was deleted.'
+    render(
+      <DocumentTableRow
+        {...defaultProps}
+        doc={createMockDoc({ indexing_status: 'error', display_status: 'error', error: reason })}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    expect(screen.queryByText(reason)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /error/i }))
+
+    expect(await screen.findByText(reason)).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
   it('selects a row without triggering detail navigation', async () => {
     const user = userEvent.setup()
     const onValueChange = vi.fn()

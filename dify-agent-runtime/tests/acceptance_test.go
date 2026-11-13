@@ -749,6 +749,131 @@ func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
 	}
 }
 
+func TestLandlockReferScopes(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			suffix := fmt.Sprintf("landlock-refer-%s-%d", tgt.name, time.Now().UnixNano())
+			homeRoot := "/home/dify/" + suffix
+			workspaceRoot := "/workspace/" + suffix
+			controlEnv := map[string]string{
+				"HOME":                       "/home/dify",
+				"SHELLCTL_LANDLOCK_RW_PATHS": "",
+				"TEST_HOME_ROOT":             homeRoot,
+				"TEST_WORKSPACE_ROOT":        workspaceRoot,
+			}
+			t.Cleanup(func() {
+				cleanup := runJob(t, tgt, map[string]any{
+					"script":  "exec 2>&1\nrm -rf -- \"$TEST_HOME_ROOT\" \"$TEST_WORKSPACE_ROOT\"",
+					"cwd":     "/workspace",
+					"env":     controlEnv,
+					"mode":    "stdio",
+					"timeout": 10,
+				})
+				assertJobDone(t, cleanup)
+				assertExitCode(t, cleanup, 0)
+			})
+			setup := runJob(t, tgt, map[string]any{
+				"script": `exec 2>&1
+set -eu
+mkdir -- "$TEST_HOME_ROOT" "$TEST_WORKSPACE_ROOT"
+mkdir -p -- "$TEST_HOME_ROOT/binding" "$TEST_HOME_ROOT/other-home" \
+    "$TEST_WORKSPACE_ROOT/cwd/nested" "$TEST_WORKSPACE_ROOT/outside-cwd" \
+    "$TEST_WORKSPACE_ROOT/shared/a" "$TEST_WORKSPACE_ROOT/shared/b"
+printf secret > "$TEST_HOME_ROOT/other-home/secret"
+printf secret > "$TEST_WORKSPACE_ROOT/outside-cwd/secret"`,
+				"cwd":     "/workspace",
+				"env":     controlEnv,
+				"mode":    "stdio",
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+			if t.Failed() {
+				t.Fatalf("fixture setup failed: %#v", setup)
+			}
+			result := runJob(t, tgt, map[string]any{
+				"script": `exec 2>&1
+python3 <<'PY'
+import errno
+import os
+from pathlib import Path
+from unittest import TestCase
+
+home, cwd = Path(os.environ["HOME"]), Path.cwd()
+home_root = Path(os.environ["TEST_HOME_ROOT"])
+workspace_root = Path(os.environ["TEST_WORKSPACE_ROOT"])
+shared = workspace_root / "shared"
+check = TestCase()
+for root in (home, cwd):
+    (root / "a").mkdir()
+    (root / "b").mkdir()
+    for operation in (os.link, os.rename):
+        source = root / "a" / operation.__name__
+        destination = root / "b" / operation.__name__
+        source.write_text("refer-ok")
+        operation(source, destination)
+        assert destination.read_text() == "refer-ok"
+        if operation is os.link:
+            assert source.stat().st_ino == destination.stat().st_ino
+        else:
+            assert not source.exists()
+
+for outside in (home_root / "other-home", workspace_root / "outside-cwd"):
+    for name, flags in (("secret", os.O_RDONLY), ("secret", os.O_WRONLY),
+                        ("new-file", os.O_WRONLY | os.O_CREAT | os.O_EXCL)):
+        with check.assertRaises(OSError) as error:
+            os.close(os.open(outside / name, flags, 0o644))
+        assert error.exception.errno == errno.EACCES
+    for root in (home, cwd):
+        for operation in (os.link, os.rename):
+            source = root / "a" / ("denied-" + operation.__name__)
+            source.write_text("owned")
+            for src, dst in (
+                (source, outside / ("escaped-" + root.name + "-" + operation.__name__)),
+                (outside / "secret", root / "b" / ("imported-" + operation.__name__)),
+            ):
+                with check.assertRaises(OSError) as error:
+                    operation(src, dst)
+                assert error.exception.errno in (errno.EACCES, errno.EXDEV)
+
+for directory in (shared / "a", shared / "b"):
+    (directory / "ordinary-write").write_text("shared-write-ok")
+    assert (directory / "ordinary-write").read_text() == "shared-write-ok"
+for index, (source_dir, destination_dir) in enumerate((
+    (shared / "a", shared / "b"),
+    (home / "a", shared / "b"), (shared / "a", home / "b"),
+    (cwd / "a", shared / "b"), (shared / "a", cwd / "b"),
+)):
+    assert source_dir.stat().st_dev == destination_dir.stat().st_dev
+    for operation in (os.link, os.rename):
+        name = operation.__name__ + "-" + str(index)
+        source, destination = source_dir / name, destination_dir / name
+        source.write_text("shared-write-ok")
+        with check.assertRaises(OSError) as error:
+            operation(source, destination)
+        assert error.exception.errno == errno.EXDEV
+        assert source.read_text() == "shared-write-ok"
+        assert not destination.exists()
+PY`,
+				"cwd": workspaceRoot + "/cwd/nested",
+				"env": map[string]string{
+					"HOME":                       homeRoot + "/binding",
+					"SHELLCTL_LANDLOCK_RW_PATHS": workspaceRoot + "/shared",
+					"TEST_HOME_ROOT":             homeRoot,
+					"TEST_WORKSPACE_ROOT":        workspaceRoot,
+				},
+				"mode":    "stdio",
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			if t.Failed() {
+				t.Logf("REFER scope checks failed: %#v", result)
+			}
+		})
+	}
+}
+
 // --- Landlock Disable / Bypass Tests ---
 
 // TestLandlockDisabledAllowsWriteOutsideHome uses the pre-started no-isolation

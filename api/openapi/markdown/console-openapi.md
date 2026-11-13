@@ -452,6 +452,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
+**Return visible Workflow-callable Agents and their current workflow usage**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -469,6 +471,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}
+**Delete an Agent App and schedule its resource cleanup**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -485,6 +489,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}
+**Return the admitted Agent's detail and its Build conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -500,6 +506,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}
+**Update a roster Agent App and return its current detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5988,6 +5996,7 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Active discount | **application/json**: [AnnualDiscountActiveErrorResponse](#annualdiscountactiveerrorresponse)<br>[AnnualDiscountActiveError](#annualdiscountactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -7230,6 +7239,44 @@ Test external knowledge retrieval for dataset
 | 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /datasets/{dataset_id}/file-scan-policy
+Get the malware scan policy of a Classic Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /datasets/{dataset_id}/file-scan-policy
+Set the malware scan policy of a Classic Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanPolicyPayload](#filescanpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Policy saved | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
 
@@ -7719,6 +7766,96 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /file-scan/provider-types
+List the malware scanners this deployment offers
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanProviderTypeListResponse](#filescanprovidertypelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /file-scan/providers
+List the workspace's malware scanners. Secrets are never returned.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanProviderListResponse](#filescanproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /file-scan/providers
+Add a malware scanner. It is verified with a live check before it is saved.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanProviderCreatePayload](#filescanprovidercreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Scanner added | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /file-scan/providers/{provider_id}
+Delete a malware scanner that no policy selects
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Scanner deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /file-scan/providers/{provider_id}
+Update a malware scanner. It is verified with a live check before it is saved.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanProviderUpdatePayload](#filescanproviderupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Scanner updated | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /file-scan/providers/{provider_id}/test
+Run the scanner's connectivity check again and store the result
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Check finished | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/support-type
@@ -9202,6 +9339,44 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/file-scan-policy
+Get the malware scan policy of an Agent Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/file-scan-policy
+Set the malware scan policy of an Agent Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanPolicyPayload](#filescanpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Policy saved | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/golden-questions
@@ -21474,6 +21649,22 @@ Auth Token is invalid or account already activated, please check again.
 | ---- | ---- | ----------- | -------- |
 | score_threshold | number | Score threshold | Yes |
 
+#### AnnualDiscountActiveError
+
+You can switch to annual billing after your current discount ends.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnnualDiscountActiveError |  | You can switch to annual billing after your current discount ends. |  |
+
+#### AnnualDiscountActiveErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
 #### AnyJSONValue
 
 | Name | Type | Description | Required |
@@ -26464,6 +26655,7 @@ Effective feature availability and limits for the current workspace.
 | can_replace_logo | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
@@ -26621,6 +26813,82 @@ Resolved multi-file input constraints and effective number limit.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileScanFallbackAction
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileScanFallbackAction | string |  |  |
+
+#### FileScanPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| on_unavailable | [FileScanFallbackAction](#filescanfallbackaction) |  | No |
+| on_unscannable | [FileScanFallbackAction](#filescanfallbackaction) |  | No |
+| provider_id | string |  | No |
+
+#### FileScanPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| on_unavailable | string |  | Yes |
+| on_unscannable | string |  | Yes |
+| provider_id | string |  | No |
+
+#### FileScanProviderCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object | Non-secret settings | No |
+| credentials | object | Secret settings; write-only | No |
+| name | string | Display name | Yes |
+| provider_type | string | clamav, cloudmersive, scanii, metadefender or api | Yes |
+
+#### FileScanProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [FileScanProviderResponse](#filescanproviderresponse) ] |  | Yes |
+
+#### FileScanProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| created_at | integer |  | No |
+| credentials_set | object |  | Yes |
+| id | string |  | Yes |
+| last_error | string |  | No |
+| last_tested_at | integer |  | No |
+| name | string |  | Yes |
+| policy_count | integer |  | Yes |
+| provider_type | string |  | Yes |
+| status | string |  | Yes |
+
+#### FileScanProviderTypeListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [FileScanProviderTypeResponse](#filescanprovidertyperesponse) ] |  | Yes |
+
+#### FileScanProviderTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| credential_fields | [ string ] |  | Yes |
+| provider_type | string |  | Yes |
+
+#### FileScanProviderUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| credentials | object | Secret settings to replace; omitted or empty fields keep their value | No |
+| name | string |  | No |
 
 #### FileTooLargeError
 

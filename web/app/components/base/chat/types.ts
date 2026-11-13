@@ -43,9 +43,33 @@ export type WorkflowProcess = {
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
+export type WorkflowAgentToolActivityStatus =
+  | 'started'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+
+export type WorkflowAgentToolActivity = {
+  id: string
+  node_id: string
+  node_execution_id: string
+  label: string
+  status: WorkflowAgentToolActivityStatus
+  error: string | null
+  data: {
+    tool_call_id: string
+    tool_name: string
+    tool_input: string
+    tool_output: string
+    node_title: string
+  }
+}
+
 export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
+  workflowAgentActivities?: WorkflowAgentToolActivity[]
   conversationId?: string
   allFiles?: FileEntity[]
 }

@@ -1,5 +1,6 @@
 """Console metadata routes use admission, explicit context, and response models."""
 
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
 from uuid import uuid4
@@ -15,6 +16,7 @@ from controllers.console import console_ns
 from controllers.console.datasets.metadata import DatasetMetadataCreateApi
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
@@ -25,7 +27,7 @@ from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
-def routes(monkeypatch: pytest.MonkeyPatch, config_overrides):
+def routes(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> tuple[FlaskClient, Mock]:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=True, RBAC_ENABLED=False)
     app = Flask(__name__)
     app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
@@ -36,12 +38,18 @@ def routes(monkeypatch: pytest.MonkeyPatch, config_overrides):
     account.id = "account-1"
     account.role = TenantAccountRole.OWNER
     identity = AccountWithTenant(account=account, tenant_id="tenant-1")
-    monkeypatch.setattr("controllers.console.flask_admission.current_account_with_tenant", lambda: identity)
-    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
+
+    def _identity() -> AccountWithTenant:
+        return identity
+
+    monkeypatch.setattr("controllers.console.flask_admission.current_account_with_tenant", _identity)
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", _identity)
     service = create_autospec(MetadataService, instance=True, spec_set=True)
-    service.require_dataset.side_effect = lambda context, dataset_id: DatasetRef(
-        context.active_workspace_id, dataset_id
-    )
+
+    def _require_dataset(context: RequestContext, dataset_id: str) -> DatasetRef:
+        return DatasetRef(context.active_workspace_id, dataset_id)
+
+    service.require_dataset.side_effect = _require_dataset
     app.extensions["application_services"] = SimpleNamespace(knowledge=SimpleNamespace(metadata=service))
     return app.test_client(), service
 
@@ -64,7 +72,7 @@ def test_metadata_permission_error_http_contract(
     service.create_metadata.assert_not_called()
 
 
-def test_create_serializes_result_and_passes_actor(routes):
+def test_create_serializes_result_and_passes_actor(routes: tuple[FlaskClient, Mock]) -> None:
     client, service = routes
     dataset_id = str(uuid4())
     service.create_metadata.return_value = {"id": str(uuid4()), "name": "author", "type": "string"}
@@ -76,7 +84,9 @@ def test_create_serializes_result_and_passes_actor(routes):
 
 
 @pytest.mark.parametrize("payload", [{"name": None, "type": "string"}, {"name": "author", "type": None}])
-def test_create_rejects_invalid_payload_before_application(routes, payload):
+def test_create_rejects_invalid_payload_before_application(
+    routes: tuple[FlaskClient, Mock], payload: dict[str, object]
+) -> None:
     client, service = routes
     response = client.post(f"/console/api/datasets/{uuid4()}/metadata", json=payload)
     assert response.status_code == 422
@@ -84,22 +94,25 @@ def test_create_rejects_invalid_payload_before_application(routes, payload):
 
 
 @pytest.mark.parametrize(("error", "status"), [(DatasetNotFoundError(), 404), (DatasetAccessDeniedError(), 403)])
-def test_get_maps_access_errors(routes, error, status):
+def test_get_maps_access_errors(routes: tuple[FlaskClient, Mock], error: Exception, status: int) -> None:
     client, service = routes
     service.require_dataset.side_effect = error
     assert client.get(f"/console/api/datasets/{uuid4()}/metadata").status_code == status
     service.get_dataset_metadatas.assert_not_called()
 
 
-def test_get_serializes_field_counts(routes):
+def test_get_serializes_field_counts(routes: tuple[FlaskClient, Mock]) -> None:
     client, service = routes
-    service.get_dataset_metadatas.return_value = {"doc_metadata": [], "built_in_field_enabled": False}
+    service.get_dataset_metadatas.return_value = {
+        "doc_metadata": list[object](),
+        "built_in_field_enabled": False,
+    }
     response = client.get(f"/console/api/datasets/{uuid4()}/metadata")
     assert response.status_code == 200
     assert response.get_json() == {"doc_metadata": [], "built_in_field_enabled": False}
 
 
-def test_rename_and_delete_use_explicit_metadata_id(routes):
+def test_rename_and_delete_use_explicit_metadata_id(routes: tuple[FlaskClient, Mock]) -> None:
     client, service = routes
     dataset_id, metadata_id = str(uuid4()), str(uuid4())
     path = f"/console/api/datasets/{dataset_id}/metadata/{metadata_id}"
@@ -115,7 +128,7 @@ def test_rename_and_delete_use_explicit_metadata_id(routes):
 
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
-def test_builtin_toggle_is_dispatched(routes, action):
+def test_builtin_toggle_is_dispatched(routes: tuple[FlaskClient, Mock], action: str) -> None:
     client, service = routes
     dataset_id = str(uuid4())
     response = client.post(f"/console/api/datasets/{dataset_id}/metadata/built-in/{action}")
@@ -124,7 +137,7 @@ def test_builtin_toggle_is_dispatched(routes, action):
     operation.assert_called_once_with(DatasetRef("tenant-1", dataset_id))
 
 
-def test_builtin_listing_uses_response_model(routes):
+def test_builtin_listing_uses_response_model(routes: tuple[FlaskClient, Mock]) -> None:
     client, service = routes
     service.get_built_in_fields.return_value = [{"name": "uploader", "type": "string"}]
     response = client.get("/console/api/datasets/metadata/built-in")
@@ -132,14 +145,14 @@ def test_builtin_listing_uses_response_model(routes):
     assert response.get_json() == {"fields": [{"name": "uploader", "type": "string"}]}
 
 
-def test_document_metadata_missing_resource_is_not_found(routes):
+def test_document_metadata_missing_resource_is_not_found(routes: tuple[FlaskClient, Mock]) -> None:
     client, service = routes
     service.update_documents_metadata.side_effect = MetadataResourceNotFoundError("Document not found.")
     response = client.post(f"/console/api/datasets/{uuid4()}/documents/metadata", json={"operation_data": []})
     assert response.status_code == 404
 
 
-def test_get_requires_dataset_readonly_permission():
+def test_get_requires_dataset_readonly_permission() -> None:
     [check] = rbac_checks(DatasetMetadataCreateApi.get)
     assert check.scene is RBACPermission.DATASET_READONLY
     assert isinstance(check.locator, DatasetId)

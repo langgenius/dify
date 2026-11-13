@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "Napredne nastavitve",
   "agentDetail.configure.answer.activity.ranCommands": "Ukazi izvedeni",
   "agentDetail.configure.answer.activity.runningCommands": "Izvajanje ukazov",
+  "agentDetail.configure.answer.activity.startingCommands": "Začenjanje ukazov",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
   "agentDetail.configure.answer.responseEnded": "Odgovor je končan",

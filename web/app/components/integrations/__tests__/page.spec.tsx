@@ -60,6 +60,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.installedIds.get': async () => ({ plugin_ids: [] }),
       'auth.plugin.datasource.list.get': async () => ({ result: [] }),
       'apiBasedExtension.get': async () => [],
+      'fileScan.providers.get': async () => ({ data: [] }),
+      'fileScan.providerTypes.get': async () => ({ data: [] }),
       'workspaces.current.toolProviders.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
@@ -181,6 +183,7 @@ function renderPage({
   workspacePermissionKeys = permissions,
   rbacEnabled = true,
   restrictLocalPackages = false,
+  fileScanEnabled = false,
   ui,
 }: {
   props?: ComponentProps<typeof IntegrationsPage>
@@ -188,10 +191,12 @@ function renderPage({
   workspacePermissionKeys?: string[]
   rbacEnabled?: boolean
   restrictLocalPackages?: boolean
+  fileScanEnabled?: boolean
   ui?: ReactElement
 } = {}) {
   const { wrapper: QueryProvider, queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys,
+    features: { enable_file_scan: fileScanEnabled },
     systemFeatures: {
       rbac_enabled: rbacEnabled,
       enable_marketplace: true,
@@ -239,6 +244,35 @@ it('defaults to models and preserves a real model search across section navigati
   expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue('OpenAI')
   expect(screen.getByText('OpenAI')).toBeInTheDocument()
   expect(screen.queryByText('Anthropic')).not.toBeInTheDocument()
+})
+
+it('offers the malware scanners section after custom endpoints when the feature is on', async () => {
+  const user = userEvent.setup()
+  renderPage({ fileScanEnabled: true, ui: <SettingsIntegrations /> })
+  const navigation = screen.getByRole('navigation', { name: 'navigation.settings.integrations' })
+  const items = within(navigation)
+    .getAllByRole('button')
+    .map((item) => item.textContent)
+  expect(items.indexOf('fileScan.settings.title')).toBe(
+    items.indexOf('navigation.settings.customEndpoint') + 1,
+  )
+
+  await user.click(within(navigation).getByRole('button', { name: 'fileScan.settings.title' }))
+
+  expect(screen.getByRole('heading', { name: 'fileScan.settings.title' })).toBeInTheDocument()
+  expect(screen.getByText('fileScan.settings.description')).toBeInTheDocument()
+  expect(await screen.findByText('fileScan.scanner.empty')).toBeInTheDocument()
+})
+
+it('hides the malware scanners section and falls back to models when the feature is off', () => {
+  renderPage({ props: { section: 'file-scan' } })
+  const navigation = screen.getByRole('navigation', { name: 'navigation.settings.integrations' })
+
+  expect(
+    within(navigation).queryByRole('button', { name: 'fileScan.settings.title' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'navigation.settings.provider' })).toBeInTheDocument()
+  expect(screen.queryByText('fileScan.scanner.empty')).not.toBeInTheDocument()
 })
 
 it('closes compact navigation after changing the settings section', async () => {

@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useQueryState } from 'nuqs'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import Header from '../header'
 import { Pricing } from '../index'
@@ -22,6 +23,17 @@ vi.mock('../content', () => ({
   ),
 }))
 
+function renderPricing(
+  ui: Parameters<typeof renderWithNuqs>[0],
+  options?: Parameters<typeof renderWithNuqs>[1],
+  edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLOUD',
+) {
+  const { wrapper: Providers } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: edition },
+  })
+  return renderWithNuqs(<Providers>{ui}</Providers>, options)
+}
+
 function PricingEntry() {
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   return <button onClick={() => setPricing('open')}>Upgrade</button>
@@ -33,8 +45,13 @@ function CancelPricing() {
 }
 
 describe('Pricing URL dialog', () => {
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)('ignores the pricing URL on %s', (edition) => {
+    renderPricing(<Pricing />, { searchParams: '?pricing=open' }, edition)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it.each(['', '?pricing=closed'])('stays closed for %s', (searchParams) => {
-    renderWithNuqs(<Pricing />, { searchParams })
+    renderPricing(<Pricing />, { searchParams })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText('Plans loaded')).not.toBeInTheDocument()
   })
@@ -45,7 +62,7 @@ describe('Pricing URL dialog', () => {
     dialogModule.ready = new Promise<void>((resolve) => {
       resolveModule = resolve
     })
-    const { onUrlUpdate } = renderWithNuqs(
+    const { onUrlUpdate } = renderPricing(
       <>
         <PricingEntry />
         <CancelPricing />
@@ -68,7 +85,7 @@ describe('Pricing URL dialog', () => {
 
   it('opens from another owner and clears only its parameter when closed', async () => {
     const user = userEvent.setup()
-    const { onUrlUpdate } = renderWithNuqs(
+    const { onUrlUpdate } = renderPricing(
       <>
         <PricingEntry />
         <Pricing />
@@ -76,9 +93,9 @@ describe('Pricing URL dialog', () => {
       { searchParams: '?settings=billing' },
     )
     await user.click(screen.getByRole('button', { name: 'Upgrade' }))
-    const dialog = await screen.findByRole('dialog', { name: 'billing.plansCommon.title.plans' })
+    const dialog = await screen.findByRole('dialog', { name: 'Dify Cloud' })
     await screen.findByText('Plans loaded')
-    expect(screen.getByRole('heading', { name: 'billing.plansCommon.title.plans' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Dify Cloud' })).toBeVisible()
     expect(dialog).toHaveAccessibleDescription('billing.plansCommon.title.description')
     expect(screen.queryByRole('button', { name: 'Upgrade' })).not.toBeInTheDocument()
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
@@ -96,7 +113,7 @@ describe('Pricing URL dialog', () => {
 
   it('opens directly from the URL and closes with Escape', async () => {
     const user = userEvent.setup()
-    const { onUrlUpdate } = renderWithNuqs(<Pricing />, { searchParams: '?pricing=open' })
+    const { onUrlUpdate } = renderPricing(<Pricing />, { searchParams: '?pricing=open' })
     await screen.findByRole('dialog')
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
