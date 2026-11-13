@@ -1,7 +1,6 @@
 from tests.unit_tests.conftest import (  # noqa: F401
     _patch_redis_clients,
     _provide_app_context,
-    _sqlite_database_template,
     _sqlite_engine,
     _sqlite_session_factory,
     _unbound_session_factory,

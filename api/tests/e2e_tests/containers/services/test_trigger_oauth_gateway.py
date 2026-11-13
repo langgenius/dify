@@ -14,23 +14,23 @@ from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from core.trigger.entities.entities import (
     EventParameter,
     EventParameterType,
-    SubscriptionBuilder,
     SubscriptionConstructor,
     TriggerProviderEntity,
     TriggerProviderIdentity,
 )
-from core.trigger.provider import PluginTriggerProviderController
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from services.plugin.oauth_service import OAuthProxyService
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
+from services.trigger.builder_entities import SubscriptionBuilder
 from services.trigger.oauth_gateway import OAuthProxyContextGateway, TriggerOAuthBuilderGateway
 from services.trigger.oauth_service import TriggerOAuthContext, TriggerOAuthContextError
+from services.trigger.plugin_provider import PluginTriggerProvider
 
 _PROVIDER_ID = TriggerProviderID("langgenius/github/github")
 _PLUGIN_IDENTIFIER = "langgenius/github:0.1.0@package-hash"
@@ -101,9 +101,9 @@ class _CreatedBuilder:
     gateway: TriggerOAuthBuilderGateway
 
 
-def _provider(tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
+def _provider(tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProvider:
     label = I18nObject(en_US="GitHub")
-    return PluginTriggerProviderController(
+    return PluginTriggerProvider(
         tenant_id=tenant_id,
         provider_id=provider_id,
         plugin_id=provider_id.plugin_id,
@@ -132,14 +132,14 @@ def created_builder(flask_app_with_containers: Flask) -> Iterator[_CreatedBuilde
     previous_lock = contexts.plugin_trigger_providers_lock.get(Lock())
     contexts.plugin_trigger_providers.set(
         {
-            str(provider_id): _provider(tenant_id, provider_id)
+            (tenant_id, str(provider_id)): _provider(tenant_id, provider_id)
             for provider_id in (_PROVIDER_ID, TriggerProviderID("langgenius/github/other"))
         }
     )
     contexts.plugin_trigger_providers_lock.set(Lock())
     try:
         with flask_app_with_containers.app_context():
-            gateway = TriggerOAuthBuilderGateway(builders=application_services().workspaces.trigger_builders)
+            gateway = TriggerOAuthBuilderGateway(builders=application_services().triggers.builders)
             response = gateway.create(tenant_id=tenant_id, user_id=user_id, provider_id=_PROVIDER_ID)
             context = TriggerOAuthContext(
                 tenant_id=tenant_id,

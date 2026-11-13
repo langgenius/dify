@@ -16,12 +16,14 @@ from sqlalchemy import Engine, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import QueuePool
 
-from core.trigger.utils.locks import build_trigger_refresh_lock_key
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.base import TypeBase
 from models.trigger import TriggerSubscription
-from repositories.trigger.subscription_repository import RedisTriggerSubscriptionRefreshReservations
+from repositories.trigger.subscription_repository import (
+    RedisTriggerSubscriptionRefreshReservations,
+    build_trigger_refresh_lock_key,
+)
 from schedule.trigger_provider_refresh_task import trigger_provider_refresh
 from services.trigger.subscription_gateway import enqueue_subscription_refresh
 from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshJob, TriggerSubscriptionRefreshRef
@@ -67,7 +69,7 @@ def _key(ref: TriggerSubscriptionRefreshRef) -> str:
 
 def _scan(harness: _Harness, *, batch_size: int = 2) -> int:
     with harness.app.app_context():
-        return application_services().workspaces.trigger_subscription_refresh.enqueue_due(
+        return application_services().triggers.subscription_refresh.enqueue_due(
             now=100, credential_threshold=10, subscription_threshold=20, batch_size=batch_size
         )
 
@@ -251,7 +253,7 @@ def test_worker_releases_owned_reservation_when_repository_read_fails(
     application_redis.setex(_key(ref), 300, job.token)
     TypeBase.metadata.tables["trigger_subscriptions"].drop(sqlite_engine)
     with harness.app.app_context(), pytest.raises(OperationalError):
-        application_services().workspaces.trigger_subscription_refresh.execute(job=job, now=100)
+        application_services().triggers.subscription_refresh.execute(job=job, now=100)
     assert application_redis.exists(_key(ref)) == 0
 
 

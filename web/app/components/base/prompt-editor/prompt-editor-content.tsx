@@ -41,7 +41,6 @@ import Placeholder from './plugins/placeholder'
 import { QueryBlock, QueryBlockReplacementBlock } from './plugins/query-block'
 import { RequestURLBlock, RequestURLBlockReplacementBlock } from './plugins/request-url-block'
 import RosterReferenceBlock from './plugins/roster-reference-block'
-import { RosterReferenceBlockContext } from './plugins/roster-reference-block/context'
 import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
@@ -65,9 +64,12 @@ type PromptEditorContentAriaProps = Pick<
   | 'aria-labelledby'
   | 'aria-describedby'
   | 'aria-invalid'
+  | 'aria-multiline'
+  | 'aria-disabled'
 >
 
 type PromptEditorContentProps = PromptEditorContentAriaProps & {
+  id?: string
   compact?: boolean
   className?: string
   placeholder?: string | React.ReactNode
@@ -114,6 +116,9 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
+  'aria-multiline': ariaMultiline,
+  'aria-disabled': ariaDisabled,
+  id,
   compact,
   className,
   placeholder,
@@ -143,16 +148,20 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   onEditorChange,
 }) => {
   return (
-    <RosterReferenceBlockContext value={rosterReferenceBlock}>
+    <>
       <RichTextPlugin
         contentEditable={
           <ContentEditable
+            id={id}
+            role="textbox"
             aria-controls={ariaControls}
             aria-haspopup={ariaHasPopup}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
             aria-describedby={ariaDescribedBy}
             aria-invalid={ariaInvalid}
+            aria-multiline={ariaMultiline}
+            aria-disabled={ariaDisabled}
             className={cn(
               'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
               compact ? 'text-[13px] leading-5' : 'text-sm/6',
@@ -286,7 +295,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       <UpdateBlock instanceId={instanceId} />
       <HistoryPlugin />
       {floatingAnchorElem && <DraggableBlockPlugin anchorElem={floatingAnchorElem} />}
-    </RosterReferenceBlockContext>
+    </>
   )
 }
 

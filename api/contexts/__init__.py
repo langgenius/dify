@@ -7,7 +7,7 @@ from contexts.wrapper import RecyclableContextVar
 if TYPE_CHECKING:
     from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
     from core.tools.plugin_tool.provider import PluginToolProviderController
-    from core.trigger.provider import PluginTriggerProviderController
+    from services.trigger.plugin_provider import PluginTriggerProvider
 
 
 """
@@ -27,7 +27,7 @@ datasource_plugin_providers_lock: RecyclableContextVar[Lock] = RecyclableContext
     ContextVar("datasource_plugin_providers_lock")
 )
 
-plugin_trigger_providers: RecyclableContextVar[dict[str, "PluginTriggerProviderController"]] = RecyclableContextVar(
+plugin_trigger_providers: RecyclableContextVar[dict[tuple[str, str], "PluginTriggerProvider"]] = RecyclableContextVar(
     ContextVar("plugin_trigger_providers")
 )
 

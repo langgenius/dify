@@ -1,7 +1,8 @@
+import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -21,7 +22,16 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
-from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from pydantic import JsonValue
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPartDelta,
+    ToolCallPart,
+    ToolReturnPart,
+)
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
@@ -34,11 +44,12 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
-from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_adapter import STREAM_EXHAUSTED_ERROR, WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -298,6 +309,181 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
         )
 
 
+class ToolActivityBackendClient(FakeAgentBackendRunClient):
+    def __init__(
+        self,
+        *,
+        output: JsonValue = "hello agent",
+        include_delta: bool = True,
+        early_start: bool = False,
+    ) -> None:
+        super().__init__(scenario=FakeAgentBackendScenario.SUCCESS)
+        self._output = output
+        self._include_delta = include_delta
+        self._early_start = early_start
+
+    @override
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        call_args = {"script": "ls -la", "timeout": 30} if self._early_start else {"command": "ls"}
+        events: list[RunEvent] = [
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+        ]
+        if self._early_start:
+            events.append(
+                PydanticAIStreamRunEvent(
+                    id="1-5",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=PartStartEvent(
+                        index=0,
+                        part=ToolCallPart(
+                            tool_name="shell_run",
+                            args={"script": "ls"},
+                            tool_call_id="call-1",
+                        ),
+                    ),
+                )
+            )
+        events.extend(
+            [
+                PydanticAIStreamRunEvent(
+                    id="2-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=FunctionToolCallEvent(
+                        part=ToolCallPart(
+                            tool_name="shell_run",
+                            args=call_args,
+                            tool_call_id="call-1",
+                        )
+                    ),
+                ),
+                PydanticAIStreamRunEvent(
+                    id="3-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=FunctionToolResultEvent(
+                        part=ToolReturnPart(
+                            tool_name="shell_run",
+                            content="a.txt",
+                            tool_call_id="call-1",
+                            outcome="success",
+                        )
+                    ),
+                ),
+            ]
+        )
+        if self._include_delta:
+            events.append(
+                PydanticAIStreamRunEvent(
+                    id="4-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello agent")),
+                    agent_message_delta="hello agent",
+                )
+            )
+        events.append(
+            RunSucceededEvent(
+                id="5-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output=self._output,
+                    session_snapshot=SessionSnapshot(layers={}),
+                ),
+            )
+        )
+        return tuple(events)
+
+
+class ToolCallThenCancelledBackendClient(FakeAgentBackendRunClient):
+    @override
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolCallEvent(
+                    part=ToolCallPart(
+                        tool_name="shell_run",
+                        args={"command": "ls"},
+                        tool_call_id="call-1",
+                    )
+                ),
+            ),
+            RunCancelledEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunCancelledEventData(reason="user_stop"),
+            ),
+        )
+
+
+class ToolCallThenFailingStreamBackendClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolCallEvent(
+                part=ToolCallPart(
+                    tool_name="shell_run",
+                    args={"command": "ls"},
+                    tool_call_id="call-1",
+                )
+            ),
+        )
+        raise AgentBackendStreamError("stream failed mid-tool")
+
+
+class ToolCallThenUncancellableStreamEndBackendClient(FakeAgentBackendRunClient):
+    @override
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolCallEvent(
+                    part=ToolCallPart(
+                        tool_name="shell_run",
+                        args={"command": "ls"},
+                        tool_call_id="call-1",
+                    )
+                ),
+            ),
+        )
+
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        del run_id, request, after
+        raise RuntimeError("cancel request failed")
+
+
 class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def __init__(self) -> None:
         super().__init__()
@@ -396,19 +582,35 @@ class CancelFailingStreamBackendClient(FailingStreamBackendClient):
         raise RuntimeError(f"failed to cancel {run_id}")
 
 
-def _drain_event_stream(node: DifyAgentNode):
+def _drain_event_stream(node: DifyAgentNode, *, stream_text: bool):
     stream = node._consume_event_stream(
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
-        stream_text=False,
+        stream_text=stream_text,
     )
     while True:
         try:
             next(stream)
         except StopIteration as stop:
             return stop.value
+
+
+def _collect_event_stream(node: DifyAgentNode, *, stream_text: bool):
+    stream = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+        stream_text=stream_text,
+    )
+    events = []
+    while True:
+        try:
+            events.append(next(stream))
+        except StopIteration as stop:
+            return events, stop.value
 
 
 def _node(
@@ -945,7 +1147,7 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
     client = FailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -959,7 +1161,7 @@ def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() 
     client = FailingAfterStartedStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -971,7 +1173,7 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
     client = EmptyStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
@@ -983,7 +1185,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
     client = GenericFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -998,7 +1200,7 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     node = _node(agent_backend_client=client)
     node.runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert terminal is None
     assert failure is not None
@@ -1019,7 +1221,7 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
     )
 
-    terminal, failure = _drain_event_stream(node)
+    terminal, failure = _drain_event_stream(node, stream_text=True)
 
     assert terminal is None
     assert failure is not None
@@ -1078,6 +1280,231 @@ def test_agent_node_records_only_trusted_knowledge_sources_and_deduplicates():
     sources = metadata["knowledge_fs_sources"]
     assert len(sources) == 1
     assert sources[0]["knowledge_fs_citation"]["id"] == citation["id"]
+
+
+def test_agent_node_projects_tool_activity_into_agent_log_events():
+    node = _node(agent_backend_client=ToolActivityBackendClient())
+    events = list(node._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [log.status for log in agent_logs] == ["running", "succeeded"]
+    running, finished = agent_logs
+    assert running.message_id == finished.message_id == "fake-run-1:call-1"
+    assert running.node_id == "agent-node"
+    assert running.node_execution_id == finished.node_execution_id == node.execution_id
+    assert running.parent_id is None
+    assert running.label == "shell_run"
+    assert running.metadata == {"agent_node_version": "2", "kind": "tool"}
+    assert running.data["tool_call_id"] == "call-1"
+    assert running.data["tool_name"] == "shell_run"
+    assert json.loads(running.data["tool_input"]) == {"command": "ls"}
+    assert running.data["tool_output"] == ""
+    assert isinstance(running.data["node_title"], str)
+    assert finished.error is None
+    assert finished.data["tool_output"] == "a.txt"
+
+    chunks = [event for event in events if isinstance(event, StreamChunkEvent)]
+    assert chunks == [
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello agent", is_final=False),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
+
+
+def test_agent_node_projects_early_started_running_and_succeeded_tool_activity():
+    events = list(_node(agent_backend_client=ToolActivityBackendClient(early_start=True))._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [log.status for log in agent_logs] == ["started", "running", "succeeded"]
+    previewed, running, finished = agent_logs
+    assert previewed.message_id == running.message_id == finished.message_id == "fake-run-1:call-1"
+    assert json.loads(previewed.data["tool_input"]) == {"script": "ls"}
+    assert json.loads(running.data["tool_input"]) == {"script": "ls -la", "timeout": 30}
+    assert finished.data["tool_output"] == "a.txt"
+
+    final_chunk_index = next(
+        index for index, event in enumerate(events) if isinstance(event, StreamChunkEvent) and event.is_final
+    )
+    assert all(events.index(log) < final_chunk_index for log in agent_logs)
+
+
+def test_agent_node_dispatch_maps_agent_log_to_legacy_node_run_event():
+    node = _node()
+    payload = AgentLogEvent(
+        message_id="fake-run-1:call-1",
+        label="shell_run",
+        node_execution_id=node.execution_id,
+        parent_id=None,
+        error=None,
+        status="started",
+        data={"tool_call_id": "call-1", "tool_name": "shell_run"},
+        metadata={"agent_node_version": "2", "kind": "tool"},
+        node_id="agent-node",
+    )
+
+    dispatched = node._dispatch(payload)
+
+    assert type(dispatched) is NodeRunAgentLogEvent
+    assert dispatched.message_id == "fake-run-1:call-1"
+    assert dispatched.node_execution_id == node.execution_id
+    assert dispatched.node_id == "agent-node"
+    assert dispatched.status == "started"
+    assert dispatched.data == {"tool_call_id": "call-1", "tool_name": "shell_run"}
+    assert dispatched.metadata == {"agent_node_version": "2", "kind": "tool"}
+
+
+def test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks():
+    events = list(
+        _node(
+            declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+            agent_backend_client=ToolActivityBackendClient(
+                output={"text": "hello agent", "summary": "Short summary"},
+                include_delta=True,
+                early_start=True,
+            ),
+        )._run()
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["run_id"] == "fake-run-1"
+    assert agent_backend["status"] == "succeeded"
+
+
+def test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_chunks():
+    events = list(
+        _node(
+            error_strategy=ErrorStrategy.DEFAULT_VALUE,
+            agent_backend_client=ToolActivityBackendClient(early_start=True),
+        )._run()
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
+
+
+def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks():
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "route-0", "name": "Zero"}, {"id": "route-1", "name": "One"}],
+            }
+        }
+    )
+    events = list(
+        _node(
+            binding_resolver=resolver,
+            agent_backend_client=ToolActivityBackendClient(
+                output={"text": "hello agent", "switch": "route-1"},
+                early_start=True,
+            ),
+        )._run()
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.edge_source_handle == "route-1"
+    assert result.outputs == {"text": "hello agent", "switch": "route-1"}
+
+
+def test_agent_node_non_stream_run_consumes_tool_events_without_logs():
+    events, (terminal, failure) = _collect_event_stream(
+        _node(agent_backend_client=ToolActivityBackendClient(early_start=True)),
+        stream_text=False,
+    )
+
+    assert not any(isinstance(event, AgentLogEvent) for event in events)
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    assert failure is None
+    assert terminal is not None
+
+
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_transport_failure_closes_unfinished_tool_calls(stream_text: bool):
+    events, (terminal, failure) = _collect_event_stream(
+        _node(agent_backend_client=ToolCallThenFailingStreamBackendClient()),
+        stream_text=stream_text,
+    )
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    if stream_text:
+        assert [log.status for log in agent_logs] == ["running", "failed"]
+        assert agent_logs[1].error == "stream failed mid-tool"
+        assert agent_logs[1].data["tool_call_id"] == "call-1"
+    else:
+        assert agent_logs == []
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
+    assert failure is not None
+    assert failure.node_run_result.error == "stream failed mid-tool"
+
+
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool):
+    events, (terminal, failure) = _collect_event_stream(
+        _node(agent_backend_client=ToolCallThenCancelledBackendClient()),
+        stream_text=stream_text,
+    )
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    if stream_text:
+        assert [log.status for log in agent_logs] == ["running", "cancelled"]
+        assert agent_logs[1].error == "user_stop"
+    else:
+        assert agent_logs == []
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
+    assert failure is None
+
+
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls(stream_text: bool):
+    events, (terminal, failure) = _collect_event_stream(
+        _node(agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient()),
+        stream_text=stream_text,
+    )
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    if stream_text:
+        assert [log.status for log in agent_logs] == ["running", "failed"]
+        assert agent_logs[1].error == STREAM_EXHAUSTED_ERROR
+    else:
+        assert agent_logs == []
+    assert terminal is None
+    assert failure is None
+
+
+def test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_error():
+    events = list(_node(agent_backend_client=ToolCallThenUncancellableStreamEndBackendClient())._run())
+
+    agent_logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    assert [log.status for log in agent_logs] == ["running", "failed"]
+    assert agent_logs[-1].error == STREAM_EXHAUSTED_ERROR
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == STREAM_EXHAUSTED_ERROR
+    assert result.error_type == "agent_backend_stream_error"
 
 
 @pytest.mark.parametrize(

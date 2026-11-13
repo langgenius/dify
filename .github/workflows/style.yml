@@ -185,6 +185,9 @@ jobs:
       - name: Check generated i18n types
         run: vp run i18n:check-types
 
+      - name: Check Browser spec policy
+        run: vp run lint:browser-spec-policy
+
       - name: Web tsslint
         env:
           NODE_OPTIONS: --max-old-space-size=4096
