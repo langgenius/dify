@@ -1,4 +1,8 @@
 import type { KnowledgeFsPublicFailureResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { createInstance } from 'i18next'
+import enErrors from '@/i18n/locales/en-US/knowledge-errors.json'
+import zhHansErrors from '@/i18n/locales/zh-Hans/knowledge-errors.json'
+import zhHantErrors from '@/i18n/locales/zh-Hant/knowledge-errors.json'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureDetail,
@@ -17,6 +21,58 @@ const failure = (
 })
 
 describe('KnowledgeFS task error presentation', () => {
+  it('asks the user to upload a missing original file again instead of checking permissions', async () => {
+    const i18n = createInstance()
+    await i18n.init({
+      lng: 'zh-Hans',
+      fallbackLng: false,
+      keySeparator: false,
+      resources: { 'zh-Hans': { knowledgeErrors: zhHansErrors } },
+    })
+    const messageKey = knowledgeFsTaskFailureMessageKey(undefined, 'DOCUMENT_SOURCE_NOT_FOUND')
+    if (!messageKey) throw new Error('Missing document source failure guidance')
+
+    const t = i18n.getFixedT('zh-Hans', ['knowledgeErrors'])
+    expect(t(($) => $[messageKey])).toBe('原始文件已无法读取，请重新上传。')
+  })
+
+  it('distinguishes source grounding failures from generic model response failures', () => {
+    expect(knowledgeFsTaskFailureMessageKey(undefined, 'DOCUMENT_SEMANTIC_GROUNDING_FAILED')).toBe(
+      'taskFailure.semanticGrounding',
+    )
+  })
+
+  it('shows the reported semantic chunking failure stage in the user language', async () => {
+    const i18n = createInstance()
+    await i18n.init({
+      lng: 'zh-Hans',
+      fallbackLng: false,
+      keySeparator: false,
+      resources: { 'zh-Hans': { knowledgeErrors: zhHansErrors } },
+    })
+
+    const detail = knowledgeFsTaskFailureDetail(
+      failure({ stage: 'semantic_chunking', traceId: 'task-1' }),
+      i18n.getFixedT('zh-Hans', ['knowledgeErrors']),
+    )
+
+    expect(detail).toBe('失败阶段：语义分块 · 错误参考：task-1')
+  })
+
+  it.each([
+    ['en-US', enErrors, /does not support structured output|truncat/iu, /retry/iu],
+    ['zh-Hans', zhHansErrors, /不支持结构化输出|截断/u, /重试/u],
+    ['zh-Hant', zhHantErrors, /不支援結構化輸出|截斷/u, /重試/u],
+  ] as const)(
+    'does not claim unsupported output or truncation for an unspecified response failure in %s',
+    (_locale, errors, unsupportedCause, recovery) => {
+      const message = errors['taskFailure.modelResponseInvalid']
+
+      expect(message).not.toMatch(unsupportedCause)
+      expect(message).toMatch(recovery)
+    },
+  )
+
   it.each([
     ['DOCUMENT_COUNT_QUOTA_EXCEEDED', 'taskFailure.documentCountQuotaExceeded'],
     ['DOCUMENT_COUNT_QUOTA_UNAVAILABLE', 'taskFailure.documentCountQuotaUnavailable'],
