@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import override
@@ -12,11 +13,12 @@ from sqlalchemy.orm import Session
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset
+from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -61,15 +63,30 @@ def _account() -> Account:
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting, *, session, **kwargs):
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: object) -> list[Document]:
         return super().extract(extract_setting, session=session, **kwargs)
 
     @override
-    def transform(self, documents, current_user=None, *, session, **kwargs):
+    def transform(
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        session: Session,
+        **kwargs: object,
+    ) -> list[Document]:
         return super().transform(documents, current_user=current_user, session=session, **kwargs)
 
     @override
-    def generate_summary_preview(self, tenant_id, preview_texts, summary_index_setting, doc_language=None, *, session):
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: SummaryIndexSettingDict,
+        doc_language: str | None = None,
+        *,
+        session: Session,
+    ) -> list[PreviewDetail]:
         return super().generate_summary_preview(
             tenant_id=tenant_id,
             preview_texts=preview_texts,
@@ -81,14 +98,14 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
     def load(
         self,
-        dataset,
-        documents,
-        multimodal_documents=None,
-        with_keywords=True,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
         *,
-        session,
-        **kwargs,
-    ):
+        session: Session,
+        **kwargs: object,
+    ) -> None:
         return super().load(
             dataset=dataset,
             documents=documents,
@@ -99,15 +116,23 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
         )
 
     @override
-    def clean(self, dataset, node_ids, with_keywords=True, *, session, **kwargs):
+    def clean(
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        **kwargs: object,
+    ) -> None:
         return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs)
 
     @override
-    def index(self, dataset, document, chunks, session):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: object, session: Session) -> None:
         return super().index(dataset=dataset, document=document, chunks=chunks, session=session)
 
     @override
-    def format_preview(self, chunks):
+    def format_preview(self, chunks: object) -> Mapping[str, object]:
         return super().format_preview(chunks)
 
 
@@ -347,7 +372,7 @@ class TestBaseIndexProcessor:
         empty = Mock()
         empty.headers = {"Content-Length": "0", "content-type": "image/png"}
         empty.raise_for_status.return_value = None
-        empty.iter_bytes.return_value = []
+        empty.iter_bytes.return_value = list[bytes]()
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert processor._download_image("https://example.com/empty.png", current_user=_account()) is None
