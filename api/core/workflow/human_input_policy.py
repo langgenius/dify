@@ -23,15 +23,23 @@ class HumanInputSurface(StrEnum):
     CONSOLE = "console"
     OPENAPI = "openapi"
     WEB_APP = "web_app"
+    # The management run-log/pause-details entry, which hands out the backstage
+    # token so administrative approval links keep working.
+    BACKSTAGE = "backstage"
 
 
+# Which recipient types a token may be *used* under at a response entry.
 # Web App, Service API and OpenAPI responses expose only web-app recipients.
 # The public form endpoint also accepts email links; its admission rules are separate.
+# CONSOLE still admits backstage tokens here so the administrative approval link
+# keeps working; which token a surface *hands out* is decided by
+# SELECTABLE_RECIPIENT_TYPES_BY_SURFACE below.
 ALLOWED_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
     HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE, RecipientType.BACKSTAGE}),
     HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.WEB_APP: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.BACKSTAGE: frozenset({RecipientType.BACKSTAGE, RecipientType.CONSOLE}),
 }
 
 # A single HITL form can have multiple recipient records; this shared priority
@@ -40,6 +48,20 @@ _RECIPIENT_TOKEN_PRIORITY: dict[RecipientType, int] = {
     RecipientType.BACKSTAGE: 0,
     RecipientType.CONSOLE: 1,
     RecipientType.STANDALONE_WEB_APP: 2,
+}
+
+# Which recipient types a surface may hand out as its resume token.
+# Ordinary Console interaction hands out only the Console token: when a form has
+# no Console recipient it yields no token instead of falling back to the
+# Backstage token, which is reserved for the management (BACKSTAGE) entry.
+# The management entry prefers the Backstage token and falls back to Console so
+# administrative approval links stay available when no Backstage recipient exists.
+SELECTABLE_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
+    HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE}),
+    HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.WEB_APP: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.BACKSTAGE: frozenset({RecipientType.BACKSTAGE, RecipientType.CONSOLE}),
 }
 
 
@@ -86,15 +108,17 @@ def disposition_for_surface(
 ) -> FormDisposition:
     """Select from existing recipients for an explicit response entry, without I/O.
 
-    Only nonempty tokens allowed by the surface are actionable; an empty allowed
-    subset yields no token. Other recipients contribute approval channels.
+    Only nonempty tokens the surface may hand out are actionable; an empty
+    selectable subset yields no token. Other recipients contribute approval
+    channels. Admission (which tokens may be used at an entry) is separate:
+    see ALLOWED_RECIPIENT_TYPES_BY_SURFACE.
     """
-    allowed = ALLOWED_RECIPIENT_TYPES_BY_SURFACE[surface]
-    actionable = [(recipient_type, token) for recipient_type, token in recipients if recipient_type in allowed]
+    selectable = SELECTABLE_RECIPIENT_TYPES_BY_SURFACE[surface]
+    actionable = [(recipient_type, token) for recipient_type, token in recipients if recipient_type in selectable]
     return FormDisposition(
         form_token=get_preferred_form_token(actionable),
         approval_channels=sorted(
-            {recipient_type.approval_channel for recipient_type, _ in recipients if recipient_type not in allowed}
+            {recipient_type.approval_channel for recipient_type, _ in recipients if recipient_type not in selectable}
         ),
     )
 
