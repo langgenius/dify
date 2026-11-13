@@ -538,6 +538,11 @@ class TestKnowledgeFsCeleryCases:
             "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
             "schedule": timedelta(minutes=5),
         }
+        assert celery_app.conf["beat_schedule"]["app_deletion_outbox_dispatch"] == {
+            "task": "tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox",
+            "schedule": timedelta(seconds=30),
+            "options": {"queue": "app_deletion", "expires": 30},
+        }
         assert celery_app.conf["beat_schedule"]["knowledge_fs_staged_upload_cleanup"] == {
             "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
             "schedule": timedelta(seconds=2),

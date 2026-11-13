@@ -1517,6 +1517,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_APP_DELETION_OUTBOX_TASK: bool = Field(
+        description="Enable periodic recovery of App deletion cleanup delivery",
+        default=True,
+    )
     ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
         description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
         default=True,

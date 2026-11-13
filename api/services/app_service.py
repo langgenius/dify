@@ -46,6 +46,7 @@ from models.model import App, AppMode, AppModelConfig, IconType, Site, load_anno
 from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.app_deletion_outbox_repository import AppDeletionOutboxRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -871,37 +872,23 @@ class AppService:
         build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
             tenant_id=app.tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app.id
         )
-        session.delete(app)
-        session.commit()
-
-        try:
-            remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
-        except Exception:
-            logger.exception(
-                "Failed to enqueue App cleanup",
-                extra={"tenant_id": app.tenant_id, "app_id": app.id},
-            )
-            raise
-
-        WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app.tenant_id,
-            agent_ids=workflow_agent_ids,
-            account_id=account_id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=app.tenant_id,
+        deletion = AppDeletion(
+            app=AppEvent(id=app.id, tenant_id=app.tenant_id, mode=app.mode),
+            workflow_agent_ids=workflow_agent_ids,
             workspace_ids=retired_workspace_ids,
             binding_ids=retired_binding_ids,
             home_snapshot_ids=retired_snapshot_ids,
-            purge_agent_ids=[backing_agent.id] if backing_agent is not None else [],
+            backing_agent_id=backing_agent.id if backing_agent is not None else None,
         )
+        AppDeletionOutboxRepository(session).add(deletion=deletion, account_id=account_id)
+        session.delete(app)
+        session.commit()
+        from tasks.app_deletion_outbox_task import dispatch_app_deletion_outbox
 
-        # clean up web app settings
-        if SystemFeatureService.is_webapp_auth_enabled():
-            EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
-
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            BillingService.clean_billing_info_cache(app.tenant_id)
+        try:
+            dispatch_app_deletion_outbox.delay()
+        except Exception:
+            logger.exception("Failed to wake App deletion outbox dispatcher", extra={"app_id": app.id})
 
     @staticmethod
     def prepare_creation(tenant_id: str, params: CreateAppParams) -> AppCreationSettings:
