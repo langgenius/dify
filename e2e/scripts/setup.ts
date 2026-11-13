@@ -502,6 +502,21 @@ export const stopMiddleware = async () => {
   })
 }
 
+/** Save Compose logs before teardown; diagnostics must never prevent cleanup. */
+export const captureMiddlewareLogs = async (logFilePath: string) => {
+  try {
+    const result = await runCommandOrThrow({
+      command: 'docker',
+      args: [...composeArgs, 'logs', '--no-color', '--timestamps'],
+      cwd: dockerDir,
+      stdio: 'pipe',
+    })
+    await writeFile(logFilePath, result.stdout + result.stderr, 'utf8')
+  } catch (error) {
+    console.warn('Failed to capture middleware logs:', error)
+  }
+}
+
 export const resetState = async () => {
   console.log('Stopping middleware services...')
   try {

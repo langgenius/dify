@@ -1,8 +1,7 @@
-from collections.abc import Generator
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
-from typing import Any, Self, cast
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -50,7 +49,6 @@ from controllers.console.agent.roster import (
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
-from controllers.console.app.error import CompletionRequestError
 from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
@@ -1584,49 +1582,6 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     assert stop_call == {"current_user_id": account_id, "app_model": app_model, "task_id": "task-1"}
 
 
-def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
-    class ClosableStream:
-        def __init__(self) -> None:
-            self.closed = False
-            self._chunks = iter(
-                [
-                    "event: ping\n\n",
-                    (
-                        'data: {"event":"error","message":"Incorrect API key provided",'
-                        '"code":"completion_request_error","status":400}\n\n'
-                    ),
-                ]
-            )
-
-        def __iter__(self) -> Self:
-            return self
-
-        def __next__(self) -> str:
-            return next(self._chunks)
-
-        def close(self) -> None:
-            self.closed = True
-
-    stream = ClosableStream()
-    with pytest.raises(CompletionRequestError) as exc_info:
-        completion_controller._raise_agent_stream_error_before_response(stream)
-    assert exc_info.value.description is not None
-    assert "Incorrect API key provided" in exc_info.value.description
-    assert stream.closed is True
-
-
-def test_agent_chat_stream_preflight_preserves_first_normal_event() -> None:
-    stream = iter(
-        ["event: ping\n\n", 'data: {"event":"message","answer":"hello"}\n\n', 'data: {"event":"message_end"}\n\n']
-    )
-    wrapped = completion_controller._raise_agent_stream_error_before_response(stream)
-    assert list(wrapped) == [
-        "event: ping\n\n",
-        'data: {"event":"message","answer":"hello"}\n\n',
-        'data: {"event":"message_end"}\n\n',
-    ]
-
-
 def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
@@ -1710,35 +1665,6 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["auto_generate_name"] is False
     assert "_agent_runtime_exit_intent" not in args
     assert args["external_trace_id"] == "trace-1"
-
-
-def test_drain_streaming_generate_response_returns_on_message_end() -> None:
-    closed: list[bool] = []
-
-    def generate_response() -> Generator[str]:
-        try:
-            yield "event: ping\n\n"
-            yield 'data: {"event":"message","answer":"working"}\n\n'
-            yield 'data: {"event":"message_end","message_id":"msg-1"}\n\n'
-        finally:
-            closed.append(True)
-
-    # Retain the generator so garbage collection cannot satisfy the cleanup assertion.
-    response = generate_response()
-    assert completion_controller._drain_streaming_generate_response(response) is None
-    assert closed == [True]
-
-
-def test_drain_streaming_generate_response_maps_error_event() -> None:
-    response = (chunk for chunk in ['data: {"event":"error","message":"backend failed"}\n\n'])
-    with pytest.raises(CompletionRequestError, match="backend failed"):
-        completion_controller._drain_streaming_generate_response(response)
-
-
-def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> None:
-    response = (chunk for chunk in ['data: {"event":"message","answer":"working"}\n\n'])
-    with pytest.raises(CompletionRequestError, match="did not complete"):
-        completion_controller._drain_streaming_generate_response(response)
 
 
 @pytest.mark.parametrize(

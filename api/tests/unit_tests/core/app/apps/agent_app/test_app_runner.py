@@ -62,6 +62,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.plugin.impl.exc import PluginRuntimeError
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
@@ -255,14 +256,17 @@ class _TerminalWithoutSnapshotFakeAgentBackendRunClient(FakeAgentBackendRunClien
         del after, should_stop
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
-        if self.terminal_type == "failed":
+        if self.terminal_type in {"failed", "binding_lost"}:
             yield RunFailedEvent(
                 id="2-0",
                 run_id=run_id,
                 created_at=created_at,
-                data=RunFailedEventData(error="failed without snapshot"),
+                data=RunFailedEventData(
+                    error="failed without snapshot",
+                    reason="binding_lost" if self.terminal_type == "binding_lost" else None,
+                ),
             )
-        else:
+        elif self.terminal_type == "cancelled":
             yield RunCancelledEvent(
                 id="2-0",
                 run_id=run_id,
@@ -1498,19 +1502,27 @@ def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str) -> N
 
 
 @pytest.mark.parametrize(
-    ("terminal_type", "expected_error"),
-    [("failed", AgentBackendRunFailedError), ("cancelled", AgentBackendError)],
+    ("terminal_type", "expected_error", "reason"),
+    [
+        ("failed", AgentBackendRunFailedError, None),
+        ("binding_lost", AgentBackendError, "binding_lost"),
+        ("cancelled", AgentBackendError, "cancelled"),
+        ("missing", AgentBackendError, "missing_terminal_event"),
+    ],
 )
 def test_terminal_without_snapshot_preserves_prior_app_session_without_write(
     terminal_type: str,
-    expected_error: type[Exception],
+    expected_error: type[AgentBackendError],
+    reason: str | None,
 ) -> None:
     store = _FakeSessionStore()
     client = _TerminalWithoutSnapshotFakeAgentBackendRunClient(terminal_type=terminal_type)
 
-    with pytest.raises(expected_error):
+    with pytest.raises(expected_error) as raised:
         _run(_runner(client, store), _FakeQueueManager())
 
+    assert raised.value.run_id == "fake-run-1"
+    assert raised.value.reason == reason
     assert store.saved == []
 
 
@@ -1536,6 +1548,64 @@ def test_agent_backend_failure_to_exception_maps_rate_limit_reason() -> None:
 
     assert isinstance(err, InvokeRateLimitError)
     assert str(err) == "quota exceeded"
+    assert isinstance(err.__cause__, AgentBackendRunFailedError)
+    assert err.__cause__.run_id == "run-1"
+    assert err.__cause__.reason == "InvokeRateLimitError"
+
+
+def test_empty_provider_failure_keeps_default_description_and_backend_cause() -> None:
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1", error="", reason="InvokeRateLimitError", source_event_id="event-1"
+        )
+    )
+    assert isinstance(err, InvokeRateLimitError)
+    assert err.description == "Rate Limit Error"
+    assert isinstance(err.__cause__, AgentBackendRunFailedError)
+    assert err.__cause__.run_id == "run-1"
+    assert err.__cause__.reason == "InvokeRateLimitError"
+    assert err.__cause__.source_event_id == "event-1"
+
+
+@pytest.mark.parametrize("prefix", ["", "model_name: gpt-test, "])
+def test_gateway_model_api_error_formats_keep_plugin_classification_and_clean_message(prefix: str) -> None:
+    error = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error=f"{prefix}PluginRuntimeError: plugin failed: connection reset",
+            reason=None,
+        )
+    )
+    assert isinstance(error, PluginRuntimeError)
+    assert error.description == "plugin failed: connection reset"
+    assert isinstance(error.__cause__, AgentBackendRunFailedError)
+    assert error.__cause__.run_id == "run-1"
+
+
+@pytest.mark.parametrize("reason", [None, "InvokeRateLimitError"])
+def test_gateway_http_rate_limit_wrapper_keeps_clean_message_and_backend_reason(reason: str | None) -> None:
+    error = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="status_code: 429, model_name: gpt-test, body: credits exhausted",
+            reason=reason,
+        )
+    )
+    assert isinstance(error, InvokeRateLimitError)
+    assert str(error) == "credits exhausted"
+    assert isinstance(error.__cause__, AgentBackendRunFailedError)
+    assert error.__cause__.reason == reason
+    assert error.__cause__.run_id == "run-1"
+
+
+def test_gateway_http_unclassified_preflight_rejection_keeps_backend_failure() -> None:
+    error = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1", error="status_code: 404, model_name: gpt-test, body: App not found.", reason=None
+        )
+    )
+    assert isinstance(error, AgentBackendRunFailedError)
+    assert str(error) == "status_code: 404, model_name: gpt-test, body: App not found. (agent_run_id=run-1)"
 
 
 def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -> None:

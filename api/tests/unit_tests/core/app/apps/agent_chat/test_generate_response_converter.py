@@ -150,6 +150,7 @@ class TestAgentChatAppGenerateResponseConverterStream:
         assert items[2]["event"] == "message_end"
         assert isinstance(items[3], dict)
         assert items[3]["event"] == "error"
+        assert items[3]["task_id"] == "t"
 
     def test_convert_stream_simple_response(self) -> None:
         items = list(AgentChatAppGenerateResponseConverter.convert_stream_simple_response(self.build_stream()))
@@ -191,3 +192,4 @@ class TestAgentChatAppGenerateResponseConverterStream:
         ]
         assert isinstance(items[3], dict)
         assert items[3]["event"] == "error"
+        assert items[3]["task_id"] == "t"

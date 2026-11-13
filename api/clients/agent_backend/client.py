@@ -27,6 +27,7 @@ from dify_agent.protocol import (
     RunEvent,
     RunStatusResponse,
 )
+from pydantic import ValidationError
 
 from clients.agent_backend.errors import (
     AgentBackendError,
@@ -34,6 +35,19 @@ from clients.agent_backend.errors import (
     AgentBackendStreamError,
     AgentBackendTransportError,
     AgentBackendValidationError,
+    backend_error_detail,
+    backend_reported_failure,
+)
+
+# The SDK uses status 422 for these local option checks as well as real HTTP rejections.
+_LOCAL_VALIDATION_DETAILS = frozenset(
+    {
+        "request must be a CreateRunRequest",
+        "max_reconnects must be non-negative",
+        "reconnect_delay_seconds must be non-negative",
+        "timeout_seconds must be non-negative",
+        "poll_interval_seconds must be non-negative",
+    }
 )
 
 
@@ -127,7 +141,7 @@ class DifyAgentBackendRunClient:
         try:
             return self.client.cancel_run_sync(run_id, request=request)
         except Exception as exc:
-            raise _normalize_dify_agent_error(exc) from exc
+            raise _normalize_dify_agent_error(exc, run_id=run_id) from exc
 
     def cancel_run_and_wait(
         self,
@@ -140,7 +154,7 @@ class DifyAgentBackendRunClient:
         try:
             return self.client.cancel_run_and_wait_sync(run_id, request=request, after=after)
         except Exception as exc:
-            raise _normalize_dify_agent_error(exc) from exc
+            raise _normalize_dify_agent_error(exc, run_id=run_id) from exc
 
     def stream_events(
         self,
@@ -158,36 +172,84 @@ class DifyAgentBackendRunClient:
                 should_stop=should_stop,
             )
         except Exception as exc:
-            raise _normalize_dify_agent_error(exc) from exc
+            error = _normalize_dify_agent_error(exc, run_id=run_id)
+            raise error from error.__cause__ or exc
 
     def wait_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
         """Poll run status until terminal state and normalize client exceptions."""
         try:
             return self.client.wait_run_sync(run_id, timeout_seconds=timeout_seconds)
         except Exception as exc:
-            raise _normalize_dify_agent_error(exc) from exc
+            raise _normalize_dify_agent_error(exc, run_id=run_id) from exc
 
 
-def _normalize_dify_agent_error(exc: Exception) -> AgentBackendError:
-    """Map public ``dify-agent`` client errors to API-side integration errors."""
+def _normalize_dify_agent_error(exc: Exception, *, run_id: str | None = None) -> AgentBackendError:
+    """Map SDK failures, distinguishing HTTP rejections from local/DTO validation.
+
+    SSE retries can hide a backend HTTP failure in either exception link. Recovering
+    that failure preserves its status/code and installs the original HTTP cause.
+    """
     match exc:
         case DifyAgentValidationError() as error:
+            local_validation = isinstance(error.__cause__, ValidationError) or (
+                isinstance(error.detail, str) and error.detail in _LOCAL_VALIDATION_DETAILS
+            )
+            if backend_reported_failure(error) and not local_validation:
+                error_code, message = _normalized_http_detail(error)
+                return AgentBackendValidationError(
+                    message,
+                    detail=error.detail,
+                    run_id=run_id,
+                    status_code=error.status_code,
+                    error_code=error_code,
+                )
             return AgentBackendValidationError(
-                "Agent backend request or response validation failed", detail=error.detail
+                "Agent backend request or response validation failed", detail=error.detail, run_id=run_id
             )
         case DifyAgentHTTPError() as error:
+            error_code, message = _normalized_http_detail(error)
             return AgentBackendHTTPError(
-                f"Agent backend HTTP {error.status_code}",
+                message,
                 status_code=error.status_code,
                 detail=error.detail,
+                error_code=error_code,
+                run_id=run_id,
             )
         case DifyAgentTimeoutError() as error:
-            return AgentBackendTransportError(str(error))
+            return AgentBackendTransportError(str(error), run_id=run_id)
         case DifyAgentStreamError() as error:
-            return AgentBackendStreamError(str(error))
+            http_error = _stream_http_error(error)
+            if http_error is not None:
+                normalized = _normalize_dify_agent_error(http_error, run_id=run_id)
+                normalized.__cause__ = http_error
+                return normalized
+            return AgentBackendStreamError(str(error), run_id=run_id)
         case DifyAgentClientError() as error:
-            return AgentBackendTransportError(str(error))
+            return AgentBackendTransportError(str(error), run_id=run_id)
         case AgentBackendError() as error:
             return error
         case _:
-            return AgentBackendTransportError(str(exc) or type(exc).__name__)
+            return AgentBackendTransportError(str(exc) or type(exc).__name__, run_id=run_id)
+
+
+def _normalized_http_detail(error: DifyAgentHTTPError) -> tuple[str | None, str]:
+    """Keep an HTTP prefix and a backend-authored message, without echoing a fallback dict repr."""
+    error_code, backend_message = backend_error_detail(error) if backend_reported_failure(error) else (None, "")
+    message = f"Agent backend HTTP {error.status_code}"
+    if backend_message and backend_message != str(error):
+        message = f"{message}: {backend_message}"
+    return error_code, message
+
+
+def _stream_http_error(error: DifyAgentStreamError) -> DifyAgentHTTPError | None:
+    """Find a backend HTTP rejection hidden by SDK retries, tolerating cycles in either link."""
+    pending: list[BaseException] = [error]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) not in seen:
+            seen.add(id(current))
+            if isinstance(current, DifyAgentHTTPError) and backend_reported_failure(current):
+                return current
+            pending.extend(link for link in (current.__context__, current.__cause__) if link is not None)
+    return None

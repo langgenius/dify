@@ -2,7 +2,7 @@
 
 The wire protocol and low-level HTTP behaviour are owned by ``dify-agent``.
 This module only normalizes those client errors into the API backend's boundary
-so workflow/node code does not depend directly on transport-specific exception
+so app/workflow code does not depend directly on transport-specific exception
 classes.
 """
 
@@ -43,7 +43,13 @@ def backend_error_detail(
 
 
 class AgentBackendError(Exception):
-    """Base error for API-side Agent backend integration failures."""
+    """API-side integration failure, with optional runtime correlation metadata."""
+
+    def __init__(self, message: str, *, run_id: str | None = None, reason: str | None = None) -> None:
+        """Keep the message and any known run/reason available across error translation."""
+        super().__init__(message)
+        self.run_id = run_id
+        self.reason = reason
 
 
 class AgentBackendRequestBuildError(AgentBackendError):
@@ -60,20 +66,41 @@ class AgentBackendHTTPError(AgentBackendTransportError):
     status_code: int
     detail: object
 
-    def __init__(self, message: str, *, status_code: int, detail: object) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int,
+        detail: object,
+        error_code: str | None = None,
+        run_id: str | None = None,
+    ) -> None:
+        """Retain the backend status/detail and optional code/run for response conversion."""
         self.status_code = status_code
         self.detail = detail
-        super().__init__(message)
+        self.error_code = error_code
+        super().__init__(message, run_id=run_id)
 
 
 class AgentBackendValidationError(AgentBackendError):
-    """Raised for local request validation or Agent backend 422 responses."""
+    """Local protocol validation or a backend rejection, retaining HTTP metadata only for the latter."""
 
     detail: object
 
-    def __init__(self, message: str, *, detail: object) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        detail: object,
+        run_id: str | None = None,
+        status_code: int | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        """Keep validation detail and any known run; local validation leaves HTTP metadata unset."""
         self.detail = detail
-        super().__init__(message)
+        self.status_code = status_code
+        self.error_code = error_code
+        super().__init__(message, run_id=run_id)
 
 
 class AgentBackendStreamError(AgentBackendError):
@@ -83,7 +110,6 @@ class AgentBackendStreamError(AgentBackendError):
 class AgentBackendRunFailedError(AgentBackendError):
     """Raised by callers that choose to translate a terminal failed run into an exception."""
 
-    run_id: str
     detail: Any
     error_type: RunFailureType | None
     reason: str | None
@@ -99,10 +125,9 @@ class AgentBackendRunFailedError(AgentBackendError):
         reason: str | None = None,
         source_event_id: str | None = None,
     ) -> None:
-        self.run_id = run_id
+        """Preserve terminal failure metadata and include the required run in the display message."""
         self.detail = detail
         self.error_type = error_type
-        self.reason = reason
         self.source_event_id = source_event_id
         display_message = message or f"Agent backend run failed: {run_id}"
-        super().__init__(f"{display_message} (agent_run_id={run_id})")
+        super().__init__(f"{display_message} (agent_run_id={run_id})", run_id=run_id, reason=reason)

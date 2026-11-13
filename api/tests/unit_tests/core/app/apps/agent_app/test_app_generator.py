@@ -3,7 +3,9 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import inspect
+from collections.abc import Generator
 from decimal import Decimal
+from threading import Event
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -19,6 +21,7 @@ from sqlalchemy.orm import Session
 import core.app.apps.agent_app.app_generator as module
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
+from clients.agent_backend.errors import AgentBackendError
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.agent_app import app_generator
 from core.app.apps.agent_app.app_config_manager import AgentAppConfig
@@ -28,13 +31,19 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppNotPublishedError,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
+    MessageQueueMessage,
     QueueAnnotationReplyEvent,
+    QueueErrorEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
+from core.app.entities.task_entities import AppStreamResponse, ChatbotAppStreamResponse, PingStreamResponse
 from core.moderation.base import ModerationError
+from extensions.tracing import bind_tracing
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account as _app_generator_Account
 from models import AppModelConfig
 from models.account import Account as _resolve_agent_Account
@@ -368,41 +377,91 @@ class TestAppGeneratorCases:
             assert generator._resolve_agent.call_args.kwargs["conversation"].id == "conv"
             assert generator._init_generate_records.call_args.kwargs["session"] is session
 
-        def test_generate_does_not_include_trace_session_id_in_extras(
-            self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        def test_generate_propagates_trace_ids_into_real_scope_and_worker_entity(
+            self, monkeypatch: pytest.MonkeyPatch
         ) -> None:
-            scope_requests = _record_trace_scope_requests(monkeypatch, _trace_scope())
             app_model = _app_generator_app()
             user = _app_generator_account()
-
-            generator._resolve_agent = mocker.MagicMock(return_value=(_agent(), "snap1", "snapshot", AgentSoulConfig()))
-            generator._prepare_user_inputs = mocker.MagicMock(return_value={})
-            generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
-            generator._handle_response = mocker.MagicMock(return_value="raw-response")
-
-            mocker.patch(
-                f"{MODULE}.AgentAppConfigManager.get_app_config",
-                return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+            draft = AgentConfigDraft(
+                id="draft-1",
+                tenant_id="tenant",
+                agent_id="agent1",
+                draft_type=AgentConfigDraftType.DRAFT,
+                draft_owner_key="",
+                config_snapshot=AgentSoulConfig.model_validate(
+                    {
+                        "model": {
+                            "plugin_id": "langgenius/openai",
+                            "model_provider": "openai",
+                            "model": "gpt-4o-mini",
+                        }
+                    }
+                ),
             )
-            mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
-            generate_entity = mocker.patch(
-                f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
-            )
-            mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
-            mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
-            mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+            session = _session()
+            session.add_all([app_model, _agent(), draft])
+            session.commit()
+            model_config = make_model_config(provider="openai", model="gpt-4o-mini", mode="chat")
+            monkeypatch.setattr(module.ModelConfigConverter, "convert", lambda _config: model_config)
+            captured: list[AgentAppGenerateEntity] = []
+            ready = Event()
 
-            generator.generate(
-                app_model=app_model,
-                user=user,
-                args={"query": "hello", "inputs": {}, "trace_session_id": "session-1"},
-                invoke_from=InvokeFrom.WEB_APP,
-                session=_session(),
-                streaming=True,
-            )
+            def worker(
+                _self: AgentAppGenerator, *, application_generate_entity: AgentAppGenerateEntity, **_kwargs: Any
+            ) -> None:
+                captured.append(application_generate_entity)
+                ready.set()
 
-            assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
-            assert [request["extras"] for request in scope_requests] == [{"auto_generate_conversation_name": True}]
+            def response(_self: AgentAppGenerator, **_kwargs: Any) -> Generator[AppStreamResponse]:
+                yield ChatbotAppStreamResponse(
+                    conversation_id="conv",
+                    message_id="msg",
+                    created_at=1,
+                    stream_response=PingStreamResponse(task_id="task-1"),
+                )
+
+            class Scopes:
+                def for_execution(self, *, correlation: TraceCorrelation, **_kwargs: Any) -> TraceScope:
+                    return TraceScope(
+                        emitter=_TraceRecorder(),
+                        tenant_id="tenant",
+                        app_id="app1",
+                        user_id="user",
+                        correlation=correlation,
+                    )
+
+                def for_app(self, *, correlation: TraceCorrelation, **kwargs: Any) -> TraceScope:
+                    return self.for_execution(correlation=correlation, **kwargs)
+
+            monkeypatch.setattr(AgentAppGenerator, "_generate_worker", worker)
+            monkeypatch.setattr(AgentAppGenerator, "_handle_response", response)
+            http_app = Flask(__name__)
+            bind_tracing(http_app, scopes=Scopes(), hooks=None)
+            with http_app.app_context():
+                result = AgentAppGenerator().generate(
+                    app_model=app_model,
+                    user=user,
+                    args={
+                        "query": "hello",
+                        "inputs": {},
+                        "external_trace_id": "trace-1",
+                        "trace_session_id": "session-1",
+                    },
+                    invoke_from=InvokeFrom.DEBUGGER,
+                    session=session,
+                    streaming=True,
+                )
+                assert list(result) == ["ping"]
+            assert ready.wait(timeout=2)
+            assert len(captured) == 1
+            assert captured[0].extras == {
+                "auto_generate_conversation_name": True,
+                "external_trace_id": "trace-1",
+                "trace_session_id": "session-1",
+            }
+            assert captured[0].trace_scope is not None
+            assert captured[0].trace_scope.correlation.external_trace_id == "trace-1"
+            assert captured[0].trace_scope.correlation.session_id == "session-1"
 
     class TestGenerateWorker:
         @pytest.fixture(autouse=True)
@@ -648,6 +707,82 @@ def _make_entity(query: str) -> AgentAppGenerateEntity:
         agent_id="agent-1",
         agent_config_snapshot_id="snapshot-1",
     )
+
+
+@pytest.mark.parametrize("trace_source", ["scope", "extras", "context"])
+def test_worker_logs_traceback_and_correlation_for_chained_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, trace_source: str
+) -> None:
+    entity = _make_entity("query")
+    if trace_source == "extras":
+        entity.trace_scope = None
+        entity.extras["external_trace_id"] = "external-trace-1"
+    else:
+        entity.trace_scope = TraceScope(
+            emitter=_TraceRecorder(),
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            correlation=TraceCorrelation(
+                external_trace_id="external-trace-1" if trace_source == "scope" else None,
+                session_id=None,
+                parent_workflow_run_id=None,
+                parent_node_execution_id=None,
+            ),
+        )
+    entity.agent_config_version_kind = "build_draft"
+    backend_error = AgentBackendError("backend failed", run_id="run-1", reason="InvokeAuthorizationError")
+
+    def fail_lookup(_self: AgentAppGenerator, _conversation_id: str) -> Conversation:
+        raise InvokeAuthorizationError("provider rejected") from backend_error
+
+    monkeypatch.setattr(AgentAppGenerator, "_get_conversation", fail_lookup)
+    queue = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=entity.user_id,
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conv",
+        app_mode=AppMode.AGENT,
+        message_id="msg",
+    )
+    from core.logging.context import clear_request_context, get_trace_id, init_request_context
+
+    init_request_context()
+    fallback_trace_id = get_trace_id()
+    try:
+        AgentAppGenerator()._generate_worker(
+            flask_app=Flask(__name__),
+            context=contextvars.copy_context(),
+            application_generate_entity=entity,
+            queue_manager=queue,
+            conversation_id="conv",
+            message_id="msg",
+            user_from=UserFrom.ACCOUNT,
+        )
+    finally:
+        clear_request_context()
+    record = next(record for record in caplog.records if "Agent App generate worker failed" in record.message)
+    assert record.exc_info is not None
+    for field in (
+        "agent_id=agent-1",
+        "app_id=app-1",
+        "conversation_id=conv",
+        "message_id=msg",
+        "task_id=task-1",
+        "config_version_kind=build_draft",
+        "agent_run_id=run-1",
+        "reason=InvokeAuthorizationError",
+        "trace_id=" + (fallback_trace_id if trace_source == "context" else "external-trace-1"),
+        "error_type=InvokeAuthorizationError",
+    ):
+        assert field in record.message
+    assert "Traceback" in caplog.text
+    assert "provider rejected" in caplog.text
+    event = queue._q.get_nowait()
+    assert isinstance(event, MessageQueueMessage)
+    assert isinstance(event.event, QueueErrorEvent)
+    assert isinstance(event.event.error, InvokeAuthorizationError)
+    assert event.event.error.__cause__ is backend_error
 
 
 def _input_guards_app() -> App:

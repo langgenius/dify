@@ -1,5 +1,4 @@
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -7,11 +6,19 @@ from dify_agent.protocol import RunFailureType
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendRunFailedError
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import AppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
+from core.plugin.impl.exc import PluginDaemonInternalError, PluginInvokeError, PluginRuntimeError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Message
@@ -52,16 +59,35 @@ def _persist_message(session: Session, *, message_id: str) -> Message:
 
 class TestBasedGenerateTaskPipeline:
     @pytest.fixture
-    def pipeline(self):
-        app_config = SimpleNamespace(
+    def pipeline(self) -> BasedGenerateTaskPipeline[AppGenerateEntity]:
+        app_config = EasyUIBasedAppConfig(
             tenant_id="tenant-1",
             app_id="app-1",
-            sensitive_word_avoidance=None,
+            app_mode=AppMode.AGENT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="openai", model="gpt-test", mode="chat"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
         )
-        app_generate_entity = SimpleNamespace(task_id="task-1", app_config=app_config)
+        app_generate_entity = AppGenerateEntity(
+            task_id="task-1",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user-1",
+            stream=True,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
         return BasedGenerateTaskPipeline(
             application_generate_entity=app_generate_entity,
-            queue_manager=Mock(),
+            queue_manager=MessageBasedAppQueueManager(
+                task_id="task-1",
+                user_id="user-1",
+                invoke_from=InvokeFrom.DEBUGGER,
+                conversation_id="conversation-1",
+                app_mode=AppMode.AGENT,
+                message_id="message-1",
+            ),
             stream=True,
         )
 
@@ -69,11 +95,38 @@ class TestBasedGenerateTaskPipeline:
         message = pipeline._error_to_desc(QuotaExceededError())
         assert "quota" in message.lower()
 
-    def test_handle_error_wraps_invoke_authorization(self, pipeline):
+    def test_handle_error_wraps_invoke_authorization(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
         event = QueueErrorEvent(error=InvokeAuthorizationError())
+        backend_error = AgentBackendRunFailedError("run-1", {}, reason="InvokeAuthorizationError")
+        event.error.__cause__ = backend_error
         err = pipeline.handle_error(event=event)
         assert isinstance(err, InvokeAuthorizationError)
         assert str(err) == "Incorrect API key provided"
+        assert err.__cause__ is event.error
+        assert err.__cause__.__cause__ is backend_error
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            PluginRuntimeError("runtime failed"),
+            PluginDaemonInternalError("daemon failed"),
+            PluginInvokeError("invoke failed"),
+        ],
+    )
+    def test_handle_error_preserves_plugin_failures(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], error: Exception
+    ) -> None:
+        assert pipeline.handle_error(event=QueueErrorEvent(error=error)) is error
+
+    def test_handle_error_preserves_unexpected_failure_as_cause(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
+        error = RuntimeError("private failure")
+        result = pipeline.handle_error(event=QueueErrorEvent(error=error))
+        assert type(result) is Exception
+        assert result.__cause__ is error
 
     def test_handle_error_preserves_invoke_error(self, pipeline):
         event = QueueErrorEvent(error=InvokeError("bad"))

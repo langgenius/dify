@@ -61,7 +61,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
         cls, stream_response: Generator[AppStreamResponse]
     ) -> Generator[dict[str, Any] | str]:
         """
-        Convert stream full response.
+        Convert stream full response, including task correlation on errors.
         :param stream_response: stream response
         :return:
         """
@@ -82,6 +82,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
 
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
+                response_chunk["task_id"] = sub_stream_response.task_id
                 response_chunk.update(data)
             else:
                 response_chunk.update(sub_stream_response.model_dump(mode="json"))
@@ -93,7 +94,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
         cls, stream_response: Generator[AppStreamResponse]
     ) -> Generator[dict[str, Any] | str]:
         """
-        Convert stream simple response.
+        Convert stream simple response, including task correlation on errors.
         :param stream_response: stream response
         :return:
         """
@@ -120,6 +121,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[Chatbot
                     response_chunk.update(sub_stream_response_dict)
                 case ErrorStreamResponse():
                     data = cls._error_to_stream_response(sub_stream_response.err)
+                    response_chunk["task_id"] = sub_stream_response.task_id
                     response_chunk.update(data)
                 case _:
                     response_chunk.update(sub_stream_response.model_dump(mode="json"))

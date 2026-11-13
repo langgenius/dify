@@ -3,6 +3,16 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import ClassVar
 
+import pytest
+
+from clients.agent_backend.errors import (
+    AgentBackendError,
+    AgentBackendHTTPError,
+    AgentBackendRequestBuildError,
+    AgentBackendStreamError,
+    AgentBackendTransportError,
+    AgentBackendValidationError,
+)
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
@@ -11,7 +21,15 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
 )
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.impl.exc import (
+    PluginDaemonBadRequestError,
+    PluginDaemonInternalError,
+    PluginInvokeError,
+    PluginRuntimeError,
+)
 from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 
 
 class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
@@ -101,3 +119,82 @@ def test_convert_routes_stream_response_by_invoke_from() -> None:
     assert simple_result == [{"kind": "stream-simple"}]
     assert len(_DummyConverter.stream_full_calls) == 1
     assert len(_DummyConverter.stream_simple_calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (
+            AgentBackendHTTPError("backend overloaded", status_code=503, detail={}, error_code="overloaded"),
+            503,
+            "overloaded",
+            "backend overloaded",
+        ),
+        (
+            AgentBackendHTTPError("backend rejected", status_code=409, detail={}),
+            409,
+            "agent_backend_error",
+            "backend rejected",
+        ),
+        (
+            AgentBackendHTTPError("invalid success", status_code=200, detail={}, error_code="invalid_success"),
+            502,
+            "agent_backend_error",
+            "invalid success",
+        ),
+        (AgentBackendTransportError("connection timed out"), 502, "agent_backend_unreachable", "connection timed out"),
+        (AgentBackendStreamError("stream disconnected"), 502, "agent_backend_unreachable", "stream disconnected"),
+        (AgentBackendValidationError("invalid protocol", detail={}), 502, "agent_backend_error", "invalid protocol"),
+        (AgentBackendRequestBuildError("invalid config"), 400, "completion_request_error", "invalid config"),
+        (AgentBackendError("binding lost"), 400, "completion_request_error", "binding lost"),
+        (PluginRuntimeError("daemon unavailable"), 502, "plugin_runtime_error", "daemon unavailable"),
+        (PluginDaemonInternalError("daemon failed"), 502, "plugin_runtime_error", "daemon failed"),
+        (PluginDaemonBadRequestError("invalid invocation"), 400, "completion_request_error", "invalid invocation"),
+        (
+            PluginInvokeError('{"error_type":"BadRequest","message":"model missing"}'),
+            400,
+            "completion_request_error",
+            "model missing",
+        ),
+        (PluginInvokeError("plugin failed"), 400, "completion_request_error", "plugin failed"),
+        (InvokeRateLimitError("rate limited"), 429, "rate_limit_error", "rate limited"),
+        (
+            InvokeAuthorizationError("Incorrect API key provided"),
+            400,
+            "completion_request_error",
+            "Incorrect API key provided",
+        ),
+        (InvokeError(), 400, "completion_request_error", "InvokeError"),
+        (ValueError("invalid request"), 400, "invalid_param", "invalid request"),
+        (ProviderTokenNotInitError("configure provider"), 400, "provider_not_initialize", "configure provider"),
+        (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", "Model Currently Not Support"),
+    ],
+)
+def test_generation_error_mapping(error: Exception, status: int, code: str, message: str) -> None:
+    assert _DummyConverter._error_to_stream_response(error) == {"status": status, "code": code, "message": message}
+
+
+def test_quota_error_retains_hosted_provider_guidance() -> None:
+    response = _DummyConverter._error_to_stream_response(QuotaExceededError())
+    assert response["status"] == 400
+    assert response["code"] == "provider_quota_exceeded"
+    assert "Model Provider" in str(response["message"])
+
+
+def test_internal_error_logs_original_traceback_without_exposing_it(caplog: pytest.LogCaptureFixture) -> None:
+    try:
+        raise RuntimeError("private failure detail")
+    except RuntimeError as cause:
+        error = Exception("wrapped failure")
+        error.__cause__ = cause
+
+    response = _DummyConverter._error_to_stream_response(error)
+
+    assert response == {
+        "code": "internal_server_error",
+        "status": 500,
+        "message": "Internal Server Error, please contact support.",
+    }
+    assert caplog.records[-1].exc_info is not None
+    assert "Traceback" in caplog.text
+    assert "private failure detail" in caplog.text

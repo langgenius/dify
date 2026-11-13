@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Mapping
 from decimal import Decimal
@@ -49,6 +50,22 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.impl.exc import (
+    PluginDaemonBadRequestError,
+    PluginDaemonClientSideError,
+    PluginDaemonError,
+    PluginDaemonInternalError,
+    PluginDaemonInternalServerError,
+    PluginDaemonNotFoundError,
+    PluginDaemonUnauthorizedError,
+    PluginInvokeError,
+    PluginLLMPollingUnsupportedError,
+    PluginNotFoundError,
+    PluginPermissionDeniedError,
+    PluginRuntimeError,
+    PluginUniqueIdentifierError,
+)
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File
@@ -83,6 +100,7 @@ class _DefaultSessionScopeSnapshotId:
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
 
 _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
+    "InvokeError": InvokeError,
     "InvokeAuthorizationError": InvokeAuthorizationError,
     "InvokeBadRequestError": InvokeBadRequestError,
     "CredentialsValidateFailedError": InvokeBadRequestError,
@@ -91,14 +109,43 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
     "InvokeServerUnavailableError": InvokeServerUnavailableError,
 }
 
+_AGENT_BACKEND_MODEL_ERROR_BY_REASON: Mapping[str, type[ProviderTokenNotInitError | ModelCurrentlyNotSupportError]] = {
+    "ProviderTokenNotInitError": ProviderTokenNotInitError,
+    "ModelCurrentlyNotSupportError": ModelCurrentlyNotSupportError,
+}
+
+_AGENT_BACKEND_PLUGIN_ERROR_BY_REASON: Mapping[str, type[PluginDaemonError]] = {
+    error_type.__name__: error_type
+    for error_type in (
+        PluginDaemonError,
+        PluginDaemonClientSideError,
+        PluginDaemonInternalError,
+        PluginDaemonInternalServerError,
+        PluginDaemonNotFoundError,
+        PluginDaemonUnauthorizedError,
+        PluginDaemonBadRequestError,
+        PluginInvokeError,
+        PluginLLMPollingUnsupportedError,
+        PluginNotFoundError,
+        PluginPermissionDeniedError,
+        PluginRuntimeError,
+        PluginUniqueIdentifierError,
+    )
+}
+
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    if event.error_type is None:
-        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
-        if err_cls is not None:
-            return err_cls(event.error)
+    """Recover known gateway failures, keeping backend run metadata in the explicit cause.
+
+    The SDK retains streaming HTTP error types as reasons; ModelAPIError keeps only
+    ``Type: message`` (with a model-name prefix in older versions). Preflight ModelHTTPError
+    keeps ``status_code: N, model_name: M, body: Type: message`` and may supply a rate-limit
+    reason. Strip these wrappers and decode allowlisted types, including nested plugin invoke
+    errors. Gateway HTTP 500 always enters the safe internal-error path.
+    A structured runtime failure type takes precedence over gateway interpretation.
+    """
     message = event.error or "Agent backend run did not complete successfully."
-    return AgentBackendRunFailedError(
+    backend_err = AgentBackendRunFailedError(
         event.run_id,
         {
             "error": event.error,
@@ -110,6 +157,58 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
         reason=event.reason,
         source_event_id=event.source_event_id,
     )
+    if event.error_type is not None:
+        return backend_err
+
+    reason = event.reason
+    description = event.error
+    gateway_http_error = re.fullmatch(r"status_code: (\d+), model_name: .*?, body: (.*)", description, re.DOTALL)
+    if gateway_http_error is not None:
+        status_code, description = gateway_http_error.groups()
+        if status_code == "500":
+            reason = "AgentLLMInternalError"
+        else:
+            body_reason, separator, body_description = description.partition(": ")
+            if separator and (
+                body_reason in _AGENT_BACKEND_INVOKE_ERROR_BY_REASON
+                or body_reason in _AGENT_BACKEND_PLUGIN_ERROR_BY_REASON
+                or body_reason in _AGENT_BACKEND_MODEL_ERROR_BY_REASON
+            ):
+                reason, description = body_reason, body_description
+            elif status_code == "429" and reason is None:
+                reason = "InvokeRateLimitError"
+    if reason is None:
+        if description.startswith("model_name: "):
+            _, _, description = description.partition(", ")
+        reason, _, description = description.partition(": ")
+
+    invoke_error_type = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(reason or "")
+    plugin_error_type = _AGENT_BACKEND_PLUGIN_ERROR_BY_REASON.get(reason or "")
+    model_error_type = _AGENT_BACKEND_MODEL_ERROR_BY_REASON.get(reason or "")
+    err: Exception
+    if invoke_error_type is not None:
+        err = invoke_error_type(description or None)
+    elif model_error_type is not None:
+        model_error = model_error_type(description) if description else model_error_type()
+        if description:
+            model_error.description = description
+        err = model_error
+    elif plugin_error_type is not None:
+        err = plugin_error_type(description or "Agent LLM invocation failed.")
+        if isinstance(err, PluginInvokeError):
+            nested_invoke_error_type = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(err.get_error_type())
+            if nested_invoke_error_type is not None:
+                err = nested_invoke_error_type(err.get_error_message() or None)
+    elif reason == "PluginDaemonInnerError":
+        err = PluginDaemonInternalError(description or "Agent LLM invocation failed.")
+    elif reason in {"AgentLLMQuotaExceededError", "QuotaExceededError"}:
+        err = QuotaExceededError(description)
+    elif reason == "AgentLLMInternalError":
+        err = Exception("Internal Server Error, please contact support.")
+    else:
+        return backend_err
+    err.__cause__ = backend_err
+    return err
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -663,6 +762,14 @@ class AgentAppRunner:
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
     ) -> None:
+        """Execute a resolved Agent generation, publishing the answer and message end on success.
+
+        Observed terminal usage and available snapshots are saved on successful and failed exits;
+        persistence errors are logged without replacing the runtime outcome. Backend errors
+        carry run/reason directly or through a translated error's
+        explicit cause. Stop requests raise GenerateTaskStoppedError; cancellation cleanup only
+        persists terminal state that was actually observed.
+        """
         scope = self._build_session_scope(
             dify_context=dify_context,
             agent_id=agent_id,
@@ -729,9 +836,19 @@ class AgentAppRunner:
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
                 reason = terminal.reason
                 if terminal.error_type is None and reason == "binding_lost":
-                    raise AgentBackendError("The retained agent working environment is no longer available.")
+                    raise AgentBackendError(
+                        "The retained agent working environment is no longer available.",
+                        run_id=terminal.run_id,
+                        reason=reason,
+                    )
                 raise _agent_backend_failure_to_exception(terminal)
-            raise AgentBackendError("Agent backend run did not complete successfully.")
+            raise AgentBackendError(
+                "Agent backend run did not complete successfully.",
+                run_id=create_response.run_id,
+                reason="cancelled"
+                if isinstance(terminal, AgentBackendRunCancelledInternalEvent)
+                else "missing_terminal_event",
+            )
 
         answer = self._terminal_output_to_answer(terminal.output)
         try:

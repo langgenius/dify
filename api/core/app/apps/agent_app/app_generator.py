@@ -22,6 +22,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import AgentBackendRunEventAdapter
+from clients.agent_backend.errors import AgentBackendError
 from clients.agent_backend.factory import create_agent_backend_run_client
 from configs import dify_config
 from constants import UUID_NIL
@@ -33,6 +34,7 @@ from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.errors import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
+    iter_error_causes,
 )
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
@@ -49,6 +51,8 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
+from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
+from core.logging.context import get_trace_id
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks, create_trace_scope
 from factories import file_factory
@@ -84,6 +88,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         session: Session,
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[Mapping | str]:
+        """Start a streaming Agent turn from validated inputs and a caller-owned session.
+
+        Trace IDs are carried into the worker scope; blocking mode and invalid queries raise
+        before generation starts. Build finalization shares this same runtime path.
+        """
         if not streaming:
             raise AgentAppGeneratorError("Agent App only supports streaming mode")
 
@@ -142,7 +151,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 else []
             )
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_external_trace_id_from_args(args),
+            **extract_trace_session_id_from_args(args),
+        }
         trace_scope = create_trace_scope(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -229,6 +242,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         message_id: str,
         user_from: UserFrom,
     ) -> None:
+        """Execute a queued turn in the captured Flask context and publish any failure.
+
+        Failures retain their exception chain, and logs include runtime/trace correlation,
+        including explicit caller trace IDs when no trace scope is configured.
+        The worker closes its scoped database session on every exit.
+        """
         from libs.flask_utils import preserve_flask_contexts
 
         with preserve_flask_contexts(flask_app, context_vars=context):
@@ -329,7 +348,26 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         outcome="failed",
                         output=None,
                     )
-                logger.exception("Unknown Error in Agent App generate worker")
+                backend_error = next(
+                    (error for error in iter_error_causes(e) if isinstance(error, AgentBackendError)), None
+                )
+                trace_scope = application_generate_entity.trace_scope
+                logger.exception(
+                    "Agent App generate worker failed: agent_id=%s app_id=%s conversation_id=%s message_id=%s "
+                    "task_id=%s config_version_kind=%s agent_run_id=%s reason=%s trace_id=%s error_type=%s",
+                    application_generate_entity.agent_id,
+                    application_generate_entity.app_config.app_id,
+                    conversation_id,
+                    message_id,
+                    application_generate_entity.task_id,
+                    application_generate_entity.agent_config_version_kind,
+                    backend_error.run_id if isinstance(backend_error, AgentBackendError) else None,
+                    backend_error.reason if isinstance(backend_error, AgentBackendError) else None,
+                    (trace_scope.correlation.external_trace_id if trace_scope is not None else None)
+                    or application_generate_entity.extras.get("external_trace_id")
+                    or get_trace_id(),
+                    type(e).__name__,
+                )
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
