@@ -145,6 +145,7 @@ type TriggerAccessPointCardProps = {
   appInfo: AppDetailWithSite
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
+  canReadTriggers: boolean
   highlighted?: boolean
 }
 
@@ -152,14 +153,15 @@ export function TriggerAccessPointCard({
   appInfo,
   availability,
   canManageAccessPoint,
+  canReadTriggers,
   highlighted,
 }: TriggerAccessPointCardProps) {
-  const { t } = useTranslation(['appOverview', 'deployments', 'navigation'])
+  const { t } = useTranslation(['appOverview', 'app', 'deployments', 'navigation'])
   const docLink = useDocLink()
   const { data: response, isLoading } = useQuery(
     consoleQuery.apps.byAppId.triggers.get.queryOptions({
       input: { params: { app_id: appInfo.id } },
-      enabled: !!appInfo.id,
+      enabled: !!appInfo.id && canReadTriggers,
     }),
   )
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()
@@ -204,7 +206,12 @@ export function TriggerAccessPointCard({
           <span className="h-10 w-full animate-pulse rounded-lg bg-text-quaternary opacity-10 motion-reduce:animate-none" />
         </div>
       )}
-      {!loading && (!active || triggers.length === 0) && (
+      {!loading && !canReadTriggers && (
+        <AccessPointEmptyContent>
+          {t(($) => $.noAccessResourcePermission, { ns: 'app' })}
+        </AccessPointEmptyContent>
+      )}
+      {!loading && canReadTriggers && (!active || triggers.length === 0) && (
         <AccessPointEmptyContent>
           <span>
             {t(($) => $['overview.triggerInfo.triggerStatusDescription'], {
