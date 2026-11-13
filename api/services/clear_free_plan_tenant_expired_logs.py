@@ -28,8 +28,10 @@ from models.model import (
 )
 from models.web import SavedMessage
 from models.workflow import WorkflowAppLog
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +171,7 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
             while True:
+                retired_workspace_ids: list[str] = []
                 with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
                     conversations = session.scalars(
                         select(Conversation)
@@ -194,18 +197,33 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
                     conversation_ids = [conversation.id for conversation in conversations]
+                    workspace_repository = AgentWorkspaceRepository(session=session)
+                    for conversation in conversations:
+                        retired_workspace_ids.extend(
+                            workspace_repository.retire_all_for_conversation(
+                                tenant_id=tenant_id,
+                                app_id=conversation.app_id,
+                                conversation_id=conversation.id,
+                            )
+                        )
                     session.execute(
                         delete(Conversation)
                         .where(Conversation.id.in_(conversation_ids))
                         .execution_options(synchronize_session=False)
                     )
 
-                    click.echo(
-                        click.style(
-                            f"[{datetime.datetime.now()}] Processed {len(conversation_ids)}"
-                            f" conversations for tenant {tenant_id}"
-                        )
+                if retired_workspace_ids:
+                    enqueue_agent_resource_collection(
+                        tenant_id=tenant_id,
+                        workspace_ids=retired_workspace_ids,
                     )
+
+                click.echo(
+                    click.style(
+                        f"[{datetime.datetime.now()}] Processed {len(conversation_ids)}"
+                        f" conversations for tenant {tenant_id}"
+                    )
+                )
 
             # Process expired workflow node executions with backup
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
