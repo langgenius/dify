@@ -1,10 +1,5 @@
 {
   "account.account": "Cuenta",
-  "account.appearanceDark": "Oscuro",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Apariencia",
-  "account.appearanceLight": "Claro",
-  "account.appearanceSystem": "Sistema",
   "account.changeEmail.authTip": "Una vez que tu correo electrónico sea cambiado, las cuentas de Google o GitHub vinculadas a tu antiguo correo electrónico ya no podrán iniciar sesión en esta cuenta.",
   "account.changeEmail.changeTo": "Cambia a {{email}}",
   "account.changeEmail.codeLabel": "Código de verificación",

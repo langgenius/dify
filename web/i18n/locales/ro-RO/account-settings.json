@@ -1,10 +1,5 @@
 {
   "account.account": "Cont",
-  "account.appearanceDark": "Întunecat",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Aspect",
-  "account.appearanceLight": "Luminos",
-  "account.appearanceSystem": "Sistem",
   "account.changeEmail.authTip": "Odată ce adresa ta de email este schimbată, conturile Google sau GitHub legate de vechea ta adresă de email nu vor mai putea să se conecteze la acest cont.",
   "account.changeEmail.changeTo": "Schimbă la {{email}}",
   "account.changeEmail.codeLabel": "Cod de verificare",

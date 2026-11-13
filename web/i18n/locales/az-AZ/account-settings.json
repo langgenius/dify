@@ -1,10 +1,5 @@
 {
   "account.account": "Hesab",
-  "account.appearanceDark": "Tünd",
-  "account.appearanceFollowSystem": "Sistemə uyğunlaşdır",
-  "account.appearanceLabel": "Görünüş",
-  "account.appearanceLight": "Açıq",
-  "account.appearanceSystem": "Sistem",
   "account.changeEmail.authTip": "E-poçt ünvanınız dəyişdirildikdən sonra köhnə e-poçt ünvanınıza bağlı Google və ya GitHub hesabları ilə bu hesaba daxil olmaq mümkün olmayacaq.",
   "account.changeEmail.changeTo": "{{email}} ünvanı ilə əvəz et",
   "account.changeEmail.codeLabel": "Doğrulama kodu",
