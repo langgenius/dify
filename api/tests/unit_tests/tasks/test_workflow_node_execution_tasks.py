@@ -5,7 +5,7 @@ from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
@@ -369,6 +369,137 @@ def test_task_repeated_delivery_updates_one_row(
         assert persisted is not None
         assert persisted.outputs_dict == {"delivery": 2}
     assert persisted.created_at == created_at.replace(tzinfo=None)
+
+
+@pytest.mark.parametrize(
+    "terminal_status",
+    [
+        WorkflowNodeExecutionStatus.SUCCEEDED,
+        WorkflowNodeExecutionStatus.FAILED,
+        WorkflowNodeExecutionStatus.EXCEPTION,
+        WorkflowNodeExecutionStatus.STOPPED,
+    ],
+)
+@pytest.mark.parametrize(
+    "late_status",
+    [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED, WorkflowNodeExecutionStatus.RETRY],
+)
+def test_task_out_of_order_live_delivery_does_not_revive_finished_node(
+    sqlite_session_factory: sessionmaker[Session],
+    terminal_status: WorkflowNodeExecutionStatus,
+    late_status: WorkflowNodeExecutionStatus,
+) -> None:
+    """The finish save can be delivered before the start save of the same execution."""
+    created_at = datetime(2026, 8, 12, 1, tzinfo=UTC)
+    finished_at = created_at + timedelta(seconds=5)
+    finished = _execution(
+        created_at=created_at,
+        status=terminal_status,
+        outputs={"answer": "final"},
+        elapsed_time=5,
+        finished_at=finished_at,
+    )
+    late = _execution(created_at=created_at, status=late_status)
+    task_kwargs: _ExecutionTaskKwargs = {
+        "tenant_id": TENANT_ID,
+        "app_id": APP_ID,
+        "triggered_from": WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        "creator_user_id": ACCOUNT_ID,
+        "creator_user_role": CreatorUserRole.ACCOUNT.value,
+    }
+
+    assert save_workflow_node_execution_task.run(execution_data=finished.model_dump(), **task_kwargs)
+    assert save_workflow_node_execution_task.run(execution_data=late.model_dump(), **task_kwargs)
+
+    with sqlite_session_factory() as observer:
+        assert observer.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 1
+        persisted = observer.get(WorkflowNodeExecutionModel, EXECUTION_ID)
+        assert persisted is not None
+        assert persisted.status == terminal_status
+        assert persisted.outputs_dict == {"answer": "final"}
+        assert persisted.elapsed_time == 5
+        assert persisted.finished_at == finished_at.replace(tzinfo=None)
+
+
+@pytest.mark.parametrize(
+    ("competing_status", "delivered_status"),
+    [
+        pytest.param(
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.SUCCEEDED,
+            id="start-wins-insert",
+        ),
+        pytest.param(
+            WorkflowNodeExecutionStatus.SUCCEEDED,
+            WorkflowNodeExecutionStatus.RUNNING,
+            id="finish-wins-insert",
+        ),
+    ],
+)
+def test_task_applies_delivery_as_update_when_concurrent_delivery_inserts_first(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    competing_status: WorkflowNodeExecutionStatus,
+    delivered_status: WorkflowNodeExecutionStatus,
+) -> None:
+    """Two deliveries for one execution can both miss the row and both try to insert it."""
+    retry = MagicMock(side_effect=RuntimeError("retry requested"))
+    monkeypatch.setattr(save_workflow_node_execution_task, "retry", retry)
+    created_at = datetime(2026, 8, 12, 1, tzinfo=UTC)
+    finished_at = created_at + timedelta(seconds=5)
+
+    def delivery(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecution:
+        if status == WorkflowNodeExecutionStatus.SUCCEEDED:
+            return _execution(
+                created_at=created_at,
+                status=status,
+                outputs={"answer": "final"},
+                finished_at=finished_at,
+            )
+        return _execution(created_at=created_at, status=status)
+
+    competing = delivery(competing_status)
+    competing_inserts: list[str] = []
+
+    def insert_competing_row(*_: object) -> None:
+        # Runs after the task looked for the row and before it writes its own insert.
+        if not competing_inserts:
+            competing_inserts.append(competing.id)
+            with sqlite_session_factory.begin() as competing_session:
+                competing_session.add(
+                    _create_node_execution_from_domain(
+                        competing,
+                        TENANT_ID,
+                        APP_ID,
+                        WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                        ACCOUNT_ID,
+                        CreatorUserRole.ACCOUNT,
+                    )
+                )
+
+    event.listen(sqlite_session_factory, "before_flush", insert_competing_row)
+    try:
+        result = save_workflow_node_execution_task.run(
+            execution_data=delivery(delivered_status).model_dump(),
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            creator_user_id=ACCOUNT_ID,
+            creator_user_role=CreatorUserRole.ACCOUNT.value,
+        )
+    finally:
+        event.remove(sqlite_session_factory, "before_flush", insert_competing_row)
+
+    assert result is True
+    assert competing_inserts == [EXECUTION_ID]
+    retry.assert_not_called()
+    with sqlite_session_factory() as observer:
+        assert observer.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 1
+        persisted = observer.get(WorkflowNodeExecutionModel, EXECUTION_ID)
+        assert persisted is not None
+        assert persisted.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert persisted.outputs_dict == {"answer": "final"}
+        assert persisted.finished_at == finished_at.replace(tzinfo=None)
 
 
 @pytest.mark.parametrize("writer", ["celery", "celery-batch", "sql", "sql-batch", "sql-data"])

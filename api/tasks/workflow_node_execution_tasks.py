@@ -11,6 +11,7 @@ from typing import Any
 
 from celery import shared_task
 from sqlalchemy import and_, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from core.db.session_factory import session_factory
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
@@ -25,6 +26,14 @@ from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
+
+# Statuses of a node execution that has not finished. Deliveries carrying one of these
+# can be overtaken by the delivery that finishes the same execution.
+_LIVE_NODE_STATUSES = (
+    WorkflowNodeExecutionStatus.RUNNING,
+    WorkflowNodeExecutionStatus.PAUSED,
+    WorkflowNodeExecutionStatus.RETRY,
+)
 
 
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
@@ -44,11 +53,7 @@ def save_workflow_node_executions_task(
             return True
         with session_factory.create_session() as session, session.begin():
             for execution in executions:
-                if execution.status in (
-                    WorkflowNodeExecutionStatus.RUNNING,
-                    WorkflowNodeExecutionStatus.PAUSED,
-                    WorkflowNodeExecutionStatus.RETRY,
-                ):
+                if execution.status in _LIVE_NODE_STATUSES:
                     apply_workflow_stop_to_node(
                         execution,
                         get_stopped_workflow_run(
@@ -114,6 +119,14 @@ def save_workflow_node_execution_task(
     """
     Asynchronously save or update a workflow node execution to the database.
 
+    Deliveries for one execution are neither ordered nor serialized: the start and finish
+    saves are separate tasks and can run at the same time or in reverse order.
+
+    Postcondition: exactly one row exists for the execution. A delivery that loses the
+    insert to a concurrent one is applied as an update in the same run instead of waiting
+    for a Celery retry, and a row that already finished is never moved back to a live
+    status (see ``_update_node_execution_from_domain``).
+
     Args:
         execution_data: Serialized WorkflowNodeExecution data
         tenant_id: Tenant ID for multi-tenancy
@@ -123,59 +136,95 @@ def save_workflow_node_execution_task(
         creator_user_role: Role of the user who created the execution
 
     Returns:
-        True if successful, False otherwise
+        True if successful. Any other failure is retried with exponential backoff.
     """
     try:
-        with session_factory.create_session() as session:
-            # Deserialize execution data
-            execution = DifyWorkflowNodeExecution.model_validate(execution_data)
-
-            if execution.status in (
-                WorkflowNodeExecutionStatus.RUNNING,
-                WorkflowNodeExecutionStatus.PAUSED,
-                WorkflowNodeExecutionStatus.RETRY,
-            ):
-                apply_workflow_stop_to_node(
-                    execution,
-                    get_stopped_workflow_run(
-                        session, tenant_id=tenant_id, workflow_run_id=execution.workflow_execution_id, lock=True
-                    ),
-                )
-
-            # Check if node execution already exists
-            existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(
-                    WorkflowNodeExecutionModel.id == execution.id,
-                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                    WorkflowNodeExecutionModel.app_id == app_id,
-                    WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
-                )
+        execution = DifyWorkflowNodeExecution.model_validate(execution_data)
+        try:
+            _save_node_execution(
+                execution,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=triggered_from,
+                creator_user_id=creator_user_id,
+                creator_user_role=creator_user_role,
             )
-
-            if existing_execution:
-                # Update existing node execution
-                _update_node_execution_from_domain(existing_execution, execution)
-                logger.debug("Updated existing workflow node execution: %s", execution.id)
-            else:
-                # Create new node execution
-                node_execution = _create_node_execution_from_domain(
-                    execution=execution,
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    triggered_from=WorkflowNodeExecutionTriggeredFrom(triggered_from),
-                    creator_user_id=creator_user_id,
-                    creator_user_role=CreatorUserRole(creator_user_role),
-                )
-                session.add(node_execution)
-                logger.debug("Created new workflow node execution: %s", execution.id)
-
-            session.commit()
-            return True
+        except IntegrityError:
+            # Another delivery inserted this execution between the existence check and the
+            # insert. Its row is visible to a new transaction, so this pass updates it.
+            logger.info(
+                "Workflow node execution %s was inserted by a concurrent delivery; applying this one as an update",
+                execution.id,
+            )
+            _save_node_execution(
+                execution,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=triggered_from,
+                creator_user_id=creator_user_id,
+                creator_user_role=creator_user_role,
+            )
+        return True
 
     except Exception as e:
         logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
+
+
+def _save_node_execution(
+    execution: DifyWorkflowNodeExecution,
+    *,
+    tenant_id: str,
+    app_id: str,
+    triggered_from: str,
+    creator_user_id: str,
+    creator_user_role: str,
+) -> None:
+    """Insert the execution, or update its owner-scoped row, in one transaction.
+
+    Precondition: ``execution`` is validated and the identifiers name its owner chain.
+    Postcondition: on return the row is committed. ``IntegrityError`` is raised, with
+    nothing written, when a concurrent transaction inserted the same execution after this
+    one looked for it; calling again then takes the update branch.
+    """
+    with session_factory.create_session() as session:
+        if execution.status in _LIVE_NODE_STATUSES:
+            apply_workflow_stop_to_node(
+                execution,
+                get_stopped_workflow_run(
+                    session, tenant_id=tenant_id, workflow_run_id=execution.workflow_execution_id, lock=True
+                ),
+            )
+
+        # Check if node execution already exists
+        existing_execution = session.scalar(
+            select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.id == execution.id,
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+            )
+        )
+
+        if existing_execution:
+            # Update existing node execution
+            _update_node_execution_from_domain(existing_execution, execution)
+            logger.debug("Updated existing workflow node execution: %s", execution.id)
+        else:
+            # Create new node execution
+            node_execution = _create_node_execution_from_domain(
+                execution=execution,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom(triggered_from),
+                creator_user_id=creator_user_id,
+                creator_user_role=CreatorUserRole(creator_user_role),
+            )
+            session.add(node_execution)
+            logger.debug("Created new workflow node execution: %s", execution.id)
+
+        session.commit()
 
 
 def _create_node_execution_from_domain(
@@ -238,17 +287,15 @@ def _create_node_execution_from_domain(
 def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
+
+    Invariant: a finished node execution is never moved back to a live status. Deliveries
+    are not ordered, so a queued start, pause or retry save can arrive after cleanup or the
+    finish save already stored the terminal row. Such a delivery leaves the row unchanged.
     """
-    # Cleanup can insert the terminal row before its queued start is delivered.
     if (
-        node_execution.status == WorkflowNodeExecutionStatus.FAILED
-        and node_execution.finished_at is not None
-        and execution.status
-        in (
-            WorkflowNodeExecutionStatus.RUNNING,
-            WorkflowNodeExecutionStatus.PAUSED,
-            WorkflowNodeExecutionStatus.RETRY,
-        )
+        node_execution.finished_at is not None
+        and node_execution.status not in _LIVE_NODE_STATUSES
+        and execution.status in _LIVE_NODE_STATUSES
     ):
         return
     if isinstance(execution, DifyWorkflowNodeExecution):
