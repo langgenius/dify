@@ -937,7 +937,7 @@ class TestRetrievalServiceInternals:
         monkeypatch.setattr(
             RetrievalService,
             "get_segment_attachment_infos",
-            lambda attachment_ids, *, dataset_refs, session: [
+            lambda attachment_ids_by_dataset, *, session: [
                 {
                     "attachment_id": "attach-node-1",
                     "attachment_info": {
@@ -1211,7 +1211,7 @@ class TestRetrievalServiceInternals:
 
     def test_get_segment_attachment_infos_returns_empty_when_upload_files_missing(self, sqlite_session: Session):
         result = RetrievalService.get_segment_attachment_infos(
-            ["upload-1"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+            {("tenant-id", "dataset-id"): ["upload-1"]}, session=sqlite_session
         )
 
         assert result == []
@@ -1221,7 +1221,7 @@ class TestRetrievalServiceInternals:
         sqlite_session.commit()
 
         result = RetrievalService.get_segment_attachment_infos(
-            ["upload-1"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+            {("tenant-id", "dataset-id"): ["upload-1"]}, session=sqlite_session
         )
 
         assert result == []
@@ -1243,7 +1243,7 @@ class TestRetrievalServiceInternals:
         sqlite_session.commit()
 
         result = RetrievalService.get_segment_attachment_infos(
-            ["upload-1", "upload-2"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+            {("tenant-id", "dataset-id"): ["upload-1", "upload-2"]}, session=sqlite_session
         )
 
         assert result == [
@@ -1263,10 +1263,62 @@ class TestRetrievalServiceInternals:
         mock_sign.assert_has_calls(
             [
                 call("upload-1", "png"),
-                call("upload-2", "jpg"),
             ]
         )
-        assert mock_sign.call_count == 2
+        assert mock_sign.call_count == 1
+
+    @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
+    def test_get_segment_attachment_infos_preserves_shared_segment_bindings(self, mock_sign, sqlite_session: Session):
+        upload_file = _upload_file(file_id="upload-1", name="file-name")
+        bindings = [
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id=document_id,
+                segment_id=segment_id,
+                attachment_id="upload-1",
+            )
+            for document_id, segment_id in (
+                ("document-1", "segment-1"),
+                ("document-1", "segment-1"),
+                ("document-2", "segment-2"),
+            )
+        ]
+        sqlite_session.add_all([upload_file, *bindings])
+        sqlite_session.commit()
+
+        result = RetrievalService.get_segment_attachment_infos(
+            {("tenant-id", "dataset-id"): ["upload-1"]}, session=sqlite_session
+        )
+
+        assert {item["segment_id"] for item in result} == {"segment-1", "segment-2"}
+        assert len(result) == 2
+        assert all(item["attachment_id"] == "upload-1" for item in result)
+        assert all(item["attachment_info"]["id"] == "upload-1" for item in result)
+        mock_sign.assert_called_once_with("upload-1", "png")
+
+    @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
+    def test_get_segment_attachment_infos_scopes_shared_upload_to_hit_dataset(self, mock_sign, sqlite_session: Session):
+        upload_file = _upload_file(file_id="upload-1", name="file-name")
+        bindings = [
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id=dataset_id,
+                document_id=f"document-{dataset_id}",
+                segment_id=f"segment-{dataset_id}",
+                attachment_id="upload-1",
+            )
+            for dataset_id in ("dataset-1", "dataset-2")
+        ]
+        sqlite_session.add_all([upload_file, *bindings])
+        sqlite_session.commit()
+
+        result = RetrievalService.get_segment_attachment_infos(
+            {("tenant-id", "dataset-1"): ["upload-1"]}, session=sqlite_session
+        )
+
+        assert [item["segment_id"] for item in result] == ["segment-dataset-1"]
+        mock_sign.assert_called_once_with("upload-1", "png")
 
 
 def test_file_access_grants_ignore_empty_inputs_and_missing_scope() -> None:
@@ -1332,8 +1384,7 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
 
     with bind_file_access_scope(scope):
         result = RetrievalService.get_segment_attachment_infos(
-            [upload_file_id],
-            dataset_refs=((tenant_id, dataset_id),),
+            attachment_ids_by_dataset={(tenant_id, dataset_id): [upload_file_id]},
             session=sqlite_session,
         )
         scoped_stmt = DatabaseFileAccessController().apply_upload_file_filters(
@@ -1392,8 +1443,7 @@ def test_segment_attachment_lookup_rejects_another_tenants_upload(sqlite_session
 
     with bind_file_access_scope(scope):
         result = RetrievalService.get_segment_attachment_infos(
-            [upload_file_id],
-            dataset_refs=((tenant_id, str(uuid4())),),
+            {(tenant_id, str(uuid4())): [upload_file_id]},
             session=sqlite_session,
         )
         current_scope = get_current_file_access_scope()
