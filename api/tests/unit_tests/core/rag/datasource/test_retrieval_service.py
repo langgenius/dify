@@ -791,6 +791,18 @@ class TestRetrievalServiceInternals:
     def test_format_retrieval_documents_with_empty_input_returns_empty_list(self, unbound_session: Session):
         assert RetrievalService.format_retrieval_documents(unbound_session, []) == []
 
+    def test_format_retrieval_documents_skips_image_without_document_id(self, sqlite_session: Session):
+        dataset_document = _dataset_document(document_id="doc-1", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        sqlite_session.add(dataset_document)
+        sqlite_session.commit()
+        image_without_attachment_id = Document(
+            page_content="image",
+            metadata={"document_id": dataset_document.id, "doc_type": DocType.IMAGE},
+            provider="dify",
+        )
+
+        assert RetrievalService.format_retrieval_documents(sqlite_session, [image_without_attachment_id]) == []
+
     def test_format_retrieval_documents_without_document_id_returns_empty_list(self, unbound_session: Session):
         documents = [Document(page_content="content", metadata={"doc_id": "doc-1", "score": 0.4}, provider="dify")]
 
