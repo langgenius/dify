@@ -9,7 +9,14 @@ import core.app.apps.completion.app_config_manager as module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from models.enums import PromptType
-from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig
+from models.model import (
+    AnnotationReplyConfig,
+    AnnotationReplyDisabledConfig,
+    App,
+    AppMode,
+    AppModelConfig,
+    AppModelConfigDict,
+)
 
 
 def _app() -> App:
@@ -33,7 +40,8 @@ class TestCompletionAppConfigManager:
         app_model = _app()
         app_model_config = _config()
 
-        override_config = {"model": {"provider": "override"}}
+        override_config: AppModelConfigDict = app_model_config.to_dict(annotation_reply={"enabled": False})
+        override_config["model"] = {"provider": "override", "name": "m", "mode": "completion"}
 
         mocker.patch.object(module.ModelConfigManager, "convert", return_value="model")
         mocker.patch.object(module.PromptTemplateConfigManager, "convert", return_value="prompt")
@@ -46,7 +54,7 @@ class TestCompletionAppConfigManager:
         result = CompletionAppConfigManager.get_app_config(
             app_model=app_model,
             app_model_config=app_model_config,
-            override_config_dict=override_config,  # pyrefly: ignore[bad-argument-type]
+            override_config_dict=override_config,
             annotation_reply=None,
         )
 
@@ -59,7 +67,7 @@ class TestCompletionAppConfigManager:
     def test_get_app_config_without_override_uses_model_config(self, mocker: MockerFixture) -> None:
         app_model = _app()
         app_model_config = _config()
-        annotation_reply = {"enabled": False}
+        annotation_reply: AnnotationReplyDisabledConfig = {"enabled": False}
         to_dict = mocker.patch.object(
             AppModelConfig,
             "to_dict",
@@ -77,7 +85,7 @@ class TestCompletionAppConfigManager:
         result = CompletionAppConfigManager.get_app_config(
             app_model=app_model,
             app_model_config=app_model_config,
-            annotation_reply=annotation_reply,  # pyrefly: ignore[bad-argument-type]
+            annotation_reply=annotation_reply,
         )
 
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG

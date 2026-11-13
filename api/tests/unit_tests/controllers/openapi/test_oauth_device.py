@@ -60,7 +60,7 @@ from services.oauth_device_contracts import (
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    builtins.__dict__["MethodView"] = MethodView
 
 
 def _rule(app: Flask, path: str) -> Rule:
@@ -89,19 +89,25 @@ class TestDeviceApproveDenyCases:
     @staticmethod
     def test_approve_dispatches_to_class(openapi_app: Flask) -> None:
         rule = _rule(openapi_app, "/openapi/v1/oauth/device/approve")
-        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceApproveApi  # pyrefly: ignore[missing-attribute]
+        view = openapi_app.view_functions[rule.endpoint]
+        assert hasattr(view, "view_class")
+        assert view.view_class is DeviceApproveApi
 
     @staticmethod
     def test_deny_dispatches_to_class(openapi_app: Flask) -> None:
         rule = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
-        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceDenyApi  # pyrefly: ignore[missing-attribute]
+        view = openapi_app.view_functions[rule.endpoint]
+        assert hasattr(view, "view_class")
+        assert view.view_class is DeviceDenyApi
 
     @staticmethod
     def test_approve_and_deny_methods(openapi_app: Flask) -> None:
         approve = _rule(openapi_app, "/openapi/v1/oauth/device/approve")
         deny = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
-        assert "POST" in approve.methods  # pyrefly: ignore[not-iterable]
-        assert "POST" in deny.methods  # pyrefly: ignore[not-iterable]
+        assert approve.methods is not None
+        assert deny.methods is not None
+        assert "POST" in approve.methods
+        assert "POST" in deny.methods
 
     @staticmethod
     def test_unknown_approval_outcome_is_retryable() -> None:
@@ -120,7 +126,7 @@ require Redis, which the unit-test runtime does not initialise.
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    builtins.__dict__["MethodView"] = MethodView
 
 
 class TestDeviceCodeCases:
@@ -161,7 +167,7 @@ class TestDeviceCodeCases:
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    builtins.__dict__["MethodView"] = MethodView
 
 
 class TestDeviceLookupCases:
@@ -196,7 +202,7 @@ class TestDeviceLookupCases:
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    builtins.__dict__["MethodView"] = MethodView
 
 
 class TestDeviceTokenCases:

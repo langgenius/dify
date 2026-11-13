@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
-from models.model import App, AppMode, AppModelConfig
+from models.model import (
+    AnnotationReplyDisabledConfig,
+    App,
+    AppMode,
+    AppModelConfig,
+    AppModelConfigDict,
+)
 from tests.helpers.unit.model_factories import make_app
 
 
@@ -25,7 +31,8 @@ class TestChatAppConfigManager:
     def test_get_app_config_uses_override_dict(self) -> None:
         app_model = _app()
         app_model_config = _app_model_config()
-        override = {"model": "override"}
+        override: AppModelConfigDict = app_model_config.to_dict(annotation_reply={"enabled": False})
+        override["model"] = {"provider": "override", "name": "m", "mode": "chat"}
 
         model_entity = ModelConfigEntity(provider="p", model="m")
         prompt_entity = PromptTemplateEntity(
@@ -49,7 +56,7 @@ class TestChatAppConfigManager:
                 app_model=app_model,
                 app_model_config=app_model_config,
                 conversation=None,
-                override_config_dict=override,  # pyrefly: ignore[bad-argument-type]
+                override_config_dict=override,
                 annotation_reply=None,
             )
 
@@ -60,7 +67,7 @@ class TestChatAppConfigManager:
     def test_get_app_config_uses_injected_annotation_reply(self) -> None:
         app_model = _app()
         app_model_config = _app_model_config()
-        annotation_reply = {"enabled": False}
+        annotation_reply: AnnotationReplyDisabledConfig = {"enabled": False}
 
         model_entity = ModelConfigEntity(provider="p", model="m")
         prompt_entity = PromptTemplateEntity(
@@ -84,7 +91,7 @@ class TestChatAppConfigManager:
             ChatAppConfigManager.get_app_config(
                 app_model=app_model,
                 app_model_config=app_model_config,
-                annotation_reply=annotation_reply,  # pyrefly: ignore[bad-argument-type]
+                annotation_reply=annotation_reply,
             )
 
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
@@ -103,7 +110,8 @@ class TestChatAppConfigManager:
         def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
             def _inner[**P](*args: P.args, **kwargs: P.kwargs) -> tuple[dict[str, object], list[str]]:
                 config = args[-1]
-                config_dict = {**config, key: value}  # pyrefly: ignore[invalid-argument]
+                assert isinstance(config, dict)
+                config_dict = {**config, key: value}
                 return config_dict, [key]
 
             return _inner
