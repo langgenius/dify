@@ -1,6 +1,7 @@
 """Exercise evaluation controller contracts with persisted runs and upload files."""
 
 import json
+from collections.abc import Callable
 from datetime import datetime
 from functools import partial
 from inspect import unwrap
@@ -35,6 +36,7 @@ from services.errors.evaluation import (
 )
 from services.evaluation_service import EvaluationService
 from services.knowledge.dataset_service import DatasetService
+from services.rbac.contracts import MyPermissionsResponse, ResourceWhitelistResources
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app, make_dataset, make_upload_file, make_workflow
 
@@ -144,6 +146,7 @@ def test_load_evaluation_dataset_rejects_missing_and_unreadable_files(
         (EvaluationDatasetInvalidError(), BadRequest),
         (EvaluationNotFoundError(), NotFound),
         (EvaluationMaxConcurrentRunsError(), TooManyRequests),
+        (NoPermissionError("denied"), Forbidden),
         (ValueError("invalid target"), BadRequest),
     ],
 )
@@ -333,10 +336,12 @@ def test_retry_run_reuses_owned_dataset_and_maps_errors(
         target_type="apps",
         target_id="target-1",
         run_id=run.id,
+        account_id="account-1",
     )
     assert response["status"] == "pending"
     assert retry_requests[0]["dataset_file_content"] == b"index,query\n1,hello\n"
     assert retry_requests[0]["dataset_filename"] == "dataset.csv"
+    assert retry_requests[0]["account_id"] == "account-1"
 
     with pytest.raises(NotFound):
         controller._retry_run(
@@ -345,6 +350,7 @@ def test_retry_run_reuses_owned_dataset_and_maps_errors(
             target_type="apps",
             target_id="target-1",
             run_id=run.id,
+            account_id="account-1",
         )
 
 
@@ -357,6 +363,7 @@ def test_retry_run_rejects_missing_dataset_file(sqlite_session: Session) -> None
             target_type="apps",
             target_id="target-1",
             run_id=run.id,
+            account_id="account-1",
         )
 
 
@@ -366,6 +373,7 @@ def test_retry_run_rejects_missing_dataset_file(sqlite_session: Session) -> None
         (EvaluationFrameworkNotConfiguredError(), BadRequest),
         (EvaluationDatasetInvalidError(), BadRequest),
         (EvaluationMaxConcurrentRunsError(), TooManyRequests),
+        (NoPermissionError("denied"), Forbidden),
         (ValueError("invalid target"), BadRequest),
     ],
 )
@@ -388,6 +396,7 @@ def test_retry_run_maps_service_errors(
             target_type="apps",
             target_id="target-1",
             run_id=run.id,
+            account_id="account-1",
         )
 
 
@@ -734,3 +743,60 @@ def test_evaluator_workflow_routes_list_versions_and_associated_apps(
         unwrap(controller.EvaluationWorkflowAssociatedTargetsApi.get)(
             controller.EvaluationWorkflowAssociatedTargetsApi(), sqlite_session, UUID(workflow.id)
         )
+
+
+def test_available_evaluation_workflows_excludes_apps_without_run_permission(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    account = make_account()
+    apps: list[App] = []
+    workflows = []
+    for name in ("Allowed evaluator", "Denied evaluator"):
+        app_id = str(uuid4())
+        workflow_id = str(uuid4())
+        apps.append(make_app(app_id=app_id, name=name, mode=AppMode.WORKFLOW, workflow_id=workflow_id))
+        workflows.append(
+            make_workflow(
+                workflow_id=workflow_id,
+                app_id=app_id,
+                kind=WorkflowKind.EVALUATION,
+                version="1",
+                created_by=account.id,
+            )
+        )
+    sqlite_session.add_all([account, *apps, *workflows])
+    sqlite_session.commit()
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(
+        controller,
+        "WorkflowService",
+        partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+    monkeypatch.setattr(
+        "services.app.access.enterprise_rbac_service.RBACService.MyPermissions.get",
+        lambda *_args: MyPermissionsResponse.model_validate(
+            {
+                "app": {
+                    "overrides": [
+                        {"resource_id": apps[0].id, "permission_keys": ["app.acl.test_and_run"]},
+                        {"resource_id": apps[1].id, "permission_keys": ["app.acl.preview"]},
+                    ]
+                }
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "services.app.access.enterprise_rbac_service.RBACService.AppAccess.whitelist_resources",
+        lambda *_args: ResourceWhitelistResources(unrestricted=True),
+    )
+
+    with Flask(__name__).test_request_context("/?page=1&limit=1"):
+        listed = unwrap(controller.AvailableEvaluationWorkflowsApi.get)(
+            controller.AvailableEvaluationWorkflowsApi(), sqlite_session
+        )
+
+    assert [item["app_id"] for item in listed["items"]] == [apps[0].id]
+    assert listed["has_more"] is False

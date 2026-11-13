@@ -103,6 +103,7 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.app.access import AppRunAccessFilter
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
@@ -431,8 +432,14 @@ class WorkflowService:
         user_id: str | None = None,
         named_only: bool = False,
         keyword: str | None = None,
+        run_access: AppRunAccessFilter | None = None,
     ) -> tuple[Sequence[Workflow], bool]:
-        """List published evaluator workflows across tenant applications."""
+        """List tenant evaluators, filtering run access before offset and has-more calculation.
+
+        ``run_access=None`` preserves unrestricted internal callers. When a
+        caller supplies a scope, neither an inaccessible App nor its workflow
+        consumes a page slot or appears in the result.
+        """
         stmt = (
             select(Workflow)
             .join(
@@ -464,6 +471,16 @@ class WorkflowService:
                     App.name.ilike(pattern, escape="\\"),
                 )
             )
+
+        if run_access is not None:
+            if run_access.allowed_app_ids is None:
+                if run_access.denied_app_ids:
+                    stmt = stmt.where(
+                        or_(App.maintainer == run_access.account_id, App.id.not_in(run_access.denied_app_ids))
+                    )
+            else:
+                allowed_app_ids = run_access.allowed_app_ids - run_access.denied_app_ids
+                stmt = stmt.where(or_(App.maintainer == run_access.account_id, App.id.in_(allowed_app_ids)))
 
         workflows = session.scalars(
             stmt.order_by(Workflow.created_at.desc()).offset((page - 1) * limit).limit(limit + 1)

@@ -63,6 +63,8 @@ from models.model import App, AppMode, UploadFile
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from services.agent.evaluation_target_service import AgentEvaluationTargetService
+from services.app.access import can_run_app
+from services.errors.base import NoPermissionError
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -867,8 +869,14 @@ class EvaluationService:
         *,
         session: Session,
         tenant_id: str,
+        account_id: str,
         run_request: EvaluationRunRequest,
     ) -> EvaluationRunRequest:
+        """Pin an existing evaluator only when the caller may run its App.
+
+        A missing or invalid App fails before any run is created. Permission
+        denial leaves the request and persisted evaluation state unchanged.
+        """
         customized_metrics = run_request.customized_metrics
         if customized_metrics is None:
             return run_request
@@ -881,6 +889,11 @@ class EvaluationService:
         )
         if app is None:
             raise ValueError("Evaluation workflow app not found.")
+        cls._require_customized_evaluator_run_access(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            evaluator_app=app,
+        )
         workflow = WorkflowService().get_published_workflow(app_model=app, session=session)
         if (
             workflow is None
@@ -890,6 +903,21 @@ class EvaluationService:
             raise ValueError("The customized evaluator must be a published evaluation workflow.")
         pinned_metrics = customized_metrics.model_copy(update={"evaluation_workflow_version_id": workflow.id})
         return run_request.model_copy(update={"customized_metrics": pinned_metrics})
+
+    @staticmethod
+    def _require_customized_evaluator_run_access(*, tenant_id: str, account_id: str, evaluator_app: App) -> None:
+        """Require the caller's current run permission on a tenant-scoped evaluator App.
+
+        An allowed caller may proceed without changing state; a denied caller
+        receives a service permission error before task admission.
+        """
+        if not can_run_app(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            app_id=evaluator_app.id,
+            maintainer=evaluator_app.maintainer,
+        ):
+            raise NoPermissionError("You do not have permission to run this evaluation workflow.")
 
     @classmethod
     def _pin_target_workflow(
@@ -985,7 +1013,8 @@ class EvaluationService:
 
         Saves the effective parameters as the latest EvaluationConfiguration
         before creating the run. A file-only request reuses the latest saved
-        evaluation config, including its framework.
+        evaluation config, including its framework. A customized evaluator
+        must be runnable by the current caller before any run state is written.
         """
         resolved_run_request = cls.resolve_run_request_config(
             session=session,
@@ -1001,6 +1030,7 @@ class EvaluationService:
         pinned_run_request = cls._pin_customized_evaluator(
             session=session,
             tenant_id=tenant_id,
+            account_id=account_id,
             run_request=resolved_run_request,
         )
         target_agent_config_snapshot_id: str | None = None
@@ -1140,10 +1170,15 @@ class EvaluationService:
         target_type: str,
         target_id: str,
         run_id: str,
+        account_id: str,
         dataset_file_content: bytes,
         dataset_filename: str,
     ) -> EvaluationRun:
-        """Redispatch a failed run while retaining its immutable snapshot and row checkpoints."""
+        """Redispatch a failed run after rechecking the caller's evaluator App permission.
+
+        The immutable snapshot and row checkpoints are retained. Denial leaves
+        the failed run unchanged and does not enqueue another task.
+        """
         run = cls.get_evaluation_run_detail(session, tenant_id, target_type, target_id, run_id)
         if run.status != EvaluationRunStatus.FAILED:
             raise ValueError("Only failed evaluation runs can be retried.")
@@ -1153,6 +1188,21 @@ class EvaluationService:
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
         run_request = EvaluationRunRequest.model_validate(run_snapshot.model_dump(exclude={"dataset_input_types"}))
+        if customized_metrics := run_request.customized_metrics:
+            evaluator_app = session.scalar(
+                select(App).where(
+                    App.id == customized_metrics.evaluation_workflow_id,
+                    App.tenant_id == tenant_id,
+                    App.status == "normal",
+                )
+            )
+            if evaluator_app is None:
+                raise EvaluationNotFoundError("Evaluation workflow app not found.")
+            cls._require_customized_evaluator_run_access(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                evaluator_app=evaluator_app,
+            )
         pinned_workflow = cls._resolve_pinned_target_workflow_for_run(session=session, run=run)
         if run_snapshot.dataset_input_types:
             input_types = run_snapshot.dataset_input_types

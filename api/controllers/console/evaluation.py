@@ -56,6 +56,8 @@ from models.agent import Agent
 from models.evaluation import EvaluationConfiguration, EvaluationRun, EvaluationTargetType
 from models.model import AppMode
 from models.snippet import CustomizedSnippet
+from services.app.access import resolve_app_run_access_filter
+from services.errors.base import NoPermissionError
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -424,6 +426,7 @@ def _start_run(
     account_id: str,
     payload: EvaluationRunPayload,
 ) -> EvaluationRun:
+    """Admit a target run for the caller and map service denials to HTTP 403 without dispatching."""
     dataset_content, dataset_filename = _load_evaluation_dataset(
         session=session,
         tenant_id=tenant_id,
@@ -448,6 +451,8 @@ def _start_run(
         raise NotFound(exc.description) from exc
     except EvaluationMaxConcurrentRunsError as exc:
         raise TooManyRequests(exc.description) from exc
+    except NoPermissionError as exc:
+        raise Forbidden(str(exc)) from exc
     except ValueError as exc:
         raise BadRequest(str(exc)) from exc
 
@@ -525,7 +530,9 @@ def _retry_run(
     target_type: str,
     target_id: str,
     run_id: str,
+    account_id: str,
 ) -> dict[str, Any]:
+    """Retry a scoped run for the caller; permission denial leaves the failed run unchanged."""
     try:
         existing_run = EvaluationService.get_evaluation_run_detail(
             session,
@@ -547,6 +554,7 @@ def _retry_run(
             target_type=target_type,
             target_id=target_id,
             run_id=run_id,
+            account_id=account_id,
             dataset_file_content=dataset_content,
             dataset_filename=dataset_filename,
         )
@@ -558,6 +566,8 @@ def _retry_run(
         raise NotFound(exc.description) from exc
     except EvaluationMaxConcurrentRunsError as exc:
         raise TooManyRequests(exc.description) from exc
+    except NoPermissionError as exc:
+        raise Forbidden(str(exc)) from exc
     except ValueError as exc:
         raise BadRequest(str(exc)) from exc
     return dump_response(EvaluationRunResponse, run)
@@ -836,13 +846,15 @@ class EvaluationRunRetryApi(EvaluationEditionResource):
         target_type: str,
         run_id: UUID,
     ) -> dict[str, Any]:
-        _, tenant_id = current_account_with_tenant()
+        """Admit a retry using the current caller and target permissions."""
+        current_user, tenant_id = current_account_with_tenant()
         return _retry_run(
             session=session,
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target.id,
             run_id=str(run_id),
+            account_id=current_user.id,
         )
 
 
@@ -971,11 +983,13 @@ class AvailableEvaluationWorkflowsApi(EvaluationEditionResource):
     @edit_permission_required
     @with_session(write=False)
     def get(self, session: Session) -> dict[str, Any]:
+        """Return only evaluator Apps this caller may run, with filtered pagination."""
         current_user, tenant_id = current_account_with_tenant()
         query = AvailableEvaluationWorkflowQuery.model_validate(request.args.to_dict(flat=True))
         if query.user_id and query.user_id != current_user.id:
             raise Forbidden()
 
+        run_access = resolve_app_run_access_filter(tenant_id, current_user.id) if dify_config.RBAC_ENABLED else None
         workflows, has_more = WorkflowService().list_published_evaluation_workflows(
             session=session,
             tenant_id=tenant_id,
@@ -984,6 +998,7 @@ class AvailableEvaluationWorkflowsApi(EvaluationEditionResource):
             user_id=query.user_id,
             named_only=query.named_only,
             keyword=query.keyword,
+            run_access=run_access,
         )
         app_names = EvaluationService.get_workflow_app_names(
             session, tenant_id, {workflow.app_id for workflow in workflows}
@@ -1230,6 +1245,7 @@ class DatasetEvaluationRunRetryApi(EvaluationEditionResource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
     @with_session
     def post(self, session: Session, dataset_id: UUID, run_id: UUID) -> dict[str, Any]:
+        """Retry a scoped dataset evaluation using the current caller identity."""
         current_user, tenant_id = current_account_with_tenant()
         dataset = _get_accessible_dataset(session, dataset_id, current_user, tenant_id)
         return _retry_run(
@@ -1238,6 +1254,7 @@ class DatasetEvaluationRunRetryApi(EvaluationEditionResource):
             target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,
             target_id=dataset.id,
             run_id=str(run_id),
+            account_id=current_user.id,
         )
 
 

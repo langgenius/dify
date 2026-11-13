@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from configs import dify_config
+from core.rbac import RBACPermission, RBACResourceScope
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.app_entities import AppListBaseParams
 from services.rbac.contracts import MyPermissionsResponse, ResourceWhitelistResources
@@ -11,11 +13,42 @@ from services.rbac.contracts import MyPermissionsResponse, ResourceWhitelistReso
 # list/preview access to an app. Keep this the single source of truth for both
 # the console and OpenAPI app-list endpoints.
 APP_LIST_PERMISSION_KEYS: frozenset[str] = frozenset({"app.preview", "app.acl.preview", "app.full_access"})
+APP_RUN_PERMISSION_KEYS: frozenset[str] = frozenset({"app.acl.test_and_run", "app.full_access"})
 
 
 def has_app_list_permission(permission_keys: Sequence[str]) -> bool:
     """Return True if any of ``permission_keys`` grants app list/preview access."""
     return any(permission_key in APP_LIST_PERMISSION_KEYS for permission_key in permission_keys)
+
+
+def can_run_app(*, tenant_id: str, account_id: str, app_id: str, maintainer: str | None) -> bool:
+    """Check the evaluator App's run scene; a maintainer keeps the same exemption as console App routes.
+
+    The caller supplies a tenant-scoped App. A denial changes no state; an allowance
+    authorizes only this App, not an evaluation target or a future retry.
+    """
+    if not dify_config.RBAC_ENABLED or maintainer == account_id:
+        return True
+    return enterprise_rbac_service.RBACService.CheckAccess.check(
+        tenant_id,
+        account_id,
+        scene=RBACPermission.APP_TEST_AND_RUN,
+        resource_type=RBACResourceScope.APP,
+        resource_id=app_id,
+    )
+
+
+@dataclass(frozen=True)
+class AppRunAccessFilter:
+    """Evaluator Apps allowed by RBAC before pagination, with a maintainer exemption.
+
+    ``allowed_app_ids=None`` means all Apps except ``denied_app_ids``. A
+    concrete set means only those Apps. Maintained Apps are always included.
+    """
+
+    account_id: str
+    allowed_app_ids: set[str] | None
+    denied_app_ids: set[str]
 
 
 @dataclass(frozen=True)
@@ -96,3 +129,50 @@ def app_access_filter_from_permissions(
     accessible_app_ids = permission_app_ids if whitelist_scope.unrestricted else set(whitelist_scope.resource_ids)
 
     return AppAccessFilter(accessible_app_ids=accessible_app_ids)
+
+
+def resolve_app_run_access_filter(tenant_id: str, account_id: str) -> AppRunAccessFilter:
+    """Load the caller's App run grants and whitelist for one tenant.
+
+    The result is a query-ready scope. A failed RBAC lookup raises before the
+    list is queried, so no tenant-wide evaluator page is returned on failure.
+    """
+    permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+    whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(tenant_id, account_id)
+    return app_run_access_filter_from_permissions(account_id, permissions, whitelist_scope)
+
+
+def app_run_access_filter_from_permissions(
+    account_id: str, permissions: MyPermissionsResponse, whitelist_scope: ResourceWhitelistResources
+) -> AppRunAccessFilter:
+    """Resolve effective run grants, including per-App overrides and the whitelist.
+
+    A resource override replaces the default grant for that App. The whitelist
+    then limits non-maintainer Apps. Success returns a scope safe to apply
+    before pagination; no external state is changed.
+    """
+    default_can_run = any(
+        key in APP_RUN_PERMISSION_KEYS
+        for key in (*permissions.app.default_permission_keys, *permissions.workspace.permission_keys)
+    )
+    granted_overrides = {
+        override.resource_id
+        for override in permissions.app.overrides
+        if any(key in APP_RUN_PERMISSION_KEYS for key in override.permission_keys)
+    }
+    denied_overrides = {
+        override.resource_id
+        for override in permissions.app.overrides
+        if not any(key in APP_RUN_PERMISSION_KEYS for key in override.permission_keys)
+    }
+
+    if default_can_run and whitelist_scope.unrestricted:
+        return AppRunAccessFilter(account_id, allowed_app_ids=None, denied_app_ids=denied_overrides)
+
+    if default_can_run:
+        allowed_app_ids = set(whitelist_scope.resource_ids)
+    elif whitelist_scope.unrestricted:
+        allowed_app_ids = granted_overrides
+    else:
+        allowed_app_ids = granted_overrides.intersection(whitelist_scope.resource_ids)
+    return AppRunAccessFilter(account_id, allowed_app_ids=allowed_app_ids - denied_overrides, denied_app_ids=set())

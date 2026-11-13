@@ -2,11 +2,14 @@
 
 import io
 import json
+from collections.abc import Callable
+from functools import partial
 
 import pytest
 from openpyxl import load_workbook
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import (
@@ -25,6 +28,7 @@ from core.evaluation.entities.judgment_entity import JudgmentCondition, Judgment
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.rbac import RBACPermission, RBACResourceScope
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
@@ -50,6 +54,7 @@ from models.workflow import (
 )
 from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
+from services.errors.base import NoPermissionError
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
 from services.variable_truncator import VariableTruncator
@@ -94,6 +99,25 @@ def _persist_app(session: Session, app_id: str = "app-1", mode: AppMode = AppMod
     session.add(app)
     session.flush()
     return app
+
+
+def _persist_customized_evaluator(session: Session, *, maintainer: str | None = None) -> tuple[App, Workflow]:
+    """Persist an active, published evaluator App for run admission tests."""
+    app = make_app(
+        app_id="evaluator-app-1",
+        mode=AppMode.WORKFLOW,
+        workflow_id="evaluator-version-1",
+        maintainer=maintainer,
+    )
+    workflow = make_workflow(
+        workflow_id=app.workflow_id,
+        app_id=app.id,
+        kind=WorkflowKind.EVALUATION,
+        version="1",
+    )
+    session.add_all([app, workflow])
+    session.flush()
+    return app, workflow
 
 
 def _persist_dataset(session: Session, provider: str = "vendor") -> None:
@@ -1856,6 +1880,169 @@ def test_stage_target_cleanup_does_not_stop_tasks_after_rollback(
     assert stopped_workflow_tasks == []
 
 
+def test_file_only_run_denies_customized_evaluator_without_run_permission(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    evaluator_app, _ = _persist_customized_evaluator(sqlite_session)
+    metrics = CustomizedMetrics(
+        evaluation_workflow_id=evaluator_app.id,
+        input_fields={},
+        output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+    )
+    saved_config = EvaluationConfiguration(
+        tenant_id="tenant-1",
+        target_type=EvaluationTargetType.APPS,
+        target_id="target-app-1",
+        metrics_config=json.dumps({"default_metrics": [], "customized_metrics": metrics.model_dump()}),
+        created_by="config-author",
+        updated_by="config-author",
+    )
+    sqlite_session.add(saved_config)
+    sqlite_session.commit()
+    checked: list[tuple[str, str, str, str]] = []
+
+    def deny_run(
+        tenant_id: str,
+        account_id: str,
+        *,
+        scene: RBACPermission,
+        resource_type: RBACResourceScope,
+        resource_id: str,
+    ) -> bool:
+        checked.append((tenant_id, account_id, scene, resource_id))
+        assert resource_type == RBACResourceScope.APP
+        return False
+
+    monkeypatch.setattr("services.app.access.enterprise_rbac_service.RBACService.CheckAccess.check", deny_run)
+
+    with pytest.raises(NoPermissionError, match="permission to run"):
+        EvaluationService.start_evaluation_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="target-app-1",
+            account_id="caller-1",
+            dataset_file_content=b"index,query\n1,hello\n",
+            dataset_filename="dataset.csv",
+            run_request=EvaluationRunRequest(file_id="file-1"),
+        )
+
+    assert checked == [("tenant-1", "caller-1", RBACPermission.APP_TEST_AND_RUN, evaluator_app.id)]
+    assert sqlite_session.scalars(select(EvaluationRun)).all() == []
+    assert saved_config.updated_by == "config-author"
+
+
+@pytest.mark.parametrize(("rbac_enabled", "maintainer"), [(True, "caller-1"), (False, None)])
+def test_customized_evaluator_pin_allows_maintainer_or_disabled_rbac(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    rbac_enabled: bool,
+    maintainer: str | None,
+) -> None:
+    config_overrides(RBAC_ENABLED=rbac_enabled)
+    evaluator_app, workflow = _persist_customized_evaluator(sqlite_session, maintainer=maintainer)
+    monkeypatch.setattr(
+        "services.evaluation_service.WorkflowService",
+        partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+
+    def unexpected_check(*_args: object, **_kwargs: object) -> bool:
+        raise AssertionError("Unrestricted evaluator access must not call RBAC check-access")
+
+    monkeypatch.setattr("services.app.access.enterprise_rbac_service.RBACService.CheckAccess.check", unexpected_check)
+    request = EvaluationRunRequest(
+        file_id="file-1",
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id=evaluator_app.id,
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+    )
+
+    pinned = EvaluationService._pin_customized_evaluator(
+        session=sqlite_session, tenant_id="tenant-1", account_id="caller-1", run_request=request
+    )
+
+    assert pinned.customized_metrics is not None
+    assert pinned.customized_metrics.evaluation_workflow_version_id == workflow.id
+
+
+def test_retry_failed_run_rechecks_customized_evaluator_permission(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    evaluator_app, workflow = _persist_customized_evaluator(sqlite_session)
+    run_snapshot = EvaluationRunSnapshot(
+        file_id="file-1",
+        evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id=evaluator_app.id,
+            evaluation_workflow_version_id=workflow.id,
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        dataset_input_types={"query": "string"},
+    )
+    run = EvaluationRun(
+        tenant_id="tenant-1",
+        target_type=EvaluationTargetType.APPS,
+        target_id="target-app-1",
+        evaluation_config_id="config-1",
+        config_snapshot=run_snapshot.model_dump_json(),
+        status=EvaluationRunStatus.FAILED,
+        dataset_file_id="file-1",
+        total_items=1,
+        created_by="previous-caller",
+    )
+    sqlite_session.add_all([make_tenant(), run])
+    sqlite_session.commit()
+    dispatched: list[dict[str, object]] = []
+    monkeypatch.setattr("tasks.evaluation_task.run_evaluation.apply_async", lambda **kwargs: dispatched.append(kwargs))
+    monkeypatch.setattr(
+        "services.app.access.enterprise_rbac_service.RBACService.CheckAccess.check",
+        lambda *_args, **_kwargs: False,
+    )
+
+    with pytest.raises(NoPermissionError, match="permission to run"):
+        EvaluationService.retry_evaluation_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id=run.target_id,
+            run_id=run.id,
+            account_id="new-caller",
+            dataset_file_content=b"index,query\n1,hello\n",
+            dataset_filename="dataset.csv",
+        )
+
+    assert run.status == EvaluationRunStatus.FAILED
+    assert dispatched == []
+
+    monkeypatch.setattr(
+        "services.app.access.enterprise_rbac_service.RBACService.CheckAccess.check",
+        lambda *_args, **_kwargs: True,
+    )
+    retried = EvaluationService.retry_evaluation_run(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id=run.target_id,
+        run_id=run.id,
+        account_id="new-caller",
+        dataset_file_content=b"index,query\n1,hello\n",
+        dataset_filename="dataset.csv",
+    )
+
+    assert retried.status == EvaluationRunStatus.PENDING
+    assert len(dispatched) == 1
+
+
 def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
@@ -1911,6 +2098,7 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
         target_type="knowledge_base",
         target_id=run.target_id,
         run_id=run.id,
+        account_id=run.created_by,
         dataset_file_content=b"index,query\n1,first\n2,second\n",
         dataset_filename="dataset.csv",
     )
@@ -1942,6 +2130,7 @@ def test_retry_failed_run_redispatches_snapshot_and_keeps_checkpoints(
             target_type="knowledge_base",
             target_id=run.target_id,
             run_id=run.id,
+            account_id=run.created_by,
             dataset_file_content=b"index,query\n1,first\n2,second\n",
             dataset_filename="dataset.csv",
         )
@@ -2016,6 +2205,7 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
         target_type="agents",
         target_id=run.target_id,
         run_id=run.id,
+        account_id=run.created_by,
         dataset_file_content=b"index,query\n1,first\n",
         dataset_filename="dataset.csv",
     )

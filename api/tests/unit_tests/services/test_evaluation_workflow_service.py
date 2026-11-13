@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Callable
+from datetime import datetime
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from graphon.enums import BuiltinNodeTypes
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowType
+from services.app.access import AppRunAccessFilter
 from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamUnavailableError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
@@ -307,6 +309,73 @@ def test_list_evaluation_workflows_filters_owner_name_and_escaped_keyword(sqlite
     )
     assert [workflow.id for workflow in filtered] == [workflows[0].id]
     assert has_more is False
+
+
+def test_list_evaluation_workflows_filters_run_access_before_pagination(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    account_id = str(uuid4())
+    workflows_by_name: dict[str, Workflow] = {}
+    for order, (name, maintainer) in enumerate(
+        (("older-denied", None), ("maintained", account_id), ("allowed", None), ("newer-denied", None)),
+        start=1,
+    ):
+        app_id = str(uuid4())
+        workflow_id = str(uuid4())
+        app = make_app(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            mode=AppMode.WORKFLOW,
+            workflow_id=workflow_id,
+            maintainer=maintainer,
+        )
+        workflow = _workflow(
+            workflow_id=workflow_id,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            kind=WorkflowKind.EVALUATION,
+            version="1",
+        )
+        workflow.created_at = datetime(2026, 1, 1, 0, order)
+        sqlite_session.add_all([app, workflow])
+        workflows_by_name[name] = workflow
+    sqlite_session.commit()
+
+    service = WorkflowService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
+    run_access = AppRunAccessFilter(
+        account_id, allowed_app_ids={workflows_by_name["allowed"].app_id}, denied_app_ids=set()
+    )
+    first_page, first_has_more = service.list_published_evaluation_workflows(
+        session=sqlite_session, tenant_id=tenant_id, page=1, limit=1, run_access=run_access
+    )
+    second_page, second_has_more = service.list_published_evaluation_workflows(
+        session=sqlite_session, tenant_id=tenant_id, page=2, limit=1, run_access=run_access
+    )
+
+    assert [workflow.id for workflow in first_page] == [workflows_by_name["allowed"].id]
+    assert first_has_more is True
+    assert [workflow.id for workflow in second_page] == [workflows_by_name["maintained"].id]
+    assert second_has_more is False
+
+    maintained_only, has_more = service.list_published_evaluation_workflows(
+        session=sqlite_session,
+        tenant_id=tenant_id,
+        page=1,
+        limit=10,
+        run_access=AppRunAccessFilter(account_id, allowed_app_ids=set(), denied_app_ids=set()),
+    )
+    assert [workflow.id for workflow in maintained_only] == [workflows_by_name["maintained"].id]
+    assert has_more is False
+
+    default_access = AppRunAccessFilter(
+        account_id,
+        allowed_app_ids=None,
+        denied_app_ids={workflows_by_name["newer-denied"].app_id},
+    )
+    page, has_more = service.list_published_evaluation_workflows(
+        session=sqlite_session, tenant_id=tenant_id, page=1, limit=1, run_access=default_access
+    )
+    assert [workflow.id for workflow in page] == [workflows_by_name["allowed"].id]
+    assert has_more is True
 
 
 def test_convert_published_workflow_kind_updates_only_active_version(
