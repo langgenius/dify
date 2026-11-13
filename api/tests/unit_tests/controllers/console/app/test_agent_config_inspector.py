@@ -6,7 +6,6 @@ workflow-node agent binding, and service delegation for the new config surface.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -56,10 +55,6 @@ _MOD = "controllers.console.app.agent_config_inspector"
 app = Flask(__name__)
 
 
-def _raw(method: Callable[..., object]):  # pyrefly: ignore[unannotated-return]
-    return unwrap(method)
-
-
 _APP = App(
     id="app-1",
     tenant_id="tenant-1",
@@ -70,7 +65,6 @@ _APP = App(
     enable_api=True,
     max_active_requests=0,
 )
-_APP.bound_agent_id_with_session = lambda *, session: "agent-1"  # type: ignore[method-assign]
 _USER = Account(name="User", email="user@example.com")
 _USER.id = "acct-1"
 
@@ -88,8 +82,8 @@ def test_resolve_bound_agent_uses_injected_session(unbound_session: Session) -> 
         enable_api=True,
         max_active_requests=0,
     )
-    app_model.bound_agent_id_with_session = resolver  # type: ignore[method-assign]
-    result = inspector._resolve_agent_id(session, app_model, None)
+    with patch.object(App, "bound_agent_id_with_session", resolver):
+        result = inspector._resolve_agent_id(session, app_model, None)
 
     assert result == "agent-1"
     resolver.assert_called_once_with(session=session)
@@ -97,7 +91,7 @@ def test_resolve_bound_agent_uses_injected_session(unbound_session: Session) -> 
 
 
 def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigManifestByAgentApi.get)
+    raw = unwrap(AgentConfigManifestByAgentApi.get)
     with app.test_request_context("/?draft_type=debug_build"):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -108,9 +102,9 @@ def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session
             config_service.return_value.manifest.return_value = {
                 "agent_id": "agent-1",
                 "config_version": {"id": "build-draft-1", "kind": "build_draft", "writable": True},
-                "skills": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
-                "files": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
-                "env_keys": [],  # pyrefly: ignore[implicit-any-empty-container]
+                "skills": {"items": list[object]()},
+                "files": {"items": list[object]()},
+                "env_keys": list[object](),
                 "note": "",
             }
             body = raw(AgentConfigManifestByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1")
@@ -120,7 +114,7 @@ def test_manifest_by_agent_resolves_build_draft_version(unbound_session: Session
 
 
 def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigManifestApi.get)
+    raw = unwrap(AgentConfigManifestApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
@@ -128,9 +122,9 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session:
             config_service.return_value.manifest.return_value = {
                 "agent_id": "wf-agent-9",
                 "config_version": {"id": "draft-1", "kind": "draft", "writable": True},
-                "skills": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
-                "files": {"items": []},  # pyrefly: ignore[implicit-any-empty-container]
-                "env_keys": [],  # pyrefly: ignore[implicit-any-empty-container]
+                "skills": {"items": list[object]()},
+                "files": {"items": list[object]()},
+                "env_keys": list[object](),
                 "note": "",
             }
             body = raw(AgentConfigManifestApi(), unbound_session, _USER, _APP)
@@ -142,7 +136,11 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft(unbound_session:
 def test_normal_draft_read_resolution_does_not_commit(sqlite_session: Session) -> None:
     session = sqlite_session
     commits: list[str] = []
-    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
+
+    def record_commit(_session: Session) -> None:
+        commits.append("commit")
+
+    event.listen(session, "after_commit", record_commit)
     with patch(f"{_MOD}.AgentComposerService") as composer:
         composer.load_agent_composer.return_value = {"draft": {"id": "draft-1"}}
         version_id, version_kind = inspector._resolve_console_version(
@@ -196,7 +194,11 @@ def test_stale_inline_config_reads_use_effective_snapshot(unbound_session: Sessi
 
 def test_config_write_prepares_draft_before_independent_service_session(sqlite_session: Session) -> None:
     commits: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
+
+    def record_commit(_session: Session) -> None:
+        commits.append("commit")
+
+    event.listen(sqlite_session, "after_commit", record_commit)
     with app.test_request_context("/", method="POST"), patch(f"{_MOD}.AgentComposerService") as composer:
         composer.prepare_agent_composer_draft.return_value = SimpleNamespace(id="draft-1")
         target = inspector._resolve_target(
@@ -217,7 +219,7 @@ def test_config_write_prepares_draft_before_independent_service_session(sqlite_s
 
 
 def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillInspectByAgentApi.get)
+    raw = unwrap(AgentConfigSkillInspectByAgentApi.get)
     with app.test_request_context("/"):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -243,7 +245,7 @@ def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Se
                     "binary": False,
                     "text": "# PDF Toolkit\nUse it.\n",
                 },
-                "warnings": [],  # pyrefly: ignore[implicit-any-empty-container]
+                "warnings": list[object](),
             }
             response = raw(
                 AgentConfigSkillInspectByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1", "pdf-toolkit"
@@ -254,7 +256,7 @@ def test_skill_inspect_by_agent_returns_strict_json_response(unbound_session: Se
 
 
 def test_file_preview_api_passes_through_and_maps_errors(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigFilePreviewApi.get)
+    raw = unwrap(AgentConfigFilePreviewApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
@@ -283,7 +285,7 @@ def test_file_preview_api_passes_through_and_maps_errors(unbound_session: Sessio
 
 
 def test_skill_upload_by_agent_delegates_after_version_resolution(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillUploadByAgentApi.post)
+    raw = unwrap(AgentConfigSkillUploadByAgentApi.post)
     with app.test_request_context("/?draft_type=debug_build"):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -308,7 +310,7 @@ def test_skill_upload_by_agent_delegates_after_version_resolution(unbound_sessio
 
 
 def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigFilesByAgentApi.post)
+    raw = unwrap(AgentConfigFilesByAgentApi.post)
     with app.test_request_context("/?draft_type=debug_build", json={"upload_file_id": "upload-1"}):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -338,7 +340,7 @@ def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup(unbound_s
 
 
 def test_skill_list_api_uses_config_list_shape(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillsApi.get)
+    raw = unwrap(AgentConfigSkillsApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
@@ -355,7 +357,7 @@ def test_skill_list_api_uses_config_list_shape(unbound_session: Session) -> None
 
 
 def test_file_list_api_uses_config_list_shape(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigFilesApi.get)
+    raw = unwrap(AgentConfigFilesApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
@@ -393,7 +395,7 @@ def test_file_list_api_uses_config_list_shape(unbound_session: Session) -> None:
 
 
 def test_skill_file_preview_by_agent_reads_path_query(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillFilePreviewByAgentApi.get)
+    raw = unwrap(AgentConfigSkillFilePreviewByAgentApi.get)
     with app.test_request_context("/?draft_type=debug_build&path=references/guide.md"):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -414,7 +416,7 @@ def test_skill_file_preview_by_agent_reads_path_query(unbound_session: Session) 
 
 
 def test_skill_file_download_by_agent_returns_proxy_url(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillFileDownloadByAgentApi.get)
+    raw = unwrap(AgentConfigSkillFileDownloadByAgentApi.get)
     with app.test_request_context("/?draft_type=debug_build&path=references/guide.md"):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -437,7 +439,7 @@ def test_skill_file_download_by_agent_returns_proxy_url(unbound_session: Session
 
 
 def test_skill_file_download_by_agent_validates_member_path(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillFileDownloadByAgentApi.get)
+    raw = unwrap(AgentConfigSkillFileDownloadByAgentApi.get)
     with app.test_request_context("/?draft_type=debug_build&path=references/missing.md"):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
@@ -458,7 +460,7 @@ def test_skill_file_download_by_agent_validates_member_path(unbound_session: Ses
 
 
 def test_skill_file_download_api_forwards_workflow_node_and_draft_type(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillFileDownloadApi.get)
+    raw = unwrap(AgentConfigSkillFileDownloadApi.get)
     with app.test_request_context("/?node_id=node-1&draft_type=debug_build&path=references/guide.md"):
         with (
             patch(f"{_MOD}.AgentComposerService") as composer,
@@ -487,7 +489,7 @@ def test_skill_file_download_api_forwards_workflow_node_and_draft_type(unbound_s
 
 
 def test_skill_file_download_api_propagates_member_lookup_404s(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigSkillFileDownloadApi.get)
+    raw = unwrap(AgentConfigSkillFileDownloadApi.get)
     with app.test_request_context("/?node_id=node-1&path=references/missing.md"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
@@ -503,7 +505,7 @@ def test_skill_file_download_api_propagates_member_lookup_404s(unbound_session: 
 
 
 def test_file_download_api_returns_signed_url_json(unbound_session: Session) -> None:
-    raw = _raw(AgentConfigFileDownloadApi.get)
+    raw = unwrap(AgentConfigFileDownloadApi.get)
     with app.test_request_context("/?node_id=node-1"):
         with patch(f"{_MOD}.AgentComposerService") as composer, patch(f"{_MOD}.AgentConfigService") as config_service:
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
@@ -604,10 +606,10 @@ def test_batch_file_upload_routes_bind_and_serialize_real_workspace_files(
     with app.test_request_context(query, method="POST"):
         if workflow_node:
             endpoint = inspector.AgentConfigFilesUploadApi()
-            body, status = _raw(endpoint.post)(endpoint, payload, sqlite_session, user, app_model)
+            body, status = unwrap(endpoint.post)(endpoint, payload, sqlite_session, user, app_model)
         else:
             endpoint = inspector.AgentConfigFilesUploadByAgentApi()
-            body, status = _raw(endpoint.post)(endpoint, payload, sqlite_session, tenant_id, user, UUID(agent_id))
+            body, status = unwrap(endpoint.post)(endpoint, payload, sqlite_session, tenant_id, user, UUID(agent_id))
 
     assert status == 201
     assert body["files"] == [
