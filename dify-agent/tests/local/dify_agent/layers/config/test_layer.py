@@ -1,17 +1,21 @@
-"""Config pre-pulls run inside Shell and persist only completed initialization."""
+"""Eager config pre-pulls persist state; conditional skill tools return full content or error observations."""
 
 import json
 
 import httpx
 import pytest
-from pydantic_ai.messages import RetryPromptPart, ToolReturnPart
+from pydantic import ValidationError
+from pydantic_ai import RunContext
+from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.models.function import DeltaToolCall
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.usage import RunUsage
 
-from dify_agent.adapters.shell.protocols import CompleteShellCommandResult
+from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellProviderError
 from dify_agent.layers.config import layer as config_module
 from dify_agent.layers.shell.layer import ShellSession
-from dify_agent.protocol.schemas import RunLayerSpec
-from dify_agent.runtime.context import Services
+from dify_agent.protocol.schemas import RunLayerSpec, RunSucceededEvent
+from dify_agent.runtime.context import Deps, Services
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from tests.local.dify_agent.runtime.test_runner import Backend, Commands, request, run_runner, runtime_specs
 
@@ -113,7 +117,10 @@ async def _run_skill_reads(monkeypatch, pulls, calls, *skills):
     async def pull(session, script, **kwargs):
         assert kwargs["inject_agent_stub_env"] is True
         scripts.append(script)
-        return pulls.pop(0)
+        result = pulls.pop(0)
+        if isinstance(result, RuntimeError):
+            raise result
+        return result
 
     monkeypatch.setattr(ShellSession, "run_remote_script", pull)
     observed = []
@@ -129,21 +136,32 @@ async def _run_skill_reads(monkeypatch, pulls, calls, *skills):
 
     async with httpx.AsyncClient() as client:
         services = Services(client, client, runtime_backend_profile=RuntimeBackendProfile(None, backend))
-        runner, _ = run_runner(request(_skill_spec(*skills), *runtime_specs()), services, monkeypatch, stream)
+        runner, sink = run_runner(request(_skill_spec(*skills), *runtime_specs()), services, monkeypatch, stream)
         await runner.run()
+        terminal = sink.events["test"][-1]
+        assert isinstance(terminal, RunSucceededEvent) and terminal.data.output == "done"
+        assert terminal.data.session_snapshot.layers["config"] == {
+            "initialized": True,
+            "pulled_skill_outputs": {},
+            "pulled_file_outputs": {},
+        }
+        assert not pulls
     return scripts, observed
 
 
 @pytest.mark.anyio
-async def test_read_config_skill_md_returns_middle_of_large_skill_after_correcting_name(monkeypatch):
+async def test_read_config_skill_md_returns_full_large_skill_after_consecutive_unknown_names(monkeypatch):
     decisive = "VERIFY THE IMPORT ROW COUNT BEFORE COMMITTING"
     skill_md = "# Alpha\n" + "A" * 5600 + decisive + "B" * 5600
     payload = json.dumps({"items": [{"name": "alpha", "directory_path": "/skills/alpha", "skill_md": skill_md}]})
 
-    scripts, observed = await _run_skill_reads(monkeypatch, [_pull_result(payload)], ["other", "alpha"], "alpha")
+    scripts, observed = await _run_skill_reads(
+        monkeypatch, [_pull_result(payload)], ["other", "missing", "alpha"], "alpha"
+    )
 
-    assert isinstance(observed[0], RetryPromptPart) and "unknown config skill" in str(observed[0].content)
-    assert isinstance(observed[1], ToolReturnPart) and observed[1].content == skill_md
+    assert all(isinstance(part, ToolReturnPart) for part in observed)
+    assert [part.content for part in observed[:2]] == ["unknown config skill: other", "unknown config skill: missing"]
+    assert observed[2].content == skill_md
     assert scripts == ["set -eu\ndify-agent config skills pull --json alpha"]
 
 
@@ -155,15 +173,69 @@ async def test_read_config_skill_md_returns_middle_of_large_skill_after_correcti
         (_pull_result("partial", complete=False), "output was incomplete"),
         (_pull_result("invalid json"), "invalid JSON pull output"),
         (_pull_result('{"items": []}'), "missing skill content"),
+        (ShellProviderError("shell provider unavailable"), "shell provider unavailable"),
+        (RuntimeError("missing active Runtime lease"), "missing active Runtime lease"),
+        (RuntimeError("agent stub env unavailable"), "agent stub env unavailable"),
     ],
 )
-async def test_read_config_skill_md_returns_pull_errors_to_model_for_retry(monkeypatch, failed_pull, expected_error):
+async def test_read_config_skill_md_recovers_after_unknown_name_and_consecutive_pull_errors(
+    monkeypatch, failed_pull, expected_error
+):
     payload = json.dumps({"items": [{"name": "alpha", "skill_md": "é"}]})
 
-    _, observed = await _run_skill_reads(monkeypatch, [failed_pull, _pull_result(payload)], ["alpha", "alpha"], "alpha")
+    _, observed = await _run_skill_reads(
+        monkeypatch,
+        [failed_pull, failed_pull, _pull_result(payload)],
+        ["other", "alpha", "alpha", "alpha"],
+        "alpha",
+    )
 
-    assert isinstance(observed[0], RetryPromptPart) and expected_error in str(observed[0].content)
-    assert isinstance(observed[1], ToolReturnPart) and observed[1].content == "é"
+    assert all(isinstance(part, ToolReturnPart) for part in observed)
+    assert observed[0].content == "unknown config skill: other"
+    assert all(expected_error in part.content for part in observed[1:3])
+    assert observed[3].content == "é"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("field", "payload", "expected_error"),
+    [
+        ("config", {"skills": "invalid"}, "skills"),
+        ("state", {"pulled_skill_outputs": "invalid"}, "pulled_skill_outputs"),
+    ],
+)
+async def test_read_config_skill_md_does_not_mask_invalid_layer_data(field, payload, expected_error):
+    async with httpx.AsyncClient() as client:
+        deps = Deps(
+            layers={"config": {"config": _skill_spec("alpha").config, "state": {}}},
+            services=Services(client, client),
+            run_id="test",
+        )
+        deps.resources.shells["shell"] = ShellSession("shell", deps)
+        ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
+        toolset = config_module.Capability("config").get_toolset()
+        tools = await toolset.get_tools(ctx)
+        # Isolate dispatch validation from the prepare hook's own config validation.
+        deps.layers["config"][field] = payload
+
+        with pytest.raises(ValidationError, match=expected_error):
+            await toolset.call_tool("read_config_skill_md", {"name": "alpha"}, ctx, tools["read_config_skill_md"])
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("skills", [(), ("alpha",)])
+async def test_read_config_skill_md_prepare_only_requires_config(skills):
+    async with httpx.AsyncClient() as client:
+        deps = Deps(
+            layers={"config": {"config": _skill_spec(*skills).config, "state": {"pulled_skill_outputs": "invalid"}}},
+            services=Services(client, client),
+            run_id="test",
+        )
+        ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
+
+        tools = await config_module.Capability("config").get_toolset().get_tools(ctx)
+
+    assert ("read_config_skill_md" in tools) is bool(skills)
 
 
 @pytest.mark.anyio

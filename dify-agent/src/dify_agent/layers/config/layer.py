@@ -1,7 +1,9 @@
 """Shell-backed config pulls with instructions derived from current Config.
 
-Only pull results and successful initialization persist. The manifest and CLI
-help are rendered from current configuration and the installed CLI reference.
+Eager mentioned pulls persist outputs and successful initialization, and fail
+fast on errors. Conditional on-demand skill pulls return full content or error
+observations without writing to State. The manifest and CLI help are rendered
+from current configuration and the installed CLI reference.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from dataclasses import dataclass
 from typing import override
 
 
-from pydantic_ai import ModelRetry, RunContext
+from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.run import AgentRunResult
@@ -73,7 +75,7 @@ _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names"
 
 
 class DifyConfigLayerError(RuntimeError):
-    """Raised when one eager-pull config operation fails."""
+    """Raised for failed config pulls or invalid or incomplete pull output."""
 
 
 class Config(DifyConfigLayerConfig):
@@ -85,7 +87,7 @@ class State(DifyConfigRuntimeState):
 
 
 class Capability(AbstractCapability[Deps]):
-    """First-run eager pulls with explicit JSON writeback and native ordering."""
+    """Own eager mentioned pulls, conditional skill tools and current-config instructions."""
 
     def __init__(self, name: str):
         self.id = name
@@ -108,16 +110,20 @@ class Capability(AbstractCapability[Deps]):
         toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
         async def hide_without_skills(ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
-            return tool_def if self._context(ctx.deps).config.skills else None
+            return tool_def if Config.model_validate(ctx.deps.layers[self.name]["config"]).skills else None
 
         @toolset.tool(name="read_config_skill_md", prepare=hide_without_skills)
         async def read_config_skill_md(ctx: RunContext[Deps], name: str) -> str:
-            """Return the full SKILL.md of one configured skill."""
+            """Pull a configured skill into ./.dify_conf/skills/<name> and return its full SKILL.md.
+
+            Bundled files are extracted alongside SKILL.md without persisting outputs to runtime State.
+            """
+            # Validate config/state before returning pull errors as observations; eager pulls still fail fast.
+            context = self._context(ctx.deps)
             try:
-                return await self._context(ctx.deps).read_skill_md(name)
-            except (RuntimeError, ValueError) as exc:
-                # Tool callers can correct input or retry a pull; eager pulls in wrap_run still fail fast.
-                raise ModelRetry(str(exc)) from exc
+                return await context.read_skill_md(name)
+            except RuntimeError as exc:
+                return str(exc)
 
         return toolset
 
@@ -141,7 +147,7 @@ class Capability(AbstractCapability[Deps]):
 
 @dataclass
 class _ConfigContext:
-    """Short-lived validated data for prompt rendering or an eager-pull operation."""
+    """Validated prompt and pull data; only eager mentioned pulls mutate runtime State."""
 
     config: Config
     runtime_state: State
@@ -222,47 +228,52 @@ class _ConfigContext:
             return
 
         if names := self.config.mentioned_skill_names:
-            output = await self._run_mentioned_pull(
+            output = await self._run_pull(
                 script=self._build_shell_skill_pull_script(names),
                 target_kind="skill",
             )
             self.runtime_state.pulled_skill_outputs = _parse_skill_pull_outputs(output, names)
 
         if names := self.config.mentioned_file_names:
-            output = await self._run_mentioned_pull(
+            output = await self._run_pull(
                 script=self._build_shell_file_pull_script(names),
                 target_kind="file",
             )
             self.runtime_state.pulled_file_outputs = _parse_file_pull_outputs(output, names)
 
     async def read_skill_md(self, name: str) -> str:
+        """Extract a configured skill, including bundled files, into ./.dify_conf/skills/<name>.
+
+        Return its full SKILL.md or an unknown-name error without mutating runtime State.
+        Pull execution and invalid or incomplete output raise RuntimeError.
+        """
         if name not in {skill.name for skill in self.config.skills}:
-            raise ValueError(f"unknown config skill: {name}")
-        output = await self._run_mentioned_pull(script=self._build_shell_skill_pull_script([name]), target_kind="skill")
+            return f"unknown config skill: {name}"
+        output = await self._run_pull(script=self._build_shell_skill_pull_script([name]), target_kind="skill")
         item = _parse_pull_items(output, target_kind="skill").get(name)
         skill_md = item.get("skill_md") if item is not None else None
         if not isinstance(skill_md, str):
             raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
         return skill_md
 
-    async def _run_mentioned_pull(self, *, script: str, target_kind: str) -> str:
+    async def _run_pull(self, *, script: str, target_kind: str) -> str:
         result = await self.shell.run_remote_script(
             script,
             inject_agent_stub_env=True,
         )
         if result.exit_code != 0:
             raise DifyConfigLayerError(
-                f"config mentioned {target_kind} pull failed in shell: "
+                f"config {target_kind} pull failed in shell: "
                 f"{result.status} exit_code={result.exit_code}\n{result.output}"
             )
         if not result.output_complete:
             reason = result.incomplete_reason or "unknown"
             raise DifyConfigLayerError(
-                f"config mentioned {target_kind} pull output was incomplete before the payload finished: {reason}"
+                f"config {target_kind} pull output was incomplete before the payload finished: {reason}"
             )
         output = result.output.strip()
         if not output:
-            raise DifyConfigLayerError(f"missing pull output for mentioned config {target_kind}s")
+            raise DifyConfigLayerError(f"missing pull output for config {target_kind}s")
         return output
 
     def _build_shell_skill_pull_script(self, names: list[str]) -> str:
@@ -309,21 +320,21 @@ def _parse_pull_items(output: str, *, target_kind: str) -> dict[str, dict[str, o
     try:
         payload: object = json.loads(output)
     except json.JSONDecodeError as exc:
-        raise DifyConfigLayerError(f"invalid JSON pull output for mentioned config {target_kind}s") from exc
+        raise DifyConfigLayerError(f"invalid JSON pull output for config {target_kind}s") from exc
     if not isinstance(payload, dict):
-        raise DifyConfigLayerError(f"invalid pull output for mentioned config {target_kind}s")
+        raise DifyConfigLayerError(f"invalid pull output for config {target_kind}s")
     raw_items = payload.get("items")
     if not isinstance(raw_items, list):
-        raise DifyConfigLayerError(f"missing items in pull output for mentioned config {target_kind}s")
+        raise DifyConfigLayerError(f"missing items in pull output for config {target_kind}s")
 
     items: dict[str, dict[str, object]] = {}
     for raw_item in raw_items:
         if not isinstance(raw_item, dict):
-            raise DifyConfigLayerError(f"invalid item in pull output for mentioned config {target_kind}s")
+            raise DifyConfigLayerError(f"invalid item in pull output for config {target_kind}s")
         item = {str(key): value for key, value in raw_item.items()}
         name = item.get("name")
         if not isinstance(name, str) or not name:
-            raise DifyConfigLayerError(f"missing item name in pull output for mentioned config {target_kind}s")
+            raise DifyConfigLayerError(f"missing item name in pull output for config {target_kind}s")
         items[name] = item
     return items
 
