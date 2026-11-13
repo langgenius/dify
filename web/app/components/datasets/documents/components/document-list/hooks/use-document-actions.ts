@@ -98,6 +98,8 @@ export const useDocumentActions = ({
           toast.error(
             getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
           )
+          // The deletion confirmation closes only when its action succeeds.
+          if (actionName === DocumentActionType.delete) throw e
         }
       }
     },
