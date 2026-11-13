@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
@@ -40,13 +41,13 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.app.response import app_detail_response
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
-    enterprise_license_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -78,6 +79,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, IconType
@@ -101,9 +103,11 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
+from services.app.agent_app_contracts import AgentAppDetail, AgentAppNameConflictError, AgentAppNotFoundError
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
+from services.entities.app_entities import UpdateAppParams
 from services.feature_service import FeatureService
 from services.rbac import contracts as rbac_contracts
 from services.system_feature_service import SystemFeatureService
@@ -449,6 +453,23 @@ def _serialize_agent_app_detail(
     return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
 
+def _agent_app_detail_response(detail: AgentAppDetail) -> dict[str, object]:
+    """Render detached App and Agent details using the existing Console response schema."""
+    payload = app_detail_response(detail.app).model_dump(mode="json")
+    payload.update(
+        id=detail.agent_id,
+        app_id=detail.app_id,
+        backing_app_id=detail.backing_app_id,
+        hidden_app_backed=detail.hidden_app_backed,
+        debug_conversation_id=detail.debug_conversation_id,
+        debug_conversation_has_messages=detail.debug_conversation_message_count > 0,
+        debug_conversation_message_count=detail.debug_conversation_message_count,
+        role=detail.role,
+        access_ready=detail.access_ready,
+    )
+    return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
+
+
 def _serialize_agent_app_pagination(
     session: Session,
     app_pagination,
@@ -682,69 +703,70 @@ class AgentAppListApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>")
 class AgentAppApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @enterprise_license_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
+    @console_ns.response(HTTPStatus.OK, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
+    @console_account_admission(
+        require_valid_enterprise_license=True,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's detail and its Build conversation."""
+        try:
+            detail = application_services().agent_apps.detail.get(request_context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return _agent_app_detail_response(detail)
 
     @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
-    @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.OK, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__]
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_EDIT, AgentId())],
+    )
     @model_validate(AgentAppUpdatePayload)
     def put(
         self,
         req_data: AgentAppUpdatePayload,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         agent_id: UUID,
-    ):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        args_dict: AppService.ArgsDict = {
-            "name": req_data.name,
-            "description": req_data.description or "",
-            "icon_type": req_data.icon_type,
-            "icon": req_data.icon or "",
-            "icon_background": req_data.icon_background or "",
-            "use_icon_as_answer_icon": req_data.use_icon_as_answer_icon or False,
-            "max_active_requests": req_data.max_active_requests or 0,
-            "role": req_data.role,
-        }
-        updated = AppService().update_app(app_model, args_dict, session=session)
-        return _serialize_agent_app_detail(session, updated, current_user=current_user)
+    ) -> dict[str, object]:
+        """Update a roster Agent App and return its current detail."""
+        params = UpdateAppParams(
+            name=req_data.name,
+            description=req_data.description or "",
+            icon_type=req_data.icon_type,
+            icon=req_data.icon or "",
+            icon_background=req_data.icon_background or "",
+            use_icon_as_answer_icon=req_data.use_icon_as_answer_icon or False,
+            max_active_requests=req_data.max_active_requests or 0,
+            role=req_data.role,
+        )
+        try:
+            detail = application_services().agent_apps.detail.update(request_context, str(agent_id), params)
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentAppNameConflictError as exc:
+            raise AgentNameConflictError from exc
+        return _agent_app_detail_response(detail)
 
     @error_responses(AgentNotFoundError)
-    @console_ns.response(204, "Agent app deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_DELETE, AgentId()))
-    @with_current_tenant_id
-    @with_session
-    def delete(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model, session=session)
-        return "", 204
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent app deleted successfully")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_DELETE, AgentId())],
+    )
+    def delete(self, request_context: RequestContext, agent_id: UUID) -> tuple[str, int]:
+        """Delete an Agent App and schedule its resource cleanup."""
+        try:
+            application_services().agent_apps.lifecycle.delete(request_context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
