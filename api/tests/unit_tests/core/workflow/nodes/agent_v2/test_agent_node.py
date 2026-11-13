@@ -1274,7 +1274,9 @@ def test_agent_node_projects_tool_activity_into_agent_log_events():
         StreamChunkEvent(selector=["agent-node", "text"], chunk="hello agent", is_final=False),
         StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
     ]
-    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
 
@@ -1335,7 +1337,9 @@ def test_agent_node_structured_run_suppresses_tool_activity_and_stream_chunks():
 
     assert not any(isinstance(event, AgentLogEvent) for event in events)
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
-    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
@@ -1353,7 +1357,9 @@ def test_agent_node_default_value_strategy_suppresses_tool_activity_and_stream_c
 
     assert not any(isinstance(event, AgentLogEvent) for event in events)
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
-    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
 
@@ -1380,7 +1386,9 @@ def test_agent_node_output_routes_suppress_tool_activity_and_stream_chunks():
 
     assert not any(isinstance(event, AgentLogEvent) for event in events)
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
-    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    completed = events[-1]
+    assert isinstance(completed, StreamCompletedEvent)
+    result = completed.node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.edge_source_handle == "route-1"
     assert result.outputs == {"text": "hello agent", "switch": "route-1"}
