@@ -11,9 +11,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
-
 from clients.agent_backend import AgentBackendStreamInternalEvent
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 _TOOL_FIELD_LIMIT = 16 * 1024
 
@@ -22,7 +21,9 @@ _UNFINISHED_TOOL_ERROR = "Tool call did not return a result."
 ActivityStatus = Literal["started", "running", "succeeded", "failed", "cancelled"]
 FinishStatus = Literal["succeeded", "failed", "cancelled"]
 
-_EARLY_TOOL_NAMES = frozenset({"shell_run", "shell_wait", "shell_input", "shell_interrupt"})
+_EARLY_TOOL_NAMES = frozenset(
+    {"shell_run", "shell_wait", "shell_input", "shell_interrupt"}
+)
 
 
 class WorkflowAgentToolActivityData(BaseModel):
@@ -101,7 +102,9 @@ def _bounded_text(value: JsonValue | None) -> str:
     return serialized[:_TOOL_FIELD_LIMIT]
 
 
-def _first_stream_part(candidates: list[Mapping[str, JsonValue]]) -> _ToolStreamPart | None:
+def _first_stream_part(
+    candidates: list[Mapping[str, JsonValue]],
+) -> _ToolStreamPart | None:
     """Return the first candidate mapping that validates as a tool stream part."""
     for candidate in candidates:
         try:
@@ -124,21 +127,31 @@ class WorkflowAgentToolActivityProjector:
     terminal calls are never regressed.
     """
 
-    def __init__(self, *, node_id: str, node_execution_id: str, node_title: str) -> None:
+    def __init__(
+        self, *, node_id: str, node_execution_id: str, node_title: str
+    ) -> None:
         self._node_id = node_id
         self._node_execution_id = node_execution_id
         self._node_title = node_title
         self._calls: dict[tuple[str, str], _ToolCallState] = {}
 
-    def handle(self, event: AgentBackendStreamInternalEvent) -> list[WorkflowAgentToolActivity]:
+    def handle(
+        self, event: AgentBackendStreamInternalEvent
+    ) -> list[WorkflowAgentToolActivity]:
         """Return activity snapshots produced by one stream event.
 
         Unrelated kinds, malformed payloads, missing ids, and duplicate
         terminal transitions return an empty list.
         """
-        if event.event_kind not in {"function_tool_call", "function_tool_result", "part_start"}:
+        if event.event_kind not in {
+            "function_tool_call",
+            "function_tool_result",
+            "part_start",
+        }:
             return []
-        part = self._stream_part(event.data, result_event=event.event_kind == "function_tool_result")
+        part = self._stream_part(
+            event.data, result_event=event.event_kind == "function_tool_result"
+        )
         if part is None:
             return []
         if event.event_kind == "function_tool_call" and part.part_kind == "tool-call":
@@ -202,7 +215,9 @@ class WorkflowAgentToolActivityProjector:
             parsed.part_kind = "tool-return"
         return parsed
 
-    def _start_call(self, run_id: str, part: _ToolStreamPart) -> list[WorkflowAgentToolActivity]:
+    def _start_call(
+        self, run_id: str, part: _ToolStreamPart
+    ) -> list[WorkflowAgentToolActivity]:
         """Emit an early ``started`` preview for known shell tool calls only.
 
         Part starts fire for every tool (including structured-output
@@ -225,7 +240,9 @@ class WorkflowAgentToolActivityProjector:
         self._calls[key] = state
         return [self._snapshot(run_id, state)]
 
-    def _run_call(self, run_id: str, part: _ToolStreamPart) -> list[WorkflowAgentToolActivity]:
+    def _run_call(
+        self, run_id: str, part: _ToolStreamPart
+    ) -> list[WorkflowAgentToolActivity]:
         """Mark a tool call ``running`` with its complete arguments.
 
         A ``started`` preview is promoted and its partial arguments replaced;
@@ -316,7 +333,9 @@ class WorkflowAgentToolActivityProjector:
                 state.error = None
         return [self._snapshot(run_id, state)]
 
-    def _snapshot(self, run_id: str, state: _ToolCallState) -> WorkflowAgentToolActivity:
+    def _snapshot(
+        self, run_id: str, state: _ToolCallState
+    ) -> WorkflowAgentToolActivity:
         return WorkflowAgentToolActivity(
             id=f"{run_id}:{state.tool_call_id}",
             node_id=self._node_id,
