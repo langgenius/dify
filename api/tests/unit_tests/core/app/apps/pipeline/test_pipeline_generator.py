@@ -21,6 +21,7 @@ from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.entities.feature_entities import FeatureModel
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
@@ -326,14 +327,10 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
 def test_generate_published_pipeline_validates_inputs_before_creating_documents(
     generator, mocker: MockerFixture, sqlite_session: Session
 ):
+    """Given a persisted pipeline, rejected inputs leave no pending document rows."""
     pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
 
     mocker.patch.object(generator, "_format_datasource_info_list", return_value=[{"name": "file1"}])
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
-    )
     mocker.patch.object(
         generator,
         "_prepare_user_inputs",
@@ -359,17 +356,13 @@ def test_generate_published_pipeline_validates_inputs_before_creating_documents(
 
 
 def test_generate_published_pipeline_prepares_inputs_once(generator, mocker: MockerFixture, sqlite_session: Session):
+    """Given two datasource items, prepare inputs once and pass the result to both runs."""
     pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
 
     mocker.patch.object(generator, "_format_datasource_info_list", return_value=[{"name": "file1"}, {"name": "file2"}])
-    mocker.patch.object(
-        module.PipelineConfigManager,
-        "get_pipeline_config",
-        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
-    )
     prepare_inputs = mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
     mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
-    mocker.patch("services.feature_service.FeatureService.get_features", return_value=SimpleNamespace())
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=FeatureModel())
     mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
     mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_execution_repository")
     mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_node_execution_repository")
