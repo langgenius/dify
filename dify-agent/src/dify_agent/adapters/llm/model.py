@@ -133,7 +133,10 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
     @property
     def accumulated_usage(self) -> LLMUsage | None:
-        """Return complete Dify usage accumulated across successful model requests."""
+        """Return complete Dify usage reported by the gateway across this run's requests.
+
+        Includes usage received before cancellation, failure, or early exit.
+        """
         return self._accumulated_usage
 
     @override
@@ -149,15 +152,12 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             model_request_parameters,
             stream=False,
         )
-        # The tokens were already spent once the stream produced its usage chunk, so count them
-        # even when the run is cancelled or the stream aborts before it ends.
         try:
             async for _event in response:
                 pass
         finally:
             self._record_usage(response.dify_usage)
-        model_response = response.get()
-        return model_response
+        return response.get()
 
     @asynccontextmanager
     @override
@@ -178,11 +178,13 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         try:
             yield response
         finally:
-            # Stopping or failing a run does not refund the tokens the provider already reported.
             self._record_usage(response.dify_usage)
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
-        """Add one completed Dify request to this run's usage total."""
+        """Add one request's gateway-reported complete Dify usage to this run's total.
+
+        Includes usage received before cancellation, failure, or early exit; missing usage is a no-op.
+        """
         if usage is None:
             return
         if self._accumulated_usage is None:

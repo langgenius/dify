@@ -1,7 +1,6 @@
 import asyncio
 import json
 import unittest
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import cast
@@ -538,11 +537,15 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
     async def test_request_records_usage_when_the_response_stream_aborts(self) -> None:
         body = wrap_plugin_daemon_stream_item(single_text_chunk("partial", prompt_tokens=11, completion_tokens=7)[0])
 
+        async def byte_stream():
+            yield body.encode("utf-8")
+            raise httpx.ReadError("connection lost")
+
         def handler(_request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 status_code=200,
                 headers={"content-type": "text/event-stream"},
-                stream=_AbortedByteStream(body.encode("utf-8")),
+                content=byte_stream(),
             )
 
         async with self.mock_gateway_stream(httpx.MockTransport(handler)):
@@ -563,6 +566,143 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         assert usage is not None
         self.assertEqual(usage.prompt_tokens, 11)
         self.assertEqual(usage.completion_tokens, 7)
+
+    async def test_request_accumulates_inflight_usage_on_cancellation_after_a_completed_round(self) -> None:
+        completed_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="done"),
+                usage=make_usage(
+                    prompt_tokens=10,
+                    completion_tokens=2,
+                    prompt_price=Decimal("0.000050"),
+                    completion_price=Decimal("0.000060"),
+                    total_price=Decimal("0.000110"),
+                ),
+            ),
+        )
+        inflight_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="partial"),
+                usage=make_usage(
+                    prompt_tokens=20,
+                    completion_tokens=3,
+                    prompt_price=Decimal("0.000100"),
+                    completion_price=Decimal("0.000090"),
+                    total_price=Decimal("0.000190"),
+                ),
+            ),
+        )
+
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                read_blocked = asyncio.Event()
+
+                async def byte_stream():
+                    yield wrap_plugin_daemon_stream_item(inflight_chunk).encode("utf-8")
+                    read_blocked.set()
+                    await asyncio.Event().wait()
+
+                gateway_response = build_stream_response(completed_chunk)
+
+                def handler(_request: httpx.Request) -> httpx.Response:
+                    return gateway_response
+
+                async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                    adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+                    messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
+                    await adapter.request(messages, None, ModelRequestParameters())
+                    gateway_response = httpx.Response(
+                        status_code=200,
+                        headers={"content-type": "text/event-stream"},
+                        content=byte_stream(),
+                    )
+
+                    async def consume_request() -> None:
+                        if stream:
+                            async with adapter.request_stream(messages, None, ModelRequestParameters()) as response:
+                                async for _event in response:
+                                    pass
+                        else:
+                            await adapter.request(messages, None, ModelRequestParameters())
+
+                    async with asyncio.timeout(5), asyncio.TaskGroup() as tasks:
+                        task = tasks.create_task(consume_request())
+                        await read_blocked.wait()
+                        task.cancel("run stopped")
+                        with self.assertRaises(asyncio.CancelledError) as cancellation:
+                            await task
+
+                self.assertEqual(cancellation.exception.args, ("run stopped",))
+                usage = adapter.accumulated_usage
+                assert usage is not None
+                self.assertEqual(usage.prompt_tokens, 30)
+                self.assertEqual(usage.completion_tokens, 5)
+                self.assertEqual(usage.total_tokens, 35)
+                self.assertEqual(usage.prompt_price, Decimal("0.000150"))
+                self.assertEqual(usage.completion_price, Decimal("0.000150"))
+                self.assertEqual(usage.total_price, Decimal("0.000300"))
+
+    async def test_request_cancellation_before_usage_leaves_accumulated_usage_unchanged(self) -> None:
+        completed_usage = make_usage(prompt_tokens=10, completion_tokens=2, total_price=Decimal("0.000110"))
+        completed_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content="done"),
+                usage=completed_usage,
+            ),
+        )
+        text_chunk = LLMResultChunk(
+            model="demo-model",
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="partial")),
+        )
+
+        for stream in (False, True):
+            for with_previous_usage in (False, True):
+                with self.subTest(stream=stream, with_previous_usage=with_previous_usage):
+                    read_blocked = asyncio.Event()
+
+                    async def byte_stream():
+                        yield wrap_plugin_daemon_stream_item(text_chunk).encode("utf-8")
+                        read_blocked.set()
+                        await asyncio.Event().wait()
+
+                    gateway_response = build_stream_response(completed_chunk)
+
+                    def handler(_request: httpx.Request) -> httpx.Response:
+                        return gateway_response
+
+                    async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                        adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+                        messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
+                        if with_previous_usage:
+                            await adapter.request(messages, None, ModelRequestParameters())
+                        gateway_response = httpx.Response(
+                            status_code=200,
+                            headers={"content-type": "text/event-stream"},
+                            content=byte_stream(),
+                        )
+
+                        async def consume_request() -> None:
+                            if stream:
+                                async with adapter.request_stream(messages, None, ModelRequestParameters()) as response:
+                                    async for _event in response:
+                                        pass
+                            else:
+                                await adapter.request(messages, None, ModelRequestParameters())
+
+                        async with asyncio.timeout(5), asyncio.TaskGroup() as tasks:
+                            task = tasks.create_task(consume_request())
+                            await read_blocked.wait()
+                            task.cancel("run stopped")
+                            with self.assertRaises(asyncio.CancelledError):
+                                await task
+
+                    self.assertEqual(adapter.accumulated_usage, completed_usage if with_previous_usage else None)
 
     async def test_request_falls_back_to_tool_name_when_description_is_missing(self) -> None:
         """Some providers (e.g. Bedrock's Converse API) reject an empty toolSpec description."""
@@ -1654,14 +1794,3 @@ def test_request_rejects_unsupported_pydantic_ai_request_parts(
                 )
 
     asyncio.run(scenario())
-
-
-class _AbortedByteStream(httpx.AsyncByteStream):
-    """Sends one SSE frame and then fails like a connection dropped mid-response."""
-
-    def __init__(self, body: bytes) -> None:
-        self._body = body
-
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        yield self._body
-        raise httpx.ReadError("connection lost")
