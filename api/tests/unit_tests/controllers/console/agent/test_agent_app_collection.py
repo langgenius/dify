@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import Executable
+from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN
 from libs.token import _real_cookie_name
@@ -140,7 +141,7 @@ def test_concurrent_first_lists_reuse_the_same_build_conversation(
 
     monkeypatch.setattr(Session, "scalar", synchronize_missing_mapping)
 
-    def list_apps():
+    def list_apps() -> TestResponse:
         with harness.client.application.test_client() as client:
             client.set_cookie(_real_cookie_name("csrf_token"), harness.headers[HEADER_NAME_CSRF_TOKEN])
             return client.get("/console/api/agent?limit=10", headers=harness.headers)
