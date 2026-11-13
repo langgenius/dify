@@ -2310,7 +2310,7 @@ class UploadFile(TypeBase):
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
-        sa.Index("upload_file_tenant_idx", "tenant_id"),
+        sa.Index("upload_file_owner_idx", "tenant_id", "created_by_role", "created_by"),
     )
 
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips
