@@ -798,6 +798,43 @@ def test_convert_to_llm_node_should_raise_when_simple_completion_template_missin
         )
 
 
+def test_convert_to_llm_node_should_accept_empty_chat_pre_prompt(converter: WorkflowConverter) -> None:
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.CHAT)
+    prompt_template = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+        simple_prompt_template="",
+    )
+
+    node = converter._convert_to_llm_node(
+        original_app_mode=AppMode.CHAT,
+        new_app_mode=AppMode.ADVANCED_CHAT,
+        graph=graph,
+        model_config=model_config,
+        prompt_template=prompt_template,
+    )
+
+    assert node is not None
+
+
+def test_convert_to_llm_node_should_reject_empty_completion_pre_prompt(converter: WorkflowConverter) -> None:
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.COMPLETION)
+    prompt_template = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+        simple_prompt_template="",
+    )
+
+    with pytest.raises(ValueError, match="Simple prompt template is required"):
+        converter._convert_to_llm_node(
+            original_app_mode=AppMode.COMPLETION,
+            new_app_mode=AppMode.WORKFLOW,
+            graph=graph,
+            model_config=model_config,
+            prompt_template=prompt_template,
+        )
+
+
 def test_convert_to_llm_node_should_raise_when_completion_prompt_rules_type_is_invalid(
     converter: WorkflowConverter,
     monkeypatch: pytest.MonkeyPatch,
