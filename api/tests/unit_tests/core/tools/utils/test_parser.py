@@ -714,3 +714,117 @@ def test_parse_swagger_to_openapi_merges_path_level_parameters_into_operations()
     assert len(operation["parameters"]) == 1
     assert operation["parameters"][0]["name"] == "project_id"
     assert operation["parameters"][0]["in"] == "path"
+
+
+def test_parse_openapi_to_tool_bundle_resolves_escaped_json_pointer_param_ref(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "Escaped Ref API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/users/{user_id}": {
+                "get": {
+                    "operationId": "getUser",
+                    "summary": "Get user",
+                    "parameters": [
+                        {"$ref": "#/components/parameters/user~1id"},
+                        {"$ref": "#/components/parameters/field~0name"},
+                    ],
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "parameters": {
+                "user/id": {
+                    "name": "user_id",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string"},
+                    "description": "User identifier with slash in key",
+                },
+                "field~name": {
+                    "name": "field_name",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "string"},
+                    "description": "Field name with tilde in key",
+                },
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    assert len(bundles[0].parameters) == 2
+    param_map = {p.name: p for p in bundles[0].parameters}
+    assert "user_id" in param_map
+    assert param_map["user_id"].llm_description == "User identifier with slash in key"
+    assert "field_name" in param_map
+    assert param_map["field_name"].llm_description == "Field name with tilde in key"
+
+
+def test_parse_openapi_to_tool_bundle_operation_escaped_ref_overrides_path_level_parameter(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "Override Ref API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/users/{user_id}": {
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                        "description": "Path-level user ID",
+                    }
+                ],
+                "get": {
+                    "operationId": "getUser",
+                    "summary": "Get user",
+                    "parameters": [
+                        {"$ref": "#/components/parameters/user~1id"},
+                    ],
+                    "responses": {"200": {"description": "OK"}},
+                },
+            }
+        },
+        "components": {
+            "parameters": {
+                "user/id": {
+                    "name": "user_id",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string"},
+                    "description": "Overridden user ID from component with slash",
+                }
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    # Ensure the path-level parameter was overridden and NOT kept as a duplicate
+    assert len(bundles[0].parameters) == 1
+    assert bundles[0].parameters[0].name == "user_id"
+    assert bundles[0].parameters[0].llm_description == "Overridden user ID from component with slash"
+
+
+def test_resolve_param_ref_rejects_non_local_or_invalid_ref() -> None:
+    openapi = {"components": {"parameters": {"userId": {"name": "user_id", "in": "path"}}}}
+
+    # Non-local refs should return unchanged
+    external_ref = {"$ref": "https://example.com/schemas.yaml#/parameters/userId"}
+    assert ApiBasedToolSchemaParser._resolve_param_ref(external_ref, openapi) == external_ref
+
+    # Non-dict inputs should return unchanged
+    assert ApiBasedToolSchemaParser._resolve_param_ref("not_a_dict", openapi) == "not_a_dict"
+
+    # Missing pointer target should return current ref gracefully
+    missing_ref = {"$ref": "#/components/parameters/nonExistent"}
+    assert ApiBasedToolSchemaParser._resolve_param_ref(missing_ref, openapi) == missing_ref

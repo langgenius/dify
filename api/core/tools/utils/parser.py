@@ -81,12 +81,10 @@ class ApiBasedToolSchemaParser:
             parameters = []
             if "parameters" in interface["operation"]:
                 for i, parameter in enumerate(interface["operation"]["parameters"]):
-                    if "$ref" in parameter:
-                        root = openapi
-                        reference = parameter["$ref"].split("/")[1:]
-                        for ref in reference:
-                            root = root[ref]
-                        interface["operation"]["parameters"][i] = root
+                    if isinstance(parameter, dict) and "$ref" in parameter:
+                        interface["operation"]["parameters"][i] = ApiBasedToolSchemaParser._resolve_param_ref(
+                            parameter, openapi
+                        )
                 for parameter in interface["operation"]["parameters"]:
                     # Handle complex type defaults that are not supported by PluginParameter
                     default_value = None
@@ -247,21 +245,30 @@ class ApiBasedToolSchemaParser:
         return value
 
     @staticmethod
-    def _resolve_param_ref(param: dict[str, Any], openapi: Mapping[str, Any]) -> dict[str, Any]:
-        """Resolve a $ref in a parameter definition if present."""
+    def _resolve_param_ref(param: Any, openapi: Mapping[str, Any], max_depth: int = 5) -> Any:
+        """Resolve a local $ref in a parameter definition according to RFC 6901."""
         if not isinstance(param, dict):
             return param
-        if "$ref" in param and isinstance(param["$ref"], str):
+        current = param
+        for _ in range(max_depth):
+            ref = current.get("$ref")
+            if not isinstance(ref, str) or not ref.startswith("#/"):
+                return current
             try:
                 root: Any = openapi
-                reference = param["$ref"].split("/")[1:]
-                for ref in reference:
-                    root = root[ref]
+                # RFC 6901: Each reference token is separated by '/'.
+                # Unescape '~1' to '/' and '~0' to '~' in that order.
+                tokens = ref[2:].split("/")
+                for token in tokens:
+                    unescaped_token = token.replace("~1", "/").replace("~0", "~")
+                    root = root[unescaped_token]
                 if isinstance(root, dict):
-                    return root
+                    current = root
+                else:
+                    return current
             except (KeyError, TypeError, IndexError):
-                return param
-        return param
+                return current
+        return current
 
     @staticmethod
     def _merge_path_and_operation_parameters(
