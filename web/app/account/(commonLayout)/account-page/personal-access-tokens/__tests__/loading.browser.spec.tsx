@@ -5,28 +5,21 @@ import type {
   PersonalAccessTokenWorkspaceCandidateResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import PersonalAccessTokens from '../index'
+import { renderWithTokenMessages as render } from './browser-test-env'
 
-const transport = vi.hoisted(() => ({ call: vi.fn() }))
-vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: transport }))
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const account = await import('@/i18n/locales/en-US/account-settings.json')
-  const common = await import('@/i18n/locales/en-US/common.json')
-  const dataset = await import('@/i18n/locales/en-US/dataset.json')
-  const navigation = await import('@/i18n/locales/en-US/navigation.json')
-  return createReactI18nextMock({
-    ...account.default,
-    ...common.default,
-    ...dataset.default,
-    ...navigation.default,
-  })
+const responses = vi.hoisted(() => ({ call: vi.fn() }))
+// boundary: supply operation results while preserving generated options and real Query observers.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withTokenResponses } = await import('./operation-responses')
+  return { ...actual, consoleQuery: withTokenResponses(actual.consoleQuery, responses.call) }
 })
+vi.unmock('react-i18next')
 
 const token: PersonalAccessTokenResponse = {
   id: '019a0000-0000-7000-8000-000000000001',
@@ -86,8 +79,9 @@ async function renderTokens(searchParams = '') {
 it('keeps the table and pagination in place while blocking stale rows during a page change', async () => {
   const first = deferred<PersonalAccessTokenListResponse>()
   const next = deferred<PersonalAccessTokenListResponse>()
-  transport.call.mockImplementation(async (_path: string[], input: { query: { page: number } }) =>
-    input.query.page === 1 ? first.promise : next.promise,
+  responses.call.mockImplementation(
+    async (_operation: string, input: { query: { page: number } }) =>
+      input.query.page === 1 ? first.promise : next.promise,
   )
   const screen = await renderTokens()
   const region = screen.getByRole('region', { name: 'Personal access tokens' })
@@ -102,13 +96,23 @@ it('keeps the table and pagination in place while blocking stale rows during a p
   expect(region.element().getBoundingClientRect().height).toBe(height)
   await screen.getByRole('button', { name: 'Next', exact: true }).click()
   await expect.element(table).toHaveAttribute('aria-busy', 'true')
-  expect(table.element().querySelector('tbody')?.inert).toBe(true)
   await expect.element(screen.getByRole('status')).toHaveTextContent('Loading')
   await expect.element(screen.getByRole('button', { name: 'Previous', exact: true })).toBeDisabled()
   await expect.element(screen.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
   await expect.element(screen.getByRole('button', { name: 'Next', exact: true })).toHaveFocus()
   await expect.element(screen.getByRole('button', { name: '2/2: Edit page number' })).toBeDisabled()
   expect(region.element().getBoundingClientRect().height).toBe(height)
+  // Native Tab must skip the stale row actions while the next page is loading.
+  await userEvent.tab({ shift: true })
+  await expect.element(screen.getByRole('button', { name: '2/2: Edit page number' })).toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect.element(screen.getByRole('button', { name: 'Previous', exact: true })).toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect
+    .element(screen.getByRole('button', { name: 'Previous', exact: true }))
+    .not.toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
   next.resolve({ data: [token], page: 2, limit: 20, total: 21, has_more: false })
   await expect.element(screen.getByRole('button', { name: token.name, exact: true })).toBeVisible()
   await expect.element(table).toHaveAttribute('aria-busy', 'false')
@@ -121,8 +125,9 @@ it('keeps the table and pagination in place while blocking stale rows during a p
 
 it('uses the shared page jump to request a page and synchronize its URL', async () => {
   const lastPage = deferred<PersonalAccessTokenListResponse>()
-  transport.call.mockImplementation(async (_path: string[], input: { query: { page: number } }) =>
-    input.query.page === 1 ? { ...firstPage, total: 45 } : lastPage.promise,
+  responses.call.mockImplementation(
+    async (_operation: string, input: { query: { page: number } }) =>
+      input.query.page === 1 ? { ...firstPage, total: 45 } : lastPage.promise,
   )
   const screen = await renderTokens()
   const pagination = screen.getByRole('navigation', { name: 'Personal access tokens' })
@@ -138,7 +143,7 @@ it('uses the shared page jump to request a page and synchronize its URL', async 
       expect.objectContaining({ queryString: '?patPage=3' }),
     ),
   )
-  expect(transport.call.mock.calls.at(-1)?.[1].query.page).toBe(3)
+  expect(responses.call.mock.calls.at(-1)?.[1].query.page).toBe(3)
   lastPage.resolve({ data: [token], page: 3, limit: 20, total: 45, has_more: false })
   await expect.element(screen.getByRole('button', { name: token.name, exact: true })).toBeVisible()
   await expect.element(summary).toBeEnabled()
@@ -146,16 +151,18 @@ it('uses the shared page jump to request a page and synchronize its URL', async 
 })
 
 it('recovers from an out-of-range token page in the URL', async () => {
-  transport.call.mockImplementation(async (_path: string[], input: { query: { page: number } }) => {
-    const current = input.query.page
-    return {
-      ...firstPage,
-      data: current === 1 ? firstPage.data : [],
-      page: current,
-      total: firstPage.data.length,
-      has_more: false,
-    } satisfies PersonalAccessTokenListResponse
-  })
+  responses.call.mockImplementation(
+    async (_operation: string, input: { query: { page: number } }) => {
+      const current = input.query.page
+      return {
+        ...firstPage,
+        data: current === 1 ? firstPage.data : [],
+        page: current,
+        total: firstPage.data.length,
+        has_more: false,
+      } satisfies PersonalAccessTokenListResponse
+    },
+  )
 
   const screen = await renderTokens('?patPage=2')
   await expect.element(screen.getByRole('button', { name: 'Token 1', exact: true })).toBeVisible()
@@ -184,9 +191,9 @@ it('keeps a checked workspace through search loading, retry, and an empty result
   }
   const firstSearch = deferred<void>()
   const searchCursors: number[] = []
-  transport.call.mockImplementation(
-    async (path: string[], input: { query: { cursor: number; keyword: string } }) => {
-      if (!path.includes('personalAccessTokenWorkspaces'))
+  responses.call.mockImplementation(
+    async (operation: string, input: { query: { cursor: number; keyword: string } }) => {
+      if (!operation.includes('personalAccessTokenWorkspaces'))
         return { ...firstPage, data: [], total: 0, has_more: false }
 
       const { cursor, keyword } = input.query
@@ -275,9 +282,9 @@ it.each(['Resources', 'Workspaces'] as const)(
           }
     const candidatePath =
       scope === 'Resources' ? 'personalAccessTokenResources' : 'personalAccessTokenWorkspaces'
-    transport.call.mockImplementation(
-      async (path: string[], input: { query: { cursor?: number; resource_type?: string } }) => {
-        if (!path.includes(candidatePath))
+    responses.call.mockImplementation(
+      async (operation: string, input: { query: { cursor?: number; resource_type?: string } }) => {
+        if (!operation.includes(candidatePath))
           return { ...firstPage, data: [], total: 0, has_more: false }
         if (scope === 'Resources' && input.query.resource_type !== 'dataset')
           return { data: [], next_cursor: null, has_more: false }
@@ -350,12 +357,12 @@ it.each(['create', 'duplicate'] as const)(
     const createdToken = { ...token, id: '019a0000-0000-7000-8000-000000000999', name: 'New token' }
     let created = false
     let reads = 0
-    transport.call.mockImplementation(async (path: string[]) => {
-      if (path.at(-1) === 'post') {
+    responses.call.mockImplementation(async (operation: string) => {
+      if (operation.endsWith('.post')) {
         created = true
         return { ...createdToken, secret: 'dpat_fixture_secret' }
       }
-      if (path.includes('byTokenId')) return { token, resources: [], workspaces: [] }
+      if (operation.includes('byTokenId')) return { token, resources: [], workspaces: [] }
       reads += 1
       if (created) return refresh.promise
       return {
@@ -389,22 +396,24 @@ it.each(['create', 'duplicate'] as const)(
 it('returns to the previous page after deleting the last token on a deep-linked final page', async () => {
   let deleted = false
   const pages: number[] = []
-  transport.call.mockImplementation(async (path: string[], input: { query?: { page: number } }) => {
-    if (path.at(-1) === 'delete') {
-      deleted = true
-      return undefined
-    }
-    const current = input.query?.page ?? 1
-    pages.push(current)
-    if (current === 1) return { ...firstPage, total: 20, has_more: false }
-    return {
-      data: deleted ? [] : [token],
-      page: 2,
-      limit: 20,
-      total: deleted ? 20 : 21,
-      has_more: false,
-    }
-  })
+  responses.call.mockImplementation(
+    async (operation: string, input: { query?: { page: number } }) => {
+      if (operation.endsWith('.delete')) {
+        deleted = true
+        return undefined
+      }
+      const current = input.query?.page ?? 1
+      pages.push(current)
+      if (current === 1) return { ...firstPage, total: 20, has_more: false }
+      return {
+        data: deleted ? [] : [token],
+        page: 2,
+        limit: 20,
+        total: deleted ? 20 : 21,
+        has_more: false,
+      }
+    },
+  )
   const screen = await renderTokens('?patPage=2')
   await screen.getByRole('button', { name: 'Delete', exact: true }).click()
   const dialog = screen.getByRole('alertdialog')

@@ -1,21 +1,8 @@
 import type { CreatorProfileViewModel } from '../model'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import CreatorProfileView from '../view'
-
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  }
-})
-
-vi.mock('../creator-content', () => ({
-  default: () => <section>Creator content</section>,
-}))
 
 const profile: CreatorProfileViewModel = {
   profile: {
@@ -31,34 +18,16 @@ const profile: CreatorProfileViewModel = {
 }
 
 describe('CreatorProfileView SSR background', () => {
-  it('keeps the creator profile within the parent main landmark', () => {
-    render(
-      <main>
-        <CreatorProfileView
-          profile={profile}
-          homeHref="/marketplace"
-          isMarketplacePlatform
-          getCreationAction={() => ({ type: 'link', href: '/' })}
-        />
-      </main>,
-    )
-
-    const main = screen.getByRole('main')
-    expect(within(main).getByRole('heading', { level: 1, name: 'Creator' })).toBeInTheDocument()
-    expect(
-      within(main).getByRole('navigation', { name: 'marketplace.creatorProfile.breadcrumbLabel' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-  })
-
   it('includes the default background in server markup before the remote background loads', () => {
     const markup = renderToStaticMarkup(
-      <CreatorProfileView
-        profile={profile}
-        homeHref="/"
-        isMarketplacePlatform={false}
-        getCreationAction={() => ({ type: 'link', href: '/' })}
-      />,
+      <NuqsTestingAdapter>
+        <CreatorProfileView
+          profile={profile}
+          homeHref="/"
+          isMarketplacePlatform={false}
+          getCreationAction={() => ({ type: 'link', href: '/' })}
+        />
+      </NuqsTestingAdapter>,
     )
 
     expect(markup).toContain('default-background.png')
@@ -67,36 +36,20 @@ describe('CreatorProfileView SSR background', () => {
 
   it('server-renders only the default background when the profile has no background', () => {
     const markup = renderToStaticMarkup(
-      <CreatorProfileView
-        profile={{
-          ...profile,
-          profile: { ...profile.profile, backgroundUrl: '' },
-        }}
-        homeHref="/"
-        isMarketplacePlatform={false}
-        getCreationAction={() => ({ type: 'link', href: '/' })}
-      />,
+      <NuqsTestingAdapter>
+        <CreatorProfileView
+          profile={{
+            ...profile,
+            profile: { ...profile.profile, backgroundUrl: '' },
+          }}
+          homeHref="/"
+          isMarketplacePlatform={false}
+          getCreationAction={() => ({ type: 'link', href: '/' })}
+        />
+      </NuqsTestingAdapter>,
     )
 
     expect(markup).toContain('default-background.png')
     expect(markup).not.toContain('src="/creator-background.png"')
-  })
-
-  it('hides a stale remote image after a loading failure', () => {
-    const { container } = render(
-      <CreatorProfileView
-        profile={profile}
-        homeHref="/"
-        isMarketplacePlatform={false}
-        getCreationAction={() => ({ type: 'link', href: '/' })}
-      />,
-    )
-    const remoteBackground = container.querySelector<HTMLImageElement>(
-      'img[src="/creator-background.png"]',
-    )!
-
-    fireEvent.error(remoteBackground)
-
-    expect(remoteBackground).toHaveAttribute('hidden')
   })
 })

@@ -39,8 +39,13 @@ def test_sqlite_engine_is_a_pristine_file_copy(
     with Session(sqlite_engine) as session, session.begin():
         session.add(Account(name="Copy probe", email="copy-probe@example.com"))
 
+    # A test may commit rows and later drop tables without corrupting the schema
+    # that subsequent cases copy, including when multiple connections are used.
+    TypeBase.metadata.tables[ExporleBanner.__tablename__].drop(sqlite_engine)
+
     template_engine = create_engine(URL.create("sqlite", database=str(sqlite_database_template)))
     try:
+        assert inspect(template_engine).has_table(ExporleBanner.__tablename__)
         with Session(template_engine) as session:
             assert session.scalar(select(Account).where(Account.email == "copy-probe@example.com")) is None
     finally:

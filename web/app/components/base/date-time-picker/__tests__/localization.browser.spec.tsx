@@ -28,6 +28,28 @@ import zh from '@/i18n/locales/zh-Hans/time.json'
 
 vi.unmock('react-i18next')
 
+const localeRequests = vi.hoisted(() => {
+  const deferred = () => {
+    let resolve!: () => void
+    const promise = new Promise<void>((done) => {
+      resolve = done
+    })
+    return { promise, resolve }
+  }
+  return { german: deferred(), germanStarted: deferred(), italian: deferred() }
+})
+
+// boundary: Delay real locale modules to exercise a language change during code loading.
+vi.mock('@daypicker/react/locale/de', async (importOriginal) => {
+  localeRequests.germanStarted.resolve()
+  await localeRequests.german.promise
+  return importOriginal()
+})
+vi.mock('@daypicker/react/locale/it', async (importOriginal) => {
+  await localeRequests.italian.promise
+  return importOriginal()
+})
+
 beforeEach(async () => {
   document.documentElement.dir = 'ltr'
   document.documentElement.lang = 'en-US'
@@ -199,6 +221,106 @@ function TimeOwner() {
     </>
   )
 }
+
+// Each language is a separate deferred asset; exercise its mapping through the calendar's
+// selected day's accessible name, which must update from the temporary English fallback.
+it.each([
+  ['zh-Hant', '星期一'],
+  ['ja-JP', '月曜日'],
+  ['ko-KR', '월요일'],
+  ['fr-FR', 'lundi'],
+  ['es-ES', 'lunes'],
+  ['pt-BR', 'segunda-feira'],
+  ['ru-RU', 'понедельник'],
+  ['uk-UA', 'понеділок'],
+  ['pl-PL', 'poniedziałek'],
+  ['nl-NL', 'maandag'],
+  ['tr-TR', 'Pazartesi'],
+  ['vi-VN', 'Thứ Hai'],
+  ['id-ID', 'Senin'],
+  ['th-TH', 'วันจันทร์'],
+  ['hi-IN', 'सोमवार'],
+  ['ar-TN', 'الاثنين'],
+  ['ro-RO', 'luni'],
+  ['sl-SI', 'ponedeljek'],
+  ['az-AZ', 'Bazar ertəsi'],
+])('loads accessible calendar weekday names for %s', async (language, monday) => {
+  const i18n = await createI18n(language)
+  const screen = await render(
+    <I18nextProvider i18n={i18n}>
+      <DatePicker defaultValue="2025-01-13">
+        <DatePickerLabel>Date</DatePickerLabel>
+        <DatePickerTrigger />
+        <DatePickerContent />
+      </DatePicker>
+    </I18nextProvider>,
+  )
+  await screen.getByRole('button', { name: /^Date / }).click()
+  await expect
+    .element(
+      screen.getByRole('gridcell', { selected: true }).getByRole('button', {
+        name: new RegExp(monday),
+      }),
+    )
+    .toBeVisible()
+})
+
+it('keeps an English calendar usable when the application language has no calendar locale', async () => {
+  const i18n = await createI18n('en-GB')
+  const screen = await render(
+    <I18nextProvider i18n={i18n}>
+      <DatePicker defaultValue="2025-01-13">
+        <DatePickerLabel>Date</DatePickerLabel>
+        <DatePickerTrigger />
+        <DatePickerContent />
+      </DatePicker>
+    </I18nextProvider>,
+  )
+  await screen.getByRole('button', { name: /^Date / }).click()
+  await expect
+    .element(
+      screen.getByRole('gridcell', { selected: true }).getByRole('button', { name: /Monday/ }),
+    )
+    .toBeVisible()
+})
+
+it('preserves the selected date and current language when an older locale finishes loading', async () => {
+  const i18n = await createI18n('de-DE')
+  const screen = await render(
+    <I18nextProvider i18n={i18n}>
+      <form aria-label="Appointment">
+        <DatePicker name="date" defaultValue="2025-01-15">
+          <DatePickerLabel>Date</DatePickerLabel>
+          <DatePickerTrigger />
+          <DatePickerContent />
+        </DatePicker>
+      </form>
+    </I18nextProvider>,
+  )
+  await localeRequests.germanStarted.promise
+  await screen.getByRole('button', { name: /^Date / }).click()
+  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await i18n.changeLanguage('it-IT')
+  localeRequests.italian.resolve()
+  await screen.getByRole('button', { name: /Choose month and year/ }).click()
+  await expect
+    .element(screen.getByRole('option', { name: 'gennaio' }))
+    .toHaveAttribute('aria-selected', 'true')
+
+  localeRequests.german.resolve()
+  await import('@daypicker/react/locale/de')
+  await expect
+    .element(screen.getByRole('option', { name: 'gennaio' }))
+    .toHaveAttribute('aria-selected', 'true')
+  const form = screen.getByRole('form', { name: 'Appointment' }).element()
+  if (!(form instanceof HTMLFormElement)) throw new TypeError('Expected the appointment form')
+  expect(new FormData(form).get('date')).toBe('2025-01-15')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('option', { name: 'gennaio' })).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: /^Date / })).toHaveFocus()
+})
 
 it('localizes dismissal and retains the saved time through a real close and reopen', async () => {
   const i18n = await createI18n('zh-Hans')

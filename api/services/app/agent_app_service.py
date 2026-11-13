@@ -1,10 +1,17 @@
 """Application services for Agent App workflow references and presentation features."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.app.agent_app_contracts import AgentApiAccess, AgentApiAccessChange, AgentReferencingWorkflow
+from services.app.agent_app_contracts import (
+    AgentApiAccess,
+    AgentApiAccessChange,
+    AgentAppDetail,
+    AgentReferencingWorkflow,
+)
+from services.entities.app_entities import AppDeletion, UpdateAppParams
 
 
 class AgentAppReferences(Protocol):
@@ -54,6 +61,71 @@ class AgentApiAccessService:
         if result.changed:
             self._notify_updated(context.active_workspace_id, result.access.app_id)
         return result.access
+
+
+class AgentAppDeletion(Protocol):
+    """Delete a tenant-owned Agent App and publish its post-commit cleanup."""
+
+    def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
+        """Commit the Agent App deletion or raise AgentAppNotFoundError."""
+        ...
+
+    def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
+        """Publish cleanup for an already committed deletion."""
+        ...
+
+
+class AgentAppDeletionService:
+    """Coordinate Agent App deletion and post-commit cleanup."""
+
+    def __init__(self, *, lifecycle: AgentAppDeletion) -> None:
+        self._lifecycle = lifecycle
+
+    def delete(self, context: RequestContext, agent_id: str) -> None:
+        """Delete the admitted workspace's Agent App, then publish its cleanup."""
+        deleted = self._lifecycle.delete_agent(context, agent_id)
+        self._lifecycle.deleted(context, deleted)
+
+
+class AgentAppDetailRuntime(Protocol):
+    """Materialize Agent runtime details and commit changes in bounded transactions."""
+
+    def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail: ...
+
+    def get_agent_build_conversation(
+        self, context: RequestContext, agent_id: str, *, app_id: str
+    ) -> tuple[str, int]: ...
+
+    def update_agent(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> str: ...
+
+    def agent_updated(self, context: RequestContext, app_id: str) -> None: ...
+
+
+class AgentAppDetailPresentation(Protocol):
+    def present(self, context: RequestContext, detail: AgentAppDetail) -> AgentAppDetail:
+        """Resolve external metadata without holding a database transaction."""
+        ...
+
+
+class AgentAppDetailService:
+    """Coordinate Agent App updates, external metadata and editor Build conversations."""
+
+    def __init__(self, *, runtime: AgentAppDetailRuntime, presentation: AgentAppDetailPresentation) -> None:
+        self._runtime = runtime
+        self._presentation = presentation
+
+    def get(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
+        """Return a detached detail for an admitted Agent and ensure its Build conversation exists."""
+        detail = self._runtime.get_agent_detail(context, agent_id)
+        detail = self._presentation.present(context, detail)
+        conversation_id, count = self._runtime.get_agent_build_conversation(context, agent_id, app_id=detail.app.id)
+        return replace(detail, debug_conversation_id=conversation_id, debug_conversation_message_count=count)
+
+    def update(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> AgentAppDetail:
+        """Commit an Agent App update, send its update event, and return the current detail."""
+        app_id = self._runtime.update_agent(context, agent_id, params)
+        self._runtime.agent_updated(context, app_id)
+        return self.get(context, agent_id)
 
 
 class AgentAppAccessService:
