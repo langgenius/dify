@@ -148,7 +148,6 @@ project-excludes = [
   "../e2e_tests/contracts/core/workflow/graph_engine/test_parallel_human_input_join_resume.py",
   "../helpers/workflow/table_runner.py",
   "core/workflow/nodes/agent_v2/test_agent_node.py",
-  "core/workflow/nodes/agent_v2/test_binding_resolver.py",
   "core/workflow/nodes/agent_v2/test_dify_tools_builder.py",
   "core/workflow/nodes/agent_v2/test_output_adapter.py",
   "core/workflow/nodes/agent_v2/test_runtime_request_builder.py",
