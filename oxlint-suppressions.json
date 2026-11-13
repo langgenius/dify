@@ -1731,16 +1731,6 @@
       "count": 3
     }
   },
-  "web/app/components/billing/pricing/content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/billing/pricing/header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/priority-label/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2

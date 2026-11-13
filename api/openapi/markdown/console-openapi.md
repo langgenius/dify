@@ -5996,6 +5996,7 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Active discount | **application/json**: [AnnualDiscountActiveErrorResponse](#annualdiscountactiveerrorresponse)<br>[AnnualDiscountActiveError](#annualdiscountactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -21481,6 +21482,22 @@ Auth Token is invalid or account already activated, please check again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | score_threshold | number | Score threshold | Yes |
+
+#### AnnualDiscountActiveError
+
+You can switch to annual billing after your current discount ends.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnnualDiscountActiveError |  | You can switch to annual billing after your current discount ends. |  |
+
+#### AnnualDiscountActiveErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
 
 #### AnyJSONValue
 
