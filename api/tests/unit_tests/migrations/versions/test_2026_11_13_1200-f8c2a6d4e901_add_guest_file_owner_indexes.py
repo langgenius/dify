@@ -11,6 +11,7 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from alembic.script import ScriptDirectory
+from sqlalchemy import event
 from sqlalchemy.engine import Connection
 
 from models.model import UploadFile
@@ -102,7 +103,7 @@ def test_upgrade_rejects_conflicting_owner_index(
             else [table.c.tenant_id, table.c.created_by_role, table.c.created_by]
         ),
         unique=kind == "unique",
-        **({"sqlite_where": table.c.created_by.is_not(None)} if kind == "partial" else {}),
+        sqlite_where=table.c.created_by.is_not(None) if kind == "partial" else None,
     ).create(connection)
     with pytest.raises(RuntimeError, match="differs from"):
         migration.upgrade()
@@ -115,17 +116,24 @@ def test_upgrade_recovers_after_partial_ddl_failure(
     """Fail after the first owner index succeeds; retry without losing tenant coverage."""
     monkeypatch.setattr(migration, "op", Operations(MigrationContext.configure(connection)))
 
-    def fail_tool_index(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def fail_tool_index(
+        _conn: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
         """Reject tool owner DDL to simulate failure after upload owner DDL succeeds."""
         if statement.startswith("CREATE INDEX tool_file_owner_idx"):
             raise RuntimeError("index build interrupted")
 
-    sa.event.listen(connection, "before_cursor_execute", fail_tool_index)
+    event.listen(connection, "before_cursor_execute", fail_tool_index)
     try:
         with pytest.raises(RuntimeError, match="index build interrupted"):
             migration.upgrade()
     finally:
-        sa.event.remove(connection, "before_cursor_execute", fail_tool_index)
+        event.remove(connection, "before_cursor_execute", fail_tool_index)
     assert {index["name"] for index in sa.inspect(connection).get_indexes("upload_files")} == {
         "upload_file_tenant_idx",
         "upload_file_owner_idx",
@@ -166,7 +174,7 @@ def test_postgresql_existing_index_requires_healthy_build(
             "name": "tool_file_owner_idx",
             "column_names": ["tenant_id", "user_id"],
             "unique": False,
-            "dialect_options": {"postgresql_include": []},
+            "dialect_options": {"postgresql_include": list[str]()},
         }
     ]
     monkeypatch.setattr(migration, "op", operations)
@@ -229,7 +237,8 @@ def test_model_indexes_and_revision_head_match(migration: ModuleType) -> None:
         index = next(index for index in table.indexes if index.name == name)
         assert [column.name for column in index.columns] == columns
         assert not index.unique
-    assert "upload_file_tenant_idx" not in {index.name for index in UploadFile.__table__.indexes}
+        if model is UploadFile:
+            assert "upload_file_tenant_idx" not in {index.name for index in table.indexes}
     configuration = Config()
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[4] / "migrations"))
     assert ScriptDirectory.from_config(configuration).get_heads() == [migration.revision]
