@@ -1,14 +1,10 @@
 import logging
-import threading
-import time
+from collections.abc import Callable
 from typing import Any
 
-from flask import Flask, current_app
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from configs import dify_config
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.queue_entities import QueueMessageReplaceEvent
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
 
@@ -21,118 +17,126 @@ class ModerationRule(BaseModel):
 
 
 class OutputModeration(BaseModel):
+    """Own sequential app output checks on the response consumer, without a worker or locks.
+
+    Stream checks inspect only new segments; completion checks only an unchecked
+    tail. Keyword/API replacement behavior remains independent of platform model
+    moderation. Evaluation failures are terminal and never retried by completion.
+    """
+
     tenant_id: str
     app_id: str
-
     rule: ModerationRule
-    queue_manager: AppQueueManager
-
-    thread: threading.Thread | None = None
-    thread_running: bool = True
     buffer: str = ""
-    is_final_chunk: bool = False
     final_output: str | None = None
+    output_evaluator: Callable[[str], ModerationOutputsResult | None] | None = Field(
+        default=None,
+        exclude=True,
+        repr=False,
+        description="Injected app use case; None retains the independent legacy backend",
+    )
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    _answer: str = PrivateAttr(default="")
+    _checked_length: int = PrivateAttr(default=0)
+    _streamed: bool = PrivateAttr(default=False)
+    _finished: bool = PrivateAttr(default=False)
+    _error: Exception | None = PrivateAttr(default=None)
 
     def should_direct_output(self) -> bool:
+        """Return whether a checked segment replaced the entire answer and stopped further evaluation."""
         return self.final_output is not None
 
     def get_final_output(self) -> str:
+        """Return the direct reply, or an empty string before any direct replacement."""
         return self.final_output or ""
 
-    def append_new_token(self, token: str):
+    def append_new_token(self, token: str, *, prefix: str = "") -> str | None:
+        """Inspect new stream text at the threshold and return a full replacement only when flagged.
+
+        The response consumer is the sole caller. A prefix seeds an existing
+        response after resumption. Stopped output is ignored; failed checks raise
+        the original latched error without backend retry.
+        """
+        if self._error is not None:
+            raise self._error
+        if self._finished or self.should_direct_output():
+            return None
+        if not self._streamed:
+            self._streamed = True
+            self.buffer = prefix
+            self._answer = prefix
+            self._checked_length = len(prefix)
         self.buffer += token
+        self._answer += token
+        pending = self.buffer[self._checked_length :]
+        if len(pending) >= dify_config.MODERATION_BUFFER_SIZE:
+            return self._check_pending(pending)
+        return None
 
-        if not self.thread:
-            self.thread = self.start_thread()
+    def _check_pending(self, text: str) -> str | None:
+        """Check one nonempty new segment, retaining its replacement and advancing only after success."""
+        result = self.moderation(self.tenant_id, self.app_id, text)
+        self._checked_length += len(text)
+        if result is None or not result.flagged:
+            return None
+        if result.action == ModerationAction.DIRECT_OUTPUT:
+            self.final_output = result.preset_response
+            self._answer = result.preset_response
+        else:
+            self._answer = self._answer[: -len(text)] + result.text
+        return self._answer
 
-    def moderation_completion(self, completion: str, public_event: bool = False) -> tuple[str, bool]:
-        self.buffer = completion
-        self.is_final_chunk = True
+    def moderation_completion(self, completion: str) -> tuple[str, bool]:
+        """Finish on the response consumer without rechecking already processed stream content.
 
-        result = self.moderation(tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=completion)
-
-        if not result or not result.flagged:
-            return completion, False
-
-        final_output = result.preset_response if result.action == ModerationAction.DIRECT_OUTPUT else result.text
-
-        if public_event:
-            self.queue_manager.publish(
-                QueueMessageReplaceEvent(
-                    text=final_output, reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
-                ),
-                PublishFrom.TASK_PIPELINE,
-            )
-
-        return final_output, True
-
-    def start_thread(self) -> threading.Thread:
-        buffer_size = dify_config.MODERATION_BUFFER_SIZE
-        thread = threading.Thread(
-            target=self.worker,
-            kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
-                "buffer_size": buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE,
-            },
-        )
-
-        thread.start()
-
-        return thread
-
-    def stop_thread(self):
-        if self.thread and self.thread.is_alive():
-            self.thread_running = False
-
-    def worker(self, flask_app: Flask, buffer_size: int):
-        with flask_app.app_context():
-            current_length = 0
-            while self.thread_running:
-                moderation_buffer = self.buffer
-                buffer_length = len(moderation_buffer)
-                if not self.is_final_chunk:
-                    chunk_length = buffer_length - current_length
-                    if 0 <= chunk_length < buffer_size:
-                        time.sleep(1)
-                        continue
-
-                current_length = buffer_length
-
-                result = self.moderation(
-                    tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=moderation_buffer
-                )
-
-                if not result or not result.flagged:
-                    continue
-
-                if result.action == ModerationAction.DIRECT_OUTPUT:
-                    final_output = result.preset_response
-                    self.final_output = final_output
-                else:
-                    final_output = result.text + self.buffer[len(moderation_buffer) :]
-
-                # trigger replace event
-                if self.thread_running:
-                    self.queue_manager.publish(
-                        QueueMessageReplaceEvent(
-                            text=final_output, reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
-                        ),
-                        PublishFrom.TASK_PIPELINE,
-                    )
-
-                if result.action == ModerationAction.DIRECT_OUTPUT:
-                    break
+        Blocking results use independent non-stream segments. A changed final
+        result is new content and must be checked; unchanged streams check only
+        their remaining tail. Repeated completion never performs moderation I/O.
+        """
+        if self._error is not None:
+            raise self._error
+        if self.should_direct_output():
+            return self.get_final_output(), True
+        if self._finished:
+            return self._answer, self._answer != completion
+        if self._streamed and completion not in {self.buffer, self._answer}:
+            if completion.startswith(self.buffer):
+                suffix = completion[len(self.buffer) :]
+                self.buffer += suffix
+                self._answer += suffix
+            else:
+                self._streamed = False
+        if self._streamed:
+            pending = self.buffer[self._checked_length :]
+            replacement = self._check_pending(pending) if pending else None
+            flagged = replacement is not None
+        else:
+            self.buffer = completion
+            self._answer = ""
+            self._checked_length = 0
+            size = dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE
+            flagged = False
+            while self._checked_length < len(completion) and not self.should_direct_output():
+                segment = completion[self._checked_length : self._checked_length + size]
+                self._answer += segment
+                replacement = self._check_pending(segment)
+                flagged = flagged or replacement is not None
+        self._finished = True
+        return self._answer, flagged or self._answer != completion
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
+        """Evaluate once on the response consumer; injected failures stay terminal without exposing diagnostics."""
+        if self._error is not None:
+            raise self._error
+        if self.output_evaluator is not None:
+            try:
+                return self.output_evaluator(moderation_buffer)
+            except Exception as error:
+                self._error = error
+                raise
         try:
-            moderation_factory = ModerationFactory(
-                name=self.rule.type, app_id=app_id, tenant_id=tenant_id, config=self.rule.config
-            )
-
-            result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
-            return result
+            backend = ModerationFactory(self.rule.type, app_id, tenant_id, self.rule.config)
+            return backend.moderation_for_outputs(moderation_buffer)
         except Exception:
             logger.exception("Moderation Output error, app_id: %s", app_id)
-
         return None

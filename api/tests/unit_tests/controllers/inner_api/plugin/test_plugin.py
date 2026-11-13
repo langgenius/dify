@@ -37,7 +37,11 @@ from controllers.inner_api.plugin.plugin import (
     PluginUploadFileRequestApi,
 )
 from core.datasource.entities.datasource_entities import DatasourceProviderType
-from core.plugin.entities.request import RequestInvokeDatasource, RequestInvokeTextEmbedding, RequestListModels
+from core.plugin.entities.request import (
+    RequestInvokeDatasource,
+    RequestInvokeTextEmbedding,
+    RequestListModels,
+)
 from core.workflow.file_reference import build_file_reference
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant

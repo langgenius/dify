@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from core.model_manager import ModelManager
 from core.moderation.base import (
     ModerationAction,
     ModerationError,
@@ -22,6 +23,24 @@ from core.moderation.base import (
 )
 from core.moderation.keywords.keywords import KeywordsModeration
 from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
+
+
+def test_independent_openai_check_propagates_tenant_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unavailable_tenant(*, tenant_id: str) -> ModelManager:
+        assert tenant_id == "tenant-1"
+        raise RuntimeError("Independent tenant provider unavailable")
+
+    monkeypatch.setattr(ModelManager, "for_tenant", unavailable_tenant)
+    backend = OpenAIModeration(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        config={
+            "inputs_config": {"enabled": True, "preset_response": "Rejected"},
+            "outputs_config": {"enabled": True, "preset_response": "Rejected"},
+        },
+    )
+    with pytest.raises(RuntimeError, match="Independent tenant provider unavailable"):
+        backend.moderation_for_inputs({}, "content")
 
 
 class TestKeywordsModeration:

@@ -9,6 +9,10 @@ from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
 
 
 class FilenameNotExistsError(BaseHTTPException):
@@ -206,3 +210,40 @@ def register_credential_refresh_error_handler(api: ExternalApi) -> None:
     api.document_error_handler(
         CredentialRefreshUnavailableError, status=HTTPStatus.SERVICE_UNAVAILABLE, code="service_unavailable"
     )
+
+
+def register_moderation_error_handlers(api: ExternalApi) -> None:
+    """Preserve model moderation error codes for non-streaming requests.
+
+    Preconditions: The API supports exception-specific registration and ordered
+    handlers. Postconditions: Rejections return 400 and unavailable checks return
+    503 before ValueError or generic handlers; both codes are documented without
+    changing unrelated error responses.
+    """
+
+    def handle_moderation_error(
+        error: ModerationRejectedInvocationError | ModerationUnavailableInvocationError,
+    ) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        status = (
+            HTTPStatus.SERVICE_UNAVAILABLE
+            if isinstance(error, ModerationUnavailableInvocationError)
+            else HTTPStatus.BAD_REQUEST
+        )
+        return {
+            "code": error.error_code,
+            "message": str(error),
+            "status": status.value,
+        }, status.value
+
+    for error_type, status in (
+        (ModerationRejectedInvocationError, HTTPStatus.BAD_REQUEST),
+        (ModerationUnavailableInvocationError, HTTPStatus.SERVICE_UNAVAILABLE),
+    ):
+        register_handler = api.errorhandler(error_type)
+        assert callable(register_handler)
+        register_handler(handle_moderation_error)
+        handlers: object = api.error_handlers
+        assert isinstance(handlers, OrderedDict)
+        handlers.move_to_end(error_type, last=False)
+        api.document_error_handler(error_type, status=status, code=error_type.error_code)

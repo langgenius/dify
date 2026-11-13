@@ -421,17 +421,15 @@ class HostedZhipuAIConfig(BaseSettings):
 
 
 class HostedModerationConfig(BaseSettings):
-    """
-    Configuration for hosted Moderation service
-    """
+    """Automatic moderation enablement and a fallback plugin pinned by SRE."""
 
     HOSTED_MODERATION_ENABLED: bool = Field(
-        description="Enable hosted Moderation service",
+        description="Enable automatic platform moderation for Cloud AI-credit LLMs; ignored in other editions",
         default=False,
     )
 
-    HOSTED_MODERATION_PROVIDERS: str = Field(
-        description="Comma-separated list of moderation providers",
+    HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
+        description="Fallback plugin unique identifier when a trusted tenant OpenAI plugin is unavailable",
         default="",
     )
 

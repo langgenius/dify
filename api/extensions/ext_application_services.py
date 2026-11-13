@@ -42,6 +42,7 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.moderation import build_moderation_service
 from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
@@ -182,6 +183,7 @@ from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
+from services.moderation_service import ModerationService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -309,6 +311,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    moderation: ModerationService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
@@ -646,6 +649,7 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
             add_index=add_annotation_to_index_task.delay,
@@ -923,6 +927,8 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from core.moderation.input_moderation import AppModeration as AppModerationPort
+    from extensions.application_services.app_moderation import AppModeration
     from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
@@ -938,6 +944,8 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app_moderation: AppModerationPort = AppModeration()
+    app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
     bind_account_only_loader(app, services.accounts.identity.get_account_by_id)

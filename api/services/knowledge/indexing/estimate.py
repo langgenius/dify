@@ -24,6 +24,7 @@ from services.knowledge.indexing.errors import (
     UnsupportedStoredSourceError,
 )
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.moderation_service import ModerationError
 
 
 class DatasetEstimateRecord(NamedTuple):
@@ -134,7 +135,9 @@ class IndexingEstimateRunner(Protocol):
         doc_language: str = "English",
         dataset_id: str | None = None,
         indexing_technique: str = "economy",
-    ) -> IndexingEstimate: ...
+    ) -> IndexingEstimate:
+        """Return previews; propagate ModerationError without converting it to a generic estimate failure."""
+        ...
 
 
 class IndexingEstimateApplicationError(Exception):
@@ -329,7 +332,15 @@ class IndexingEstimateApplicationService:
 
     @staticmethod
     def _translate_error(error: Exception) -> Never:
-        if isinstance(error, (IndexingEstimateApplicationError, CredentialRefreshUnavailableError)):
+        """Preserve application and moderation failures; translate only source and unexpected errors."""
+        if isinstance(
+            error,
+            (
+                IndexingEstimateApplicationError,
+                CredentialRefreshUnavailableError,
+                ModerationError,
+            ),
+        ):
             raise error
         if isinstance(error, UnsupportedStoredSourceError):
             raise UnsupportedEstimateSourceError(error.source_type) from error

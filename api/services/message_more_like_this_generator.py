@@ -89,7 +89,10 @@ class MessageMoreLikeThisGenerator:
         )
         # Credential resolution can commit its scoped session. Isolate it from
         # pending work in the caller; this scope also cleans up preparation errors.
-        with current_app.app_context(), bind_file_access_scope(scope):
+        with (
+            current_app.app_context(),
+            bind_file_access_scope(scope),
+        ):
             config_dict = cast(AppModelConfigDict, model_config)
             file_config = FileUploadConfigManager.convert(config_dict)
             files = (

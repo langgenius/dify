@@ -292,26 +292,6 @@ class TestCompletionAppRunner:
         assert len(direct_output.calls) == 1
         assert handle_invoke_result.calls == []
 
-    def test_run_hosting_moderation_stops(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        _, message = _persist_records(sqlite_session)
-
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-
-        runner.organize_prompt_messages = CallRecorder(result=([], None))  # type: ignore[method-assign]
-        runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
-            result=(None, app_generate_entity.inputs, "query")
-        )
-        runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
-        handle_invoke_result = CallRecorder()
-        runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
-
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
-
-        assert handle_invoke_result.calls == []
-
     def test_run_dataset_and_external_tools_flow(
         self,
         runner: CompletionAppRunner,
@@ -354,7 +334,6 @@ class TestCompletionAppRunner:
         runner.fill_in_inputs_from_external_data_tools = CallRecorder(  # type: ignore[method-assign]
             result=app_generate_entity.inputs
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
@@ -404,7 +383,6 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         handle_invoke_result = CallRecorder(implementation=lambda invoke_result, **kwargs: list(invoke_result))
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
@@ -451,7 +429,6 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         results: list[LLMResult | list[LLMResultChunk]] = []
 
@@ -510,20 +487,24 @@ class TestCompletionAppRunner:
             assert result.message.content == "answer"
 
     def test_run_uses_low_image_detail_default(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
+        self,
+        runner: CompletionAppRunner,
+        sqlite_session: Session,
+        queue_manager: MessageBasedAppQueueManager,
+        model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
     ) -> None:
         _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config, file_upload_config=None)
+        runtime_bundle, _, _ = model_runtime
+        app_generate_entity.model_conf.provider_model_bundle = runtime_bundle
 
         organize_prompt_messages = CallRecorder(result=([], None))
         runner.organize_prompt_messages = organize_prompt_messages  # type: ignore[method-assign]
         runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
             result=(None, app_generate_entity.inputs, "query")
         )
-        runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
-
         runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
         assert organize_prompt_messages.calls[-1].kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.LOW

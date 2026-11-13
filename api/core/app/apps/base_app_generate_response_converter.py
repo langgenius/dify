@@ -7,7 +7,7 @@ from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
-from core.app.apps.exc import AppGenerateError
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -130,10 +130,11 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 "message": str(e),
             }
 
-        if isinstance(e, AppGenerateError):
+        moderation_statuses = {"moderation_rejected": 400, "moderation_unavailable": 503}
+        if isinstance(e, ModerationInvocationError) and e.error_code in moderation_statuses:
             return {
                 "code": e.error_code,
-                "status": e.status_code,
+                "status": moderation_statuses[e.error_code],
                 "message": str(e),
             }
 

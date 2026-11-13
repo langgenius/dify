@@ -314,6 +314,7 @@ class QueueWorkflowFailedEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_FAILED
     error: str
+    error_type: str = Field(default="", exclude=True)
     exceptions_count: int
 
 

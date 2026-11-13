@@ -16,6 +16,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -424,8 +425,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle ping events."""
         yield self._base_task_pipeline.ping_stream_response()
 
-    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
+    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle error events."""
+        replacement = self._base_task_pipeline.moderation_replacement(event.error)
+        if replacement is not None:
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session)
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
+            return
         with self._database_session() as session:
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline.error_to_stream_response(err)
@@ -536,9 +551,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if delta_text is None:
             return
 
-        # Handle output moderation chunk
-        should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-        if should_direct_answer:
+        handler = self._base_task_pipeline.output_moderation_handler
+        if handler is not None and handler.should_direct_output():
+            return
+        replacement = (
+            handler.append_new_token(delta_text, prefix=self._task_state.answer) if handler is not None else None
+        )
+        if replacement is not None:
+            self._task_state.answer = replacement
+            yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement)
+            if handler is not None and handler.should_direct_output():
+                self._base_task_pipeline.queue_manager.publish(
+                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
+                )
             return
 
         current_time = time.perf_counter()
@@ -731,9 +756,26 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueWorkflowFailedEvent,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle workflow failed events."""
+        """Preserve rejection replies and emit scoped unavailable errors before terminal workflow delivery."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
+        moderation_error = self._base_task_pipeline.workflow_moderation_error(event.error_type)
+        replacement = self._base_task_pipeline.moderation_replacement(moderation_error) if moderation_error else None
+        if replacement is not None:
+            # Terminal workflow events stop the public topic reader. Emit and
+            # persist the replacement before that boundary so WebApp clients can
+            # actually receive the configured reply and message completion.
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session, graph_runtime_state=validated_state)
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
 
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
@@ -743,10 +785,18 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             error=event.error,
             exceptions_count=event.exceptions_count,
         )
+        if replacement is not None:
+            yield workflow_finish_resp
+            return
 
         with self._database_session() as session:
-            err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
+            err_event = QueueErrorEvent(error=moderation_error or ValueError(f"Run failed: {event.error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
+
+        if moderation_error is not None:
+            yield self._base_task_pipeline.error_to_stream_response(err)
+            yield workflow_finish_resp
+            return
 
         yield workflow_finish_resp
         yield self._base_task_pipeline.error_to_stream_response(err)
@@ -803,7 +853,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
         )
-        if output_moderation_answer:
+        if output_moderation_answer is not None:
             self._task_state.answer = output_moderation_answer
             yield self._message_cycle_manager.message_replace_to_stream_response(
                 answer=output_moderation_answer,
@@ -958,6 +1008,16 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
     ) -> Generator[StreamResponse]:
+        """Convert invocation failures into existing error events without escaping the response generator."""
+        try:
+            yield from self._process_stream_events(tts_publisher)
+        except AppGenerateError as error:
+            yield from self._handle_error_event(QueueErrorEvent(error=error))
+
+    def _process_stream_events(
+        self,
+        tts_publisher: AppGeneratorTTSPublisher | None,
+    ) -> Generator[StreamResponse]:
         """
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 57-if-statement version.
@@ -1094,28 +1154,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             files=self._recorded_files,
             metadata=extras,
         )
-
-    def _handle_output_moderation_chunk(self, text: str) -> bool:
-        """
-        Handle output moderation chunk.
-        :param text: text
-        :return: True if output moderation should direct output, otherwise False
-        """
-        if self._base_task_pipeline.output_moderation_handler:
-            if self._base_task_pipeline.output_moderation_handler.should_direct_output():
-                self._task_state.answer = self._base_task_pipeline.output_moderation_handler.get_final_output()
-                self._base_task_pipeline.queue_manager.publish(
-                    QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
-                )
-
-                self._base_task_pipeline.queue_manager.publish(
-                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
-                )
-                return True
-            else:
-                self._base_task_pipeline.output_moderation_handler.append_new_token(text)
-
-        return False
 
     def _get_message(self, *, session: Session):
         stmt = select(Message).where(Message.id == self._message_id)

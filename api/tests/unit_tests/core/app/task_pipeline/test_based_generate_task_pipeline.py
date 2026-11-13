@@ -7,14 +7,29 @@ from dify_agent.protocol import RunFailureType
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendRunFailedError
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
+from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
+from core.app.entities.task_entities import ChatbotAppStreamResponse, CompletionAppStreamResponse
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Message
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 def _persist_message(session: Session, *, message_id: str) -> Message:
@@ -176,7 +191,7 @@ class TestBasedGenerateTaskPipeline:
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result == "filtered"
-        handler.stop_thread.assert_called_once()
+        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
 
     def test_handle_output_moderation_when_not_flagged(self, pipeline):
@@ -187,5 +202,86 @@ class TestBasedGenerateTaskPipeline:
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result is None
-        handler.stop_thread.assert_called_once()
+        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
+
+
+@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP])
+@pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize(
+    ("failure", "expected_status"), [("input_rejected", 400), ("output_rejected", 400), ("unavailable", 503)]
+)
+def test_moderation_errors_survive_task_handling_and_response_conversion(
+    sqlite_session: Session, invoke_from: InvokeFrom, app_mode: AppMode, failure: str, expected_status: int
+) -> None:
+    entity = CompletionAppGenerateEntity(
+        task_id="task-1",
+        app_config=EasyUIBasedAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_mode=AppMode.COMPLETION,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="test-provider", model="test-model"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=make_model_config(provider="test-provider", model="test-model", mode="completion"),
+        inputs={},
+        files=[],
+        user_id="account-1",
+        stream=True,
+        invoke_from=invoke_from,
+    )
+    queue = MessageBasedAppQueueManager(
+        task_id="task-1",
+        user_id="account-1",
+        invoke_from=invoke_from,
+        conversation_id="conversation-1",
+        app_mode=app_mode,
+        message_id="msg-1",
+    )
+    pipeline = BasedGenerateTaskPipeline(application_generate_entity=entity, queue_manager=queue, stream=True)
+    errors = {
+        "input_rejected": ModerationRejectedInvocationError("input", "Model input was rejected by moderation."),
+        "output_rejected": ModerationRejectedInvocationError("output", "Model output was rejected by moderation."),
+        "unavailable": ModerationUnavailableInvocationError(),
+    }
+    error = errors[failure]
+    _persist_message(sqlite_session, message_id="msg-1")
+
+    handled_error = pipeline.handle_error(
+        event=QueueErrorEvent(error=error), session=sqlite_session, message_id="msg-1"
+    )
+
+    assert handled_error is error
+    sqlite_session.flush()
+    sqlite_session.expire_all()
+    message = sqlite_session.get(Message, "msg-1")
+    assert message is not None
+    assert message.status == MessageStatus.ERROR
+    assert message.error == str(error)
+    stream_response = pipeline.error_to_stream_response(handled_error)
+    if app_mode == AppMode.CHAT:
+        response = ChatbotAppStreamResponse(
+            conversation_id="conversation-1", message_id="msg-1", created_at=1, stream_response=stream_response
+        )
+        payloads = list(
+            ChatAppGenerateResponseConverter.convert_stream_full_response(item for item in [response])
+            if invoke_from == InvokeFrom.DEBUGGER
+            else ChatAppGenerateResponseConverter.convert_stream_simple_response(item for item in [response])
+        )
+    else:
+        response = CompletionAppStreamResponse(message_id="msg-1", created_at=1, stream_response=stream_response)
+        payloads = list(
+            CompletionAppGenerateResponseConverter.convert_stream_full_response(item for item in [response])
+            if invoke_from == InvokeFrom.DEBUGGER
+            else CompletionAppGenerateResponseConverter.convert_stream_simple_response(item for item in [response])
+        )
+    assert len(payloads) == 1
+    payload = payloads[0]
+    assert isinstance(payload, dict)
+    assert payload["event"] == "error"
+    assert payload["code"] == error.error_code
+    assert payload["status"] == expected_status
+    assert payload["message"] == str(error)

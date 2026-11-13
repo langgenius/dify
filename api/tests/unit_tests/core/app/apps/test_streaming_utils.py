@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.apps.advanced_chat.generate_task_pipeline import (
     AdvancedChatAppGenerateTaskPipeline,
@@ -21,18 +22,40 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL, _normalize_terminal_events, stream_topic_events
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.app.entities.queue_entities import QueueStopEvent, QueueTextChunkEvent
+from core.app.entities.queue_entities import (
+    QueueStopEvent,
+    QueueTextChunkEvent,
+    QueueWorkflowFailedEvent,
+    QueueWorkflowStartedEvent,
+)
 from core.app.entities.task_entities import (
+    ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     MessageEndStreamResponse,
     MessageStreamResponse,
     StreamEvent,
 )
+from core.workflow.system_variables import build_system_variables
+from extensions.application_services.app_moderation import DEFAULT_CHAT_MODERATION_REPLY, AppModeration
+from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowType
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
+from graphon.runtime import RuntimeState
 from libs.broadcast_channel.channel import SupportsPreparedSubscription
+from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, EndUser, Message
+from services.moderation_adapters import HostedOpenAIModerationGateway
+from services.moderation_invocation_errors import (
+    ModerationUnavailableInvocationError,
+    PlatformModerationRejectedInvocationError,
+)
+from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient, make_moderated_model
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 class FakeSubscription:
@@ -448,3 +471,200 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
     assert message.answer == moderation_reply
     assert message.status == MessageStatus.NORMAL
     assert message.workflow_run_id is None
+
+
+@pytest.mark.parametrize(
+    ("phase", "previous_answer", "configured", "invoke_from", "unavailable", "stream"),
+    [
+        ("input", "", True, InvokeFrom.WEB_APP, False, True),
+        ("input", "approved prefix", False, InvokeFrom.WEB_APP, False, True),
+        ("output", "approved prefix", True, InvokeFrom.WEB_APP, False, True),
+        ("output", "", False, InvokeFrom.SERVICE_API, False, True),
+        ("input", "", True, InvokeFrom.WEB_APP, True, True),
+        ("output", "approved prefix", False, InvokeFrom.WEB_APP, True, True),
+        ("input", "", True, InvokeFrom.SERVICE_API, False, False),
+        ("output", "approved prefix", False, InvokeFrom.SERVICE_API, False, False),
+        ("output", "approved prefix", True, InvokeFrom.SERVICE_API, True, False),
+    ],
+)
+def test_chatflow_moderation_result_survives_workflow_terminal(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    phase: ModerationPhase,
+    previous_answer: str,
+    configured: bool,
+    invoke_from: InvokeFrom,
+    unavailable: bool,
+    stream: bool,
+) -> None:
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", AppModeration)
+    app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
+    workflow = make_workflow(
+        workflow_id="workflow-1",
+        app_id=app.id,
+        tenant_id=app.tenant_id,
+        workflow_type=WorkflowType.CHAT,
+        version="published",
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "variables": []}}], "edges": []},
+        features={
+            "sensitive_word_avoidance": {
+                "enabled": configured,
+                "type": "openai_moderation",
+                "config": {
+                    "inputs_config": {"enabled": True, "preset_response": "App input refusal"},
+                    "outputs_config": {"enabled": True, "preset_response": "App output refusal"},
+                },
+            }
+        },
+    )
+    config = AdvancedChatAppConfigManager.get_app_config(app_model=app, workflow=workflow)
+    user = EndUser(id="end-user-1", tenant_id=app.tenant_id, type="session", session_id="session-id")
+    conversation = make_conversation(app_id=app.id, mode=app.mode, from_source=ConversationFromSource.API)
+    message = make_message(
+        app_id=app.id,
+        conversation_id=conversation.id,
+        query="blocked" if phase == "input" else "safe",
+        message={},
+        answer="",
+        invoke_from=invoke_from,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=user.id,
+    )
+    sqlite_session.add_all([conversation, message])
+    sqlite_session.commit()
+    entity = AdvancedChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=config,
+        query=message.query,
+        inputs={},
+        files=[],
+        user_id=user.id,
+        stream=stream,
+        invoke_from=invoke_from,
+        workflow_run_id="workflow-run-1",
+        extras={"auto_generate_conversation_name": False},
+    )
+    queue_manager = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=user.id,
+        invoke_from=invoke_from,
+        conversation_id=conversation.id,
+        app_mode=app.mode,
+        message_id=message.id,
+    )
+    queue_manager.graph_runtime_state = RuntimeState(
+        workflow_id=workflow.id,
+        variable_pool=build_test_variable_pool(
+            variables=build_system_variables(workflow_execution_id=entity.workflow_run_id)
+        ),
+        start_at=0.0,
+        node_run_steps=2,
+    )
+    pipeline = AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=entity,
+        workflow=WorkflowSnapshot.from_workflow(workflow),
+        queue_manager=queue_manager,
+        conversation=ConversationSnapshot.from_conversation(conversation),
+        message=MessageSnapshot.from_message(message),
+        user=user,
+        stream=stream,
+        dialogue_count=1,
+        draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+            invoke_from, user, tenant_id=app.tenant_id
+        ),
+    )
+    client = RecordingHostedModerationClient()
+    if unavailable:
+        client.error = RuntimeError("Private moderation backend failure")
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"openai_api_key": "platform-key"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        )
+    )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id=app.tenant_id, app_id=app.id),
+        service=service,
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={
+                "inputs_config": {"enabled": not unavailable or phase == "input"},
+                "outputs_config": {"enabled": True},
+            },
+        ),
+        platform=True,
+    )
+    model, provider = make_moderated_model(quota=True, parts=["blocked"], moderation=guard)
+
+    def invoke() -> None:
+        list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
+
+    error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
+    with pytest.raises(error_type) as rejected:
+        invoke()
+    queue_manager.publish(QueueWorkflowStartedEvent(), PublishFrom.APPLICATION_MANAGER)
+    pipeline._task_state.answer = previous_answer
+    queue_manager.publish(
+        QueueWorkflowFailedEvent(
+            error=str(rejected.value), error_type=type(rejected.value).__name__, exceptions_count=1
+        ),
+        PublishFrom.APPLICATION_MANAGER,
+    )
+    expected_reply = f"App {phase} refusal" if configured else DEFAULT_CHAT_MODERATION_REPLY
+    if not stream:
+        if unavailable:
+            with pytest.raises(ModerationUnavailableInvocationError) as failure:
+                pipeline.process()
+            assert failure.value.error_code == "moderation_unavailable"
+        else:
+            response = pipeline.process()
+            assert isinstance(response, ChatbotAppBlockingResponse)
+            assert response.data.answer == expected_reply
+        sqlite_session.refresh(message)
+        assert message.status == (MessageStatus.ERROR if unavailable else MessageStatus.NORMAL)
+        assert message.error == (str(rejected.value) if unavailable else None)
+        assert message.answer == ("" if unavailable else expected_reply)
+        assert provider.invocations == (0 if phase == "input" else 1)
+        return
+    runtime_responses = pipeline.process()
+    assert isinstance(runtime_responses, Generator)
+    converted = AdvancedChatAppGenerateResponseConverter.convert(runtime_responses, invoke_from)
+    assert isinstance(converted, Generator)
+    topic = FakeTopic()
+    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", lambda *_args, **_kwargs: topic)
+    _publish_streaming_response(
+        converted,
+        entity.workflow_run_id,
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id=workflow.id,
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+    assert topic._queue.qsize() == (3 if unavailable else 4)
+    subscription = topic.subscribe()
+    events = list(stream_topic_events(subscription=subscription, idle_timeout=0.1))
+    public_events = [event for event in events if isinstance(event, dict)]
+    if unavailable:
+        assert [event["event"] for event in public_events] == ["workflow_started", "error", "workflow_finished"]
+        assert public_events[1]["code"] == "moderation_unavailable"
+        assert public_events[1]["status"] == 503
+        assert public_events[1]["message"] == str(ModerationUnavailableInvocationError())
+        assert "Private" not in json.dumps(public_events)
+    else:
+        assert [event["event"] for event in public_events] == [
+            "workflow_started",
+            "message_replace" if previous_answer else "message",
+            "message_end",
+            "workflow_finished",
+        ]
+        assert public_events[1]["answer"] == expected_reply
+    assert public_events[-1]["data"]["status"] == "failed"
+    assert public_events[-1]["data"]["error"] == str(rejected.value)
+    assert subscription.closed
+    assert topic._queue.empty()
+    assert provider.invocations == (0 if phase == "input" else 1)
+    sqlite_session.refresh(message)
+    assert message.answer == ("" if unavailable else expected_reply)
+    assert message.status == (MessageStatus.ERROR if unavailable else MessageStatus.NORMAL)
+    assert message.error == (str(rejected.value) if unavailable else None)

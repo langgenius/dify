@@ -165,16 +165,6 @@ class AgentChatAppRunner(AppRunner):
             memory=memory,
         )
 
-        # check hosting moderation
-        hosting_moderation_result = self.check_hosting_moderation(
-            application_generate_entity=application_generate_entity,
-            queue_manager=queue_manager,
-            prompt_messages=prompt_messages,
-        )
-
-        if hosting_moderation_result:
-            return
-
         agent_entity = app_config.agent
         assert agent_entity is not None
 

@@ -61,6 +61,7 @@ from core.app.entities.task_entities import (
     StreamEvent,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
@@ -725,24 +726,18 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         events: list[object] = []
 
-        class _Moderation:
-            def should_direct_output(self):
-                return True
-
-            def get_final_output(self):
-                return "final"
-
-        pipeline._base_task_pipeline.output_moderation_handler = _Moderation()
+        pipeline._base_task_pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={}), final_output="final"
+        )
+        pipeline._task_state.answer = "final"
         pipeline._base_task_pipeline.queue_manager = SimpleNamespace(
             publish=lambda event, pub_from: events.append(event)
         )
 
-        result = pipeline._handle_output_moderation_chunk("ignored")
-
-        assert result is True
+        result = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="ignored")))
+        assert result == []
         assert pipeline._task_state.answer == "final"
-        assert any(isinstance(event, QueueTextChunkEvent) for event in events)
-        assert any(isinstance(event, QueueStopEvent) for event in events)
+        assert events == []
 
     def test_handle_node_succeeded_event_records_files(self):
         pipeline = _make_pipeline()
@@ -960,21 +955,13 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_handle_output_moderation_chunk_appends_token(self):
         pipeline = _make_pipeline()
-        seen: list[str] = []
-
-        class _Moderation:
-            def should_direct_output(self):
-                return False
-
-            def append_new_token(self, text):
-                seen.append(text)
-
-        pipeline._base_task_pipeline.output_moderation_handler = _Moderation()
-
-        result = pipeline._handle_output_moderation_chunk("token")
-
-        assert result is False
-        assert seen == ["token"]
+        handler = OutputModeration(
+            tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+        )
+        pipeline._base_task_pipeline.output_moderation_handler = handler
+        result = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="token")))
+        assert len(result) == 1
+        assert handler.buffer == "token"
 
     def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         pipeline = _make_pipeline()

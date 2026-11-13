@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
 )
@@ -17,6 +18,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.errors.error import QuotaExceededError
+from core.moderation.input_moderation import get_app_moderation
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
@@ -42,12 +44,14 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         stream: bool,
     ):
         self._application_generate_entity = application_generate_entity
+        self._moderation = get_app_moderation()
         self.queue_manager = queue_manager
         self.start_at = time.perf_counter()
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+        """Retain error typing and mark an existing message failed in the caller's transaction."""
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -114,15 +118,34 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         """
         app_config = self._application_generate_entity.app_config
         sensitive_word_avoidance = app_config.sensitive_word_avoidance
+        moderation = self._moderation
 
+        if sensitive_word_avoidance is not None and sensitive_word_avoidance.type == "openai_moderation":
+            return None
         if sensitive_word_avoidance:
             return OutputModeration(
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
-                queue_manager=self.queue_manager,
+                output_evaluator=moderation.output_evaluator(app_config) if moderation is not None else None,
             )
         return None
+
+    def moderation_replacement(self, error: Exception) -> tuple[str, str] | None:
+        """Render platform verdicts using a matching app preset or chat default; never hide backend failures."""
+        moderation = self._moderation
+        replacement = (
+            moderation.replacement(self._application_generate_entity.app_config, error)
+            if moderation is not None
+            else None
+        )
+        if replacement is not None and self.output_moderation_handler is not None:
+            self.output_moderation_handler = None
+        return replacement
+
+    def workflow_moderation_error(self, error_type: str) -> AppGenerateError | None:
+        """Restore classification from an internal node error type using the startup-injected policy port."""
+        return self._moderation.workflow_error(error_type) if self._moderation is not None else None
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """
@@ -132,11 +155,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         """
         # response moderation
         if self.output_moderation_handler:
-            self.output_moderation_handler.stop_thread()
-
-            completion, flagged = self.output_moderation_handler.moderation_completion(
-                completion=completion, public_event=False
-            )
+            completion, flagged = self.output_moderation_handler.moderation_completion(completion=completion)
 
             self.output_moderation_handler = None
             if flagged:
