@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -173,6 +173,10 @@ class FileScanService:
         upload_file_id: str | None,
         wait_for_result: bool,
     ) -> ScanOutcome:
+        # Capture the scan's configuration epoch before reading the provider. If an update commits
+        # while the external scan is in flight, this record must remain older than that update so
+        # it cannot be reused under the new configuration.
+        scan_started_at = naive_utc_now()
         with self._session_maker() as session:
             provider = (
                 session.scalar(
@@ -192,12 +196,22 @@ class FileScanService:
                 )
             provider_id, provider_name, provider_type = provider.id, provider.name, provider.provider_type
 
-            reused = _reusable_record(session, tenant_id=tenant_id, provider_id=provider_id, file_hash=target.file_hash)
+            reused = _reusable_record(
+                session,
+                tenant_id=tenant_id,
+                provider_id=provider_id,
+                file_hash=target.file_hash,
+                provider_last_tested_at=provider.last_tested_at,
+            )
             if reused is not None:
                 return _outcome_from_record(reused, file_name=target.file_name)
 
             external_id = _pending_external_id(
-                session, tenant_id=tenant_id, provider_id=provider_id, upload_file_id=upload_file_id
+                session,
+                tenant_id=tenant_id,
+                provider_id=provider_id,
+                upload_file_id=upload_file_id,
+                provider_last_tested_at=provider.last_tested_at,
             )
             scanner: FileScanner | None = None
             config_error = ""
@@ -231,6 +245,7 @@ class FileScanService:
             outcome=outcome,
             scope=scope,
             upload_file_id=upload_file_id,
+            created_at=scan_started_at,
         )
         return _with_record(outcome, record_id)
 
@@ -313,6 +328,7 @@ class FileScanService:
         outcome: ScanOutcome,
         scope: ScanScope | None,
         upload_file_id: str | None,
+        created_at: datetime,
     ) -> str | None:
         """Store the verdict and keep the provider's health in step with it."""
         try:
@@ -337,6 +353,7 @@ class FileScanService:
                     external_id=verdict.external_id,
                     size_limit=verdict.size_limit,
                 )
+                record.created_at = created_at
                 session.add(record)
                 provider = session.get(FileScanProvider, provider_id)
                 if provider is not None:
@@ -361,7 +378,14 @@ def _with_record(outcome: ScanOutcome, record_id: str | None) -> ScanOutcome:
     return replace(outcome, record_id=record_id)
 
 
-def _reusable_record(session: Session, *, tenant_id: str, provider_id: str, file_hash: str) -> FileScanRecord | None:
+def _reusable_record(
+    session: Session,
+    *,
+    tenant_id: str,
+    provider_id: str,
+    file_hash: str,
+    provider_last_tested_at: datetime | None,
+) -> FileScanRecord | None:
     """An earlier verdict for the same content under the same provider.
 
     Infected verdicts are reused forever. Clean verdicts expire because signatures are updated.
@@ -381,6 +405,10 @@ def _reusable_record(session: Session, *, tenant_id: str, provider_id: str, file
     )
     if latest is None:
         return None
+    # A provider update or connectivity test can point the same provider ID at a different
+    # scanner. Verdicts from before that verification must not be reused with its new settings.
+    if provider_last_tested_at is not None and latest.created_at <= provider_last_tested_at:
+        return None
     if latest.status == FileScanRecordStatus.INFECTED:
         return latest
     ttl = timedelta(hours=dify_config.FILE_SCAN_CLEAN_VERDICT_TTL_HOURS)
@@ -388,7 +416,12 @@ def _reusable_record(session: Session, *, tenant_id: str, provider_id: str, file
 
 
 def _pending_external_id(
-    session: Session, *, tenant_id: str, provider_id: str, upload_file_id: str | None
+    session: Session,
+    *,
+    tenant_id: str,
+    provider_id: str,
+    upload_file_id: str | None,
+    provider_last_tested_at: datetime | None,
 ) -> str | None:
     """The scanner-side id of a scan a previous attempt submitted and left running."""
     if upload_file_id is None:
@@ -404,6 +437,8 @@ def _pending_external_id(
         .limit(1)
     )
     if latest is None or latest.problem != ScanProblem.PENDING.value:
+        return None
+    if provider_last_tested_at is not None and latest.created_at <= provider_last_tested_at:
         return None
     return latest.external_id
 

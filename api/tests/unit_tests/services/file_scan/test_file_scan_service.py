@@ -416,6 +416,35 @@ def test_infected_verdict_is_reused_forever_and_clean_verdict_until_it_expires(
     assert len(scanner.external_ids) == 2
 
 
+def test_provider_update_invalidates_verdicts_from_its_previous_configuration(
+    sqlite_session_factory: sessionmaker[Session],
+    storage: _Storage,
+    monkeypatch: pytest.MonkeyPatch,
+    checked_scanner: "type[_CheckedScanner]",
+) -> None:
+    scanner = _use_scanner(monkeypatch, ScanVerdict.clean(), ScanVerdict.infected(["Late.Detection"]))
+    provider_id, first = _seed(sqlite_session_factory, storage)
+    _, second = _seed(sqlite_session_factory, storage, upload_file_id="55555555-5555-4555-8555-555555555556")
+    service, _ = _service(sqlite_session_factory)
+
+    assert _scan(service, first).status == "clean"
+    assert len(scanner.external_ids) == 1
+
+    FileScanProviderService(sqlite_session_factory).update(
+        tenant_id=TENANT_ID,
+        provider_id=provider_id,
+        config={"endpoint": "https://new-scanner.example"},
+        credentials={"api_key": "new-key"},
+    )
+
+    outcome = _scan(service, second)
+
+    assert (outcome.allowed, outcome.code) == (False, ScanErrorCode.MALWARE_DETECTED)
+    assert outcome.threats == ("Late.Detection",)
+    assert len(scanner.external_ids) == 2
+    assert checked_scanner.checks == 1
+
+
 def test_file_without_a_hash_is_always_scanned(
     sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -848,3 +877,64 @@ def test_custom_endpoint_keeps_its_own_address_and_key(
     with pytest.raises(FileScanValidationError, match="Enter the credentials again"):
         providers.update(tenant_id=TENANT_ID, provider_id=created.id, config={"endpoint": "https://collector.example"})
     assert len(calls) == 1
+
+
+def test_provider_update_racing_with_an_inflight_scan_does_not_reuse_old_verdict(
+    sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    provider_id, first = _seed(sqlite_session_factory, storage)
+    _, second = _seed(sqlite_session_factory, storage, upload_file_id="55555555-5555-4555-8555-555555555556")
+    calls = 0
+
+    def verify(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(FileScanProviderService, "_verify", verify)
+
+    class UpdatingScanner(_Scanner):
+        @override
+        def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+            nonlocal calls
+            calls += 1
+            target.load()
+            if calls == 1:
+                FileScanProviderService(sqlite_session_factory).update(
+                    tenant_id=TENANT_ID,
+                    provider_id=provider_id,
+                    config={"endpoint": "https://new-scanner.example"},
+                    credentials={"api_key": "new-key"},
+                )
+            return ScanVerdict.clean()
+
+    scanner = UpdatingScanner(ScanVerdict.clean())
+    monkeypatch.setattr(service_module, "build_scanner", lambda _tenant_id, _provider: scanner)
+    service, _ = _service(sqlite_session_factory)
+
+    assert _scan(service, first).status == "clean"
+    assert _scan(service, second).status == "clean"
+    assert calls == 2
+
+
+def test_pending_scan_from_old_provider_configuration_is_not_resumed_after_update(
+    sqlite_session_factory: sessionmaker[Session], storage: _Storage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scanner = _use_scanner(
+        monkeypatch,
+        ScanVerdict.unavailable(ScanProblem.PENDING, external_id="old-provider-scan-id"),
+        ScanVerdict.clean(),
+    )
+    provider_id, upload_file_id = _seed(sqlite_session_factory, storage)
+    monkeypatch.setattr(FileScanProviderService, "_verify", lambda *_args, **_kwargs: None)
+    service, _ = _service(sqlite_session_factory)
+
+    pending = _scan(service, upload_file_id, wait_for_result=False)
+    assert pending.code is ScanErrorCode.PENDING
+    FileScanProviderService(sqlite_session_factory).update(
+        tenant_id=TENANT_ID,
+        provider_id=provider_id,
+        config={"endpoint": "https://new-scanner.example"},
+        credentials={"api_key": "new-key"},
+    )
+
+    assert _scan(service, upload_file_id, wait_for_result=False).allowed
+    assert scanner.external_ids == [None, None]
