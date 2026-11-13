@@ -660,49 +660,56 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
-            with session_factory.create_session() as session:
-                workflow = session.scalar(
-                    select(Workflow).where(
-                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
-                        Workflow.app_id == application_generate_entity.app_config.app_id,
-                        Workflow.id == application_generate_entity.app_config.workflow_id,
-                    )
-                )
-                if workflow is None:
-                    raise ValueError("Workflow not found")
-
-                workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
-                if graph_runtime_state is not None:
-                    self._restore_workflow_run_graph(
-                        session=session,
-                        workflow=workflow,
-                        workflow_run_id=application_generate_entity.workflow_execution_id,
-                    )
-
-                user_from = application_generate_entity.user_from
-                if user_from == UserFrom.END_USER:
-                    end_user = session.scalar(
-                        select(EndUser).where(
-                            EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
-                            EndUser.id == application_generate_entity.user_id,
+            # The caller blocks on the queue until this worker publishes an event, so a
+            # failure while preparing the run must be published like a failure during it.
+            try:
+                with session_factory.create_session() as session:
+                    workflow = session.scalar(
+                        select(Workflow).where(
+                            Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                            Workflow.app_id == application_generate_entity.app_config.app_id,
+                            Workflow.id == application_generate_entity.app_config.workflow_id,
                         )
                     )
-                    system_user_id = end_user.session_id if end_user else ""
-                else:
-                    system_user_id = application_generate_entity.user_id
+                    if workflow is None:
+                        raise ValueError("Workflow not found")
 
-            runner = WorkflowAppRunner(
-                application_generate_entity=application_generate_entity,
-                execution_driver=self._execution_driver,
-                queue_manager=queue_manager,
-                variable_loader=variable_loader,
-                workflow=workflow,
-                system_user_id=system_user_id,
-                root_node_id=root_node_id,
-                graph_engine_layers=graph_engine_layers,
-                graph_runtime_state=graph_runtime_state,
-                response_stream_filter=response_stream_filter,
-            )
+                    workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+                    if graph_runtime_state is not None:
+                        self._restore_workflow_run_graph(
+                            session=session,
+                            workflow=workflow,
+                            workflow_run_id=application_generate_entity.workflow_execution_id,
+                        )
+
+                    user_from = application_generate_entity.user_from
+                    if user_from == UserFrom.END_USER:
+                        end_user = session.scalar(
+                            select(EndUser).where(
+                                EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
+                                EndUser.id == application_generate_entity.user_id,
+                            )
+                        )
+                        system_user_id = end_user.session_id if end_user else ""
+                    else:
+                        system_user_id = application_generate_entity.user_id
+
+                runner = WorkflowAppRunner(
+                    application_generate_entity=application_generate_entity,
+                    execution_driver=self._execution_driver,
+                    queue_manager=queue_manager,
+                    variable_loader=variable_loader,
+                    workflow=workflow,
+                    system_user_id=system_user_id,
+                    root_node_id=root_node_id,
+                    graph_engine_layers=graph_engine_layers,
+                    graph_runtime_state=graph_runtime_state,
+                    response_stream_filter=response_stream_filter,
+                )
+            except Exception as e:
+                logger.exception("Failed to prepare the workflow run")
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                return
 
             try:
                 with active_workflow_task(application_generate_entity.task_id):

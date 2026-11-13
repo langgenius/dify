@@ -531,6 +531,54 @@ class TestAppGenerateServiceCases:
             assert call_kwargs.get("pause_state_config") is not None
             assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
+        def test_workflow_blocking_releases_caller_session_before_the_run(
+            self, mocker: MockerFixture, sqlite_session: Session
+        ):
+            """A blocking run lasts as long as the workflow; the caller session must not pin a connection for it."""
+            workflow = _make_workflow()
+            workflow._features = "{}"
+            sqlite_session.add(workflow)
+            sqlite_session.commit()
+            # The workflow must come from the database, as it does on a fresh request.
+            sqlite_session.expunge_all()
+            in_transaction_during_run: list[bool] = []
+            workflows_seen: list[Workflow] = []
+
+            def load_workflow(*_args: object, session: Session, **_kwargs: object) -> Workflow:
+                workflow = session.get(Workflow, "workflow-id")
+                assert workflow is not None
+                return workflow
+
+            def run_workflow(*_args: object, workflow: Workflow, **_kwargs: object) -> dict[str, str]:
+                in_transaction_during_run.append(sqlite_session.in_transaction())
+                workflows_seen.append(workflow)
+                return {"result": workflow.created_by}
+
+            mocker.patch.object(AppGenerateService, "_get_workflow", side_effect=load_workflow)
+            mocker.patch("services.app_generate_service.WorkflowAppGenerator.generate", side_effect=run_workflow)
+            mocker.patch(
+                "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+                side_effect=lambda x: x,
+            )
+            expire_on_commit = sqlite_session.expire_on_commit
+
+            result = AppGenerateService.generate(
+                app_model=_make_app(AppMode.WORKFLOW),
+                user=_make_user(),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+                session=sqlite_session,
+            )
+
+            assert result == {"result": "owner-id"}
+            assert in_transaction_during_run == [False]
+            # The workflow handed to the run stays attached and loaded: reading it sends no query.
+            assert workflows_seen[0] in sqlite_session
+            assert workflows_seen[0].id == "workflow-id"
+            assert not sqlite_session.in_transaction()
+            assert sqlite_session.expire_on_commit is expire_on_commit
+
         @pytest.mark.parametrize(
             "invoke_from",
             [InvokeFrom.OPENAPI, InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP],
