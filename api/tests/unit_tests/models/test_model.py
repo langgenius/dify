@@ -26,7 +26,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 def test_legacy_agent_strategy_preserves_invalid_configuration(
     sqlite_session: Session, enabled: bool, strategy: object, expected_mode: AppMode
 ) -> None:
-    app = App(tenant_id=str(uuid4()), name="Legacy Agent", mode=AppMode.CHAT)
+    app = App(tenant_id=str(uuid4()), name="Legacy Agent", mode=AppMode.CHAT, enable_site=True, enable_api=False)
     sqlite_session.add(app)
     sqlite_session.flush()
     config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": enabled, "strategy": strategy}))
