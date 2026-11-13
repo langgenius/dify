@@ -247,6 +247,49 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
     assert _require_form(sqlite_session, "form-b").status == HumanInputFormStatus.WAITING
 
 
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm, WorkflowPause)], indirect=True)
+def test_node_timeout_without_pause_or_workflow_run_is_handled(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_task_database: None,
+    sqlite_session: Session,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    now = datetime(2025, 1, 1, 12, 0, 0)
+    monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
+    sqlite_session.add_all(
+        [
+            _build_form(
+                form_id="form-no-pause",
+                form_kind=HumanInputFormKind.RUNTIME,
+                created_at=now - timedelta(minutes=1),
+                expiration_time=now - timedelta(seconds=1),
+                workflow_run_id="run-without-pause",
+                node_id="node-no-pause",
+            ),
+            _build_form(
+                form_id="form-no-run",
+                form_kind=HumanInputFormKind.RUNTIME,
+                created_at=now - timedelta(minutes=1),
+                expiration_time=now - timedelta(seconds=1),
+                workflow_run_id=None,
+                node_id="node-no-run",
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(task_module, "_dispatch_pending_human_input_resumes", lambda _limit, workflow_run_id=None: None)
+    monkeypatch.setattr(task_module, "_enqueue_human_input_v2_timeouts", lambda _limit: None)
+
+    with caplog.at_level("WARNING", logger="tasks.human_input_timeout_tasks"):
+        task_module.check_and_handle_human_input_timeouts(limit=10)
+
+    sqlite_session.expire_all()
+    assert _require_form(sqlite_session, "form-no-pause").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-no-run").status == HumanInputFormStatus.TIMEOUT
+    assert "form-no-run has no workflow_run_id; skipping resume" in caplog.text
+
+
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled(
     monkeypatch: pytest.MonkeyPatch,
