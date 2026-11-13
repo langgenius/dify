@@ -88,7 +88,10 @@ func handleRunJob(svc *Service) http.HandlerFunc {
 
 func handleWaitJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobID := r.PathValue("job_id")
+		jobID, ok := parsePathJobID(w, r)
+		if !ok {
+			return
+		}
 		var req WaitJobRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, 400, "invalid_request", "Invalid JSON body")
@@ -108,7 +111,10 @@ func handleWaitJob(svc *Service, config *Config) http.HandlerFunc {
 
 func handleTailJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobID := r.PathValue("job_id")
+		jobID, ok := parsePathJobID(w, r)
+		if !ok {
+			return
+		}
 		outputLimit := config.DefaultOutputLimitBytes
 		if v := r.URL.Query().Get("output_limit"); v != "" {
 			if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
@@ -129,7 +135,10 @@ func handleTailJob(svc *Service, config *Config) http.HandlerFunc {
 
 func handleJobStatus(svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobID := r.PathValue("job_id")
+		jobID, ok := parsePathJobID(w, r)
+		if !ok {
+			return
+		}
 		view, err := svc.GetJobStatus(jobID)
 		if err != nil {
 			writeServerError(w, err)
@@ -167,7 +176,10 @@ func handleListJobs(svc *Service, config *Config) http.HandlerFunc {
 
 func handleInputJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobID := r.PathValue("job_id")
+		jobID, ok := parsePathJobID(w, r)
+		if !ok {
+			return
+		}
 		var req InputJobRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, 400, "invalid_request", "Invalid JSON body")
@@ -190,7 +202,10 @@ func handleInputJob(svc *Service, config *Config) http.HandlerFunc {
 
 func handleTerminateJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobID := r.PathValue("job_id")
+		jobID, ok := parsePathJobID(w, r)
+		if !ok {
+			return
+		}
 		var req TerminateJobRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		graceSeconds := config.DefaultTerminateGraceSeconds
@@ -208,7 +223,10 @@ func handleTerminateJob(svc *Service, config *Config) http.HandlerFunc {
 
 func handleDeleteJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobID := r.PathValue("job_id")
+		jobID, ok := parsePathJobID(w, r)
+		if !ok {
+			return
+		}
 		force := r.URL.Query().Get("force") == "true"
 		graceSeconds := config.DefaultTerminateGraceSeconds
 		if v := r.URL.Query().Get("grace_seconds"); v != "" {
@@ -223,6 +241,16 @@ func handleDeleteJob(svc *Service, config *Config) http.HandlerFunc {
 		}
 		writeJSON(w, http.StatusOK, result)
 	}
+}
+
+// parsePathJobID rejects malformed IDs before handlers decode bodies or queries.
+func parsePathJobID(w http.ResponseWriter, r *http.Request) (JobID, bool) {
+	jobID, err := ParseJobID(r.PathValue("job_id"))
+	if err != nil {
+		writeServerError(w, err)
+		return "", false
+	}
+	return jobID, true
 }
 
 // Middleware
