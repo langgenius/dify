@@ -9,8 +9,7 @@ from typing import cast, override
 import httpx
 import pytest
 
-from agenton.compositor import CompositorSessionSnapshot
-from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.client import _client as client_module
 from dify_agent.client import (
@@ -48,8 +47,8 @@ from dify_agent.protocol import (
 def _create_run_payload() -> dict[str, object]:
     return {
         "composition": {
-            "schema_version": 1,
-            "layers": [{"name": "prompt", "type": PLAIN_PROMPT_LAYER_TYPE_ID, "config": {"user": "hello"}}],
+            "schema_version": 2,
+            "layers": [{"name": "prompt", "config": {"user": "hello"}}],
         }
     }
 
@@ -67,7 +66,7 @@ def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> Run
     return RunSucceededEvent(
         id=event_id,
         run_id=run_id,
-        data=RunSucceededEventData(output="done", session_snapshot=CompositorSessionSnapshot(layers=[])),
+        data=RunSucceededEventData(output="done", session_snapshot=SessionSnapshot(layers={})),
     )
 
 
@@ -247,7 +246,7 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
 
 
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = SessionSnapshot(layers={})
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -1099,3 +1098,39 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
 
     assert calls == 2
     assert [event.type for event in events] == ["run_succeeded"]
+
+
+def test_sync_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    """A backend that cannot snapshot reports explicit null; the client must
+    preserve it instead of failing or fabricating a ref."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(base_url="http://testserver", sync_http_client=http_client)
+
+    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
+
+    assert created.snapshot_ref is None
+    http_client.close()
+
+
+def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
+
+        assert created.snapshot_ref is None
+        await http_client.aclose()
+
+    asyncio.run(scenario())

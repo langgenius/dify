@@ -1,22 +1,11 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import ChatVariableButton from '../chat-variable-button'
 
-let mockTheme: 'light' | 'dark' = 'light'
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: mockTheme,
-  }),
-}))
-
 describe('ChatVariableButton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockTheme = 'light'
-  })
-
-  it('opens the chat variable panel and closes the other workflow panels', () => {
+  it('opens the chat variable panel and closes the other workflow panels', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<ChatVariableButton disabled={false} />, {
       initialStoreState: {
         showEnvPanel: true,
@@ -25,7 +14,7 @@ describe('ChatVariableButton', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.chatVariable.panelTitle' }))
 
     expect(store.getState().showChatVariablePanel).toBe(true)
     expect(store.getState().showEnvPanel).toBe(false)
@@ -33,14 +22,15 @@ describe('ChatVariableButton', () => {
     expect(store.getState().showDebugAndPreviewPanel).toBe(false)
   })
 
-  it('stays disabled without mutating panel state', () => {
+  it('stays disabled without mutating panel state', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<ChatVariableButton disabled />, {
       initialStoreState: {
         showChatVariablePanel: false,
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.chatVariable.panelTitle' }))
 
     expect(screen.getByRole('button')).toBeDisabled()
     expect(store.getState().showChatVariablePanel).toBe(false)

@@ -1,19 +1,14 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import useTimestamp from '@/hooks/use-timestamp'
 import { VersionTimelineDot } from './version-timeline-dot'
 
 function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryResponse }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { formatTime } = useTimestamp()
 
   if (version.created_at == null && !version.created_by) return null
@@ -23,7 +18,7 @@ function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryRespo
       {version.created_at != null &&
         formatTime(
           version.created_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )}
       {version.created_at != null && version.created_by && ' · '}
       {version.created_by}
@@ -56,8 +51,8 @@ export function VersionItem({
   exportDisabled?: boolean
   showUpgrade?: boolean
 }) {
-  const { t } = useTranslation(['agentV2', 'app', 'billing'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t } = useTranslation(['agentV2', 'billing', 'agentRoster'])
+  const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const isActive = version.id === activeVersionId
   const label =
     version.version_note ||
@@ -88,7 +83,7 @@ export function VersionItem({
             </p>
             {isLatest && (
               <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent-secondary">
-                {tWorkflow(($) => $['versionHistory.latest'])}
+                {tWorkflow(($) => $['versionHistory.latest'], { ns: 'workflowHistory' })}
               </span>
             )}
           </div>
@@ -101,11 +96,11 @@ export function VersionItem({
         </div>
       </button>
       {(onExport || onRestore) && (
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             render={
               <IconButton
-                aria-label={t(($) => $['roster.moreActions'], { name: label })}
+                aria-label={t(($) => $['roster.moreActions'], { ns: 'agentRoster', name: label })}
                 size="sm"
                 className="absolute top-1 right-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
               >
@@ -113,9 +108,9 @@ export function VersionItem({
               </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" className="min-w-40">
+          <MenuContent align="end" className="min-w-40">
             {onRestore && (
-              <DropdownMenuItem
+              <MenuItem
                 disabled={restoreDisabled}
                 onClick={() => onRestore(version)}
                 className="gap-2"
@@ -127,25 +122,25 @@ export function VersionItem({
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                   </PremiumBadge>
                 )}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
             {onExport && (
-              <DropdownMenuItem
+              <MenuItem
                 disabled={exportDisabled}
                 onClick={() => onExport(version.id)}
                 className="gap-2"
               >
                 <span aria-hidden className="i-ri-file-download-line size-4 shrink-0" />
-                <span className="flex-1">{t(($) => $.exportApp, { ns: 'app' })}</span>
+                <span className="flex-1">{t(($) => $.exportAgent)}</span>
                 {showUpgrade && (
                   <PremiumBadge size="s">
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                   </PremiumBadge>
                 )}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuContent>
+        </Menu>
       )}
     </div>
   )

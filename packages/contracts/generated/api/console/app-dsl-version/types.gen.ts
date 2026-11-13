@@ -8,12 +8,28 @@ export type AppDslVersionResponse = {
   app_dsl_version: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type GetAppDslVersionData = {
   body?: never
   path?: never
   query?: never
   url: '/app-dsl-version'
 }
+
+export type GetAppDslVersionErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppDslVersionError = GetAppDslVersionErrors[keyof GetAppDslVersionErrors]
 
 export type GetAppDslVersionResponses = {
   200: AppDslVersionResponse

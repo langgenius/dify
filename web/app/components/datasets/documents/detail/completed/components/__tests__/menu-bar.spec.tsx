@@ -1,22 +1,9 @@
 import type { ComponentProps } from 'react'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuBar from '../menu-bar'
-
-vi.mock('../../display-toggle', () => ({
-  default: ({
-    isCollapsed,
-    toggleCollapsed,
-  }: {
-    isCollapsed: boolean
-    toggleCollapsed: () => void
-  }) => (
-    <button data-testid="display-toggle" onClick={toggleCollapsed}>
-      {isCollapsed ? 'collapsed' : 'expanded'}
-    </button>
-  ),
-}))
 
 describe('MenuBar', () => {
   const defaultProps: ComponentProps<typeof MenuBar> = {
@@ -48,63 +35,57 @@ describe('MenuBar', () => {
     )
   }
 
-  it('should render total text', () => {
+  it.each([
+    { hasSelectableSegments: true, isLoading: false },
+    { hasSelectableSegments: true, isLoading: true },
+    { hasSelectableSegments: false, isLoading: false },
+  ])(
+    'allows bulk selection only for selectable, loaded chunks: %j',
+    ({ hasSelectableSegments, isLoading }) => {
+      renderMenuBar({ hasSelectableSegments, isLoading })
+      expect(screen.getByText('10 Chunks')).toBeInTheDocument()
+      const checkbox = screen.queryByRole('checkbox', { name: 'common.operation.selectAll' })
+      if (hasSelectableSegments)
+        expect(checkbox?.getAttribute('aria-disabled') === 'true').toBe(isLoading)
+      else expect(checkbox).not.toBeInTheDocument()
+    },
+  )
+
+  it('changes the status filter using the full status option, including numeric zero', async () => {
+    const user = userEvent.setup()
     renderMenuBar()
-    expect(screen.getByText('10 Chunks')).toBeInTheDocument()
+    const trigger = screen.getByRole('combobox', {
+      name: 'datasetDocuments.segment.statusFilterLabel',
+    })
+    expect(trigger).toHaveTextContent('All')
+    await user.click(trigger)
+    await user.click(await screen.findByRole('option', { name: 'Enabled' }))
+    expect(defaultProps.onChangeStatus).toHaveBeenCalledExactlyOnceWith({
+      value: 0,
+      name: 'Enabled',
+    })
   })
 
-  it('should render checkbox', () => {
-    renderMenuBar()
-
-    expect(screen.getByRole('checkbox', { name: 'common.operation.selectAll' })).toBeInTheDocument()
-  })
-
-  it('should not render select all checkbox when there are no selectable segments', () => {
-    renderMenuBar({ hasSelectableSegments: false })
-
-    expect(
-      screen.queryByRole('checkbox', { name: 'common.operation.selectAll' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should call onInputChange when input changes', () => {
-    renderMenuBar()
-    const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-    fireEvent.change(input, { target: { value: 'test search' } })
-    expect(defaultProps.onInputChange).toHaveBeenCalledWith('test search')
-  })
-
-  it('should render display toggle', () => {
-    renderMenuBar()
-    expect(screen.getByTestId('display-toggle')).toBeInTheDocument()
-  })
-
-  it('should call toggleCollapsed when display toggle clicked', () => {
-    renderMenuBar()
-    fireEvent.click(screen.getByTestId('display-toggle'))
-    expect(defaultProps.toggleCollapsed).toHaveBeenCalled()
-  })
-
-  it('should call onInputChange with empty string when input is cleared', () => {
+  it('forwards edits and clear actions from the chunk search field', async () => {
+    const user = userEvent.setup()
     renderMenuBar({ inputValue: 'some text' })
-    const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-    fireEvent.click(clearButton)
-    expect(defaultProps.onInputChange).toHaveBeenCalledWith('')
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), '!')
+    expect(defaultProps.onInputChange).toHaveBeenLastCalledWith('some text!')
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(defaultProps.onInputChange).toHaveBeenLastCalledWith('')
   })
 
-  it('should render the selected status in the trigger', () => {
-    renderMenuBar()
-    expect(screen.getByText('All')).toBeInTheDocument()
-  })
-
-  it('should render status options when dropdown is opened', async () => {
-    renderMenuBar()
-
-    const selectButton = screen.getByRole('combobox')
-    fireEvent.click(selectButton)
-
-    expect(await screen.findByRole('option', { name: 'All' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Enabled' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Disabled' })).toBeInTheDocument()
-  })
+  it.each([true, false])(
+    'offers the correct chunk display action when collapsed=%s',
+    async (isCollapsed) => {
+      const user = userEvent.setup()
+      renderMenuBar({ isCollapsed })
+      await user.click(
+        screen.getByRole('button', {
+          name: `datasetDocuments.segment.${isCollapsed ? 'expandChunks' : 'collapseChunks'}`,
+        }),
+      )
+      expect(defaultProps.toggleCollapsed).toHaveBeenCalledOnce()
+    },
+  )
 })

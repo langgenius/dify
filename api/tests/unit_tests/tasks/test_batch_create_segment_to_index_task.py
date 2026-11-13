@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -12,12 +13,15 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
+from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 
-def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
+@pytest.mark.parametrize("foreign_owner", [None, "dataset", "document_tenant", "document_dataset", "upload"])
+def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committed_batch(
     sqlite_session: Session,
     sqlite_engine: Engine,
+    foreign_owner: str | None,
 ) -> None:
     tenant_id = str(uuid4())
     user_id = str(uuid4())
@@ -71,6 +75,14 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
         index_node_hash="existing-hash",
         status=SegmentStatus.COMPLETED,
     )
+    if foreign_owner == "dataset":
+        dataset.tenant_id = str(uuid4())
+    elif foreign_owner == "document_tenant":
+        document.tenant_id = str(uuid4())
+    elif foreign_owner == "document_dataset":
+        document.dataset_id = str(uuid4())
+    elif foreign_owner == "upload":
+        upload_file.tenant_id = str(uuid4())
     sqlite_session.add_all([dataset, document, upload_file, existing_segment])
     sqlite_session.commit()
 
@@ -94,8 +106,8 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
     event.listen(sqlite_engine, "before_cursor_execute", count_max_position_query)
     try:
         with (
-            patch("tasks.batch_create_segment_to_index_task.storage.download", side_effect=mock_download),
-            patch("tasks.batch_create_segment_to_index_task.VectorService.create_segments_vector"),
+            patch("tasks.batch_create_segment_to_index_task.storage.download", side_effect=mock_download) as download,
+            patch("extensions.ext_application_services.application_services") as services,
         ):
             batch_create_segment_to_index_task(
                 job_id=str(uuid4()),
@@ -108,6 +120,13 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", count_max_position_query)
 
+    if foreign_owner is not None:
+        download.assert_not_called()
+        services.assert_not_called()
+        assert not max_position_queries
+        assert sqlite_session.scalars(select(DocumentSegment.id)).all() == [existing_segment.id]
+        return
+
     positions = sqlite_session.scalars(
         select(DocumentSegment.position)
         .where(DocumentSegment.document_id == document.id)
@@ -115,3 +134,7 @@ def test_batch_create_segment_to_index_task_queries_max_position_once_per_batch(
     ).all()
     assert positions == [7, 8, 9, 10]
     assert len(max_position_queries) == 1
+    indexing = services.return_value.knowledge.segments.mutations.index_segments
+    indexing.assert_called_once()
+    assert indexing.call_args.args == (DocumentRef(DatasetRef(tenant_id, dataset.id), document.id),)
+    assert len(indexing.call_args.kwargs["segment_ids"]) == 3

@@ -6,13 +6,12 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { disableModel, enableModel } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
@@ -39,7 +38,8 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
+  const modelNameId = useId()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -66,15 +66,15 @@ const ModelListItem = ({
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
       if (enabled)
-        await enableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/enable`,
-          { model: model.model, model_type: model.model_type },
-        )
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
       else
-        await disableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/disable`,
-          { model: model.model, model_type: model.model_type },
-        )
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
 
       queryClient.invalidateQueries({
         queryKey: modelProviderModelListQueryKey,
@@ -110,15 +110,16 @@ const ModelListItem = ({
     <div
       key={`${model.model}-${model.fetch_from}`}
       className={cn(
-        'group flex h-8 items-center rounded-lg pr-2.5 pl-2',
+        'group flex h-8 items-center rounded-lg ps-2 pe-2.5',
         isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
         model.deprecated && 'opacity-60',
       )}
     >
-      <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model.model} />
+      <ModelIcon className="me-2 shrink-0" provider={provider} modelName={model.model} />
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameId={modelNameId}
         nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
@@ -131,7 +132,7 @@ const ModelListItem = ({
           !model.deprecated &&
           model.load_balancing_enabled &&
           !model.has_invalid_load_balancing_configs && (
-            <Badge className="mr-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
+            <Badge className="me-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
               <span
                 aria-hidden
                 className="i-custom-vender-line-financeAndECommerce-balance size-3 text-text-accent-secondary"
@@ -160,18 +161,19 @@ const ModelListItem = ({
               openOnHover
               render={
                 <span>
-                  <Switch checked={false} disabled size="md" />
+                  <Switch aria-labelledby={modelNameId} checked={false} disabled size="md" />
                 </span>
               }
             />
             <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
-              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
+              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'modelProvider' })}
             </PopoverContent>
           </Popover>
         ) : (
           canConfigureModels && (
             <Switch
-              className="ml-2"
+              aria-labelledby={modelNameId}
+              className="ms-2"
               checked={model?.status === ModelStatusEnum.active}
               disabled={!configurableStatuses.includes(model.status)}
               size="md"

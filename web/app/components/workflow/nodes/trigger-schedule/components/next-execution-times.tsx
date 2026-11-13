@@ -8,7 +8,7 @@ type NextExecutionTimesProps = {
 }
 
 const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   if (!data.frequency) return null
 
@@ -19,7 +19,7 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   return (
     <div className="space-y-2">
       <div className="text-xs font-medium text-text-secondary">
-        {t(($) => $['nodes.triggerSchedule.nextExecutionTimes'], { ns: 'workflow' })}
+        {t(($) => $['nodes.triggerSchedule.nextExecutionTimes'], { ns: 'workflowIntegrations' })}
       </div>
       <div className="flex min-h-20 flex-col rounded-xl bg-components-input-bg-normal py-2">
         {executionTimes.map((time, index) => (

@@ -1,10 +1,9 @@
-import contextlib
 import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping
 from datetime import timedelta
-from typing import Any, Union
+from typing import Any
 
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client
@@ -99,7 +98,7 @@ class RateLimit:
     def gen_request_key() -> str:
         return str(uuid.uuid4())
 
-    def generate(self, generator: Union[Generator[str, None, None], Mapping[str, Any]], request_id: str):
+    def generate(self, generator: Generator[str] | Mapping[str, Any], request_id: str):
         if isinstance(generator, Mapping):
             return generator
         else:
@@ -110,16 +109,8 @@ class RateLimit:
             )
 
 
-@contextlib.contextmanager
-def rate_limit_context(rate_limit: RateLimit, request_id: str | None):
-    request_id = rate_limit.enter(request_id)
-    yield
-    if request_id is not None:
-        rate_limit.exit(request_id)
-
-
 class RateLimitGenerator:
-    def __init__(self, rate_limit: RateLimit, generator: Generator[str, None, None], request_id: str):
+    def __init__(self, rate_limit: RateLimit, generator: Generator[str], request_id: str):
         self.rate_limit = rate_limit
         self.generator = generator
         self.request_id = request_id

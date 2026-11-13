@@ -77,11 +77,11 @@ describe('AgentLogTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.nodes.agent.strategy.label')).toBeInTheDocument()
+      expect(screen.getByText('workflowAgent.nodes.agent.strategy.label')).toBeInTheDocument()
       expect(screen.getByText('Plan and execute')).toBeInTheDocument()
       expect(screen.getByText('runLog.detail')).toBeInTheDocument()
 
-      await user.click(screen.getByText('Plan and execute'))
+      await user.click(screen.getByRole('button', { name: /Plan and execute/ }))
 
       expect(onShowAgentOrToolLog).toHaveBeenCalledWith({
         message_id: 'trace-1',
@@ -89,13 +89,14 @@ describe('AgentLogTrigger', () => {
       })
     })
 
-    it('should open the detail view when execution metadata is unavailable', async () => {
+    it('should open an empty log view when the strategy and log entries are unavailable', async () => {
       const user = userEvent.setup()
       const onShowAgentOrToolLog = vi.fn()
 
       render(
         <AgentLogTrigger
           nodeInfo={createNodeTracing({
+            agentLog: undefined,
             execution_metadata: {
               total_tokens: 0,
               total_price: 0,
@@ -106,9 +107,12 @@ describe('AgentLogTrigger', () => {
         />,
       )
 
-      await user.click(screen.getByText('runLog.detail'))
+      await user.click(screen.getByRole('button', { name: /runLog\.detail/ }))
 
-      expect(onShowAgentOrToolLog).toHaveBeenCalledTimes(1)
+      expect(onShowAgentOrToolLog).toHaveBeenCalledExactlyOnceWith({
+        message_id: 'trace-1',
+        children: [],
+      })
     })
   })
 })

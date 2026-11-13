@@ -27,7 +27,7 @@ const ConditionValueMethod = ({
         }
       />
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

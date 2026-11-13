@@ -16,13 +16,13 @@ const Node: FC<NodeProps<IterationNodeType>> = ({ id, data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {
     if (nodesInitialized) handleNodeIterationRerender(id)
     if (data.is_parallel && showTips) {
-      toast.warning(t(($) => $[`${i18nPrefix}.answerNodeWarningDesc`], { ns: 'workflow' }))
+      toast.warning(t(($) => $[`${i18nPrefix}.answerNodeWarningDesc`], { ns: 'workflowLogic' }))
       setShowTips(false)
     }
   }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])

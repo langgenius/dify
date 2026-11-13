@@ -18,7 +18,10 @@ const Node = (props: NodeProps) => {
           <InfoPanel
             title={
               route.label?.trim() ||
-              t(($) => $['nodes.agent.outputRoutes.route'], { ns: 'workflow', index: index + 1 })
+              t(($) => $['nodes.agent.outputRoutes.route'], {
+                ns: 'workflow',
+                index: index + 1,
+              })
             }
             content=""
           />

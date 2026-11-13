@@ -1,4 +1,5 @@
 import { vi } from 'vite-plus/test'
+import { page, server, userEvent } from 'vite-plus/test/browser'
 import './app/styles/globals.css'
 
 document.documentElement.dataset.theme = 'light'
@@ -6,6 +7,14 @@ document.documentElement.dataset.theme = 'light'
 ;(
   globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
 ).BASE_UI_ANIMATIONS_DISABLED = true
+
+// Tests in one file share a page, so the viewport and pointer position outlive the test that set them.
+beforeEach(async () => {
+  const { width, height } = server.config.browser.viewport
+  await page.viewport(width, height)
+  // Move outside the test viewport without waiting for body hover actionability.
+  await userEvent.pointer({ coords: { x: -1, y: -1 } })
+})
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')

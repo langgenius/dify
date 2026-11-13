@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Ko vgrajeni model podpira več modalnosti, izberite model za ponovno razvrščanje z več modalnostmi za boljše delovanje.",
   "form.retrievalSetting.title": "Nastavitve pridobivanja",
   "form.save": "Shrani",
-  "form.searchModel": "Išči model",
   "form.summaryAutoGen": "Samodejna Tvorba Povzetka",
   "form.summaryAutoGenEnableTip": "Ko je omogočeno, bodo povzetki samodejno ustvarjeni za novo dodane dokumente. Obstoječe dokumente lahko še vedno povzamete ročno.",
   "form.summaryAutoGenTip": "Povzetki so samodejno ustvarjeni za novo dodane dokumente. Obstoječe dokumente lahko še vedno povzamete ročno.",

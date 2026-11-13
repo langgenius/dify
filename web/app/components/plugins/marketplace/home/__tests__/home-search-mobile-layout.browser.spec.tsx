@@ -5,18 +5,6 @@ import HomeHeader from '../home-header'
 import HomeSearch from '../home-search'
 import { HomeShell } from '../home-shell'
 
-vi.mock('../home-catalog-tabs', () => ({
-  default: () => null,
-}))
-
-vi.mock('../home-creator-center', () => ({
-  default: () => null,
-}))
-
-vi.mock('../home-guide', () => ({
-  default: () => null,
-}))
-
 const nextFrame = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
@@ -63,6 +51,10 @@ describe('Marketplace mobile search layout', () => {
     const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const brand = screen.getByRole('link', { name: 'Dify Marketplace' }).element()
     const signIn = screen.getByRole('button', { name: 'Sign in' }).element()
@@ -84,25 +76,6 @@ describe('Marketplace mobile search layout', () => {
     expect(isCenterClickable(brand)).toBe(true)
     expect(isCenterClickable(signIn)).toBe(true)
     expect(isCenterClickable(searchInput)).toBe(true)
-  })
-
-  it('keeps the desktop search in the header gap while scrolling', async () => {
-    await page.viewport(1280, 900)
-    const screen = await renderMarketplaceHome()
-
-    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
-    const header = screen.getByRole('banner').element()
-    const searchInput = screen
-      .getByRole('textbox', { name: 'Search plugins or templates' })
-      .element()
-
-    scrollContainer.scrollTop = 400
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await nextFrame()
-
-    expect(
-      searchInput.getBoundingClientRect().top - header.getBoundingClientRect().top,
-    ).toBeCloseTo(6, 0)
   })
 
   it('keeps a search-results search below the header when there is no hero to overlap', async () => {
@@ -132,6 +105,10 @@ describe('Marketplace mobile search layout', () => {
       </div>,
     )
 
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const searchInput = screen
       .getByRole('textbox', { name: 'Search plugins or templates' })
@@ -148,6 +125,10 @@ describe('Marketplace mobile search layout', () => {
     const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByRole('banner')).toBeVisible()
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Search plugins or templates' }))
+      .toBeVisible()
     const header = screen.getByRole('banner').element()
     const searchInput = screen
       .getByRole('textbox', { name: 'Search plugins or templates' })

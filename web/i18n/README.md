@@ -1,6 +1,8 @@
 # Internationalization
 
-English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the same flat keys and placeholders. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
+Intentionally empty translations remain empty through the explicit `returnEmptyString: true` option; optional labels and sentence fragments must not display their translation keys.
+
+English JSON files under `web/i18n/locales/en-US/` are the source locale. Other locale directories must keep the source flat keys and placeholders. They may also add the plural variants required by their language. i18next uses `keySeparator: false`, so dots are part of a key rather than nested-object separators.
 
 The module keeps runtime code and bundled translation assets together. `#i18n` remains the conditional client/server entrypoint; `locales/` contains translation JSON only. Per-locale loaders preserve the existing dynamic-import boundaries. This layout is a project ownership convention, not an i18next requirement.
 
@@ -39,6 +41,38 @@ A nonempty locale cookie takes priority over `Accept-Language`. An unusable cook
 ## Add or change copy
 
 Add or change the English key first, then update every supported locale. Preserve interpolation variables and markup placeholders exactly.
+
+After changing English resources, run `pnpm i18n:generate-types` from `web/` and
+commit `resources.generated.d.ts`. The script calls
+[`i18next-resources-for-ts`]
+with `optimize: true`; the official tool preserves string literal values for
+i18next's interpolation inference and groups plural variants into base keys.
+Use those base keys with `count` instead of selecting `_one` or `_other` yourself.
+The project script handles namespace file names, formatting, and freshness checks.
+The generated file is type-only;
+runtime resource loading still uses JSON. Both `i18n:check` and the Web Style CI
+job reject stale generated types (`pnpm i18n:check-types`).
+
+Use a plural base selector with a numeric `count`, for example
+`t($ => $['accessControlDialog.members'], { count: members.length })`.
+Keep `enableSelector: 'optimize'` for the large translation catalog.
+Before migrating a suffixed plural selector to a base key, provide every category
+returned by `Intl.PluralRules(locale).resolvedOptions().pluralCategories` in
+every supported locale. Missing categories can fall back to English even when
+`_one` and `_other` exist. The key checker permits language-specific variants
+of source plural families and preserves them during `--auto-remove`; their
+placeholders and tags are checked against the English `_other` variant.
+i18next 27 checks interpolation parameters even when the entire options argument
+is omitted. Labels translated without options use `I18nKeysWithoutVariables` to
+exclude messages requiring interpolation. Plural strings without a `{{count}}`
+placeholder do not infer a required count. Always supply
+the runtime `count` for plural calls. Broad `SelectorParam` annotations also
+widen the selected value to `string`; prefer inline selectors when parameter
+inference matters. See the [official TypeScript guidance] and [plural rules].
+
+When copy demonstrates template syntax literally, pass that syntax explicitly,
+for example `{ input: '{{input}}' }`. For dynamic labels, constrain the key union
+to the relevant feature rather than accepting every key in a namespace.
 
 Run from `web/`:
 
@@ -113,8 +147,8 @@ visited earlier in the session. Previously loaded bundles remain cached. There i
 no route policy that resets `i18n.options.ns` on navigation.
 
 Server metadata requests still use the request-scoped server instance and load
-exactly their requested namespace. Existing server consumers without a namespace
-retain their full-catalog behavior.
+exactly their requested namespace. Server translation consumers must declare their namespaces explicitly. Locale-only
+consumers subscribe to language changes without requesting a dictionary.
 
 The build analyzer continues to report route usage and check unused keys. Its
 route report is diagnostic and is not a runtime resource manifest or an allowlist.
@@ -124,36 +158,34 @@ Tests cover on-demand feature loading, navigation state, language persistence,
 English fallback, and concurrent streaming SSR in different locales. Production
 Vinext/browser checks are also needed when changing the Provider or loading strategy.
 
-### Provider trial verification
+### Namespace ownership
 
-On 2026-09-23, the production Vinext standalone build was checked in fresh
-Chromium contexts using local system-features and unauthenticated API fixtures.
-English and Simplified Chinese sign-in rendered correctly after hydration without
-runtime or hydration errors. The raw HTML contains the shell and a loading spinner,
-not the login form: `NormalForm` waits for the client account-profile probe. This
-browser check does not establish that the complete login form is server-rendered.
-English hydration requested `en-US/login`; Chinese hydration
-requested `zh-Hans/login` and `en-US/login`. Switching English to Chinese requested
-only `zh-Hans/common` and `zh-Hans/login`. Navigation to sign-up and back preserved
-Chinese and requested no additional translation modules. These counts use the
-client build manifest, exclude loader modules, and are not backend latency metrics.
-Authenticated feature navigation remains unverified.
+Keep `common` limited to shared operations, statuses, and basic controls. Navigation
+and route titles belong to `navigation`; account settings, workspace members,
+model providers, and the step-by-step tour own `accountSettings`,
+`workspaceMembers`, `modelProvider`, and `onboarding` respectively. Model selection
+copy is shared with model configuration, not owned by dataset settings.
 
-### Streaming resource verification
+The workflow editor keeps canvas labels, shared validation, and editor-wide hook
+messages in `workflow`. Optional surfaces own `workflowGenerator`,
+`workflowDebug`, `workflowHistory`, and `workflowComments`. Node configuration
+families own `workflowModels`, `workflowAgent`, `workflowHumanInput`,
+`workflowIntegrations`, and `workflowLogic`. Keep globally executed validation
+and accessible edge labels in the core even when their keys have a node prefix;
+a key prefix alone does not define a loading boundary.
 
-The Chromium hydration regression renders the real creation menu on the server,
-collects its dictionaries, and hydrates with client backend requests held pending.
-Its first click opens the menu without disabling the trigger or retrying the click.
-It also verifies that a later resource update reaches the mounted Provider before
-its feature renders. Unit coverage checks incremental collection, fallback
-languages, Provider isolation, and inline-script escaping.
+Agent roster pages, selectors, and metadata use `agentRoster`; agent detail copy
+stays in `agentV2`. Shared upload configuration uses `fileUpload`, and prompt/code
+generation uses `appGeneration`, without requesting the complete `appDebug`
+dictionary. Runtime loading remains locale/namespace based; these boundaries do
+not introduce route preloading or per-key transport.
 
-A production Next.js sign-in check with controlled unauthenticated API fixtures
-confirmed English and Chinese `login` resources in the HTML stream, no repeated
-login translation chunk requests, and no browser hydration errors. Production
-Vinext validation remains pending; its build was stopped to limit local resource
-usage. The complete authenticated Agent creation journey must still pass CI.
+Declare resources at the component that renders them. A hidden feature should not
+request its dictionary just because its controller is mounted. The tour keeps its
+session controller mounted and renders its translation consumer only when the
+checklist, guide, or recovery prompt is visible. Preserve all existing locale
+values and language-specific plural forms when moving keys.
 
-Empty-store coverage also verifies shell rendering without an enclosing Suspense
-boundary, concurrent locale/fallback rendering, and hydration of both `common`
-and feature namespaces without duplicate backend requests.
+[`i18next-resources-for-ts`]: https://github.com/i18next/i18next-resources-for-ts
+[official TypeScript guidance]: https://www.i18next.com/overview/typescript
+[plural rules]: https://www.i18next.com/translation-function/plurals

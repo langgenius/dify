@@ -37,7 +37,7 @@ const Group = ({
   handleView,
   handleClear,
 }: Props) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowDebug'])
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const toolIcon = useToolIcon(nodeData?.nodePayload)
@@ -47,9 +47,9 @@ const Group = ({
   const isSystem = varType === VarInInspectType.system
   const groupTitle =
     nodeData?.title ||
-    (isEnv && t(($) => $['debug.variableInspect.envNode'], { ns: 'workflow' })) ||
-    (isChatVar && t(($) => $['debug.variableInspect.chatNode'], { ns: 'workflow' })) ||
-    (isSystem && t(($) => $['debug.variableInspect.systemNode'], { ns: 'workflow' })) ||
+    (isEnv && t(($) => $['debug.variableInspect.envNode'], { ns: 'workflowDebug' })) ||
+    (isChatVar && t(($) => $['debug.variableInspect.chatNode'], { ns: 'workflowDebug' })) ||
+    (isSystem && t(($) => $['debug.variableInspect.systemNode'], { ns: 'workflowDebug' })) ||
     ''
 
   const visibleVarList = isEnv ? varList : varList.filter((v) => v.visible)
@@ -147,7 +147,7 @@ const Group = ({
               <TooltipTrigger
                 render={
                   <IconButton
-                    aria-label={t(($) => $['debug.variableInspect.view'], { ns: 'workflow' })}
+                    aria-label={t(($) => $['debug.variableInspect.view'], { ns: 'workflowDebug' })}
                     onClick={handleView}
                   >
                     <RiFileList3Line className="size-4" aria-hidden />
@@ -155,14 +155,16 @@ const Group = ({
                 }
               />
               <TooltipContent>
-                {t(($) => $['debug.variableInspect.view'], { ns: 'workflow' })}
+                {t(($) => $['debug.variableInspect.view'], { ns: 'workflowDebug' })}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger
                 render={
                   <IconButton
-                    aria-label={t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflow' })}
+                    aria-label={t(($) => $['debug.variableInspect.clearNode'], {
+                      ns: 'workflowDebug',
+                    })}
                     onClick={handleClear}
                   >
                     <RiDeleteBinLine className="size-4" aria-hidden />
@@ -170,7 +172,7 @@ const Group = ({
                 }
               />
               <TooltipContent>
-                {t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflow' })}
+                {t(($) => $['debug.variableInspect.clearNode'], { ns: 'workflowDebug' })}
               </TooltipContent>
             </Tooltip>
           </div>

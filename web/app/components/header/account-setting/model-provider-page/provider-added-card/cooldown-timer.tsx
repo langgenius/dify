@@ -9,7 +9,7 @@ type CooldownTimerProps = {
 }
 
 const CooldownTimer = ({ secondsRemaining = 0, onFinish }: CooldownTimerProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
 
   const [countdown, setCountdown] = useState({ secondsRemaining, displayTime: secondsRemaining })
   if (countdown.secondsRemaining !== secondsRemaining) {
@@ -46,7 +46,10 @@ const CooldownTimer = ({ secondsRemaining = 0, onFinish }: CooldownTimerProps) =
         }
       />
       <TooltipContent>
-        {t(($) => $['modelProvider.apiKeyRateLimit'], { ns: 'common', seconds: displayTime })}
+        {t(($) => $['modelProvider.apiKeyRateLimit'], {
+          ns: 'modelProvider',
+          seconds: displayTime,
+        })}
       </TooltipContent>
     </Tooltip>
   ) : null

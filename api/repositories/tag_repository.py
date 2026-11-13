@@ -215,3 +215,66 @@ class TagRepository(TagStore):
 
         if session.scalar(stmt.limit(1)) is None:
             raise TagBindingTargetNotFoundError(binding.type)
+
+    @override
+    def find_target_ids(
+        self, *, tenant_id: str, tag_type: str, tag_ids: list[str], match_all: bool = False
+    ) -> list[str]:
+        with self._session_factory() as session:
+            return [
+                target_id
+                for target_id in self.get_target_ids_by_tag_ids(
+                    tag_type, tenant_id, tag_ids, session, match_all=match_all
+                )
+                if target_id is not None
+            ]
+
+    @staticmethod
+    def get_target_ids_by_tag_ids(
+        tag_type: str | TagType,
+        current_tenant_id: str,
+        tag_ids: list[str],
+        session: Session,
+        *,
+        match_all: bool = False,
+    ):
+        """
+        Return target IDs bound to tags for the given tenant and resource type.
+
+        By default this preserves the legacy "match any tag" behavior and returns one target ID per matching
+        binding. When match_all is enabled, every requested tag must exist for the tenant/type and each returned
+        target must be bound to all requested tags.
+        """
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if not tag_ids:
+            return []
+        # Deduplicate repeated query params so match_all counts each requested tag once.
+        requested_tag_ids = list(dict.fromkeys(tag_ids))
+        tags = session.scalars(
+            select(Tag.id).where(
+                Tag.id.in_(requested_tag_ids),
+                Tag.tenant_id == current_tenant_id,
+                Tag.type == tag_type,
+            )
+        ).all()
+        if not tags:
+            return []
+        tag_ids = list(tags)
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if not tag_ids:
+            return []
+        if match_all:
+            if len(tag_ids) != len(requested_tag_ids):
+                return []
+            return session.scalars(
+                select(TagBinding.target_id)
+                .where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
+                .group_by(TagBinding.target_id)
+                .having(func.count(sa.distinct(TagBinding.tag_id)) == len(tag_ids))
+            ).all()
+        tag_bindings = session.scalars(
+            select(TagBinding.target_id).where(
+                TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id
+            )
+        ).all()
+        return tag_bindings

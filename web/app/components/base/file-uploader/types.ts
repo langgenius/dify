@@ -34,3 +34,5 @@ export type FileEntity = {
   url?: string
   isRemote?: boolean
 }
+
+export type FilePreviewKind = 'audio' | 'video' | 'pdf'

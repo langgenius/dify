@@ -223,9 +223,7 @@ def transform_datasource_credentials(environment: str):
                         if notion_package_identifier:
                             # install notion plugin
                             PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
-                    auth_count = 0
-                    for notion_tenant_credential in notion_tenant_credentials:
-                        auth_count += 1
+                    for auth_count, notion_tenant_credential in enumerate(notion_tenant_credentials, start=1):
                         # get credential oauth params
                         access_token = notion_tenant_credential.access_token
                         # notion info

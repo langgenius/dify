@@ -8,8 +8,10 @@ export function getInitOptions(requiredNamespaces: readonly Namespace[] = namesp
     // We do not have en for fallback
     load: 'currentOnly',
     fallbackLng: defaultLocale,
+    // Empty translations intentionally hide optional labels and sentence fragments.
+    returnEmptyString: true,
     partialBundledLanguages: true,
-    defaultNS: requiredNamespaces.includes(defaultNS) ? defaultNS : 'common',
+    defaultNS,
     enableSelector: 'optimize',
     keySeparator: false,
     ns: [...requiredNamespaces],

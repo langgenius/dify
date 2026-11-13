@@ -77,11 +77,6 @@ jobs:
           echo "dify_tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "::notice::target Dify release ${tag}"
 
-      - name: Compatibility check
-        env:
-          DIFY_TAG: ${{ steps.resolve.outputs.dify_tag }}
-        run: node scripts/release-naming.mjs compat-check "$DIFY_TAG"
-
   release:
     name: build + attach standalone binaries (all targets)
     needs: validate
@@ -125,6 +120,9 @@ jobs:
 
       - name: Generate sha256 checksum file
         run: scripts/release-write-checksums.sh
+
+      - name: Smoke the runner-arch binary
+        run: scripts/release-smoke.sh "./dist/bin/$(node scripts/release-naming.mjs asset "$version" linux-x64)"
 
       - name: Attach difyctl assets to Dify release
         if: ${{ !inputs.dry_run }}

@@ -28,7 +28,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const svgDoc = parser.parseFromString(content, 'image/svg+xml')
       const svgElement = svgDoc.documentElement
 
-      if (!(svgElement instanceof SVGElement)) throw new Error('Invalid SVG content')
+      if (!(svgElement instanceof SVGElement)) throw new TypeError('Invalid SVG content')
 
       const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
       const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
@@ -39,7 +39,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const rootElement = draw.svg(DOMPurify.sanitize(content))
 
       rootElement.click(() => {
-        setImagePreview(svgToDataURL(svgElement as Element))
+        setImagePreview(svgToDataURL(svgElement))
       })
     } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */

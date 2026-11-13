@@ -222,6 +222,7 @@ export const buildChatConfig = ({
     more_like_this: { enabled: false },
     text_to_speech: toEnabledConfig(appFeatures.text_to_speech) as ChatConfig['text_to_speech'],
     speech_to_text: toEnabledConfig(appFeatures.speech_to_text),
+    show_thoughts: toEnabledConfig(appFeatures.show_thoughts),
     retriever_resource: toEnabledConfig(appFeatures.retriever_resource),
     sensitive_word_avoidance: toEnabledConfig(appFeatures.sensitive_word_avoidance),
     annotation_reply: {
@@ -256,7 +257,7 @@ export const buildChatConfig = ({
       },
     },
     dataset_configs: toLegacyPreviewDatasetConfigs(agentSoulConfig?.knowledge),
-    file_upload: toPreviewFileUploadConfig(appFeatures.file_upload as FileUpload | undefined),
+    file_upload: toPreviewFileUploadConfig(appFeatures.file_upload),
     system_parameters: defaultSystemParameters,
     supportCitationHitInfo: true,
   }

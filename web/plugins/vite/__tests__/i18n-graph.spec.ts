@@ -257,7 +257,10 @@ describe('translation graph analysis', () => {
       `,
       )
       const result = checkTranslationGraph(webRoot, modules)
-      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(2)
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toEqual([
+        expect.objectContaining({ file: 'entry.tsx', kind: 'unknown-namespace' }),
+        expect.objectContaining({ file: 'entry.tsx', kind: 'unknown-namespace' }),
+      ])
     })
 
     it('reports explicit namespace loads even when no translation key is consumed', () => {
@@ -407,6 +410,66 @@ describe('translation graph analysis', () => {
         app: ['resetPassword'],
         login: ['unused'],
         common: ['unused'],
+      })
+    })
+
+    it('uses the selected overload namespace instead of the first declaration', () => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/overloaded.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        declare function metadata(namespace: 'app', selector: SelectorParam<'app'>): string
+        declare function metadata(namespace: 'login', selector: SelectorParam<'login'>): string
+        export const title = metadata('login', $ => $.title)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['title', 'unused'],
+        login: ['unused'],
+      })
+    })
+
+    it('retains selector types inferred through an unconstrained generic parameter', () => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/inferred.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        declare function invoke<T>(selector: T): string
+        const selector: SelectorParam<'login'> = $ => $.title
+        export const title = invoke(selector)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['title', 'unused'],
+        login: ['unused'],
+      })
+    })
+
+    it.each([
+      ['conditional', "T extends 'login' ? SelectorParam<'login'> : SelectorParam<'app'>"],
+      ['indexed access', 'Selectors[T]'],
+    ])('retains selectors resolved through a generic %s type', (_, parameterType) => {
+      writeJson('i18n/locales/en-US/app.json', { title: 'App', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { title: 'Login', unused: 'Unused' })
+      writeSource(
+        'src/deferred-selector.ts',
+        `
+        type SelectorParam<T> = (source: Record<string, string>) => string
+        type Selectors = { app: SelectorParam<'app'>; login: SelectorParam<'login'> }
+        declare function invoke<T extends keyof Selectors>(namespace: T, selector: ${parameterType}): string
+        export const title = invoke('login', $ => $.title)
+      `,
+      )
+
+      expect(checkTranslationGraph(webRoot, modules).unused).toEqual({
+        app: ['title', 'unused'],
+        login: ['unused'],
       })
     })
 
@@ -638,45 +701,31 @@ describe('translation graph analysis', () => {
       expect(sortedUnusedKeysByNamespace(result)).toEqual({})
     })
 
-    it('should protect known selector properties that dynamic entries can override', () => {
-      // Arrange
-      writeJson('i18n/locales/en-US/app.json', {
-        hidden: 'Potentially used by the dynamic selector',
-        used: 'Used',
-      })
-      writeSource(
-        'src/overridden-selector-map.ts',
-        `
-        import type { SelectorParam } from 'i18next'
-        import { useTranslation } from 'react-i18next'
-
-        export function ComputedOverrideExample(dynamicKey: string, dynamic: SelectorParam<'app'>) {
-          const { t } = useTranslation()
-          const selectors = {
-            known: $ => $['used'],
-            [dynamicKey]: dynamic,
+    it.each(['computed property', 'spread'] as const)(
+      'protects known selector properties overridden by a dynamic %s',
+      (kind) => {
+        writeJson('i18n/locales/en-US/app.json', { hidden: 'Potentially used', used: 'Used' })
+        writeSource(
+          'src/overridden-selector-map.ts',
+          `
+          import type { SelectorParam } from 'i18next'
+          import { useTranslation } from 'react-i18next'
+          export function label(dynamicKey: string, dynamic: SelectorParam<'app'>,
+            dynamicMap: Record<string, SelectorParam<'app'>>) {
+            const { t } = useTranslation()
+            const selectors = {
+              known: $ => $['used'],
+              ${kind === 'computed property' ? '[dynamicKey]: dynamic' : '...dynamicMap'},
+            }
+            return t(selectors.known)
           }
-          return t(selectors.known)
-        }
-
-        export function SpreadOverrideExample(dynamicMap: Record<string, SelectorParam<'app'>>) {
-          const { t } = useTranslation()
-          const selectors = {
-            known: $ => $['used'],
-            ...dynamicMap,
-          }
-          return t(selectors.known)
-        }
-      `,
-      )
-
-      // Act
-      const result = checkTranslationGraph(webRoot, modules)
-
-      // Assert
-      expect(result.protectedNamespaces).toEqual(['app'])
-      expect(sortedUnusedKeysByNamespace(result)).toEqual({})
-    })
+        `,
+        )
+        const result = checkTranslationGraph(webRoot, modules)
+        expect(result.protectedNamespaces).toEqual(['app'])
+        expect(result.unused).toEqual({})
+      },
+    )
 
     it('should resolve statically computed selector map properties', () => {
       // Arrange
@@ -1249,6 +1298,7 @@ describe('translation graph analysis', () => {
       })
       writeJson('i18n/locales/en-US/common.json', {
         'operation.close': 'Close',
+        'operation.confirm': 'Confirm',
         'trans.shared': 'Shared common',
         'unused.common': 'Unused common',
       })
@@ -1264,7 +1314,7 @@ describe('translation graph analysis', () => {
           t('literal.title')
           t('withDefault', 'Fallback', { ns: 'app' })
           tCommon('operation.close')
-          t('common:operation.close')
+          t('common:operation.confirm')
 
           return (
             <>

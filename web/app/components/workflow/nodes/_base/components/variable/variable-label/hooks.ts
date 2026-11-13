@@ -81,7 +81,7 @@ export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
   return varName
 }
 
-export const useVarBgColorInEditor = (variables: string[], hasError?: boolean) => {
+export const getVarBgColorInEditor = (variables: string[], hasError?: boolean) => {
   if (hasError) {
     return {
       hoverBorderColor: 'hover:border-state-destructive-active',

@@ -51,7 +51,7 @@ const StatusAction: FC<Props> = ({
 }) => {
   const { Icon, color } = getIcon(type)
   return (
-    <div className="relative flex h-8.5 items-center rounded-lg border border-components-panel-border bg-components-panel-bg-blur pr-3 pl-2 shadow-xs">
+    <div className="relative flex h-8.5 items-center rounded-lg border border-components-panel-border bg-components-panel-bg-blur ps-2 pe-3 shadow-xs">
       <div
         className={`absolute inset-0 rounded-lg opacity-40 ${
           (type === 'success' &&
@@ -74,10 +74,7 @@ const StatusAction: FC<Props> = ({
               type="button"
               disabled={disabled}
               onClick={onAction}
-              className={cn(
-                'cursor-pointer border-none bg-transparent p-0 text-left text-[13px] font-semibold text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                disabled && 'cursor-not-allowed text-text-disabled',
-              )}
+              className="text-start text-[13px] font-semibold text-text-accent disabled:cursor-not-allowed disabled:text-text-disabled"
             >
               {actionText}
             </button>

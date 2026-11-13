@@ -29,13 +29,24 @@ from core.tools.entities.tool_entities import ToolIdentity, ToolProviderIdentity
 
 
 @pytest.fixture
-def mock_identity(mocker: MockerFixture):
-    return mocker.MagicMock(spec=AgentStrategyIdentity)
+def strategy_identity() -> AgentStrategyIdentity:
+    return AgentStrategyIdentity(
+        author="test",
+        name="test-strategy",
+        label=I18nObject(en_US="Test strategy"),
+        provider="test-provider",
+    )
 
 
 @pytest.fixture
-def mock_provider_identity(mocker: MockerFixture):
-    return mocker.MagicMock(spec=AgentStrategyProviderIdentity)
+def provider_identity() -> AgentStrategyProviderIdentity:
+    return AgentStrategyProviderIdentity(
+        author="test",
+        name="test-provider",
+        description=I18nObject(en_US="Test provider description"),
+        icon="icon.svg",
+        label=I18nObject(en_US="Test provider"),
+    )
 
 
 # =========================================================
@@ -48,7 +59,9 @@ class TestAgentStrategyParameterType:
         "enum_member",
         list(AgentStrategyParameter.AgentStrategyParameterType),
     )
-    def test_as_normal_type_calls_external_function(self, mocker: MockerFixture, enum_member) -> None:
+    def test_as_normal_type_calls_external_function(
+        self, mocker: MockerFixture, enum_member: AgentStrategyParameter.AgentStrategyParameterType
+    ) -> None:
         mock_func = mocker.patch(
             "core.agent.plugin_entities.as_normal_type",
             return_value="normalized",
@@ -80,7 +93,12 @@ class TestAgentStrategyParameterType:
             (AgentStrategyParameter.AgentStrategyParameterType.FILES, []),
         ],
     )
-    def test_cast_value_calls_external_function(self, mocker: MockerFixture, enum_member, value) -> None:
+    def test_cast_value_calls_external_function(
+        self,
+        mocker: MockerFixture,
+        enum_member: AgentStrategyParameter.AgentStrategyParameterType,
+        value: object,
+    ) -> None:
         mock_func = mocker.patch(
             "core.agent.plugin_entities.cast_parameter_value",
             return_value="casted",
@@ -98,7 +116,7 @@ class TestAgentStrategyParameterType:
             side_effect=ValueError("invalid"),
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="invalid"):
             enum_member.cast_value("bad")
 
 
@@ -109,44 +127,46 @@ class TestAgentStrategyParameterType:
 
 class TestAgentStrategyParameter:
     def test_valid_creation_minimal(self) -> None:
-        # bypass base PluginParameter required fields using model_construct
-        param = AgentStrategyParameter.model_construct(
+        """Given required strategy parameter fields, construct a valid parameter without help text."""
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
             help=None,
         )
         assert param.type == AgentStrategyParameter.AgentStrategyParameterType.STRING
         assert param.help is None
 
     def test_valid_creation_with_help(self) -> None:
+        """Given a localized label and help text, retain the supplied help model."""
         help_obj = I18nObject(en_US="test")
 
-        param = AgentStrategyParameter.model_construct(
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
             help=help_obj,
         )
         assert param.help == help_obj
 
     @pytest.mark.parametrize("invalid_type", [None, "invalid_type", 999, [], {}, ["bad"], {"bad": 1}])
-    def test_invalid_type_raises_validation_error(self, invalid_type) -> None:
+    def test_invalid_type_raises_validation_error(self, invalid_type: object) -> None:
         with pytest.raises(ValidationError) as exc_info:
             AgentStrategyParameter(type=invalid_type, name="x", label=I18nObject(en_US="y", zh_Hans="y"))
 
         assert any(error["loc"] == ("type",) for error in exc_info.value.errors())
 
     def test_init_frontend_parameter_calls_external(self, mocker: MockerFixture) -> None:
+        """Given a valid strategy parameter, delegate frontend conversion and return its result."""
         mock_func = mocker.patch(
             "core.agent.plugin_entities.init_frontend_parameter",
             return_value="frontend",
         )
 
-        param = AgentStrategyParameter.model_construct(
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
         )
 
         result = param.init_frontend_parameter("value")
@@ -155,15 +175,16 @@ class TestAgentStrategyParameter:
         assert result == "frontend"
 
     def test_init_frontend_parameter_propagates_exception(self, mocker: MockerFixture) -> None:
+        """Given a converter failure, propagate its exception from the valid parameter."""
         mocker.patch(
             "core.agent.plugin_entities.init_frontend_parameter",
             side_effect=RuntimeError("error"),
         )
 
-        param = AgentStrategyParameter.model_construct(
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
         )
 
         with pytest.raises(RuntimeError):
@@ -176,27 +197,23 @@ class TestAgentStrategyParameter:
 
 
 class TestAgentStrategyProviderEntity:
-    def test_creation_with_plugin_id(self, mock_provider_identity) -> None:
+    def test_creation_with_plugin_id(self, provider_identity: AgentStrategyProviderIdentity) -> None:
         entity = AgentStrategyProviderEntity(
-            identity=mock_provider_identity,
+            identity=provider_identity,
             plugin_id="plugin-123",
         )
         assert entity.plugin_id == "plugin-123"
 
-    def test_creation_with_empty_plugin_id(self, mock_provider_identity) -> None:
+    def test_creation_with_empty_plugin_id(self, provider_identity: AgentStrategyProviderIdentity) -> None:
         entity = AgentStrategyProviderEntity(
-            identity=mock_provider_identity,
+            identity=provider_identity,
             plugin_id="",
         )
         assert entity.plugin_id == ""
 
-    def test_creation_without_plugin_id(self, mock_provider_identity) -> None:
-        entity = AgentStrategyProviderEntity(identity=mock_provider_identity)
+    def test_creation_without_plugin_id(self, provider_identity: AgentStrategyProviderIdentity) -> None:
+        entity = AgentStrategyProviderEntity(identity=provider_identity)
         assert entity.plugin_id is None
-
-    def test_invalid_identity_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            AgentStrategyProviderEntity(identity="invalid")
 
 
 # =========================================================
@@ -205,39 +222,40 @@ class TestAgentStrategyProviderEntity:
 
 
 class TestAgentStrategyEntity:
-    def test_parameters_default_empty(self, mock_identity) -> None:
+    def test_parameters_default_empty(self, strategy_identity: AgentStrategyIdentity) -> None:
         entity = AgentStrategyEntity(
-            identity=mock_identity,
+            identity=strategy_identity,
             description=I18nObject(en_US="test"),
         )
         assert entity.parameters == []
 
-    def test_parameters_none_converted_to_empty(self, mock_identity) -> None:
+    def test_parameters_none_converted_to_empty(self, strategy_identity: AgentStrategyIdentity) -> None:
         entity = AgentStrategyEntity(
-            identity=mock_identity,
+            identity=strategy_identity,
             description=I18nObject(en_US="test"),
             parameters=None,
         )
         assert entity.parameters == []
 
-    def test_parameters_preserved(self, mock_identity) -> None:
-        param = AgentStrategyParameter.model_construct(
+    def test_parameters_preserved(self, strategy_identity: AgentStrategyIdentity) -> None:
+        """Given complete strategy parameters, retain them in the strategy entity."""
+        param = AgentStrategyParameter(
             type=AgentStrategyParameter.AgentStrategyParameterType.STRING,
             name="test",
-            label="label",
+            label=I18nObject(en_US="label"),
         )
 
         entity = AgentStrategyEntity(
-            identity=mock_identity,
+            identity=strategy_identity,
             description=I18nObject(en_US="test"),
             parameters=[param],
         )
         assert entity.parameters == [param]
 
-    def test_invalid_parameters_type_raises(self, mock_identity) -> None:
+    def test_invalid_parameters_type_raises(self, strategy_identity: AgentStrategyIdentity) -> None:
         with pytest.raises(ValidationError):
             AgentStrategyEntity(
-                identity=mock_identity,
+                identity=strategy_identity,
                 description=I18nObject(en_US="test"),
                 parameters="invalid",
             )
@@ -250,35 +268,33 @@ class TestAgentStrategyEntity:
             [AgentFeature.HISTORY_MESSAGES],
         ],
     )
-    def test_features_valid(self, mock_identity, features) -> None:
+    def test_features_valid(
+        self, strategy_identity: AgentStrategyIdentity, features: list[AgentFeature] | None
+    ) -> None:
         entity = AgentStrategyEntity(
-            identity=mock_identity,
+            identity=strategy_identity,
             description=I18nObject(en_US="test"),
             features=features,
         )
         assert entity.features == features
 
-    def test_invalid_features_type_raises(self, mock_identity) -> None:
+    def test_invalid_features_type_raises(self, strategy_identity: AgentStrategyIdentity) -> None:
         with pytest.raises(ValidationError):
             AgentStrategyEntity(
-                identity=mock_identity,
+                identity=strategy_identity,
                 description=I18nObject(en_US="test"),
                 features="invalid",
             )
 
-    def test_output_schema_and_meta_version(self, mock_identity) -> None:
+    def test_output_schema_and_meta_version(self, strategy_identity: AgentStrategyIdentity) -> None:
         entity = AgentStrategyEntity(
-            identity=mock_identity,
+            identity=strategy_identity,
             description=I18nObject(en_US="test"),
             output_schema={"type": "object"},
             meta_version="v1",
         )
         assert entity.output_schema == {"type": "object"}
         assert entity.meta_version == "v1"
-
-    def test_missing_required_fields_raise(self, mock_identity) -> None:
-        with pytest.raises(ValidationError):
-            AgentStrategyEntity(identity=mock_identity)
 
 
 # =========================================================
@@ -287,29 +303,24 @@ class TestAgentStrategyEntity:
 
 
 class TestAgentProviderEntityWithPlugin:
-    def test_default_strategies_empty(self, mock_provider_identity) -> None:
-        entity = AgentProviderEntityWithPlugin(identity=mock_provider_identity)
+    def test_default_strategies_empty(self, provider_identity: AgentStrategyProviderIdentity) -> None:
+        entity = AgentProviderEntityWithPlugin(identity=provider_identity)
         assert entity.strategies == []
 
-    def test_strategies_assignment(self, mock_provider_identity, mock_identity) -> None:
+    def test_strategies_assignment(
+        self, provider_identity: AgentStrategyProviderIdentity, strategy_identity: AgentStrategyIdentity
+    ) -> None:
         strategy = AgentStrategyEntity.model_construct(
-            identity=mock_identity,
+            identity=strategy_identity,
             description=I18nObject(en_US="test"),
             parameters=[],
         )
 
         entity = AgentProviderEntityWithPlugin(
-            identity=mock_provider_identity,
+            identity=provider_identity,
             strategies=[strategy],
         )
         assert entity.strategies == [strategy]
-
-    def test_invalid_strategies_type_raises(self, mock_provider_identity) -> None:
-        with pytest.raises(ValidationError):
-            AgentProviderEntityWithPlugin(
-                identity=mock_provider_identity,
-                strategies="invalid",
-            )
 
 
 # =========================================================

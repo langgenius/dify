@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { HybridSearchModeEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../../types'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
-  const { t } = useTranslation(['common', 'dataset'])
+  const { t } = useTranslation(['common', 'dataset', 'modelProvider'])
   const VectorSearchOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.semantic,
@@ -52,8 +52,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const RerankModelModeOption: HybridSearchModeOption = useMemo(() => {
     return {
       id: HybridSearchModeEnum.RerankingModel,
-      title: t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' }),
-      description: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
+      title: t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+      description: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' }),
     }
   }, [t])
 

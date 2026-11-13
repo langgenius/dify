@@ -1,5 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { ReactFlowProvider } from 'reactflow'
 import Operator from '../operator'
 
 const renderOperator = (showAuthor = false) => {
@@ -8,15 +11,24 @@ const renderOperator = (showAuthor = false) => {
   const onDelete = vi.fn()
   const onShowAuthorChange = vi.fn()
 
-  render(
-    <Operator
-      onCopy={onCopy}
-      onDuplicate={onDuplicate}
-      onDelete={onDelete}
-      showAuthor={showAuthor}
-      onShowAuthorChange={onShowAuthorChange}
-    />,
-  )
+  function NoteMenu() {
+    const [authorVisible, setAuthorVisible] = useState(showAuthor)
+    return (
+      <ReactFlowProvider>
+        <Operator
+          onCopy={onCopy}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          showAuthor={authorVisible}
+          onShowAuthorChange={(value) => {
+            setAuthorVisible(value)
+            onShowAuthorChange(value)
+          }}
+        />
+      </ReactFlowProvider>
+    )
+  }
+  render(<NoteMenu />)
 
   return {
     onCopy,
@@ -27,30 +39,53 @@ const renderOperator = (showAuthor = false) => {
 }
 
 describe('NoteEditor Toolbar Operator', () => {
+  it.each(['c', 'd', 'Delete'])('runs %s from its focused note menu', async (key) => {
+    const user = userEvent.setup()
+    const { onCopy, onDuplicate, onDelete } = renderOperator()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const item = screen.getByRole('menuitem', { name: /workflow.common.copy/ })
+    act(() => item.focus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
+    const action = key === 'c' ? onCopy : key === 'd' ? onDuplicate : onDelete
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
   it('triggers copy, duplicate, and delete from the opened menu', async () => {
     const user = userEvent.setup()
     const { onCopy, onDelete, onDuplicate } = renderOperator()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.common.copy'))
+    await user.click(screen.getByRole('menuitem', { name: /workflow\.common\.copy/ }))
     expect(onCopy).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.common.duplicate'))
+    await user.click(screen.getByRole('menuitem', { name: /workflow\.common\.duplicate/ }))
     expect(onDuplicate).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.delete/ }))
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the menu open when toggling show author', async () => {
+  it('keeps the menu open while toggling author visibility', async () => {
     const user = userEvent.setup()
-    renderOperator(true)
+    const { onShowAuthorChange } = renderOperator(true)
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByRole('switch'))
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
+    await user.click(trigger)
+    const option = screen.getByRole('menuitemcheckbox', {
+      name: 'workflow.nodes.note.editor.showAuthor',
+      checked: true,
+    })
+    await user.click(option)
 
-    expect(screen.getByText('workflow.nodes.note.editor.showAuthor')).toBeInTheDocument()
+    expect(onShowAuthorChange).toHaveBeenCalledWith(false)
+    expect(option).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await user.click(option)
+    expect(onShowAuthorChange).toHaveBeenLastCalledWith(true)
+    expect(option).toHaveAttribute('aria-checked', 'true')
   })
 })

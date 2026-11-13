@@ -1,18 +1,18 @@
 'use client'
 
 import type { PluginDetail } from '../../../types'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useCallback, useMemo, useState } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useReferenceSetting from '../../../plugin-page/use-reference-setting'
+import { useMemo, useState } from 'react'
+import { useMarketplace } from '@/features/marketplace/client'
+import { usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 
 export type VersionTarget = {
-  version: string | undefined
-  unique_identifier: string | undefined
-  isDowngrade?: boolean
+  plugin: PluginDetail
+  version: string
+  unique_identifier: string
+  warnAboutAutoUpdate?: boolean
 }
 
 export type ModalStates = {
@@ -25,18 +25,13 @@ export type ModalStates = {
   isShowDeleteConfirm: boolean
   showDeleteConfirm: () => void
   hideDeleteConfirm: () => void
-  deleting: boolean
-  showDeleting: () => void
-  hideDeleting: () => void
 }
 
 type VersionPickerState = {
   isShow: boolean
   setIsShow: (show: boolean) => void
-  targetVersion: VersionTarget
+  targetVersion: VersionTarget | undefined
   setTargetVersion: (version: VersionTarget) => void
-  isDowngrade: boolean
-  setIsDowngrade: (downgrade: boolean) => void
 }
 
 type UseDetailHeaderStateReturn = {
@@ -44,28 +39,22 @@ type UseDetailHeaderStateReturn = {
   versionPicker: VersionPickerState
   hasNewVersion: boolean
   isAutoUpgradeEnabled: boolean
+  autoUpgradeSettings: ReturnType<typeof usePluginAutoUpgradeSettings>
   isFromGitHub: boolean
   isFromMarketplace: boolean
 }
 
 export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderStateReturn => {
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const enable_marketplace = useMarketplace() !== null
   const category = detail.declaration?.category ?? PluginCategoryEnum.tool
-  const { referenceSetting } = useReferenceSetting(category)
+  const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
 
-  const { source, version, latest_version, latest_unique_identifier, plugin_id } = detail
+  const { source, version, latest_version, plugin_id } = detail
 
   const isFromGitHub = source === PluginSource.github
   const isFromMarketplace = source === PluginSource.marketplace
   const [isShow, setIsShow] = useState(false)
-  const [targetVersion, setTargetVersion] = useState<VersionTarget>({
-    version: latest_version,
-    unique_identifier: latest_unique_identifier,
-  })
-  const [isDowngrade, setIsDowngrade] = useState(false)
+  const [targetVersion, setTargetVersion] = useState<VersionTarget>()
 
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] =
     useBoolean(false)
@@ -73,14 +62,13 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
     useBoolean(false)
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
     useBoolean(false)
-  const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
 
   const hasNewVersion = useMemo(() => {
     if (isFromMarketplace) return !!latest_version && latest_version !== version
     return false
   }, [isFromMarketplace, latest_version, version])
 
-  const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
+  const { auto_upgrade: autoUpgradeInfo } = autoUpgradeSettings.data || {}
 
   const isAutoUpgradeEnabled = useMemo(() => {
     if (!enable_marketplace || !autoUpgradeInfo || !isFromMarketplace) return false
@@ -99,11 +87,6 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
     return false
   }, [autoUpgradeInfo, plugin_id, isFromMarketplace, enable_marketplace])
 
-  const handleSetTargetVersion = useCallback((version: VersionTarget) => {
-    setTargetVersion(version)
-    if (version.isDowngrade !== undefined) setIsDowngrade(version.isDowngrade)
-  }, [])
-
   return {
     modalStates: {
       isShowUpdateModal,
@@ -115,20 +98,16 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
       isShowDeleteConfirm,
       showDeleteConfirm,
       hideDeleteConfirm,
-      deleting,
-      showDeleting,
-      hideDeleting,
     },
     versionPicker: {
       isShow,
       setIsShow,
       targetVersion,
-      setTargetVersion: handleSetTargetVersion,
-      isDowngrade,
-      setIsDowngrade,
+      setTargetVersion,
     },
     hasNewVersion,
     isAutoUpgradeEnabled,
+    autoUpgradeSettings,
     isFromGitHub,
     isFromMarketplace,
   }

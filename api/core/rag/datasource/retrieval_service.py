@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
@@ -35,7 +35,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from services.external_knowledge_service import ExternalDatasetService
+from services.knowledge.external.service import ExternalDatasetService
 
 
 class SegmentAttachmentResult(TypedDict):
@@ -486,7 +486,14 @@ class RetrievalService:
                 for doc in session.scalars(
                     select(DatasetDocument)
                     .where(DatasetDocument.id.in_(document_ids))
-                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                    .options(
+                        load_only(
+                            DatasetDocument.id,
+                            DatasetDocument.tenant_id,
+                            DatasetDocument.doc_form,
+                            DatasetDocument.dataset_id,
+                        )
+                    )
                 ).all()
             }
 
@@ -559,7 +566,14 @@ class RetrievalService:
             doc_segment_map: dict[str, list[str]] = {}
             segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
 
-            attachments = cls.get_segment_attachment_infos(image_doc_ids, session)
+            dataset_refs = tuple(
+                {(document.tenant_id, document.dataset_id) for document in valid_dataset_documents.values()}
+            )
+            attachments = cls.get_segment_attachment_infos(
+                image_doc_ids,
+                dataset_refs=dataset_refs,
+                session=session,
+            )
 
             for attachment in attachments:
                 segment_ids.append(attachment["segment_id"])
@@ -589,7 +603,7 @@ class RetrievalService:
 
             if index_node_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.index_node_id.in_(index_node_ids),
                 )
@@ -600,7 +614,7 @@ class RetrievalService:
 
             if segment_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(segment_ids),
                 )
@@ -613,7 +627,7 @@ class RetrievalService:
             if summary_segment_ids:
                 summary_segment_ids_list = list(summary_segment_ids)
                 summary_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(summary_segment_ids_list),
                 )
@@ -657,10 +671,7 @@ class RetrievalService:
                             child_chunk_details: list[ChildChunkDetail] = []
                             for child_chunk in child_chunks:
                                 child_document: Document | None = doc_to_document_map.get(child_chunk.index_node_id)
-                                if child_document:
-                                    child_score = child_document.metadata.get("score", 0.0)
-                                else:
-                                    child_score = 0.0
+                                child_score = child_document.metadata.get("score", 0.0) if child_document else 0.0
                                 child_chunk_detail: ChildChunkDetail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,
@@ -947,15 +958,30 @@ class RetrievalService:
 
     @classmethod
     def get_segment_attachment_infos(
-        cls, attachment_ids: list[str], session: Session
+        cls,
+        attachment_ids: list[str],
+        *,
+        dataset_refs: Sequence[tuple[str, str]],
+        session: Session,
     ) -> list[SegmentAttachmentInfoResult]:
+        if not attachment_ids or not dataset_refs:
+            return []
         attachment_infos: list[SegmentAttachmentInfoResult] = []
         granted_upload_file_ids: list[str] = []
-        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
+        tenant_ids = tuple({tenant_id for tenant_id, _ in dataset_refs})
+        upload_files = session.scalars(
+            select(UploadFile).where(
+                UploadFile.id.in_(attachment_ids),
+                UploadFile.tenant_id.in_(tenant_ids),
+            )
+        ).all()
         if upload_files:
             upload_file_ids = [upload_file.id for upload_file in upload_files]
             attachment_bindings = session.scalars(
-                select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
+                select(SegmentAttachmentBinding).where(
+                    SegmentAttachmentBinding.attachment_id.in_(upload_file_ids),
+                    tuple_(SegmentAttachmentBinding.tenant_id, SegmentAttachmentBinding.dataset_id).in_(dataset_refs),
+                )
             ).all()
             attachment_binding_map = {binding.attachment_id: binding for binding in attachment_bindings}
 

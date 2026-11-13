@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -398,5 +398,104 @@ describe('install-cli fetch_json (real, fake curl on PATH)', () => {
     expect(
       runRealFetch('ok', { FAKE_BODY: '{}', GITHUB_TOKEN: '', GH_TOKEN: '' }).headers,
     ).not.toContain('Authorization')
+  })
+})
+
+describe('install-cli.sh install location', () => {
+  const where = (env: Record<string, string>) =>
+    runLib('bin_dir_for', { DIFYCTL_PREFIX: '', DIFYCTL_INSTALL_DIR: '', HOME: '/home/u', ...env })
+      .stdout
+
+  it('defaults to ~/.local/bin', () => {
+    expect(where({})).toBe('/home/u/.local/bin')
+  })
+
+  it('puts the binary under <DIFYCTL_PREFIX>/bin', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe('/opt/dify/bin')
+  })
+
+  it('takes DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/usr/local/bin' })).toBe(
+      '/usr/local/bin',
+    )
+  })
+})
+
+describe('install-cli.sh install_binary', () => {
+  it('replaces the binary through a rename, leaving no staged file behind', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'difyctl-install-'))
+    try {
+      const src = join(dir, 'new')
+      const dest = join(dir, 'bin-difyctl')
+      writeFileSync(src, 'new build')
+      writeFileSync(dest, 'old build')
+      const r = runLib(`install_binary "${src}" "${dest}"`)
+      expect(r.code).toBe(0)
+      expect(readFileSync(dest, 'utf8')).toBe('new build')
+      expect(execFileSync('ls', ['-A', dir], { encoding: 'utf8' }).trim().split('\n')).toEqual([
+        'bin-difyctl',
+        'new',
+      ])
+      // Windows filesystems have no executable bit to check.
+      if (process.platform !== 'win32') {
+        expect(
+          execFileSync('sh', ['-c', `test -x "${dest}" && echo yes`], { encoding: 'utf8' }),
+        ).toBe('yes\n')
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // A shared install must stay readable by other users, whatever the installer's umask.
+  it.skipIf(process.platform === 'win32')(
+    'installs a 0600 source as mode 0755 under umask 077',
+    () => {
+      const dir = mkdtempSync(join(tmpdir(), 'difyctl-install-'))
+      try {
+        const src = join(dir, 'new')
+        const dest = join(dir, 'bin-difyctl')
+        writeFileSync(src, 'new build', { mode: 0o600 })
+        const r = runLib(`umask 077; install_binary "${src}" "${dest}"`)
+        expect(r.code).toBe(0)
+        expect(statSync(dest).mode & 0o777).toBe(0o755)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it('dies without touching the old binary when the folder is not writable', () => {
+    const r = runLib('install_binary /nonexistent/src /nonexistent-dir/difyctl')
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toMatch(/cannot write \/nonexistent-dir\/difyctl/)
+  })
+})
+
+// A v2 binary answers `install skills --help`; a v1 one exits 1 with "unknown command".
+describe.skipIf(process.platform === 'win32')('install-cli.sh print_skill_hint', () => {
+  const fakeBins = [
+    'd="$(mktemp -d)"',
+    'printf \'#!/bin/sh\\n[ "$*" = "install skills --help" ]\\n\' > "$d/v2"',
+    'printf \'#!/bin/sh\\necho "unknown command: $*" >&2\\nexit 1\\n\' > "$d/v1"',
+    'chmod 0755 "$d/v2" "$d/v1"',
+  ]
+
+  it('prints the hint for a binary that has install skills', () => {
+    const r = runLib([...fakeBins, 'print_skill_hint "$d/v2"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toMatch(/difyctl install skills <skills root>/)
+  })
+
+  it('prints nothing for a binary without install skills', () => {
+    const r = runLib([...fakeBins, 'print_skill_hint "$d/v1"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
+  })
+
+  it('prints nothing when the binary cannot run', () => {
+    const r = runLib('print_skill_hint /nonexistent/difyctl')
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
   })
 })

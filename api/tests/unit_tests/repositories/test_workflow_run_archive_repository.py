@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.workflow import WorkflowRunArchiveBundle
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
+from services.retention.workflow_run.archive_deletion_task import WorkflowRunArchiveDeletionStatus
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveBundleRecord
 
 
@@ -83,7 +84,7 @@ def test_list_for_tenant_returns_ordered_pure_records(
         "tenant-1"
     )
 
-    assert records == (
+    assert tuple(record._replace(catalog_id="") for record in records) == (
         WorkflowRunArchiveBundleRecord(2025, 3, "00-of-02", "bundle-a", 40, 360, 1024, previous),
         WorkflowRunArchiveBundleRecord(2025, 3, "01-of-02", "bundle-b", 60, 540, 3072, latest),
         WorkflowRunArchiveBundleRecord(2025, 2, "00-of-01", "bundle-c", 1, 9, 1024, previous),
@@ -132,7 +133,32 @@ def test_list_for_tenant_month_filters_and_orders_bundles(
         "tenant-1", year=2025, month=3
     )
 
-    assert records == (
+    assert tuple(record._replace(catalog_id="") for record in records) == (
         WorkflowRunArchiveBundleRecord(2025, 3, "00-of-01", "bundle-a", 1, 9, 1024, archived_at),
         WorkflowRunArchiveBundleRecord(2025, 3, "00-of-01", "bundle-b", 1, 9, 1024, archived_at),
     )
+
+
+def test_request_deletion_is_scoped_and_preserves_processing_requests(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    active = _bundle(tenant_id="tenant-1", year=2025, month=3, shard="00-of-01", bundle_id="active")
+    processing = _bundle(tenant_id="tenant-1", year=2025, month=3, shard="00-of-01", bundle_id="processing")
+    other_tenant = _bundle(tenant_id="tenant-2", year=2025, month=3, shard="00-of-01", bundle_id="other")
+    other_month = _bundle(tenant_id="tenant-1", year=2025, month=2, shard="00-of-01", bundle_id="other-month")
+    processing.deletion_status = "processing"
+    with sqlite_session_factory.begin() as session:
+        session.add_all([active, processing, other_tenant, other_month])
+    repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.request_deletion("tenant-1", year=2025, month=3) == WorkflowRunArchiveDeletionStatus.PROCESSING
+    with sqlite_session_factory() as session:
+        for bundle, expected_status in (
+            (active, "pending"),
+            (processing, "processing"),
+            (other_tenant, None),
+            (other_month, None),
+        ):
+            reloaded = session.get(WorkflowRunArchiveBundle, bundle.id)
+            assert reloaded is not None
+            assert reloaded.deletion_status == expected_status

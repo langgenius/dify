@@ -257,6 +257,7 @@
   "segment.searchResults_one": "ຜົນການຄົ້ນຫາ",
   "segment.searchResults_other": "ຜົນການຄົ້ນຫາ",
   "segment.searchResults_zero": "ຜົນການຄົ້ນຫາ",
+  "segment.statusFilterLabel": "ກັ່ນຕອງສ່ວນຕາມສະຖານະ",
   "segment.summary": "ບົດສະຫຼຸບ",
   "segment.summaryPlaceholder": "ຂຽນບົດສະຫຼຸບສັ້ນໆ ເພື່ອການດຶງຂໍ້ມູນທີ່ມີປະສິດທິພາບ..."
 }

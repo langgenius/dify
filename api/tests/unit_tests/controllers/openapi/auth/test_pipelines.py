@@ -6,12 +6,18 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, HTTPException, Unauthorized
 
+from constants.oauth_bearer import TokenType
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import CatalogStale
+from controllers.openapi._errors import CatalogStale, ServiceApiDisabled
+from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.personal_access import CheckPersonalAccess
 from controllers.openapi.auth.pipelines import (
     _PIPELINES,
     AccountPipeline,
@@ -27,19 +33,21 @@ from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
 )
-from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
-from services.account_service import AccountService, TenantService
+from machinery.context import AppRequestContext, RequestContext
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
-
-from ._world import (
+from tests.helpers.unit.controllers.openapi.auth._world import (
+    ACCOUNT_ID,
     APP_ID,
+    TENANT_ID,
     account_subject,
     make_account,
     make_app,
+    make_auth,
     make_ctx,
     make_membership,
     make_tenant,
@@ -194,8 +202,16 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     with (
         app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers=_current_catalog(app)),
         patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
-        patch.object(TenantService, "get_tenant_by_id", wraps=TenantService.get_tenant_by_id) as workspace_fetch,
-        patch.object(AccountService, "get_account_by_id", wraps=AccountService.get_account_by_id) as caller_fetch,
+        patch.object(
+            loaders.application_services().workspaces.identity,
+            "get_workspace",
+            wraps=loaders.application_services().workspaces.identity.get_workspace,
+        ) as workspace_fetch,
+        patch.object(
+            loaders.application_services().accounts.identity,
+            "get_account_by_id",
+            wraps=loaders.application_services().accounts.identity.get_account_by_id,
+        ) as caller_fetch,
     ):
         _run(
             AccountPipeline(),
@@ -212,7 +228,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     ("requirements", "enable_api", "webapp_auth", "message"),
     [
         ((CheckSubject(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
-        ((CheckAppApiEnabled(),), False, False, "service_api_disabled"),
+        ((CheckAppApiEnabled(),), False, False, ServiceApiDisabled.description),
         ((CheckAppAccess(),), True, True, "subject_not_allowed_for_access_mode"),
     ],
     ids=["wrong subject (FIRST)", "api disabled (EARLY)", "webapp acl (NORMAL)"],
@@ -241,7 +257,7 @@ def test_a_refused_sso_request_never_creates_an_end_user(
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run", headers=_current_catalog(app)):
         with patch(FEATURES, return_value=system_features(webapp_auth=webapp_auth)):
             with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE_ALL.value)):
-                with pytest.raises(Forbidden, match=message):
+                with pytest.raises(HTTPException, match=message):
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
     assert ctx._caller is None
@@ -249,6 +265,86 @@ def test_a_refused_sso_request_never_creates_an_end_user(
 
 def test_every_registrable_subject_has_a_pipeline() -> None:
     assert set(_SUBJECT_CLASSES.values()) == set(_PIPELINES)
+
+
+@pytest.mark.parametrize("handler_raises", [False, True])
+@pytest.mark.parametrize("context_kind", ["orm", "workspace", "app", None])
+def test_context_injection_and_admission_session_lifetime(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    handler_raises: bool,
+    context_kind: AdmissionContext | None,
+) -> None:
+    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    subject = account_subject()
+    connections: set[object] = set()
+    checkouts: list[object] = []
+
+    def checkout(connection: object, *_args: object) -> None:
+        connections.add(connection)
+        checkouts.append(connection)
+
+    def checkin(connection: object, *_args: object) -> None:
+        connections.discard(connection)
+
+    def call(**kwargs: object) -> str:
+        ctx = kwargs.get("ctx")
+        if context_kind == "orm":
+            assert isinstance(ctx, Context)
+            assert ctx.app.id == APP_ID
+        elif context_kind == "workspace":
+            assert isinstance(ctx, RequestContext)
+            assert (ctx.account_id, ctx.active_workspace_id) == (ACCOUNT_ID, TENANT_ID)
+            assert (ctx.request_id, ctx.trace_id) == ("admission-request", "admission-trace")
+        elif context_kind == "app":
+            assert isinstance(ctx, AppRequestContext)
+            assert (ctx.app_id, ctx.tenant_id) == (APP_ID, TENANT_ID)
+        else:
+            assert kwargs == {}
+        assert checkouts
+        assert bool(connections) is (context_kind == "orm")
+        assert sqlite_session.in_transaction() is (context_kind == "orm")
+        assert try_get_auth_ctx() == subject.auth
+        if handler_raises:
+            raise RuntimeError("import failed")
+        return "imported"
+
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+
+    def run() -> str:
+        ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
+        ctx.request_id = "admission-request"
+        ctx.trace_id = "admission-trace"
+        return AccountPipeline().run(
+            subject=subject,
+            auth=subject.auth,
+            spec=EndpointSpec(
+                context=context_kind,
+                requirements=(CheckAppApiEnabled(), CheckWorkspaceMember()),
+                catalog=CatalogMeta(op="test.context_injection", kind=Kind.OBJECT, summary="test"),
+            ),
+            ctx=ctx,
+            session=sqlite_session,
+            call=call,
+        )
+
+    try:
+        with app.test_request_context(headers=_current_catalog(app)):
+            if handler_raises:
+                with pytest.raises(RuntimeError, match="import failed"):
+                    run()
+            else:
+                assert run() == "imported"
+        sqlite_session.close()
+        assert not connections
+        assert try_get_auth_ctx() is None
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
 
 
 def test_every_pipeline_checks_the_catalog_before_anything_else() -> None:
@@ -278,3 +374,29 @@ def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_sess
 
     with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
         _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+@pytest.mark.parametrize("policy", [None, *PersonalAccessTokenPolicy])
+def test_personal_access_check_skips_oauth_without_loading_resources(
+    sqlite_session: Session, policy: PersonalAccessTokenPolicy | None
+) -> None:
+    subject = account_subject()
+    ctx = Context(subject, sqlite_session, {}, pat_policy=policy)
+
+    # No Flask request, account, or resource is needed for a non-PAT credential.
+    CheckPersonalAccess().run(subject, ctx, sqlite_session)
+
+    assert ctx.personal_workspace_ids is None
+    assert ctx.personal_app_ids is None
+
+
+def test_account_pipeline_denies_pat_without_policy_before_loading_resources(
+    app: Flask, sqlite_session: Session
+) -> None:
+    subject = AccountSubject(make_auth(TokenType.PERSONAL_ACCESS))
+    ctx = make_ctx(sqlite_session, subject)
+    with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
+        with pytest.raises(Forbidden, match="personal_access_token_not_supported"):
+            _run(AccountPipeline(), subject, ctx, sqlite_session, call=never_reached)
+
+    assert try_get_auth_ctx() is None

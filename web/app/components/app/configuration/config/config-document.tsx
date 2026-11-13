@@ -14,7 +14,7 @@ import ConfigContext from '@/context/debug-configuration'
 const ConfigDocument: FC = () => {
   const titleId = React.useId()
 
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['fileUpload'])
   const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const { isShowDocumentConfig, readonly } = useContext(ConfigContext)
@@ -57,12 +57,12 @@ const ConfigDocument: FC = () => {
       </div>
       <div className="flex grow items-center">
         <div id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['feature.documentUpload.title'], { ns: 'appDebug' })}
+          {t(($) => $['feature.documentUpload.title'], { ns: 'fileUpload' })}
         </div>
         <Infotip>
           <InfotipTrigger aria-labelledby={titleId} />
           <InfotipContent aria-labelledby={titleId} className="w-45">
-            {t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
+            {t(($) => $['feature.documentUpload.description'], { ns: 'fileUpload' })}
           </InfotipContent>
         </Infotip>
       </div>

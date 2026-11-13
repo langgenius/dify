@@ -9,13 +9,13 @@ type FilterSwitchProps = {
 }
 
 const FilterSwitch: FC<FilterSwitchProps> = ({ enabled, handleSwitch }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHistory'])
 
   return (
     <div className="flex items-center p-1">
       <div className="flex w-full items-center gap-x-1 px-2 py-1.5">
         <div className="flex-1 px-1 system-md-regular text-text-secondary">
-          {t(($) => $['versionHistory.filter.onlyShowNamedVersions'], { ns: 'workflow' })}
+          {t(($) => $['versionHistory.filter.onlyShowNamedVersions'], { ns: 'workflowHistory' })}
         </div>
         <Switch
           checked={enabled}

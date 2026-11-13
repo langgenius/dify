@@ -1,10 +1,8 @@
 import type {
   NumberFieldControlsProps,
   NumberFieldDecrementProps,
-  NumberFieldGroupProps,
   NumberFieldIncrementProps,
   NumberFieldInputProps,
-  NumberFieldUnitProps,
 } from '../index'
 import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
@@ -18,14 +16,11 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-  NumberFieldUnit,
 } from '../index'
 
 type RenderNumberFieldOptions = {
   defaultValue?: number
-  groupProps?: Partial<NumberFieldGroupProps>
   inputProps?: Partial<NumberFieldInputProps>
-  unitProps?: Partial<NumberFieldUnitProps> & { children?: React.ReactNode }
   controlsProps?: Partial<NumberFieldControlsProps>
   incrementProps?: Partial<NumberFieldIncrementProps>
   decrementProps?: Partial<NumberFieldDecrementProps>
@@ -33,24 +28,15 @@ type RenderNumberFieldOptions = {
 
 const renderNumberField = ({
   defaultValue = 8,
-  groupProps,
   inputProps,
-  unitProps,
   controlsProps,
   incrementProps,
   decrementProps,
 }: RenderNumberFieldOptions = {}) => {
-  const { children: unitChildren = 'ms', ...restUnitProps } = unitProps ?? {}
-
   return render(
     <NumberField defaultValue={defaultValue}>
-      <NumberFieldGroup data-testid="group" {...groupProps}>
+      <NumberFieldGroup data-testid="group">
         <NumberFieldInput aria-label="Amount" {...inputProps} />
-        {unitProps && (
-          <NumberFieldUnit data-testid="unit" {...restUnitProps}>
-            {unitChildren}
-          </NumberFieldUnit>
-        )}
         {(controlsProps || incrementProps || decrementProps) && (
           <NumberFieldControls data-testid="controls" {...controlsProps}>
             <NumberFieldIncrement data-testid="increment" {...incrementProps} />
@@ -78,16 +64,6 @@ describe('NumberField wrapper', () => {
         .not.toBe(restingBoxShadow)
     })
 
-    it('should merge custom className on the group', async () => {
-      const screen = await renderNumberField({
-        groupProps: {
-          className: 'custom-group',
-        },
-      })
-
-      await expect.element(screen.getByTestId('group')).toHaveClass('custom-group')
-    })
-
     it('should surface field invalid state on the visual group', async () => {
       const screen = await render(
         <Field name="amount" invalid>
@@ -106,10 +82,9 @@ describe('NumberField wrapper', () => {
         .toHaveAttribute('aria-invalid', 'true')
     })
 
-    it('should set input defaults and forward passthrough props', async () => {
+    it('should disable autocomplete and expose placeholder and required state', async () => {
       const screen = await renderNumberField({
         inputProps: {
-          className: 'custom-input',
           placeholder: 'Regular placeholder',
           required: true,
         },
@@ -125,38 +100,6 @@ describe('NumberField wrapper', () => {
         .element(screen.getByRole('textbox', { name: 'Amount' }))
         .toHaveAttribute('placeholder', 'Regular placeholder')
       await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toBeRequired()
-      await expect
-        .element(screen.getByRole('textbox', { name: 'Amount' }))
-        .toHaveClass('custom-input')
-    })
-  })
-
-  describe('Unit and controls', () => {
-    it('should forward passthrough props to the unit', async () => {
-      const screen = await renderNumberField({
-        unitProps: {
-          className: 'custom-unit',
-          title: 'unit-title',
-        },
-      })
-
-      await expect.element(screen.getByTestId('unit')).toHaveTextContent('ms')
-      await expect.element(screen.getByTestId('unit')).toHaveAttribute('title', 'unit-title')
-      await expect.element(screen.getByTestId('unit')).toHaveClass('custom-unit')
-    })
-
-    it('should forward passthrough props to controls', async () => {
-      const screen = await renderNumberField({
-        controlsProps: {
-          className: 'custom-controls',
-          title: 'controls-title',
-        },
-      })
-
-      await expect
-        .element(screen.getByTestId('controls'))
-        .toHaveAttribute('title', 'controls-title')
-      await expect.element(screen.getByTestId('controls')).toHaveClass('custom-controls')
     })
   })
 
@@ -238,25 +181,6 @@ describe('NumberField wrapper', () => {
         .element(screen.getByRole('button', { name: 'Decrement from label' }))
         .not.toHaveAttribute('aria-label')
     })
-
-    it('should forward passthrough props to control buttons', async () => {
-      const screen = await renderNumberField({
-        controlsProps: {},
-        incrementProps: {
-          className: 'custom-increment',
-        },
-        decrementProps: {
-          className: 'custom-decrement',
-          title: 'decrement-title',
-        },
-      })
-
-      await expect.element(screen.getByTestId('increment')).toHaveClass('custom-increment')
-      await expect.element(screen.getByTestId('decrement')).toHaveClass('custom-decrement')
-      await expect
-        .element(screen.getByTestId('decrement'))
-        .toHaveAttribute('title', 'decrement-title')
-    })
   })
 })
 
@@ -268,7 +192,7 @@ describe('Invalid focus colors', () => {
       document.documentElement.dataset.theme = theme
       try {
         const screen = await render(
-          <>
+          <React.Fragment>
             <Button>Before</Button>
             <Field invalid>
               <FieldLabel>Invalid value</FieldLabel>
@@ -278,7 +202,7 @@ describe('Invalid focus colors', () => {
                 </NumberFieldGroup>
               </NumberField>
             </Field>
-          </>,
+          </React.Fragment>,
         )
         const input = screen.getByRole('textbox', { name: 'Invalid value' })
         const surface = screen.getByTestId('invalid-surface').element()

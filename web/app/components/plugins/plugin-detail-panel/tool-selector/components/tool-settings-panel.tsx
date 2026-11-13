@@ -11,7 +11,7 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
-import ReasoningConfigForm from './reasoning-config-form'
+import { ReasoningConfigForm } from './reasoning-config-form'
 
 type ToolSettingsPanelProps = {
   value?: ToolValue
@@ -77,7 +77,6 @@ export function ToolSettingsPanel({
   const settingsForm = (
     <div className="px-4 py-2">
       <ToolForm
-        inPanel
         readOnly={false}
         nodeId={nodeId}
         schema={settingsFormSchemas as CredentialFormSchema[]}

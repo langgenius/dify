@@ -1,9 +1,10 @@
 import json
 import logging
 import math
-from typing import Any, TypedDict, override
+from typing import Any, TypedDict, cast, override
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
 from tcvectordb import RPCVectorDBClient, VectorDBException  # type: ignore
 from tcvectordb.model import document, enum  # type: ignore
@@ -35,13 +36,20 @@ class TencentConfig(BaseModel):
     api_key: str | None = None
     timeout: float = 30
     username: str | None = None
-    database: str | None = None
+    database: str
     index_type: str = "HNSW"
     metric_type: str = "IP"
     shard: int = 1
     replicas: int = 2
     max_upsert_batch_size: int = 128
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if not values.get("database"):
+            raise ValueError("config TENCENT_VECTOR_DB_DATABASE is required")
+        return values
 
     def to_tencent_params(self) -> TencentParamsDict:
         result: TencentParamsDict = {
@@ -86,7 +94,10 @@ class TencentVector(BaseVector):
                     if idx.name == "sparse_vector":
                         has_hybrid_search = True
                     elif idx.name == "vector":
-                        self._dimension = idx.dimension
+                        # The "vector" index is the VectorIndex _create_collection made.
+                        dimension = cast(vdb_index.VectorIndex, idx).dimension
+                        if dimension is not None:
+                            self._dimension = dimension
                 if not has_hybrid_search:
                     self._enable_hybrid_search = False
 
@@ -150,7 +161,7 @@ class TencentVector(BaseVector):
                 index_type=enum.IndexType.SPARSE_INVERTED,
                 metric_type=enum.MetricType.IP,
             )
-            indexes = [index_id, index_vector, index_metadate]
+            indexes: list[vdb_index.IndexField] = [index_id, index_vector, index_metadate]
             if self._enable_hybrid_search:
                 indexes.append(index_sparse_vector)
             try:
@@ -169,7 +180,7 @@ class TencentVector(BaseVector):
                 index_metadate = vdb_index.FilterIndex(
                     self.field_metadata, enum.FieldType.String, enum.IndexType.FILTER
                 )
-                indexes = [index_id, index_vector, index_metadate]
+                indexes: list[vdb_index.IndexField] = [index_id, index_vector, index_metadate]
                 if self._enable_hybrid_search:
                     indexes.append(index_sparse_vector)
                 self._client.create_collection(
@@ -195,7 +206,7 @@ class TencentVector(BaseVector):
         batch_size = self._client_config.max_upsert_batch_size
         batch = math.ceil(total_count / batch_size)
         for j in range(batch):
-            docs = []
+            docs: list[document.Document | dict[str, Any]] = []
             start_idx = j * batch_size
             end_idx = min(total_count, (j + 1) * batch_size)
             for i in range(start_idx, end_idx):
@@ -228,9 +239,7 @@ class TencentVector(BaseVector):
         docs = self._client.query(
             database_name=self._client_config.database, collection_name=self.collection_name, document_ids=[id]
         )
-        if docs and len(docs) > 0:
-            return True
-        return False
+        return bool(docs and len(docs) > 0)
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -268,7 +277,8 @@ class TencentVector(BaseVector):
             database_name=self._client_config.database,
             collection_name=self.collection_name,
             vectors=[query_vector],
-            filter=filter,
+            # tcvectordb declares `filter: Union[Filter, str] = None`; None means no filter.
+            filter=filter,  # pyrefly: ignore[bad-argument-type]
             params=document.HNSWSearchParams(ef=kwargs.get("ef", 10)),
             retrieve_vector=False,
             limit=kwargs.get("top_k", 4),
@@ -297,7 +307,8 @@ class TencentVector(BaseVector):
             match=[
                 KeywordSearch(
                     field_name="sparse_vector",
-                    data=bm25.encode_queries(query),
+                    # A single query string encodes to a single sparse vector.
+                    data=cast(list[list[float | int]], bm25.encode_queries(query)),
                 ),
             ],
             rerank=WeightedRerank(
@@ -306,7 +317,8 @@ class TencentVector(BaseVector):
             ),
             retrieve_vector=False,
             limit=kwargs.get("top_k", 4),
-            filter=filter,
+            # tcvectordb declares `filter: Union[Filter, str] = None`; None means no filter.
+            filter=filter,  # pyrefly: ignore[bad-argument-type]
         )
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)
@@ -337,7 +349,9 @@ class TencentVector(BaseVector):
 
 class TencentVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TencentVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TencentVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()
@@ -353,7 +367,7 @@ class TencentVectorFactory(AbstractVectorFactory):
                 api_key=dify_config.TENCENT_VECTOR_DB_API_KEY,
                 timeout=dify_config.TENCENT_VECTOR_DB_TIMEOUT,
                 username=dify_config.TENCENT_VECTOR_DB_USERNAME,
-                database=dify_config.TENCENT_VECTOR_DB_DATABASE,
+                database=dify_config.TENCENT_VECTOR_DB_DATABASE or "",
                 shard=dify_config.TENCENT_VECTOR_DB_SHARD,
                 replicas=dify_config.TENCENT_VECTOR_DB_REPLICAS,
                 enable_hybrid_search=dify_config.TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH or False,

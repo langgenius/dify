@@ -3,10 +3,11 @@ import type { RefObject } from 'react'
 import type { FileUploadConfig } from '../hooks/use-file-upload'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 
-export type UploadDropzoneProps = {
+type UploadDropzoneProps = {
   dropRef: RefObject<HTMLDivElement | null>
   dragRef: RefObject<HTMLDivElement | null>
   fileUploaderRef: RefObject<HTMLInputElement | null>
@@ -32,6 +33,8 @@ const UploadDropzone = ({
   onFileChange,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation(['datasetCreation'])
+  const browseLabelId = useId()
+  const canBrowse = acceptTypes.length > 0
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
@@ -41,6 +44,10 @@ const UploadDropzone = ({
         id="fileUploader"
         className="hidden"
         type="file"
+        aria-labelledby={canBrowse ? browseLabelId : undefined}
+        aria-label={
+          canBrowse ? undefined : t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })
+        }
         multiple={supportBatchUpload}
         accept={acceptTypes.join(',')}
         onChange={onFileChange}
@@ -58,8 +65,9 @@ const UploadDropzone = ({
             {supportBatchUpload
               ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
               : t(($) => $['stepOne.uploader.buttonSingleFile'], { ns: 'datasetCreation' })}
-            {acceptTypes.length > 0 && (
+            {canBrowse && (
               <button
+                id={browseLabelId}
                 type="button"
                 className="font-inherit ml-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
                 onClick={onSelectFile}

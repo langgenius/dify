@@ -10,13 +10,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -87,21 +88,27 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
           <DrawerViewport>
             <DrawerPopup
               className={cn(
-                'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-150 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
+                'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-150 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-divider-subtle',
                 positionCenter
                   ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%-300px))]'
                   : 'data-[swipe-direction=right]:right-2',
               )}
             >
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <DrawerContent>
                 <div className="shrink-0 border-b border-divider-regular py-4">
-                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                  <div className="flex h-6 items-center justify-between ps-6 pe-5">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {`${t(($) => $['test.title'], { ns: 'tools' })}  ${toolName}`}
                     </DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
@@ -139,10 +146,10 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                         <table className="w-full body-xs-regular text-text-secondary">
                           <thead className="text-text-tertiary uppercase">
                             <tr className="border-b border-divider-regular">
-                              <th className="p-2 pl-3 font-medium">
+                              <th className="p-2 ps-3 font-medium">
                                 {t(($) => $['test.parameters'], { ns: 'tools' })}
                               </th>
-                              <th className="p-2 pl-3 font-medium">
+                              <th className="p-2 ps-3 font-medium">
                                 {t(($) => $['test.value'], { ns: 'tools' })}
                               </th>
                             </tr>
@@ -153,7 +160,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                                 key={index}
                                 className="border-b border-divider-regular last:border-0"
                               >
-                                <td className="py-2 pr-2.5 pl-3">
+                                <td className="py-2 ps-3 pe-2.5">
                                   <label htmlFor={`${parameterId}-${item.name}`}>
                                     {item.label[language]}
                                   </label>
@@ -195,7 +202,10 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                       </div>
                       <div className="h-px w-0 grow"></div>
                     </div>
-                    <div className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary">
+                    <div
+                      role="status"
+                      className="mt-2 h-50 overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary"
+                    >
                       {result || (
                         <span className="text-text-quaternary">
                           {t(($) => $['test.testResultPlaceholder'], { ns: 'tools' })}

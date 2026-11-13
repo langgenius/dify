@@ -35,6 +35,7 @@ const DEFAULT_ICON_CLASS_MAP: Record<BlockEnum, string | null> = {
   [BlockEnum.HttpRequest]: 'i-custom-vender-workflow-http',
   [BlockEnum.Answer]: 'i-custom-vender-workflow-answer',
   [BlockEnum.KnowledgeRetrieval]: 'i-custom-vender-workflow-knowledge-retrieval',
+  [BlockEnum.KnowledgeRetrievalV2]: 'i-custom-vender-workflow-knowledge-retrieval',
   [BlockEnum.QuestionClassifier]: 'i-custom-vender-workflow-question-classifier',
   [BlockEnum.TemplateTransform]: 'i-custom-vender-workflow-templating-transform',
   [BlockEnum.VariableAssigner]: 'i-custom-vender-workflow-variable-x',
@@ -58,6 +59,7 @@ const DEFAULT_ICON_CLASS_MAP: Record<BlockEnum, string | null> = {
   [BlockEnum.TriggerWebhook]: 'i-custom-vender-workflow-webhook-line',
   [BlockEnum.TriggerPlugin]: 'i-custom-vender-workflow-variable-x',
   [BlockEnum.HumanInput]: 'i-custom-vender-workflow-human-in-loop',
+  [BlockEnum.HumanInputV2]: 'i-custom-vender-workflow-human-in-loop',
 }
 
 const getIcon = (type: BlockEnum, className: string) => {
@@ -89,6 +91,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.HttpRequest]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.Answer]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.KnowledgeRetrieval]: 'bg-util-colors-green-green-500',
+  [BlockEnum.KnowledgeRetrievalV2]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.QuestionClassifier]: 'bg-util-colors-green-green-500',
   [BlockEnum.TemplateTransform]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
@@ -101,6 +104,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.AgentV2]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.HumanInput]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.HumanInputV2]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
   [BlockEnum.TriggerSchedule]: 'bg-util-colors-violet-violet-500',
@@ -187,8 +191,11 @@ const BlockIcon: FC<BlockIconProps> = ({
             <AppIcon
               className="size-full! shrink-0"
               size="tiny"
-              icon={resolvedToolIcon?.content}
-              background={resolvedToolIcon?.background}
+              icon={{
+                icon_type: 'emoji',
+                icon: resolvedToolIcon?.content,
+                icon_background: resolvedToolIcon?.background,
+              }}
             />
           )}
         </>

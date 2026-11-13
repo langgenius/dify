@@ -1,7 +1,7 @@
 """Bridge pure installed app requests to the existing generation runtime."""
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import override
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,7 +12,10 @@ from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.conversation_service import ConversationService
-from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationRuntime
+from services.installed_app_generation_service import (
+    GenerationResponse,
+    InstalledAppGenerationRuntime,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,26 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
         args: Mapping[str, object],
         streaming: bool,
     ) -> GenerationResponse:
+        conversation_id = args.get("conversation_id")
+        app, account = self._load_generation_context(
+            app_id=app_id,
+            account_id=account_id,
+            conversation_id=conversation_id if isinstance(conversation_id, str) else None,
+        )
+        return self._run_generation(
+            lambda session: AppGenerateService.generate(
+                session=session,
+                app_model=app,
+                user=account,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
+            )
+        )
+
+    def _load_generation_context(
+        self, *, app_id: str, account_id: str, conversation_id: str | None = None
+    ) -> tuple[App, Account]:
         with self._session_factory(expire_on_commit=False) as read_session:
             app = read_session.get(App, app_id)
             if app is None:
@@ -40,28 +63,22 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
 
             # Resolve the validated chat conversation before a streaming generator
             # is created, preserving the legacy eager 404 and ownership checks.
-            conversation_id = args.get("conversation_id")
-            if isinstance(conversation_id, str) and conversation_id:
+            if conversation_id:
                 ConversationService.get_conversation(
                     app_model=app,
                     conversation_id=conversation_id,
                     user=account,
                     session=read_session,
                 )
+        return app, account
 
+    def _run_generation(self, generate: Callable[[Session], GenerationResponse]) -> GenerationResponse:
         # Release actor/app reads before the runtime's quota and rate-limit checks.
         # Legacy generators still own their internal database and external I/O.
         response: GenerationResponse | None = None
         try:
             with self._session_factory(expire_on_commit=False) as session:
-                generated_response: GenerationResponse = AppGenerateService.generate(
-                    session=session,
-                    app_model=app,
-                    user=account,
-                    args=args,
-                    invoke_from=InvokeFrom.EXPLORE,
-                    streaming=streaming,
-                )
+                generated_response = generate(session)
                 response = generated_response
                 session.commit()
         except BaseException:

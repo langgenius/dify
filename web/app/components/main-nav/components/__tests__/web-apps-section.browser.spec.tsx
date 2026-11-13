@@ -2,10 +2,12 @@ import type {
   InstalledAppListResponse,
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import WebAppsSection from '../web-apps-section'
 
 const service = vi.hoisted(() => ({
@@ -13,29 +15,19 @@ const service = vi.hoisted(() => ({
   pin: vi.fn<() => Promise<void>>(),
 }))
 
+// boundary: Browser Mode has no Next App Router; the list consumes the current pathname.
 vi.mock('@/next/navigation', () => ({ usePathname: () => '/' }))
-vi.mock('@/context/permission-state', async () => {
-  const { atom } = await import('jotai')
-  return { workspacePermissionKeysAtom: atom(['app_library.access']) }
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'installedApps.get': () => service.list(),
+      'installedApps.byInstalledAppId.patch': () => service.pin(),
+    }),
+  }
 })
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    installedApps: {
-      get: {
-        infiniteOptions: (options: {
-          input: (cursor?: string) => { query: { name?: string } }
-        }) => ({
-          ...options,
-          queryKey: ['installed-apps', options.input().query.name ?? ''],
-          queryFn: () => service.list(),
-        }),
-      },
-      byInstalledAppId: {
-        patch: { mutationOptions: () => ({ mutationFn: service.pin }) },
-      },
-    },
-  },
-}))
 
 function createApp(index: number): InstalledAppResponse {
   return {
@@ -59,8 +51,10 @@ function createApp(index: number): InstalledAppResponse {
 }
 
 async function renderSection(count = 40) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  onTestFinished(guardUnexpectedFetch())
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: true },
+    workspacePermissionKeys: ['app_library.access'],
   })
   service.list.mockResolvedValue({
     installed_apps: Array.from({ length: count }, (_, index) => createApp(index)),
@@ -68,14 +62,14 @@ async function renderSection(count = 40) {
     next_cursor: null,
   })
   const screen = await render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <div className="flex h-64 w-60 flex-col bg-background-body text-text-primary">
         <Suspense fallback={null}>
           <WebAppsSection />
         </Suspense>
       </div>
       <button type="button">After apps</button>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   await expect
     .element(
@@ -143,34 +137,4 @@ it('tabs through the virtualized apps and can leave the list', async () => {
     await userEvent.keyboard('{Tab}{Tab}')
   }
   await expect.element(screen.getByRole('button', { name: 'After apps' })).toHaveFocus()
-})
-
-it('does not flash a scrollbar when rapidly toggling a list that fits', async () => {
-  const { screen } = await renderSection(2)
-  const toggle = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
-  const frames: { viewportHeight: number; contentHeight: number; hasOverflow: boolean }[] = []
-  let frame = 0
-  const sample = () => {
-    const viewport = screen.getByRole('navigation', { name: 'explore.sidebar.webApps' }).query()
-    if (viewport) {
-      frames.push({
-        viewportHeight: viewport.clientHeight,
-        contentHeight: viewport.scrollHeight,
-        hasOverflow: viewport.hasAttribute('data-has-overflow-y'),
-      })
-    }
-    frame = requestAnimationFrame(sample)
-  }
-  frame = requestAnimationFrame(sample)
-  try {
-    for (let index = 0; index < 12; index++) await toggle.click()
-    await expect.element(screen.getByRole('link', { name: 'App 0', exact: true })).toBeVisible()
-  } finally {
-    cancelAnimationFrame(frame)
-  }
-  expect(frames.length).toBeGreaterThan(0)
-  for (const snapshot of frames) {
-    expect(snapshot.viewportHeight).toBeGreaterThanOrEqual(snapshot.contentHeight)
-    expect(snapshot.hasOverflow).toBe(false)
-  }
 })

@@ -12,8 +12,8 @@ const file: FileEntity = {
   transferMethod: 'local_file',
   supportFileType: 'image',
   uploadedId: 'uploaded-1',
-  base64Url: 'data:image/png;base64,abc',
-  url: 'https://example.com/photo.png',
+  base64Url:
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
 }
 
 describe('FileImageItem pointer interaction', () => {

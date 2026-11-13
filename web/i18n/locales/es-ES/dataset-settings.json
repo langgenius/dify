@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Cuando el modelo de incrustación soporte multimodal, seleccione un modelo de reordenamiento multimodal para un mejor rendimiento.",
   "form.retrievalSetting.title": "Configuración de recuperación",
   "form.save": "Guardar",
-  "form.searchModel": "Buscar modelo",
   "form.summaryAutoGen": "Generación Automática de Resumen",
   "form.summaryAutoGenEnableTip": "Una vez habilitado, los resúmenes se generarán automáticamente para documentos recién agregados. Los documentos existentes aún se pueden resumir manualmente.",
   "form.summaryAutoGenTip": "Los resúmenes se generan automáticamente para documentos recién agregados. Los documentos existentes aún se pueden resumir manualmente.",

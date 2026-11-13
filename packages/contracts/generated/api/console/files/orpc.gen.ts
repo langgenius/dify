@@ -3,6 +3,14 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zNoFileUploadedError,
+  zTooManyFilesError,
+  zUnsupportedFileTypeError,
+} from './zod.gen.ts'
+import {
   zGetFilesByFileIdPreviewPath,
   zGetFilesByFileIdPreviewResponse,
   zGetFilesSupportTypeResponse,
@@ -46,6 +54,14 @@ export const post = oc
   })
   .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload = {
   get: get2,

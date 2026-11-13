@@ -42,13 +42,13 @@ export function DeployedEnvironmentAccessPoints({
   canManageAccessPoint,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
-  const { t } = useTranslation(['common', 'deployments', 'tools'])
+  const { t } = useTranslation(['deployments', 'tools', 'navigation'])
   const unsupportedStatusLabel = useAccessPointStatusLabel('unsupported')
 
   const title = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {
     const key = ACCESS_POINT_CONFIG[accessPoint].title
     if (key === 'mcp') return t(($) => $['mcp.server.title'], { ns: 'tools' })
-    return t(($) => $['settings.trigger'], { ns: 'common' })
+    return t(($) => $['settings.trigger'], { ns: 'navigation' })
   }
 
   const description = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {

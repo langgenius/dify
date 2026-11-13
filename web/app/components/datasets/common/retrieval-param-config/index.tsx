@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -39,7 +40,13 @@ const RetrievalParamConfig: FC<Props> = ({
   disabled = false,
   onChange,
 }) => {
-  const { t } = useTranslation(['common', 'dataset', 'datasetSettings', 'workflow'])
+  const { t } = useTranslation([
+    'common',
+    'dataset',
+    'datasetSettings',
+    'workflow',
+    'modelProvider',
+  ])
   const rerankLabelId = useId()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.keywordSearch
@@ -106,8 +113,8 @@ const RetrievalParamConfig: FC<Props> = ({
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' }),
-      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
+      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' }),
     },
   ]
 
@@ -127,12 +134,12 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className="flex items-center">
               <span id={rerankLabelId} className="mr-0.5 system-sm-semibold text-text-secondary">
-                {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
+                {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
               </span>
               <Infotip>
                 <InfotipTrigger aria-labelledby={rerankLabelId} />
                 <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
-                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })}
                 </InfotipContent>
               </Infotip>
             </div>
@@ -160,18 +167,11 @@ const RetrievalParamConfig: FC<Props> = ({
                 disabled={disabled}
               />
               {showMultiModalTip && (
-                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-                  <div className="p-1">
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
-                    />
-                  </div>
-                  <span className="system-xs-medium text-text-primary">
+                <Alert type="warning" className="mt-2">
+                  <AlertTitle>
                     {t(($) => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
-                  </span>
-                </div>
+                  </AlertTitle>
+                </Alert>
               )}
             </>
           )}
@@ -221,7 +221,7 @@ const RetrievalParamConfig: FC<Props> = ({
       {isHybridSearch && (
         <>
           <RadioGroup<RerankingModeEnum>
-            aria-label={t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
+            aria-label={t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
             value={value.reranking_mode}
             onValueChange={handleChangeRerankMode}
             className="mb-4 flex gap-2 @max-[28rem]/retrieval:flex-col"
@@ -296,18 +296,11 @@ const RetrievalParamConfig: FC<Props> = ({
                 disabled={disabled}
               />
               {showMultiModalTip && (
-                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-                  <div className="p-1">
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
-                    />
-                  </div>
-                  <span className="system-xs-medium text-text-primary">
+                <Alert type="warning" className="mt-2">
+                  <AlertTitle>
                     {t(($) => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
-                  </span>
-                </div>
+                  </AlertTitle>
+                </Alert>
               )}
             </>
           )}

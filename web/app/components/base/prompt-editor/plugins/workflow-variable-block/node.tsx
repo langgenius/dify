@@ -40,7 +40,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
   constructor(
     variables: string[],
     workflowNodesMap: WorkflowNodesMap,
-    getVarType: any,
+    getVarType: GetVarType | undefined,
     key?: NodeKey,
     availableVariables?: NodeOutPutVar[],
   ) {
@@ -87,8 +87,8 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
 
   override exportJSON(): SerializedNode {
     const json: SerializedNode = {
+      ...super.exportJSON(),
       type: 'workflow-variable-block',
-      version: 1,
       variables: this.getVariables(),
       workflowNodesMap: this.getWorkflowNodesMap(),
       getVarType: this.getVarType(),
@@ -108,7 +108,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return self.__workflowNodesMap
   }
 
-  getVarType(): any {
+  getVarType(): GetVarType | undefined {
     const self = this.getLatest()
     return self.__getVarType
   }

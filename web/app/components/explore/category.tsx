@@ -21,7 +21,10 @@ function Category({ className, list, value, onChange, allCategoriesEn }: ICatego
   const selectedCategory = isAllCategories ? allCategoriesEn : value
 
   const renderCategoryName = (name: string) => {
-    const categoryKey = `category.${name}` as keyof typeof exploreI18n
+    const categoryKey = `category.${name}` as Extract<
+      keyof typeof exploreI18n,
+      `category.${string}`
+    >
     return categoryKey in exploreI18n ? t(($) => $[categoryKey], { ns: 'explore' }) : name
   }
 
@@ -58,7 +61,7 @@ function Category({ className, list, value, onChange, allCategoriesEn }: ICatego
           value={item.name}
           nativeButton
           render={<button type="button" />}
-          className="h-8 min-w-12 shrink-0 cursor-pointer touch-manipulation rounded-lg border-0 px-2.5 py-2 text-center system-sm-medium text-text-tertiary shadow-none transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-0 data-checked:bg-state-base-active data-checked:system-sm-semibold data-checked:text-text-secondary data-checked:shadow-none motion-reduce:transition-none"
+          className="h-8 min-w-12 shrink-0 cursor-pointer touch-manipulation rounded-lg border-0 px-2.5 py-2 text-center system-sm-medium text-text-tertiary shadow-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-0 data-checked:bg-state-base-active data-checked:system-sm-semibold data-checked:text-text-secondary data-checked:shadow-none"
         >
           {item.label}
         </RadioItem>

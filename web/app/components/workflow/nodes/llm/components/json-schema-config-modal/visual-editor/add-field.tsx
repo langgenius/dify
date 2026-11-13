@@ -7,7 +7,7 @@ import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
 
 const AddField = () => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
   const { emit } = useMittContext()
 
@@ -28,7 +28,7 @@ const AddField = () => {
         onClick={handleAddField}
       >
         <RiAddCircleFill className="size-3.5" />
-        <span>{t(($) => $['nodes.llm.jsonSchema.addField'], { ns: 'workflow' })}</span>
+        <span>{t(($) => $['nodes.llm.jsonSchema.addField'], { ns: 'workflowModels' })}</span>
       </Button>
     </div>
   )

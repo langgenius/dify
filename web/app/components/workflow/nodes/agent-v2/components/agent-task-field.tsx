@@ -20,7 +20,7 @@ import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 const i18nPrefix = 'nodes.agent'
 
 function AgentTaskToolbar({ taskLength, onInsert }: { taskLength: number; onInsert: () => void }) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const [editor] = useLexicalComposerContext()
 
   const handleInsert = useCallback(() => {
@@ -41,7 +41,7 @@ function AgentTaskToolbar({ taskLength, onInsert }: { taskLength: number; onInse
           onClick={handleInsert}
         >
           <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
-          {t(($) => $[`${i18nPrefix}.task.insert`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.task.insert`], { ns: 'workflowAgent' })}
         </button>
       </div>
       <div className="rounded-sm border border-divider-regular bg-background-default px-1 system-2xs-regular text-text-tertiary">
@@ -70,7 +70,7 @@ export function AgentTaskField({
 }) {
   const taskLabelId = useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const docLink = useDocLink()
   const getVarType = useWorkflowVariableType()
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id)
@@ -100,19 +100,19 @@ export function AgentTaskField({
           id={taskLabelId}
           className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary"
         >
-          {t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflowAgent' })}
         </FieldLabel>
         <Infotip>
           <InfotipTrigger aria-labelledby={taskLabelId} />
           <InfotipContent aria-labelledby={taskLabelId}>
-            {t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}{' '}
+            {t(($) => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflowAgent' })}{' '}
             <a
               href={docLink('/use-dify/nodes/agent#give-it-a-task')}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
-              {t(($) => $[`${i18nPrefix}.task.learnMore`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.task.learnMore`], { ns: 'workflowAgent' })}
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
           </InfotipContent>
@@ -134,7 +134,7 @@ export function AgentTaskField({
           )}
         >
           <PromptEditor
-            aria-label={t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
+            aria-label={t(($) => $[`${i18nPrefix}.task.label`], { ns: 'workflowAgent' })}
             wrapperClassName="flex h-full flex-col"
             value={data.agent_task || ''}
             onChange={onChange}
@@ -142,7 +142,7 @@ export function AgentTaskField({
             compact
             className="min-h-0 flex-1 overflow-y-auto px-3 py-2"
             placeholderClassName="px-3 py-2"
-            placeholder={t(($) => $[`${i18nPrefix}.task.placeholder`], { ns: 'workflow' })}
+            placeholder={t(($) => $[`${i18nPrefix}.task.placeholder`], { ns: 'workflowAgent' })}
             onFocus={setFocus}
             onBlur={setBlur}
             workflowVariableBlock={{

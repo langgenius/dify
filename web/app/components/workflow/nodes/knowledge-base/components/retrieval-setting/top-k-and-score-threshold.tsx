@@ -100,7 +100,7 @@ export function TopKAndScoreThreshold({
           <FieldsetLegend className="sr-only">{scoreThresholdLabel}</FieldsetLegend>
           <Field name="score_threshold_enabled" className="mb-0.5 gap-0">
             <div className="flex h-6 items-center">
-              <FieldLabel className="flex w-full min-w-0 grow items-center py-0 system-sm-medium text-text-secondary">
+              <FieldLabel className="flex w-full min-w-0 grow cursor-pointer items-center py-0 system-sm-medium text-text-secondary has-data-disabled:cursor-not-allowed">
                 <Switch
                   className="mr-2"
                   checked={scoreThresholdEnabled}

@@ -13,6 +13,7 @@ class TestLocalValidation:
         settings = RuntimeBackendSettings(
             runtime_backend="local",
             local_sandbox_endpoint="http://shellctl.example.com",
+            local_sandbox_auth_token="secret",
         )
         assert settings.local_sandbox_endpoint == "http://shellctl.example.com"
 
@@ -20,6 +21,7 @@ class TestLocalValidation:
         settings = RuntimeBackendSettings(
             runtime_backend="local",
             local_sandbox_endpoint="https://shellctl.internal:8443/v1",
+            local_sandbox_auth_token="secret",
         )
         assert settings.local_sandbox_endpoint == "https://shellctl.internal:8443/v1"
 

@@ -3,7 +3,6 @@
   "action.delete": "Удалить плагин",
   "action.deleteContentLeft": "Вы хотели бы удалить",
   "action.deleteContentRight": "Плагин?",
-  "action.deleteSuccess": "Плагин успешно удалён",
   "action.pluginInfo": "Информация о плагине",
   "allCategories": "Все категории",
   "auth.addApi": "Добавьте API-ключ",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Руководство по публикации шаблонов",
-  "upgrade.close": "Закрывать",
   "upgrade.description": "О программе установки следующего плагина",
-  "upgrade.successfulTitle": "Установка успешна",
   "upgrade.title": "Установить плагин",
   "upgrade.upgrade": "Устанавливать",
   "upgrade.upgrading": "Установка..."

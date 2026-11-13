@@ -1,101 +1,77 @@
-import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { waitFor } from '@testing-library/react'
 import { PluginSource } from '@/app/components/plugins/types'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery as renderHook,
+} from '@/test/console/query-data'
+import { createPluginEntity } from '@/test/fixtures/plugin'
 import { usePluginInstalledCheck } from '../use-plugin-installed-check'
 
-const mockUseCheckInstalled = vi.fn()
-const mockUsePluginManifestInfo = vi.fn()
-
-const mockManifest = {
-  data: {
-    plugin: {
-      name: 'test-plugin',
-      version: '1.0.0',
-    },
-  },
-}
-
-vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: (...args: unknown[]) => mockUseCheckInstalled(...args),
-  usePluginManifestInfo: (...args: unknown[]) => mockUsePluginManifestInfo(...args),
+const requests = vi.hoisted(() => ({ installed: vi.fn(), marketplace: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  getMarketplace: requests.marketplace,
 }))
 
-describe('usePluginInstalledCheck', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseCheckInstalled.mockImplementation(
-      ({ pluginIds, enabled }: { pluginIds: string[]; enabled: boolean }) => ({
-        data: enabled && pluginIds.length > 0 ? { plugins: [] } : undefined,
-      }),
-    )
-    mockUsePluginManifestInfo.mockImplementation((pluginID: string) => ({
-      data: pluginID ? mockManifest : undefined,
-    }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': requests.installed,
+    }),
+  }
+})
+
+beforeEach(() => {
+  requests.installed.mockResolvedValue({ plugins: [] })
+  requests.marketplace.mockResolvedValue({
+    data: { plugin: { name: 'Test plugin', version: '1.0.0' } },
   })
+})
 
-  it('should use the explicit pluginID', () => {
-    const { result } = renderHook(() =>
-      usePluginInstalledCheck({
-        providerPluginId: 'org/plugin',
-      }),
-    )
+it('finds marketplace metadata for the requested plugin', async () => {
+  const { result } = renderHook(() => usePluginInstalledCheck({ providerPluginId: 'org/plugin' }))
+  await waitFor(() => expect(result.current.inMarketPlace).toBe(true))
+  expect(result.current.pluginID).toBe('org/plugin')
+  expect(result.current.manifest).toMatchObject({ name: 'Test plugin' })
+  expect(requests.installed).toHaveBeenCalledWith({ body: { plugin_ids: ['org/plugin'] } })
+  expect(requests.marketplace).toHaveBeenCalledWith('/plugins/org/plugin')
+})
 
-    expect(result.current.pluginID).toBe('org/plugin')
-  })
-
-  it('should detect plugin in marketplace when manifest exists', () => {
-    const { result } = renderHook(() =>
-      usePluginInstalledCheck({
-        providerPluginId: 'org/plugin',
-      }),
-    )
-
-    expect(result.current.inMarketPlace).toBe(true)
-    expect(result.current.manifest).toEqual(mockManifest.data.plugin)
-  })
-
-  it('should handle missing plugin id', () => {
-    const { result } = renderHook(() => usePluginInstalledCheck())
-
+it.each([undefined, null, ''])(
+  'skips requests for a non-plugin provider (%s)',
+  (providerPluginId) => {
+    const { result } = renderHook(() => usePluginInstalledCheck({ providerPluginId }))
     expect(result.current.pluginID).toBe('')
     expect(result.current.inMarketPlace).toBe(false)
+    expect(requests.installed).not.toHaveBeenCalled()
+    expect(requests.marketplace).not.toHaveBeenCalled()
+  },
+)
+
+it('skips both requests while checks are disabled', () => {
+  renderHook(() => usePluginInstalledCheck({ providerPluginId: 'org/plugin', enabled: false }))
+  expect(requests.installed).not.toHaveBeenCalled()
+  expect(requests.marketplace).not.toHaveBeenCalled()
+})
+
+it('does not query marketplace when the cached installation is a local package', async () => {
+  const queryClient = createConsoleQueryClient()
+  const plugins = [createPluginEntity({ source: PluginSource.local, plugin_id: 'org/plugin' })]
+  requests.installed.mockResolvedValue({ plugins })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryKey({
+      input: { body: { plugin_ids: ['org/plugin'] } },
+    }),
+    { plugins },
+  )
+  const { result } = renderHook(() => usePluginInstalledCheck({ providerPluginId: 'org/plugin' }), {
+    queryClient,
   })
-
-  it('should skip marketplace lookup when installed plugin source is local', () => {
-    mockUseCheckInstalled.mockReturnValue({
-      data: {
-        plugins: [
-          {
-            source: PluginSource.local,
-          },
-        ],
-      },
-    })
-
-    const { result } = renderHook(() =>
-      usePluginInstalledCheck({
-        providerPluginId: 'org/plugin',
-        enabled: true,
-      }),
-    )
-
-    expect(mockUsePluginManifestInfo).toHaveBeenCalledWith('')
-    expect(result.current.inMarketPlace).toBe(false)
-  })
-
-  it('should skip all plugin checks for non-plugin providers', () => {
-    const { result } = renderHook(() =>
-      usePluginInstalledCheck({
-        providerPluginId: null,
-        enabled: true,
-      }),
-    )
-
-    expect(mockUseCheckInstalled).toHaveBeenCalledWith({
-      pluginIds: [],
-      enabled: false,
-    })
-    expect(mockUsePluginManifestInfo).toHaveBeenCalledWith('')
-    expect(result.current.pluginID).toBe('')
-  })
+  await waitFor(() => expect(requests.installed).toHaveBeenCalled())
+  expect(result.current.inMarketPlace).toBe(false)
+  expect(requests.marketplace).not.toHaveBeenCalled()
 })

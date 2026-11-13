@@ -1,7 +1,7 @@
 import type { StepByStepTourGuideGroup, StepByStepTourTaskId } from './types'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { I18nKeysWithoutVariables } from '@/types/i18n'
 
 export const STEP_BY_STEP_TOUR_TARGETS = {
   home: 'step-by-step-tour-home',
@@ -51,13 +51,11 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   integrationCustomEndpointEmpty: 'step-by-step-tour-integration-custom-endpoint-empty',
 } as const
 
-type StepByStepTourGuideCopyKey = I18nKeysWithPrefix<'common', 'stepByStepTour.'>
+type StepByStepTourGuideCopyKey = I18nKeysWithoutVariables<'onboarding', 'stepByStepTour.'>
 
 export type StepByStepTourGuideKind = 'action' | 'walkthrough'
 
 export type StepByStepTourGuideInteractionPolicy = 'blocked' | 'target-only'
-
-type StepByStepTourGuidePortalOrder = 'afterOverlays'
 
 export type StepByStepTourGuide = {
   id: string
@@ -74,7 +72,6 @@ export type StepByStepTourGuide = {
   integrationSection?: IntegrationSection
   learnMoreDocPath?: DocPathWithoutLang
   optional?: boolean
-  portalOrder?: StepByStepTourGuidePortalOrder
 }
 
 export function getStepByStepTourGuideKind(
@@ -290,7 +287,6 @@ const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, StepByStepT
       completionMode: 'external',
       kind: 'action',
       interactionPolicy: 'target-only',
-      portalOrder: 'afterOverlays',
     },
   ],
   integration: [

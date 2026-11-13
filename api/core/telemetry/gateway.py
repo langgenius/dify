@@ -1,10 +1,10 @@
 """Telemetry gateway — single routing layer for all editions.
 
-Dispatches ``TelemetryEvent`` instances to either the CE/EE trace
-pipeline (``TraceQueueManager``) or the enterprise-only metric/log
-Celery queue.  Each event class carries its own routing metadata
-(``signal_type``, ``ce_eligible``, ``trace_task_name``), so this
-module contains no per-case mapping tables.
+Dispatches ``TelemetryEvent`` instances to either the trace pipeline
+or the enterprise-only metric/log Celery queue.  Each event class
+carries its own routing metadata (``signal_type``, ``ce_eligible``, and
+``trace_payload`` for trace signals), so this module contains no
+per-case mapping tables.
 
 This module lives in ``core/`` so both CE and EE share one
 ``emit()`` entry point.  Enterprise-specific dispatch (Celery task,
@@ -17,14 +17,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
-from core.telemetry.events import TelemetryEvent
+from core.telemetry.events import TelemetryEvent, TraceSignalEvent
 from enterprise.telemetry.contracts import SignalType
 from extensions.ext_storage import storage
-
-if TYPE_CHECKING:
-    from core.ops.ops_trace_manager import TraceQueueManager
+from extensions.tracing import create_trace_scope_for_app
 
 logger = logging.getLogger(__name__)
 
@@ -82,14 +80,14 @@ def _handle_payload_sizing(
 # ---------------------------------------------------------------------------
 
 
-def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
+def emit(event: TelemetryEvent) -> None:
     """Emit a telemetry event."""
     if not event.ce_eligible and not is_enterprise_telemetry_enabled():
         logger.debug("Dropping EE-only event: case=%s (EE disabled)", event.case)
         return
 
     if event.signal_type == SignalType.TRACE:
-        _emit_trace(event, trace_manager)
+        _emit_trace(event)
     else:
         _emit_metric_log(event)
 
@@ -99,21 +97,17 @@ def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) 
 # ---------------------------------------------------------------------------
 
 
-def _emit_trace(event: TelemetryEvent, trace_manager: TraceQueueManager | None) -> None:
-    from core.ops.ops_trace_manager import TraceQueueManager as LocalTraceQueueManager
-    from core.ops.ops_trace_manager import TraceTask
-
-    if event.trace_task_name is None:
-        logger.warning("No trace_task_name on event: case=%s", event.case)
+def _emit_trace(event: TelemetryEvent) -> None:
+    if not isinstance(event, TraceSignalEvent):
+        logger.warning("Trace signal without a trace payload: case=%s", event.case)
         return
-
     ctx = event.context
-    queue_manager: TraceQueueManager = trace_manager or LocalTraceQueueManager(
-        app_id=ctx.app_id,
-        user_id=ctx.user_id,
-    )
-    queue_manager.add_trace_task(TraceTask(event.trace_task_name, user_id=ctx.user_id, **event.payload))
-    logger.debug("Enqueued trace task: case=%s, app_id=%s", event.case, ctx.app_id)
+    if ctx.tenant_id is None:
+        logger.warning("Trace signal without a workspace: case=%s", event.case)
+        return
+    scope = create_trace_scope_for_app(tenant_id=ctx.tenant_id, app_id=ctx.app_id, user_id=ctx.user_id, extras={})
+    if scope is not None:
+        scope.emit(event.trace_payload())
 
 
 def _emit_metric_log(event: TelemetryEvent) -> None:

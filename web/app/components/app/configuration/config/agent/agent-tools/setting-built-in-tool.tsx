@@ -30,18 +30,12 @@ import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { getPluginLanguage } from '@/i18n/metadata'
-import {
-  fetchBuiltInToolList,
-  fetchCustomToolList,
-  fetchModelToolList,
-  fetchWorkflowToolList,
-} from '@/service/tools'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchWorkflowToolList } from '@/service/tools'
 
 type Props = Readonly<{
   showBackButton?: boolean
   collection: Collection | ToolWithProvider
   isBuiltIn?: boolean
-  isModel?: boolean
   toolName: string
   setting?: Record<string, any>
   readonly?: boolean
@@ -56,7 +50,6 @@ const SettingBuiltInTool: FC<Props> = ({
   showBackButton = false,
   collection,
   isBuiltIn = true,
-  isModel = true,
   toolName,
   setting = {},
   readonly,
@@ -90,8 +83,7 @@ const SettingBuiltInTool: FC<Props> = ({
       try {
         const list = await new Promise<Tool[]>((resolve) => {
           ;(async function () {
-            if (isModel) resolve(await fetchModelToolList(collection.name))
-            else if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
+            if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
             else if (collection.type === CollectionType.workflow)
               resolve(await fetchWorkflowToolList(collection.id))
             else resolve(await fetchCustomToolList(collection.name))
@@ -179,16 +171,16 @@ const SettingBuiltInTool: FC<Props> = ({
         <DrawerViewport>
           <DrawerPopup
             className={cn(
-              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:rounded-2xl',
             )}
           >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               {isLoading && <LoadingPlaceholder className="h-full" />}
               {!isLoading && (
                 <>
                   {/* header */}
                   <div className="relative border-b border-divider-subtle p-4 pb-3">
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute inset-e-3 top-3">
                       <IconButton
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                         onClick={onHide}
@@ -199,7 +191,7 @@ const SettingBuiltInTool: FC<Props> = ({
                     {showBackButton && (
                       <button
                         type="button"
-                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent-secondary"
+                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-start system-xs-semibold-uppercase text-text-accent-secondary"
                         onClick={onHide}
                       >
                         <RiArrowLeftLine className="size-4" />

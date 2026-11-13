@@ -1,11 +1,12 @@
 'use client'
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
+import { EnvironmentApiKeyButton } from './environment-api-key-button'
 
 type EnvironmentServiceApiCardProps = {
   appId: string
@@ -21,7 +22,12 @@ export function EnvironmentServiceApiCard({
   highlighted,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation(['common'])
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const { data: appMode } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (appDetail) => appDetail.mode,
+    }),
+  )
   const params = {
     app_id: appId,
     environment_id: environmentId,
@@ -34,11 +40,15 @@ export function EnvironmentServiceApiCard({
   const api = apiQuery.data
   const apiMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentApi.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `environment-service-api-toggle:${appId}:${environmentId}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
@@ -65,13 +75,15 @@ export function EnvironmentServiceApiCard({
 
   return (
     <ServiceApiCardView
-      apiKeyButtonProps={{
-        appId,
-        environmentId,
-        apiKeyCount: api?.api_key_count,
-        canManage: canManageAccessPoint,
-        disabled: !apiQuery.isSuccess,
-      }}
+      apiKeyAction={
+        <EnvironmentApiKeyButton
+          appId={appId}
+          environmentId={environmentId}
+          apiKeyCount={api?.api_key_count}
+          canManage={canManageAccessPoint}
+          disabled={!apiQuery.isSuccess}
+        />
+      }
       apiUrl={api?.base_url ?? ''}
       appMode={appMode}
       available={apiQuery.isSuccess}

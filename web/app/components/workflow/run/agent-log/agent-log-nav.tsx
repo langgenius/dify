@@ -15,7 +15,7 @@ type AgentLogNavProps = {
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: AgentLogNavProps) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
   const agentOrToolLogItemStackLength = agentOrToolLogItemStack.length
   const first = agentOrToolLogItemStack[0]
   const mid = agentOrToolLogItemStack.slice(1, -1)
@@ -23,7 +23,7 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
 
   return (
     <Breadcrumb
-      aria-label={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+      aria-label={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflowAgent' })}
       className="flex min-h-8 items-center bg-components-panel-bg p-1 pr-3"
     >
       <BreadcrumbList className="gap-0">
@@ -49,7 +49,7 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
               variant="ghost-accent"
               onClick={() => onShowAgentOrToolLog(first)}
             >
-              {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflowAgent' })}
             </Button>
           </BreadcrumbItem>
         ) : (
@@ -58,7 +58,7 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
               aria-current="location"
               className="px-1.25 system-xs-medium-uppercase wrap-anywhere whitespace-normal text-text-tertiary"
             >
-              {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflowAgent' })}
             </BreadcrumbPage>
           </BreadcrumbItem>
         )}

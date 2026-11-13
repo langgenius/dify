@@ -10,6 +10,7 @@ import datetime
 import json
 from collections.abc import Callable
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,7 +34,7 @@ class FakeCryptographyClient:
 
     # Class-level so a test can mark a version "disabled" (mirroring Key Vault's real behavior
     # for a disabled/deleted key version) without threading state through every fixture.
-    disabled_versions: set[str] = set()
+    disabled_versions: ClassVar[set[str]] = set()
 
     def __init__(self, key: str, credential: object = None) -> None:
         self.version = key.rsplit("/", 1)[-1]
@@ -240,7 +241,13 @@ def test_decrypt_rejects_truncated_envelope_raises_value_error(truncate_at: int)
     encrypted = provider.encrypt("tenant-1", "secret")
     truncated = encrypted[:truncate_at]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:Malformed Azure Key Vault envelope: truncated metadata|Malformed "
+            "Azure Key Vault envelope: truncated metadata length)"
+        ),
+    ):
         provider.decrypt_with_decoding(truncated, "tenant-1")
 
 

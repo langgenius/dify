@@ -22,6 +22,8 @@ PR açıklamasında mevcut bir sorunu bağlamayı veya yeni bir sorun açmayı u
 
 ### Hata Raporları
 
+Güvenlik açıklarını herkese açık issue oluşturmadan [güvenlik politikasına](../../SECURITY.md) göre özel olarak bildirin.
+
 > [!IMPORTANT]
 > Lütfen bir hata raporu gönderirken aşağıdaki bilgileri dahil ettiğinizden emin olun:
 
@@ -36,7 +38,7 @@ Nasıl önceliklendiriyoruz:
 
 | Sorun Türü | Öncelik |
 | ------------------------------------------------------------ | --------------- |
-| Temel işlevlerdeki hatalar (bulut hizmeti, giriş yapamama, çalışmayan uygulamalar, güvenlik açıkları) | Kritik |
+| Temel işlevlerdeki hatalar (bulut hizmeti, giriş yapamama, çalışmayan uygulamalar) | Kritik |
 | Kritik olmayan hatalar, performans artışları | Orta Öncelik |
 | Küçük düzeltmeler (yazım hataları, kafa karıştırıcı ama çalışan UI) | Düşük Öncelik |
 
@@ -66,7 +68,7 @@ Nasıl önceliklendiriyoruz:
 1. Depoyu fork edin
 1. Bir PR taslağı oluşturmadan önce, yapmak istediğiniz değişiklikleri tartışmak için lütfen bir sorun oluşturun
 1. Değişiklikleriniz için yeni bir dal oluşturun
-1. Lütfen değişiklikleriniz için uygun testler ekleyin
+1. Değişiklik gözlemlenebilir davranışı etkiliyorsa veya önemli bir regresyon riski taşıyorsa test ekleyin ya da güncelleyin.
 1. Kodunuzun mevcut testleri geçtiğinden emin olun
 1. Lütfen PR açıklamasında sorunu bağlayın, `fixes #<sorun_numarası>`
 1. Kodunuzu birleştirin!
@@ -75,22 +77,11 @@ Nasıl önceliklendiriyoruz:
 
 #### Frontend
 
-Frontend hizmetini kurmak için, lütfen `web/README.md` dosyasındaki kapsamlı [rehberimize](https://github.com/langgenius/dify/blob/main/web/README.md) bakın. Bu belge, frontend ortamını düzgün bir şekilde kurmanıza yardımcı olacak ayrıntılı talimatlar sağlar.
+Frontend hizmetini kurmak için, lütfen `web/README.md` dosyasındaki kapsamlı [rehberimize](../../web/README.md) bakın. Bu belge, frontend ortamını düzgün bir şekilde kurmanıza yardımcı olacak ayrıntılı talimatlar sağlar.
 
 #### Backend
 
-Backend hizmetini kurmak için, lütfen `api/README.md` dosyasındaki detaylı [talimatlarımıza](https://github.com/langgenius/dify/blob/main/api/README.md) bakın. Bu belge, backend'i sorunsuz bir şekilde çalıştırmanıza yardımcı olacak adım adım bir kılavuz içerir.
-
-#### Dikkat Edilecek Diğer Şeyler
-
-Kuruluma geçmeden önce bu belgeyi dikkatlice incelemenizi öneririz, çünkü şunlar hakkında temel bilgiler içerir:
-
-- Ön koşullar ve bağımlılıklar
-- Kurulum adımları
-- Yapılandırma detayları
-- Yaygın sorun giderme ipuçları
-
-Kurulum süreci sırasında herhangi bir sorunla karşılaşırsanız bizimle iletişime geçmekten çekinmeyin.
+Backend hizmetini kurmak için, lütfen `api/README.md` dosyasındaki detaylı [talimatlarımıza](../../api/README.md) bakın. Bu belge, backend'i sorunsuz bir şekilde çalıştırmanıza yardımcı olacak adım adım bir kılavuz içerir.
 
 ## Yardım Almak
 

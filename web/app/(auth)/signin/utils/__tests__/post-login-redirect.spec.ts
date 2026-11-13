@@ -1,0 +1,137 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { ReadonlyURLSearchParams } from '@/next/navigation'
+import { resolvePostLoginRedirect, setPostLoginRedirect } from '../post-login-redirect'
+
+describe('post-login redirect utilities', () => {
+  const storageKey = 'dify_post_login_redirect'
+  let previousRedirect: string | null
+
+  beforeEach(() => {
+    previousRedirect = sessionStorage.getItem(storageKey)
+    sessionStorage.removeItem(storageKey)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (previousRedirect === null) sessionStorage.removeItem(storageKey)
+    else sessionStorage.setItem(storageKey, previousRedirect)
+  })
+
+  it('should use the redirect_url query param first', () => {
+    const searchParams = new URLSearchParams({
+      redirect_url: encodeURIComponent(
+        '/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
+      ),
+    })
+
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
+    })
+  })
+
+  it('should allow a trusted Dify absolute query target', () => {
+    const searchParams = new URLSearchParams({
+      redirect_url: 'https://docs.eu.dify.ai/getting-started',
+    })
+
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'absolute',
+      href: 'https://docs.eu.dify.ai/getting-started',
+    })
+  })
+
+  it('should allow an absolute target on the current self-hosted origin', () => {
+    const redirectUrl = `${window.location.origin}/apps`
+    const searchParams = new URLSearchParams({ redirect_url: redirectUrl })
+
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'absolute',
+      href: redirectUrl,
+    })
+  })
+
+  it('should reject a Marketplace origin that is not a trusted Dify login target', () => {
+    const searchParams = new URLSearchParams({
+      redirect_url: 'http://localhost:3001/plugin/langgenius/openai?tab=reviews#rating',
+    })
+
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/',
+    })
+  })
+
+  it('should use the default target instead of a stored device target when the query target is invalid', () => {
+    setPostLoginRedirect('/device?user_code=ABCD')
+    const searchParams = new URLSearchParams({ redirect_url: 'https://google.com' })
+
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/',
+    })
+    expect(resolvePostLoginRedirect()).toEqual({
+      kind: 'internal',
+      href: '/device?user_code=ABCD',
+    })
+  })
+
+  it('should treat an empty redirect_url query param as invalid instead of using device storage', () => {
+    setPostLoginRedirect('/device?user_code=ABCD')
+    const searchParams = new URLSearchParams('redirect_url=')
+
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/',
+    })
+    expect(resolvePostLoginRedirect()).toEqual({
+      kind: 'internal',
+      href: '/device?user_code=ABCD',
+    })
+  })
+
+  it('should recover a valid device redirect from sessionStorage once', () => {
+    setPostLoginRedirect('/device?user_code=ABCD&sso_verified=true')
+
+    expect(resolvePostLoginRedirect()).toEqual({
+      kind: 'internal',
+      href: '/device?user_code=ABCD&sso_verified=true',
+    })
+    expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
+  })
+
+  it('should discard an expired device redirect', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-13T00:00:00Z'))
+    setPostLoginRedirect('/device?user_code=ABCD')
+    vi.advanceTimersByTime(15 * 60 * 1000 + 1)
+
+    expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
+  })
+
+  it('should ignore invalid stored redirects', () => {
+    setPostLoginRedirect('https://example.com/device?user_code=ABCD')
+
+    expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
+  })
+
+  it.each(['/device?user_code=ABCD&next=/apps', '/apps'])(
+    'rejects stored redirects outside the path and query allowlist: %s',
+    (target) => {
+      setPostLoginRedirect(target)
+
+      expect(resolvePostLoginRedirect()).toEqual({ kind: 'internal', href: '/' })
+    },
+  )
+
+  it('should preserve OAuth parameters and Marketplace attribution across signin', () => {
+    setPostLoginRedirect(
+      '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&utm_source=dify_marketplace',
+    )
+
+    expect(resolvePostLoginRedirect()).toEqual({
+      kind: 'internal',
+      href: '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&utm_source=dify_marketplace',
+    })
+  })
+})

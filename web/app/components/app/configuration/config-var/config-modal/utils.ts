@@ -1,8 +1,7 @@
+import type { TFunction } from 'i18next'
 import type { Item as SelectItem } from './type-select'
-import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { produce } from 'immer'
-import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
@@ -15,7 +14,7 @@ type ValidateConfigModalPayloadOptions = {
   tempPayload: InputVar
   payload?: InputVar
   maxFileUploadLimit?: number
-  t: SelectorTranslate<'appDebug' | 'workflow'>
+  t: TFunction<['appDebug', 'workflow']>
 }
 
 export type ConfigModalValidationError = {
@@ -96,6 +95,7 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
       InputVarType.multiFiles,
     ]
 
+    if (fileInputTypes.includes(draft.type) && draft.type !== type) draft.default = undefined
     draft.type = type
     if (type === InputVarType.select) draft.default = undefined
     if (isStringInputType(type) && typeof draft.default === 'number')
@@ -126,13 +126,12 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
 export const buildSelectOptions = ({
   isBasicApp,
   supportFile,
-  t: rawTranslate,
+  t,
 }: {
   isBasicApp: boolean
   supportFile?: boolean
-  t: SelectorTranslate<'appDebug' | 'workflow'>
+  t: TFunction<['appDebug', 'workflow']>
 }): SelectItem[] => {
-  const t = getStringSelectorTranslate(rawTranslate)
   return [
     {
       name: t(($) => $['variableConfig.text-input'], { ns: 'appDebug' }),
@@ -181,11 +180,10 @@ export const validateConfigModalPayload = ({
   tempPayload,
   payload,
   maxFileUploadLimit,
-  t: rawTranslate,
+  t,
 }: ValidateConfigModalPayloadOptions): ValidateConfigModalPayloadResult => {
   const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
 
-  const t = getStringSelectorTranslate(rawTranslate)
   const normalizedTempPayload = fileInputTypes.includes(tempPayload.type)
     ? {
         ...tempPayload,
@@ -200,10 +198,24 @@ export const validateConfigModalPayload = ({
   const jsonSchemaValue = tempPayload.json_schema
   const schemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
   const normalizedJsonSchema = schemaEmpty ? undefined : jsonSchemaValue
-  const payloadToSave =
+  const payloadToSave = produce(
     normalizedTempPayload.type === InputVarType.jsonObject && schemaEmpty
       ? { ...normalizedTempPayload, json_schema: undefined }
-      : normalizedTempPayload
+      : normalizedTempPayload,
+    (draft) => {
+      if (
+        !fileInputTypes.includes(draft.type) ||
+        !draft.default ||
+        typeof draft.default !== 'object'
+      )
+        return
+
+      const files = Array.isArray(draft.default) ? draft.default : [draft.default]
+      for (const file of files) {
+        if (file?.originalFile instanceof Blob) delete file.originalFile
+      }
+    },
+  )
 
   const moreInfo =
     normalizedTempPayload.variable === payload?.variable

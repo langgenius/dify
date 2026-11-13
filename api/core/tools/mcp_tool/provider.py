@@ -71,7 +71,13 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                 identity=ToolIdentity(
                     author="Anonymous",  # Tool level author is not stored
                     name=remote_mcp_tool.name,
-                    label=I18nObject(en_US=remote_mcp_tool.name, zh_Hans=remote_mcp_tool.name),
+                    # Prefer the server-provided human-readable title and fall
+                    # back to the programmatic name when the server omitted the
+                    # title or returned ``title: null`` (e.g. Exa's MCP server).
+                    label=I18nObject(
+                        en_US=remote_mcp_tool.title or remote_mcp_tool.name,
+                        zh_Hans=remote_mcp_tool.title or remote_mcp_tool.name,
+                    ),
                     provider=entity.server_identifier,
                     icon=entity.icon if isinstance(entity.icon, str) else "",
                 ),

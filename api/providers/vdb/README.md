@@ -47,7 +47,7 @@ Each backend usually follows:
 - `api/providers/vdb/<backend>/pyproject.toml` — project name `dify-vdb-<backend>`, dependencies, entry points.
 - `api/providers/vdb/<backend>/src/dify_vdb_<python_package>/` — implementation (e.g. `PGVector`, `PGVectorFactory`).
 
-See `vdb/pgvector/` as a reference implementation.
+See [`vdb-pgvector/`](vdb-pgvector/) as a reference implementation.
 
 ### Wiring a new backend into the API workspace
 
@@ -55,4 +55,4 @@ The API uses a **uv workspace** (`api/pyproject.toml`):
 
 1. **`[tool.uv.workspace]`** — `members = ["providers/vdb/*"]` already includes every subdirectory under `vdb/`; new folders there are workspace members.
 2. **`[tool.uv.sources]`** — add a line for your package: `dify-vdb-mine = { workspace = true }`.
-3. **`[project.optional-dependencies]`** — add a group such as `vdb-mine = ["dify-vdb-mine"]`, and list `dify-vdb-mine` under `vdb-all` if it should install with the default bundle.
+3. **`[dependency-groups]`** — add a group such as `vdb-mine = ["dify-vdb-mine"]`, and list `dify-vdb-mine` under `vdb-all` if it should install with the default bundle.

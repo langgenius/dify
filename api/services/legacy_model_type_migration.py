@@ -179,7 +179,7 @@ class _TenantDefaultModelBusinessKey(_BusinessKey):
 @dataclass(frozen=True, slots=True)
 class _ProviderModelSettingBusinessKey(_BusinessKey):
     """Although `ProviderModelSetting` does not have the unique index
-    (tenant_id, provider_name. model_name, model_type). The acutal business logic
+    (tenant_id, provider_name. model_name, model_type). The actual business logic
     relies on this uniqueness property heavily.
     """
 
@@ -203,7 +203,7 @@ class _LoadBalancingModelConfigInheritBusinessKey(_BusinessKey):
 class _ProviderModelCredentialBusinessKey(_BusinessKey):
     """Although `ProviderModelCredential` does not have the unique index
     (tenant_id, provider_name. model_name, model_type, credential_name).
-    The acutal business logic implies it."""
+    The actual business logic implies it."""
 
     tenant_id: str
     provider_name: str

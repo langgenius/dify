@@ -1,7 +1,6 @@
 """Outer adapters for the OAuth device external-SSO use cases."""
 
 import logging
-import os
 import secrets
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
@@ -46,10 +45,6 @@ from services.oauth_device_contracts import (
 logger = logging.getLogger(__name__)
 
 _EMAIL_FIELD = Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")
-_DEFAULT_OAUTH_TTL_DAYS = 14
-_MIN_OAUTH_TTL_DAYS = 1
-_MAX_OAUTH_TTL_DAYS = 365
-_TTL_ENV_VAR = "OAUTH_TTL_DAYS"
 _OAUTH_TOKEN_BODY_BYTES = 32
 _RESERVE_APPROVAL_NONCE_LUA = """
 local current = redis.call('GET', KEYS[1])
@@ -92,28 +87,9 @@ class EnvironmentOAuthDeviceTokenTTLPolicy(OAuthDeviceTokenTTLPolicy):
     @override
     def ttl_days(self, workspace_id: str | None) -> int:
         # Reserved for a future tenant-specific policy, which should take
-        # precedence over the deployment-wide environment value.
+        # precedence over the deployment-wide setting.
         _ = workspace_id
-        raw = os.environ.get(_TTL_ENV_VAR)
-        if raw is None:
-            return _DEFAULT_OAUTH_TTL_DAYS
-        try:
-            value = int(raw)
-        except ValueError:
-            logger.warning(
-                "%s=%r is not an int; falling back to %d",
-                _TTL_ENV_VAR,
-                raw,
-                _DEFAULT_OAUTH_TTL_DAYS,
-            )
-            return _DEFAULT_OAUTH_TTL_DAYS
-        if value < _MIN_OAUTH_TTL_DAYS:
-            logger.warning("%s=%d below min %d; clamping", _TTL_ENV_VAR, value, _MIN_OAUTH_TTL_DAYS)
-            return _MIN_OAUTH_TTL_DAYS
-        if value > _MAX_OAUTH_TTL_DAYS:
-            logger.warning("%s=%d above max %d; clamping", _TTL_ENV_VAR, value, _MAX_OAUTH_TTL_DAYS)
-            return _MAX_OAUTH_TTL_DAYS
-        return value
+        return dify_config.OAUTH_TTL_DAYS
 
 
 class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):

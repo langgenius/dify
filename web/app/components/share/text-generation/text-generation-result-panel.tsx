@@ -4,6 +4,8 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -27,7 +29,7 @@ type TextGenerationResultPanelProps = {
   handleSaveMessage: (messageId: string) => Promise<void>
   inputs: Record<string, InputValueTypes>
   isCallBatchAPI: boolean
-  isPC: boolean
+  isBelowMd: boolean
   isShowResultPanel: boolean
   isWorkflow: boolean
   moreLikeThisEnabled: boolean
@@ -60,7 +62,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   handleSaveMessage,
   inputs,
   isCallBatchAPI,
-  isPC,
+  isBelowMd,
   isShowResultPanel,
   isWorkflow,
   moreLikeThisEnabled,
@@ -83,8 +85,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
       key={task?.id}
       isWorkflow={isWorkflow}
       isCallBatchAPI={isCallBatchAPI}
-      isPC={isPC}
-      isMobile={!isPC}
+      isBelowMd={isBelowMd}
       appSourceType={appSourceType}
       appId={appId}
       isError={task?.status === TaskStatus.failed}
@@ -111,21 +112,21 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   return (
     <div
       className={cn(
-        isPC
-          ? 'h-full w-0 grow'
-          : isShowResultPanel
+        isBelowMd
+          ? isShowResultPanel
             ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-xs'
             : resultExisted
               ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
-              : '',
+              : ''
+          : 'h-full w-0 grow',
       )}
     >
-      {!isPC && (
+      {isBelowMd && (
         <div
           className={cn(
             isShowResultPanel
               ? 'flex items-center justify-center p-2 pt-6'
-              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
+              : 'absolute inset-s-0 top-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
           )}
           onClick={() => {
             if (isShowResultPanel) onHideResultPanel()
@@ -138,8 +139,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
       <div
         className={cn(
           'relative flex h-full flex-col',
-          !isPC && 'h-[calc(100vh-36px)] rounded-t-2xl shadow-lg backdrop-blur-xs',
-          !isPC
+          isBelowMd && 'h-[calc(100vh-36px)] rounded-t-2xl shadow-lg backdrop-blur-xs',
+          isBelowMd
             ? isShowResultPanel
               ? 'bg-background-default-burn'
               : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg'
@@ -150,21 +151,22 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           <div
             className={cn(
               'flex shrink-0 items-center justify-between px-14 pt-9 pb-2',
-              !isPC && 'px-4 pt-3 pb-1',
+              isBelowMd && 'px-4 pt-3 pb-1',
             )}
           >
             <div className="system-md-semibold-uppercase text-text-primary">
               {t(($) => $['generation.executions'], { ns: 'share', num: allTaskList.length })}
             </div>
-            {allSuccessTaskList.length > 0 && <ResDownload isMobile={!isPC} values={exportRes} />}
+            {allSuccessTaskList.length > 0 && (
+              <ResDownload compact={isBelowMd} values={exportRes} />
+            )}
           </div>
         )}
         <div
           className={cn(
             'flex h-0 grow flex-col overflow-y-auto',
-            isPC && 'px-14 py-8',
-            isPC && isCallBatchAPI && 'pt-0',
-            !isPC && 'p-0 pb-2',
+            isBelowMd ? 'p-0 pb-2' : 'px-14 py-8',
+            !isBelowMd && isCallBatchAPI && 'pt-0',
           )}
         >
           {isCallBatchAPI ? showTaskList.map((task) => renderResult(task)) : renderResult()}
@@ -175,22 +177,20 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           )}
         </div>
         {isCallBatchAPI && allFailedTaskList.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-xs">
-            <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
-            <div className="system-sm-medium text-text-secondary">
-              {t(($) => $['generation.batchFailed.info'], {
-                ns: 'share',
-                num: allFailedTaskList.length,
-              })}
-            </div>
-            <div className="h-3.5 w-px bg-divider-regular"></div>
-            <button
-              type="button"
-              className="inline cursor-pointer border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={handleRetryAllFailedTask}
-            >
-              {t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
-            </button>
+          <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+            <Alert type="error" className="w-max max-w-105">
+              <AlertTitle>
+                {t(($) => $['generation.batchFailed.info'], {
+                  ns: 'share',
+                  num: allFailedTaskList.length,
+                })}
+              </AlertTitle>
+              <AlertActions>
+                <Button size="small" onClick={handleRetryAllFailedTask}>
+                  {t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
+                </Button>
+              </AlertActions>
+            </Alert>
           </div>
         )}
       </div>

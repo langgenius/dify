@@ -20,7 +20,7 @@ export function PricingDialogContent() {
   return (
     <>
       <DialogBackdrop className="transition-none" />
-      <DialogPopup className="fixed inset-0 size-full max-h-none max-w-none overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none transition-none data-ending-style:scale-100 data-ending-style:opacity-100 data-starting-style:scale-100 data-starting-style:opacity-100">
+      <DialogPopup className="fixed inset-0 size-full overflow-hidden bg-saas-background transition-none data-ending-style:scale-100 data-ending-style:opacity-100 data-starting-style:scale-100 data-starting-style:opacity-100">
         <DialogClose
           render={
             <IconButton
@@ -35,7 +35,7 @@ export function PricingDialogContent() {
         />
         <ScrollArea className="h-full w-full overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
-            <ScrollAreaContent className="grid min-h-full min-w-300">
+            <ScrollAreaContent className="grid min-h-full" style={{ minWidth: 0 }}>
               <PricingContent />
             </ScrollAreaContent>
           </ScrollAreaViewport>

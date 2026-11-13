@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from constants.model_template import default_app_templates
+from core.errors.error import ProviderTokenNotInitError
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
@@ -29,9 +33,10 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
+from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
-from services.app_service import AppListParams, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
+from services.app_service import AppListParams, AppResponseView, AppService, CreateAppParams
+from services.rbac import contracts as rbac_contracts
 
 
 def _persist_account(session: Session) -> Account:
@@ -70,6 +75,16 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     session.add(app)
     session.commit()
     return app
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_get_app_in_workspace_enforces_ownership(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    app = _persist_app(sqlite_session, tenant_id=tenant_id)
+
+    assert AppService.get_app_in_workspace(tenant_id=tenant_id, app_id=app.id, session=sqlite_session) is app
+    assert AppService.get_app_in_workspace(tenant_id=str(uuid4()), app_id=app.id, session=sqlite_session) is None
+    assert AppService.get_app_in_workspace(tenant_id=tenant_id, app_id=str(uuid4()), session=sqlite_session) is None
 
 
 def _persist_agent_app(
@@ -373,13 +388,13 @@ class TestCreateAppRBACAccessInitialization:
             account.current_tenant_id,
             account.id,
             agent.id,
-            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
         )
         seed_task.assert_called_once_with(account.current_tenant_id, account.id, agent_id=agent.id)
         creator_sync.assert_called_once_with(
             account.current_tenant_id,
             account.id,
-            resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+            resource_type=rbac_contracts.RBACResourceType.AGENT,
             resource_id=agent.id,
         )
         app_creator_sync.assert_not_called()
@@ -387,7 +402,7 @@ class TestCreateAppRBACAccessInitialization:
 
 @pytest.mark.parametrize(
     "update_status",
-    [AppService.update_app_site_status, AppService.update_app_api_status],
+    [AppService.update_app_api_status],
 )
 def test_app_status_updates_commit_before_signal(update_status: Callable[..., App], sqlite_session: Session) -> None:
     account = _persist_account(sqlite_session)
@@ -407,7 +422,6 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
 @pytest.mark.parametrize(
     "update_status",
     [
-        AppService.update_app_site_status,
         AppService.update_app_api_status,
     ],
 )
@@ -426,12 +440,8 @@ def test_unpublished_agent_app_access_cannot_be_enabled(
     assert commits == []
 
 
-class TestOpenapiVisibilityHelpers:
-    """Coverage for the session-injected, openapi-visibility-scoped
-    ``AppService`` getters used by ``/openapi/v1/apps*``. These helpers
-    centralise the "row exists + status normal + openapi-visibility
-    gate passes" check so the controller can stay free of SQL.
-    """
+class TestAppLookup:
+    """The auth pipeline's app lookup preserves status and API enablement signals."""
 
     def test_get_app_by_id_is_plain_session_get(self, sqlite_session: Session):
         """``get_app_by_id`` must NOT apply status / visibility filters
@@ -446,56 +456,6 @@ class TestOpenapiVisibilityHelpers:
 
     def test_get_app_by_id_returns_none_when_missing(self, sqlite_session: Session):
         assert AppService.get_app_by_id(str(uuid4()), sqlite_session) is None
-
-    def test_get_visible_app_by_id_returns_app_when_visible(self, sqlite_session: Session):
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-
-        with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is app
-
-    def test_get_visible_app_by_id_returns_none_when_row_missing(self, sqlite_session: Session):
-        assert AppService.get_visible_app_by_id(str(uuid4()), sqlite_session) is None
-
-    def test_get_visible_app_by_id_returns_none_when_status_not_normal(self, sqlite_session: Session):
-        """Soft-deleted/archived rows must not surface on the openapi
-        surface — the helper hides them by returning ``None``.
-        """
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-        app.status = "archived"  # type: ignore[assignment]
-
-        with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
-
-    def test_get_visible_app_by_id_returns_none_when_visibility_gate_rejects(self, sqlite_session: Session):
-        """``is_openapi_visible`` is the per-row counterpart to
-        ``apply_openapi_gate`` — when it returns False the helper must
-        treat the row as invisible (not "found but unauthorized").
-        """
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-
-        with patch("services.app_service.is_openapi_visible", return_value=False):
-            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
-
-    def test_find_visible_apps_by_ids_short_circuits_on_empty_input(self, unbound_session: Session):
-        """Empty id list must not emit ``WHERE id IN ()`` — Postgres
-        rejects empty IN lists and the call is a guaranteed no-op
-        anyway. The helper returns ``[]`` without touching the session.
-        """
-        assert AppService.find_visible_apps_by_ids([], unbound_session) == []
-
-    def test_find_visible_apps_by_ids_passes_through_visibility_gate(self, sqlite_session: Session):
-        """Bulk fetch routes through ``apply_openapi_gate`` exactly once
-        and materialises the scalar rows. **No** status filter is
-        applied here — the EE permitted-external pipeline filters
-        non-normal hits in Python so its page count stays anchored.
-        """
-        rows = [_persist_app(sqlite_session, tenant_id=str(uuid4())) for _ in range(2)]
-
-        with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_ids([app.id for app in rows], sqlite_session)
-
-        assert {app.id for app in out} == {app.id for app in rows}
-        gate.assert_called_once()
 
 
 def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session: Session) -> None:
@@ -519,10 +479,10 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
             enable_api=False,
             created_by=account.id,
             maintainer=account.id,
-            created_at=updated_at,
-            updated_at=updated_at,
             use_icon_as_answer_icon=False,
         )
+        app.created_at = updated_at
+        app.updated_at = updated_at
         return app
 
     newest = create_app(name="Newest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 3))
@@ -567,7 +527,7 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
 
     event.listen(bind, "before_cursor_execute", record_sql)
     try:
-        recent_apps = AppService().get_recent_apps(
+        recent_apps = ConsoleAppRepository.get_recent_apps(
             account.id,
             tenant_id,
             AppListParams(limit=2),
@@ -586,68 +546,40 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     assert "app_model_configs" not in select_statements[0].lower()
 
 
-class TestGetApp:
-    def test_legacy_agent_detection_uses_caller_session(self, unbound_session: Session):
-        app = App(
-            mode=AppMode.CHAT,
-        )
+class TestAppResponseViewAgentConfig:
+    def test_masking_persistent_agent_config_does_not_change_database(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ):
+        tenant_id = str(uuid4())
+        app = _persist_app(sqlite_session, tenant_id=tenant_id)
+        app.mode = AppMode.AGENT_CHAT
+        original_agent_mode = {"enabled": True, "tools": [{"parameters": {"secret": "encrypted-value"}}]}
+        config = AppModelConfig(app_id=app.id, agent_mode=json.dumps(original_agent_mode))
+        sqlite_session.add(config)
+        sqlite_session.flush()
+        app.app_model_config_id = config.id
+        sqlite_session.commit()
+
         account = Account(name="Test Account", email="test@example.com")
         account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
+        account._current_tenant.id = tenant_id
+        masked_agent_mode = {"enabled": True, "tools": [{"parameters": {"secret": "[masked]"}}]}
 
         with (
-            patch.object(App, "is_agent_with_session", return_value=False) as is_agent,
-            patch.object(App, "app_model_config_with_session") as get_model_config,
-            patch("services.app_service.current_user", account),
+            patch("services.app_service.mask_agent_tool_parameters", return_value=masked_agent_mode),
+            patch.object(sqlite_session, "refresh", side_effect=AssertionError("App refresh is unnecessary")),
         ):
-            assert AppService().get_app(app, session=unbound_session) is app
+            response_config = AppResponseView(app, session=sqlite_session, account=account).app_model_config
+            assert response_config is not None
+            assert response_config.agent_mode_dict == masked_agent_mode
+            assert config.agent_mode_dict == original_agent_mode
+            assert not sqlite_session.is_modified(config)
+            sqlite_session.commit()
 
-        is_agent.assert_called_once_with(session=unbound_session)
-        get_model_config.assert_not_called()
-
-    def test_agent_model_config_uses_caller_session(self, unbound_session: Session):
-        app = App(
-            mode=AppMode.AGENT_CHAT,
-        )
-        account = Account(name="Test Account", email="test@example.com")
-        account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
-
-        with (
-            patch.object(App, "is_agent_with_session") as is_agent,
-            patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config,
-            patch("services.app_service.current_user", account),
-        ):
-            assert AppService().get_app(app, session=unbound_session) is app
-
-        is_agent.assert_not_called()
-        get_model_config.assert_called_once_with(session=unbound_session)
-
-    def test_masked_agent_config_is_served_through_the_session_accessor(self, unbound_session: Session):
-        """The masked config must be reachable via `app_model_config_with_session`.
-
-        Every response path resolves an `App`'s model config through that accessor
-        (`AppResponseView.app_model_config`), never through a raw attribute, so the
-        masking `get_app` applies has to be observable there.
-        """
-        app = App(mode=AppMode.AGENT_CHAT)
-        app.id = str(uuid4())
-        masked_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
-        # A second, unmasked instance: what a fresh lookup would hand back if the
-        # returned app ever fell through to the base accessor.
-        refetched_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
-        account = Account(name="Test Account", email="test@example.com")
-        account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
-
-        with (
-            patch.object(App, "app_model_config_with_session", side_effect=[masked_config, refetched_config]),
-            patch("services.app_service.current_user", account),
-        ):
-            result = AppService().get_app(app, session=unbound_session)
-
-            assert result is not app
-            assert result.app_model_config_with_session(session=unbound_session) is masked_config
+        with sqlite_session_factory() as read_session:
+            saved_config = read_session.get(AppModelConfig, config.id)
+            assert saved_config is not None
+            assert saved_config.agent_mode_dict == original_agent_mode
 
 
 class TestAgentAppType:
@@ -1116,3 +1048,92 @@ class TestAgentAppType:
         assert exc_info.value is error
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
+
+
+class _TenantDefaultModelManager:
+    """Tenant model manager the fallback branch needs, built without a mock.
+
+    Contract: `get_default_model_instance` always raises `ProviderTokenNotInitError`
+    and `get_default_provider_model_name` returns the tenant-scoped provider/model pair.
+    Those are the only two calls `AppService` makes on a tenant manager while it reads
+    `default_app_templates`, so the fallback path is exercised against real code.
+    """
+
+    def __init__(self, provider: str, model: str) -> None:
+        self._provider = provider
+        self._model = model
+
+    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> NoReturn:
+        raise ProviderTokenNotInitError(f"no default {model_type} model instance for tenant {tenant_id}")
+
+    def get_default_provider_model_name(self, *, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+        if not tenant_id or model_type is not ModelType.LLM:
+            raise AssertionError(f"unexpected default model lookup: {tenant_id!r} ({model_type})")
+        return self._provider, self._model
+
+
+class TestSharedAppTemplateIsolation:
+    """`default_app_templates` is imported once per process, so app creation must read it without writing to it.
+
+    Precondition: the tenant's default model instance is unavailable while a tenant-scoped default
+    provider/model exists. Postcondition: the new app uses the tenant's model and the shipped template
+    keeps its own provider and model for every later request and tenant.
+    """
+
+    @staticmethod
+    def _tenant_default_model_manager() -> _TenantDefaultModelManager:
+        return _TenantDefaultModelManager("langgenius/anthropic/anthropic", "claude-3-5-sonnet")
+
+    @staticmethod
+    def _use_clean_template_model(monkeypatch: pytest.MonkeyPatch, mode: AppMode) -> dict[str, object]:
+        baseline: dict[str, object] = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+        monkeypatch.setitem(default_app_templates[mode]["model_config"], "model", deepcopy(baseline))
+        return baseline
+
+    def test_create_app_does_not_rewrite_the_shared_template(
+        self,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        baseline = self._use_clean_template_model(monkeypatch, AppMode.CHAT)
+        account = _persist_account(sqlite_session)
+        model_manager = self._tenant_default_model_manager()
+
+        with (
+            patch("services.app_service.ModelManager.for_tenant", return_value=model_manager),
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                account.current_tenant_id,
+                CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        app_model_config = sqlite_session.get(AppModelConfig, app.app_model_config_id)
+        assert app_model_config is not None
+        assert app_model_config.model_dict == {
+            "provider": "langgenius/anthropic/anthropic",
+            "name": "claude-3-5-sonnet",
+            "mode": "chat",
+            "completion_params": {},
+        }
+        assert default_app_templates[AppMode.CHAT]["model_config"]["model"] == baseline
+
+    def test_prepare_creation_does_not_rewrite_the_shared_template(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        baseline = self._use_clean_template_model(monkeypatch, AppMode.COMPLETION)
+        model_manager = self._tenant_default_model_manager()
+
+        with patch("services.app_service.ModelManager.for_tenant", return_value=model_manager):
+            settings = AppService.prepare_creation(
+                "tenant-a",
+                CreateAppParams(name="Completion", mode=AppMode.COMPLETION.value),
+            )
+
+        assert settings.model_config is not None
+        assert json.loads(settings.model_config["model"])["provider"] == "langgenius/anthropic/anthropic"
+        assert default_app_templates[AppMode.COMPLETION]["model_config"]["model"] == baseline

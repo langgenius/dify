@@ -3,7 +3,6 @@
   "action.delete": "移除集成",
   "action.deleteContentLeft": "是否要移除 ",
   "action.deleteContentRight": " 集成？",
-  "action.deleteSuccess": "集成已成功移除",
   "action.pluginInfo": "集成信息",
   "allCategories": "所有类别",
   "auth.addApi": "添加 API Key",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "正在安装的集成",
   "task.successPlugins": "安装成功的集成",
   "templatePublishingGuide": "模板发布指南",
-  "upgrade.close": "关闭",
   "upgrade.description": "即将安装以下集成",
-  "upgrade.successfulTitle": "安装成功",
   "upgrade.title": "安装集成",
   "upgrade.upgrade": "安装",
   "upgrade.upgrading": "安装中..."

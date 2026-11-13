@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ModelInfo from '../model-info'
 
@@ -31,187 +31,47 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-name'
   ),
 }))
 
-describe('ModelInfo', () => {
-  const defaultModel = {
-    name: 'gpt-4',
-    provider: 'openai',
-    completion_params: {
-      temperature: 0.7,
-      top_p: 0.9,
-      presence_penalty: 0.1,
-      max_tokens: 2048,
-      stop: ['END'],
-    },
+it('reveals the recorded parameters and preserves zero and multiple stop values', async () => {
+  const user = userEvent.setup()
+  render(
+    <ModelInfo
+      model={{
+        name: 'gpt-4',
+        provider: 'openai',
+        completion_params: {
+          temperature: 0,
+          top_p: 0.9,
+          presence_penalty: 0.1,
+          max_tokens: 2048,
+          stop: ['END', 'STOP'],
+        },
+      }}
+    />,
+  )
+  expect(screen.queryByText(/detail\.modelParams$/)).not.toBeInTheDocument()
+  const trigger = screen.getByRole('button')
+  await user.click(trigger)
+  for (const [label, value] of [
+    ['Temperature', '0'],
+    ['Top P', '0.9'],
+    ['Presence Penalty', '0.1'],
+    ['Max Token', '2048'],
+    ['Stop', 'END,STOP'],
+  ]) {
+    expect(screen.getByText(label!).parentElement).toHaveTextContent(value!)
   }
-
-  describe('Rendering', () => {
-    it('should render model icon', () => {
-      render(<ModelInfo model={defaultModel} />)
-
-      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
-    })
-
-    it('should render model name', () => {
-      render(<ModelInfo model={defaultModel} />)
-
-      expect(screen.getByTestId('model-name')).toBeInTheDocument()
-      expect(screen.getByTestId('model-name')).toHaveTextContent('gpt-4')
-    })
-
-    it('should render info icon button', () => {
-      const { container } = render(<ModelInfo model={defaultModel} />)
-
-      // The info button should contain an SVG icon
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThan(0)
-    })
-
-    it('should show model name with showMode prop', () => {
-      render(<ModelInfo model={defaultModel} />)
-
-      expect(screen.getByTestId('model-name')).toHaveAttribute('data-show-mode', 'true')
-    })
-  })
-
-  describe('Info Panel Toggle', () => {
-    it('should be closed by default', () => {
-      render(<ModelInfo model={defaultModel} />)
-
-      expect(screen.queryByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).not.toBeInTheDocument()
-    })
-
-    it('should open when info button is clicked', async () => {
-      const user = userEvent.setup()
-      render(<ModelInfo model={defaultModel} />)
-
-      const trigger = screen.getByRole('button')
-      await user.click(trigger)
-
-      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
-      expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    })
-
-    it('should close when info button is clicked again', async () => {
-      const user = userEvent.setup()
-      render(<ModelInfo model={defaultModel} />)
-
-      const trigger = screen.getByRole('button')
-
-      await user.click(trigger)
-      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
-
-      await user.click(trigger)
-      expect(screen.queryByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).not.toBeInTheDocument()
-      expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    })
-  })
-
-  describe('Model Parameters Display', () => {
-    it('should render model params header', () => {
-      render(<ModelInfo model={defaultModel} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
-    })
-
-    it('should render temperature parameter', () => {
-      render(<ModelInfo model={defaultModel} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText('Temperature')).toBeInTheDocument()
-      expect(screen.getByText('0.7')).toBeInTheDocument()
-    })
-
-    it('should render top_p parameter', () => {
-      render(<ModelInfo model={defaultModel} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText('Top P')).toBeInTheDocument()
-      expect(screen.getByText('0.9')).toBeInTheDocument()
-    })
-
-    it('should render presence_penalty parameter', () => {
-      render(<ModelInfo model={defaultModel} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText('Presence Penalty')).toBeInTheDocument()
-      expect(screen.getByText('0.1')).toBeInTheDocument()
-    })
-
-    it('should render max_tokens parameter', () => {
-      render(<ModelInfo model={defaultModel} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText('Max Token')).toBeInTheDocument()
-      expect(screen.getByText('2048')).toBeInTheDocument()
-    })
-
-    it('should render stop parameter as comma-separated values', () => {
-      render(<ModelInfo model={defaultModel} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText('Stop')).toBeInTheDocument()
-      expect(screen.getByText('END')).toBeInTheDocument()
-    })
-  })
-
-  describe('Missing Parameters', () => {
-    it('should show dash for missing parameters', () => {
-      const modelWithNoParams = {
-        name: 'gpt-4',
-        provider: 'openai',
-        completion_params: {},
-      }
-
-      render(<ModelInfo model={modelWithNoParams} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      const dashes = screen.getAllByText('-')
-      expect(dashes.length).toBeGreaterThan(0)
-    })
-
-    it('should show dash for non-array stop values', () => {
-      const modelWithInvalidStop = {
-        name: 'gpt-4',
-        provider: 'openai',
-        completion_params: {
-          stop: 'not-an-array',
-        },
-      }
-
-      render(<ModelInfo model={modelWithInvalidStop} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      const stopValues = screen.getAllByText('-')
-      expect(stopValues.length).toBeGreaterThan(0)
-    })
-
-    it('should join array stop values with comma', () => {
-      const modelWithMultipleStops = {
-        name: 'gpt-4',
-        provider: 'openai',
-        completion_params: {
-          stop: ['END', 'STOP', 'DONE'],
-        },
-      }
-
-      render(<ModelInfo model={modelWithMultipleStops} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(screen.getByText('END,STOP,DONE')).toBeInTheDocument()
-    })
-  })
-
-  describe('Model without completion_params', () => {
-    it('should handle undefined completion_params', () => {
-      const modelWithNoCompletionParams = {
-        name: 'gpt-4',
-        provider: 'openai',
-      }
-
-      render(<ModelInfo model={modelWithNoCompletionParams} />)
-
-      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
-    })
-  })
+  await user.click(trigger)
+  expect(screen.queryByText(/detail\.modelParams$/)).not.toBeInTheDocument()
 })
+
+it.each([undefined, {}, { stop: 'invalid', temperature: null }])(
+  'shows fallback values for unavailable parameters: %j',
+  async (completion_params) => {
+    const user = userEvent.setup()
+    render(<ModelInfo model={{ name: 'gpt-4', provider: 'openai', completion_params }} />)
+    await user.click(screen.getByRole('button'))
+    for (const label of ['Temperature', 'Top P', 'Presence Penalty', 'Max Token', 'Stop']) {
+      expect(within(screen.getByText(label).parentElement!).getByText('-')).toBeInTheDocument()
+    }
+  },
+)

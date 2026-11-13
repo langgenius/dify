@@ -3,6 +3,26 @@ import { findValueIssues, formatValueIssue } from '../check-i18n-values'
 
 describe('check-i18n-values', () => {
   describe('findValueIssues', () => {
+    it('checks placeholders and tags in locale-specific plural variants', () => {
+      const source = { references_other: '<agents>{{count}} agents</agents>' }
+      const translation = { references_few: '{{num}} агента' }
+      expect(findValueIssues(source, translation, 'ru-RU')).toEqual([
+        {
+          key: 'references_few',
+          kind: 'placeholder',
+          expected: ['{{count}}'],
+          actual: ['{{num}}'],
+        },
+        { key: 'references_few', kind: 'tag', expected: ['</agents>', '<agents>'], actual: [] },
+      ])
+    })
+
+    it('accepts valid Arabic variants with the same placeholders', () => {
+      const source = { references_other: '{{count}} agents' }
+      const translation = { references_two: 'وكيلان ({{count}})' }
+      expect(findValueIssues(source, translation, 'ar-TN')).toEqual([])
+    })
+
     it('should accept a translation that keeps every placeholder and tag', () => {
       // Arrange
       const source = {
