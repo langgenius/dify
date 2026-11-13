@@ -9,6 +9,8 @@ import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
 from sqlalchemy import Select, event, select
+from sqlalchemy.engine import Connection as SQLAlchemyConnection
+from sqlalchemy.engine import ExecutionContext
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
@@ -160,6 +162,10 @@ def test_log_files_are_batch_loaded_tenant_scoped_and_read_only(
             (FileTransferMethod.LOCAL_FILE, foreign_upload.id, None, MessageFileBelongsTo.USER),
             (FileTransferMethod.TOOL_FILE, foreign_tool.id, None, MessageFileBelongsTo.ASSISTANT),
             (FileTransferMethod.TOOL_FILE, None, "/files/tools/invalid.pdf", MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.DATASOURCE_FILE, upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.LOCAL_FILE, None, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, "", MessageFileBelongsTo.USER),
         ]
         for index, (method, file_id, url, belongs_to) in enumerate(specs):
             attachment = MessageFile(
@@ -174,7 +180,7 @@ def test_log_files_are_batch_loaded_tenant_scoped_and_read_only(
             )
             attachment.created_at = datetime(2026, 11, 1) + timedelta(seconds=index)
             attachments.append(attachment)
-            if index == 4:
+            if method == FileTransferMethod.TOOL_FILE and file_id is None and url == f"/files/tools/{tool.id}.exe":
                 legacy_attachments.append(attachment)
     sqlite_session.add_all([*messages, upload, foreign_upload, tool, foreign_tool, *attachments])
     sqlite_session.commit()
@@ -183,7 +189,14 @@ def test_log_files_are_batch_loaded_tenant_scoped_and_read_only(
     def reject_writes(_session: Session, *_args) -> None:
         raise AssertionError("Log serialization must not flush or commit")
 
-    def capture_sql(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def capture_sql(
+        _conn: SQLAlchemyConnection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: ExecutionContext | None,
+        _executemany: bool,
+    ) -> None:
         queries.append(statement)
 
     bind = sqlite_session.get_bind()

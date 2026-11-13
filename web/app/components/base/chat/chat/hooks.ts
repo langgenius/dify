@@ -5,7 +5,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
-import { uniqBy } from 'es-toolkit/compat'
+import { findLast, findLastIndex, uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -86,25 +86,98 @@ type UseChatOptions = {
   timezone?: string
 }
 
-function mergeStreamingThought(currentThought: ThoughtItem, nextThought: ThoughtItem): ThoughtItem {
+/** Upsert file metadata by ID while retaining the order files first arrived in. */
+function mergeStreamingFiles(files: FileEntity[]): FileEntity[] {
+  return Array.from(new Map(files.map((file) => [file.id, file])).values())
+}
+
+/** Normalize SSE file IDs before a thought enters the display state. */
+function mergeStreamingThought(
+  currentThought: ThoughtItem | undefined,
+  nextThought: ThoughtItem,
+): ThoughtItem {
+  // SSE uses message_files for IDs; history uses files, and the UI keeps resolved objects.
+  const streamedFiles: (string | FileEntity)[] = nextThought.message_files ?? []
   return {
     ...nextThought,
-    message_files: nextThought.message_files?.length
-      ? nextThought.message_files
-      : currentThought.message_files,
+    files: Array.from(
+      new Set([
+        ...(currentThought?.files ?? []),
+        ...(nextThought.files ?? []),
+        ...streamedFiles.filter((file): file is string => typeof file === 'string'),
+      ]),
+    ),
+    message_files: mergeStreamingFiles([
+      ...(currentThought?.message_files ?? []),
+      ...streamedFiles.filter((file): file is FileEntity => typeof file !== 'string'),
+    ]),
   }
 }
 
 // A tool result streams in under the id of the thought that made the call. With parallel tool
 // calls that thought is not always the last one, so it is looked up by id from the end.
-function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
-  for (let index = thoughts.length - 1; index >= 0; index--) {
-    if (thoughts[index]!.id === thought.id) {
-      thoughts[index] = mergeStreamingThought(thoughts[index]!, thought)
-      return
+function upsertStreamingThought(
+  responseItem: ChatItemInTree,
+  thought: ThoughtItem,
+  isNewAgent: boolean | undefined,
+) {
+  const thoughts = responseItem.agent_thoughts ?? (responseItem.agent_thoughts = [])
+  const index = findLastIndex(thoughts, (item) => item.id === thought.id)
+  const mergedThought = mergeStreamingThought(thoughts[index], thought)
+  if (index >= 0) thoughts[index] = mergedThought
+  else thoughts.push(mergedThought)
+
+  // A file may have arrived before its owning thought's IDs, so reclaim it from
+  // the answer or a different tool that received it through the legacy fallback.
+  const receivedFiles = mergeStreamingFiles([
+    ...(responseItem.message_files ?? []),
+    ...thoughts.flatMap((item) => item.message_files ?? []),
+  ])
+  for (const file of receivedFiles) {
+    if (mergedThought.files?.includes(file.id)) attachStreamingFile(responseItem, file, isNewAgent)
+  }
+  syncAgentResponseThoughtPart(responseItem, mergedThought, isNewAgent)
+}
+
+/** Route a resolved SSE attachment to its declared owner, with the legacy last-thought fallback. */
+function attachStreamingFile(
+  responseItem: ChatItemInTree,
+  file: FileEntity,
+  isNewAgent: boolean | undefined,
+) {
+  const thoughts = responseItem.agent_thoughts ?? []
+  const targetThought =
+    findLast(thoughts, (thought) => thought.files?.includes(file.id)) ?? thoughts.at(-1)
+  if (!targetThought) {
+    responseItem.message_files = [...(responseItem.message_files ?? []), file]
+    return
+  }
+
+  for (const thought of thoughts) {
+    if (thought === targetThought) {
+      thought.message_files = mergeStreamingFiles([...(thought.message_files ?? []), file])
+      syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
+    } else if (thought.message_files?.some((item) => item.id === file.id)) {
+      thought.message_files = thought.message_files.filter((item) => item.id !== file.id)
+      syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
     }
   }
-  thoughts.push(thought)
+  if (responseItem.message_files?.some((item) => item.id === file.id))
+    responseItem.message_files = responseItem.message_files.filter((item) => item.id !== file.id)
+}
+
+function syncAgentResponseThoughtPart(
+  responseItem: ChatItemInTree,
+  thought: ThoughtItem,
+  isNewAgent: boolean | undefined,
+) {
+  if (
+    isNewAgent ||
+    responseItem.agent_response_parts?.some(
+      (part) => part.type === 'thought' && part.thought.id === thought.id,
+    )
+  )
+    upsertAgentResponseThoughtPart(responseItem, thought)
 }
 
 function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
@@ -775,17 +848,7 @@ export const useChat = (
             size: baseFile?.size ?? 0, // Generated files don't have a known size
           }
           updateChatTreeNode(messageId, (responseItem) => {
-            const lastThought =
-              responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-            if (lastThought) {
-              responseItem.agent_thoughts!.at(-1)!.message_files = [
-                ...(lastThought as any).message_files,
-                convertedFile,
-              ]
-            } else {
-              const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
-              responseItem.message_files = [...currentFiles, convertedFile]
-            }
+            attachStreamingFile(responseItem, convertedFile, options.isNewAgent)
           })
         },
         onThought(thought) {
@@ -793,13 +856,7 @@ export const useChat = (
             if (thought.message_id) responseItem.id = thought.message_id
             if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
-            if (!responseItem.agent_thoughts) responseItem.agent_thoughts = []
-            upsertStreamingThought(responseItem.agent_thoughts, thought)
-            if (options.isNewAgent) {
-              const currentThought =
-                responseItem.agent_thoughts.find((item) => item.id === thought.id) ?? thought
-              upsertAgentResponseThoughtPart(responseItem, currentThought)
-            }
+            upsertStreamingThought(responseItem, thought, options.isNewAgent)
           })
         },
         onMessageEnd: (messageEnd) => {
@@ -1428,20 +1485,7 @@ export const useChat = (
             size: baseFile?.size ?? 0, // Generated files don't have a known size
           }
 
-          // For agent mode, add files to the last thought
-          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-          if (lastThought) {
-            const thought = lastThought as { message_files?: FileEntity[] }
-            responseItem.agent_thoughts!.at(-1)!.message_files = [
-              ...(thought.message_files ?? []),
-              convertedFile,
-            ]
-          }
-          // For non-agent mode, add files directly to responseItem.message_files
-          else {
-            const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
-            responseItem.message_files = [...currentFiles, convertedFile]
-          }
+          attachStreamingFile(responseItem, convertedFile, options.isNewAgent)
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1454,16 +1498,10 @@ export const useChat = (
           isAgentMode = true
           if (thought.task_id) taskIdRef.current = thought.task_id
           if (thought.conversation_id) conversationIdRef.current = thought.conversation_id
-          const response = responseItem as any
-          if (thought.message_id && !hasSetResponseId) response.id = thought.message_id
-          if (thought.conversation_id) response.conversationId = thought.conversation_id
+          if (thought.message_id && !hasSetResponseId) responseItem.id = thought.message_id
+          if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
-          upsertStreamingThought(response.agent_thoughts, thought)
-          if (options.isNewAgent) {
-            const currentThought =
-              responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought
-            upsertAgentResponseThoughtPart(responseItem, currentThought)
-          }
+          upsertStreamingThought(responseItem, thought, options.isNewAgent)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

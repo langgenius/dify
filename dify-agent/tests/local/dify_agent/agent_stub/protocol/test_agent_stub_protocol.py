@@ -15,6 +15,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     agent_stub_connections_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
+    is_safe_dify_file_uri,
     normalize_agent_stub_api_base_url,
 )
 
@@ -46,6 +47,31 @@ def test_agent_stub_file_request_urls_handle_trailing_slash() -> None:
     assert agent_stub_file_download_request_url("https://agent.example.com/agent-stub") == (
         "https://agent.example.com/agent-stub/files/download-request"
     )
+
+
+@pytest.mark.parametrize(
+    ("uri", "expected"),
+    [
+        ("/files/upload/for-plugin?sign=1", True),
+        ("/files/tools/report.pdf?sign=1&timestamp=2", True),
+        ("/files/tools/my%20report.pdf", True),
+        ("/files/tools/../report.pdf", True),
+        ("https://api.example/files/upload/for-plugin?sign=1", False),
+        ("//api.example/files/upload/for-plugin?sign=1", False),
+        ("/files/upload/for-plugin#fragment", False),
+        ("files/upload/for-plugin", False),
+        ("/other/report.pdf", False),
+        ("/files/", False),
+        ("/files/../other/report.pdf", False),
+        ("/files/%2e%2e/other/report.pdf", False),
+        ("/files/%252e%252e/other/report.pdf", False),
+        ("/files/tools\\report.pdf", False),
+        ("/files/tools%5creport.pdf", False),
+        ("", False),
+    ],
+)
+def test_is_safe_dify_file_uri(uri: str, expected: bool) -> None:
+    assert is_safe_dify_file_uri(uri) is expected
 
 
 def test_agent_stub_file_upload_request_rejects_client_max_size() -> None:

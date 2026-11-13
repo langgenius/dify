@@ -14,9 +14,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-import posixpath
 from typing import Any, Protocol
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import ValidationError
@@ -27,6 +26,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubFileMapping,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
+    is_safe_dify_file_uri,
 )
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -79,22 +79,6 @@ def bind_sandbox_file_uri(*, sandbox_files_base_url: str, uri: str) -> str:
     if not is_safe_dify_file_uri(uri):
         raise ValueError("Dify API returned an unsafe Dify file URI")
     return f"{sandbox_files_base_url.rstrip('/')}{uri}"
-
-
-def is_safe_dify_file_uri(value: str) -> bool:
-    """Return whether a URI stays within Dify's signed ``/files/*`` data plane."""
-
-    parsed = urlsplit(value)
-    if parsed.scheme or parsed.netloc or parsed.fragment or value.startswith("//"):
-        return False
-
-    decoded_path = parsed.path
-    for _ in range(2):
-        decoded_path = unquote(decoded_path)
-    if "\\" in decoded_path:
-        return False
-    normalized_path = posixpath.normpath(decoded_path)
-    return decoded_path.startswith("/files/") and normalized_path.startswith("/files/")
 
 
 @dataclass(slots=True)

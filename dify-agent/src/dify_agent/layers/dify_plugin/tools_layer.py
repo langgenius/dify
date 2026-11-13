@@ -31,7 +31,7 @@ from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 
 from pydantic_ai.toolsets import FunctionToolset
-from dify_agent.agent_stub.server.agent_stub_files import is_safe_dify_file_uri
+from dify_agent.agent_stub.protocol.agent_stub import is_safe_dify_file_uri
 from dify_agent.runtime.context import Deps
 from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolConfig,

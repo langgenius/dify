@@ -130,27 +130,28 @@ async def test_binary_output_is_uploaded_and_returned_as_reusable_file_metadata(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "failure",
+    "failure,diagnostic",
     [
-        "absolute-http",
-        "absolute-https",
-        "network-path",
-        "traversal",
-        "missing-uri",
-        "invalid-json",
-        "request-status",
-        "timeout",
-        "transport",
-        "upload-status",
-        "empty-id",
-        "missing-reference",
-        "invalid-upload-json",
-        "user_id",
-        "user_from",
+        ("absolute-http", "unsafe or missing upload_uri"),
+        ("absolute-https", "unsafe or missing upload_uri"),
+        ("network-path", "unsafe or missing upload_uri"),
+        ("traversal", "unsafe or missing upload_uri"),
+        ("missing-uri", "unsafe or missing upload_uri"),
+        ("invalid-json", "failed or returned invalid data"),
+        ("request-status", "failed or returned invalid data"),
+        ("timeout", "timed out"),
+        ("transport", "failed or returned invalid data"),
+        ("upload-status", "returned HTTP 500"),
+        ("empty-id", "failed or returned invalid data"),
+        ("missing-reference", "failed or returned invalid data"),
+        ("invalid-upload-json", "failed or returned invalid data"),
+        ("user_id", "require user_id and user_from"),
+        ("user_from", "require user_id and user_from"),
     ],
 )
-async def test_upload_failure_never_exposes_binary_or_success_metadata(failure):
+async def test_upload_failure_never_exposes_binary_or_success_metadata(failure: str, diagnostic: str):
     blob = b"\x00secret-binary-payload\xff"
+    allocation_requests = []
     upload_requests = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -166,6 +167,7 @@ async def test_upload_failure_never_exposes_binary_or_success_metadata(failure):
                 ]
             )
         if request.url.path == "/inner/api/agent/files/upload-request":
+            allocation_requests.append(request)
             if failure == "timeout":
                 raise httpx.ReadTimeout("timed out", request=request)
             if failure == "transport":
@@ -199,8 +201,10 @@ async def test_upload_failure_never_exposes_binary_or_success_metadata(failure):
         )
     assert result.output.startswith("tool text:binary output (report.pdf, application/pdf,")
     assert "could not be saved" in result.output
+    assert diagnostic in result.output
     assert "secret-binary-payload" not in result.output and "blob=b" not in result.output
     assert _tool_returns(result)[0].metadata is None
+    assert len(allocation_requests) == (0 if failure in {"user_id", "user_from"} else 1)
     assert len(upload_requests) == (
         1 if failure in {"upload-status", "empty-id", "missing-reference", "invalid-upload-json"} else 0
     )

@@ -1077,7 +1077,9 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
 
 
 @pytest.mark.parametrize("conversation_id", [None, "conv-1"])
-def test_plugin_blob_files_are_owned_persisted_and_published_once(sqlite_session: Session, conversation_id) -> None:
+def test_plugin_blob_files_are_owned_persisted_and_published_once(
+    sqlite_session: Session, conversation_id: str | None
+) -> None:
     files = [
         ToolFile(
             tenant_id="tenant-1",
@@ -1105,7 +1107,7 @@ def test_plugin_blob_files_are_owned_persisted_and_published_once(sqlite_session
         dify_context=_dify_ctx(),
         message_id="msg-1",
         conversation_id="conv-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
     part = ToolReturnPart(
         tool_name="create",
@@ -1182,7 +1184,7 @@ def test_unowned_plugin_blob_files_are_not_delivered(sqlite_session: Session, in
         dify_context=_dify_ctx(),
         message_id="msg-1",
         conversation_id="conv-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
     recorder.handle_stream_event(
         AgentBackendStreamInternalEvent(
@@ -1218,7 +1220,7 @@ def test_failed_blob_attachment_commit_can_be_retried(sqlite_session: Session) -
         dify_context=_dify_ctx(),
         message_id="msg-1",
         conversation_id="conv-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
     stream_event = AgentBackendStreamInternalEvent(
         run_id="run-1",
