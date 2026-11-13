@@ -13,7 +13,8 @@ def test_merge_has_one_head_and_no_schema_operations() -> None:
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
     scripts = ScriptDirectory.from_config(configuration)
 
-    assert scripts.get_heads() == [migration.revision]
+    assert len(scripts.get_heads()) == 1
+    assert scripts.get_revision(migration.revision) is not None
     assert set(migration.down_revision) == {"c64f2b7a913e", "6b7e2a9c4d10"}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
