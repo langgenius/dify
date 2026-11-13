@@ -6,6 +6,7 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -663,6 +664,23 @@ describe('consoleQuery agent query retries', () => {
       ),
     ).rejects.toBe(error)
     expect(request).toHaveBeenCalledTimes(attempts)
+  })
+})
+
+describe('consoleQuery external agent capabilities', () => {
+  it('reads capabilities from the Console API', async () => {
+    const capabilities = createExternalAgentCapabilities({ enabled: false })
+    const request = vi.fn().mockResolvedValue(Response.json(capabilities))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = createQueryClient()
+
+    await expect(
+      queryClient.query(consoleQuery.externalAgents.capabilities.get.queryOptions()),
+    ).resolves.toEqual(capabilities)
+    expect(request).toHaveBeenCalledTimes(1)
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(new URL(outgoing.url).pathname).toBe('/console/api/external-agents/capabilities')
+    expect(outgoing.method).toBe('GET')
   })
 })
 

@@ -8,7 +8,6 @@ import type {
   DatasetListResponse,
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ExternalAgentCapabilitiesResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
@@ -24,24 +23,6 @@ import {
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
-
-// TODO: Remove this temporary mock and restore GET /external-agents/capabilities once it is deployed on agent.dify.dev.
-const externalAgentCapabilitiesMock: ExternalAgentCapabilitiesResponse = {
-  enabled: true,
-  protocol: 'a2a-1.0.1',
-  transport: 'HTTP+JSON',
-  authentication: ['none', 'bearer'],
-  input_file_modes: ['application/pdf', 'image/jpeg', 'image/png', 'text/markdown', 'text/plain'],
-  limits: {
-    logical_budget_seconds: 3600,
-    files: {
-      max_files: 5,
-      max_document_bytes: 15 * 1024 * 1024,
-      max_image_bytes: 10 * 1024 * 1024,
-      max_total_bytes: 30 * 1024 * 1024,
-    },
-  },
-}
 
 async function refreshRejectedPersonalToken(
   error: unknown,
@@ -66,13 +47,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     path: ['console'],
     experimental_defaults: {
       externalAgents: {
-        capabilities: {
-          get: {
-            queryOptions: {
-              queryFn: async () => externalAgentCapabilitiesMock,
-            },
-          },
-        },
         post: {
           mutationOptions: {
             retry: false,
