@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { useId, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatAgentMimeType } from '../../model'
 import { suggestedLinkFile } from './file-limits'
@@ -27,6 +27,7 @@ export function TestAgentAttachments({
   failure,
   disabled,
   onPaste,
+  onUpload,
   onRemove,
 }: {
   attachments: TestAgentAttachment[]
@@ -34,13 +35,14 @@ export function TestAgentAttachments({
   failure: string | null
   disabled: boolean
   onPaste: (url: string, name: string, mediaType: string) => boolean
+  onUpload: (files: File[]) => boolean
   onRemove: (id: string) => void
 }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const [linkOpen, setLinkOpen] = useState(false)
   const [filename, setFilename] = useState('')
   const [mediaType, setMediaType] = useState<string | null>(null)
-  const uploadUnavailableId = useId()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const unavailable = disabled || !rules?.modes.length || rules.maxFiles === 0
   const mimeOptions = (rules?.modes ?? []).map((value) => ({
     value,
@@ -52,13 +54,25 @@ export function TestAgentAttachments({
         {t(($) => $['external.overview.attachments'])}
       </FieldsetLegend>
       <div className="flex gap-1">
+        <input
+          ref={fileInputRef}
+          type="file"
+          data-testid="external-agent-local-file-input"
+          accept={rules?.modes.join(',')}
+          multiple={!!rules && rules.maxFiles > 1}
+          hidden
+          onChange={(event) => {
+            const files = Array.from(event.currentTarget.files ?? [])
+            event.currentTarget.value = ''
+            if (files.length) onUpload(files)
+          }}
+        />
         <Button
           type="button"
           variant="tertiary"
           size="large"
-          disabled
-          focusableWhenDisabled
-          aria-describedby={uploadUnavailableId}
+          disabled={unavailable}
+          onClick={() => fileInputRef.current?.click()}
           className="h-auto min-h-9 min-w-0 flex-1 rounded-lg px-2 py-2 whitespace-normal"
         >
           <span aria-hidden className="i-ri-upload-cloud-2-line size-4 shrink-0" />
@@ -172,9 +186,6 @@ export function TestAgentAttachments({
           </PopoverContent>
         </Popover>
       </div>
-      <p id={uploadUnavailableId} className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['external.overview.testRun.fileUploadUnavailable'])}
-      </p>
       {failure && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
           {failure}

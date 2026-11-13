@@ -1,5 +1,5 @@
 import { createExternalAgentCapabilities } from '@/test/console/external-agents'
-import { getTestFileRules, suggestedLinkFile } from '../file-limits'
+import { getTestFileRules, localFileMime, suggestedLinkFile } from '../file-limits'
 
 it('intersects normalized MIME aliases and wildcard coverage while using the effective deployment limits', () => {
   const capabilities = createExternalAgentCapabilities({
@@ -37,4 +37,11 @@ it('prefills only known extensions from the path and leaves opaque file MIME sel
     name: 'download',
     mime: '',
   })
+})
+
+it('uses the local file extension when the browser does not report a MIME type', () => {
+  expect(localFileMime(new File(['text'], 'notes.MD'))).toBe('text/markdown')
+  expect(localFileMime(new File(['text'], 'notes.md', { type: 'text/x-markdown' }))).toBe(
+    'text/markdown',
+  )
 })

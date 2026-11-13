@@ -6,6 +6,14 @@ const aliases: Record<string, string> = {
   'application/x-pdf': 'application/pdf',
   'text/x-markdown': 'text/markdown',
 }
+const extensionMimeTypes: Record<string, string> = {
+  md: 'text/markdown',
+  txt: 'text/plain',
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+}
 export const fileMimeTypes = [
   'application/pdf',
   'text/plain',
@@ -23,6 +31,10 @@ export type TestFileRules = {
 export function normalizeMime(value: string) {
   const mime = value.split(';')[0]!.trim().toLowerCase()
   return aliases[mime] ?? mime
+}
+export function localFileMime(file: File) {
+  if (file.type) return normalizeMime(file.type)
+  return extensionMimeTypes[file.name.split('.').at(-1)?.toLowerCase() ?? ''] ?? ''
 }
 function accepts(modes: readonly string[], mime: string) {
   return modes.some((mode) => {
@@ -64,16 +76,6 @@ export function suggestedLinkFile(url: string) {
     /* A malformed escape is not a filename. */
   }
   const extension = name.split('.').at(-1)?.toLowerCase()
-  const mime =
-    (
-      {
-        md: 'text/markdown',
-        txt: 'text/plain',
-        pdf: 'application/pdf',
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-      } as Record<string, string>
-    )[extension ?? ''] ?? ''
+  const mime = extensionMimeTypes[extension ?? ''] ?? ''
   return { name, mime }
 }

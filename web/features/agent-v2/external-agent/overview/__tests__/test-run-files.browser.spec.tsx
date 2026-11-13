@@ -7,6 +7,7 @@ import { renderTestPanel, testOverview, testResult } from './test-run-fixture'
 // boundary: this fixture supplies actual translations for the real forms and controls.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
 const api = vi.hoisted(() => ({
+  upload: vi.fn(),
   paste: vi.fn(),
   release: vi.fn(),
   start: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'externalAgents.capabilities.get': api.capabilities,
+      'externalAgents.byAgentId.testFiles.post': api.upload,
       'externalAgents.byAgentId.testFiles.pasteLink.post': api.paste,
       'externalAgents.byAgentId.testFiles.byLeaseId.delete': api.release,
       'externalAgents.byAgentId.tests.post': api.start,
@@ -38,6 +40,14 @@ beforeEach(({ onTestFinished }) => {
   onTestFinished(guardUnexpectedFetch())
   onTestFinished(() => toast.dismiss())
   api.capabilities.mockReset().mockResolvedValue(createExternalAgentCapabilities())
+  api.upload.mockReset().mockImplementation(async ({ body }) => ({
+    lease_id: leaseId,
+    file_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    filename: body.file.name,
+    media_type: body.file.type,
+    size: body.file.size,
+    expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+  }))
   api.paste.mockReset().mockResolvedValue({
     lease_id: leaseId,
     file_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -57,7 +67,7 @@ it('uses server leases for pasted files, preserves them on panel close and submi
   await page.getByRole('button', { name: 'Test agent', exact: true }).click()
   await expect
     .element(panel().getByRole('button', { name: 'Local Upload', exact: false }))
-    .toBeDisabled()
+    .toBeEnabled()
   await panel().getByRole('button', { name: 'Paste file link', exact: true }).click()
   await pasteDialog()
     .getByRole('textbox', { name: 'File link', exact: true })
@@ -107,6 +117,54 @@ it('uses server leases for pasted files, preserves them on panel close and submi
     params: { agent_id: testResult().metadata.agent_id, lease_id: leaseId },
   })
   expect(api.start).toHaveBeenCalledTimes(1)
+})
+
+it('uploads a local file, keeps its lease in the page session and submits its ID', async () => {
+  const rendered = await renderTestPanel()
+  onTestFinished(() => rendered.queryClient.clear())
+  await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+  const file = new File(['Review this text.'], 'notes.txt', { type: 'text/plain' })
+  await panel().getByTestId('external-agent-local-file-input').upload(file)
+  await expect
+    .element(panel().getByRole('button', { name: 'Remove notes.txt', exact: true }))
+    .toBeVisible()
+  expect(api.upload).toHaveBeenCalledTimes(1)
+  const input = api.upload.mock.calls[0]![0]
+  expect(input.params.agent_id).toBe(testResult().metadata.agent_id)
+  expect(input.body.file.name).toBe(file.name)
+  expect(input.body.file.type).toBe(file.type)
+  expect(input.body.page_session_id).toBeTruthy()
+  await panel().getByRole('textbox', { name: 'Task', exact: true }).fill('Read the attachment.')
+  await panel().getByRole('button', { name: 'Run test', exact: true }).click()
+  await expect
+    .element(panel().getByRole('status').getByText('Success', { exact: true }))
+    .toBeVisible()
+  expect(api.start.mock.calls[0]![0].body.input_lease_ids).toEqual([leaseId])
+  expect(api.start.mock.calls[0]![0].body.page_session_id).toBe(input.body.page_session_id)
+})
+
+it('rejects a local file above the effective document size limit before upload', async () => {
+  const capabilities = createExternalAgentCapabilities()
+  api.capabilities.mockResolvedValue({
+    ...capabilities,
+    limits: {
+      ...capabilities.limits,
+      files: {
+        max_files: 5,
+        max_document_bytes: 4,
+        max_image_bytes: 1000,
+        max_total_bytes: 1000,
+      },
+    },
+  })
+  const rendered = await renderTestPanel()
+  onTestFinished(() => rendered.queryClient.clear())
+  await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+  await panel()
+    .getByTestId('external-agent-local-file-input')
+    .upload(new File(['too large'], 'notes.txt', { type: 'text/plain' }))
+  await expect.element(panel().getByRole('alert')).toBeVisible()
+  expect(api.upload).not.toHaveBeenCalled()
 })
 
 it('rejects HTTP links and enforces the effective file count before preparing another lease', async () => {

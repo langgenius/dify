@@ -233,6 +233,11 @@ function TestAgentSession({
               if (accepted) resetRun()
               return accepted
             }}
+            onUpload={(selected) => {
+              const accepted = files.uploadFiles(selected)
+              if (accepted) resetRun()
+              return accepted
+            }}
             onRemove={(id) => {
               files.remove(id)
               resetRun()

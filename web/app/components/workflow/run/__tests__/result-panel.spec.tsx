@@ -232,4 +232,18 @@ describe('ResultPanel', () => {
 
     expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
   })
+
+  it('shows an external agent wait as running while preserving human-input pauses', () => {
+    const { rerender } = render(<ResultPanel status="paused" external_wait />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.running')
+    expect(screen.queryByText('appLog.status.paused')).not.toBeInTheDocument()
+    expect(screen.getByText('agentRoster.external.workflow.waiting')).toBeInTheDocument()
+    expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
+
+    rerender(<ResultPanel status="paused" external_wait human_input_wait />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.paused')
+    expect(screen.queryByText('appLog.status.running')).not.toBeInTheDocument()
+  })
 })

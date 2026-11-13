@@ -90,12 +90,16 @@ const ResultPanel: FC<ResultPanelProps> = ({
   const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
   const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
+  const isExternalWait = external_wait || (Boolean(externalInvocationId) && status === 'paused')
+  const displayStatus =
+    status === 'paused' && isExternalWait && !human_input_wait ? 'running' : status
 
   return (
     <div className="bg-components-panel-bg py-2">
       <div className="px-4 py-2">
         <StatusPanel
           status={status}
+          displayStatus={displayStatus}
           time={elapsed_time}
           tokens={total_tokens}
           error={error}
@@ -103,7 +107,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           isListening={isListening}
           workflowRunId={workflowRunId}
           onOpenTracingTab={onOpenTracingTab}
-          external_wait={external_wait || (Boolean(externalInvocationId) && status === 'paused')}
+          external_wait={isExternalWait}
           human_input_wait={human_input_wait}
           preserveUnknownTokens={Boolean(externalInvocationId)}
         />
@@ -157,7 +161,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             }
           />
         )}
-        {(outputs || status === 'running') && (
+        {(outputs || displayStatus === 'running') && (
           <CodeEditor
             readOnly
             showFileList
@@ -185,7 +189,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
       </div>
       <div className="px-4 py-2">
         <MetaData
-          status={status}
+          status={displayStatus}
           executor={created_by}
           startTime={created_at}
           time={elapsed_time}

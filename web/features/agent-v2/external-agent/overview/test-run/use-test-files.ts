@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { localFileMime } from './file-limits'
 
 export type TestAgentAttachment = {
   id: string
@@ -44,6 +45,11 @@ export function useTestAgentFiles({
   }, [])
   const paste = useMutation(
     consoleQuery.externalAgents.byAgentId.testFiles.pasteLink.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const upload = useMutation(
+    consoleQuery.externalAgents.byAgentId.testFiles.post.mutationOptions({
       context: { silent: true },
     }),
   )
@@ -146,6 +152,39 @@ export function useTestAgentFiles({
     )
     return true
   }
+  function uploadFiles(files: File[]) {
+    if (!files.length) return false
+    let total = 0
+    for (const file of files) {
+      total += file.size
+      const error = validate(localFileMime(file), file.size, files.length, total)
+      if (error) {
+        setFailure(error)
+        return false
+      }
+    }
+    setFailure(null)
+    for (const file of files) {
+      const id = crypto.randomUUID()
+      const mime = localFileMime(file)
+      const uploadFile =
+        file.type === mime
+          ? file
+          : new File([file], file.name, { type: mime, lastModified: file.lastModified })
+      setItems((current) => [
+        ...current,
+        { id, name: file.name, pageSessionId, size: file.size, state: 'uploading' },
+      ])
+      void prepare(id, () =>
+        // The generated input omits this existing endpoint's multipart body.
+        upload.mutateAsync({
+          params: { agent_id: agentId },
+          body: { file: uploadFile, page_session_id: pageSessionId },
+        } as Parameters<typeof upload.mutateAsync>[0]),
+      )
+    }
+    return true
+  }
   function remove(id: string) {
     removedIdsRef.current.add(id)
     const item = attachments.find((item) => item.id === id)
@@ -192,6 +231,7 @@ export function useTestAgentFiles({
     attachments,
     failure,
     pasteLink,
+    uploadFiles,
     remove,
     markSubmitted,
     selectedLeaseIds,
