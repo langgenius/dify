@@ -17,7 +17,7 @@ from pydantic_ai.messages import (
 )
 
 from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendStreamInternalEvent
-from services.agent.workflow_tool_activity import (
+from core.workflow.nodes.agent_v2.tool_activity import (
     _TOOL_FIELD_LIMIT,
     WorkflowAgentToolActivityProjector,
 )

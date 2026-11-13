@@ -8,7 +8,7 @@ export const SHELL_TOOL_NAMES = new Set([
   'shell_interrupt',
 ])
 
-export type ToolActivityStatus =
+type ToolActivityStatus =
   | 'started'
   | 'running'
   | 'succeeded'

@@ -47,11 +47,6 @@ from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
 from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
-from services.agent.workflow_tool_activity import (
-    FinishStatus,
-    WorkflowAgentToolActivity,
-    WorkflowAgentToolActivityProjector,
-)
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
@@ -70,6 +65,11 @@ from .runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuildError,
 )
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+from .tool_activity import (
+    FinishStatus,
+    WorkflowAgentToolActivity,
+    WorkflowAgentToolActivityProjector,
+)
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState

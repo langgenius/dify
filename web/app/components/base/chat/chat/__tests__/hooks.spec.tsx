@@ -654,9 +654,9 @@ describe('useChat', () => {
         callbacksList[0]!.onAgentLog(staleLog)
       })
 
-      expect(
-        result.current.chatList.every((item) => !item.workflowAgentActivities?.length),
-      ).toBe(true)
+      expect(result.current.chatList.every((item) => !item.workflowAgentActivities?.length)).toBe(
+        true,
+      )
 
       act(() => {
         callbacksList[1]!.onAgentLog(staleLog)
