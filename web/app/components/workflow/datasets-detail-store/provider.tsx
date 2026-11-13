@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { CommonNodeType, Node } from '../types'
-import { createContext, useCallback, useEffect, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchDatasets } from '@/service/datasets'
 import { BlockEnum } from '../types'
 import { createDatasetsDetailStore } from './store'
@@ -31,18 +31,28 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, childr
     [store],
   )
 
+  const datasetIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          nodes
+            .filter((node) => node.data.type === BlockEnum.KnowledgeRetrieval)
+            .flatMap(
+              (node) => (node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids,
+            ),
+        ),
+      ),
+    [nodes],
+  )
+  // React Flow replaces node objects on every drag/render, but consumers only need
+  // a refresh when the referenced dataset ids change. Split on NUL so the effect
+  // depends on the id set rather than the nodes array identity (dataset ids are UUIDs).
+  const datasetIdsKey = datasetIds.join('\u0000')
+
   useEffect(() => {
-    const knowledgeRetrievalNodes = nodes.filter(
-      (node) => node.data.type === BlockEnum.KnowledgeRetrieval,
-    )
-    const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
-      return Array.from(
-        new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]),
-      )
-    }, [])
-    if (allDatasetIds.length === 0) return
-    updateDatasetsDetail(allDatasetIds)
-  }, [])
+    if (!datasetIdsKey) return
+    updateDatasetsDetail(datasetIdsKey.split('\u0000'))
+  }, [datasetIdsKey, updateDatasetsDetail])
 
   return <DatasetsDetailContext.Provider value={store}>{children}</DatasetsDetailContext.Provider>
 }
