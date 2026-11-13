@@ -104,9 +104,7 @@ describe('OutputPanel', () => {
     ).not.toBeInTheDocument()
   })
 
-  // TODO: OutputPanel pre-serializes the object before CodeEditor serializes it again.
-  // Remove `.fails` when the editor receives the original object and exposes semantic JSON.
-  it.fails('renders structured outputs inside the code editor when height is available', () => {
+  it('renders structured outputs inside the code editor when height is available', () => {
     const outputs = { answer: 'hello', score: 1 }
     render(<OutputPanel height={200} outputs={outputs} />)
 
