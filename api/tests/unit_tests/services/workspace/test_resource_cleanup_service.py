@@ -272,7 +272,7 @@ def test_direct_cleanup_does_not_resolve_a_console_login(
     features.is_webapp_auth_enabled.return_value = False
     monkeypatch.setattr(app_service, "SystemFeatureService", features)
     monkeypatch.setattr(app_service, "BillingService", Mock())
-    monkeypatch.setattr(module, "enqueue_agent_resource_collection", Mock())
+    monkeypatch.setattr(module, "enqueue_agent_resource_collection", lambda **_kwargs: None)
     with app.test_request_context(method="DELETE"):
         _service(sqlite_session_factory).cleanup("target")
     from tasks.app_deletion_outbox_task import _dispatch
