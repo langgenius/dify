@@ -52,8 +52,10 @@ def resolve_provider(providers: TraceProviderCatalog, provider_id: str) -> type[
         raise AppTracingConfigProviderUnavailableError from None
 
 
-def _comparable(value: object) -> object:
-    return value.strip().rstrip("/") if isinstance(value, str) else value
+def _comparable(value: object, *, exact: bool) -> object:
+    if isinstance(value, str):
+        return value.strip() if exact else value.strip().rstrip("/")
+    return value
 
 
 class ProviderConfigGateway(TracingConfigProviderGateway):
@@ -118,10 +120,16 @@ class ProviderConfigGateway(TracingConfigProviderGateway):
             config = model.model_validate(tracing_config)
         except ValidationError:
             # Historical rows stay readable even when they no longer validate.
+            # Structured secrets (e.g. OTLP headers) are encrypted here, so their
+            # plaintext validators cannot run. Presence still comes from the
+            # stored field; presentation must neither decrypt nor lose that fact.
             values = {
                 key: value for key, value in tracing_config.items() if key not in hidden and isinstance(value, str)
             }
-            return PresentedTracingConfig(values={**values, "project_url": None}, configured_secrets=())
+            return PresentedTracingConfig(
+                values={**values, "project_url": None},
+                configured_secrets=configured_secrets(provider, tracing_config),
+            )
         values = {key: value for key, value in config.model_dump(mode="json").items() if key not in hidden}
         values["project_url"] = provider(self._egress).project_url(config)
         return PresentedTracingConfig(values=values, configured_secrets=configured_secrets(provider, tracing_config))
@@ -138,8 +146,11 @@ class ProviderConfigGateway(TracingConfigProviderGateway):
         """
         model = provider.config_model
         current_values = current.model_dump() if current is not None else {}
+        exact_destinations = model.exact_destination_fields()
         moved = any(
-            name in submitted and _comparable(submitted[name]) != _comparable(current_values.get(name))
+            name in submitted
+            and _comparable(submitted[name], exact=name in exact_destinations)
+            != _comparable(current_values.get(name), exact=name in exact_destinations)
             for name in model.destination_fields()
         )
         values: dict[str, Any] = {}

@@ -118,6 +118,7 @@ dify-trace-langsmith = { workspace = true }
 dify-trace-mlflow = { workspace = true }
 dify-trace-sdk = { workspace = true }
 dify-trace-opik = { workspace = true }
+dify-trace-otel = { workspace = true }
 dify-trace-tencent = { workspace = true }
 dify-trace-weave = { workspace = true }
 
@@ -314,6 +315,7 @@ trace-all = [
     "dify-trace-langsmith",
     "dify-trace-mlflow",
     "dify-trace-opik",
+    "dify-trace-otel",
     "dify-trace-tencent",
     "dify-trace-weave",
 ]
@@ -323,6 +325,7 @@ trace-langfuse = ["dify-trace-langfuse"]
 trace-langsmith = ["dify-trace-langsmith"]
 trace-mlflow = ["dify-trace-mlflow"]
 trace-opik = ["dify-trace-opik"]
+trace-otel = ["dify-trace-otel"]
 trace-tencent = ["dify-trace-tencent"]
 trace-weave = ["dify-trace-weave"]
 

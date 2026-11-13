@@ -30,6 +30,7 @@ SUPPORTED_PROVIDERS = (
     "mlflow",
     "databricks",
     "tencent",
+    "otel",
 )
 
 
