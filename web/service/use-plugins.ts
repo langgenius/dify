@@ -1391,7 +1391,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
-  const query = useQuery<PluginTaskListResponse>({
+  const pluginTaskQuery = useQuery<PluginTaskListResponse>({
     enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () =>
@@ -1411,7 +1411,28 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       return taskDone ? false : 5000
     },
   })
-  const { data, isFetched, isRefetching, refetch } = query
+  const {
+    data,
+    error,
+    isError,
+    isPending,
+    isLoading,
+    isFetching,
+    isFetched,
+    isFetchedAfterMount,
+    isRefetching,
+    isSuccess,
+    isPlaceholderData,
+    isStale,
+    status,
+    fetchStatus,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    failureCount,
+    failureReason,
+    errorUpdateCount,
+    refetch,
+  } = pluginTaskQuery
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
@@ -1428,12 +1449,13 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       (task) => task.status === TaskStatus.success || task.status === TaskStatus.failed,
     )
     const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
+    const categoryManifest =
+      category && Object.values(PluginCategoryEnum).includes(category as PluginCategoryEnum)
+        ? ({ category: category as PluginCategoryEnum } as unknown as PluginDeclaration)
+        : undefined
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(
-        category ? { category: category as PluginCategoryEnum } : undefined,
-        !category,
-      )
-  }, [category, data, isRefetching, refreshPluginList])
+      refreshPluginList(categoryManifest, !categoryManifest)
+  }, [isRefetching, data, refreshPluginList, category])
 
   const handleRefetch = useCallback(() => {
     refetch()
@@ -1451,8 +1473,26 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 
   return {
     data,
-    pluginTasks: data?.tasks || [],
+    error,
+    isError,
+    isPending,
+    isLoading,
+    isFetching,
     isFetched,
+    isFetchedAfterMount,
+    isRefetching,
+    isSuccess,
+    isPlaceholderData,
+    isStale,
+    status,
+    fetchStatus,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    failureCount,
+    failureReason,
+    errorUpdateCount,
+    refetch,
+    pluginTasks: data?.tasks || [],
     handleRefetch,
     handleInstallTaskStart,
   }
@@ -1480,8 +1520,7 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-// Untranslated labels fall back to en_US, matching renderI18nObject. Dynamic options have no
-// display conditions.
+// Match the generated API labels, falling back to en_US for missing translations.
 const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOption => ({
   value,
   label: {
@@ -1494,28 +1533,82 @@ const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOpt
   show_on: [],
 })
 
-export const useFetchDynamicOptions = (
-  plugin_id: string,
-  provider: string,
-  action: string,
-  parameter: string,
-  // The backend requires a provider type; callers without one render tool options.
-  provider_type: 'tool' | 'trigger' = 'tool',
-  extra?: Record<string, unknown>,
-) => {
+type FetchPluginDynamicOptionsParams = {
+  plugin_id: string
+  provider: string
+  action: string
+  parameter: string
+  provider_type?: 'tool' | 'trigger'
+  credential_id?: string | null
+  parameter_values?: Record<string, unknown>
+}
+
+export const useFetchDynamicOptions = (params: FetchPluginDynamicOptionsParams) => {
+  const {
+    plugin_id,
+    provider,
+    action,
+    parameter,
+    provider_type = 'tool',
+    credential_id,
+    parameter_values,
+  } = params
+
   return useMutation({
-    mutationFn: () =>
-      consoleClient.workspaces.current.plugin.parameters.dynamicOptions
-        .get({
-          query: {
-            plugin_id,
-            provider,
-            action,
-            parameter,
-            provider_type,
-            ...extra,
-          },
-        })
-        .then(({ options }) => ({ options: options.map(toDynamicOption) })),
+    mutationFn: () => {
+      const query: Record<string, string> = {
+        plugin_id,
+        provider,
+        action,
+        parameter,
+        provider_type,
+      }
+      if (credential_id) query.credential_id = credential_id
+      if (parameter_values && Object.keys(parameter_values).length > 0)
+        query.parameter_values = JSON.stringify(parameter_values)
+
+      return consoleClient.workspaces.current.plugin.parameters.dynamicOptions
+        .get({ query: { ...query, plugin_id, provider, action, parameter, provider_type } })
+        .then(({ options }) => ({ options: options.map(toDynamicOption) }))
+    },
+  })
+}
+
+type FetchPluginDynamicTreeOptionsParams = {
+  plugin_id: string
+  provider: string
+  action: string
+  parameter: string
+  credential_id?: string | null
+  parameter_values?: Record<string, unknown>
+}
+
+const toTreeFormOption = (option: PluginParameterOption): FormOption => ({
+  ...toDynamicOption(option),
+  children: option.children?.map(toTreeFormOption),
+})
+
+export const useFetchDynamicTreeOptions = (params: FetchPluginDynamicTreeOptionsParams) => {
+  const { plugin_id, provider, action, parameter, credential_id, parameter_values } = params
+
+  return useMutation({
+    mutationFn: () => {
+      const query = {
+        plugin_id,
+        provider,
+        action,
+        parameter,
+        ...(credential_id ? { credential_id } : {}),
+        ...(parameter_values && Object.keys(parameter_values).length > 0
+          ? { parameter_values: JSON.stringify(parameter_values) }
+          : {}),
+      }
+
+      return consoleClient.workspaces.current.plugin.parameters.dynamicTreeOptions
+        .get({ query })
+        .then(({ options }) => ({
+          options: options.map(toTreeFormOption),
+        }))
+    },
   })
 }

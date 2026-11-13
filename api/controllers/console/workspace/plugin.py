@@ -1,4 +1,5 @@
 import io
+import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Literal, TypedDict
@@ -93,6 +94,18 @@ class AutoUpgradeSettingsResponse(TypedDict):
     include_plugins: list[str]
 
 
+def _parse_parameter_values_query(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError("parameter_values must be valid JSON") from e
+    if not isinstance(data, dict):
+        raise ValueError("parameter_values must be a JSON object")
+    return data
+
+
 class ParserList(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
@@ -185,6 +198,7 @@ class ParserDynamicOptions(BaseModel):
     parameter: str
     credential_id: str | None = None
     provider_type: Literal["tool", "trigger"]
+    parameter_values: str | None = None
 
 
 class ParserDynamicOptionsWithCredentials(BaseModel):
@@ -194,6 +208,16 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     parameter: str
     credential_id: str
     credentials: Mapping[str, Any]
+    parameter_values: Mapping[str, Any] | None = None
+
+
+class PluginDynamicTreeOptionsQuery(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str | None = None
+    parameter_values: str | None = None
 
 
 class PluginPermissionSettingsPayload(BaseModel):
@@ -426,6 +450,7 @@ register_schema_models(
     ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
+    PluginDynamicTreeOptionsQuery,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
     ParserExcludePlugin,
@@ -1165,7 +1190,9 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     )
     @model_validate(ParserDynamicOptions)
     def get(self, req_data: ParserDynamicOptions, context: RequestContext) -> dict[str, Any]:
+        """Require an admitted caller; reject malformed sibling values before daemon I/O."""
         try:
+            parameter_values = _parse_parameter_values_query(req_data.parameter_values)
             options = application_services().workspaces.plugin_parameters.get_dynamic_select_options(
                 tenant_id=context.active_workspace_id,
                 user_id=context.account_id,
@@ -1175,6 +1202,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 provider_type=req_data.provider_type,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
@@ -1205,6 +1233,38 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 credentials=req_data.credentials,
+                parameter_values=dict(req_data.parameter_values) if req_data.parameter_values is not None else None,
+            )
+        except PluginDaemonClientSideError as e:
+            raise PluginOperationError(e.description) from e
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-tree-options")
+class PluginFetchDynamicTreeSelectOptionsApi(Resource):
+    @error_responses(PluginOperationError)
+    @console_ns.doc(params=query_params_from_model(PluginDynamicTreeOptionsQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()),),
+    )
+    @model_validate(PluginDynamicTreeOptionsQuery)
+    def get(self, args: PluginDynamicTreeOptionsQuery, context: RequestContext) -> dict[str, Any]:
+        """Require an admitted tool caller; return nested options with validated sibling values."""
+        try:
+            parameter_values = _parse_parameter_values_query(args.parameter_values)
+            options = application_services().workspaces.plugin_parameters.get_dynamic_select_options(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
+                provider_type="tool",
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e

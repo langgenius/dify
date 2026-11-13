@@ -75,6 +75,11 @@ class TableStoreVectorTest(AbstractVectorTest):
 
     @override
     def search_by_full_text(self):
+        """Verify full-text filtering and optional normalized scores.
+
+        Preconditions: the integration fixture has indexed its example document.
+        Postconditions: filter and threshold assertions hold; backend failures propagate.
+        """
         super().search_by_full_text()
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[self.example_doc_id])
         assert len(docs) == 1
