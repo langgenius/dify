@@ -1,6 +1,7 @@
 """Unit tests for evaluation task result helpers."""
 
 import io
+import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
@@ -2528,3 +2529,33 @@ def test_result_xlsx_preserves_formula_like_text_as_literal_cells() -> None:
     assert worksheet["A2"].data_type == "n"
     assert worksheet["F2"].value == 0.9
     assert worksheet["F2"].data_type == "n"
+
+
+def test_result_xlsx_serializes_structured_metric_values() -> None:
+    object_value = {"score": 0.8, "samples": [0.2, 0.8]}
+    array_value = [0.2, 0.8]
+    input_list = [EvaluationDatasetInput(index=1, inputs={})]
+    results = [
+        EvaluationItemResult(
+            index=1,
+            metrics=[
+                EvaluationMetric(name="object", value=object_value),
+                EvaluationMetric(name="array", value=array_value),
+                EvaluationMetric(name="numeric", value=0.9),
+            ],
+        )
+    ]
+
+    workbook = load_workbook(io.BytesIO(_generate_result_xlsx(input_list, results)))
+    worksheet = workbook.active
+
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == ["index", "actual_output", "object", "array", "numeric", "error"]
+    assert worksheet["C2"].data_type == "s"
+    assert isinstance(worksheet["C2"].value, str)
+    assert json.loads(worksheet["C2"].value) == object_value
+    assert worksheet["D2"].data_type == "s"
+    assert isinstance(worksheet["D2"].value, str)
+    assert json.loads(worksheet["D2"].value) == array_value
+    assert worksheet["E2"].value == 0.9
+    assert worksheet["E2"].data_type == "n"

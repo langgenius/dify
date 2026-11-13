@@ -1926,7 +1926,12 @@ def _generate_result_xlsx(
     input_list: list[EvaluationDatasetInput],
     results: list[EvaluationItemResult],
 ) -> bytes:
-    """Generate result XLSX with literal text fields and native numeric scores."""
+    """Render dataset rows and results as XLSX bytes.
+
+    Structured metric values must be JSON-serializable, as they are in saved
+    checkpoints. They become literal JSON text; numeric scores remain numeric.
+    Unsupported values raise during serialization or cell construction.
+    """
     wb = Workbook()
     ws = wb.active
     if ws is None:
@@ -2024,6 +2029,8 @@ def _generate_result_xlsx(
         )
         for metric_name in metric_columns:
             score = metric_scores.get(metric_name)
+            if isinstance(score, (dict, list)):
+                score = json.dumps(score, ensure_ascii=False)
             write_cell(row_idx, col, score if score is not None else "")
             col += 1
 
