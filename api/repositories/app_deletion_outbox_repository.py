@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 import sqlalchemy as sa
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from models.app_deletion_outbox import AppDeletionOutbox, AppDeletionOutboxStatus
@@ -214,6 +215,8 @@ def _require_string_list(value: object, *, field: str) -> list[str]:
 
 def _updated_once(session: Session, statement: sa.Update) -> bool:
     result = session.execute(statement)
+    if not isinstance(result, CursorResult):
+        raise TypeError("App deletion outbox update did not return a cursor result")
     return result.rowcount == 1
 
 
