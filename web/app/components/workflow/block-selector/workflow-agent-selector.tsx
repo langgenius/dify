@@ -19,7 +19,7 @@ type AgentSource = 'all' | 'dify' | 'external'
 
 type WorkflowAgentSelectorContentProps = {
   onSelect: (agent: AgentRosterNodeData) => void
-  onSelectExternal?: (agent: ExternalAgentWorkflowPreviewAgent) => void
+  onSelectExternal?: (agent: ExternalAgentWorkflowPreviewAgent) => void | Promise<boolean>
   onStartFromScratch: () => void
   onRequestClose: () => void
 }
@@ -112,22 +112,6 @@ export function WorkflowAgentSelectorContent({
           >
             {source === tab && (
               <>
-                {source !== 'external' && !search.trim() && (
-                  <Button
-                    variant="ghost"
-                    className="h-8 w-full shrink-0 justify-start gap-2 rounded-lg ps-3 pe-2 system-sm-medium"
-                    onClick={() => {
-                      onRequestClose()
-                      onStartFromScratch()
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="i-ri-add-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    {t(($) => $['roster.nodeSelector.startFromScratch'])}
-                  </Button>
-                )}
                 {isLoading && <DifyAgentSelectorSkeleton />}
                 {hasDifyError && (
                   <p role="status" className="px-3 py-2 system-sm-regular text-text-tertiary">
@@ -141,10 +125,10 @@ export function WorkflowAgentSelectorContent({
                       variant="ghost"
                       disabled={!agent.active_config_snapshot_id}
                       focusableWhenDisabled
-                      className="h-auto min-h-8 w-full shrink-0 justify-start gap-2 rounded-lg py-1 ps-3 pe-2"
+                      className="h-auto min-h-8 w-full shrink-0 justify-start gap-2 rounded-lg py-1.5 ps-3 pe-2"
                       onClick={() => selectDifyAgent(agent)}
                     >
-                      <AppIcon size="tiny" icon={{ ...agent, icon_url: agent.icon }} />
+                      <AppIcon size="small" icon={{ ...agent, icon_url: agent.icon }} />
                       <span className="flex min-w-0 flex-1 flex-col text-start">
                         <span className="flex min-w-0 items-center gap-2">
                           <span className="truncate system-sm-medium text-text-secondary">
@@ -172,9 +156,9 @@ export function WorkflowAgentSelectorContent({
                 {source !== 'dify' && onSelectExternal && (
                   <ExternalAgentOptions
                     keyword={keyword}
-                    onSelect={(agent) => {
-                      onRequestClose()
-                      onSelectExternal(agent)
+                    onSelect={async (agent) => {
+                      const selected = await onSelectExternal(agent)
+                      if (selected !== false) onRequestClose()
                     }}
                   />
                 )}
@@ -190,6 +174,21 @@ export function WorkflowAgentSelectorContent({
           </TabsPanel>
         ))}
       </Tabs>
+      {source !== 'external' && !search.trim() && (
+        <div className="border-t border-divider-subtle p-1">
+          <Button
+            variant="ghost"
+            className="h-8 w-full justify-start gap-2 rounded-lg ps-3 pe-2 system-xs-medium text-text-secondary"
+            onClick={() => {
+              onRequestClose()
+              onStartFromScratch()
+            }}
+          >
+            <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+            {t(($) => $['roster.nodeSelector.startFromScratch'])}
+          </Button>
+        </div>
+      )}
       <div className="flex h-8 items-center border-t border-divider-subtle px-4">
         <Link
           href="/agents"

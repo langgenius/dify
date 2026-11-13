@@ -63,7 +63,7 @@ export function TestAgentResults({
                 <dd className="system-sm-medium text-text-secondary">
                   {run.elapsedSeconds === null
                     ? t(($) => $['external.overview.testRun.notProvided'])
-                    : t(($) => $['external.overview.testRun.estimatedElapsed'], {
+                    : t(($) => $['external.overview.testRun.elapsedSeconds'], {
                         value: new Intl.NumberFormat(i18n.language, {
                           minimumFractionDigits: 1,
                           maximumFractionDigits: 1,

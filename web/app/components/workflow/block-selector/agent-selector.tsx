@@ -296,7 +296,7 @@ export function AgentBlockItem({
       <PopoverContent
         side="right"
         align="start"
-        className="w-100 max-w-[calc(100vw-1rem)] overflow-hidden"
+        className="w-92 max-w-[calc(100vw-1rem)] overflow-hidden"
       >
         <PopoverTitle className="sr-only">
           {tAgentRoster(($) => $['roster.nodeSelector.dialogLabel'])}

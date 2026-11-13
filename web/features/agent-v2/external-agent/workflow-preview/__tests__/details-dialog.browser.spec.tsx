@@ -1,4 +1,5 @@
 import type { ExternalAgentWorkflowPreviewNodeData } from '../types'
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { page } from 'vite-plus/test/browser'
 import { consoleClient } from '@/service/console'
@@ -19,6 +20,10 @@ const draftApi = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post
     >(),
+  createInline:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put
+    >(),
 }))
 
 // boundary: replace backend draft storage while keeping canvas edits and serialization real.
@@ -32,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       ...createWorkflowExternalResponses(),
       'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': draftApi.createInline,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': draftApi.save,
@@ -54,7 +60,9 @@ async function setup() {
 const readDraft = () =>
   consoleClient.apps.byAppId.workflows.draft.get({ params: { app_id: 'external-preview-app' } })
 
-async function saveDraft(expected: Partial<ExternalAgentWorkflowPreviewNodeData>) {
+async function saveDraft(
+  expected: Partial<ExternalAgentWorkflowPreviewNodeData> | Partial<AgentV2NodeType>,
+) {
   await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
   await expect
     .poll(async () => {
@@ -72,6 +80,7 @@ beforeEach(({ onTestFinished }) => {
   draftApi.save.mockImplementation(storage.save)
   draftApi.read.mockImplementation(storage.read)
   draftApi.rebind.mockImplementation(storage.rebind)
+  draftApi.createInline.mockReset()
 })
 
 it('opens read-only Contract Review details and returns focus without changing the saved draft', async () => {
@@ -176,4 +185,53 @@ it('keeps Change as an agent picker and opens the selected Document Review ident
   await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
   expect((await readDraft()).graph).toEqual(before.graph)
   expect(draftApi.save).toHaveBeenCalledTimes(savesBefore)
+})
+
+it('uses the shared picker to replace an external agent with a Dify agent', async () => {
+  const { panel } = await setup()
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  const picker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
+  await expect.element(picker.getByRole('tab', { name: 'Dify', exact: true })).toBeVisible()
+  await expect.element(picker.getByRole('tab', { name: 'External', exact: true })).toBeVisible()
+  await expect
+    .element(picker.getByRole('button', { name: 'Start from Scratch', exact: true }))
+    .toBeVisible()
+  await picker.getByRole('tab', { name: 'Dify', exact: true }).click()
+  await picker.getByRole('button', { name: /Research Agent/ }).click()
+  await expect
+    .element(
+      page.getByRole('region', { name: 'Research Agent Node configuration panel', exact: true }),
+    )
+    .toBeVisible()
+  await saveDraft({
+    agent_node_kind: 'dify_agent',
+    agent_binding: { binding_type: 'roster_agent', agent_id: 'dify-agent-1' },
+  })
+  expect(draftApi.rebind).not.toHaveBeenCalled()
+  await expect.element(picker).not.toBeInTheDocument()
+})
+
+it('creates an inline Dify agent from the Change picker', async () => {
+  draftApi.createInline.mockImplementation(() => new Promise(() => {}))
+  const { panel } = await setup()
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  const picker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
+  await picker.getByRole('button', { name: 'Start from Scratch', exact: true }).click()
+  await expect.poll(() => draftApi.createInline.mock.calls.length).toBe(1)
+  expect(draftApi.createInline).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { app_id: 'external-preview-app', node_id: 'external-agent' },
+      body: expect.objectContaining({ save_strategy: 'node_job_only' }),
+    }),
+  )
+  await expect
+    .poll(async () => {
+      const draft = await readDraft()
+      return (draft.graph as WorkflowDataUpdater).nodes.find((node) => node.id === 'external-agent')
+        ?.data
+    })
+    .toMatchObject({
+      agent_node_kind: 'dify_agent',
+      agent_binding: { binding_type: 'inline_agent' },
+    })
 })

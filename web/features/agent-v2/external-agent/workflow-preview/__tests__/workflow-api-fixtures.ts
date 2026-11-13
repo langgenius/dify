@@ -1,3 +1,4 @@
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { consoleClient } from '@/service/console'
 import { ORPCError } from '@orpc/client'
 import {
@@ -5,6 +6,22 @@ import {
   createExternalAgentCapabilities,
   createExternalAgentDetail,
 } from '@/test/console/external-agents'
+import { createAgentFixture } from '@/test/fixtures/agent'
+
+export const workflowDifyAgent: AgentInviteOptionResponse = {
+  id: 'dify-agent-1',
+  name: 'Research Agent',
+  description: 'Researches public information.',
+  role: 'Researcher',
+  icon_type: 'emoji',
+  icon: '🤖',
+  icon_background: '#FFFFFF',
+  active_config_snapshot_id: 'snapshot-1',
+  agent_kind: 'dify_agent',
+  scope: 'roster',
+  source: 'workflow',
+  status: 'active',
+}
 
 export const workflowExternalAgents = [
   createExternalAgentAsset(),
@@ -22,6 +39,15 @@ export const workflowExternalAgents = [
 
 export function createWorkflowExternalResponses() {
   return {
+    'agent.inviteOptions.get': (
+      input: Parameters<typeof consoleClient.agent.inviteOptions.get>[0],
+    ) => {
+      const keyword = input?.query?.keyword?.toLowerCase() ?? ''
+      const data = [workflowDifyAgent].filter((agent) => agent.name.toLowerCase().includes(keyword))
+      return { data, has_more: false, limit: 8, page: 1, total: data.length }
+    },
+    'agent.byAgentId.get': () =>
+      createAgentFixture({ id: workflowDifyAgent.id, name: workflowDifyAgent.name }),
     'externalAgents.byAgentId.references.get': () => ({ apps: [], may_have_in_flight: false }),
     'workspaces.current.members.get': () => ({ accounts: [] }),
     'externalAgents.capabilities.get': () => createExternalAgentCapabilities(),

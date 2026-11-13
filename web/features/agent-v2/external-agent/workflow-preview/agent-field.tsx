@@ -1,14 +1,13 @@
 import type { ExternalAgentOverview } from '../model'
 import type { ExternalAgentWorkflowBinding, ExternalAgentWorkflowPreviewAgent } from './types'
+import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useDebounce } from 'ahooks'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { SearchInput } from '@/app/components/base/search-input'
-import { ExternalAgentOptions } from './agent-options'
+import { WorkflowAgentSelectorContent } from '@/app/components/workflow/block-selector/workflow-agent-selector'
 import { ExternalAgentDetailsDialogContent } from './details-dialog'
 import { ExternalAgentBadge } from './external-badge'
 
@@ -19,6 +18,8 @@ export function ExternalAgentField({
   hasError,
   readOnly,
   onChange,
+  onSelectDify,
+  onStartFromScratch,
 }: {
   binding?: ExternalAgentWorkflowBinding
   overview?: ExternalAgentOverview
@@ -26,6 +27,8 @@ export function ExternalAgentField({
   hasError: boolean
   readOnly: boolean
   onChange: (agent: ExternalAgentWorkflowPreviewAgent) => Promise<boolean>
+  onSelectDify: (agent: AgentRosterNodeData) => void
+  onStartFromScratch: () => void
 }) {
   const { t } = useTranslation(['workflow', 'workflowAgent', 'agentRoster'])
   const labelId = useId()
@@ -97,41 +100,17 @@ export function ExternalAgentField({
           </p>
         )}
       </div>
-      <PopoverContent align="start" className="w-100 max-w-[calc(100vw-2rem)] p-1">
+      <PopoverContent align="start" className="w-92 max-w-[calc(100vw-2rem)] overflow-hidden">
         <PopoverTitle className="sr-only">
           {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
         </PopoverTitle>
-        <ExternalAgentChangeOptions
-          onSelect={async (next) => {
-            if (await onChange(next)) setOpen(false)
-          }}
+        <WorkflowAgentSelectorContent
+          onSelect={onSelectDify}
+          onSelectExternal={onChange}
+          onStartFromScratch={onStartFromScratch}
+          onRequestClose={() => setOpen(false)}
         />
       </PopoverContent>
     </Popover>
-  )
-}
-
-function ExternalAgentChangeOptions({
-  onSelect,
-}: {
-  onSelect: (agent: ExternalAgentWorkflowPreviewAgent) => Promise<void>
-}) {
-  const { t } = useTranslation(['agentRoster'])
-  const [search, setSearch] = useState('')
-  const keyword = useDebounce(search.trim(), { wait: 300 })
-  return (
-    <div>
-      <div className="p-1">
-        <SearchInput
-          value={search}
-          onValueChange={setSearch}
-          aria-label={t(($) => $['roster.searchLabel'])}
-          placeholder={t(($) => $['roster.nodeSelector.searchAgentsPlaceholder'])}
-        />
-      </div>
-      <div className="flex max-h-60 flex-col overflow-y-auto p-1">
-        <ExternalAgentOptions keyword={keyword} allowDisabled onSelect={onSelect} />
-      </div>
-    </div>
   )
 }
