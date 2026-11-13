@@ -1569,12 +1569,16 @@ export const cancel = {
   post: post17,
 }
 
+/**
+ * Retry a scoped dataset evaluation using the current caller identity
+ */
 export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdEvaluationRunsByRunIdRetry',
     path: '/datasets/{dataset_id}/evaluation/runs/{run_id}/retry',
+    summary: 'Retry a scoped dataset evaluation using the current caller identity',
     tags: ['console'],
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryPath }))

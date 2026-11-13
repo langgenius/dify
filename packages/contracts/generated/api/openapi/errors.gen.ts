@@ -37,4 +37,15 @@ const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-export const post16Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+const zServiceApiDisabledError = /* @__PURE__ */ (() =>
+  zErrorBody.and(
+    z.object({
+      code: z.literal('service_api_disabled'),
+      status: z.literal(403),
+    }),
+  ))()
+
+export const post16Errors = {
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  service_api_disabled: { status: 403, data: zServiceApiDisabledError },
+}

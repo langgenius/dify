@@ -213,12 +213,16 @@ export const cancel = {
   post: post4,
 }
 
+/**
+ * Admit a retry using the current caller and target permissions
+ */
 export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetry',
     path: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry',
+    summary: 'Admit a retry using the current caller and target permissions',
     tags: ['console'],
   })
   .input(

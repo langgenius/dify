@@ -1192,7 +1192,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
-| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorBody](#errorbody)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ServiceApiDisabledError](#serviceapidisablederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -3742,6 +3742,14 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | base_url | string |  | Yes |
 | enabled | boolean |  | Yes |
+
+#### ServiceApiDisabledError
+
+This app's Service API is turned off.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ServiceApiDisabledError |  | This app's Service API is turned off. |  |
 
 #### ServiceApiPatch
 

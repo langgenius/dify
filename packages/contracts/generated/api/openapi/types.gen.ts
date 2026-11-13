@@ -1320,6 +1320,11 @@ export type ServiceApi = {
   enabled: boolean
 }
 
+export type ServiceApiDisabledError = ErrorBody & {
+  code: 'service_api_disabled'
+  status: 403
+}
+
 export type ServiceApiPatch = {
   enabled: boolean
 }
@@ -3435,7 +3440,7 @@ export type PostAppsByAppIdPublishData = {
 }
 
 export type PostAppsByAppIdPublishErrors = {
-  403: PaidPlanRequiredError | ErrorBody
+  403: PaidPlanRequiredError | ServiceApiDisabledError | ErrorBody
   422: ErrorBody
   default: ErrorBody
 }

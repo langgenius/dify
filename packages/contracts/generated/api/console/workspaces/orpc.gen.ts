@@ -763,12 +763,16 @@ export const agents = {
   byAgentId,
 }
 
+/**
+ * Return only evaluator Apps this caller may run, with filtered pagination
+ */
 export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentAvailableEvaluationWorkflows',
     path: '/workspaces/current/available-evaluation-workflows',
+    summary: 'Return only evaluator Apps this caller may run, with filtered pagination',
     tags: ['console'],
   })
   .input(

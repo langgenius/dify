@@ -1801,6 +1801,18 @@ export const zServiceApi = z.object({
 })
 
 /**
+ * ServiceApiDisabledError
+ *
+ * This app's Service API is turned off.
+ */
+export const zServiceApiDisabledError = zErrorBody.and(
+  z.object({
+    code: z.literal('service_api_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * ServiceApiPatch
  */
 export const zServiceApiPatch = z.object({

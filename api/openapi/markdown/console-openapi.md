@@ -7390,6 +7390,8 @@ Get dataset error documents
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/retry
+**Retry a scoped dataset evaluation using the current caller identity**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14673,6 +14675,8 @@ Get list of available agent providers
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/available-evaluation-workflows
+**Return only evaluator Apps this caller may run, with filtered pagination**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -19418,6 +19422,8 @@ Invalid path arguments fail before provider discovery or asset access.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry
+**Admit a retry using the current caller and target permissions**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
