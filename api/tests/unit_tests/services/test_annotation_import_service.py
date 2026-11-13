@@ -122,6 +122,21 @@ def test_reservation_error_releases_owner_and_preserves_original_error(cleanup_f
     assert publish.published == []
 
 
+def test_publish_error_releases_reservation_and_preserves_original_error() -> None:
+    publish_error = RuntimeError("publish failed")
+    jobs = _JobStore()
+    jobs.release_error = RuntimeError("cleanup failed")
+    publish = _Publisher(error=publish_error)
+
+    with pytest.raises(RuntimeError, match="publish failed"):
+        _import_service(jobs, publish).import_csv(
+            tenant_id="tenant-1", app_id="app-1", account_id="account-1", stream=_csv_stream()
+        )
+
+    assert len(jobs.released) == 1
+    assert len(publish.published) == 1
+
+
 def test_preserves_literal_na_and_other_non_nan_text() -> None:
     stream = BytesIO(b"question,answer\nNA,valid answer\nvalid question,NA\nN/A,NULL\nnull,#N/A\n")
 

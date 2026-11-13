@@ -75,7 +75,38 @@ def test_created_job_has_fallback_expiry_for_waiting_status_and_owner(store: Job
     assert 0 < store.redis.ttl(annotation_import_job_owner_key(job_id=store.job_id)) <= 86400
     assert 0 < store.redis.ttl(f"app_annotation_batch_import_{store.job_id}") <= 86400
     assert store.repository.count_active(tenant_id=store.tenant_id, now_ms=200000) == 1
-    assert 0 < store.redis.ttl(f"annotation_import_active:{store.tenant_id}") <= 7200
+    assert 0 < store.redis.ttl(f"annotation_import_active:{store.tenant_id}") <= 86400
+
+
+def test_atomic_reservation_rejects_when_capacity_is_full_and_removes_owner(store: JobStore) -> None:
+    store.redis.zadd(f"annotation_import_active:{store.tenant_id}", {"already-active": 200000})
+
+    accepted = store.repository.create(
+        tenant_id=store.tenant_id,
+        app_id=store.app_id,
+        job_id=store.job_id,
+        now_ms=200001,
+        max_concurrent=1,
+    )
+
+    assert accepted is False
+    assert store.redis.get(annotation_import_job_owner_key(job_id=store.job_id)) is None
+    assert store.redis.get(f"app_annotation_batch_import_{store.job_id}") is None
+
+
+def test_atomic_reservation_creates_waiting_status_when_capacity_is_available(store: JobStore) -> None:
+    accepted = store.repository.create(
+        tenant_id=store.tenant_id,
+        app_id=store.app_id,
+        job_id=store.job_id,
+        now_ms=200000,
+        max_concurrent=1,
+    )
+
+    assert accepted is True
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
+    ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
 
 
 @pytest.mark.parametrize("different_owner", ["tenant", "app"])
@@ -160,17 +191,24 @@ def test_creation_cannot_overwrite_another_owner(store: JobStore, different_owne
     ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
 
 
-def test_active_count_excludes_the_two_minute_boundary_and_is_tenant_scoped(store: JobStore) -> None:
+def test_active_count_excludes_the_24_hour_boundary_and_is_tenant_scoped(store: JobStore) -> None:
+    now_ms = 100_000_000
+    stale_after_ms = 24 * 60 * 60 * 1000
     store.redis.zadd(
         f"annotation_import_active:{store.tenant_id}",
-        {"old": 79999, "boundary": 80000, "recent": 80001, "now": 200000},
+        {
+            "old": now_ms - stale_after_ms - 1,
+            "boundary": now_ms - stale_after_ms,
+            "recent": now_ms - 120_000,
+            "now": now_ms,
+        },
     )
     other_tenant_id = str(uuid4())
-    store.redis.zadd(f"annotation_import_active:{other_tenant_id}", {"other": 200000})
+    store.redis.zadd(f"annotation_import_active:{other_tenant_id}", {"other": now_ms})
 
-    assert store.repository.count_active(tenant_id=store.tenant_id, now_ms=200000) == 2
+    assert store.repository.count_active(tenant_id=store.tenant_id, now_ms=now_ms) == 2
     assert store.redis.zcard(f"annotation_import_active:{store.tenant_id}") == 2
-    assert store.repository.count_active(tenant_id=other_tenant_id, now_ms=200000) == 1
+    assert store.repository.count_active(tenant_id=other_tenant_id, now_ms=now_ms) == 1
 
 
 def test_release_removes_owned_job_and_only_its_active_entry(store: JobStore) -> None:
