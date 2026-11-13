@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import cast
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from extensions.logstore.repositories.logstore_api_workflow_run_repository import LogstoreAPIWorkflowRunRepository
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Message
@@ -22,7 +20,8 @@ from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus,
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
+from repositories.api_workflow_run_repository import AppWorkflowRunStats
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowRunMessageRef,
@@ -164,13 +163,15 @@ def test_resume_request_requires_an_active_pause_and_dispatch_claim_requires_pos
 
 
 def test_logstore_workflow_repository_delegates_resume_dispatch_to_sql_control_repository(
-    sqlite_session_factory: sessionmaker[Session], workflow_run: WorkflowRun
+    sqlite_session_factory: sessionmaker[Session], workflow_run: WorkflowRun, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_run_repository.AliyunLogStore"):
-        repository_factory = cast(
-            Callable[[sessionmaker[Session]], APIWorkflowRunRepository], LogstoreAPIWorkflowRunRepository
+        monkeypatch.setattr(
+            dify_config,
+            "API_WORKFLOW_RUN_REPOSITORY",
+            "extensions.logstore.repositories.logstore_api_workflow_run_repository.LogstoreAPIWorkflowRunRepository",
         )
-        repository = repository_factory(sqlite_session_factory)
+        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(sqlite_session_factory)
     pause = WorkflowPause(
         workflow_id=workflow_run.workflow_id,
         workflow_run_id=workflow_run.id,
