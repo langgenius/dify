@@ -1,10 +1,11 @@
 from collections.abc import Callable, Generator
+from concurrent.futures import ThreadPoolExecutor
 from contextvars import copy_context
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from threading import Event, Thread
+from threading import Barrier, Thread
 from time import perf_counter
-from typing import override
+from typing import Literal, override
 
 import pytest
 from flask import Flask
@@ -31,26 +32,33 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, ChatAppGenerateEntity, InvokeFrom
-from core.app.entities.queue_entities import QueueAdvancedChatMessageEndEvent, QueueLLMChunkEvent, QueueMessageEndEvent
-from core.app.entities.task_entities import MessageReplaceStreamResponse, MessageStreamResponse
+from core.app.entities.queue_entities import (
+    QueueAdvancedChatMessageEndEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+    QueueTextChunkEvent,
+)
+from core.app.entities.task_entities import (
+    ChatbotAppBlockingResponse,
+    MessageReplaceStreamResponse,
+    MessageStreamResponse,
+)
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_context import get_app_moderation_runtime
 from core.model_manager import ModelInstance, ModelManager
-from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.input_moderation import InputModeration
-from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
 from core.moderation.output_moderation import ModerationRule as OutputModerationRule
 from core.moderation.output_moderation import OutputModeration
 from enums import DeploymentEdition
 from events.message_event import message_was_created
 from extensions.application_services.app_moderation import (
     DEFAULT_CHAT_MODERATION_REPLY,
+    ScopedAppModerationRuntime,
     app_moderation_scope,
     app_output_evaluator,
     app_rejection_replacement,
-    build_app_openai_checker,
-    configure_app_moderation,
     current_moderation_session,
     evaluate_app_input,
     evaluate_app_output,
@@ -64,7 +72,7 @@ from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
 from models.provider import ProviderType
-from services.moderation_adapters import HostedOpenAIModerationGateway
+from services.moderation_adapters import HostedOpenAIModerationGateway, LLMModerationGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -96,6 +104,50 @@ class RecordingGateway:
         self.calls.append((request.text, phase))
         return ModerationVerdict(
             flagged="blocked" in request.text, message=f"Model {phase} was rejected by moderation."
+        )
+
+
+class ParallelGateway(RecordingGateway):
+    def __init__(self) -> None:
+        super().__init__()
+        self.barrier = Barrier(2)
+
+    @override
+    def check(
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
+    ) -> ModerationVerdict:
+        self.barrier.wait(timeout=5)
+        return super().check(context, rule=rule, request=request, phase=phase)
+
+
+class SegmentGateway:
+    def __init__(self, action: Literal["direct_output", "overridden"], preset: str) -> None:
+        self.action = action
+        self.preset = preset
+        self.calls: list[str] = []
+
+    def check(
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
+    ) -> ModerationVerdict:
+        assert context.tenant_id == "tenant-1"
+        assert rule.type == "api"
+        assert phase == "output"
+        self.calls.append(request.text)
+        return ModerationVerdict(
+            flagged="blocked" in request.text,
+            message=self.preset,
+            replacement=ModerationReplacement(
+                action=self.action, preset_response=self.preset, text=request.text.replace("blocked", "masked")
+            ),
+        )
+
+
+def check_phase(guard: LLMModerationGuard, phase: ModerationPhase, text: str) -> None:
+    if phase == "input":
+        guard.check_inputs([UserPromptMessage(content=text)])
+    else:
+        guard.check_result(
+            LLMResult(model="model", message=AssistantPromptMessage(content=text), usage=LLMUsage.empty_usage())
         )
 
 
@@ -141,21 +193,6 @@ class TransientOutputFailureGateway:
         return ModerationVerdict(flagged=False, message="")
 
 
-class BlockingOutputFailureGateway(TransientOutputFailureGateway):
-    def __init__(self) -> None:
-        super().__init__()
-        self.entered = Event()
-        self.release = Event()
-
-    @override
-    def check(
-        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
-    ) -> ModerationVerdict:
-        self.entered.set()
-        assert self.release.wait(5)
-        return super().check(context, rule=rule, request=request, phase=phase)
-
-
 @dataclass(frozen=True)
 class ModerationServices:
     moderation: ModerationService
@@ -176,7 +213,7 @@ def app_config(backend: str = "openai_moderation") -> AppConfig:
     )
 
 
-def test_app_and_model_share_input_verdict_and_preserve_app_replacement() -> None:
+def test_model_owns_input_checks_and_app_only_renders_rejection() -> None:
     gateway = RecordingGateway()
     service = ModerationService(gateway=gateway)
     rule = ModerationRule(
@@ -187,18 +224,18 @@ def test_app_and_model_share_input_verdict_and_preserve_app_replacement() -> Non
         guard = build_llm_moderation_guard(
             AppRequestContext(tenant_id="tenant-1", app_id="app-1"), service=service, rule=rule, platform=True
         )
-        check = build_app_openai_checker(session, "input", service=service)
-        assert check("safe") is False
+        config = app_config()
+        app_result = evaluate_app_input(session, config, {}, "safe")
+        assert app_result is not None
+        assert not app_result.flagged
         guard.check_inputs([UserPromptMessage(content="safe")])
         assert gateway.calls == [("safe", "input")]
-        assert check("blocked") is True
-
-        config = app_config().sensitive_word_avoidance
-        assert config is not None
-        backend = OpenAIModeration(app_id="app-1", tenant_id="tenant-1", config=config.config)
-        verdict = backend.moderation_for_inputs({}, "blocked")
-        assert verdict.flagged
-        assert verdict.preset_response == "App input replacement"
+        with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
+            guard.check_inputs([UserPromptMessage(content="blocked")])
+        assert app_rejection_replacement(config, rejected.value) == ("App input replacement", "input")
+        app_result = evaluate_app_input(session, config, {}, "blocked")
+        assert app_result is not None
+        assert not app_result.flagged
         assert gateway.calls == [("safe", "input"), ("blocked", "input")]
 
 
@@ -215,7 +252,7 @@ def test_unrelated_capabilities_cannot_be_marked_as_shared_platform_openai_check
                 rule=rule,
                 platform=True,
             )
-        assert not session.enabled
+        assert session.rejected_phase("Rejected") is None
     assert not gateway.calls
 
 
@@ -237,19 +274,23 @@ def test_admitted_app_model_checks_fail_closed_without_exposing_backend_errors(
     monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", lambda: service)
     config = app_config()
     with app_moderation_scope("tenant-1", "app-1") as session:
-        session.enabled = True
-        session.app_platform_checks_enabled = True
         runtime = get_app_moderation_runtime()
         assert runtime is not None
-
-        def evaluate() -> None:
-            if phase == "input":
-                runtime.evaluate_input(config, {}, "input")
-            else:
-                runtime.evaluate_output(config, "output")
-
+        assert not runtime.evaluate_input(config, {}, "input").flagged
+        assert not runtime.evaluate_output(config, "output").flagged
+        assert not client.calls
+        guard = build_llm_moderation_guard(
+            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+            service=service,
+            rule=ModerationRule(
+                type="openai_moderation",
+                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
+            ),
+            platform=True,
+        )
         with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
-            evaluate()
+            check_phase(guard, phase, phase)
+        assert session.unavailable_error(str(unavailable.value)) is unavailable.value
     assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
     assert unavailable.value.status_code == 503
     assert unavailable.value.__cause__ is not None
@@ -297,8 +338,6 @@ def test_app_runtime_admission_and_phase_boundaries_do_not_resolve_a_backend(
             assert not result.flagged
         else:
             assert evaluate() is None
-        if scenario in {"foreign_tenant", "foreign_app"}:
-            assert runtime.check_openai(config.tenant_id, config.app_id, {"key": "value"}, phase) is None
 
 
 def test_app_input_evaluation_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -357,7 +396,7 @@ def test_input_moderation_runtime_uses_the_shared_use_case(monkeypatch: pytest.M
 
 
 @pytest.mark.parametrize("stream", [False, True])
-def test_app_output_reuses_approved_model_output_without_another_call(stream: bool) -> None:
+def test_app_output_never_schedules_another_model_check(stream: bool) -> None:
     gateway = RecordingGateway()
     service = ModerationService(gateway=gateway)
     rule = ModerationRule(
@@ -385,12 +424,11 @@ def test_app_output_reuses_approved_model_output_without_another_call(stream: bo
                 )
             )
         assert gateway.calls == [("safe answer", "output")]
-        check = build_app_openai_checker(session, "output", service=service)
-        assert not check("safe")
-        assert not check("safe answer")
-        assert gateway.calls == [("safe answer", "output")]
-        assert not check("different answer")
-        assert gateway.calls[-1] == ("different answer", "output")
+        for text in ["safe", "safe answer", "different answer"]:
+            app_result = evaluate_app_output(session, app_config(), text)
+            assert app_result is not None
+            assert not app_result.flagged
+            assert gateway.calls == [("safe answer", "output")]
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
@@ -441,7 +479,7 @@ def test_blank_app_presets_use_the_chat_default(phase: ModerationPhase, response
 
 @pytest.mark.parametrize("phase", ["input", "output"])
 @pytest.mark.parametrize("response", [None, "", " \t"])
-def test_shared_app_checks_use_default_replies_for_blank_presets(
+def test_model_rejections_use_default_replies_for_blank_app_presets(
     monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, response: str | None
 ) -> None:
     service = ModerationService(gateway=RecordingGateway())
@@ -450,43 +488,17 @@ def test_shared_app_checks_use_default_replies_for_blank_presets(
     rule = config.sensitive_word_avoidance
     assert rule is not None
     rule.config[f"{phase}s_config"]["preset_response"] = response
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        session.app_platform_checks_enabled = True
-        build_llm_moderation_guard(
+    with app_moderation_scope("tenant-1", "app-1"):
+        guard = build_llm_moderation_guard(
             AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
             service=service,
             rule=ModerationRule(type="openai_moderation", config=rule.config),
             platform=True,
         )
-        if phase == "input":
-            with pytest.raises(ModerationError) as rejected:
-                InputModeration().check(
-                    app_id="app-1",
-                    tenant_id="tenant-1",
-                    app_config=config,
-                    inputs={},
-                    query="blocked",
-                    message_id="message-1",
-                    trace_scope=None,
-                )
-            assert str(rejected.value) == DEFAULT_CHAT_MODERATION_REPLY
-        else:
-            queue = MessageBasedAppQueueManager(
-                task_id="task-1",
-                user_id="account-1",
-                invoke_from=InvokeFrom.DEBUGGER,
-                conversation_id="conversation-1",
-                app_mode=AppMode.CHAT,
-                message_id="message-1",
-            )
-            handler = OutputModeration(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                rule=OutputModerationRule(type=rule.type, config=rule.config),
-                queue_manager=queue,
-                output_evaluator=app_output_evaluator(config),
-            )
-            assert handler.moderation_completion("blocked") == (DEFAULT_CHAT_MODERATION_REPLY, True)
+        with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
+            check_phase(guard, phase, "blocked")
+        assert app_rejection_replacement(config, rejected.value) == (DEFAULT_CHAT_MODERATION_REPLY, phase)
+        assert app_output_evaluator(config) is None
 
 
 def test_scope_is_isolated_and_shared_with_copied_worker_contexts() -> None:
@@ -501,6 +513,27 @@ def test_scope_is_isolated_and_shared_with_copied_worker_contexts() -> None:
     assert current_moderation_session("tenant-1") is None
     with app_moderation_scope("tenant-1", "app-1") as other_session:
         assert other_session is not session
+
+
+@pytest.mark.parametrize("same_text", [False, True])
+def test_independent_model_checks_do_not_serialize_or_deduplicate(same_text: bool) -> None:
+    gateway = ParallelGateway()
+    with app_moderation_scope("tenant-1", "app-1"):
+        guard = build_llm_moderation_guard(
+            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+            service=ModerationService(gateway=gateway),
+            rule=ModerationRule(
+                type="openai_moderation",
+                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}},
+            ),
+            platform=True,
+        )
+    texts = ["first", "first" if same_text else "second"]
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(guard.check_inputs, [UserPromptMessage(content=text)]) for text in texts]
+        for future in futures:
+            future.result(timeout=10)
+    assert sorted(gateway.calls) == sorted((text, "input") for text in texts)
 
 
 @pytest.mark.parametrize(
@@ -526,10 +559,10 @@ def test_workflow_app_configuration_never_admits_hosted_checks(
         invoke_from=InvokeFrom.DEBUGGER,
     )
     with app_moderation_scope("tenant-1", "app-1") as session:
-        configure_app_moderation(entity)
-        assert not session.enabled
-        assert not session.app_platform_checks_enabled
-        assert (app_output_evaluator(config) is not None) is True
+        result = evaluate_app_input(session, entity.app_config, {}, "safe")
+        assert result is not None
+        assert not result.flagged
+        assert app_output_evaluator(config) is None
 
 
 @pytest.mark.parametrize("advanced", [False, True])
@@ -614,8 +647,7 @@ def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback
             invoke_from=InvokeFrom.DEBUGGER,
         )
     with app_moderation_scope("tenant-1", "app-1") as session:
-        configure_app_moderation(entity)
-        assert session.app_platform_checks_enabled is (platform_model and not advanced)
+        assert entity.app_config.app_id == config.app_id
         flagged, inputs, query = InputModeration().check(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -630,15 +662,7 @@ def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback
         assert query == "safe input"
         runtime = get_app_moderation_runtime()
         assert runtime is not None
-        if not session.enabled:
-            assert runtime.check_openai("tenant-1", "app-1", {"text": "blocked"}, "input") is False
-            assert runtime.check_openai("tenant-1", "app-1", {"text": "blocked"}, "output") is False
-            rule = config.sensitive_word_avoidance
-            assert rule is not None
-            backend = OpenAIModeration(app_id="app-1", tenant_id="tenant-1", config=rule.config)
-            assert not backend.moderation_for_inputs({}, "blocked").flagged
-            assert not backend.moderation_for_outputs("blocked").flagged
-        if advanced and platform_model:
+        if platform_model:
             guard = ModelInstance(model.provider_model_bundle, "test-model", credentials={}).moderation
             assert guard is not None
             guard.check_inputs([UserPromptMessage(content="credit input")])
@@ -649,31 +673,24 @@ def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback
                     usage=LLMUsage.empty_usage(),
                 )
             )
-            assert session.enabled
-            assert not session.app_platform_checks_enabled
             shared = evaluate_app_output(session, config, "credit output")
             assert shared is not None
             assert not shared.flagged
-        evaluator = app_output_evaluator(config)
-        assert evaluator is not None
-        result = evaluator("unrelated custom model output")
+        assert app_output_evaluator(config) is None
+        result = runtime.evaluate_output(config, "unrelated custom model output")
         assert result is not None
         assert not result.flagged
         assert result.text == "unrelated custom model output"
         assert result.preset_response == ""
-    if platform_model and not advanced:
-        assert gateway.calls == [("safe input", "input"), ("unrelated custom model output", "output")]
+    if platform_model:
+        assert gateway.calls == [("credit input", "input"), ("credit output", "output")]
     else:
-        if platform_model:
-            assert gateway.calls == [("credit input", "input"), ("credit output", "output")]
-        else:
-            assert not hosted_calls
+        assert not hosted_calls
 
 
 def test_runtime_does_not_share_output_checks_or_presets_with_another_app() -> None:
     config = app_config().model_copy(update={"app_id": "app-2"})
-    with app_moderation_scope("tenant-1", "app-1") as session:
-        session.enabled = True
+    with app_moderation_scope("tenant-1", "app-1"):
         runtime = get_app_moderation_runtime()
         assert runtime is not None
         assert app_output_evaluator(config) is None
@@ -688,16 +705,62 @@ def test_workflow_replacement_uses_only_an_exact_rejection_from_the_same_scope(c
     with app_moderation_scope("tenant-1", "app-1") as session:
         handler = workflow_rejection_handler(config)
 
-        def reject() -> None:
-            raise PlatformModerationRejectedInvocationError("output", "Rejected model output")
-
-        with pytest.raises(PlatformModerationRejectedInvocationError):
-            session.check("blocked", "output", reject)
+        session.record_rejection(PlatformModerationRejectedInvocationError("output", "Rejected model output"))
     assert handler("Rejected model output") == (
         "App output replacement" if configured else DEFAULT_CHAT_MODERATION_REPLY,
         "output",
     )
     assert handler("Unrelated workflow failure") is None
+
+
+def test_workflow_unavailability_requires_a_recorded_failure_in_the_same_app_invocation() -> None:
+    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
+    error = ModerationUnavailableInvocationError()
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        runtime = ScopedAppModerationRuntime(session)
+        assert runtime.workflow_error(config, str(error)) is None
+        session.record_unavailable(error)
+    restored = runtime.workflow_error(config, str(error))
+    assert restored is error
+    assert restored.error_code == "moderation_unavailable"
+    assert restored.status_code == 503
+    assert runtime.workflow_error(config, f"Run failed: {error}") is None
+    assert runtime.workflow_error(config.model_copy(update={"app_id": "other-app"}), str(error)) is None
+    assert runtime.workflow_error(config.model_copy(update={"tenant_id": "other-tenant"}), str(error)) is None
+    with app_moderation_scope("tenant-1", "app-1") as next_session:
+        assert ScopedAppModerationRuntime(next_session).workflow_error(config, str(error)) is None
+
+
+@pytest.mark.parametrize("platform", [False, True])
+@pytest.mark.parametrize("app_id", ["app-1", "other-app"])
+def test_workflow_failure_recording_is_scoped_without_sharing_explicit_policy_verdicts(
+    platform: bool, app_id: str
+) -> None:
+    config = app_config().model_copy(update={"app_mode": AppMode.ADVANCED_CHAT})
+    client = RecordingHostedModerationClient()
+    client.error = RuntimeError("Private backend detail")
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"openai_api_key": "platform-key"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        )
+    )
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        runtime = ScopedAppModerationRuntime(session)
+        guard = build_llm_moderation_guard(
+            AppRequestContext(tenant_id="tenant-1", app_id=app_id),
+            service=service,
+            rule=ModerationRule(
+                type="openai_moderation",
+                config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
+            ),
+            platform=platform,
+        )
+        with pytest.raises(ModerationUnavailableInvocationError) as failure:
+            guard.check_inputs([UserPromptMessage(content="safe")])
+    restored = runtime.workflow_error(config, str(failure.value))
+    assert restored is (failure.value if app_id == "app-1" else None)
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
@@ -840,19 +903,18 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
     assert handler is not None
     if background:
         queue.publish(
-            QueueLLMChunkEvent(
+            QueueTextChunkEvent(text="must not be delivered" * 30)
+            if advanced
+            else QueueLLMChunkEvent(
                 chunk=LLMResultChunk(
                     model="test-model",
-                    delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="must not be delivered")),
+                    delta=LLMResultChunkDelta(
+                        index=0, message=AssistantPromptMessage(content="must not be delivered" * 30)
+                    ),
                 )
             ),
             PublishFrom.TASK_PIPELINE,
         )
-        handler.buffer = "output being checked"
-        handler.worker(flask_app, 1)
-        assert not handler.thread_running
-        with pytest.raises(ModerationUnavailableInvocationError):
-            handler.moderation_completion("later safe output")
     else:
         terminal = (
             QueueAdvancedChatMessageEndEvent()
@@ -889,64 +951,166 @@ def test_output_failure_emits_safe_error_and_persists_message_status(
         assert saved.error == str(ModerationUnavailableInvocationError())
 
 
-def test_final_output_cannot_approve_a_racing_background_failure() -> None:
-    gateway = BlockingOutputFailureGateway()
+def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
+    gateway = TransientOutputFailureGateway()
     flask_app = Flask(__name__)
     flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
     config = app_config("api")
     rule = config.sensitive_word_avoidance
     assert rule is not None
-    queue = MessageBasedAppQueueManager(
-        task_id="task-1",
-        user_id="account-1",
-        invoke_from=InvokeFrom.DEBUGGER,
-        conversation_id="conversation-1",
-        app_mode=AppMode.CHAT,
-        message_id="message-1",
-    )
     with app_moderation_scope("tenant-1", "app-1"):
         handler = OutputModeration(
             tenant_id="tenant-1",
             app_id="app-1",
             rule=OutputModerationRule(type=rule.type, config=rule.config),
-            queue_manager=queue,
             output_evaluator=app_output_evaluator(config),
-            buffer="pending output",
         )
-    final_entered = Event()
-    final_finished = Event()
-    final_errors: list[ModerationUnavailableInvocationError] = []
-
-    def finalize() -> None:
-        with flask_app.app_context():
-            final_entered.set()
-            try:
-                handler.moderation_completion("final output")
-            except ModerationUnavailableInvocationError as error:
-                final_errors.append(error)
-            finally:
-                final_finished.set()
-
-    worker = Thread(target=handler.worker, args=(flask_app, 1))
-    handler.thread = worker
-    worker.start()
-    final_worker = Thread(target=finalize)
-    try:
-        assert gateway.entered.wait(5)
-        final_worker.start()
-        assert final_entered.wait(5)
-        assert not final_finished.wait(0.05)
-    finally:
-        gateway.release.set()
-        handler.stop_thread()
-        worker.join(5)
-        if final_worker.ident is not None:
-            final_worker.join(5)
-    assert not worker.is_alive()
-    assert not final_worker.is_alive()
+    with flask_app.app_context():
+        with pytest.raises(ModerationUnavailableInvocationError) as failure:
+            handler.append_new_token("pending output" * 30)
+        with pytest.raises(ModerationUnavailableInvocationError) as terminal:
+            handler.moderation_completion("final output")
+    assert failure.value is terminal.value
     assert gateway.calls == 1
-    assert len(final_errors) == 1
-    assert handler.error is final_errors[0]
+
+
+@pytest.mark.parametrize("advanced", [False, True])
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("action", ["direct_output", "overridden"])
+@pytest.mark.parametrize("preset", ["Refused", ""])
+def test_sequential_app_replacements_are_delivered_and_persisted_without_final_recheck(
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    advanced: bool,
+    stream: bool,
+    action: Literal["direct_output", "overridden"],
+    preset: str,
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    gateway = SegmentGateway(action, preset)
+    pipeline: AdvancedChatAppGenerateTaskPipeline | EasyUIBasedGenerateTaskPipeline
+    flask_app = Flask(__name__)
+    flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
+    mode = AppMode.ADVANCED_CHAT if advanced else AppMode.CHAT
+    config = app_config("api").model_copy(update={"app_mode": mode})
+    conversation = make_conversation(mode=mode, from_source=ConversationFromSource.CONSOLE)
+    message = make_message(
+        query="query", message={}, answer="", from_source=ConversationFromSource.CONSOLE, created_at=datetime.now(UTC)
+    )
+    with sqlite_session_factory() as database:
+        database.add_all([conversation, message])
+        database.commit()
+    queue = MessageBasedAppQueueManager(
+        task_id="task-1",
+        user_id="account-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id=conversation.id,
+        app_mode=mode,
+        message_id=message.id,
+    )
+    with flask_app.app_context(), message_was_created.muted():
+        with app_moderation_scope("tenant-1", "app-1"):
+            if advanced:
+                entity = AdvancedChatAppGenerateEntity(
+                    task_id="task-1",
+                    app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
+                    query="query",
+                    inputs={},
+                    files=[],
+                    user_id="account-1",
+                    stream=stream,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
+                queue.graph_runtime_state = RuntimeState(
+                    workflow_id="workflow-1", variable_pool=build_test_variable_pool(), start_at=perf_counter()
+                )
+                pipeline = AdvancedChatAppGenerateTaskPipeline(
+                    application_generate_entity=entity,
+                    workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
+                    queue_manager=queue,
+                    conversation=ConversationSnapshot.from_conversation(conversation),
+                    message=MessageSnapshot.from_message(message),
+                    user=make_account(),
+                    stream=stream,
+                    dialogue_count=1,
+                    draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+                        InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
+                    ),
+                )
+            else:
+                chat_entity = ChatAppGenerateEntity(
+                    task_id="task-1",
+                    app_config=EasyUIBasedAppConfig(
+                        **config.model_dump(),
+                        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                        app_model_config_dict={},
+                        model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                        prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+                    ),
+                    model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+                    query="query",
+                    inputs={},
+                    files=[],
+                    user_id="account-1",
+                    stream=stream,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
+                pipeline = EasyUIBasedGenerateTaskPipeline(
+                    application_generate_entity=chat_entity,
+                    queue_manager=queue,
+                    conversation=conversation,
+                    message=message,
+                    stream=stream,
+                )
+        for text in ["safe ", "blocked", " tail"]:
+            event = (
+                QueueTextChunkEvent(text=text)
+                if advanced
+                else QueueLLMChunkEvent(
+                    chunk=LLMResultChunk(
+                        model="test-model",
+                        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=text)),
+                    )
+                )
+            )
+            queue.publish(event, PublishFrom.APPLICATION_MANAGER)
+        terminal = (
+            QueueAdvancedChatMessageEndEvent()
+            if advanced
+            else QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model="test-model",
+                    message=AssistantPromptMessage(content="safe blocked tail"),
+                    usage=LLMUsage.empty_usage(),
+                )
+            )
+        )
+        queue.publish(terminal, PublishFrom.APPLICATION_MANAGER)
+        expected = preset if action == "direct_output" else "safe masked tail"
+        responses = pipeline._process_stream_response(None)
+        if stream:
+            converter = AdvancedChatAppGenerateResponseConverter if advanced else ChatAppGenerateResponseConverter
+            chunks = list(converter.convert_stream_full_response(pipeline._to_stream_response(responses)))
+            public_chunks = [chunk for chunk in chunks if isinstance(chunk, dict)]
+            assert public_chunks[-1]["event"] == "message_end"
+            visible = ""
+            for chunk in public_chunks:
+                if chunk.get("event") == "message":
+                    visible += chunk["answer"]
+                elif chunk.get("event") == "message_replace":
+                    visible = chunk["answer"]
+            assert visible == expected
+            assert not any("blocked" in str(chunk.get("answer", "")) for chunk in public_chunks)
+        else:
+            response = pipeline._to_blocking_response(responses)
+            assert isinstance(response, ChatbotAppBlockingResponse)
+            assert response.data.answer == expected
+    with sqlite_session_factory() as database:
+        saved = database.get(Message, "message-1")
+        assert saved is not None
+        assert saved.answer == expected
+        assert saved.status == MessageStatus.NORMAL
+    assert gateway.calls == (["safe ", "blocked"] if action == "direct_output" else ["safe ", "blocked", " tail"])
 
 
 @pytest.mark.parametrize("advanced", [False, True])

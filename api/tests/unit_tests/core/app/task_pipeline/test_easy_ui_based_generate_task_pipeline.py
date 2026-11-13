@@ -63,6 +63,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
@@ -963,21 +964,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=True,
             )
 
-            class _Moderation:
-                def should_direct_output(self):
-                    return True
-
-                def get_final_output(self):
-                    return "final"
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("token")
-
-            assert result is True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
+            result = list(pipeline._handle_output_moderation_chunk("token"))
+            assert result == []
             events = cast(_FakeQueueManager, pipeline.queue_manager).published_events
-            assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
-            assert any(isinstance(event, QueueStopEvent) for event in events)
+            assert events == []
 
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
@@ -1755,7 +1751,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 prompt_messages=[],
                 delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="x")),
             )
-            pipeline._handle_output_moderation_chunk = lambda text: True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
             _set_queue_events(pipeline, [_queue_message(QueueLLMChunkEvent(chunk=chunk))])
 
             responses = list(pipeline._process_stream_response(publisher=None))
@@ -2261,21 +2262,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 message=message,
                 stream=True,
             )
-            appended_tokens: list[str] = []
-
-            class _Moderation:
-                def should_direct_output(self):
-                    return False
-
-                def append_new_token(self, text):
-                    appended_tokens.append(text)
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("next-token")
-
-            assert result is False
-            assert appended_tokens == ["next-token"]
+            handler = OutputModeration(
+                tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+            )
+            pipeline.output_moderation_handler = handler
+            result = list(pipeline._handle_output_moderation_chunk("next-token"))
+            assert len(result) == 1
+            assert handler.buffer == "next-token"
 
 
 """Exercise message-end file serialization against persisted SQLite rows.

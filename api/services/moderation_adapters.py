@@ -37,6 +37,7 @@ from services.moderation_service import (
     ModerationReplacement,
     ModerationRequest,
     ModerationRule,
+    ModerationUnavailableError,
     ModerationVerdict,
 )
 
@@ -408,12 +409,17 @@ class LLMModerationGuard:
         non_stream_segment_size: int | None = None,
         stream_segment_size: int | None = None,
         platform: bool = False,
-        output_observer: Callable[[object, str], None] | None = None,
+        rejection_observer: Callable[[ModerationRejectedError], None] | None = None,
+        failure_observer: Callable[[ModerationUnavailableError], None] | None = None,
     ) -> None:
         """Bind a nonempty tenant, phase enablement, and positive segment limits.
 
         None disables segmentation for that mode and preserves a single full-text
-        check. Disabled phases perform no inspection or I/O.
+        check. Disabled phases perform no inspection or I/O. An injected failure
+        observer retains typed unavailability for terminal workflow error recovery;
+        it never turns failed checks into approval or changes retry eligibility.
+        A platform rejection observer only publishes failure identity, never
+        executes checks or caches approved text for other model invocations.
         """
         if not tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
@@ -427,7 +433,8 @@ class LLMModerationGuard:
         self._non_stream_segment_size = non_stream_segment_size
         self._stream_segment_size = stream_segment_size
         self._platform = platform
-        self._output_observer = output_observer
+        self._rejection_observer = rejection_observer
+        self._failure_observer = failure_observer
 
     @property
     def tenant_id(self) -> str:
@@ -437,7 +444,7 @@ class LLMModerationGuard:
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
         """Approve every input segment before model/quota effects.
 
-        Platform policies preserve message boundaries for exact app sharing;
+        Platform policies preserve independent message boundaries;
         explicitly supplied policies retain the joined prompt representation.
         """
         if self._check_input:
@@ -455,8 +462,6 @@ class LLMModerationGuard:
         if self._check_output:
             for segment in self._segments(result_text(result), self._non_stream_segment_size):
                 self._check_segment(segment, "output")
-            if self._output_observer is not None:
-                self._output_observer(object(), _message_text(AssistantPromptMessage(content=result.message.content)))
 
     def _check_segment(self, text: str, phase: ModerationPhase) -> None:
         """Approve one segment or raise a typed app error without exposing backend failure details.
@@ -469,11 +474,17 @@ class LLMModerationGuard:
             self._check(text, phase)
         except ModerationRejectedError as error:
             if self._platform:
-                raise PlatformModerationRejectedInvocationError(error.phase, str(error)) from error
+                rejection = PlatformModerationRejectedInvocationError(error.phase, str(error))
+                if self._rejection_observer is not None:
+                    self._rejection_observer(rejection)
+                raise rejection from error
             raise ModerationRejectedInvocationError(error.phase, str(error)) from error
         except Exception as error:
             logger.exception("Moderation %s check failed", phase)
-            raise ModerationUnavailableInvocationError() from error
+            unavailable = ModerationUnavailableInvocationError()
+            if self._failure_observer is not None:
+                self._failure_observer(unavailable)
+            raise unavailable from error
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
         """Return the original approved result or a guarded stream, propagating all failures.
@@ -519,7 +530,6 @@ class LLMModerationGuard:
         chunks: list[LLMResultChunk] = []
         fragment_parts: list[str] = []
         fragment_length = 0
-        stream_identity = object()
         try:
             for chunk in response:
                 chunks.append(chunk)
@@ -529,7 +539,6 @@ class LLMModerationGuard:
                 if fragment_length >= segment_size:
                     text = "".join(fragment_parts)
                     self._check_segment(text, "output")
-                    self._record_stream_output(stream_identity, chunks)
                     yield from chunks
                     chunks = []
                     fragment_parts = []
@@ -539,18 +548,9 @@ class LLMModerationGuard:
                 text = "".join(fragment_parts)
                 if text:
                     self._check_segment(text, "output")
-                self._record_stream_output(stream_identity, chunks)
                 yield from chunks
         finally:
             response.close()
-
-    def _record_stream_output(self, identity: object, chunks: Sequence[LLMResultChunk]) -> None:
-        """Notify the invocation-local observer only after a segment passed, before exposing any of its chunks."""
-        if self._output_observer is not None:
-            self._output_observer(
-                identity,
-                "".join(_message_text(AssistantPromptMessage(content=chunk.delta.message.content)) for chunk in chunks),
-            )
 
     def _check_stream(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
         """Consume and close a stream, then yield its original chunks only after full approval."""
@@ -581,7 +581,6 @@ class LLMModerationGuard:
                 ]
             )
             self._check_segment(text, "output")
-            self._record_stream_output(object(), chunks)
             yield from chunks
         finally:
             response.close()

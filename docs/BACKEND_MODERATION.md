@@ -9,8 +9,8 @@ An enabled phase returns only after approval. Any flagged verdict raises
 `ModerationRejectedError`, including API verdicts requesting replacement rather
 than rejection. Backend failures propagate instead of silently approving text.
 Disabled phases perform no moderation I/O. Strict policies are selected when
-assembling models; matching app OpenAI rules reuse their verdicts and retain
-configured replacement behavior.
+assembling models. App OpenAI rules consume typed platform failures to apply
+configured replacement behavior; they never schedule a second OpenAI check.
 
 ## Automatic platform moderation
 
@@ -83,47 +83,50 @@ random input-fragment check is replaced by complete segmented checks.
 An explicitly supplied policy supplements enabled platform moderation rather
 than disabling it. When the switch is off, only the explicit policy applies.
 
-## App-level sharing and replacement
+## App-level ownership and replacement
 
-App generations create isolated tenant/app moderation sessions, shared only with
-their worker contexts and response pipelines. App input and output checks use
-the same `ModerationService` as model invocation: app-specific rules use
-`evaluate`, while the platform OpenAI verdict path uses the strict `check`.
-`check` rejects rather than applying a backend's replacement action;
-`evaluate` returns replacement data only for the app pipeline. `keywords`,
-`openai_moderation`, and `api` app rules therefore share one execution and
-error boundary while preserving their backend-specific replacement data. App
-OpenAI checks and the platform guard reuse exact same-phase input-segment
-verdicts. An app output prefix already approved by one model stream does not
-cause another OpenAI request. Arbitrary substrings, modified outputs, and
-concatenations from unrelated streams are not treated as approved. No verdicts
-are reused across app invocations or tenants.
+App generations create isolated tenant/app moderation sessions shared with model
+producers and one response consumer. Each model guard exclusively owns its input
+and output checks. App Model Moderation never proactively invokes OpenAI, selects
+credentials, or caches approved content. Its configuration only selects a reply
+for a real platform rejection. Disabling an app phase does not disable mandatory
+platform checks. Different model invocations remain independent even when their
+text is identical.
 
-App-level checks may proactively use platform credentials only when the app's
-trusted main model qualifies for automatic AI-credit moderation. Enabling an
-OpenAI app rule or the Cloud switch alone does not admit hosted checks. A
-workflow has no single main model: each eligible model contributes its own
-verdicts after assembly. Before model admission, or when app content has no
-reusable platform verdict, the app model check silently does nothing. It never
-falls back to a tenant moderation provider, incurs moderation credits, or raises
-missing-plugin/credential errors for these skipped checks. Mixed credit/custom-key
-workflows may reuse existing verdicts, but never use hosted credentials to check
-unrelated content from custom-key nodes. Keyword and API app rules remain unchanged.
+The session transports real failures through a thread-safe queue. The response
+consumer alone owns terminal lookup maps. The session does not execute checks,
+hold network locks, or coordinate once-only execution. Parallel workflow model
+calls therefore do not serialize their moderation requests. Guards publish
+platform rejections before raising, preserving configured Chatflow replies after
+workflow events stringify errors.
+
+Keyword and API app rules still use `ModerationService.evaluate` and retain their
+direct-reply and text-override semantics. They are independent policies, not
+duplicate OpenAI checks, and cannot bypass platform moderation. Output checks run
+sequentially on the response consumer without a worker or evaluation lock.
+Streaming checks inspect only new segments; completion checks only an unchecked
+tail, never the whole stream again. Direct replies replace the whole answer;
+API overrides replace the flagged segment while retaining preceding output and
+later deltas. Blocking output uses the non-stream segment size. Segments have no
+overlap or cross-boundary context. The existing app-level display-then-replace
+behavior remains distinct from the platform guard's check-before-delivery guarantee.
 
 App generation binds the shared scope before input and output work starts. A
 direct legacy caller without a bound scope retains the factory fallback; it is
 not used by app generation and cannot share platform verdicts.
+Independent use of the OpenAI capability retains tenant credentials, accounting,
+and failure behavior even inside an app scope. It is an explicit independent
+operation, not an execution path selected by the App Model Moderation toggle.
 
 The plugin `/invoke/app` entry also binds a fresh scope before dispatching to
 the app generator. Invocation validates tenant ownership before model work;
 copied producer contexts and captured output evaluators retain that scope after
 dispatch returns. Nested or subsequent requests never inherit its verdicts.
 
-Sharing is process-local. Remote Agent LLM gateway calls do not inherit the app
-session; local App Model Moderation cannot issue hosted or tenant checks without
-admission and cannot infer reusable verdicts from remote text. Other configured
-app rules remain independent. A client-provided approval flag must never be used
-to skip platform checks across that boundary.
+Error coordination is process-local. Remote Agent LLM gateway calls do not
+inherit the app session. Local App Model Moderation never issues hosted or tenant
+checks and cannot infer a typed remote verdict from text. Other configured app
+rules remain independent. A client-provided approval flag must never skip platform checks.
 
 An enabled app OpenAI rule uses its nonblank phase-specific preset when the
 platform rejects content. Chatbot, Chatflow, and legacy Agent Chat use the
@@ -144,6 +147,14 @@ the Redis/SSE subscriber stops reading at that terminal event; sending the reply
 afterwards would persist it without ever delivering it to the WebApp client.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
+Chatflow model guards record real unavailable failures in their invocation-local
+session before workflow events stringify them. Only an exact recorded terminal
+failure restores the typed `moderation_unavailable` error; matching text alone
+cannot classify an unrelated failure or reuse another app invocation's state.
+The error event precedes `workflow_finished` so public subscribers receive its
+503 payload, while blocking requests raise the typed error for HTTP mapping.
+This failure record is not a cached verdict and does not prevent later checks
+from retrying. No unavailable check becomes a preset or default chat reply.
 Explicit non-platform model policy failures are also preserved. Completion,
 Workflow, RAG, and other non-chat paths retain the normal moderation error when
 there is no matching preset. Remote New Agent errors retain their existing
@@ -177,12 +188,11 @@ Chat apps may render a platform rejection using a matching preset or the default
 reply described above instead of returning this error payload.
 
 App output evaluation failures use the same `moderation_unavailable` contract.
-The background worker publishes a terminal error and the response pipeline stops
-consuming queued output, persists the message's error status, and emits the
-existing error event. Final checks share a serialized evaluator and retain the
-first failure: a later successful retry cannot turn an unavailable check into
-approval. Already delivered app-level output is not retracted by this error;
-platform model guards continue to check segments before delivery.
+The response consumer immediately stops consuming queued output, persists the
+message's error status, and emits the existing error event. The handler retains
+the first failure without locks; completion cannot retry it into approval.
+Already delivered app-level output is not retracted by this error; platform
+model guards continue to check segments before delivery.
 
 ## Model invocation
 
@@ -244,9 +254,9 @@ infrastructure, not moderated business entry points.
 - Input checks precede model invocation and quota reservation. All prompt roles,
   text parts of multimodal messages, and assistant tool arguments are inspected
   as independent non-stream segments, so long prompts are fully covered without
-  sending one oversized moderation request. Each platform-checked prompt message has its own
-  segment sequence; an identical app input can share a verdict without treating
-  a substring of a different, composed prompt as approved.
+  sending one oversized moderation request. Each platform-checked prompt message
+  has its own segment sequence. Each model invocation performs its own checks;
+  app response handling does not schedule another moderation request.
 - Opaque Agent gateway dictionaries are inspected through validated copies. The
   original payload and provider-specific extension fields are forwarded unchanged.
 - Output checks inspect completion text, tool arguments, and native structured

@@ -1,14 +1,12 @@
-"""Compose invocation-local sharing between app replacement rules and model moderation."""
+"""Compose single-owner app checks and invocation-local model failure rendering."""
 
 import logging
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
-from functools import partial, wraps
+from functools import wraps
 from inspect import signature
 
-from configs import dify_config
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
-from core.app.entities.app_invoke_entities import AppGenerateEntity, EasyUIBasedAppGenerateEntity
 from core.model_context import get_app_moderation_runtime, use_app_moderation_runtime
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from machinery.context import AppRequestContext
@@ -19,7 +17,6 @@ from services.moderation_invocation_errors import (
 )
 from services.moderation_service import (
     ModerationPhase,
-    ModerationRejectedError,
     ModerationRequest,
     ModerationRule,
     ModerationService,
@@ -39,16 +36,6 @@ class ScopedAppModerationRuntime:
         """Bind one admitted session without provider I/O or process-wide caching."""
         self.session = session
 
-    def configure(self, entity: AppGenerateEntity) -> None:
-        """Activate sharing from trusted app/model configuration while the session is bound."""
-        configure_app_moderation(entity)
-
-    def check_openai(
-        self, tenant_id: str, app_id: str, inputs: Mapping[str, object], phase: ModerationPhase
-    ) -> bool | None:
-        """Return the shared verdict, or None when this invocation does not own platform moderation."""
-        return check_app_openai(tenant_id, app_id, inputs, phase)
-
     def evaluate_input(
         self, app_config: AppConfig, inputs: Mapping[str, object], query: str
     ) -> ModerationInputsResult | None:
@@ -60,7 +47,7 @@ class ScopedAppModerationRuntime:
         return evaluate_app_output(self.session, app_config, text)
 
     def output_evaluator(self, app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None:
-        """Capture matching output evaluation for the consumer and its detached moderation worker."""
+        """Capture matching keyword/API evaluation for the single response consumer."""
         return app_output_evaluator(app_config)
 
     def replacement(self, app_config: AppConfig, error: Exception) -> tuple[str, str] | None:
@@ -72,6 +59,13 @@ class ScopedAppModerationRuntime:
     def workflow_replacement(self, app_config: AppConfig) -> Callable[[str], tuple[str, str] | None]:
         """Capture exact scoped verdict matching before workflow contexts detach."""
         return workflow_rejection_handler(app_config)
+
+    def workflow_error(self, app_config: AppConfig, message: str) -> ModerationUnavailableInvocationError | None:
+        """Recover only a recorded failure owned by this app invocation, even after its context detaches."""
+        if app_config.tenant_id != self.session.tenant_id or app_config.app_id != self.session.app_id:
+            return None
+        error = self.session.unavailable_error(message)
+        return error if isinstance(error, ModerationUnavailableInvocationError) else None
 
 
 @contextmanager
@@ -103,79 +97,6 @@ def with_app_moderation_scope[**Parameters, ResultT](
             return method(*args, **kwargs)
 
     return wrapped
-
-
-def check_app_openai(tenant_id: str, app_id: str, inputs: Mapping[str, object], phase: ModerationPhase) -> bool | None:
-    """Handle a matching app rule without tenant fallback; None denotes an unrelated or unbound caller."""
-    session = current_moderation_session(tenant_id)
-    if session is None or session.app_id != app_id:
-        return None
-    return _app_openai_verdict(session, inputs, phase)
-
-
-def _app_openai_verdict(session: ModerationSession, inputs: Mapping[str, object], phase: ModerationPhase) -> bool:
-    """Use hosted credentials only for an admitted app model, otherwise read existing verdicts without I/O.
-
-    Workflow model admission never authorizes new platform checks for unrelated
-    app content. Ineligible app checks silently do nothing, without provider lookup,
-    credit accounting, replacement, or a tenant moderation backend fallback.
-    """
-    if not session.enabled:
-        return False
-    if session.app_platform_checks_enabled:
-        check = build_app_openai_checker(session, phase)
-        return any(check(str(value)) for value in inputs.values())
-    verdicts = [session.cached_verdict(str(value), phase) for value in inputs.values()]
-    return any(verdict is True for verdict in verdicts)
-
-
-def configure_app_moderation(entity: AppGenerateEntity) -> None:
-    """Admit app-level hosted checks only for a trusted main AI-credit model.
-
-    Workflows have no single admitted model at this boundary. Their model guards
-    may later contribute reusable verdicts, but cannot fund new checks of unrelated app content.
-    """
-    from extensions.application_services.moderation import platform_moderation_enabled
-
-    session = current_moderation_session(entity.app_config.tenant_id)
-    if session is not None and session.app_id == entity.app_config.app_id:
-        session.app_platform_checks_enabled = isinstance(entity, EasyUIBasedAppGenerateEntity) and (
-            platform_moderation_enabled(entity.model_conf.provider_model_bundle)
-        )
-        session.enabled = session.app_platform_checks_enabled
-
-
-def build_app_openai_checker(
-    session: ModerationSession, phase: ModerationPhase, *, service: ModerationService | None = None
-) -> Callable[[str], bool]:
-    """Capture the session for output-worker threads and share only the matching OpenAI capability."""
-    from extensions.application_services.moderation import build_platform_moderation_service
-
-    service = service if service is not None else build_platform_moderation_service()
-    context = AppRequestContext(tenant_id=session.tenant_id, app_id=session.app_id)
-    rule = ModerationRule(
-        type="openai_moderation",
-        config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": True}},
-    )
-
-    def check(text: str) -> bool:
-        if phase == "output" and session.approved_output(text):
-            return False
-        try:
-            size = dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE
-            for start in range(0, len(text), size):
-                segment = text[start : start + size]
-                session.check(segment, phase, partial(service.check, context, rule=rule, text=segment, phase=phase))
-        except ModerationRejectedError:
-            return True
-        except Exception as error:
-            logger.exception(
-                "App moderation check failed. tenant_id=%s app_id=%s phase=%s", session.tenant_id, session.app_id, phase
-            )
-            raise ModerationUnavailableInvocationError() from error
-        return False
-
-    return check
 
 
 def _app_service() -> ModerationService:
@@ -244,7 +165,7 @@ def _app_rule(rule: SensitiveWordAvoidanceEntity) -> ModerationRule:
 def evaluate_app_input(
     session: ModerationSession, app_config: AppConfig, inputs: Mapping[str, object], query: str
 ) -> ModerationInputsResult | None:
-    """Evaluate configured input moderation using the shared use case or its platform verdict path."""
+    """Evaluate keyword/API inputs; App OpenAI configuration only renders later model failures."""
     if app_config.tenant_id != session.tenant_id or app_config.app_id != session.app_id:
         return None
     rule = app_config.sensitive_word_avoidance
@@ -255,13 +176,9 @@ def evaluate_app_input(
             flagged=False, action=ModerationAction.DIRECT_OUTPUT, inputs=dict(inputs), query=query
         )
     if rule.type == "openai_moderation":
-        values = {**inputs, "query__": query} if query else dict(inputs)
-        flagged = _app_openai_verdict(session, values, "input")
-        preset_response = _platform_rejection_response(app_config, "input") if flagged else ""
         return ModerationInputsResult(
-            flagged=flagged,
+            flagged=False,
             action=ModerationAction.DIRECT_OUTPUT,
-            preset_response=preset_response or "",
             inputs=dict(inputs),
             query=query,
         )
@@ -275,7 +192,7 @@ def evaluate_app_input(
 
 
 def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text: str) -> ModerationOutputsResult | None:
-    """Evaluate configured output moderation using the shared use case or its platform verdict path."""
+    """Evaluate keyword/API output without scheduling an independent OpenAI request."""
     if app_config.tenant_id != session.tenant_id or app_config.app_id != session.app_id:
         return None
     rule = app_config.sensitive_word_avoidance
@@ -284,12 +201,9 @@ def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text:
     if not _phase_enabled(rule, "output"):
         return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
     if rule.type == "openai_moderation":
-        flagged = _app_openai_verdict(session, {"text": text}, "output")
-        preset_response = _platform_rejection_response(app_config, "output") if flagged else ""
         return ModerationOutputsResult(
-            flagged=flagged,
+            flagged=False,
             action=ModerationAction.DIRECT_OUTPUT,
-            preset_response=preset_response or "",
             text=text,
         )
     verdict = _app_service().evaluate(
@@ -309,7 +223,7 @@ def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOut
     """
     session = current_moderation_session(app_config.tenant_id)
     rule = app_config.sensitive_word_avoidance
-    if session is None or session.app_id != app_config.app_id or rule is None:
+    if session is None or session.app_id != app_config.app_id or rule is None or rule.type == "openai_moderation":
         return None
 
     def evaluate(text: str) -> ModerationOutputsResult | None:
