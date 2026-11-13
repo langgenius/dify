@@ -159,3 +159,20 @@ after
         docs = extractor.extract()
 
         assert [doc.page_content for doc in docs] == ["plain", "\n\nHeader\nvalue"]
+
+
+@pytest.mark.parametrize("remove_links", [False, True])
+def test_extract_removes_inline_images_when_requested(tmp_path: Path, remove_links: bool):
+    markdown_file = tmp_path / "images.md"
+    markdown_file.write_text("before ![diagram](diagram.png) after", encoding="utf-8")
+    documents = MarkdownExtractor(
+        str(markdown_file), remove_images=True, remove_hyperlinks=remove_links, encoding="utf-8"
+    ).extract()
+    assert [document.page_content for document in documents] == ["before  after"]
+
+
+def test_remove_wiki_images_preserves_intervening_text(tmp_path: Path):
+    markdown_file = tmp_path / "images.md"
+    markdown_file.write_text("![[one.png]] useful text ![[two.png]]", encoding="utf-8")
+    documents = MarkdownExtractor(str(markdown_file), remove_images=True, encoding="utf-8").extract()
+    assert [document.page_content for document in documents] == ["useful text"]
