@@ -212,6 +212,11 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         return None
 
     @override
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """`save` already queues the complete inputs, process data, and outputs."""
+        self.save(execution)
+
+    @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Create the Agent v2 caller row before runtime participant allocation."""
 

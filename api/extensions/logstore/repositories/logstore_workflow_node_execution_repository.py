@@ -347,6 +347,12 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self.sql_repository.save_synchronously(execution)
 
     @override
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Write the record, then let dual-write store the execution data in SQL."""
+        self.save(execution)
+        self.save_execution_data(execution)
+
+    @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """
         Save or update the inputs, process_data, or outputs associated with a specific

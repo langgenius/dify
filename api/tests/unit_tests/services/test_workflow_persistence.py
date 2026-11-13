@@ -275,6 +275,10 @@ class _RepoRecorder:
     def save_execution_data(self, entity):
         self.saved_exec_data.append(entity)
 
+    def save_with_execution_data(self, entity):
+        self.saved.append(entity)
+        self.saved_exec_data.append(entity)
+
 
 class _TraceRecorder:
     """Record trace events with the number of workflow saves that preceded each one."""

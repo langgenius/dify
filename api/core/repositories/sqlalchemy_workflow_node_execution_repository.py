@@ -341,16 +341,52 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         This method serves as a domain-to-database adapter that:
         1. Converts the domain entity to its database representation
         2. Checks for existing records and updates or inserts accordingly
-        3. Handles truncation and offloading of large inputs/outputs
-        4. Persists the database model using SQLAlchemy's merge operation
-        5. Maintains proper multi-tenancy by including tenant context during conversion
-        6. Updates the in-memory cache for faster subsequent lookups
+        3. Persists the database model, retrying with a new id on a duplicate key
+        4. Maintains proper multi-tenancy by including tenant context during conversion
+        5. Updates the in-memory cache for faster subsequent lookups
 
-        The method handles both creating new records and updating existing ones through
-        SQLAlchemy's merge operation.
+        Inputs, process data and outputs are stored as given. Truncation and offloading of
+        large values belong to ``save_execution_data``.
 
         Args:
             execution: The NodeExecution domain entity to persist
+        """
+        self._save(execution, with_execution_data=False)
+
+    @override
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist a node execution together with its execution data.
+
+        The workflow engine saves a node when it starts and again when it finishes. The
+        finishing save used to be ``save`` followed by ``save_execution_data``: one
+        transaction that wrote the row with its complete payload, then a second one that read
+        the row back, applied truncation and offloading, and merged it again.
+
+        Postcondition: the stored row and its offload rows are exactly what that two-step
+        sequence produces. When the execution is finished and none of its values needs
+        truncation, the row is written once, in one transaction, with the payload encoding
+        ``save_execution_data`` uses. Every other case (a live status, which needs the stop
+        check on both writes, or a value large enough to be offloaded) runs the two steps
+        unchanged.
+        """
+        writes_once = (
+            execution.status not in _LIVE_STATUSES
+            and not self._needs_truncation(execution.inputs)
+            and not self._needs_truncation(execution.outputs)
+            and self._save(execution, with_execution_data=True)
+        )
+        if not writes_once:
+            self.save(execution)
+            self.save_execution_data(execution)
+
+    def _save(self, execution: WorkflowNodeExecution, *, with_execution_data: bool) -> bool:
+        """Insert or update the row for ``execution``; return whether its execution data was stored too.
+
+        With ``with_execution_data`` the payload columns receive the values
+        ``save_execution_data`` would store, provided the process data needs no truncation.
+        If it does, nothing is written and ``False`` is returned so the caller can fall back to
+        the two-step path. Without ``with_execution_data`` the row is always written and the
+        result is ``False``.
         """
         # NOTE: The workflow engine triggers `save` multiple times for a single node execution:
         # when the node starts, any time it retries, and once more when it reaches a terminal state.
@@ -359,6 +395,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
+        execution_data = execution if with_execution_data else None
 
         # Use tenacity for retry logic with duplicate key handling
         @retry(
@@ -369,7 +406,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         )
         def _save_with_retry():
             try:
-                self._persist_to_database(db_model)
+                if execution_data is None:
+                    self._persist_to_database(db_model)
+                else:
+                    self._persist_to_database(db_model, execution_data=execution_data)
             except IntegrityError as e:
                 if self._is_duplicate_key_error(e):
                     # Generate new UUID and retry
@@ -387,9 +427,39 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             if db_model.node_execution_id:
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
+        except _ExecutionDataNeedsOffloadError:
+            return False
         except Exception:
             logger.exception("Failed to save workflow node execution after all retries")
             raise
+        return with_execution_data
+
+    def _needs_truncation(self, values: Mapping[str, Any] | None) -> bool:
+        """Return whether ``save_execution_data`` would truncate and offload ``values``."""
+        if values is None:
+            return False
+        json_encodable_value = WorkflowRuntimeTypeConverter().to_json_encodable(values)
+        _, truncated = self._create_truncator().truncate_variable_mapping(json_encodable_value)
+        return truncated
+
+    def _apply_execution_data(self, db_model: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution) -> bool:
+        """Give ``db_model`` the payload columns ``save_execution_data`` would store for ``execution``.
+
+        Precondition: ``db_model`` holds what ``save`` is about to write, including process data
+        already merged with the stored agent and tool ids; inputs and outputs need no truncation.
+        Postcondition: returns ``True`` with the three payload columns set, or ``False`` with
+        ``db_model`` untouched when the merged process data would be truncated.
+        """
+        process_data = keep_agent_and_tool_ids(db_model.process_data_dict, execution.process_data)
+        if self._needs_truncation(process_data):
+            return False
+        if execution.inputs is not None:
+            db_model.inputs = self._json_encode(execution.inputs)
+        if execution.outputs is not None:
+            db_model.outputs = self._json_encode(execution.outputs)
+        if process_data is not None:
+            db_model.process_data = self._json_encode(process_data)
+        return True
 
     @override
     def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
@@ -455,7 +525,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         self.save(execution)
 
-    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
+    def _persist_to_database(
+        self, db_model: WorkflowNodeExecutionModel, *, execution_data: WorkflowNodeExecution | None = None
+    ) -> None:
         """
         Persist the database model to the database.
 
@@ -464,6 +536,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             db_model: The database model to persist
+            execution_data: When given, also store this execution's inputs, process data and
+                outputs the way ``save_execution_data`` does (see ``_apply_execution_data``).
+
+        Raises:
+            _ExecutionDataNeedsOffloadError: ``execution_data`` was given but its process data
+                would need truncation. Nothing is written.
         """
         with self._session_factory() as session:
             if db_model.status in (
@@ -496,6 +574,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 db_model.process_data = (
                     _deterministic_json_dump(merged_process_data) if merged_process_data is not None else None
                 )
+            if execution_data is not None and not self._apply_execution_data(db_model, execution_data):
+                raise _ExecutionDataNeedsOffloadError
+
+            if existing:
                 # Dataclass defaults can include fields owned by other stores.
                 # Copy only the fields populated by execution conversion.
                 session.execute(
@@ -710,6 +792,17 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)
 
         return list(domain_models)
+
+
+_LIVE_STATUSES = (
+    WorkflowNodeExecutionStatus.RUNNING,
+    WorkflowNodeExecutionStatus.PAUSED,
+    WorkflowNodeExecutionStatus.RETRY,
+)
+
+
+class _ExecutionDataNeedsOffloadError(Exception):
+    """The single-write path met process data that ``save_execution_data`` must truncate and offload."""
 
 
 def _deterministic_json_dump(value: Mapping[str, Any]) -> str:
