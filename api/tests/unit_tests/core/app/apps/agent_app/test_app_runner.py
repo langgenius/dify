@@ -71,6 +71,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, Message, MessageAgentThought
 
 
@@ -194,27 +195,6 @@ class _UsageFailedClient(FakeAgentBackendRunClient):
                     total_price=Decimal("0.12"),
                     latency=0.4,
                 ),
-            ),
-        )
-
-
-class _UsagePausedClient(FakeAgentBackendRunClient):
-    def __init__(self) -> None:
-        super().__init__(scenario=FakeAgentBackendScenario.PAUSED)  # pyrefly: ignore[missing-attribute]
-
-    @override
-    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
-        events = super()._events(run_id)
-        terminal = events[-1]
-        assert isinstance(terminal, RunSucceededEvent)
-        return (
-            *events[:-1],
-            terminal.model_copy(
-                update={
-                    "data": terminal.data.model_copy(
-                        update={"usage": AgentRunUsage(prompt_tokens=5, completion_tokens=3)}
-                    )
-                }
             ),
         )
 
@@ -682,16 +662,16 @@ def _message_record() -> Message:
         query="hello",
         message={},
         message_tokens=0,
-        message_unit_price=0,  # pyrefly: ignore[bad-argument-type]
-        message_price_unit=0,  # pyrefly: ignore[bad-argument-type]
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="",
         answer_tokens=0,
-        answer_unit_price=0,  # pyrefly: ignore[bad-argument-type]
-        answer_price_unit=0,  # pyrefly: ignore[bad-argument-type]
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,  # pyrefly: ignore[bad-argument-type]
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.WEB_APP,  # pyrefly: ignore[bad-argument-type]
+        invoke_from=ModelInvokeFrom.WEB_APP,
         from_source=ConversationFromSource.API,
         from_end_user_id="user-1",
         from_account_id=None,
@@ -1054,7 +1034,9 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     sources = [event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent)]
     assert len(sources) == 1
     assert sources[0].retriever_resources[0].document_name == "manual.pdf"
-    assert sources[0].retriever_resources[0].knowledge_fs_citation.id == receipt["id"]  # pyrefly: ignore[missing-attribute]
+    citation = sources[0].retriever_resources[0].knowledge_fs_citation
+    assert citation is not None
+    assert citation.id == receipt["id"]
     assert sources[0].retriever_resources[0].content == "evidence"
     assert _thought_rows(sqlite_session)[0].tool == "shell_run"
 
