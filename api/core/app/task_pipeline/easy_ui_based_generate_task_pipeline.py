@@ -55,7 +55,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from graphon.file import FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     TextPromptMessageContent,
@@ -291,7 +291,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         require token estimation or rebuilding already settled model usage.
         """
         for message in self.queue_manager.listen():
-            self.raise_output_moderation_error()
             if publisher:
                 publisher.publish(message)
             event = message.event
@@ -331,7 +330,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     output_moderation_answer = self.handle_output_moderation_when_task_finished(
                         self._task_state.llm_result.message.get_text_content()
                     )
-                    if output_moderation_answer:
+                    if output_moderation_answer is not None:
                         self._task_state.llm_result.message.content = output_moderation_answer
                         yield self._message_cycle_manager.message_replace_to_stream_response(
                             answer=output_moderation_answer
@@ -396,20 +395,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                    # handle output moderation chunk
-                    should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-                    if should_direct_answer:
-                        continue
-
-                    current_content = cast(str, self._task_state.llm_result.message.content)
-                    current_content += delta_text
-                    self._task_state.llm_result.message.content = current_content
-
-                    yield self._message_cycle_manager.message_to_stream_response(
-                        answer=delta_text,
-                        message_id=self._message_id,
-                        event_type=StreamEvent.MESSAGE,
-                    )
+                    yield from self._handle_output_moderation_chunk(delta_text)
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
                 case QueuePingEvent():
@@ -633,35 +619,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         return None
 
-    def _handle_output_moderation_chunk(self, text: str) -> bool:
-        """
-        Handle output moderation chunk.
-        :param text: text
-        :return: True if output moderation should direct output, otherwise False
-        """
-        if self.output_moderation_handler:
-            if self.output_moderation_handler.should_direct_output():
-                # stop subscribe new token when output moderation should direct output
-                self._task_state.llm_result.message.content = self.output_moderation_handler.get_final_output()
-                self.queue_manager.publish(
-                    QueueLLMChunkEvent(
-                        chunk=LLMResultChunk(
-                            model=self._task_state.llm_result.model,
-                            prompt_messages=self._task_state.llm_result.prompt_messages,
-                            delta=LLMResultChunkDelta(
-                                index=0,
-                                message=AssistantPromptMessage(content=self._task_state.llm_result.message.content),
-                            ),
-                        )
-                    ),
-                    PublishFrom.TASK_PIPELINE,
-                )
-
+    def _handle_output_moderation_chunk(self, text: str) -> Generator[StreamResponse]:
+        """Check new text on this consumer and render replacement before consuming another queued chunk."""
+        handler = self.output_moderation_handler
+        if handler is not None and handler.should_direct_output():
+            return
+        current_content = self._task_state.llm_result.message.get_text_content()
+        replacement = handler.append_new_token(text, prefix=current_content) if handler is not None else None
+        if replacement is None:
+            self._task_state.llm_result.message.content = current_content + text
+            yield self._message_cycle_manager.message_to_stream_response(
+                answer=text, message_id=self._message_id, event_type=StreamEvent.MESSAGE
+            )
+        else:
+            self._task_state.llm_result.message.content = replacement
+            yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement)
+            if handler is not None and handler.should_direct_output():
                 self.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
-                return True
-            else:
-                self.output_moderation_handler.append_new_token(text)
-
-        return False

@@ -109,7 +109,8 @@ def build_llm_moderation_guard(
 
     Missing or malformed phase enablement fails during assembly. Disabled phases
     do not inspect content, and disabled output moderation preserves live streaming.
-    Platform sharing is reserved for a trusted OpenAI service and matching rule.
+    Platform rejection rendering is reserved for a trusted OpenAI service and
+    matching rule. Each invocation executes its own checks without a session cache.
     """
     rule = rule.model_copy(deep=True)
     if platform and rule.type != "openai_moderation":
@@ -119,10 +120,8 @@ def build_llm_moderation_guard(
     session = current_moderation_session(context.tenant_id)
     if session is not None and context.app_id and context.app_id != session.app_id:
         session = None
-    scope = session if platform else None
-    if scope is not None:
-        scope.enabled = True
-        context = AppRequestContext(tenant_id=context.tenant_id, app_id=scope.app_id)
+    if session is not None and platform:
+        context = AppRequestContext(tenant_id=context.tenant_id, app_id=session.app_id)
     inputs = rule.config.get("inputs_config")
     if not isinstance(inputs, dict) or not isinstance(inputs.get("enabled"), bool):
         raise ValueError("inputs_config.enabled must be a bool")
@@ -132,10 +131,7 @@ def build_llm_moderation_guard(
 
     def check(text: str, phase: ModerationPhase) -> None:
         """Apply the bound rule through the application use case for a runtime phase."""
-        if scope is None:
-            service.check(context, rule=rule, text=text, phase=phase)
-        else:
-            scope.check(text, phase, lambda: service.check(context, rule=rule, text=text, phase=phase))
+        service.check(context, rule=rule, text=text, phase=phase)
 
     return LLMModerationGuard(
         tenant_id=context.tenant_id,
@@ -145,6 +141,6 @@ def build_llm_moderation_guard(
         non_stream_segment_size=dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE,
         stream_segment_size=dify_config.MODERATION_BUFFER_SIZE,
         platform=platform,
-        output_observer=scope.record_output if scope is not None else None,
+        rejection_observer=session.record_rejection if platform and session is not None else None,
         failure_observer=session.record_unavailable if session is not None else None,
     )

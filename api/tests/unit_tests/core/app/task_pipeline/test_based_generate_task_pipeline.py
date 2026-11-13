@@ -191,7 +191,7 @@ class TestBasedGenerateTaskPipeline:
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result == "filtered"
-        handler.stop_thread.assert_called_once()
+        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
 
     def test_handle_output_moderation_when_not_flagged(self, pipeline):
@@ -202,7 +202,7 @@ class TestBasedGenerateTaskPipeline:
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result is None
-        handler.stop_thread.assert_called_once()
+        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
 
 

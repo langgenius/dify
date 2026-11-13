@@ -551,9 +551,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if delta_text is None:
             return
 
-        # Handle output moderation chunk
-        should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-        if should_direct_answer:
+        handler = self._base_task_pipeline.output_moderation_handler
+        if handler is not None and handler.should_direct_output():
+            return
+        replacement = (
+            handler.append_new_token(delta_text, prefix=self._task_state.answer) if handler is not None else None
+        )
+        if replacement is not None:
+            self._task_state.answer = replacement
+            yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement)
+            if handler is not None and handler.should_direct_output():
+                self._base_task_pipeline.queue_manager.publish(
+                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
+                )
             return
 
         current_time = time.perf_counter()
@@ -843,7 +853,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
         )
-        if output_moderation_answer:
+        if output_moderation_answer is not None:
             self._task_state.answer = output_moderation_answer
             yield self._message_cycle_manager.message_replace_to_stream_response(
                 answer=output_moderation_answer,
@@ -1013,7 +1023,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         Maintains exact same functionality as original 57-if-statement version.
         """
         for queue_message in self._base_task_pipeline.queue_manager.listen():
-            self._base_task_pipeline.raise_output_moderation_error()
             event = queue_message.event
 
             match event:
@@ -1145,28 +1154,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             files=self._recorded_files,
             metadata=extras,
         )
-
-    def _handle_output_moderation_chunk(self, text: str) -> bool:
-        """
-        Handle output moderation chunk.
-        :param text: text
-        :return: True if output moderation should direct output, otherwise False
-        """
-        if self._base_task_pipeline.output_moderation_handler:
-            if self._base_task_pipeline.output_moderation_handler.should_direct_output():
-                self._task_state.answer = self._base_task_pipeline.output_moderation_handler.get_final_output()
-                self._base_task_pipeline.queue_manager.publish(
-                    QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
-                )
-
-                self._base_task_pipeline.queue_manager.publish(
-                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
-                )
-                return True
-            else:
-                self._base_task_pipeline.output_moderation_handler.append_new_token(text)
-
-        return False
 
     def _get_message(self, *, session: Session):
         stmt = select(Message).where(Message.id == self._message_id)

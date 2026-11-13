@@ -56,9 +56,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
-        """Stop output checks and retain error typing; mark an existing message failed in the caller's transaction."""
-        if self.output_moderation_handler is not None:
-            self.output_moderation_handler.stop_thread()
+        """Retain error typing and mark an existing message failed in the caller's transaction."""
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -126,12 +124,14 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         app_config = self._application_generate_entity.app_config
         sensitive_word_avoidance = app_config.sensitive_word_avoidance
 
+        if sensitive_word_avoidance is not None and sensitive_word_avoidance.type == "openai_moderation":
+            if self._app_moderation is not None:
+                return None
         if sensitive_word_avoidance:
             return OutputModeration(
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
-                queue_manager=self.queue_manager,
                 output_evaluator=self._app_moderation.output_evaluator(app_config)
                 if self._app_moderation is not None
                 else None,
@@ -146,7 +146,6 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             else None
         )
         if replacement is not None and self.output_moderation_handler is not None:
-            self.output_moderation_handler.stop_thread()
             self.output_moderation_handler = None
         return replacement
 
@@ -158,7 +157,6 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             else None
         )
         if replacement is not None and self.output_moderation_handler is not None:
-            self.output_moderation_handler.stop_thread()
             self.output_moderation_handler = None
         return replacement
 
@@ -178,20 +176,10 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         """
         # response moderation
         if self.output_moderation_handler:
-            self.output_moderation_handler.stop_thread()
-
-            completion, flagged = self.output_moderation_handler.moderation_completion(
-                completion=completion, public_event=False
-            )
+            completion, flagged = self.output_moderation_handler.moderation_completion(completion=completion)
 
             self.output_moderation_handler = None
             if flagged:
                 return completion
 
         return None
-
-    def raise_output_moderation_error(self) -> None:
-        """Stop response consumption after a failed background check, including already queued output."""
-        handler = self.output_moderation_handler
-        if handler is not None and handler.error is not None:
-            raise handler.error

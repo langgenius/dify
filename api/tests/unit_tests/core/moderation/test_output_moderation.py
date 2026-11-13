@@ -1,274 +1,171 @@
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
 
 import pytest
-from flask import Flask
-from pytest_mock import MockerFixture
 
-from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueMessageReplaceEvent
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from extensions.ext_code_based_extension import code_based_extension
+from services.moderation_invocation_errors import ModerationUnavailableInvocationError
 
 
-def _publish_mock(manager: MessageBasedAppQueueManager) -> MagicMock:
-    assert isinstance(manager.publish, MagicMock)
-    return manager.publish
+class RecordingEvaluator:
+    def __init__(self, action: ModerationAction = ModerationAction.DIRECT_OUTPUT) -> None:
+        self.calls: list[str] = []
+        self.action = action
+        self.error: Exception | None = None
 
-
-class TestOutputModeration:
-    @pytest.fixture
-    def queue_manager(self, mocker: MockerFixture) -> MessageBasedAppQueueManager:
-        with patch("core.app.apps.base_app_queue_manager.redis_client.setex"):
-            manager = MessageBasedAppQueueManager(
-                task_id="test-task",
-                user_id="test-user",
-                invoke_from=InvokeFrom.SERVICE_API,
-                conversation_id="test-conversation",
-                app_mode="chat",
-                message_id="test-message",
-            )
-        mocker.patch.object(manager, "publish", wraps=manager.publish)
-        return manager
-
-    @pytest.fixture
-    def moderation_rule(self) -> ModerationRule:
-        return ModerationRule(type="keywords", config={"keywords": "badword"})
-
-    @pytest.fixture
-    def output_moderation(
-        self, queue_manager: MessageBasedAppQueueManager, moderation_rule: ModerationRule
-    ) -> OutputModeration:
-        return OutputModeration(
-            tenant_id="test_tenant", app_id="test_app", rule=moderation_rule, queue_manager=queue_manager
+    def __call__(self, text: str) -> ModerationOutputsResult:
+        self.calls.append(text)
+        if self.error is not None:
+            raise self.error
+        return ModerationOutputsResult(
+            flagged="blocked" in text,
+            action=self.action,
+            preset_response="Refused",
+            text=text.replace("blocked", "masked"),
         )
 
-    def test_should_direct_output(self, output_moderation: OutputModeration) -> None:
-        assert output_moderation.should_direct_output() is False
-        output_moderation.final_output = "blocked"
-        assert output_moderation.should_direct_output() is True
 
-    def test_get_final_output(self, output_moderation: OutputModeration) -> None:
-        assert output_moderation.get_final_output() == ""
-        output_moderation.final_output = "blocked"
-        assert output_moderation.get_final_output() == "blocked"
+def make_handler(evaluator: RecordingEvaluator) -> OutputModeration:
+    return OutputModeration(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        rule=ModerationRule(type="api", config={}),
+        output_evaluator=evaluator,
+    )
 
-    def test_append_new_token(self, output_moderation: OutputModeration) -> None:
-        with patch.object(OutputModeration, "start_thread") as mock_start:
-            output_moderation.append_new_token("hello")
-            assert output_moderation.buffer == "hello"
-            mock_start.assert_called_once()
 
-            output_moderation.thread = MagicMock()
-            output_moderation.append_new_token(" world")
-            assert output_moderation.buffer == "hello world"
-            assert mock_start.call_count == 1
+def test_stream_checks_new_segments_and_only_the_unchecked_tail(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    assert handler.append_new_token("abc") is None
+    assert evaluator.calls == []
+    assert handler.append_new_token("de") is None
+    assert handler.append_new_token("fghij") is None
+    assert handler.append_new_token("kl") is None
+    assert evaluator.calls == ["abcde", "fghij"]
+    assert handler.moderation_completion("abcdefghijkl") == ("abcdefghijkl", False)
+    assert evaluator.calls == ["abcde", "fghij", "kl"]
+    assert handler.moderation_completion("abcdefghijkl") == ("abcdefghijkl", False)
+    assert evaluator.calls == ["abcde", "fghij", "kl"]
 
-    def test_moderation_completion_no_flag(self, output_moderation: OutputModeration) -> None:
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            mock_moderation.return_value = ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
 
-            output, flagged = output_moderation.moderation_completion("safe content")
+def test_exact_stream_boundary_has_no_final_check(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    handler.append_new_token("abcde")
+    assert handler.moderation_completion("abcde") == ("abcde", False)
+    assert evaluator.calls == ["abcde"]
 
-            assert output == "safe content"
-            assert flagged is False
-            assert output_moderation.is_final_chunk is True
 
-    def test_moderation_completion_flagged_direct_output(
-        self, output_moderation: OutputModeration, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            mock_moderation.return_value = ModerationOutputsResult(
-                flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="preset"
-            )
+def test_direct_output_replaces_the_whole_answer_and_stops_checks(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    handler.append_new_token("safe ")
+    assert handler.append_new_token("blocked") == "Refused"
+    assert handler.should_direct_output()
+    assert handler.get_final_output() == "Refused"
+    assert handler.append_new_token("never checked") is None
+    assert handler.moderation_completion("safe blocked") == ("Refused", True)
+    assert evaluator.calls == ["safe ", "blocked"]
 
-            output, flagged = output_moderation.moderation_completion("badword content", public_event=True)
 
-            assert output == "preset"
-            assert flagged is True
-            _publish_mock(queue_manager).assert_called_once()
-            args, _ = _publish_mock(queue_manager).call_args
-            assert isinstance(args[0], QueueMessageReplaceEvent)
-            assert args[0].text == "preset"
-            assert args[1] == PublishFrom.TASK_PIPELINE
+def test_override_preserves_previous_output_and_later_deltas(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator(ModerationAction.OVERRIDDEN)
+    handler = make_handler(evaluator)
+    handler.append_new_token("safe ")
+    assert handler.append_new_token("blocked") == "safe masked"
+    assert not handler.should_direct_output()
+    handler.append_new_token(" tail")
+    assert handler.moderation_completion("safe blocked tail") == ("safe masked tail", True)
+    assert evaluator.calls == ["safe ", "blocked", " tail"]
 
-    def test_moderation_completion_flagged_overridden(
-        self, output_moderation: OutputModeration, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            mock_moderation.return_value = ModerationOutputsResult(
-                flagged=True, action=ModerationAction.OVERRIDDEN, text="masked content"
-            )
 
-            output, flagged = output_moderation.moderation_completion("badword content", public_event=True)
+def test_failure_is_terminal_without_a_background_or_completion_retry(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    failure = ModerationUnavailableInvocationError()
+    evaluator.error = failure
+    handler = make_handler(evaluator)
+    with pytest.raises(ModerationUnavailableInvocationError) as raised:
+        handler.append_new_token("hello")
+    assert raised.value is failure
+    evaluator.error = None
+    with pytest.raises(ModerationUnavailableInvocationError):
+        handler.moderation_completion("hello")
+    with pytest.raises(ModerationUnavailableInvocationError):
+        handler.append_new_token("later")
+    assert evaluator.calls == ["hello"]
 
-            assert output == "masked content"
-            assert flagged is True
-            _publish_mock(queue_manager).assert_called_once()
-            args, _ = _publish_mock(queue_manager).call_args
-            assert args[0].text == "masked content"
 
-    def test_start_thread(self, output_moderation: OutputModeration) -> None:
-        app = Flask(__name__)
-        with app.app_context():
-            with patch("threading.Thread") as mock_thread_class:
-                mock_thread_instance = MagicMock()
-                mock_thread_class.return_value = mock_thread_instance
+def test_blocking_result_uses_non_stream_segments(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_NON_STREAM_SEGMENT_SIZE=4)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    assert handler.moderation_completion("abcdefghij") == ("abcdefghij", False)
+    assert evaluator.calls == ["abcd", "efgh", "ij"]
 
-                thread = output_moderation.start_thread()
 
-                assert thread == mock_thread_instance
-                mock_thread_class.assert_called_once()
-                mock_thread_instance.start.assert_called_once()
+def test_changed_final_result_is_checked_instead_of_inheriting_approval(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    handler.append_new_token("safe ")
+    assert handler.moderation_completion("blocked") == ("Refused", True)
+    assert evaluator.calls == ["safe ", "blocked"]
 
-    def test_stop_thread(self, output_moderation: OutputModeration) -> None:
-        mock_thread = MagicMock()
-        mock_thread.is_alive.return_value = True
-        output_moderation.thread = mock_thread
 
-        output_moderation.stop_thread()
-        assert output_moderation.thread_running is False
+def test_completion_checks_only_an_unstreamed_suffix(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    handler.append_new_token("safe ")
+    assert handler.moderation_completion("safe tail") == ("safe tail", False)
+    assert evaluator.calls == ["safe ", "tail"]
 
-        output_moderation.thread_running = True
-        mock_thread.is_alive.return_value = False
-        output_moderation.stop_thread()
-        assert output_moderation.thread_running
 
-    @patch("core.moderation.output_moderation.ModerationFactory")
-    def test_moderation_success(self, mock_factory_class: MagicMock, output_moderation: OutputModeration) -> None:
-        mock_factory = mock_factory_class.return_value
-        mock_result = ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
-        mock_factory.moderation_for_outputs.return_value = mock_result
+def test_resumed_output_preserves_the_existing_prefix(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    assert handler.append_new_token("blocked", prefix="existing ") == "Refused"
+    assert evaluator.calls == ["blocked"]
 
-        result = output_moderation.moderation("tenant", "app", "buffer")
 
-        assert result == mock_result
-        mock_factory_class.assert_called_once_with(
-            name="keywords", app_id="app", tenant_id="tenant", config={"keywords": "badword"}
-        )
+def test_independent_legacy_keyword_backend_retains_replacement() -> None:
+    code_based_extension.init()
+    handler = OutputModeration(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        rule=ModerationRule(
+            type="keywords",
+            config={
+                "keywords": "blocked",
+                "inputs_config": {"enabled": False, "preset_response": ""},
+                "outputs_config": {"enabled": True, "preset_response": "Refused"},
+            },
+        ),
+    )
+    assert handler.moderation_completion("blocked") == ("Refused", True)
 
-    def test_bound_output_evaluator_bypasses_legacy_factory(self, output_moderation: OutputModeration) -> None:
-        expected = ModerationOutputsResult(
-            flagged=True, action=ModerationAction.OVERRIDDEN, text="masked", preset_response=""
-        )
-        output_moderation.output_evaluator = lambda _text: expected
 
-        with patch("core.moderation.output_moderation.ModerationFactory") as factory:
-            assert output_moderation.moderation("tenant", "app", "badword") == expected
+def test_empty_completion_does_not_issue_an_empty_check() -> None:
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    assert handler.moderation_completion("") == ("", False)
+    assert evaluator.calls == []
 
-        factory.assert_not_called()
 
-    @patch("core.moderation.output_moderation.ModerationFactory")
-    def test_moderation_exception(self, mock_factory_class: MagicMock, output_moderation: OutputModeration) -> None:
-        mock_factory_class.side_effect = Exception("error")
+@pytest.mark.parametrize("action", [ModerationAction.DIRECT_OUTPUT, ModerationAction.OVERRIDDEN])
+def test_a_flagged_verdict_stays_flagged_when_its_replacement_matches_the_source(action: ModerationAction) -> None:
+    def evaluate(text: str) -> ModerationOutputsResult:
+        return ModerationOutputsResult(flagged=True, action=action, preset_response=text, text=text)
 
-        result = output_moderation.moderation("tenant", "app", "buffer")
-        assert result is None
-
-    def test_worker_loop_and_exit(self, output_moderation: OutputModeration) -> None:
-        app = Flask(__name__)
-
-        # Test exit on thread_running=False
-        output_moderation.thread_running = False
-        output_moderation.worker(app, 10)
-        # Should exit immediately
-
-    def test_worker_no_flag(self, output_moderation: OutputModeration) -> None:
-        app = Flask(__name__)
-
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            mock_moderation.return_value = ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
-
-            output_moderation.buffer = "safe"
-            output_moderation.is_final_chunk = True
-
-            # To avoid infinite loop, we'll set thread_running to False after one iteration
-            def side_effect(*_args: object, **_kwargs: object) -> object:
-                output_moderation.thread_running = False
-                return mock_moderation.return_value
-
-            mock_moderation.side_effect = side_effect
-
-            output_moderation.worker(app, 10)
-
-            assert mock_moderation.called
-
-    def test_worker_flagged_direct_output(
-        self, output_moderation: OutputModeration, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        app = Flask(__name__)
-
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            mock_moderation.return_value = ModerationOutputsResult(
-                flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="preset"
-            )
-
-            output_moderation.buffer = "badword"
-            output_moderation.is_final_chunk = True
-
-            output_moderation.worker(app, 10)
-
-            assert output_moderation.final_output == "preset"
-            _publish_mock(queue_manager).assert_called_once()
-            # It breaks on DIRECT_OUTPUT
-
-    def test_worker_flagged_overridden(
-        self, output_moderation: OutputModeration, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        app = Flask(__name__)
-
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            # Use side_effect to change thread_running on second call
-            def side_effect(*_args: object, **_kwargs: object) -> object:
-                if mock_moderation.call_count > 1:
-                    output_moderation.thread_running = False
-                    return None
-                return ModerationOutputsResult(flagged=True, action=ModerationAction.OVERRIDDEN, text="masked")
-
-            mock_moderation.side_effect = side_effect
-
-            output_moderation.buffer = "badword"
-            output_moderation.is_final_chunk = True
-
-            output_moderation.worker(app, 10)
-
-            _publish_mock(queue_manager).assert_called_once()
-            args, _ = _publish_mock(queue_manager).call_args
-            assert args[0].text == "masked"
-
-    def test_worker_chunk_too_small(self, output_moderation: OutputModeration) -> None:
-        app = Flask(__name__)
-        with patch("time.sleep") as mock_sleep:
-            # chunk_length < buffer_size and not is_final_chunk
-            output_moderation.buffer = "123"  # length 3
-            output_moderation.is_final_chunk = False
-
-            def sleep_side_effect(_seconds: float) -> None:
-                output_moderation.thread_running = False
-
-            mock_sleep.side_effect = sleep_side_effect
-
-            output_moderation.worker(app, 10)  # buffer_size 10
-
-            mock_sleep.assert_called_once_with(1)
-
-    def test_worker_empty_not_flagged(
-        self, output_moderation: OutputModeration, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        app = Flask(__name__)
-        with patch.object(OutputModeration, "moderation") as mock_moderation:
-            # Return None (exception or no rule)
-            mock_moderation.return_value = None
-
-            def side_effect(*_args: object, **_kwargs: object) -> object:
-                output_moderation.thread_running = False
-
-            mock_moderation.side_effect = side_effect
-
-            output_moderation.buffer = "something"
-            output_moderation.is_final_chunk = True
-
-            output_moderation.worker(app, 10)
-
-            _publish_mock(queue_manager).assert_not_called()
+    handler = OutputModeration(
+        tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="api", config={}), output_evaluator=evaluate
+    )
+    assert handler.moderation_completion("blocked") == ("blocked", True)

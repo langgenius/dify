@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Protocol, cast
 
 from core.app.apps.exc import AppGenerateError
 from core.credit_usage import CreditUsageCreatedByInput, normalize_credit_usage_created_by
@@ -14,12 +14,6 @@ class AppModerationRuntime(Protocol):
     App result shapes stay loosely typed so this shared kernel port does not pull
     configuration, persistence, or framework modules into unrelated callers.
     """
-
-    def configure(self, entity: Any) -> None: ...
-
-    def check_openai(
-        self, tenant_id: str, app_id: str, inputs: Mapping[str, object], phase: Literal["input", "output"]
-    ) -> bool | None: ...
 
     def evaluate_input(self, app_config: Any, inputs: Mapping[str, object], query: str) -> Any: ...
 
