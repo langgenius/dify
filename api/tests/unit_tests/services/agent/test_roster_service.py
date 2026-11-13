@@ -39,6 +39,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
@@ -50,7 +51,6 @@ from repositories.agent_version_queries import visible_version_operations
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent import composer_service, roster_service
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (

@@ -146,7 +146,7 @@ class AgentAppDetailService:
 
 
 class AgentAppCollectionStore(Protocol):
-    """Load one Agent App page and materialize its editor conversations."""
+    """Read Agent App pages and persist new Apps with their backing Agents."""
 
     def list_apps(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
@@ -155,6 +155,21 @@ class AgentAppCollectionStore(Protocol):
 
         The adapter enforces one editor mapping per Agent, account and draft surface
         with a unique key. A failure rolls back the page's conversation changes.
+        """
+        ...
+
+    def create_agent_app(
+        self,
+        context: RequestContext,
+        params: CreateAppParams,
+        settings: AppCreationSettings,
+        *,
+        default_model: tuple[str, str] | None,
+    ) -> AppRecord:
+        """Commit the App, Agent and initial configuration together.
+
+        A missing model seeds an empty Soul. The tenant's unique roster name
+        constraint rejects conflicting names and the transaction rolls back.
         """
         ...
 
@@ -167,22 +182,6 @@ class AgentAppCollectionAccess(Protocol):
         ...
 
 
-class AgentAppCreator(Protocol):
-    """Create an Agent App and its backing roster Agent in one transaction."""
-
-    def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
-        """Resolve creation defaults before opening the App creation transaction."""
-        ...
-
-    def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
-        """Commit the new App and its Agent, or roll back both on failure."""
-        ...
-
-    def created(self, context: RequestContext, app: AppRecord) -> None:
-        """Notify existing listeners after the App creation commits."""
-        ...
-
-
 class AgentAppCollectionService:
     """Coordinate Agent App creation and per-account collection presentation."""
 
@@ -191,12 +190,16 @@ class AgentAppCollectionService:
         *,
         store: AgentAppCollectionStore,
         access: AgentAppCollectionAccess,
-        creator: AgentAppCreator,
+        prepare_creation: Callable[[str, CreateAppParams], AppCreationSettings],
+        resolve_default_model: Callable[[str], tuple[str, str] | None],
+        notify_created: Callable[[RequestContext, AppRecord], None],
         detail: AgentAppDetailService,
     ) -> None:
         self._store = store
         self._access = access
-        self._creator = creator
+        self._prepare_creation = prepare_creation
+        self._resolve_default_model = resolve_default_model
+        self._notify_created = notify_created
         self._detail = detail
 
     def list_apps(self, context: RequestContext, params: AppListParams) -> AgentAppListPage:
@@ -214,9 +217,11 @@ class AgentAppCollectionService:
 
     def create(self, context: RequestContext, params: CreateAppParams) -> AgentAppDetail:
         """Create an Agent App, then return the admitted creator's complete Agent detail."""
-        settings = self._creator.prepare_creation(context, params)
-        app = self._creator.create(context, params, settings)
-        self._creator.created(context, app)
+        tenant_id = context.active_workspace_id
+        settings = self._prepare_creation(tenant_id, params)
+        default_model = self._resolve_default_model(tenant_id)
+        app = self._store.create_agent_app(context, params, settings, default_model=default_model)
+        self._notify_created(context, app)
         if app.bound_agent_id is None:
             raise AgentAppNotFoundError
         return self._detail.get(context, app.bound_agent_id)

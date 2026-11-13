@@ -5,6 +5,7 @@ from dataclasses import replace
 from typing import Any, cast
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
@@ -12,7 +13,8 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentScope, AgentStatus
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentIconType, AgentScope, AgentStatus
+from models.agent_soul_state import build_initial_agent_soul
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
 from repositories.agent_roster_queries import load_reference_counts_by_agent_id
@@ -22,8 +24,12 @@ from repositories.app.agent_debug_conversations import (
     count_agent_debug_conversation_messages,
     get_or_create_agent_debug_conversation,
 )
-from repositories.app.agent_runtime_app import ensure_workflow_agent_backing_app, resolve_agent_runtime_app
-from repositories.app.console_repository import ConsoleAppRepository
+from repositories.app.agent_runtime_app import (
+    create_backing_agent_for_app,
+    ensure_workflow_agent_backing_app,
+    resolve_agent_runtime_app,
+)
+from repositories.app.console_repository import ConsoleAppRepository, console_app_actor
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
@@ -39,12 +45,59 @@ from services.app.agent_app_contracts import (
     AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
-from services.entities.app_entities import AppDeletion, AppListParams, AppUpdateArguments, UpdateAppParams
+from services.entities.app_entities import (
+    AppCreationSettings,
+    AppDeletion,
+    AppListParams,
+    AppRecord,
+    AppUpdateArguments,
+    CreateAppParams,
+    UpdateAppParams,
+)
 
 
 class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def create_agent_app(
+        self,
+        context: RequestContext,
+        params: CreateAppParams,
+        settings: AppCreationSettings,
+        *,
+        default_model: tuple[str, str] | None,
+    ) -> AppRecord:
+        """Commit an Agent App and its backing Agent, snapshot, and Build conversation together.
+
+        The caller supplies prepared settings and a resolved default model. None
+        seeds an empty Soul. A roster name conflict rolls back all inserted rows.
+        """
+        if params.mode != AppMode.AGENT:
+            raise ValueError("Agent App creation requires agent mode")
+
+        tenant_id = context.active_workspace_id
+        initial_soul = build_initial_agent_soul(tenant_id, default_model)
+        with self._session_factory.begin() as session:
+            account = console_app_actor(session, context)
+            app = ConsoleAppRepository.insert_app_record(tenant_id, params, account, settings, session=session)
+            try:
+                create_backing_agent_for_app(
+                    session,
+                    tenant_id=tenant_id,
+                    account_id=context.account_id,
+                    app_id=app.id,
+                    name=params.name,
+                    description=params.description or "",
+                    role=params.agent_role,
+                    icon_type=AgentIconType(params.icon_type) if params.icon_type else None,
+                    icon=params.icon,
+                    icon_background=params.icon_background,
+                    initial_soul=initial_soul,
+                )
+            except IntegrityError as exc:
+                raise AgentAppNameConflictError from exc
+            return app_record(app, session=session, projection="detail-with-site")
 
     def list_apps(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None

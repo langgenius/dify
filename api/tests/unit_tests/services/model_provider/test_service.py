@@ -5,10 +5,10 @@ from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.model_entities import (
     ModelStatus,
@@ -1367,6 +1367,38 @@ class TestModelProviderServiceCases:
             assert result == ("langgenius/openai/openai", "gpt-4o")
             assert configurations.get_models_calls == [{"model_type": ModelType.LLM, "only_active": True}]
             assert sqlite_session.query(TenantDefaultModel).filter_by(tenant_id="tenant-1").first() is None
+
+        def test_resolve_default_model_selection_releases_connection_before_fallback(
+            self,
+            sqlite_engine: Engine,
+            sqlite_session_factory: sessionmaker[Session],
+            monkeypatch: pytest.MonkeyPatch,
+        ) -> None:
+            """With no saved choice, release the read connection before discovering the first active model."""
+            tenant_id = "tenant-1"
+            service, manager, configurations = _create_service_with_fake_manager(monkeypatch)
+            configurations.models = [_build_available_llm("gpt-4o-mini"), _build_available_llm("gpt-4o")]
+            provider_calls_at_checkin: list[tuple[str, ...]] = []
+
+            def record_checkin(_connection: object, _connection_record: object) -> None:
+                """Capture whether discovery has already started when the read connection is returned."""
+                provider_calls_at_checkin.append(tuple(manager.get_configurations_calls))
+
+            event.listen(sqlite_engine, "checkin", record_checkin)
+            try:
+                result = service.resolve_default_model_selection(
+                    tenant_id, ModelType.LLM, session_factory=sqlite_session_factory
+                )
+            finally:
+                event.remove(sqlite_engine, "checkin", record_checkin)
+
+            assert provider_calls_at_checkin == [()]
+            assert manager.get_configurations_calls == [tenant_id]
+            assert configurations.get_models_calls == [{"model_type": ModelType.LLM, "only_active": True}]
+            assert result == ("langgenius/openai/openai", "gpt-4o-mini")
+            statement = select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == tenant_id)
+            with sqlite_session_factory() as session:
+                assert session.scalar(statement) is None
 
         def test_get_default_model_selection_returns_none_when_provider_discovery_fails(
             self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch

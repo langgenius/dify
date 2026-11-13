@@ -32,8 +32,8 @@ from models.agent_config_entities import DeclaredOutputConfig
 from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
+from models.agent_soul_state import agent_soul_has_model
 from models.workflow import Workflow
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (

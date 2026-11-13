@@ -26,13 +26,13 @@ from models.account import Account
 from models.agent import AgentIconType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
+from repositories.app.agent_runtime_app import create_backing_agent_for_app
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
 from services.agent.errors import AgentNameConflictError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
-from services.agent.roster_service import AgentRosterService
 from services.app.access import AppAccessFilter, resolve_app_access_filter
 from services.app.agent_app_contracts import AgentAppDetail
 from services.app.console_service import (
@@ -537,6 +537,20 @@ def notify_agent_app_updated(tenant_id: str, app_id: str) -> None:
     app_was_updated.send(AppEvent(app_id, tenant_id, str(AppMode.AGENT)))
 
 
+def notify_app_created(context: RequestContext, app: AppRecord) -> None:
+    """Notify existing listeners and initialize access for a committed App."""
+    AppService.notify_created_app(
+        event=AppEvent(app.id, context.active_workspace_id, app.mode_compatible_with_agent),
+        account_id=context.account_id,
+        backing_agent_id=app.bound_agent_id,
+    )
+
+
+def notify_app_deleted(context: RequestContext, deleted: AppDeletion) -> None:
+    """Publish cleanup for an already committed deletion."""
+    AppService.notify_deleted_app(deleted, account_id=context.account_id)
+
+
 class AppLifecycleGateway(AppLifecycle):
     """Integrate App persistence with existing Agent transaction participants.
 
@@ -557,7 +571,8 @@ class AppLifecycleGateway(AppLifecycle):
             if app.mode == AppMode.AGENT:
                 initial_soul = AppService.prepare_agent_soul(context.active_workspace_id, session=session)
                 try:
-                    AgentRosterService(session).create_backing_agent_for_app(
+                    create_backing_agent_for_app(
+                        session,
                         tenant_id=context.active_workspace_id,
                         account_id=context.account_id,
                         app_id=app.id,
@@ -600,11 +615,7 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def created(self, context: RequestContext, app: AppRecord) -> None:
-        AppService.notify_created_app(
-            event=AppEvent(app.id, context.active_workspace_id, app.mode_compatible_with_agent),
-            account_id=context.account_id,
-            backing_agent_id=app.bound_agent_id,
-        )
+        notify_app_created(context, app)
 
     @override
     def updated(self, context: RequestContext, app: AppRecord) -> None:
@@ -612,7 +623,7 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        AppService.notify_deleted_app(deleted, account_id=context.account_id)
+        notify_app_deleted(context, deleted)
 
     @override
     def present(self, context: RequestContext, app: AppRecord, *, mask_credentials: bool = False) -> AppRecord:
