@@ -5,7 +5,8 @@ import hashlib
 import io
 import logging
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 from typing import TypedDict, override
 
 import pypdfium2
@@ -14,10 +15,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -47,7 +48,9 @@ class PdfExtractor(BaseExtractor):
         source_file_id: Optional id of the source upload file. When provided,
             extracted images are persisted under deterministic storage keys so
             repeated extractions of the same source reuse the same assets.
-        session: Session used to persist extracted images.
+        session: Optional caller-owned session used to persist extracted images.
+            The caller commits it. Without one, image records are written in a
+            short-lived session that commits on its own.
     """
 
     # Magic bytes for image format detection: (magic_bytes, extension, mime_type)
@@ -216,16 +219,15 @@ class PdfExtractor(BaseExtractor):
         if not candidates:
             return ""
 
-        session = self._session or db.session
-
         upload_files_by_key: dict[str, UploadFile] = {}
         if self._source_file_id:
-            existing_upload_files = session.scalars(
-                select(UploadFile).where(
-                    UploadFile.tenant_id == self._tenant_id,
-                    UploadFile.key.in_([candidate["file_key"] for candidate in candidates]),
-                )
-            ).all()
+            with self._session_scope() as session:
+                existing_upload_files = session.scalars(
+                    select(UploadFile).where(
+                        UploadFile.tenant_id == self._tenant_id,
+                        UploadFile.key.in_([candidate["file_key"] for candidate in candidates]),
+                    )
+                ).all()
             upload_files_by_key = {upload_file.key: upload_file for upload_file in existing_upload_files}
 
         image_content = []
@@ -259,7 +261,19 @@ class PdfExtractor(BaseExtractor):
             image_content.append(f"![image]({base_url}/files/{upload_file.id}/file-preview)")
 
         if new_upload_files:
-            session.add_all(new_upload_files)
-            if self._session is None:
-                session.commit()
+            with self._session_scope() as session:
+                session.add_all(new_upload_files)
         return "\n".join(image_content)
+
+    @contextmanager
+    def _session_scope(self) -> Generator[Session]:
+        """Yield the caller's session, or a short-lived one that commits on exit.
+
+        The short-lived session is only opened around database work, so it is
+        never held while PDF objects are decoded or images are written to storage.
+        """
+        if self._session is not None:
+            yield self._session
+            return
+        with session_factory.create_session() as session, session.begin():
+            yield session
