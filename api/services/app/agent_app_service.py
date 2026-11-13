@@ -9,9 +9,19 @@ from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
     AgentAppDetail,
+    AgentAppListPage,
+    AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
-from services.entities.app_entities import AppDeletion, UpdateAppParams
+from services.entities.app_entities import (
+    AppCreationSettings,
+    AppDeletion,
+    AppListParams,
+    AppRecord,
+    CreateAppParams,
+    UpdateAppParams,
+)
+from services.rbac.contracts import ResourcePermissionSnapshot
 
 
 class AgentAppReferences(Protocol):
@@ -126,6 +136,83 @@ class AgentAppDetailService:
         app_id = self._runtime.update_agent(context, agent_id, params)
         self._runtime.agent_updated(context, app_id)
         return self.get(context, agent_id)
+
+
+class AgentAppCollectionStore(Protocol):
+    """Load one Agent App page and materialize its editor conversations."""
+
+    def list_apps(
+        self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        """Return a tenant-scoped page after committing its per-account Build conversations.
+
+        The adapter enforces one editor mapping per Agent, account and draft surface
+        with a unique key. A failure rolls back the page's conversation changes.
+        """
+        ...
+
+
+class AgentAppCollectionAccess(Protocol):
+    """Resolve list visibility before starting the database work."""
+
+    def permissions(self, context: RequestContext) -> tuple[set[str] | None, ResourcePermissionSnapshot]:
+        """Return the visible Agent ids and the admitted caller's Agent permissions."""
+        ...
+
+
+class AgentAppCreator(Protocol):
+    """Create an Agent App and its backing roster Agent in one transaction."""
+
+    def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
+        """Resolve creation defaults before opening the App creation transaction."""
+        ...
+
+    def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
+        """Commit the new App and its Agent, or roll back both on failure."""
+        ...
+
+    def created(self, context: RequestContext, app: AppRecord) -> None:
+        """Notify existing listeners after the App creation commits."""
+        ...
+
+
+class AgentAppCollectionService:
+    """Coordinate Agent App creation and per-account collection presentation."""
+
+    def __init__(
+        self,
+        *,
+        store: AgentAppCollectionStore,
+        access: AgentAppCollectionAccess,
+        creator: AgentAppCreator,
+        detail: AgentAppDetailService,
+    ) -> None:
+        self._store = store
+        self._access = access
+        self._creator = creator
+        self._detail = detail
+
+    def list_apps(self, context: RequestContext, params: AppListParams) -> AgentAppListPage:
+        """Return only visible Agents with permission keys, with no open session on return."""
+        agent_ids, permissions = self._access.permissions(context)
+        page = self._store.list_apps(context, params, accessible_agent_ids=agent_ids)
+        keys = permissions.permission_keys_by_resource_ids([item.agent_id for item in page.data if item.agent_id])
+        return replace(
+            page,
+            data=[
+                replace(item, permission_keys=keys.get(item.agent_id, [])) if item.agent_id else item
+                for item in page.data
+            ],
+        )
+
+    def create(self, context: RequestContext, params: CreateAppParams) -> AgentAppDetail:
+        """Create an Agent App, then return the admitted creator's complete Agent detail."""
+        settings = self._creator.prepare_creation(context, params)
+        app = self._creator.create(context, params, settings)
+        self._creator.created(context, app)
+        if app.bound_agent_id is None:
+            raise AgentAppNotFoundError
+        return self._detail.get(context, app.bound_agent_id)
 
 
 class AgentAppAccessService:

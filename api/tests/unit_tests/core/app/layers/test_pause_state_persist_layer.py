@@ -139,6 +139,7 @@ def test_legacy_workflow_snapshot_uses_previous_runner_role(invoke_from: InvokeF
     restored = WorkflowResumptionContext.loads(json.dumps(payload)).get_generate_entity()
 
     expected = UserFrom.ACCOUNT if invoke_from in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE) else UserFrom.END_USER
+    assert isinstance(restored, WorkflowAppGenerateEntity)
     assert restored.user_from == expected
     # Normalization must not rewrite the source payload.
     assert "user_from" not in entity
@@ -154,6 +155,7 @@ def test_legacy_single_node_snapshot_preserves_debugger_role(field: str) -> None
 
     restored = WorkflowResumptionContext.loads(json.dumps(payload)).get_generate_entity()
 
+    assert isinstance(restored, WorkflowAppGenerateEntity)
     assert restored.user_from == UserFrom.ACCOUNT
 
 

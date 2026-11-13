@@ -36,6 +36,7 @@ import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
+import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
@@ -808,6 +809,12 @@ export const useChat = (
             }
           })
         },
+        onAgentLog(agentLog) {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          updateChatTreeNode(messageId, (responseItem) => {
+            upsertWorkflowToolActivity(responseItem, agentLog.data)
+          })
+        },
         onMessageEnd: (messageEnd) => {
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
@@ -1470,6 +1477,16 @@ export const useChat = (
               responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought
             upsertAgentResponseThoughtPart(responseItem, currentThought)
           }
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
+        onAgentLog(agentLog) {
+          if (!isCurrentRequest()) return
+          upsertWorkflowToolActivity(responseItem, agentLog.data)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

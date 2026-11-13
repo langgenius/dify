@@ -237,12 +237,16 @@ import {
   zPutAgentByAgentIdResponse,
 } from './zod.gen.ts'
 
+/**
+ * Return visible Workflow-callable Agents and their current workflow usage
+ */
 export const get = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentInviteOptions',
     path: '/agent/invite-options',
+    summary: 'Return visible Workflow-callable Agents and their current workflow usage',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())

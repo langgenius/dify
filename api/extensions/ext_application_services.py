@@ -23,7 +23,12 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
-from extensions.application_services.agent import AgentAppServices, build_agent_app_services
+from extensions.application_services.agent import (
+    AgentAppServices,
+    build_agent_app_services,
+    build_agent_invite_options_service,
+    build_agent_version_service,
+)
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
 from extensions.application_services.data_sources import (
     DataSourceServices,
@@ -113,7 +118,9 @@ from services.account.forgot_password_service import (
 from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
+from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent.version_service import AgentVersionService
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
@@ -308,6 +315,8 @@ class ApplicationServices:
     annotation_reply: AnnotationReplyService
     rbac: RBACServices
     agent_apps: AgentAppServices
+    agent_versions: AgentVersionService
+    agent_invite_options: AgentInviteOptionsService
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
@@ -671,6 +680,10 @@ def build_application_services(
         apps=apps,
         credential_queries=credential_queries,
         agent_apps=build_agent_app_services(database_client=database_client, rbac_members=rbac.members),
+        agent_versions=build_agent_version_service(database_client=database_client),
+        agent_invite_options=build_agent_invite_options_service(
+            database_client=database_client, rbac_members=rbac.members
+        ),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(

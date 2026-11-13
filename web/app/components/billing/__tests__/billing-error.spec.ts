@@ -3,6 +3,7 @@ import { billingErrorMessageKey } from '../billing-error'
 
 describe('billingErrorMessageKey', () => {
   it.each([
+    ['annual_discount_active', 409, 'errors.annualDiscountActive'],
     ['billing_unavailable', 503, 'errors.unavailable'],
     ['billing_request_in_progress', 429, 'errors.requestInProgress'],
     ['billing_operation_failed', 502, 'errors.operationFailed'],

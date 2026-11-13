@@ -21,7 +21,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
-from services.agent.roster_service import AgentRosterService
+from repositories.agent_roster_repository import list_invite_options_in_session
 
 
 def _agent_soul() -> AgentSoulConfig:
@@ -310,7 +310,11 @@ def test_workflow_callable_filter_distinguishes_never_published_from_dirty_draft
     assert not agent_has_workflow_callable_active_snapshot(session=sqlite_session, agent=stale_published_snapshot)
     assert not agent_has_workflow_callable_active_snapshot(session=sqlite_session, agent=cross_owner_revision)
 
-    invite_options = AgentRosterService(sqlite_session).list_invite_options(
+    invite_options = list_invite_options_in_session(
+        sqlite_session,
+        app_id=None,
+        accessible_agent_ids=None,
+        keyword=None,
         tenant_id="tenant-1",
         page=1,
         limit=20,
@@ -321,23 +325,30 @@ def test_workflow_callable_filter_distinguishes_never_published_from_dirty_draft
         archived_agent.id,
         workflow_only_agent.id,
     }
-    assert invite_options["total"] == len(expected_invite_ids)
-    assert {item["id"] for item in invite_options["data"]} == expected_invite_ids
+    assert invite_options.total == len(expected_invite_ids)
+    assert {item.id for item in invite_options.data} == expected_invite_ids
 
-    first_page = AgentRosterService(sqlite_session).list_invite_options(
+    first_page = list_invite_options_in_session(
+        sqlite_session,
+        app_id=None,
+        accessible_agent_ids=None,
+        keyword=None,
         tenant_id="tenant-1",
         page=1,
         limit=1,
     )
-    assert first_page["total"] == len(expected_invite_ids)
-    assert first_page["has_more"] is True
-    assert [item["id"] for item in first_page["data"]] == [published_with_dirty_draft.id]
+    assert first_page.total == len(expected_invite_ids)
+    assert first_page.has_more is True
+    assert [item.id for item in first_page.data] == [published_with_dirty_draft.id]
 
-    unpublished_keyword = AgentRosterService(sqlite_session).list_invite_options(
+    unpublished_keyword = list_invite_options_in_session(
+        sqlite_session,
+        app_id=None,
+        accessible_agent_ids=None,
         tenant_id="tenant-1",
         page=1,
         limit=20,
         keyword="Imported draft",
     )
-    assert unpublished_keyword["total"] == 0
-    assert unpublished_keyword["data"] == []
+    assert unpublished_keyword.total == 0
+    assert unpublished_keyword.data == ()
