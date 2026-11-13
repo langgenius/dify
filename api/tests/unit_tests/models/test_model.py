@@ -1,4 +1,6 @@
+import json
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
@@ -6,7 +8,38 @@ from sqlalchemy.orm import Session
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 from models import model as model_module
-from models.model import App, AppMode, Conversation, IconType, Message
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+
+
+@pytest.mark.parametrize(
+    ("enabled", "strategy", "expected_mode"),
+    [
+        (True, "react", AppMode.AGENT_CHAT),
+        (True, "function_call", AppMode.AGENT_CHAT),
+        (True, {"type": "function_call"}, AppMode.CHAT),
+        (True, ["react"], AppMode.CHAT),
+        (True, None, AppMode.CHAT),
+        (True, "unknown", AppMode.CHAT),
+        (False, "react", AppMode.CHAT),
+    ],
+)
+def test_legacy_agent_strategy_preserves_invalid_configuration(
+    sqlite_session: Session, enabled: bool, strategy: object, expected_mode: AppMode
+) -> None:
+    app = App(tenant_id=str(uuid4()), name="Legacy Agent", mode=AppMode.CHAT)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": enabled, "strategy": strategy}))
+    sqlite_session.add(config)
+    sqlite_session.flush()
+    app.app_model_config_id = config.id
+    sqlite_session.commit()
+
+    assert app.mode_compatible_with_agent_with_session(session=sqlite_session) == expected_mode
+
+    sqlite_session.expire_all()
+    assert app.mode == expected_mode
+    assert config.agent_mode_dict["strategy"] == strategy
 
 
 @pytest.fixture(autouse=True)
