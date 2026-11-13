@@ -56,10 +56,16 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequest,
     AgentAppRuntimeRequestBuilder,
 )
-from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
+from core.app.apps.agent_app.session_store import (
+    AgentAppSessionScope,
+    AgentAppWorkspaceStore,
+    StoredAgentAppSession,
+)
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
+    AppQueueEvent,
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
@@ -69,7 +75,11 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import (
+    AgentKnowledgeSpaceConfig,
+    AgentSoulConfig,
+    AgentSoulToolsConfig,
+)
 from models.enums import ConversationFromSource
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, Message, MessageAgentThought
@@ -91,21 +101,38 @@ def _thought_rows(session: Session) -> list[MessageAgentThought]:
 
 
 class _NoToolsBuilder:
-    def build_layers(self, **kwargs: Any) -> WorkflowAgentToolLayers:
-        del kwargs
+    def build_layers(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None,
+        tools: AgentSoulToolsConfig,
+        invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
+    ) -> WorkflowAgentToolLayers:
+        del tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces
         return WorkflowAgentToolLayers()
 
 
-class _FakeQueueManager:
+class _FakeQueueManager(AppQueueManager):
     def __init__(self) -> None:
+        super().__init__(task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.WEB_APP)
         self.events: list[Any] = []
         self._stop_requested = False
 
-    def publish(self, event: Any, _from: Any) -> None:
+    @override
+    def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        del pub_from
         self.events.append(event)
 
+    @override
     def is_stopped(self) -> bool:
         return self._stop_requested
+
+    @override
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        del event, pub_from
 
     def request_stop(self) -> None:
         self._stop_requested = True
@@ -506,7 +533,7 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         )
 
 
-class _FakeSessionStore:
+class _FakeSessionStore(AgentAppWorkspaceStore):
     def __init__(
         self,
         loaded: SessionSnapshot | None = None,
@@ -523,6 +550,7 @@ class _FakeSessionStore:
         self.resolved_scopes: list[AgentAppSessionScope] = []
         self.saved: list[tuple[AgentAppSessionScope, str, SessionSnapshot | None]] = []
 
+    @override
     def load_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
         self.resolved_scopes.append(scope)
         if self._loaded_session is not None:
@@ -535,6 +563,7 @@ class _FakeSessionStore:
             session_snapshot=self.loaded,
         )
 
+    @override
     def save_active_snapshot(
         self,
         *,
@@ -602,7 +631,7 @@ def _dify_ctx() -> DifyRunContext:
 def _compatible_session_snapshot() -> SessionSnapshot:
     request = (
         AgentAppRuntimeRequestBuilder(
-            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),
         )
         .build(
             AgentAppRuntimeBuildContext(
@@ -630,11 +659,11 @@ def _runner(
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
-            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
-        session_store=store,  # type: ignore[arg-type]
+        session_store=store,
         text_delta_debounce_seconds=text_delta_debounce_seconds,
     )
 
@@ -650,7 +679,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         query="hello",
         message_id="msg-1",
         model_name="gpt-4o-mini",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
 
@@ -967,7 +996,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1009,7 +1038,7 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
     receipt = {
         "id": "kfs_" + "a" * 32,
@@ -1046,7 +1075,7 @@ def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.append_answer_text("intermediate final answer")
@@ -1062,7 +1091,7 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1121,7 +1150,7 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1179,7 +1208,7 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1223,7 +1252,7 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1296,7 +1325,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     for script, output in (("lookup find", "find output"), ("lookup out", "out output")):
@@ -1381,7 +1410,7 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots() ->
         query="hello",
         message_id="msg-1",
         model_name="gpt-4o-mini",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
         session_scope_snapshot_id=None,
     )
 
@@ -1632,7 +1661,7 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
         inputs=inputs,
         message_id="msg-1",
         model_name="gpt-4o-mini",
-        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+        queue_manager=_FakeQueueManager(),
     )
     assert len(contexts) == 1
     assert contexts[0].inputs == inputs
