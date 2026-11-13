@@ -104,7 +104,7 @@ def _bounded_text(value: JsonValue | None) -> str:
     return serialized[:_TOOL_FIELD_LIMIT]
 
 
-def _first_stream_part(candidates: list[Mapping[JsonValue, JsonValue]]) -> _ToolStreamPart | None:
+def _first_stream_part(candidates: list[Mapping[str, JsonValue]]) -> _ToolStreamPart | None:
     """Return the first candidate mapping that validates as a tool stream part."""
     for candidate in candidates:
         try:
@@ -195,7 +195,7 @@ class WorkflowAgentToolActivityProjector:
         """
         if not isinstance(data, Mapping):
             return None
-        candidates: list[Mapping[JsonValue, JsonValue]] = []
+        candidates: list[Mapping[str, JsonValue]] = []
         part = data.get("part")
         if isinstance(part, Mapping):
             candidates.append(part)

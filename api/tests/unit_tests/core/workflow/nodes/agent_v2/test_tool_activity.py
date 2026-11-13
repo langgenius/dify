@@ -103,7 +103,9 @@ def _tool_result(
     )
 
 
-def _retry_result(tool_call_id: str, *, content: str = "invalid arguments", run_id: str = "run-1"):
+def _retry_result(
+    tool_call_id: str, *, content: str = "invalid arguments", run_id: str = "run-1"
+) -> AgentBackendStreamInternalEvent:
     return _internal(
         "function_tool_result",
         {
@@ -118,7 +120,7 @@ def _retry_result(tool_call_id: str, *, content: str = "invalid arguments", run_
     )
 
 
-def test_start_then_result_emits_matching_snapshots_with_full_fields():
+def test_start_then_result_emits_matching_snapshots_with_full_fields() -> None:
     projector = _projector()
 
     running = projector.handle(_tool_call("call-1", args={"command": "ls -la"}))
@@ -145,7 +147,7 @@ def test_start_then_result_emits_matching_snapshots_with_full_fields():
     assert finished[0].data.tool_output == "a.txt\nb.txt"
 
 
-def test_same_name_parallel_calls_correlate_by_call_id_out_of_order():
+def test_same_name_parallel_calls_correlate_by_call_id_out_of_order() -> None:
     projector = _projector()
 
     first = projector.handle(_tool_call("call-a", args={"command": "one"}))[0]
@@ -164,7 +166,7 @@ def test_same_name_parallel_calls_correlate_by_call_id_out_of_order():
     assert done_a.data.tool_output == "out-a"
 
 
-def test_duplicate_start_and_terminal_events_do_not_duplicate_or_regress():
+def test_duplicate_start_and_terminal_events_do_not_duplicate_or_regress() -> None:
     projector = _projector()
 
     assert len(projector.handle(_tool_call("call-1"))) == 1
@@ -177,7 +179,7 @@ def test_duplicate_start_and_terminal_events_do_not_duplicate_or_regress():
     assert projector.finish("succeeded") == []
 
 
-def test_unrelated_text_and_output_tool_events_are_ignored():
+def test_unrelated_text_and_output_tool_events_are_ignored() -> None:
     projector = _projector()
 
     assert projector.handle(_internal("part_delta", {"delta": "hi"})) == []
@@ -211,7 +213,7 @@ def test_unrelated_text_and_output_tool_events_are_ignored():
     assert projector.finish("succeeded") == []
 
 
-def test_retry_prompt_result_marks_call_failed():
+def test_retry_prompt_result_marks_call_failed() -> None:
     projector = _projector()
 
     projector.handle(_tool_call("call-1", args={"bad": True}))
@@ -223,7 +225,7 @@ def test_retry_prompt_result_marks_call_failed():
     assert retried[0].data.tool_output == ""
 
 
-def test_tool_return_failure_outcome_marks_call_failed_with_output_as_error():
+def test_tool_return_failure_outcome_marks_call_failed_with_output_as_error() -> None:
     projector = _projector()
 
     projector.handle(_tool_call("call-1"))
@@ -235,7 +237,7 @@ def test_tool_return_failure_outcome_marks_call_failed_with_output_as_error():
     assert failed[0].data.tool_output == "command not found"
 
 
-def test_early_shell_part_start_then_call_then_result_emits_three_phases():
+def test_early_shell_part_start_then_call_then_result_emits_three_phases() -> None:
     projector = _projector()
 
     previewed = projector.handle(_part_start("call-1", args={"script": "ls"}))
@@ -257,7 +259,7 @@ def test_early_shell_part_start_then_call_then_result_emits_three_phases():
     assert finished[0].data.tool_input == running[0].data.tool_input
 
 
-def test_generic_tool_call_has_no_early_started_phase():
+def test_generic_tool_call_has_no_early_started_phase() -> None:
     projector = _projector()
 
     assert projector.handle(_part_start("call-1", tool_name="web_search", args={"q": "dify"})) == []
@@ -271,7 +273,7 @@ def test_generic_tool_call_has_no_early_started_phase():
     assert finished[0].status == "succeeded"
 
 
-def test_early_part_start_rejects_non_shell_and_incomplete_payloads():
+def test_early_part_start_rejects_non_shell_and_incomplete_payloads() -> None:
     projector = _projector()
 
     assert projector.handle(_part_start("call-1", tool_name="web_search")) == []
@@ -297,7 +299,7 @@ def test_early_part_start_rejects_non_shell_and_incomplete_payloads():
     assert projector.finish("succeeded") == []
 
 
-def test_late_early_start_does_not_regress_running_or_terminal():
+def test_late_early_start_does_not_regress_running_or_terminal() -> None:
     projector = _projector()
 
     projector.handle(_tool_call("call-1", args={"script": "ls -la"}))
@@ -308,7 +310,7 @@ def test_late_early_start_does_not_regress_running_or_terminal():
     assert projector.finish("succeeded") == []
 
 
-def test_duplicate_running_start_does_not_duplicate_or_regress():
+def test_duplicate_running_start_does_not_duplicate_or_regress() -> None:
     projector = _projector()
 
     first = projector.handle(_tool_call("call-1", args={"script": "ls"}))
@@ -318,7 +320,7 @@ def test_duplicate_running_start_does_not_duplicate_or_regress():
     assert projector.handle(_part_start("call-1", args={"script": "ls"})) == []
 
 
-def test_unmatched_result_still_emits_one_completed_snapshot():
+def test_unmatched_result_still_emits_one_completed_snapshot() -> None:
     projector = _projector()
 
     finished = projector.handle(_tool_result("orphan-1", tool_name="web_search", content="results"))
@@ -328,7 +330,7 @@ def test_unmatched_result_still_emits_one_completed_snapshot():
     assert projector.handle(_tool_result("orphan-1")) == []
 
 
-def test_result_event_accepts_result_and_top_level_payload_shapes():
+def test_result_event_accepts_result_and_top_level_payload_shapes() -> None:
     projector = _projector()
     projector.handle(_tool_call("call-1"))
     projector.handle(_tool_call("call-2"))
@@ -381,7 +383,7 @@ def test_result_event_accepts_result_and_top_level_payload_shapes():
     assert via_bare_part[0].data.tool_output == "via-bare-part"
 
 
-def test_result_event_does_not_infer_kind_for_declared_unknown_part_kind():
+def test_result_event_does_not_infer_kind_for_declared_unknown_part_kind() -> None:
     projector = _projector()
     projector.handle(_tool_call("call-1"))
 
@@ -402,7 +404,7 @@ def test_result_event_does_not_infer_kind_for_declared_unknown_part_kind():
     assert projector.finish("succeeded")[0].status == "failed"
 
 
-def test_unmatched_result_without_tool_name_is_rejected():
+def test_unmatched_result_without_tool_name_is_rejected() -> None:
     projector = _projector()
 
     assert (
@@ -426,7 +428,7 @@ def test_unmatched_result_without_tool_name_is_rejected():
     assert projector.finish("succeeded") == []
 
 
-def test_finish_error_is_bounded():
+def test_finish_error_is_bounded() -> None:
     projector = _projector()
     projector.handle(_tool_call("call-1"))
 
@@ -434,7 +436,7 @@ def test_finish_error_is_bounded():
     assert len(closed[0].error or "") <= _TOOL_FIELD_LIMIT
 
 
-def test_finish_closes_unfinished_started_and_running_calls():
+def test_finish_closes_unfinished_started_and_running_calls() -> None:
     projector = _projector()
 
     projector.handle(_part_start("call-preview", args={"script": "ls"}))
@@ -449,7 +451,7 @@ def test_finish_closes_unfinished_started_and_running_calls():
     assert projector.finish("succeeded") == []
 
 
-def test_finish_failed_and_cancelled_propagate_error():
+def test_finish_failed_and_cancelled_propagate_error() -> None:
     failed_projector = _projector()
     failed_projector.handle(_tool_call("call-1"))
     failed = failed_projector.finish("failed", error="backend exploded")
@@ -463,7 +465,7 @@ def test_finish_failed_and_cancelled_propagate_error():
     assert cancelled[0].error == "user stopped"
 
 
-def test_builtin_tool_part_start_events_project_activity():
+def test_builtin_tool_part_start_events_project_activity() -> None:
     projector = _projector()
 
     running = projector.handle(
@@ -502,7 +504,7 @@ def test_builtin_tool_part_start_events_project_activity():
     assert finished[0].data.tool_output == "search results"
 
 
-def test_malformed_payloads_and_missing_ids_are_ignored():
+def test_malformed_payloads_and_missing_ids_are_ignored() -> None:
     projector = _projector()
 
     assert projector.handle(_internal("function_tool_call", {"unexpected": True})) == []
@@ -529,10 +531,10 @@ def test_malformed_payloads_and_missing_ids_are_ignored():
     assert projector.finish("succeeded") == []
 
 
-def test_large_tool_fields_are_bounded():
+def test_large_tool_fields_are_bounded() -> None:
     projector = _projector()
 
-    big_input = {"blob": "x" * (_TOOL_FIELD_LIMIT * 2)}
+    big_input: dict[str, object] = {"blob": "x" * (_TOOL_FIELD_LIMIT * 2)}
     big_output = "y" * (_TOOL_FIELD_LIMIT * 2)
     started = projector.handle(_tool_call("call-1", args=big_input))[0]
     finished = projector.handle(_tool_result("call-1", content=big_output))[0]
@@ -543,7 +545,7 @@ def test_large_tool_fields_are_bounded():
     assert finished.data.tool_output == "y" * _TOOL_FIELD_LIMIT
 
 
-def test_identity_separates_runs_and_call_ids():
+def test_identity_separates_runs_and_call_ids() -> None:
     projector = _projector()
 
     a = projector.handle(_tool_call("call-1", run_id="run-1"))[0]
@@ -553,7 +555,7 @@ def test_identity_separates_runs_and_call_ids():
     assert a.id != b.id
 
 
-def test_real_pydantic_ai_stream_events_through_adapter():
+def test_real_pydantic_ai_stream_events_through_adapter() -> None:
     """Integration check: public run events adapt into projected snapshots."""
     adapter = AgentBackendRunEventAdapter()
     projector = _projector()
@@ -623,7 +625,7 @@ def test_real_pydantic_ai_stream_events_through_adapter():
     assert projector.finish("succeeded") == []
 
 
-def test_real_retry_prompt_event_through_adapter_fails_call():
+def test_real_retry_prompt_event_through_adapter_fails_call() -> None:
     adapter = AgentBackendRunEventAdapter()
     projector = _projector()
 

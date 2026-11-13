@@ -5,7 +5,6 @@ import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/t
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
-import { sseGet, ssePost } from '@/service/base'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   createHumanInputFormFixture,
@@ -13,9 +12,16 @@ import {
 } from '@/test/fixtures/workflow-process'
 import { useChat } from '../hooks'
 
+type SseTransportCall = (url: string, fetchOptions: unknown, otherOptions: unknown) => Promise<void>
+
+const { sseGet, ssePost } = vi.hoisted(() => ({
+  sseGet: vi.fn<SseTransportCall>(),
+  ssePost: vi.fn<SseTransportCall>(),
+}))
+
 vi.mock('@/service/base', () => ({
-  sseGet: vi.fn(),
-  ssePost: vi.fn(),
+  sseGet,
+  ssePost,
 }))
 
 const audio = vi.hoisted(() => ({
