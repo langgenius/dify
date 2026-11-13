@@ -983,6 +983,24 @@ def test_knowledge_retrieval_v2_node_discovery_uses_retrieval_metrics() -> None:
     }
 
 
+def test_node_info_lists_only_metric_capable_node_types(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Given a published graph, the entry list contains only metric-capable nodes."""
+    workflow = _workflow_with_nodes(
+        [
+            ("llm-1", {"type": "llm", "title": "Answer"}),
+            ("start-1", {"type": "start", "title": "Answer"}),
+            ("note-1", {"type": "note", "title": "Answer"}),
+        ]
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_workflow", lambda *_args: workflow)
+
+    nodes = EvaluationService.get_nodes_for_metrics(App(), EvaluationTargetType.APPS.value, sqlite_session)
+
+    assert nodes == {"all": [{"node_id": "llm-1", "type": "llm", "title": "Answer"}]}
+
+
 def test_knowledge_retrieval_v2_evaluation_scores_full_offloaded_results(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
