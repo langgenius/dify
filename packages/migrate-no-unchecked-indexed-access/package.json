@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "vp pack",
+    "build": "node init && vp pack",
     "type-check": "tsrs --noEmit"
   },
   "dependencies": {
