@@ -27,6 +27,7 @@ from extensions.application_services.agent import (
     AgentAppServices,
     build_agent_app_services,
     build_agent_invite_options_service,
+    build_agent_observability,
     build_agent_version_service,
 )
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
@@ -119,6 +120,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.observability_contracts import AgentObservability
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.version_service import AgentVersionService
 from services.agent_tracing_config_service import AgentTracingConfigService
@@ -317,6 +319,7 @@ class ApplicationServices:
     agent_apps: AgentAppServices
     agent_versions: AgentVersionService
     agent_invite_options: AgentInviteOptionsService
+    agent_observability: AgentObservability
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
@@ -684,6 +687,7 @@ def build_application_services(
         agent_invite_options=build_agent_invite_options_service(
             database_client=database_client, rbac_members=rbac.members
         ),
+        agent_observability=build_agent_observability(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(
