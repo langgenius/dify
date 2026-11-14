@@ -99,6 +99,7 @@ Notes:
 - Chat/completion require a stable `user` identifier in the request payload.
 - Pagination cursors for `getConversations`, `getConversationMessages`, and `getConversationVariables` may be omitted, `null`, or `''` to request the first page.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
+- The `timeout` setting (seconds, default `60`) is a per-attempt deadline covering the request and its response body, including SSE and binary streams. Incoming chunks do not reset it. Set a longer timeout for long-running generations; stalled or still-active streams that exceed the deadline fail with `TimeoutError`. If you stop consuming a response, call `stream.data.destroy()` to cancel it and release its timer.
 - `stream.toText()` rejects with `APIError` when Dify sends an `error` event, even if the HTTP status is 200. Iterating the stream directly still yields these events for custom handling.
 
 ## Maintainers
