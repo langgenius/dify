@@ -160,3 +160,31 @@ def test_limits_pool_reports_and_counts_the_ones_left_out(
     assert len(messages) == 2
     assert "0 earlier reports left out" in messages[0]
     assert "2 earlier reports left out" in messages[1]
+
+
+def test_groups_holders_by_site_and_counts_the_sites_it_leaves_out(
+    clock: tuple[Callable[[], float], Callable[[float], None]],
+) -> None:
+    read, _advance = clock
+    engine = create_engine("sqlite://", poolclass=QueuePool, pool_size=7, max_overflow=0)
+    monitor = ConnectionHoldMonitor(warn_after_seconds=60, clock=read)
+    monitor.install(engine.pool)
+
+    connections = [
+        engine.connect(),
+        engine.connect(),
+        engine.connect(),
+        engine.connect(),
+        engine.connect(),
+        engine.connect(),
+        _borrow(engine),
+    ]
+
+    described = monitor.describe_holders()
+    assert described.count(f"1 x {THIS_FILE}:") == 5
+    assert described.endswith("; 2 other sites")
+    connections.pop().close()
+    assert monitor.describe_holders().endswith("; 1 other site")
+    for connection in connections:
+        connection.close()
+    engine.dispose()

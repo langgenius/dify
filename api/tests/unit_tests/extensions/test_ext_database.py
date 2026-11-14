@@ -4,7 +4,11 @@ import pytest
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.pool import QueuePool
 
+from core.db.connection_hold_monitor import ConnectionHoldMonitor
+from dify_app import DifyApp
+from extensions import ext_database
 from extensions.ext_database import install_connection_hold_monitor
+from models.engine import db
 
 
 @pytest.fixture
@@ -44,3 +48,23 @@ def test_connection_hold_monitor_reports_a_full_pool_only_when_the_pool_has_a_li
         assert len(monitor.holds()) == 2
 
     assert [record for record in caplog.records if "fully checked out" in record.getMessage()] == []
+
+
+@pytest.mark.parametrize(("setting", "installed"), [(0, False), (5, True)])
+def test_init_app_installs_the_monitor_on_the_application_engine_when_enabled(
+    config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch, setting: float, installed: bool
+) -> None:
+    config_overrides(SQLALCHEMY_POOL_HOLD_WARNING_SECONDS=setting)
+    # The gevent reset hook registers a process-wide pool listener; it is not what this test is about.
+    monkeypatch.setattr(ext_database, "_setup_gevent_compatibility", lambda: None)
+    app = DifyApp(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+
+    ext_database.init_app(app)
+
+    monitor = app.extensions.get("connection_hold_monitor")
+    assert isinstance(monitor, ConnectionHoldMonitor) is installed
+    if isinstance(monitor, ConnectionHoldMonitor):
+        with app.app_context(), db.engine.connect():
+            assert len(monitor.holds()) == 1
+        assert monitor.holds() == []

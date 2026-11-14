@@ -72,9 +72,11 @@ def init_app(app: DifyApp):
     db.init_app(app)
     _setup_gevent_compatibility()
 
-    # Eagerly build the engine so pool_size/max_overflow/etc. come from config
     try:
         with app.app_context():
-            install_connection_hold_monitor(db.engine)  # also triggers engine creation with the configured options
+            # Reading db.engine builds it, so pool_size/max_overflow/etc. come from config.
+            monitor = install_connection_hold_monitor(db.engine)
+            if monitor is not None:
+                app.extensions["connection_hold_monitor"] = monitor
     except Exception:
         logger.exception("Failed to initialize SQLAlchemy engine during app startup")

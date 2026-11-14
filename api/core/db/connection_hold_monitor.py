@@ -109,8 +109,9 @@ class ConnectionHoldMonitor:
             hold = oldest[site]
             called_from = f", called from {hold.caller}" if hold.caller else ""
             parts.append(f"{count} x {site}{called_from} (oldest {now - hold.since:.1f} s)")
-        if len(counts) > _REPORTED_HOLDER_SITES:
-            parts.append(f"{len(counts) - _REPORTED_HOLDER_SITES} more sites")
+        others = len(counts) - _REPORTED_HOLDER_SITES
+        if others > 0:
+            parts.append(f"{others} other site{'s' if others > 1 else ''}")
         return "; ".join(parts) or "none"
 
     def _on_checkout(self, dbapi_connection: object, connection_record: object, connection_proxy: object) -> None:
