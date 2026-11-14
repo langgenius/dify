@@ -87,3 +87,12 @@ it('zooms the loaded PDF with popup shortcuts while Close keeps native focus', a
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
 })
+
+it('keeps PDF text selectable for native browser highlighting', async () => {
+  const { text } = await openPdf()
+  const { height } = text.element().getBoundingClientRect()
+
+  await text.dblClick({ position: { x: 5, y: height / 2 } })
+
+  await expect.poll(() => window.getSelection()?.toString()).toBe('Dify')
+})

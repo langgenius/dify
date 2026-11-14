@@ -1,73 +1,47 @@
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import navigation from '@/i18n/locales/en-US/navigation.json'
+import plugin from '@/i18n/locales/en-US/plugin.json'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeCatalogTabs from '../home-catalog-tabs'
 import HomeHeader from '../home-header'
 import HomeHero from '../home-hero'
 import { HomeStickyStateProvider } from '../home-sticky-state-provider'
 
-const { boundaries, translations } = vi.hoisted(() => ({
-  boundaries: {
-    marketplaceUrlPrefix: 'https://marketplace.dify.ai',
-    useDocLink: vi.fn(
-      () =>
-        (path = '') =>
-          `https://docs.dify.ai/console${path}`,
-    ),
-  },
-  translations: {
-    'marketplace.home.creatorCenter': 'Creator Center',
-    'marketplace.home.guide': 'Guide',
-    pluginDevelopmentGuide: 'Plugin development guide',
-    pluginPublishGuide: 'Publish a plugin',
-    requestAPlugin: 'Request a plugin',
-    templatePublishingGuide: 'Publish a template',
-    'navigation.mainNav.marketplace': 'Marketplace navigation',
-  },
-}))
+vi.unmock('react-i18next')
 
-vi.mock('#i18n', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...createReactI18nextMock(translations),
-    useLocale: () => 'en-US',
-  }
-})
-
-vi.mock('react-i18next', async (importOriginal) => {
-  const original = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return { ...original, ...createReactI18nextMock(translations) }
-})
-
-vi.mock('@/context/i18n', () => ({
-  defaultDocBaseUrl: 'https://docs.dify.ai',
-  useDocLink: boundaries.useDocLink,
-}))
-
-vi.mock('@/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/env')>()
-  return {
-    ...actual,
-    env: {
-      ...actual.env,
-      get NEXT_PUBLIC_MARKETPLACE_URL_PREFIX() {
-        return boundaries.marketplaceUrlPrefix
-      },
-    },
-  }
-})
+async function renderChrome(
+  node: React.ReactNode,
+  edition: 'COMMUNITY' | 'ENTERPRISE' = 'COMMUNITY',
+) {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { navigation, plugin } },
+  })
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: edition },
+  })
+  return render(
+    <ConsoleProvider>
+      <I18nextProvider i18n={i18n}>{node}</I18nextProvider>
+    </ConsoleProvider>,
+  )
+}
 
 describe('Marketplace home chrome', () => {
   beforeEach(async () => {
     await page.viewport(1280, 800)
-    boundaries.marketplaceUrlPrefix = 'https://marketplace.dify.ai'
     vi.clearAllMocks()
   })
 
   it('keeps localized catalog navigation and the standalone guide keyboard reachable', async () => {
-    const screen = await render(
+    const screen = await renderChrome(
       <TooltipProvider delay={0} closeDelay={0}>
         <HomeStickyStateProvider>
           <button type="button">Before header</button>
@@ -110,16 +84,12 @@ describe('Marketplace home chrome', () => {
     await expect
       .element(header.getByRole('link', { name: 'Dify Marketplace' }))
       .toHaveAttribute('href', '/')
-    const headerTemplate = header.getByRole('link', { name: '模板', includeHidden: true })
-    await expect.element(headerTemplate).toHaveAttribute('href', '/templates?language=zh-Hans')
-    await expect.element(headerTemplate).toHaveAttribute('aria-current', 'page')
-    await expect
-      .element(
-        screen.getByRole('navigation', { name: 'Marketplace navigation' }).getByRole('link', {
-          name: '模板',
-        }),
-      )
-      .toBeVisible()
+    const templates = screen
+      .getByRole('navigation', { name: 'Marketplace' })
+      .getByRole('link', { name: '模板' })
+    await expect.element(templates).toBeVisible()
+    await expect.element(templates).toHaveAttribute('href', '/templates?language=zh-Hans')
+    await expect.element(templates).toHaveAttribute('aria-current', 'page')
     await expect
       .element(header.getByRole('link', { name: 'Creator Center' }))
       .toHaveAttribute('href', 'https://creators.dify.ai/')
@@ -138,17 +108,25 @@ describe('Marketplace home chrome', () => {
     await userEvent.keyboard('{Enter}')
     const menu = screen.getByRole('menu')
     await expect.element(menu).toBeVisible()
+    await expect.element(menu.getByRole('menuitem').first()).toHaveFocus()
     await expect
-      .element(menu.getByRole('menuitem', { name: 'Plugin development guide' }))
+      .element(menu.getByRole('menuitem', { name: 'Integration development guide' }))
       .toHaveAttribute(
         'href',
         'https://docs.dify.ai/en/develop-plugin/getting-started/getting-started-dify-plugin',
       )
     await expect.element(screen.getByRole('tooltip')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(menu).not.toBeInTheDocument()
+    await expect.element(guide).toHaveFocus()
+    await userEvent.tab()
+    await expect.element(screen.getByRole('link', { name: '插件' })).toHaveFocus()
+    await userEvent.tab()
+    await expect.element(templates).toHaveFocus()
   })
 
-  it('keeps console navigation local and uses the deployment-aware guide after reopen', async () => {
-    const screen = await render(
+  it('keeps console navigation local and reopens the Enterprise guide from the keyboard', async () => {
+    const screen = await renderChrome(
       <TooltipProvider delay={0} closeDelay={0}>
         <HomeStickyStateProvider>
           <HomeHeader activeTab={null} isMarketplacePlatform={false} />
@@ -159,6 +137,7 @@ describe('Marketplace home chrome', () => {
           />
         </HomeStickyStateProvider>
       </TooltipProvider>,
+      'ENTERPRISE',
     )
     const header = screen.getByRole('banner')
     await expect
@@ -170,17 +149,22 @@ describe('Marketplace home chrome', () => {
     const guide = header.getByRole('button', { name: 'Guide' })
     await guide.click()
     await expect
-      .element(screen.getByRole('menuitem', { name: 'Plugin development guide' }))
+      .element(screen.getByRole('menuitem', { name: 'Integration development guide' }))
       .toHaveAttribute(
         'href',
-        'https://docs.dify.ai/console/develop-plugin/getting-started/getting-started-dify-plugin',
+        'https://enterprise-docs.dify.ai/en/develop/plugins/getting-started/getting-started-dify-plugin',
       )
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
     await expect.element(guide).toHaveFocus()
 
-    await guide.click()
-    await expect.element(screen.getByRole('menu')).toBeVisible()
-    expect(boundaries.useDocLink).toHaveBeenCalledOnce()
+    await userEvent.keyboard('{Enter}')
+    const developmentGuide = screen.getByRole('menuitem', { name: 'Integration development guide' })
+    await expect.element(developmentGuide).toBeVisible()
+    await userEvent.keyboard('{End}')
+    await expect.element(screen.getByRole('menuitem').last()).toHaveFocus()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+    await expect.element(guide).toHaveFocus()
   })
 })

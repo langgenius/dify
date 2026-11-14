@@ -66,6 +66,14 @@ from .enums import (
     WorkflowTriggerStatus,
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
+from .file_scan import (
+    FileScanFallbackAction,
+    FileScanPolicy,
+    FileScanProvider,
+    FileScanProviderStatus,
+    FileScanRecord,
+    FileScanRecordStatus,
+)
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .human_input_v2 import (
     ContactSubjectType,
@@ -174,6 +182,7 @@ from .model import (
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
 from .onboarding import AccountStepByStepTourState
+from .personal_access_token import PersonalAccessToken
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -309,6 +318,12 @@ __all__ = [
     "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "FileScanFallbackAction",
+    "FileScanPolicy",
+    "FileScanProvider",
+    "FileScanProviderStatus",
+    "FileScanRecord",
+    "FileScanRecordStatus",
     "HumanInputContactIdentity",
     "HumanInputContent",
     "HumanInputEmailProvider",
@@ -386,6 +401,7 @@ __all__ = [
     "OAuthAccessToken",
     "OperationLog",
     "PermissionEnum",
+    "PersonalAccessToken",
     "PinnedConversation",
     "Provider",
     "ProviderModel",

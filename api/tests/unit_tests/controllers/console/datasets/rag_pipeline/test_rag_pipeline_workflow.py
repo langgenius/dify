@@ -18,7 +18,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
-import models.workflow as workflow_models
 import services
 import services.rag_pipeline.rag_pipeline as rag_pipeline_service
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
@@ -989,7 +988,6 @@ class TestRagPipelineWorkflowApisCases:
         database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
         database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
         monkeypatch.setattr(workflow_controller, "db", database)
-        monkeypatch.setattr(workflow_models, "db", database)
         monkeypatch.setattr(rag_pipeline_service, "db", database)
 
         with database_session() as session:

@@ -6,7 +6,7 @@ import pytest
 from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
-from sqlalchemy.sql import Executable
+from sqlalchemy.sql import ClauseElement
 
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
@@ -330,12 +330,14 @@ def _binding(
 
 
 @pytest.fixture
-def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[Executable]]:
+def orm_statements(sqlite_session_factory: sessionmaker[Session]) -> Iterator[list[ClauseElement]]:
     """Record statements executed by the service-owned SQLite sessions."""
-    scalar_statements: list[Executable] = []
+    scalar_statements: list[ClauseElement] = []
 
     def record_statement(execute_state: ORMExecuteState) -> None:
-        scalar_statements.append(execute_state.statement)
+        statement = execute_state.statement
+        assert isinstance(statement, ClauseElement)
+        scalar_statements.append(statement)
 
     event.listen(sqlite_session_factory.class_, "do_orm_execute", record_statement)
     try:
@@ -412,7 +414,7 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
 def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     sqlite_session: Session,
-    orm_statements: list[Executable],
+    orm_statements: list[ClauseElement],
     binding_type: WorkflowAgentBindingType,
     scope: AgentScope,
     source: AgentSource,
@@ -444,8 +446,12 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
-    assert binding.id in orm_statements[0].compile().params.values()
-    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()
+    first_params = orm_statements[0].compile().params
+    last_params = orm_statements[-1].compile().params
+    assert first_params is not None
+    assert last_params is not None
+    assert binding.id in first_params.values()
+    assert pinned_snapshot.id in last_params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)

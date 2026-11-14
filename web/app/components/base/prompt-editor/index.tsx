@@ -1,6 +1,5 @@
 'use client'
 
-import type { InitialConfigType } from '@lexical/react/LexicalComposer'
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
@@ -24,10 +23,10 @@ import type {
   WorkflowVariableBlockType,
 } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { CodeNode } from '@lexical/code'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { CodeNode } from '@lexical/code-core'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { $getRoot, TextNode } from 'lexical'
+import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
+import { $getRoot, defineExtension, TextNode } from 'lexical'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -42,6 +41,7 @@ import { HITLInputNode } from './plugins/hitl-input-block'
 import { LastRunBlockNode } from './plugins/last-run-block'
 import { QueryBlockNode } from './plugins/query-block'
 import { RequestURLBlockNode } from './plugins/request-url-block'
+import { RosterReferenceBlockContext } from './plugins/roster-reference-block/context'
 import { RosterReferenceBlockNode } from './plugins/roster-reference-block/node'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { WorkflowVariableBlockNode } from './plugins/workflow-variable-block'
@@ -181,37 +181,41 @@ const PromptEditor: FC<PromptEditorProps> = ({
   shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const initialConfig: InitialConfigType = {
-    theme: {
-      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:line-clamp-none!',
-    },
-    namespace: 'prompt-editor',
-    nodes: [
-      CodeNode,
-      CustomTextNode,
-      {
-        replace: TextNode,
-        with: (node: TextNode) => new CustomTextNode(node.__text),
-        withKlass: CustomTextNode,
+  const [extension] = useState(() =>
+    defineExtension({
+      name: 'prompt-editor',
+      editable,
+      theme: {
+        paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:line-clamp-none!',
       },
-      ContextBlockNode,
-      HistoryBlockNode,
-      QueryBlockNode,
-      RequestURLBlockNode,
-      WorkflowVariableBlockNode,
-      VariableValueBlockNode,
-      RosterReferenceBlockNode,
-      HITLInputNode,
-      CurrentBlockNode,
-      ErrorMessageBlockNode,
-      LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
-      AgentOutputBlockNode,
-    ],
-    editorState: textToEditorState(value || ''),
-    onError: (error: Error) => {
-      throw error
-    },
-  }
+      namespace: 'prompt-editor',
+      nodes: [
+        CodeNode,
+        CustomTextNode,
+        {
+          replace: TextNode,
+          with: (node: TextNode) => new CustomTextNode(node.__text),
+          withKlass: CustomTextNode,
+        },
+        ContextBlockNode,
+        HistoryBlockNode,
+        QueryBlockNode,
+        RequestURLBlockNode,
+        WorkflowVariableBlockNode,
+        VariableValueBlockNode,
+        RosterReferenceBlockNode,
+        HITLInputNode,
+        CurrentBlockNode,
+        ErrorMessageBlockNode,
+        LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
+        AgentOutputBlockNode,
+      ],
+      $initialEditorState: textToEditorState(value || ''),
+      onError: (error: Error) => {
+        throw error
+      },
+    }),
+  )
 
   const handleEditorChange = (editorState: EditorState) => {
     const text = editorState.read(() => {
@@ -247,51 +251,53 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }, [])
 
   return (
-    <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className={cn('relative', wrapperClassName)} ref={onRef}>
-        <PromptEditorContent
-          id={id}
-          aria-controls={ariaControls}
-          aria-haspopup={ariaHasPopup}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
-          aria-multiline={ariaMultiline}
-          aria-disabled={ariaDisabled}
-          compact={compact}
-          className={className}
-          placeholder={placeholder}
-          placeholderClassName={placeholderClassName}
-          style={style}
-          shortcutPopups={shortcutPopups}
-          contextBlock={contextBlock}
-          queryBlock={queryBlock}
-          requestURLBlock={requestURLBlock}
-          historyBlock={historyBlock}
-          variableBlock={variableBlock}
-          rosterReferenceBlock={rosterReferenceBlock}
-          externalToolBlock={externalToolBlock}
-          workflowVariableBlock={workflowVariableBlock}
-          agentOutputBlock={agentOutputBlock}
-          hitlInputBlock={hitlInputBlock}
-          currentBlock={currentBlock}
-          errorMessageBlock={errorMessageBlock}
-          lastRunBlock={lastRunBlock}
-          isSupportFileVar={isSupportFileVar}
-          disableSlashPicker={disableSlashPicker}
-          disableBracePicker={disableBracePicker}
-          onBlur={onBlur}
-          onFocus={onFocus}
-          instanceId={instanceId}
-          floatingAnchorElem={floatingAnchorElem}
-          onEditorChange={handleEditorChange}
-        />
-        <ValueSyncPlugin value={value} />
-        <EditableSyncPlugin editable={editable} />
-        {children}
-      </div>
-    </LexicalComposer>
+    <RosterReferenceBlockContext value={rosterReferenceBlock}>
+      <LexicalExtensionComposer extension={extension} contentEditable={null}>
+        <div className={cn('relative', wrapperClassName)} ref={onRef}>
+          <PromptEditorContent
+            id={id}
+            aria-controls={ariaControls}
+            aria-haspopup={ariaHasPopup}
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
+            aria-multiline={ariaMultiline}
+            aria-disabled={ariaDisabled}
+            compact={compact}
+            className={className}
+            placeholder={placeholder}
+            placeholderClassName={placeholderClassName}
+            style={style}
+            shortcutPopups={shortcutPopups}
+            contextBlock={contextBlock}
+            queryBlock={queryBlock}
+            requestURLBlock={requestURLBlock}
+            historyBlock={historyBlock}
+            variableBlock={variableBlock}
+            rosterReferenceBlock={rosterReferenceBlock}
+            externalToolBlock={externalToolBlock}
+            workflowVariableBlock={workflowVariableBlock}
+            agentOutputBlock={agentOutputBlock}
+            hitlInputBlock={hitlInputBlock}
+            currentBlock={currentBlock}
+            errorMessageBlock={errorMessageBlock}
+            lastRunBlock={lastRunBlock}
+            isSupportFileVar={isSupportFileVar}
+            disableSlashPicker={disableSlashPicker}
+            disableBracePicker={disableBracePicker}
+            onBlur={onBlur}
+            onFocus={onFocus}
+            instanceId={instanceId}
+            floatingAnchorElem={floatingAnchorElem}
+            onEditorChange={handleEditorChange}
+          />
+          <ValueSyncPlugin value={value} />
+          <EditableSyncPlugin editable={editable} />
+          {children}
+        </div>
+      </LexicalExtensionComposer>
+    </RosterReferenceBlockContext>
   )
 }
 

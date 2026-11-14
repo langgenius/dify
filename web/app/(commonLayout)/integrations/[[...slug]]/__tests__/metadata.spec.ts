@@ -20,6 +20,7 @@ describe('integrations route metadata', () => {
     [['tools', 'mcp'], 'MCP · Integrations'],
     [['data-source'], 'Data Source · Integrations'],
     [['custom-endpoint'], 'Custom Endpoint · Integrations'],
+    [['file-scan'], 'File Security Scan · Integrations'],
     [['trigger'], 'Trigger · Integrations'],
     [['agent-strategy'], 'Agent Strategy · Integrations'],
     [['extension'], 'Extension · Integrations'],

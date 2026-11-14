@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
-import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -17,13 +15,6 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow_node_execution_trace_service import assemble_workflow_node_execution_traces
-
-pytestmark = pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
-
-
-@pytest.fixture(autouse=True)
-def _bind_model_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    monkeypatch.setattr("models.workflow.db", SimpleNamespace(session=sqlite_session))
 
 
 def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:

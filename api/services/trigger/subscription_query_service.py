@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING, Any, Protocol
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
-from core.trigger.utils.encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from services.credentials.query import CredentialQuery
+from services.trigger.api_entities import TriggerProviderSubscriptionApiEntity
+from services.trigger.credential_encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
 
 if TYPE_CHECKING:
     from services.trigger.subscription_service import TriggerSubscriptionSnapshot

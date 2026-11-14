@@ -69,8 +69,8 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedNode {
     return {
+      ...super.exportJSON(),
       type: 'history-block',
-      version: 1,
       roleName: this.getRoleName(),
       onEditRole: this.getOnEditRole(),
     }

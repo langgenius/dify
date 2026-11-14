@@ -80,6 +80,7 @@ export type KnowledgeFsInitialSourcePreviewResponse = {
   documents?: Array<KnowledgeFsInitialSourcePreviewDocumentResponse>
   files?: Array<KnowledgeFsInitialSourcePreviewFileResponse>
   kind: 'online_document' | 'online_drive' | 'website_crawl'
+  next_cursor?: string | null
   next_page_parameters?: {
     [key: string]: JsonValue
   } | null
@@ -442,6 +443,20 @@ export type KnowledgeFsExternalAccessPayload = {
   mcp_enabled?: boolean
   service_api_enabled: boolean
   workflow_enabled: boolean
+}
+
+export type FileScanPolicyResponse = {
+  enabled: boolean
+  on_unavailable: string
+  on_unscannable: string
+  provider_id?: string | null
+}
+
+export type FileScanPolicyPayload = {
+  enabled: boolean
+  on_unavailable?: FileScanFallbackAction
+  on_unscannable?: FileScanFallbackAction
+  provider_id?: string | null
 }
 
 export type KnowledgeFsGoldenQuestionListResponse = {
@@ -1535,9 +1550,11 @@ export type KnowledgeFsPublicFailureResponse = {
 export type JsonValue = unknown
 
 export type KnowledgeFsInitialSourcePreviewDocumentResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   name: string
   page_id: string
+  parent_id?: string | null
   provider_item_id: string
   type: string
   workspace_id: string
@@ -1847,6 +1864,8 @@ export type KnowledgeFsDocumentOutlineNodeResponse = {
   } | null
   toc_source: string
 }
+
+export type FileScanFallbackAction = 'allow' | 'block'
 
 export type KnowledgeFsGoldenQuestionBulkImportRowPayload = {
   evidence: string
@@ -2595,6 +2614,7 @@ export type KnowledgeFsSourceFileResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -3669,6 +3689,52 @@ export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses = {
 
 export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/file-scan-policy'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyError =
+  GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyData = {
+  body: FileScanPolicyPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/file-scan-policy'
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyError =
+  PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyErrors]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse =
+  PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsData = {
   body?: never
@@ -5716,6 +5782,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }

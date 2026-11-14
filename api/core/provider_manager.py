@@ -36,7 +36,7 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -1539,20 +1539,20 @@ class ProviderManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
+            credit_pool_type = (
+                ProviderQuotaType.TRIAL
+                if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX
+                else ProviderQuotaType.PAID
+            )
             with session_factory.create_session() as session:
-                trail_pool = CreditPoolService.get_pool(
+                credit_pool = CreditPoolService.get_pool(
                     tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.TRIAL,
-                    session=session,
-                )
-                paid_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.PAID,
+                    pool_type=credit_pool_type,
                     session=session,
                 )
         else:
-            trail_pool = None
-            paid_pool = None
+            credit_pool_type = None
+            credit_pool = None
 
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
@@ -1575,23 +1575,13 @@ class ProviderManager:
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
                 match provider_quota.quota_type:
-                    case ProviderQuotaType.TRIAL if trail_pool is not None:
+                    case quota_type if quota_type == credit_pool_type and credit_pool is not None:
                         quota_configuration = QuotaConfiguration(
                             quota_type=provider_quota.quota_type,
                             quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=trail_pool.quota_used,
-                            quota_limit=trail_pool.quota_limit,
-                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case ProviderQuotaType.PAID if paid_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=paid_pool.quota_used,
-                            quota_limit=paid_pool.quota_limit,
-                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                            quota_used=credit_pool.quota_used,
+                            quota_limit=credit_pool.quota_limit,
+                            is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
                             restrict_models=provider_quota.restrict_models,
                         )
 
@@ -1611,7 +1601,7 @@ class ProviderManager:
         if len(quota_configurations) == 0:
             return SystemConfiguration(enabled=False)
 
-        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
+        current_quota_type = credit_pool_type or self._choice_current_using_quota_type(quota_configurations)
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:

@@ -710,20 +710,20 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   it.each([undefined, { parallel_id: 'p1' }])(
-    'accumulates agent logs by message ID without losing metadata: %j',
+    'accumulates agent logs by stream id without losing metadata: %j',
     (metadata) => {
       const { result } = setupAndSend()
       startWorkflow()
       startNode('agent-node', 'trace-agent', { execution_metadata: metadata })
       act(() => {
         capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-1', data: { text: 'initial' } },
+          data: { node_id: 'agent-node', id: 'log-1', data: { text: 'initial' } },
         })
         capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-2', data: { text: 'second' } },
+          data: { node_id: 'agent-node', id: 'log-2', data: { text: 'second' } },
         })
         capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-1', data: { text: 'updated' } },
+          data: { node_id: 'agent-node', id: 'log-1', data: { text: 'updated' } },
         })
       })
       const trace = result.current.chatList.find((item) => item.isAnswer)!.workflowProcess!
@@ -737,6 +737,42 @@ describe('useChat – handleSend SSE callbacks', () => {
       })
     },
   )
+
+  it('routes Agent v2 tool snapshots to workflowAgentActivities without touching tracing', () => {
+    const { result } = setupAndSend()
+    startWorkflow()
+    startNode('agent-node', 'trace-agent', { execution_metadata: { parallel_id: 'p1' } })
+    act(() => {
+      capturedCallbacks.onAgentLog({
+        data: {
+          node_id: 'agent-node',
+          node_execution_id: 'exec-1',
+          id: 'run-1:call-1',
+          label: 'shell_run',
+          status: 'running',
+          data: {
+            tool_call_id: 'call-1',
+            tool_name: 'shell_run',
+            tool_input: '{"command":"ls"}',
+            tool_output: '',
+            node_title: 'Agent',
+          },
+          metadata: { agent_node_version: '2', kind: 'tool' },
+        },
+      })
+    })
+    const answer = result.current.chatList.find(
+      (item) => item.isAnswer && !item.isOpeningStatement,
+    )!
+    expect(answer.workflowAgentActivities).toHaveLength(1)
+    expect(answer.workflowAgentActivities![0]).toMatchObject({
+      id: 'run-1:call-1',
+      node_execution_id: 'exec-1',
+      status: 'running',
+    })
+    const trace = answer.workflowProcess!.tracing[0]!
+    expect(trace.execution_metadata).toEqual({ parallel_id: 'p1' })
+  })
 
   describe('onHumanInputRequired', () => {
     it('should add form data to humanInputFormDataList', () => {
