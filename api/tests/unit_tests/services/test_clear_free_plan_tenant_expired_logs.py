@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Self, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,6 +18,7 @@ from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
 from models.enums import (
     ConversationFromSource,
+    ConversationStatus,
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
@@ -116,7 +118,7 @@ def _create_conversation(
         app_id=app_id,
         mode=AppMode.CHAT,
         name=f"Conversation {conversation_id}",
-        status="normal",
+        status=ConversationStatus.NORMAL,
         from_source=ConversationFromSource.API,
         from_end_user_id="end-user-1",
     )
@@ -477,12 +479,12 @@ def test_process_tenant_processes_and_persists_all_batches(
 
     node_execution = _create_workflow_node_execution("node-execution-1")
     node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [[node_execution], []]
+    node_repo.get_expired_executions_batch.side_effect = [[node_execution], list[object]()]
     node_repo.delete_executions_by_ids.return_value = 1
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [
         [_create_workflow_run("workflow-run-1")],
-        [],
+        list[object](),
     ]
     run_repo.delete_runs_by_ids.return_value = 1
     monkeypatch.setattr(
@@ -592,8 +594,11 @@ def test_process_without_tenant_ids_batches_and_scales_interval(
 
     class FixedDateTime(REAL_DATETIME):
         @classmethod
-        def now(cls, tz: datetime.tzinfo | None = None) -> REAL_DATETIME:
-            return fixed_now
+        @override
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            # Return an instance of the subclass, as ``datetime.now`` does; the
+            # value is the frozen instant the test pinned.
+            return cls.fromtimestamp(fixed_now.timestamp(), tz=fixed_now.tzinfo)
 
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
@@ -664,8 +669,11 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
 
     class FixedDateTime(REAL_DATETIME):
         @classmethod
-        def now(cls, tz: datetime.tzinfo | None = None) -> REAL_DATETIME:
-            return fixed_now
+        @override
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            # Return an instance of the subclass, as ``datetime.now`` does; the
+            # value is the frozen instant the test pinned.
+            return cls.fromtimestamp(fixed_now.timestamp(), tz=fixed_now.tzinfo)
 
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
@@ -718,7 +726,7 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         _create_workflow_node_execution("node-2", node_id="node-2"),
     ]
     node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [node_executions, []]
+    node_repo.get_expired_executions_batch.side_effect = [node_executions, list[object]()]
     node_repo.delete_executions_by_ids.return_value = 2
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [
@@ -726,7 +734,7 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
             _create_workflow_run("run-1"),
             _create_workflow_run("run-2"),
         ],
-        [],
+        list[object](),
     ]
     run_repo.delete_runs_by_ids.return_value = 2
     node_session_makers: list[object] = []
