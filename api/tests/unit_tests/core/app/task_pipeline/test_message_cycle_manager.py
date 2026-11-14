@@ -498,6 +498,36 @@ class TestMessageCycleManagerOptimization:
         assert conversation.name == (long_query[:47] + "...")
         assert any(record.levelno == logging.ERROR for record in caplog.records)
 
+    def test_generate_conversation_name_worker_falls_back_quietly_outside_debug(
+        self,
+        message_cycle_manager: MessageCycleManager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        caplog: pytest.LogCaptureFixture,
+        config_overrides,
+    ) -> None:
+        """Outside debug mode a failed generation is not logged; a short query becomes the name as it is."""
+        config_overrides(DEBUG=False)
+        flask_app = Flask(__name__)
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
+
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
+            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+        ):
+            mock_redis.get.return_value = None
+            mock_llm_generator.generate_conversation_name.side_effect = RuntimeError("generation failed")
+            with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
+                message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "short query")
+
+        assert cycle_db.in_transaction() is False
+        with Session(sqlite_engine) as verification_session:
+            conversation = verification_session.get(Conversation, "conv-1")
+        assert conversation is not None
+        assert conversation.name == "short query"
+        assert not caplog.records
+
     @pytest.mark.parametrize("author_name", ["Alice", "", None])
     def test_handle_annotation_reply_reads_author_in_one_query(
         self, message_cycle_manager, sqlite_session: Session, sqlite_engine: Engine, author_name: str | None
