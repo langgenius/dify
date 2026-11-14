@@ -979,8 +979,13 @@ class AppDslService:
         version_id: uuid.UUID | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
+        keep_trigger_config: bool = False,
     ) -> AppDslExportData:
-        """Load App and Site data, optionally retaining roster references for duplication."""
+        """Load export data; trusted deployment exports may retain workspace trigger configuration.
+
+        The caller must authorize retaining trigger configuration. This only changes the exported
+        copy; stored workflows and secret filtering retain their existing behavior.
+        """
         app_mode = AppMode.value_of(app_model.mode)
 
         if app_mode == AppMode.AGENT:
@@ -1003,6 +1008,7 @@ class AppDslService:
                     session=session,
                     resource_exporter=resource_exporter,
                     preserve_agent_bindings=preserve_agent_bindings,
+                    keep_trigger_config=keep_trigger_config,
                 )
             else:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
@@ -1048,6 +1054,7 @@ class AppDslService:
         workflow_id: str | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
+        keep_trigger_config: bool = False,
     ) -> list[str]:
         """
         Append workflow export data
@@ -1115,14 +1122,14 @@ class AppDslService:
             if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
-            if data_type == TRIGGER_SCHEDULE_NODE_TYPE:
+            if not keep_trigger_config and data_type == TRIGGER_SCHEDULE_NODE_TYPE:
                 # override the config with the default config
                 node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
-            if data_type == TRIGGER_WEBHOOK_NODE_TYPE:
+            if not keep_trigger_config and data_type == TRIGGER_WEBHOOK_NODE_TYPE:
                 # clear the webhook_url
                 node_data["webhook_url"] = ""
                 node_data["webhook_debug_url"] = ""
-            if data_type == TRIGGER_PLUGIN_NODE_TYPE:
+            if not keep_trigger_config and data_type == TRIGGER_PLUGIN_NODE_TYPE:
                 # clear the subscription_id
                 node_data["subscription_id"] = ""
 

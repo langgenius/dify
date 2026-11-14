@@ -1,5 +1,6 @@
 """Exercise composed DSL export with real rows and workflow selectors."""
 
+import json
 from dataclasses import replace
 from uuid import uuid4
 
@@ -105,3 +106,53 @@ def test_selected_workflow_ownership_and_publication(
         error = IsDraftWorkflowError if selector == "draft" else WorkflowNotFoundError
         with pytest.raises(error):
             export()
+
+
+@pytest.mark.parametrize("keep_config", [False, True])
+@pytest.mark.parametrize("surface", ["openapi", "inner"])
+def test_only_trusted_export_can_preserve_trigger_configuration(
+    sqlite_session: Session,
+    app_services: AppServices,
+    exported_app: AppRequestContext,
+    monkeypatch: pytest.MonkeyPatch,
+    keep_config: bool,
+    surface: str,
+) -> None:
+    """Only an opted-in inner export retains configuration; stored graph data never changes."""
+    nodes = [
+        {"id": "schedule", "data": {"type": "trigger-schedule", "config": {"timezone": "Asia/Shanghai"}}},
+        {"id": "plugin", "data": {"type": "trigger-plugin", "subscription_id": "subscription-1"}},
+        {"id": "webhook", "data": {"type": "trigger-webhook", "webhook_url": "https://example.com/hook"}},
+    ]
+    workflow_id = str(uuid4())
+    sqlite_session.add(
+        Workflow(
+            id=workflow_id,
+            tenant_id=exported_app.tenant_id,
+            app_id=exported_app.app_id,
+            type=WorkflowType.WORKFLOW,
+            version="published",
+            graph=json.dumps({"nodes": nodes, "edges": []}),
+            _features="{}",
+            created_by="account-id",
+        )
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    options = AppExportOptions(workflow_id=workflow_id, keep_trigger_config=keep_config)
+    data = yaml.safe_load(
+        app_services.exports.export_for_inner(exported_app.app_id, options)
+        if surface == "inner"
+        else app_services.exports.export_app(exported_app, options)
+    )
+    exported = data["workflow"]["graph"]["nodes"]
+    if surface == "inner" and keep_config:
+        assert exported == nodes
+    else:
+        assert exported[0]["data"]["config"]["timezone"] == "UTC"
+        assert exported[1]["data"]["subscription_id"] == ""
+        assert exported[2]["data"]["webhook_url"] == ""
+    sqlite_session.expire_all()
+    stored = sqlite_session.get(Workflow, workflow_id)
+    assert stored is not None
+    assert json.loads(stored.graph)["nodes"] == nodes
