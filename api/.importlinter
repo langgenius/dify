@@ -122,7 +122,6 @@ ignore_imports =
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.dify_tools_builder -> services
-    core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.knowledge_runtime_config
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.skill_management_service
@@ -1677,6 +1676,7 @@ forbidden_modules =
     services.agent
 allow_indirect_imports = True
 ignore_imports =
+    repositories.app.agent_app_repository -> services.agent.app_composer_store
     repositories.app.agent_app_repository -> services.agent.errors
     repositories.app.agent_app_repository -> services.agent.roster_service
 
@@ -1741,4 +1741,26 @@ source_modules =
     repositories.app.agent_runtime_app
 forbidden_modules =
     services.agent.roster_service
+allow_indirect_imports = True
+
+[importlinter:contract:agent-app-composer-service-boundary]
+name = Agent App Composer depends on injected persistence and tool discovery
+type = forbidden
+source_modules =
+    services.agent.app_composer
+    services.agent.app_composer_store
+# Agent Soul schemas and pure configuration helpers are shared from models.
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models.agent
+    models.dataset
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
 allow_indirect_imports = True

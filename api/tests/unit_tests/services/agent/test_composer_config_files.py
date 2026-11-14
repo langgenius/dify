@@ -22,6 +22,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import CreatorUserRole
 from models.model import AppMode, UploadFile
+from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.composer_service import AgentComposerService
 from services.agent_config_service import (
     AgentConfigService,
@@ -137,15 +138,14 @@ def composer_target(request: pytest.FixtureRequest, sqlite_session: Session) -> 
     return ComposerTarget(tenant_id, account_id, agent_id, draft_id, app_id, binding_id, upload_ids)
 
 
-def save_composer(session: Session, target: ComposerTarget, soul: dict[str, object]) -> AgentSoulConfig:
-    payload = ComposerSavePayload.model_validate(
-        {
-            "variant": "workflow" if target.binding_id else "agent_app",
-            "save_strategy": "node_job_only" if target.binding_id else "save_to_current_version",
-            "agent_soul": soul,
-        }
-    )
+def save_composer(
+    session: Session, factory: sessionmaker[Session], target: ComposerTarget, soul: dict[str, object]
+) -> AgentSoulConfig:
+    """Save through the workflow transaction or the standalone Agent repository, then read the saved Soul."""
     if target.binding_id:
+        payload = ComposerSavePayload.model_validate(
+            {"variant": "workflow", "save_strategy": "node_job_only", "agent_soul": soul}
+        )
         state = AgentComposerService.save_workflow_composer(
             session=session,
             tenant_id=target.tenant_id,
@@ -154,16 +154,14 @@ def save_composer(session: Session, target: ComposerTarget, soul: dict[str, obje
             account_id=target.account_id,
             payload=payload,
         )
-    else:
-        state = AgentComposerService.save_agent_composer(
-            session=session,
-            tenant_id=target.tenant_id,
-            agent_id=target.agent_id,
-            account_id=target.account_id,
-            payload=payload,
-        )
-        session.commit()
-    return AgentSoulConfig.model_validate(state["agent_soul"])
+        return AgentSoulConfig.model_validate(state["agent_soul"])
+    state = AgentAppRepository(session_factory=factory).save_composer(
+        tenant_id=target.tenant_id,
+        agent_id=target.agent_id,
+        account_id=target.account_id,
+        soul=AgentSoulConfig.model_validate(soul),
+    )
+    return AgentSoulConfig.model_validate(state.agent_soul)
 
 
 def asset_target(target: ComposerTarget) -> AssetTargetArgs:
@@ -194,7 +192,9 @@ def test_omitted_files_preserve_bindings_created_after_the_composer_was_read(
             assets.push_file_for_console(**asset_target(target), upload_file_id=target.upload_ids[0])
         else:
             assets.push_files_for_console(**asset_target(target), upload_file_ids=list(target.upload_ids))
-        state = save_composer(stale_session, target, {"prompt": {"system_prompt": "An older prompt edit"}})
+        state = save_composer(
+            stale_session, sqlite_session_factory, target, {"prompt": {"system_prompt": "An older prompt edit"}}
+        )
 
     assert [item.file_id for item in state.config_files] == list(target.upload_ids[:file_count])
     assert state.prompt.system_prompt == "An older prompt edit"
@@ -216,11 +216,14 @@ def test_omitted_files_do_not_restore_an_asset_deleted_after_the_composer_was_re
         assets.push_for_console(
             **asset_target(target), payload=ConfigPushPayload(files=[ConfigPushFileItem(name="first.md")])
         )
-        state = save_composer(stale_session, target, {"prompt": {"system_prompt": "Keep this edit"}})
+        state = save_composer(
+            stale_session, sqlite_session_factory, target, {"prompt": {"system_prompt": "Keep this edit"}}
+        )
     assert state.config_files == []
 
 
 @pytest.mark.parametrize("delete_existing", [False, True], ids=["keep-batch", "keep-deletion"])
+@pytest.mark.parametrize("composer_target", [True], indirect=True, ids=["inline-workflow"])
 def test_omitted_files_do_not_autoflush_a_dirty_cached_snapshot_before_locking(
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
@@ -243,7 +246,9 @@ def test_omitted_files_do_not_autoflush_a_dirty_cached_snapshot_before_locking(
             )
         else:
             assets.push_files_for_console(**asset_target(target), upload_file_ids=list(target.upload_ids))
-        result = save_composer(stale_session, target, {"prompt": {"system_prompt": "Ordinary edit"}})
+        result = save_composer(
+            stale_session, sqlite_session_factory, target, {"prompt": {"system_prompt": "Ordinary edit"}}
+        )
     assert [file.file_id for file in result.config_files] == ([] if delete_existing else list(target.upload_ids))
 
 
@@ -263,7 +268,10 @@ def test_explicit_files_keep_complete_replacement_semantics(
     )
     with sqlite_session_factory() as session:
         state = save_composer(
-            session, target, {"prompt": {"system_prompt": "Applied configuration"}, "config_files": files}
+            session,
+            sqlite_session_factory,
+            target,
+            {"prompt": {"system_prompt": "Applied configuration"}, "config_files": files},
         )
     assert [item.file_id for item in state.config_files] == ([target.upload_ids[1]] if replace_with_file else [])
 
@@ -285,6 +293,7 @@ def test_omitted_files_refresh_a_cached_inline_snapshot_and_binding(
         with sqlite_session_factory() as other_session:
             save_composer(
                 other_session,
+                sqlite_session_factory,
                 target,
                 {
                     "config_files": [
@@ -296,7 +305,7 @@ def test_omitted_files_refresh_a_cached_inline_snapshot_and_binding(
                     ]
                 },
             )
-        state = save_composer(stale_session, target, {"prompt": {"system_prompt": "Next edit"}})
+        state = save_composer(stale_session, sqlite_session_factory, target, {"prompt": {"system_prompt": "Next edit"}})
     assert [item.file_id for item in state.config_files] == [target.upload_ids[1]]
 
 
