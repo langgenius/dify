@@ -1177,6 +1177,11 @@ class DatasetRetrieval:
             if not dataset:
                 return []
 
+            # Retrieval calls the embedding model and the vector store, and its worker threads open
+            # sessions of their own. Return this thread's connection first: the loaded row is all it needs.
+            session.expunge(dataset)
+            session.close()
+
             if dataset.provider == "external" and query:
                 external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                     session=session,
