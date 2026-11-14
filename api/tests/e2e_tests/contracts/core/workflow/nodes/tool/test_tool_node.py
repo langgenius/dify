@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Iterator, Mapping
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -40,7 +40,7 @@ class _StubToolRuntime:
         self,
         *,
         tool_runtime: ToolRuntimeHandle,
-        tool_parameters: dict[str, Any],
+        tool_parameters: Mapping[str, Any],
         workflow_call_depth: int,
         provider_name: str,
     ) -> Generator[ToolRuntimeMessage]:
@@ -49,7 +49,7 @@ class _StubToolRuntime:
     def get_usage(self, *, tool_runtime: ToolRuntimeHandle) -> LLMUsage:
         return LLMUsage.empty_usage()
 
-    def build_file_reference(self, *, mapping: dict[str, Any]) -> Any:
+    def build_file_reference(self, *, mapping: Mapping[str, Any]) -> Any:
         return mapping
 
     def resolve_provider_icons(
@@ -114,7 +114,7 @@ def tool_node() -> ToolNode:
     return node
 
 
-def _collect_events(generator: Generator) -> list[Any]:
+def _collect_events(generator: Iterator[Any]) -> list[Any]:
     events: list[Any] = []
     try:
         while True:
@@ -123,9 +123,13 @@ def _collect_events(generator: Generator) -> list[Any]:
         return events
 
 
+def _single_message_stream(message: ToolRuntimeMessage) -> Generator[ToolRuntimeMessage]:
+    yield message
+
+
 def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[list[Any], LLMUsage]:
     generator = tool_node._transform_message(
-        messages=iter([message]),
+        messages=_single_message_stream(message),
         tool_info={"provider_type": "builtin", "provider_id": "provider"},
         parameters_for_log={},
         node_id=tool_node._node_id,
@@ -137,7 +141,7 @@ def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[li
     return events, completed_events[-1].node_run_result.llm_usage
 
 
-def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
+def test_link_messages_with_file_populate_files_output(tool_node: ToolNode) -> None:
     file_obj = File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -172,7 +176,7 @@ def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
     assert files_segment.value == [file_obj]
 
 
-def test_plain_link_messages_remain_links(tool_node: ToolNode):
+def test_plain_link_messages_remain_links(tool_node: ToolNode) -> None:
     message = ToolRuntimeMessage(
         type=ToolRuntimeMessage.MessageType.LINK,
         message=ToolRuntimeMessage.TextMessage(text="https://dify.ai"),
@@ -192,7 +196,7 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
     assert files_segment.value == []
 
 
-def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mocker: MockerFixture):
+def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mocker: MockerFixture) -> None:
     file_obj = File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -208,7 +212,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mock
         "get_file_generator_by_tool_file_id",
         return_value=(None, SimpleNamespace(mime_type="application/pdf")),
     )
-    tool_node._runtime.build_file_reference = MagicMock(return_value=file_obj)
+    mocker.patch.object(tool_node._runtime, "build_file_reference", MagicMock(return_value=file_obj))
     message = ToolRuntimeMessage(
         type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
         message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
@@ -225,9 +229,10 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mock
     assert files_segment.value == [file_obj]
 
 
-def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: ToolNode):
+def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: ToolNode, mocker: MockerFixture) -> None:
     runtime_handle = ToolRuntimeHandle(raw=object())
-    tool_node._runtime.get_runtime = MagicMock(return_value=runtime_handle)
+    get_runtime_mock = MagicMock(return_value=runtime_handle)
+    mocker.patch.object(tool_node._runtime, "get_runtime", get_runtime_mock)
 
     result = tool_node._get_tool_runtime(
         variable_pool=tool_node.runtime_state.variable_pool,
@@ -235,7 +240,7 @@ def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: T
     )
 
     assert result is runtime_handle
-    tool_node._runtime.get_runtime.assert_called_once_with(
+    get_runtime_mock.assert_called_once_with(
         node_id="node-instance",
         node_data=tool_node.node_data,
         variable_pool=tool_node.runtime_state.variable_pool,
