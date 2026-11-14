@@ -242,6 +242,14 @@ class DatabaseConfig(BaseSettings):
         default=30,
     )
 
+    SQLALCHEMY_POOL_HOLD_WARNING_SECONDS: NonNegativeFloat = Field(
+        description=(
+            "Log a warning when a pooled connection stays checked out for at least this many seconds, "
+            "and name the holders when every pooled connection is checked out. 0 disables the monitor."
+        ),
+        default=0,
+    )
+
     SQLALCHEMY_POOL_RESET_ON_RETURN: Literal["commit", "rollback", None] = Field(
         description="Connection pool reset behavior on return. Options: 'commit', 'rollback', or None",
         default="rollback",
