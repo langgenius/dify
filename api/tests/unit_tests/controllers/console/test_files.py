@@ -1,4 +1,5 @@
 import builtins
+import inspect
 import io
 from collections.abc import Callable, Iterator
 from typing import overload
@@ -44,9 +45,7 @@ def unwrap(func: Callable[..., object]) -> Callable[..., object]:
     """
     Recursively unwrap decorated functions.
     """
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+    return inspect.unwrap(func)
 
 
 def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
