@@ -29,12 +29,15 @@ class PromptTemplateParser:
         # Regular expression to match the template rules
         return re.findall(self.regex, self.template)
 
-    def format(self, inputs: Mapping[str, str], remove_template_variables: bool = True) -> str:
+    def format(self, inputs: Mapping[str, object], remove_template_variables: bool = True) -> str:
         def replacer(match):
             key = match.group(1)
             value = inputs.get(key, match.group(0))  # return original matched string if key not found
 
-            if remove_template_variables and isinstance(value, str):
+            if not isinstance(value, str):
+                value = str(value)  # re.sub requires a str replacement, e.g. number inputs are int / float
+
+            if remove_template_variables:
                 return PromptTemplateParser.remove_template_variables(value, self.with_variable_tmpl)
             return value
 
