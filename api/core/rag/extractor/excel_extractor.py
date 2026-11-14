@@ -43,6 +43,65 @@ class SheetImageCandidate(TypedDict):
     image_ext: str
 
 
+class _FormulaView:
+    """Read-only formula view of one worksheet, opened lazily.
+
+    The cached workbook is loaded with ``data_only=True``, so a formula cell
+    without a cached value reads as ``None`` and cannot be told apart from a
+    genuinely empty cell. This view loads the same file a second time with
+    ``data_only=False`` (read-only, so memory stays low) and yields rows
+    aligned with the cached sheet's data rows, letting the caller tell a
+    missing formula cache from an empty cell. It opens only on the first row
+    that has a missing cached value in a mapped column, and closes on every
+    exit, so sheets without missing values pay no extra read.
+
+    Preconditions: ``start_row`` is 1-based and ``max_col_idx`` matches the
+    cached sheet's iteration bounds. Postconditions: ``row_for`` returns the
+    formula-view row for ``row_idx`` once the view is open, or ``None``
+    while no row has needed it; ``close`` releases the workbook.
+    """
+
+    def __init__(self, file_path: str, sheet_name: str, start_row: int, max_col_idx: int):
+        self._file_path = file_path
+        self._sheet_name = sheet_name
+        self._start_row = start_row
+        self._max_col_idx = max_col_idx
+        self._workbook = None
+        self._rows = None
+        self._next_row_idx = start_row
+
+    def row_for(self, row_idx: int, row, column_map: dict[int, str]):
+        """Return the formula-view row aligned with ``row_idx``.
+
+        Opens the view on the first row that has a missing cached value in a
+        mapped column, then consumes formula rows in lockstep with the data
+        rows. Returns ``None`` while the view is still closed, or when the
+        formula sheet runs out of rows.
+        """
+        rows = self._rows
+        if rows is None:
+            has_missing_value = any(cell.value is None for col_idx, cell in enumerate(row) if col_idx in column_map)
+            if not has_missing_value:
+                return None
+            self._workbook = load_workbook(self._file_path, data_only=False, read_only=True)
+            formula_sheet = self._workbook[self._sheet_name]
+            rows = formula_sheet.iter_rows(min_row=self._start_row, max_col=self._max_col_idx, values_only=False)
+            self._rows = rows
+        while self._next_row_idx < row_idx:
+            next(rows, None)
+            self._next_row_idx += 1
+        formula_row = next(rows, None)
+        self._next_row_idx += 1
+        return formula_row
+
+    def close(self) -> None:
+        """Close the formula workbook if it was opened."""
+        if self._workbook is not None:
+            self._workbook.close()
+            self._workbook = None
+            self._rows = None
+
+
 class ExcelExtractor(BaseExtractor):
     """Load Excel files.
 
@@ -96,40 +155,52 @@ class ExcelExtractor(BaseExtractor):
                         valid_columns={column_idx + 1 for column_idx in column_map},
                         min_row=start_row,
                     )
-                    for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
-                        page_content = []
-                        row_has_content = False
-                        for col_idx, cell in enumerate(row):
-                            value = cell.value
-                            if col_idx in column_map:
-                                col_name = column_map[col_idx]
-                                if hasattr(cell, "hyperlink") and cell.hyperlink:
-                                    target = getattr(cell.hyperlink, "target", None)
-                                    if target:
-                                        display_value = value if value is not None and str(value).strip() else target
-                                        value = f"[{display_value}]({target})"
-                                cell_row = getattr(cell, "row", None)
-                                cell_column = getattr(cell, "column", None)
-                                image_links = (
-                                    sheet_image_map.get((cell_row, cell_column), [])
-                                    if isinstance(cell_row, int) and isinstance(cell_column, int)
-                                    else []
+                    formula_view = _FormulaView(self._file_path, sheet_name, start_row, max_col_idx)
+                    try:
+                        for row_idx, row in enumerate(
+                            sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False),
+                            start=start_row,
+                        ):
+                            formula_row = formula_view.row_for(row_idx, row, column_map)
+                            page_content = []
+                            row_has_content = False
+                            for col_idx, cell in enumerate(row):
+                                value = cell.value
+                                if col_idx in column_map:
+                                    col_name = column_map[col_idx]
+                                    if value is None:
+                                        value = self._uncalculated_formula_label(cell, formula_row, col_idx)
+                                    if hasattr(cell, "hyperlink") and cell.hyperlink:
+                                        target = getattr(cell.hyperlink, "target", None)
+                                        if target:
+                                            display_value = (
+                                                value if value is not None and str(value).strip() else target
+                                            )
+                                            value = f"[{display_value}]({target})"
+                                    cell_row = getattr(cell, "row", None)
+                                    cell_column = getattr(cell, "column", None)
+                                    image_links = (
+                                        sheet_image_map.get((cell_row, cell_column), [])
+                                        if isinstance(cell_row, int) and isinstance(cell_column, int)
+                                        else []
+                                    )
+                                    if value is None:
+                                        value = ""
+                                    elif not isinstance(value, str):
+                                        value = str(value)
+                                    if image_links:
+                                        value = " ".join(filter(None, [value, " ".join(image_links)]))
+                                    value = value.strip()
+                                    if value:
+                                        row_has_content = True
+                                    value = value.replace('"', '\\"')
+                                    page_content.append(f'"{col_name}":"{value}"')
+                            if row_has_content and page_content:
+                                documents.append(
+                                    Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                                 )
-                                if value is None:
-                                    value = ""
-                                elif not isinstance(value, str):
-                                    value = str(value)
-                                if image_links:
-                                    value = " ".join(filter(None, [value, " ".join(image_links)]))
-                                value = value.strip()
-                                if value:
-                                    row_has_content = True
-                                value = value.replace('"', '\\"')
-                                page_content.append(f'"{col_name}":"{value}"')
-                        if row_has_content and page_content:
-                            documents.append(
-                                Document(page_content=";".join(page_content), metadata={"source": self._file_path})
-                            )
+                    finally:
+                        formula_view.close()
             finally:
                 wb.close()
 
@@ -154,6 +225,36 @@ class ExcelExtractor(BaseExtractor):
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
         return documents
+
+    @staticmethod
+    def _uncalculated_formula_label(cell, formula_row, col_idx: int) -> str | None:
+        """Return the labelled formula for a cell whose cached value is missing.
+
+        Returns ``None`` when the cell is not a formula with a confirmed
+        missing cache: the formula view must mark the cell as a formula, and
+        the cached cell must not carry a string-typed cache (a ``None`` value
+        with a ``str`` type is a legitimate empty-string result, not a
+        missing cache). The formula is never evaluated.
+
+        Preconditions: ``cell`` is the cached-view cell with ``value is
+        None``; ``formula_row`` is the aligned formula-view row or ``None``.
+        Postconditions: returns ``[Uncalculated formula: <expr>]`` or
+        ``None``; the file and workbooks are untouched.
+        """
+        if formula_row is None or col_idx >= len(formula_row):
+            return None
+        if getattr(cell, "data_type", None) == "str":
+            return None
+        formula_cell = formula_row[col_idx]
+        formula = getattr(formula_cell, "value", None)
+        if getattr(formula_cell, "data_type", None) != "f":
+            return None
+        if not isinstance(formula, str):
+            # Array formulas read back as ArrayFormula objects, not strings.
+            formula = getattr(formula, "text", None)
+        if not isinstance(formula, str) or not formula.strip():
+            return None
+        return f"[Uncalculated formula: {formula}]"
 
     def _extract_images_from_sheet(
         self, sheet_name: str, sheet, valid_columns: set[int], min_row: int
