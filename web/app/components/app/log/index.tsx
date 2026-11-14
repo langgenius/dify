@@ -130,6 +130,14 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     [handlePageChange],
   )
 
+  const handleLimitChange = useCallback(
+    (next: number) => {
+      handlePageChange(0)
+      setLimit(next)
+    },
+    [handlePageChange],
+  )
+
   if (!ready) return null
 
   return (
@@ -169,7 +177,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             pageSize={{
               value: limit,
               options: [10, 25, 50],
-              onValueChange: setLimit,
+              onValueChange: handleLimitChange,
               label: t(($) => $['pagination.perPage'], { ns: 'common' }),
               ariaLabel: t(($) => $['pagination.perPage'], { ns: 'common' }),
             }}
