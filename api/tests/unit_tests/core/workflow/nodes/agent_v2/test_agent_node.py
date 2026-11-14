@@ -768,6 +768,20 @@ def test_agent_node_structured_output_type_failure_stops_the_node():
     assert agent_log["output_failure_decision"] == "fail_node"
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_agent_node_rejects_nonfinite_number_outputs(value: float) -> None:
+    events = list(
+        _node(
+            declared_outputs=[{"name": "score", "type": DeclaredOutputType.NUMBER}],
+            agent_backend_client=FileOutputBackendClient(output_payload={"score": value}),
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "output_type_check_failed"
+
+
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
     client = FakeAgentBackendRunClient()
     store = FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
