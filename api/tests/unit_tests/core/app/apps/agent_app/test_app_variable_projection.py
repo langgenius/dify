@@ -6,7 +6,7 @@ from core.app.apps.agent_app.app_variable_projection import agent_app_variables_
 from models.agent_config_entities import AppVariableConfig
 
 
-def test_projects_hidden_select_and_json_types():
+def test_projects_hidden_and_select_types():
     user_input_form = agent_app_variables_to_user_input_form(
         [
             AppVariableConfig(
@@ -23,7 +23,6 @@ def test_projects_hidden_select_and_json_types():
                 options=["low", "high"],
                 default="low",
             ),
-            AppVariableConfig(name="payload", type="json", default={"enabled": True}),
         ]
     )
 
@@ -46,14 +45,6 @@ def test_projects_hidden_select_and_json_types():
                 "options": ["low", "high"],
             }
         },
-        {
-            "json_object": {
-                "label": "payload",
-                "variable": "payload",
-                "required": False,
-                "default": {"enabled": True},
-            }
-        },
     ]
 
 
@@ -72,3 +63,9 @@ def test_projects_checkbox_type_written_by_the_composer():
             }
         }
     ]
+
+
+def test_projects_types_the_agent_app_cannot_validate_as_text():
+    user_input_form = agent_app_variables_to_user_input_form([AppVariableConfig(name="payload", type="json")])
+
+    assert user_input_form == [{"text-input": {"label": "payload", "variable": "payload", "required": False}}]

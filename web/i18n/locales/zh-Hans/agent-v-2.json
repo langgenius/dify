@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "变量",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "复选框",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "类型",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "数字",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "段落",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "下拉选项",

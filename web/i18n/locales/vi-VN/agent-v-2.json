@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Biến",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Hộp kiểm",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Loại",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Số",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Đoạn văn",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Lựa chọn",

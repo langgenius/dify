@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "متغیرها",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "چک باکس",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "نوع",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "شماره",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "پاراگراف",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "انتخاب",

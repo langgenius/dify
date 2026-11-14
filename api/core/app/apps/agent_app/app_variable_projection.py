@@ -37,8 +37,6 @@ def _form_type_for_agent_variable(variable_type: str) -> str:
         return "paragraph"
     if normalized == "select":
         return "select"
-    if normalized in {"json", "json_object"}:
-        return "json_object"
     return "text-input"
 
 

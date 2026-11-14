@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "المتغيرات",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "مربع اختيار",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "النوع",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "رقم",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "فقرة",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "تحديد",

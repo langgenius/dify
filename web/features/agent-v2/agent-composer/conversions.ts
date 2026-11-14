@@ -493,7 +493,6 @@ const toAppVariableType = (type: string): AppVariableType => {
   if (normalized === 'number' || normalized === 'integer' || normalized === 'float') return 'number'
   if (normalized === 'checkbox' || normalized === 'boolean' || normalized === 'bool')
     return 'checkbox'
-  if (normalized === 'json' || normalized === 'json_object') return 'json'
 
   return 'text-input'
 }
@@ -507,17 +506,10 @@ const toAppVariableDefault = (variable: AppVariable) => {
     return Number.isFinite(parsed) ? parsed : undefined
   }
 
-  if (variable.type === 'checkbox') return variable.default === 'true' ? true : undefined
-
-  if (variable.type === 'json') {
-    const trimmed = variable.default.trim()
-    if (!trimmed) return undefined
-
-    try {
-      return JSON.parse(trimmed)
-    } catch {
-      return variable.default
-    }
+  if (variable.type === 'checkbox') {
+    if (variable.default === 'true') return true
+    if (variable.default === 'false') return false
+    return undefined
   }
 
   return variable.default || undefined

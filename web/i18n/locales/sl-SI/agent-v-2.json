@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Spremenljivke",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Potrdite polje",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Vrsta",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Številka",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Odstavek",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Izbrati",

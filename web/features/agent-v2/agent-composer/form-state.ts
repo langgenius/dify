@@ -32,7 +32,7 @@ export type EnvVariable = {
   masked?: boolean
 }
 
-export type AppVariableType = 'text-input' | 'paragraph' | 'select' | 'number' | 'checkbox' | 'json'
+export type AppVariableType = 'text-input' | 'paragraph' | 'select' | 'number' | 'checkbox'
 
 export type AppVariable = {
   id: string

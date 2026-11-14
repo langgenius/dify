@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "변수",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "체크박스",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "유형",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "숫자",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "문단",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "선택",

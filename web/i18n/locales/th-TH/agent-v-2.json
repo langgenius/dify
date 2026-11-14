@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "ตัวแปร",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Checkbox",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "ประเภท",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "เลข",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "วรรค",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "เลือก",

@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Переменные",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Флажок",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Тип",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Число",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Абзац",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Выбор",

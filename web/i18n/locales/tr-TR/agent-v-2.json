@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Değişkenler",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Onay kutusu",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Tür",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Numara",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Paragraf",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Seçim",

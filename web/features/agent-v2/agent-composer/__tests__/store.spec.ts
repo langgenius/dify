@@ -389,7 +389,7 @@ describe('agent composer store conversions', () => {
         { name: 'retries', type: 'number' },
         { name: 'vip', type: 'boolean', default: true },
         { name: 'employee_id', type: 'text-input', hide: true },
-        { name: 'payload', type: 'json', default: { enabled: true } },
+        { name: 'beta', type: 'checkbox', default: false },
       ],
     }
 
@@ -411,7 +411,7 @@ describe('agent composer store conversions', () => {
       { name: 'retries', type: 'number', required: false, hide: false },
       { name: 'vip', type: 'checkbox', required: false, hide: false, default: true },
       { name: 'employee_id', type: 'text-input', required: false, hide: true },
-      { name: 'payload', type: 'json', required: false, hide: false, default: { enabled: true } },
+      { name: 'beta', type: 'checkbox', required: false, hide: false, default: false },
     ])
   })
 

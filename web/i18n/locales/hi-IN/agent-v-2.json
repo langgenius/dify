@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "वेरिएबल",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "चेकबॉक्स",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "प्रकार",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "संख्या",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "अनुच्छेद",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "चुनें",

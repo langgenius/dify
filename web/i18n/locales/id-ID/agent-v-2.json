@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Variabel",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Kotak centang",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Tipe",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Angka",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Paragraf",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Pilih",

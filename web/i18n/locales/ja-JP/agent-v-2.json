@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "変数",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "チェックボックス",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "タイプ",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "数値",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "段落",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "選択",

@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Variabelen",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Checkbox",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Type",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Number",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Paragraph",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Select",

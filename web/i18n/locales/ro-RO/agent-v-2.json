@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "Variabile",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "Caseta de selectare",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "Tip",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "Număr",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "Paragraf",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "Selectați",

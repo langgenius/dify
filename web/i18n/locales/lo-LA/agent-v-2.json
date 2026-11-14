@@ -55,7 +55,6 @@
   "agentDetail.configure.advancedSettings.appVariablesEditor.shortLabel": "ຕົວປ່ຽນ",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox": "ກ່ອງໝາຍ (Checkbox)",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeColumn": "ປະເພດ",
-  "agentDetail.configure.advancedSettings.appVariablesEditor.typeJson": "JSON",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber": "ຕົວເລກ",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeParagraph": "ຫຍໍ້ໜ້າ",
   "agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect": "ເລືອກ",

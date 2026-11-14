@@ -41,7 +41,6 @@ const appVariableTypeOptions: AppVariableType[] = [
   'select',
   'number',
   'checkbox',
-  'json',
 ]
 
 const appVariableTypeLabelKeys = {
@@ -50,7 +49,6 @@ const appVariableTypeLabelKeys = {
   select: 'agentDetail.configure.advancedSettings.appVariablesEditor.typeSelect',
   number: 'agentDetail.configure.advancedSettings.appVariablesEditor.typeNumber',
   checkbox: 'agentDetail.configure.advancedSettings.appVariablesEditor.typeCheckbox',
-  json: 'agentDetail.configure.advancedSettings.appVariablesEditor.typeJson',
 } as const satisfies Record<
   AppVariableType,
   I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.appVariablesEditor.'>
@@ -241,7 +239,7 @@ function AppVariableDefaultCell({
           aria-label={defaultLabel}
           checked={variable.default === 'true'}
           disabled={!editable}
-          onCheckedChange={(checked) => onDefaultChange(checked ? 'true' : '')}
+          onCheckedChange={(checked) => onDefaultChange(checked ? 'true' : 'false')}
         />
       </span>
     )
