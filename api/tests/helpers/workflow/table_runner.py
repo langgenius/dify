@@ -306,6 +306,8 @@ class TableTestRunner:
     def _execute_test_case(self, test_case: WorkflowTestCase) -> WorkflowTestResult:
         """Internal method to execute a single test case."""
         start_time = time.perf_counter()
+        graph: Graph | None = None
+        graph_runtime_state: RuntimeState | None = None
 
         try:
             graph, graph_runtime_state = self._create_graph_runtime_state(test_case)
@@ -386,8 +388,8 @@ class TableTestRunner:
                 success=False,
                 error=e,
                 execution_time=time.perf_counter() - start_time,
-                graph=graph if "graph" in locals() else None,
-                graph_runtime_state=graph_runtime_state if "graph_runtime_state" in locals() else None,
+                graph=graph,
+                graph_runtime_state=graph_runtime_state,
             )
 
     def _create_graph_runtime_state(self, test_case: WorkflowTestCase) -> tuple[Graph, RuntimeState]:
@@ -453,7 +455,7 @@ class TableTestRunner:
         return True, None
 
     def _validate_event_sequence(
-        self, expected_sequence: list[type[EngineEvent]], actual_events: list[EngineEvent]
+        self, expected_sequence: Sequence[type[EngineEvent]], actual_events: list[EngineEvent]
     ) -> tuple[bool, str | None]:
         """
         Validate that actual events match the expected event sequence.
@@ -509,7 +511,7 @@ class TableTestRunner:
             )
 
         start_time = time.perf_counter()
-        results = []
+        results: list[WorkflowTestResult] = []
 
         if parallel and self.max_workers > 1:
             results = self._run_parallel(test_cases, fail_fast)
