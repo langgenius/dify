@@ -451,8 +451,21 @@ class TestAppModelsCases:
             assert result == AppMode.CHAT
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_mode_compatible_with_agent_reports_agent_chat(self, sqlite_session: Session) -> None:
-            """A CHAT app whose own config enables agent mode reports AGENT_CHAT."""
+        @pytest.mark.parametrize(
+            ("strategy", "expected_mode"),
+            [
+                ("react", AppMode.AGENT_CHAT),
+                ("function_call", AppMode.AGENT_CHAT),
+                ({"type": "function_call"}, AppMode.CHAT),
+                (["react"], AppMode.CHAT),
+                (None, AppMode.CHAT),
+                ("unknown", AppMode.CHAT),
+            ],
+        )
+        def test_app_mode_compatible_with_agent_reports_agent_chat(
+            self, sqlite_session: Session, strategy: object, expected_mode: AppMode
+        ) -> None:
+            """Only recognized string strategies migrate a CHAT app to AGENT_CHAT."""
             # Arrange
             app = App(
                 tenant_id=str(uuid4()),
@@ -467,7 +480,7 @@ class TestAppModelsCases:
             app.app_model_config_id = str(uuid4())
             config = AppModelConfig(
                 app_id=app.id,
-                agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+                agent_mode=json.dumps({"enabled": True, "strategy": strategy}),
             )
             app_model_config_id = app.app_model_config_id
             assert app_model_config_id is not None
@@ -479,7 +492,12 @@ class TestAppModelsCases:
             result = app.mode_compatible_with_agent_with_session(session=sqlite_session)
 
             # Assert
-            assert result == AppMode.AGENT_CHAT
+            assert result == expected_mode
+            sqlite_session.expire_all()
+            persisted_app = sqlite_session.get(App, app.id)
+            assert persisted_app is not None
+            assert persisted_app.mode == expected_mode
+            assert config.agent_mode_dict["strategy"] == strategy
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
         def test_app_model_config_with_session_reads_through_the_caller_session(self, sqlite_session: Session) -> None:

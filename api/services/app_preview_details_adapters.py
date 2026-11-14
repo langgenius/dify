@@ -35,6 +35,7 @@ class AppPreviewDetailsRuntime(AppPreviewDetails):
 
     @override
     def get_detail(self, *, app: AppPreviewRef, account_id: str, active_workspace_id: str) -> AppPreviewDetail:
+        """Enrich an authorized preview without writes, preserving its mode for malformed strategies."""
         record = self._details.get_detail(app=app, account_id=account_id)
         detail = record.detail
         configuration = detail.model_config
@@ -43,7 +44,13 @@ class AppPreviewDetailsRuntime(AppPreviewDetails):
         # Preserve the response compatibility without the legacy model's App.mode
         # update and commit. A preview query must leave persisted values unchanged.
         mode = detail.mode
-        if agent_mode and agent_mode.get("enabled", False) and agent_mode.get("strategy") in {"function_call", "react"}:
+        strategy = agent_mode.get("strategy") if agent_mode else None
+        if (
+            agent_mode
+            and agent_mode.get("enabled", False)
+            and isinstance(strategy, str)
+            and strategy in {"function_call", "react"}
+        ):
             mode = AppMode.AGENT_CHAT
         if mode == AppMode.AGENT_CHAT and agent_mode is not None and configuration is not None:
             configuration = {
