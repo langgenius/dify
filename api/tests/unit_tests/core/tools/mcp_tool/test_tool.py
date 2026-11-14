@@ -194,6 +194,43 @@ class TestMcpToolCases:
                 list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
 
     @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    @pytest.mark.parametrize(
+        ("content", "expected_message"),
+        [
+            (
+                [
+                    TextContent(type="text", text="Error executing tool query_db:"),
+                    TextContent(type="text", text="connection refused"),
+                ],
+                "Error executing tool query_db:\nconnection refused",
+            ),
+            (
+                [ImageContent(type="image", data=base64.b64encode(b"img").decode(), mimeType="image/png")],
+                "MCP tool remote-tool reported an error without details",
+            ),
+        ],
+        ids=["text-content", "no-text-content"],
+    )
+    def test_mcp_tool_invoke_raises_when_result_is_error(
+        sqlite_session: Session, content: list[TextContent | ImageContent], expected_message: str
+    ) -> None:
+        tool = _build_mcp_tool()
+        result = CallToolResult(
+            content=content,
+            structuredContent={"x": 1},
+            isError=True,
+            _meta={"usage": {"prompt_tokens": 2, "completion_tokens": 3}},
+        )
+
+        with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
+            with pytest.raises(ToolInvokeError) as exc_info:
+                list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+
+        assert str(exc_info.value) == expected_message
+        assert tool.latest_usage.total_tokens == 5
+
+    @staticmethod
     def test_mcp_tool_handle_none_parameter_filters_empty_values():
         tool = _build_mcp_tool()
         cleaned = tool._handle_none_parameter({"a": 1, "b": None, "c": "", "d": "  ", "e": "ok"})
