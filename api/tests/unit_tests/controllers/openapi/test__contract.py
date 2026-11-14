@@ -4,7 +4,7 @@ Exercises the decorators in isolation (not through a real controller): a plain
 view function decorated with @accepts/@returns, driven inside a request context.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import wraps
 from io import BytesIO
 from typing import Any, cast
@@ -54,7 +54,7 @@ class ContractResp(BaseModel):
 
 
 @pytest.fixture(autouse=True, scope="module")
-def _register_contract_test_models():
+def _register_contract_test_models() -> Iterator[None]:
     # Register for @accepts(body=)/@returns name lookups; drop on teardown so these
     # test-only models don't leak into the shared openapi_ns / generated spec.
     register_schema_model(openapi_ns, ContractBody)
@@ -66,11 +66,11 @@ def _register_contract_test_models():
     openapi_ns.models.pop(ContractResp.__name__, None)
 
 
-def _guard_like(view):
+def _guard_like(view: Callable[..., object]) -> Callable[..., object]:
     """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer."""
 
     @wraps(view)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: object, **kwargs: object) -> object:
         return view(*args, **kwargs)
 
     return wrapper
@@ -80,9 +80,9 @@ class _Page(PaginationEnvelope[int]):
     pass
 
 
-def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_alone():
+def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_alone() -> None:
     @paginated("thing.list")
-    def view(*, ctx, workspace_id, query):
+    def view(*, ctx: object, workspace_id: str, query: ContractQuery) -> _Page:
         return _Page.build(page=query.page, limit=query.limit, total=50, items=[])
 
     result = view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=1, limit=20))
@@ -92,7 +92,7 @@ def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_al
     assert view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=3, limit=20)).hints == []
 
     @paginated("thing.get")
-    def plain(*, ctx):
+    def plain(*, ctx: object) -> ContractResp:
         return ContractResp(value=1)
 
     assert plain(ctx=object()) == ContractResp(value=1)
@@ -123,9 +123,9 @@ def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
     assert cursor_view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints == [own]
 
 
-def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
+def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app: Flask) -> None:
     @accepts(query=ContractQuery)
-    def view(*, query):
+    def view(*, query: ContractQuery) -> ContractQuery:
         return query
 
     with app.test_request_context("/?page=3"):
@@ -154,9 +154,9 @@ def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Fla
 
 
 @pytest.mark.parametrize("query_string", ["page=abc", "unknown=1"])
-def test_accepts_rejects_invalid_query_with_422(app, query_string):
+def test_accepts_rejects_invalid_query_with_422(app: Flask, query_string: str) -> None:
     @accepts(query=ContractQuery)
-    def view(*, query):
+    def view(*, query: ContractQuery) -> ContractQuery:
         return query
 
     with app.test_request_context(f"/?{query_string}"):
@@ -164,11 +164,11 @@ def test_accepts_rejects_invalid_query_with_422(app, query_string):
             view()
 
 
-def test_accepts_validation_error_is_sanitized_and_structured(app):
+def test_accepts_validation_error_is_sanitized_and_structured(app: Flask) -> None:
     """422 body is structured and leaks neither the pydantic docs url nor the user input."""
 
     @accepts(body=ContractBody)
-    def view(*, body):
+    def view(*, body: ContractBody) -> ContractBody:
         return body
 
     with app.test_request_context("/", method="POST", json={"secret": "leak-me"}):
@@ -186,9 +186,9 @@ def test_accepts_validation_error_is_sanitized_and_structured(app):
     assert "leak-me" not in str(data)
 
 
-def test_accepts_injects_validated_body(app):
+def test_accepts_injects_validated_body(app: Flask) -> None:
     @accepts(body=ContractBody)
-    def view(*, body):
+    def view(*, body: ContractBody) -> ContractBody:
         return body
 
     with app.test_request_context("/", method="POST", json={"name": "x"}):
@@ -198,9 +198,9 @@ def test_accepts_injects_validated_body(app):
     assert result.name == "x"
 
 
-def test_returns_serializes_model_with_decorator_status(app):
+def test_returns_serializes_model_with_decorator_status(app: Flask) -> None:
     @returns(200, ContractResp)
-    def view():
+    def view() -> ContractResp:
         return ContractResp(value=7)
 
     with app.test_request_context("/"):
@@ -211,9 +211,9 @@ def test_returns_serializes_model_with_decorator_status(app):
 
 
 @pytest.mark.parametrize("trailing", [(201,), (202, {"X-Test": "1"})], ids=["status", "status_and_headers"])
-def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app, trailing):
+def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app: Flask, trailing: tuple[object, ...]) -> None:
     @returns(200, ContractResp)
-    def view():
+    def view() -> tuple[object, ...]:
         return ContractResp(value=9), *trailing
 
     with app.test_request_context("/"):
@@ -223,11 +223,11 @@ def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app, trailin
     assert tuple(rest) == trailing
 
 
-def test_returns_passes_through_non_model(app):
+def test_returns_passes_through_non_model(app: Flask) -> None:
     sentinel = object()
 
     @returns(200, ContractResp)
-    def view():
+    def view() -> object:
         return sentinel
 
     with app.test_request_context("/"):
@@ -239,11 +239,11 @@ def test_returns_passes_through_non_model(app):
 # Swagger metadata (read off __apidoc__) must survive @wraps up through the guard layer.
 
 
-def test_accepts_returns_emit_apidoc_through_guard_stack():
+def test_accepts_returns_emit_apidoc_through_guard_stack() -> None:
     @_guard_like
     @returns(200, ContractResp)
     @accepts(query=ContractQuery, body=ContractBody)
-    def view(*, query, body):
+    def view(*, query: ContractQuery, body: ContractBody) -> ContractResp:
         return ContractResp(value=1)
 
     apidoc = getattr(view, "__apidoc__", {})
