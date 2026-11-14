@@ -1,5 +1,7 @@
 import json
 from collections.abc import Callable
+from types import TracebackType
+from typing import Self
 from urllib.parse import quote
 
 import pytest
@@ -18,32 +20,37 @@ from core.trigger.errors import (
 
 
 class _ResponseStub:
-    def __init__(self, payload):
+    def __init__(self, payload: dict[str, object] | list[object]) -> None:
         self._payload = payload
 
-    def raise_for_status(self):
+    def raise_for_status(self) -> None:
         return None
 
-    def json(self):
+    def json(self) -> dict[str, object] | list[object]:
         return self._payload
 
 
 class _StreamContext:
-    def __init__(self, lines):
+    def __init__(self, lines: list[bytes | str]) -> None:
         self._lines = lines
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> bool:
         return False
 
-    def iter_lines(self):
+    def iter_lines(self) -> list[bytes | str]:
         return self._lines
 
 
 class TestBasePluginClientImpl:
-    def test_inject_trace_headers(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+    def test_inject_trace_headers(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         client = BasePluginClient()
         config_overrides(ENABLE_OTEL=True)
         trace_header = "00-abc-xyz-01"
@@ -58,7 +65,7 @@ class TestBasePluginClientImpl:
         client._inject_trace_headers(headers_with_existing)
         assert headers_with_existing["TraceParent"] == "exists"
 
-    def test_stream_request_handles_data_lines_and_dict_payload(self, mocker: MockerFixture):
+    def test_stream_request_handles_data_lines_and_dict_payload(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         stream_mock = mocker.patch(
             "httpx.Client.stream",
@@ -77,20 +84,20 @@ class TestBasePluginClientImpl:
             "plugin/tenant/%2e%2e%252ftarget",
         ],
     )
-    def test_prepare_request_rejects_encoded_traversal_with_encoded_separator(self, path: str):
+    def test_prepare_request_rejects_encoded_traversal_with_encoded_separator(self, path: str) -> None:
         client = BasePluginClient()
 
         with pytest.raises(ValueError, match="traversal sequence detected"):
             client._prepare_request(path, None, None, None, None)
 
-    def test_prepare_request_rejects_path_exceeding_max_length(self):
+    def test_prepare_request_rejects_path_exceeding_max_length(self) -> None:
         client = BasePluginClient()
         path = "a" * (PLUGIN_DAEMON_MAX_PATH_LENGTH + 1)
 
         with pytest.raises(ValueError, match="path length exceeds"):
             client._prepare_request(path, None, None, None, None)
 
-    def test_prepare_request_rejects_excessively_encoded_path(self):
+    def test_prepare_request_rejects_excessively_encoded_path(self) -> None:
         client = BasePluginClient()
         segment = "..%2Ftarget"
         for _ in range(9):
@@ -100,20 +107,20 @@ class TestBasePluginClientImpl:
         with pytest.raises(ValueError, match="too deeply encoded"):
             client._prepare_request(path, None, None, None, None)
 
-    def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_request", side_effect=RuntimeError("boom"))
 
         with pytest.raises(ValueError, match="Failed to request plugin daemon"):
             client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool)
 
-    def test_request_with_plugin_daemon_response_applies_transformer(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_applies_transformer(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": True}))
 
-        transformed = {}
+        transformed: dict[str, object] = {}
 
-        def transformer(payload):
+        def transformer(payload: dict[str, object]) -> dict[str, object]:
             transformed.update(payload)
             return payload
 
@@ -122,7 +129,9 @@ class TestBasePluginClientImpl:
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
 
-    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(
+        self, mocker: MockerFixture
+    ) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": []}))
 
@@ -133,7 +142,7 @@ class TestBasePluginClientImpl:
 
     def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_top_level_array(
         self, mocker: MockerFixture
-    ):
+    ) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_request", return_value=_ResponseStub([]))
 
@@ -142,14 +151,14 @@ class TestBasePluginClientImpl:
         assert result.list == []
         assert result.total == 0
 
-    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"error":"bad-line"}']))
 
         with pytest.raises(ValueError, match="bad-line"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 
-    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         mocker.patch.object(
             client, "_stream_request", return_value=iter(['{"code":-500,"message":"not-json","data":null}'])
@@ -159,14 +168,14 @@ class TestBasePluginClientImpl:
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
         assert exc_info.value.message == "not-json"
 
-    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":-1,"message":"err","data":null}']))
 
         with pytest.raises(ValueError, match="plugin daemon: err, code: -1"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 
-    def test_request_with_plugin_daemon_response_stream_empty_data_error(self, mocker: MockerFixture):
+    def test_request_with_plugin_daemon_response_stream_empty_data_error(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":0,"message":"","data":null}']))
 
@@ -183,21 +192,21 @@ class TestBasePluginClientImpl:
             (EventIgnoreError.__name__, EventIgnoreError),
         ],
     )
-    def test_handle_plugin_daemon_error_trigger_branches(self, error_type, expected):
+    def test_handle_plugin_daemon_error_trigger_branches(self, error_type: str, expected: type[BaseException]) -> None:
         client = BasePluginClient()
         message = json.dumps({"error_type": error_type, "message": "m"})
 
         with pytest.raises(expected):
             client._handle_plugin_daemon_error("PluginInvokeError", message)
 
-    def test_handle_plugin_daemon_error_maps_unsupported_polling_to_typed_exception(self):
+    def test_handle_plugin_daemon_error_maps_unsupported_polling_to_typed_exception(self) -> None:
         client = BasePluginClient()
         message = json.dumps({"error_type": PluginLLMPollingUnsupportedError.__name__, "message": "m"})
 
         with pytest.raises(PluginLLMPollingUnsupportedError):
             client._handle_plugin_daemon_error("PluginInvokeError", message)
 
-    def test_handle_plugin_daemon_error_maps_runtime_error_to_typed_exception(self):
+    def test_handle_plugin_daemon_error_maps_runtime_error_to_typed_exception(self) -> None:
         client = BasePluginClient()
         lambda_request_id = "45664803-3d3c-4d4f-93fe-e3b19e43092b"
         message = json.dumps(
