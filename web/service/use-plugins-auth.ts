@@ -10,7 +10,13 @@ import type {
   CredentialTypeEnum,
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { get } from './base'
@@ -31,6 +37,11 @@ export const useGetPluginCredentialInfo = (url: string) => {
         credentials: Credential[]
         is_oauth_custom_client_enabled: boolean
       }>(url),
+    // Keep the previous response while the credential-info query refetches
+    // for a new selection. Without this, selecting a credential drops `data`
+    // to undefined, `isAuthorized` flips false, and the Authorized popover
+    // trigger unmounts — taking keyboard focus with it.
+    placeholderData: keepPreviousData,
     staleTime: 0,
   })
 }
