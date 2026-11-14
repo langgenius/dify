@@ -112,7 +112,7 @@ after
 
         calls: list[str | None] = []
 
-        def fake_read_text(self: Path, encoding: str | None = None) -> str:
+        def fake_read_text(_self, encoding: str | None = None) -> str:
             calls.append(encoding)
             if encoding is None:
                 raise UnicodeDecodeError("utf-8", b"x", 0, 1, "fail")
@@ -135,7 +135,7 @@ after
     def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=False)
 
-        def raise_decode(self: Path, encoding: str | None = None) -> NoReturn:
+        def raise_decode(_self, encoding: str | None = None) -> NoReturn:
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "fail")
 
         monkeypatch.setattr(Path, "read_text", raise_decode, raising=True)
@@ -146,7 +146,7 @@ after
     def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path")
 
-        def raise_other(self: Path, encoding: str | None = None) -> NoReturn:
+        def raise_other(_self, encoding: str | None = None) -> NoReturn:
             raise OSError("disk error")
 
         monkeypatch.setattr(Path, "read_text", raise_other, raising=True)
