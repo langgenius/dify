@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import event
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -332,9 +333,14 @@ class TestClearFreePlanTenantExpiredLogs:
         sqlite_session.commit()
         record_keys: list[tuple[type[object], object]] = []
         for record in records:
-            record_id = getattr(record, "id", None)
-            assert record_id is not None
-            record_keys.append((type(record), record_id))
+            # Every cleaned table maps the same ``id`` primary key, but the shared
+            # declarative base declares no such attribute, so read the persisted
+            # identity SQLAlchemy already tracks instead of naming the column.
+            state = sa_inspect(record)
+            assert state is not None
+            identity = state.identity
+            assert identity is not None
+            record_keys.append((type(record), identity[0]))
         storage = MagicMock()
         monkeypatch.setattr(service_module, "storage", storage)
 
