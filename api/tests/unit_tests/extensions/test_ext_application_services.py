@@ -1993,7 +1993,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     )
     assert admitted_app.app_mode == "chat"
     previous_metadata = get_credit_usage_metadata()
-    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    event.listen(sqlite_session_factory, "after_begin", observe_naming_session)
     plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
     try:
         with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
@@ -2016,7 +2016,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             )
     finally:
         plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
-        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+        event.remove(sqlite_session_factory, "after_begin", observe_naming_session)
     assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]
