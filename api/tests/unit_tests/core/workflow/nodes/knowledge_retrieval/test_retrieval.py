@@ -4,6 +4,9 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode, get_current_span, get_tracer
 from sqlalchemy.orm import Session
 
@@ -28,8 +31,8 @@ def _otel_enabled(config_overrides: Callable[..., None]) -> None:
 
 
 def test_knowledge_retrieval_creates_a_child_otel_span(
-    memory_span_exporter,
-    tracer_provider_with_memory_exporter,
+    memory_span_exporter: InMemorySpanExporter,
+    tracer_provider_with_memory_exporter: TracerProvider,
     sqlite_session: Session,
 ) -> None:
     """The retrieval entry point must be visible beneath its workflow node span."""
@@ -57,14 +60,16 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
         if span.name == "core.rag.retrieval.dataset_retrieval.DatasetRetrieval.knowledge_retrieval"
     )
     node_span_context = node_span.get_span_context()
-    assert retrieval_span.context.trace_id == node_span_context.trace_id
+    retrieval_context = retrieval_span.context
+    assert retrieval_context is not None
+    assert retrieval_context.trace_id == node_span_context.trace_id
     assert retrieval_span.parent is not None
     assert retrieval_span.parent.span_id == node_span_context.span_id
 
 
 def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
-    app,
-    tracer_provider_with_memory_exporter,
+    app: Flask,
+    tracer_provider_with_memory_exporter: TracerProvider,
 ) -> None:
     """Per-dataset retrieval spans must remain in the workflow node trace."""
     retrieval = DatasetRetrieval()
@@ -102,9 +107,9 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
 
 
 def test_retriever_thread_exception_sets_error_span_and_is_collected(
-    app,
-    memory_span_exporter,
-    tracer_provider_with_memory_exporter,
+    app: Flask,
+    memory_span_exporter: InMemorySpanExporter,
+    tracer_provider_with_memory_exporter: TracerProvider,
 ) -> None:
     retrieval = DatasetRetrieval()
     cancel_event = threading.Event()
@@ -138,9 +143,9 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
 
 
 def test_retriever_thread_exception_emits_skip_event_when_requested(
-    app,
-    memory_span_exporter,
-    tracer_provider_with_memory_exporter,
+    app: Flask,
+    memory_span_exporter: InMemorySpanExporter,
+    tracer_provider_with_memory_exporter: TracerProvider,
 ) -> None:
     retrieval = DatasetRetrieval()
     cancel_event = threading.Event()
@@ -171,9 +176,12 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
         for span in memory_span_exporter.get_finished_spans()
         if span.name.endswith("DatasetRetrieval._run_retriever_thread")
     )
+    assert isinstance(parent_span, ReadableSpan)
     skip_event = next(event for event in parent_span.events if event.name == "dataset_retrieval.skipped")
     assert retrieval_span.status.status_code == StatusCode.ERROR
-    assert skip_event.attributes["dataset_id"] == dataset_id
-    assert skip_event.attributes["error.message"] == "retrieval failed"
+    skip_attributes = skip_event.attributes
+    assert skip_attributes is not None
+    assert skip_attributes["dataset_id"] == dataset_id
+    assert skip_attributes["error.message"] == "retrieval failed"
     assert not cancel_event.is_set()
     assert thread_exceptions == []
