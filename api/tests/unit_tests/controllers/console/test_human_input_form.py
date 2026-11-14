@@ -88,8 +88,8 @@ def _workflow_run(
 
 def test_jsonify_form_definition() -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
-    definition = SimpleNamespace(model_dump=lambda: {"fields": []})
-    form = SimpleNamespace(get_definition=lambda: definition, expiration_time=expiration)
+    definition = Mock(model_dump=lambda: {"fields": []})
+    form = Mock(get_definition=lambda: definition, expiration_time=expiration)
 
     response = _jsonify_form_definition(form)
 
@@ -99,7 +99,7 @@ def test_jsonify_form_definition() -> None:
 
 
 def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
-    form = SimpleNamespace(tenant_id="tenant-1")
+    form = Mock(tenant_id="tenant-1")
 
     with pytest.raises(NotFoundError):
         ConsoleHumanInputFormApi._ensure_console_access(form, "tenant-2")
@@ -115,13 +115,13 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     )
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_definition_by_token_for_console(self, _token):
+        def get_form_definition_by_token_for_console(self, _token: str) -> Mock:
             return form
 
-        def resolve_form_inputs(self, resolved_form):
+        def resolve_form_inputs(self, resolved_form: Mock) -> list[SelectInputConfig]:
             assert resolved_form is form
             return [resolved_input]
 
@@ -140,10 +140,10 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
 
 def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_definition_by_token_for_console(self, _token):
+        def get_form_definition_by_token_for_console(self, _token: str) -> Mock:
             return None
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
@@ -160,10 +160,10 @@ def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.Monkey
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.EMAIL_MEMBER)
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_by_token(self, _token):
+        def get_form_by_token(self, _token: str) -> Mock:
             return form
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
@@ -190,10 +190,10 @@ def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.STANDALONE_WEB_APP)
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_by_token(self, _token):
+        def get_form_by_token(self, _token: str) -> Mock:
             return form
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
@@ -221,13 +221,13 @@ def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.CONSOLE)
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_by_token(self, _token):
+        def get_form_by_token(self, _token: str) -> Mock:
             return form
 
-        def submit_form_by_token(self, **kwargs):
+        def submit_form_by_token(self, **kwargs: object) -> None:
             submit_mock(**kwargs)
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
@@ -258,13 +258,13 @@ def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypa
     current_user = _account()
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_by_token(self, _token):
+        def get_form_by_token(self, _token: str) -> Mock:
             return form
 
-        def submit_form_by_token(self, **kwargs):
+        def submit_form_by_token(self, **kwargs: object) -> None:
             submit_mock(**kwargs)
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
@@ -293,7 +293,7 @@ def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypa
 
 def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun | None:
             return None
 
     monkeypatch.setattr(
@@ -314,7 +314,7 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
     workflow_run = _workflow_run(created_by_role=CreatorUserRole.END_USER)
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     monkeypatch.setattr(
@@ -335,7 +335,7 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
     workflow_run = _workflow_run(created_by="user-2")
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     monkeypatch.setattr(
@@ -357,7 +357,7 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     app_model = _app()
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     response_obj = SimpleNamespace(
@@ -427,7 +427,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
     )
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     snapshot_calls: list[dict[str, object]] = []
