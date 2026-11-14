@@ -118,7 +118,7 @@ def _handler(api: OpenApiWorkflowEventsApi) -> Callable[..., Response]:
     static type of the decorated view; narrow it once here instead of at every
     call site.
     """
-    handler = getattr(api.get, "__handler__", None)
+    handler = vars(api.get).get("__handler__")
     assert callable(handler)
     return handler
 
