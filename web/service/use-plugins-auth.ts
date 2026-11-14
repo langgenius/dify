@@ -10,7 +10,13 @@ import type {
   CredentialTypeEnum,
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
-import { keepPreviousData, skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { get } from './base'
