@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+from typing import IO
 from unittest.mock import Mock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.rag.extractor import helpers
 from core.rag.extractor.helpers import detect_file_encodings
@@ -12,25 +16,28 @@ from core.rag.extractor.helpers import detect_file_encodings
 
 class TestHelpers:
     @pytest.mark.parametrize(("sample_size", "file_size"), [(None, 1_200_000), (4096, 140_000), (4096, 12)])
-    def test_detect_file_encodings_bounds_read(self, tmp_path: Path, sample_size: int | None, file_size: int):
+    def test_detect_file_encodings_bounds_read(
+        self, tmp_path: Path, sample_size: int | None, file_size: int, mocker: MockerFixture
+    ) -> None:
         file_path = tmp_path / "sample.txt"
         file_path.write_bytes(b"a" * file_size)
         real_open = open
-        reads = []
-        byte_counts = []
+        reads: list[Mock] = []
+        byte_counts: list[int] = []
 
-        def tracked_open(filename, *args, **kwargs):
-            stream = real_open(filename, *args, **kwargs)
-            if str(filename) == str(file_path):
+        def tracked_open(filename: str, mode: str = "rb") -> IO[bytes]:
+            stream = real_open(filename, mode)
+            if filename == str(file_path):
                 real_read = stream.read
 
-                def tracked_read(*read_args, **read_kwargs):
-                    data = real_read(*read_args, **read_kwargs)
+                def tracked_read(*read_args: int) -> bytes:
+                    data = real_read(*read_args)
                     byte_counts.append(len(data))
                     return data
 
-                stream.read = Mock(side_effect=tracked_read)
-                reads.append(stream.read)
+                reader = Mock(side_effect=tracked_read)
+                mocker.patch.object(stream, "read", reader)
+                reads.append(reader)
             return stream
 
         with patch("builtins.open", side_effect=tracked_open):
@@ -61,19 +68,19 @@ class TestHelpers:
         # Assert the language field for full coverage
         assert encodings[0].language is not None
 
-    def test_detect_file_encodings_timeout(self, monkeypatch: pytest.MonkeyPatch):
+    def test_detect_file_encodings_timeout(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class FakeFuture:
-            def result(self, timeout=None):
+            def result(self, timeout: int | None = None) -> None:
                 raise helpers.concurrent.futures.TimeoutError()
 
         class FakeExecutor:
-            def __enter__(self):
+            def __enter__(self) -> FakeExecutor:
                 return self
 
-            def __exit__(self, exc_type, exc, tb):
+            def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
                 return False
 
-            def submit(self, fn, file_path):
+            def submit(self, fn: object, file_path: object) -> FakeFuture:
                 return FakeFuture()
 
         monkeypatch.setattr(helpers.concurrent.futures, "ThreadPoolExecutor", lambda: FakeExecutor())
@@ -84,11 +91,11 @@ class TestHelpers:
     @pytest.mark.parametrize("no_match", [False, True])
     def test_detect_file_encodings_raises_when_encoding_not_detected(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, no_match: bool
-    ):
+    ) -> None:
         class FakeResult:
-            encoding = None
-            coherence = 0.0
-            language = None
+            encoding: str | None = None
+            coherence: float = 0.0
+            language: str | None = None
 
         file_path = tmp_path / "sample.txt"
         file_path.write_bytes(b"sample")
