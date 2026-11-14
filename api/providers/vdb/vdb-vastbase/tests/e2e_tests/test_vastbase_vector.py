@@ -22,5 +22,5 @@ class VastbaseVectorTest(AbstractVectorTest):
         )
 
 
-def test_vastbase_vector(setup_mock_redis):
+def test_vastbase_vector(setup_real_redis):
     VastbaseVectorTest().run_all_tests()
