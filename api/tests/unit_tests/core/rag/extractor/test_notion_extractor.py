@@ -563,6 +563,77 @@ class TestNotionExtractorCases:
             assert "| H1 |  |" in markdown
             assert "| R2C1 | R2C2 |" in markdown
 
+        def test_read_table_rows_pagination_treats_continuation_rows_as_data(self, mocker: MockerFixture) -> None:
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type="page",
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+
+            # Notion returns the header row only on the first page; every row of
+            # a continuation page is a data row.
+            page_one = {
+                "results": [
+                    {
+                        "table_row": {
+                            "cells": [
+                                [{"text": {"content": "H1"}}],
+                                [{"text": {"content": "H2"}}],
+                            ]
+                        }
+                    },
+                    {
+                        "table_row": {
+                            "cells": [
+                                [{"text": {"content": "R1C1"}}],
+                                [{"text": {"content": "R1C2"}}],
+                            ]
+                        }
+                    },
+                ],
+                "next_cursor": "next",
+            }
+            page_two = {
+                "results": [
+                    {
+                        "table_row": {
+                            "cells": [
+                                [{"text": {"content": "R2C1"}}],
+                                [{"text": {"content": "R2C2"}}],
+                            ]
+                        }
+                    },
+                    {
+                        "table_row": {
+                            "cells": [
+                                [{"text": {"content": "R3C1"}}],
+                                [{"text": {"content": "R3C2"}}],
+                            ]
+                        }
+                    },
+                ],
+                "next_cursor": None,
+            }
+
+            mocker.patch(
+                "httpx.request",
+                side_effect=[_notion_extractor_mock_response(page_one), _notion_extractor_mock_response(page_two)],
+            )
+
+            markdown = extractor._read_table_rows("tbl-1")
+
+            lines = markdown.splitlines()
+            # Exactly one header line and one separator for the whole table:
+            # continuation pages must not turn their first data row into a
+            # repeated header, and rows must stay inside a single table.
+            assert lines.count("| --- | --- |") == 1
+            assert lines[0] == "| H1 | H2 |"
+            assert "| R2C1 | R2C2 |" in lines
+            assert "| R3C1 | R3C2 |" in lines
+
         def test_read_table_rows_joins_rich_text_segments_within_cell(self, mocker: MockerFixture) -> None:
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
