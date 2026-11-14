@@ -3,6 +3,7 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ReactElement } from 'react'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
 import type { Var } from '@/app/components/workflow/types'
+import type { VarType } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -20,8 +21,8 @@ import { produce } from 'immer'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputSupportSelectVar from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { TEXT_VAR_TYPES } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { VarType } from '@/app/components/workflow/types'
 import { APIType, AuthorizationType } from '../../types'
 import RadioGroup from './radio-group'
 
@@ -49,7 +50,7 @@ function Field({
     <div>
       <div className="text-[13px] leading-8 font-medium text-text-secondary">
         {htmlFor ? <label htmlFor={htmlFor}>{title}</label> : title}
-        {isRequired && <span className="ml-0.5 text-text-destructive">*</span>}
+        {isRequired && <span className="ms-0.5 text-text-destructive">*</span>}
       </div>
       <div>{children}</div>
     </div>
@@ -69,7 +70,7 @@ function AuthorizationForm({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = TEXT_VAR_TYPES
 
       return textVariableTypes.includes(varPayload.type)
     },
@@ -265,7 +266,7 @@ export function AuthorizationDialog({
   const label = (
     <span className="text-xs font-medium text-text-tertiary">
       {t(($) => $[`${i18nPrefix}.authorization`])}
-      <span className="ml-1 text-text-secondary">
+      <span className="ms-1 text-text-secondary">
         {t(($) => $[`${i18nPrefix}.${payload.type}`])}
       </span>
     </span>

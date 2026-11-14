@@ -4,6 +4,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { TEXT_VAR_TYPES } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
 
@@ -48,7 +49,7 @@ export const createFilterVar = (type: string) => {
     type === FormTypeEnum.date
   )
     return (varPayload: Var) => {
-      const textVarTypes: VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVarTypes: VarType[] = TEXT_VAR_TYPES
       return textVarTypes.includes(varPayload.type)
     }
 

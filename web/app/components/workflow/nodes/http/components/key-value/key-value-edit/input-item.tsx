@@ -7,6 +7,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import { TEXT_VAR_TYPES } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarType } from '@/app/components/workflow/types'
 import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
 
@@ -45,7 +46,7 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const supportVarTypes: VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const supportVarTypes: VarType[] = TEXT_VAR_TYPES
       if (isSupportFile) supportVarTypes.push(VarType.file, VarType.arrayFile)
 
       return supportVarTypes.includes(varPayload.type)
@@ -82,7 +83,7 @@ const InputItem: FC<Props> = ({
           insertVarTipToLeft={insertVarTipToLeft}
         />
       ) : (
-        <div className="h-full w-full pl-0.5 leading-4.5">
+        <div className="h-full w-full ps-0.5 leading-4.5">
           {!hasValue && (
             <div className="text-xs font-normal text-text-quaternary">{placeholder}</div>
           )}
@@ -113,7 +114,7 @@ const InputItem: FC<Props> = ({
       )}
       {hasRemove && !isFocus && (
         <RemoveButton
-          className="absolute top-0.5 right-1 hidden group-hover:block"
+          className="absolute inset-e-1 top-0.5 hidden group-hover:block"
           onClick={handleRemove}
         />
       )}
