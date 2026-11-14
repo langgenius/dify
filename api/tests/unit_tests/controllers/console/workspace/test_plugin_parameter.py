@@ -120,7 +120,16 @@ def test_anonymous_tool_preserves_response_and_dispatch_after_repository_session
 ) -> None:
     harness.set_role(role)
     daemon.provider = _tool_provider()
-    _options_response(daemon)
+    daemon.response_data = {
+        "options": [
+            {
+                "value": 101,
+                "label": {"en_US": "Branch 101"},
+                "icon": None,
+                "show_on": [{"variable": "mode", "value": "advanced"}],
+            }
+        ]
+    }
 
     response = Context().run(harness.call, "GET", url=f"{_url('GET')}&tenant_id={uuid4()}")
 
@@ -132,6 +141,7 @@ def test_anonymous_tool_preserves_response_and_dispatch_after_repository_session
                 "value": "101",
                 "label": dict.fromkeys(("en_US", "zh_Hans", "pt_BR", "ja_JP"), "Branch 101"),
                 "icon": None,
+                "show_on": [{"variable": "mode", "value": "advanced"}],
             }
         ]
     }
