@@ -25,7 +25,7 @@ const formatOffset = (totalMinutes: number) => {
 }
 
 // Offset in minutes of a timezone at a given instant, following DST. Undefined if the runtime cannot resolve it.
-export const getTimezoneOffsetMinutes = (timezone: string, date: Date): number | undefined => {
+const getTimezoneOffsetMinutes = (timezone: string, date: Date): number | undefined => {
   try {
     const name = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
