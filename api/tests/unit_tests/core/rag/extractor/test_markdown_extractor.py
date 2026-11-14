@@ -23,11 +23,12 @@ this is more specific text.
         updated_output = extractor.markdown_to_tups(markdown)
 
         assert len(updated_output) == 3
-        key, header_value = updated_output[0]
-        assert key is None
-        assert header_value.strip() == "this is some text without header"
+        first = updated_output[0]
+        assert first[0] is None
+        assert first[1].strip() == "this is some text without header"
 
         title_1, value = updated_output[1]
+        assert title_1 is not None
         assert title_1.strip() == "title 1"
         assert value.strip() == "this is balabala text"
 
