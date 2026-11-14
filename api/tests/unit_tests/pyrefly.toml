@@ -77,7 +77,6 @@ project-excludes = [
   "core/app/apps/workflow/test_generate_response_converter.py",
   "core/app/apps/workflow/test_generate_task_pipeline.py",
   "core/app/features/rate_limiting/test_rate_limit.py",
-  "core/app/task_pipeline/test_based_generate_task_pipeline.py",
   "core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py",
   "core/app/task_pipeline/test_message_cycle_manager.py",
   "services/test_workflow_persistence.py",
