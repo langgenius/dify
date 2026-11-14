@@ -15,4 +15,5 @@ export const initialWorkspaceSummary: GetWorkspacesCurrentSummaryResponse = {
   plan: null,
   credits: null,
   role: 'normal',
+  max_active_requests: 0,
 }

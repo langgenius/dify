@@ -17752,6 +17752,20 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /workspaces/current/settings
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceSettingsPayload](#workspacesettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /workspaces/current/skills
 #### Parameters
 
@@ -24467,6 +24481,7 @@ The current workspace has been archived.
 | ---- | ---- | ----------- | -------- |
 | credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
 | id | string |  | Yes |
+| max_active_requests | integer |  | Yes |
 | name | string |  | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
@@ -36262,6 +36277,7 @@ Tag type
 | custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
+| max_active_requests | integer |  | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |
 | plan | [CloudPlan](#cloudplan) |  | No |
@@ -38927,6 +38943,12 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
+
+#### WorkspaceSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_active_requests | integer |  | Yes |
 
 #### WorkspaceSkillsQuery
 

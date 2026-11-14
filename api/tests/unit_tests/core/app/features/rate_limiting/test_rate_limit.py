@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.app.features.rate_limiting.rate_limit import RateLimit
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitLease
 from core.errors.error import AppInvokeQuotaExceededError
 
 
@@ -449,6 +449,67 @@ class TestRateLimitGenerator:
 
         with pytest.raises(StopIteration):
             next(wrapped_gen)
+
+
+class TestRateLimitLease:
+    """Tests for combined rate limit cleanup."""
+
+    @pytest.fixture(autouse=True)
+    def bind_redis(self, mock_redis, monkeypatch):
+        monkeypatch.setattr("core.app.features.rate_limiting.rate_limit.redis_client", mock_redis)
+        self.redis = mock_redis
+
+    def test_should_release_all_entries_when_mapping_returned(self):
+        """Test immediate cleanup for non-streaming mapping results."""
+        app_rate_limit = RateLimit("lease_app", 1)
+        workspace_rate_limit = RateLimit("lease_workspace", 1)
+
+        lease = RateLimitLease()
+        lease.add(workspace_rate_limit, workspace_rate_limit.enter("workspace-request"))
+        lease.add(app_rate_limit, app_rate_limit.enter("app-request"))
+
+        result = lease.generate({"answer": "ok"})
+
+        assert result == {"answer": "ok"}
+        assert self.redis.hlen(workspace_rate_limit.active_requests_key) == 0
+        assert self.redis.hlen(app_rate_limit.active_requests_key) == 0
+
+    def test_should_release_all_entries_when_stream_closed(self):
+        """Test cleanup for streaming results."""
+        app_rate_limit = RateLimit("lease_app_stream", 1)
+        workspace_rate_limit = RateLimit("lease_workspace_stream", 1)
+
+        def stream():
+            yield "chunk"
+
+        lease = RateLimitLease()
+        lease.add(workspace_rate_limit, workspace_rate_limit.enter("workspace-request"))
+        lease.add(app_rate_limit, app_rate_limit.enter("app-request"))
+        wrapped = lease.generate(stream())
+
+        assert next(wrapped) == "chunk"
+        assert self.redis.hlen(workspace_rate_limit.active_requests_key) == 1
+        assert self.redis.hlen(app_rate_limit.active_requests_key) == 1
+        wrapped.close()
+
+        assert self.redis.hlen(workspace_rate_limit.active_requests_key) == 0
+        assert self.redis.hlen(app_rate_limit.active_requests_key) == 0
+
+    def test_should_release_workspace_entry_when_app_entry_fails(self):
+        """Test cleanup after workspace entry succeeds but app entry fails."""
+        workspace_rate_limit = RateLimit("lease_workspace_partial", 1)
+        app_rate_limit = RateLimit("lease_app_partial", 1)
+        app_rate_limit.enter("existing-app-request")
+
+        lease = RateLimitLease()
+        lease.add(workspace_rate_limit, workspace_rate_limit.enter("workspace-request"))
+
+        with pytest.raises(AppInvokeQuotaExceededError):
+            app_rate_limit.enter("app-request")
+
+        lease.close()
+        assert self.redis.hlen(workspace_rate_limit.active_requests_key) == 0
+        assert self.redis.hgetall(app_rate_limit.active_requests_key).keys() == {"existing-app-request"}
 
 
 class TestRateLimitConcurrency:

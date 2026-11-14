@@ -788,6 +788,11 @@ class TestWorkflowCollaborationService:
 
         @contextmanager
         def graph_view_lock() -> Generator[None]:
+            """Record the lock boundary for this visibility-write scenario.
+
+            Preconditions: events is the scenario's ordered event log.
+            Postconditions: entry and successful exit are recorded; errors propagate.
+            """
             events.append("lock_enter")
             yield
             events.append("lock_exit")
