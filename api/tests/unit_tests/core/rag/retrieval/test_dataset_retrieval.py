@@ -5906,6 +5906,97 @@ class TestDatasetRetrievalCases:
             assert mock_retrieve.call_count == 2
             assert len(all_documents) >= 3
 
+        @pytest.mark.parametrize("indexing_technique", ["economy", "high_quality"])
+        def test_retriever_returns_its_connection_before_retrieval(
+            self, retrieval: DatasetRetrieval, monkeypatch: pytest.MonkeyPatch, indexing_technique: str
+        ) -> None:
+            """Retrieval waits on the embedding model and the vector store, and opens sessions of its own.
+
+            The thread's own session must not be inside a transaction while that happens; otherwise each
+            concurrent retrieval keeps one pooled connection and needs a second one to make progress.
+            """
+            dataset = Dataset(
+                id=str(uuid4()),
+                tenant_id=str(uuid4()),
+                name="Knowledge base",
+                provider="dify",
+                indexing_technique=indexing_technique,
+                created_by=str(uuid4()),
+                retrieval_model={
+                    "search_method": "semantic_search",
+                    "top_k": 2,
+                    "score_threshold_enabled": False,
+                    "reranking_enable": False,
+                },
+            )
+            dataset_id = dataset.id
+            self.orm_session.add(dataset)
+            self.orm_session.commit()
+            in_transaction_during_retrieval: list[bool] = []
+            searched_datasets: list[object] = []
+
+            def retrieve(**kwargs: object) -> list[_dataset_retrieval_Document]:
+                in_transaction_during_retrieval.append(self.orm_session.in_transaction())
+                searched_datasets.append(kwargs["dataset_id"])
+                return [_doc(provider="dify")]
+
+            monkeypatch.setattr(RetrievalService, "retrieve", retrieve)
+            all_documents: list[_dataset_retrieval_Document] = []
+
+            retrieval._retriever(
+                flask_app=_FakeFlaskApp(),  # type: ignore[arg-type]
+                session=self.orm_session,
+                dataset_id=dataset_id,
+                query="python",
+                top_k=2,
+                all_documents=all_documents,
+            )
+
+            assert in_transaction_during_retrieval == [False]
+            assert searched_datasets == [dataset_id]
+            assert len(all_documents) == 1
+
+        def test_retriever_reuses_the_session_for_external_knowledge_after_releasing_it(
+            self, retrieval: DatasetRetrieval, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            """The external branch still receives a usable session after the dataset row was detached."""
+            dataset = Dataset(
+                id=str(uuid4()),
+                tenant_id=str(uuid4()),
+                name="External knowledge",
+                provider="external",
+                indexing_technique="high_quality",
+                created_by=str(uuid4()),
+                retrieval_model={"top_k": 2},
+            )
+            dataset_id = dataset.id
+            self.orm_session.add(dataset)
+            self.orm_session.commit()
+            rows_seen_through_session: list[str | None] = []
+
+            def fetch_external_knowledge_retrieval(*, session: Session, **kwargs: object) -> list[dict[str, object]]:
+                rows_seen_through_session.append(session.scalar(select(Dataset.name).where(Dataset.id == dataset_id)))
+                return [{"content": "external", "metadata": {}, "score": 0.8, "title": "External document"}]
+
+            monkeypatch.setattr(
+                dataset_retrieval_module.ExternalDatasetService,
+                "fetch_external_knowledge_retrieval",
+                fetch_external_knowledge_retrieval,
+            )
+            all_documents: list[_dataset_retrieval_Document] = []
+
+            retrieval._retriever(
+                flask_app=_FakeFlaskApp(),  # type: ignore[arg-type]
+                session=self.orm_session,
+                dataset_id=dataset_id,
+                query="python",
+                top_k=2,
+                all_documents=all_documents,
+            )
+
+            assert rows_seen_through_session == ["External knowledge"]
+            assert [document.metadata["dataset_name"] for document in all_documents] == ["External knowledge"]
+
         def test_to_dataset_retriever_tool_paths(self, retrieval: DatasetRetrieval) -> None:
             tenant_id = str(uuid4())
             creator_id = str(uuid4())
