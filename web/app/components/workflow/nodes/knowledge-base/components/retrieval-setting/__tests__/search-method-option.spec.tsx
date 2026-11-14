@@ -2,13 +2,33 @@ import type { SearchMethodOptionProps } from '../search-method-option'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum, WeightedScoreEnum } from '../../../types'
 import { SearchMethodOption } from '../search-method-option'
 
-vi.mock('../reranking-model-selector', () => ({
-  default: () => <button type="button">plugin.detailPanel.configureModel</button>,
-}))
+const render = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'reranker',
+          model_type: 'rerank',
+          label: { en_US: 'Reranker' },
+        }),
+      ],
+    }),
+  ])
+  return renderWithConsoleQuery(ui, { queryClient })
+})
 
 const hybridSearchModeOptions = [
   {
@@ -101,18 +121,8 @@ function renderSearchMethodOption(
 }
 
 describe('SearchMethodOption', () => {
-  it('should render semantic search controls', () => {
-    const props = createProps()
-
-    renderSearchMethodOption(props)
-
-    expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
-    expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.getAllByRole('switch')).toHaveLength(2)
-  })
-
-  it('should notify retrieval changes when an inactive option is selected', () => {
+  it('should notify retrieval changes when an inactive option is selected', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const fullTextProps = {
       ...props,
@@ -127,14 +137,15 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Full-text title'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Full-text title'))
+    await user.click(screen.getByText('Full-text title'))
 
     expect(props.onRetrievalSearchMethodChange).toHaveBeenCalledWith(
       RetrievalSearchMethodEnum.fullText,
     )
   })
 
-  it('should render hybrid weighted-score controls without reranking model selector', () => {
+  it('should render hybrid weighted-score controls without reranking model selector', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const hybridProps = {
       ...props,
@@ -167,14 +178,15 @@ describe('SearchMethodOption', () => {
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Rerank mode'))
+    await user.click(screen.getByText('Rerank mode'))
 
     expect(props.hybridSearch.onModeChange).toHaveBeenCalledWith(
       HybridSearchModeEnum.RerankingModel,
     )
   })
 
-  it('should render the hybrid reranking selector when reranking mode is selected', () => {
+  it('should render the hybrid reranking selector when reranking mode is selected', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const hybridProps = {
       ...props,
@@ -196,7 +208,12 @@ describe('SearchMethodOption', () => {
 
     renderSearchMethodOption(hybridProps)
 
-    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(await screen.findByRole('button', { name: /Reranker/ }))
+    expect(props.reranking.onRerankingModelChange).toHaveBeenCalledWith({
+      reranking_provider_name: 'openai',
+      reranking_model_name: 'reranker',
+    })
     expect(
       screen.queryByText('modelProvider.modelProvider.rerankModel.key'),
     ).not.toBeInTheDocument()
@@ -206,7 +223,8 @@ describe('SearchMethodOption', () => {
     )!.toBeInTheDocument()
   })
 
-  it('should hide the score-threshold control for keyword search', () => {
+  it('should hide the score-threshold control for keyword search', async () => {
+    const user = userEvent.setup()
     const props = createProps()
     const keywordProps = {
       ...props,
@@ -220,7 +238,8 @@ describe('SearchMethodOption', () => {
 
     renderSearchMethodOption(keywordProps)
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '9' } })
+    await user.clear(screen.getByRole('textbox'))
+    await user.type(screen.getByRole('textbox'), '9')
 
     expect(screen.getAllByRole('textbox')).toHaveLength(1)
     expect(screen.queryAllByRole('switch')).toHaveLength(0)

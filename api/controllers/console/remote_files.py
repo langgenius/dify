@@ -23,6 +23,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate, with_current_user
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
@@ -51,6 +52,14 @@ register_response_schema_models(console_ns, FileWithSignedUrl, RemoteFileInfo)
 
 @console_ns.route("/remote-files/<path:url>")
 class GetRemoteFileInfo(Resource):
+    @error_responses(
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+    )
     @console_ns.doc(
         responses={
             400: "Invalid, blocked, or inaccessible remote file URL",
@@ -146,6 +155,17 @@ def upload_remote_file(
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUpload(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FileTooLargeError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.doc(
         responses={
             400: "Invalid, blocked, or inaccessible remote file URL",

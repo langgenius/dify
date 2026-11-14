@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import cast, override
 
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -12,11 +12,13 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.uuid_utils import is_valid_uuid
 from models.account import Account, Tenant
 from models.dataset import Dataset
-from models.model import App, AppModelConfig, Site, load_annotation_reply_config
+from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from repositories.app_definition_query_repository import map_site_configuration
 from services.account_errors import AccountNotFoundError
+from services.agent.composer_service import AgentComposerService
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_details_service import (
     AppPreviewAccount,
@@ -41,6 +43,24 @@ from services.app_preview_query_service import (
 
 
 class AppPreviewQueryRepository(AppPreviewQuery, AppPreviewDetailsQuery):
+    def get_agent_composer(self, *, app: AppPreviewRef) -> Mapping[str, object] | None:
+        with self._session_factory() as session:
+            try:
+                model = self._get_app(session=session, app=app)
+            except AppPreviewUnavailableError:
+                return None
+            if model.mode != AppMode.AGENT:
+                return None
+            agent = model.agent_app_binding_with_session(session=session)
+            if agent is None:
+                return None
+            try:
+                return AgentComposerService.load_published_agent_composer(
+                    session=session, tenant_id=app.tenant_id, agent_id=agent.id
+                )
+            except (AgentNotFoundError, AgentVersionNotFoundError, ValidationError, ValueError):
+                return None
+
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
 
@@ -267,6 +287,8 @@ class AppPreviewQueryRepository(AppPreviewQuery, AppPreviewDetailsQuery):
             annotation_reply=load_annotation_reply_config(session, model_config.app_id)
         )
         result: dict[str, JsonValue | datetime] = dict(cast(Mapping[str, JsonValue], configuration))
+        if not result.get("model"):
+            result["model"] = None
         result.update(
             created_by=model_config.created_by,
             created_at=model_config.created_at,

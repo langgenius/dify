@@ -1,5 +1,5 @@
+import type { ProcessRuleResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ProcessRuleResponse } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'

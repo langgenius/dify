@@ -1,14 +1,19 @@
 import type { WorkflowVariableBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
+import {
+  $insertNodes,
+  COMMAND_PRIORITY_EDITOR,
+  createCommand,
+  SKIP_DOM_SELECTION_TAG,
+} from 'lexical'
 import { memo, useEffect } from 'react'
 import { $createWorkflowVariableBlockNode, WorkflowVariableBlockNode } from './node'
 
-export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand(
+export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand<string[]>(
   'INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND',
 )
-export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand(
+export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand<void>(
   'DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND',
 )
 export type UpdateWorkflowNodesMapPayload = {
@@ -29,12 +34,16 @@ const WorkflowVariableBlock = memo(
     const [editor] = useLexicalComposerContext()
 
     useEffect(() => {
-      editor.update(() => {
-        editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
-          workflowNodesMap: workflowNodesMap || {},
-          availableVariables: workflowAvailableVariables || [],
-        })
-      })
+      // Synchronizing reference metadata must not steal focus from an open configuration form.
+      editor.update(
+        () => {
+          editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+            workflowNodesMap: workflowNodesMap || {},
+            availableVariables: workflowAvailableVariables || [],
+          })
+        },
+        { tag: SKIP_DOM_SELECTION_TAG },
+      )
     }, [editor, workflowNodesMap, workflowAvailableVariables])
 
     useEffect(() => {

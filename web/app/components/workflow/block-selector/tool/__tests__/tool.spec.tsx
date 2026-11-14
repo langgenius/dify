@@ -3,21 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createTool, createToolProvider } from '../../__tests__/factories'
 import { ViewType } from '../../types'
 import Tool from '../tool'
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -29,15 +18,11 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
 const mockTrackEvent = vi.mocked(trackEvent)
 
 describe('Tool', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
 
   it('keeps provider disclosures independently expanded', async () => {

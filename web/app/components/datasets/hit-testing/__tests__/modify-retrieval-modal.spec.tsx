@@ -1,144 +1,88 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { RetrievalConfig } from '@/types/app'
 import { Drawer } from '@langgenius/dify-ui/drawer'
-import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 
-const render = (ui: React.ReactElement) => renderWithConsoleQuery(<Drawer open>{ui}</Drawer>)
-
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
-
-vi.mock('@/app/notifications', () => ({
-  toast: mockToast,
-}))
-
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
-  isReRankModelSelected: vi.fn(() => true),
-}))
-
-vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: RetrievalConfig
-    onChange: (v: RetrievalConfig) => void
-  }) => (
-    <div data-testid="retrieval-method-config">
-      <span>{value.search_method}</span>
-      <button
-        data-testid="change-config"
-        onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}
-      >
-        change
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', () => ({
-  default: () => <div data-testid="economical-config" />,
-}))
-
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => 'model-name',
-}))
-
-vi.mock('../../settings/utils', () => ({
-  checkShowMultiModalTip: () => false,
-}))
-
-describe('ModifyRetrievalModal', () => {
-  const defaultProps = {
+const value: RetrievalConfig = {
+  search_method: RETRIEVE_METHOD.semantic,
+  reranking_enable: false,
+  reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+  top_k: 3,
+  score_threshold: 0.5,
+  score_threshold_enabled: false,
+}
+const show = (overrides: Partial<Parameters<typeof ModifyRetrievalModal>[0]> = {}) => {
+  const props = {
     indexMethod: 'high_quality',
-    value: {
-      search_method: 'semantic_search',
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-    } as RetrievalConfig,
+    value,
     isShow: true,
     onHide: vi.fn(),
     onSave: vi.fn(),
+    ...overrides,
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
   })
+  return {
+    ...props,
+    ...renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
+        <DatasetDetailContext.Provider value={{ dataset: createDatasetFixture() }}>
+          <Drawer open>
+            <ModifyRetrievalModal {...props} />
+          </Drawer>
+          <AppToaster />
+        </DatasetDetailContext.Provider>
+      </NuqsTestingAdapter>,
+      { queryClient },
+    ),
+  }
+}
 
-  it('should return null when isShow is false', () => {
-    const { container } = render(<ModifyRetrievalModal {...defaultProps} isShow={false} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render title when isShow is true', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    expect(screen.getByText('datasetSettings.form.retrievalSetting.title')).toBeInTheDocument()
-  })
-
-  it('should render high quality retrieval config for high_quality index', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    expect(screen.getByTestId('retrieval-method-config')).toBeInTheDocument()
-  })
-
-  it('should render economical config for non high_quality index', () => {
-    render(<ModifyRetrievalModal {...defaultProps} indexMethod="economy" />)
-    expect(screen.getByTestId('economical-config')).toBeInTheDocument()
-  })
-
-  it('should call onHide when cancel button clicked', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel$/ }))
-    expect(defaultProps.onHide).toHaveBeenCalled()
-  })
-
-  it('should call onHide when close button clicked', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
-    expect(defaultProps.onHide).toHaveBeenCalled()
-  })
-
-  it('should call onSave with retrieval config when save clicked', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /operation\.save$/ }))
-    expect(defaultProps.onSave).toHaveBeenCalled()
-  })
-
-  it('should render learn more link', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    expect(screen.getByText('datasetSettings.form.retrievalSetting.learnMore')).toBeInTheDocument()
-  })
+afterEach(async () => {
+  await act(async () => toast.dismiss())
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [] }
-    },
-  }
+it.each(['high_quality', 'economy'])(
+  'saves edited retrieval parameters for %s',
+  async (indexMethod) => {
+    const user = userEvent.setup()
+    const { onSave } = show({ indexMethod })
+    const topK = await screen.findByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+    await user.clear(topK)
+    await user.type(topK, '8')
+    expect(onSave).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({ ...value, top_k: 8 })
+  },
+)
+
+it.each(['cancel', 'close'])('discards edits through %s', async (action) => {
+  const user = userEvent.setup()
+  const { onHide, onSave } = show()
+  await user.type(await screen.findByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }), '0')
+  await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
+  expect(onHide).toHaveBeenCalledOnce()
+  expect(onSave).not.toHaveBeenCalled()
+})
+
+it('rejects saving reranking without an available model', async () => {
+  const user = userEvent.setup()
+  const { onSave } = show({ value: { ...value, reranking_enable: true } })
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(await screen.findByText('appDebug.datasetConfig.rerankModelRequired')).toBeInTheDocument()
+  expect(onSave).not.toHaveBeenCalled()
 })

@@ -1,20 +1,22 @@
 import type { StartNodeType } from './types'
 import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { ChangeType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { hasDuplicateStr } from '@/utils/var'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 
 const useConfig = (id: string, payload: StartNodeType) => {
   const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
 
@@ -28,22 +30,21 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const handleVarListChange = useCallback(
     (newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
       if (moreInfo?.payload?.type === ChangeType.remove) {
+        if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
+          setIsShowRemoveVarConfirm(true)
+          setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
+          setRemoveIndex(moreInfo?.index)
+          return
+        }
         const varId = nodesWithInspectVars
           .find((node) => node.nodeId === id)
           ?.vars.find((varItem) => {
             return varItem.name === moreInfo?.payload?.payload?.beforeKey
           })?.id
         if (varId) deleteInspectVar(id, varId)
-
-        if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
-          setIsShowRemoveVarConfirm(true)
-          setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
-          setRemoveIndex(moreInfo?.index as number)
-          return
-        }
       }
 
-      const newInputs = produce(inputs, (draft: any) => {
+      const newInputs = produce(inputs, (draft) => {
         draft.variables = newList
       })
       setInputs(newInputs)
@@ -77,10 +78,23 @@ const useConfig = (id: string, payload: StartNodeType) => {
     const newInputs = produce(inputs, (draft) => {
       draft.variables.splice(removedIndex, 1)
     })
+    const varId = nodesWithInspectVars
+      .find((node) => node.nodeId === id)
+      ?.vars.find((variable) => variable.name === removedVar[1])?.id
+    if (varId) deleteInspectVar(id, varId)
     setInputs(newInputs)
     removeUsedVarInNodes(removedVar)
     setIsShowRemoveVarConfirm(false)
-  }, [inputs, removeUsedVarInNodes, removedIndex, removedVar, setInputs])
+  }, [
+    deleteInspectVar,
+    id,
+    inputs,
+    nodesWithInspectVars,
+    removeUsedVarInNodes,
+    removedIndex,
+    removedVar,
+    setInputs,
+  ])
 
   const handleAddVariable = useCallback(
     (payload: InputVar) => {
@@ -114,7 +128,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
   )
   return {
     readOnly,
-    isChatMode,
+    isChatflow,
     inputs,
     isShowAddVarModal,
     showAddVarModal: () => setIsShowAddVarModal(true),

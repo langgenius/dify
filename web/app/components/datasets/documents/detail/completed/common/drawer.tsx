@@ -30,11 +30,11 @@ const SIDE_TO_SWIPE_DIRECTION: Record<DrawerSide, DrawerSwipeDirection> = {
 }
 
 const DRAWER_POPUP_CLASS_NAME = [
-  'pointer-events-auto overflow-visible border-0 bg-transparent shadow-none',
-  'data-[swipe-direction=right]:h-screen data-[swipe-direction=right]:max-w-none data-[swipe-direction=right]:rounded-none data-[swipe-direction=right]:border-0',
-  'data-[swipe-direction=left]:h-screen data-[swipe-direction=left]:max-w-none data-[swipe-direction=left]:rounded-none data-[swipe-direction=left]:border-0',
-  'data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:rounded-none data-[swipe-direction=down]:border-0',
-  'data-[swipe-direction=up]:max-h-none data-[swipe-direction=up]:rounded-none data-[swipe-direction=up]:border-0',
+  'pointer-events-auto overflow-visible bg-transparent shadow-none ring-0',
+  'data-[swipe-direction=right]:h-screen data-[swipe-direction=right]:max-w-none data-[swipe-direction=right]:rounded-none',
+  'data-[swipe-direction=left]:h-screen data-[swipe-direction=left]:max-w-none data-[swipe-direction=left]:rounded-none',
+  'data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:rounded-none',
+  'data-[swipe-direction=up]:max-h-none data-[swipe-direction=up]:rounded-none',
 ].join(' ')
 
 export function CompletedDrawer({
@@ -63,9 +63,7 @@ export function CompletedDrawer({
             aria-modal={modal ? 'true' : 'false'}
             className={cn(DRAWER_POPUP_CLASS_NAME, panelClassName)}
           >
-            <DrawerContent
-              className={cn('flex grow flex-col overflow-visible p-0 pb-0', panelContentClassName)}
-            >
+            <DrawerContent className={cn('grow overflow-visible', panelContentClassName)}>
               {children}
             </DrawerContent>
           </DrawerPopup>

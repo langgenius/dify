@@ -22,8 +22,10 @@ import Operation from './operation'
 import ReasoningPanel from './reasoning-panel'
 import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
+import WorkflowToolActivity from './workflow-tool-activity'
 
 type AnswerProps = {
+  footer?: ReactNode
   answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
@@ -31,7 +33,6 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
@@ -42,10 +43,12 @@ type AnswerProps = {
     item: ChatItem
     responding?: boolean
     content?: string
+    showThoughts?: boolean
   }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
+  footer,
   answerActionPosition,
   item,
   question,
@@ -53,7 +56,6 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
@@ -63,7 +65,7 @@ const Answer: FC<AnswerProps> = ({
   renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
-  const { t } = useTranslation(['appAnnotation'])
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const {
     content,
     citation,
@@ -80,6 +82,7 @@ const Answer: FC<AnswerProps> = ({
   const hasAgentResponseParts = !!item.agent_response_parts?.length
   const hasAgentContent = hasAgentThoughts || hasAgentResponseParts
   const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
+  const hasWorkflowActivities = !!item.workflowAgentActivities?.length
   // Truthy only when there is real reasoning text. Rehydrated messages carry an empty
   // `{}` (the field is always persisted), and `!!{}` would otherwise be truthy.
   const hasReasoning = !!item.reasoningContent && Object.values(item.reasoningContent).some(Boolean)
@@ -143,7 +146,12 @@ const Answer: FC<AnswerProps> = ({
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
   const agentContentNode = renderAgentContent ? (
-    renderAgentContent({ item, responding, content })
+    renderAgentContent({
+      item,
+      responding,
+      content,
+      showThoughts: !!config?.show_thoughts?.enabled,
+    })
   ) : (
     <AgentContent item={item} responding={responding} content={content} />
   )
@@ -163,21 +171,21 @@ const Answer: FC<AnswerProps> = ({
         <div className="relative size-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
-            <div className="absolute -top-0.75 -left-0.75 flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-1.5 shadow-xs">
+            <div className="absolute -inset-s-0.75 -top-0.75 flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn ps-1.5 shadow-xs">
               <LoadingAnim type="avatar" />
             </div>
           )}
         </div>
       )}
       <div
-        className="chat-answer-container group ml-4 w-0 grow pb-4"
+        className="chat-answer-container group ms-4 w-0 grow pb-4"
         ref={containerRef}
         data-testid="chat-answer-container"
       >
         {/* Block 1: Workflow Process + Human Input Forms */}
         {hasHumanInputs && (
           <div
-            className={cn('group relative pr-10', chatAnswerContainerInner)}
+            className={cn('group relative pe-10', chatAnswerContainerInner)}
             data-testid="chat-answer-container-humaninput"
           >
             <div
@@ -195,7 +203,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -240,81 +247,95 @@ const Answer: FC<AnswerProps> = ({
         )}
 
         {/* Block 2: Response Content (when human inputs exist) */}
-        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentContent || hasReasoning) && (
-          <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
-            <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
-            <div
-              ref={contentRef}
-              className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary"
-            >
-              {!responding && (
-                <Operation
-                  answerActionPosition={answerActionPosition}
-                  hasWorkflowProcess={!!workflowProcess}
-                  maxSize={containerWidth - contentWidth - 4}
-                  contentWidth={contentWidth}
-                  item={item}
-                  question={question}
-                  index={index}
-                  showPromptLog={showPromptLog}
-                  noChatInput={noChatInput}
-                />
-              )}
-              {hasReasoning && (
-                <ReasoningPanel content={item.reasoningContent ?? {}} done={reasoningDone} />
-              )}
-              {responding && contentIsEmpty && !hasAgentContent && !hasReasoning && (
-                <div className="flex h-5 w-6 items-center justify-center">
-                  <LoadingAnim type="text" />
-                </div>
-              )}
-              {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
-              {hasAgentContent && agentContentNode}
-              {!!allFiles?.length && (
-                <FileList
-                  className="my-1"
-                  files={allFiles}
-                  showDeleteAction={false}
-                  showDownloadAction
-                  canPreview
-                />
-              )}
-              {!!message_files?.length && (
-                <FileList
-                  className="my-1"
-                  files={message_files}
-                  showDeleteAction={false}
-                  showDownloadAction
-                  canPreview
-                />
-              )}
-              {annotation?.id && annotation.authorName && (
-                <EditTitle
-                  className="mt-1"
-                  title={t(($) => $.editBy, { ns: 'appAnnotation', author: annotation.authorName })}
-                />
-              )}
-              <SuggestedQuestions item={item} />
-              {!!citation?.length && !responding && (
-                <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
-              )}
-              {typeof item.siblingCount === 'number' && item.siblingCount > 1 && (
-                <ContentSwitch
-                  count={item.siblingCount}
-                  currentIndex={item.siblingIndex}
-                  prevDisabled={!item.prevSibling}
-                  nextDisabled={!item.nextSibling}
-                  switchSibling={handleSwitchSibling}
-                />
-              )}
+        {hasHumanInputs &&
+          (responding ||
+            !contentIsEmpty ||
+            hasAgentContent ||
+            hasReasoning ||
+            hasWorkflowActivities) && (
+            <div className={cn('group relative mt-2 pe-10', chatAnswerContainerInner)}>
+              <div className="absolute inset-s-6 -top-2 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
+              <div
+                ref={contentRef}
+                className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary"
+              >
+                {!responding && (
+                  <Operation
+                    answerActionPosition={answerActionPosition}
+                    hasWorkflowProcess={!!workflowProcess}
+                    maxSize={containerWidth - contentWidth - 4}
+                    contentWidth={contentWidth}
+                    item={item}
+                    question={question}
+                    index={index}
+                    noChatInput={noChatInput}
+                  />
+                )}
+                {hasReasoning && (
+                  <ReasoningPanel content={item.reasoningContent ?? {}} done={reasoningDone} />
+                )}
+                {responding &&
+                  contentIsEmpty &&
+                  !hasAgentContent &&
+                  !hasReasoning &&
+                  !hasWorkflowActivities && (
+                    <div className="flex h-5 w-6 items-center justify-center">
+                      <LoadingAnim type="text" />
+                    </div>
+                  )}
+                {hasWorkflowActivities && (
+                  <WorkflowToolActivity item={item} responding={responding} />
+                )}
+                {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
+                {hasAgentContent && agentContentNode}
+                {!!allFiles?.length && (
+                  <FileList
+                    className="my-1"
+                    files={allFiles}
+                    showDeleteAction={false}
+                    showDownloadAction
+                    canPreview
+                  />
+                )}
+                {!!message_files?.length && (
+                  <FileList
+                    className="my-1"
+                    files={message_files}
+                    showDeleteAction={false}
+                    showDownloadAction
+                    canPreview
+                  />
+                )}
+                {annotation?.id && annotation.authorName && (
+                  <EditTitle
+                    className="mt-1"
+                    title={t(($) => $.editBy, {
+                      ns: 'appAnnotation',
+                      author: annotation.authorName,
+                    })}
+                  />
+                )}
+                <SuggestedQuestions item={item} />
+                {!!citation?.length && !responding && (
+                  <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
+                )}
+                {typeof item.siblingCount === 'number' && item.siblingCount > 1 && (
+                  <ContentSwitch
+                    count={item.siblingCount}
+                    currentIndex={item.siblingIndex}
+                    prevDisabled={!item.prevSibling}
+                    nextDisabled={!item.nextSibling}
+                    switchSibling={handleSwitchSibling}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Original single block layout (when no human inputs) */}
         {!hasHumanInputs && (
           <div
-            className={cn('group relative pr-10', chatAnswerContainerInner)}
+            className={cn('group relative pe-10', chatAnswerContainerInner)}
             data-testid="chat-answer-container-inner"
           >
             <div
@@ -333,7 +354,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -351,10 +371,17 @@ const Answer: FC<AnswerProps> = ({
               {hasReasoning && (
                 <ReasoningPanel content={item.reasoningContent ?? {}} done={reasoningDone} />
               )}
-              {responding && contentIsEmpty && !hasAgentContent && !hasReasoning && (
-                <div className="flex h-5 w-6 items-center justify-center">
-                  <LoadingAnim type="text" />
-                </div>
+              {responding &&
+                contentIsEmpty &&
+                !hasAgentContent &&
+                !hasReasoning &&
+                !hasWorkflowActivities && (
+                  <div className="flex h-5 w-6 items-center justify-center">
+                    <LoadingAnim type="text" />
+                  </div>
+                )}
+              {hasWorkflowActivities && (
+                <WorkflowToolActivity item={item} responding={responding} />
               )}
               {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
               {hasAgentContent && agentContentNode}
@@ -399,6 +426,12 @@ const Answer: FC<AnswerProps> = ({
           </div>
         )}
         <More more={more} />
+        {item.isError && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
+        {footer}
       </div>
     </div>
   )

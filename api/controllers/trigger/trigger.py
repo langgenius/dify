@@ -1,12 +1,17 @@
 import logging
 import re
+from http import HTTPStatus
 
-from flask import jsonify, request
-from werkzeug.exceptions import NotFound
+from flask import Response, jsonify, request
 
+from controllers.common.access_response import plugin_endpoint_not_found_response
 from controllers.trigger import bp
-from services.trigger.trigger_service import TriggerService
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from extensions.ext_application_services import application_services
+from services.trigger.endpoint_service import (
+    TriggerEndpointEventNotFoundError,
+    TriggerEndpointLoadError,
+    TriggerEndpointProviderNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,29 +20,39 @@ UUID_MATCHER = re.compile(UUID_PATTERN)
 
 
 @bp.route("/plugin/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
-def trigger_endpoint(endpoint_id: str):
+def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
     """
     Handle endpoint trigger calls.
     """
     # endpoint_id must be UUID
     if not UUID_MATCHER.match(endpoint_id):
-        raise NotFound("Invalid endpoint ID")
-    handling_chain = [
-        TriggerService.process_endpoint,
-        TriggerSubscriptionBuilderService.process_builder_validation_endpoint,
-    ]
-    response = None
+        return plugin_endpoint_not_found_response()
     try:
-        for handler in handling_chain:
-            response = handler(endpoint_id, request)
-            if response:
-                break
-        if not response:
+        response = application_services().triggers.endpoints.process(endpoint_id, request)
+        if response is None:
+            response = application_services().triggers.builders.process_builder_validation_endpoint(
+                endpoint_id, request
+            )
+        if response is None:
             logger.info("Endpoint not found for %s", endpoint_id)
-            return jsonify({"error": "Endpoint not found"}), 404
+            return plugin_endpoint_not_found_response()
         return response
-    except ValueError as e:
-        return jsonify({"error": "Endpoint processing failed", "message": str(e)}), 400
+    except TriggerEndpointProviderNotFoundError:
+        return Response(status=HTTPStatus.NOT_FOUND, response="Trigger provider not found")
+    except TriggerEndpointLoadError:
+        logger.exception("Failed to load trigger subscription for endpoint %s", endpoint_id)
+        return Response(status=HTTPStatus.INTERNAL_SERVER_ERROR, response="Failed to get subscription by endpoint")
+    except TriggerEndpointEventNotFoundError:
+        return (
+            jsonify({"error": "Endpoint processing failed", "message": "Plugin returned an undeclared trigger event."}),
+            HTTPStatus.BAD_REQUEST,
+        )
+    except ValueError:
+        logger.exception("Invalid webhook request or plugin response for endpoint %s", endpoint_id)
+        return (
+            jsonify({"error": "Endpoint processing failed", "message": "Invalid webhook request or plugin response."}),
+            HTTPStatus.BAD_REQUEST,
+        )
     except Exception:
         logger.exception("Webhook processing failed for %s", endpoint_id)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Internal server error"}), HTTPStatus.INTERNAL_SERVER_ERROR

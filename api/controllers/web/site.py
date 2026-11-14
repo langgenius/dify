@@ -1,11 +1,11 @@
 from typing import Any, Self
 
 from pydantic import AliasChoices, Field
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
+from controllers.web.error import WebAppNotFoundError
 from controllers.web.wraps import WebApiResource
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -145,7 +145,7 @@ class AppSiteApi(WebApiResource):
         try:
             bootstrap = application_services().web_app_runtime.get_bootstrap(app_model.id)
         except WebAppRuntimeUnavailableError:
-            raise Forbidden() from None
+            raise WebAppNotFoundError() from None
 
         return dump_response(
             WebAppSiteResponse,

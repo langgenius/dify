@@ -16,7 +16,7 @@ describe('dataset creation document titles', () => {
     [generateConnectMetadata, 'Connect to an external knowledge base'],
     [generateCreateMetadata, 'Create a ready-to-use knowledge base'],
     [generatePipelineMetadata, 'Build a custom knowledge base'],
-    [generateNewKnowledgeMetadata, 'Create Knowledge'],
+    [generateNewKnowledgeMetadata, 'Create Agent Knowledge Base'],
   ])('provides localized route metadata', async (generateMetadata, expectedTitle) => {
     await expect(generateMetadata()).resolves.toMatchObject({ title: expectedTitle })
   })

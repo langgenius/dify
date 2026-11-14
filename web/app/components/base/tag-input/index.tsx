@@ -6,7 +6,7 @@ import { toast } from '@/app/notifications'
 
 type TagInputProps = Pick<
   InputHTMLAttributes<HTMLInputElement>,
-  'aria-label' | 'aria-describedby' | 'aria-invalid'
+  'id' | 'aria-label' | 'aria-describedby' | 'aria-invalid'
 > & {
   items: string[]
   onChange: (items: string[]) => void
@@ -20,6 +20,7 @@ type TagInputProps = Pick<
 }
 
 const TagInput = ({
+  id,
   items,
   onChange,
   disableAdd,
@@ -132,6 +133,7 @@ const TagInput = ({
             )}
           >
             <input
+              id={id}
               aria-label={ariaLabel}
               aria-describedby={ariaDescribedBy}
               aria-invalid={ariaInvalid}

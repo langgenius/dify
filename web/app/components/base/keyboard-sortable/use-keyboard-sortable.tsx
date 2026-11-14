@@ -1,8 +1,8 @@
 'use client'
 
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 
 type Options<T> = {
   items: T[]

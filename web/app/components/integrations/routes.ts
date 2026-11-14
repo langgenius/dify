@@ -6,6 +6,7 @@ export const INTEGRATION_SECTION_VALUES = [
   'workflow-tool',
   'data-source',
   'custom-endpoint',
+  'file-scan',
   'trigger',
   'agent-strategy',
   'extension',
@@ -68,7 +69,7 @@ export const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
   mcp: 'mcp',
 }
 
-export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
+const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
   provider: '/plugins/model',
   builtin: '/plugins/tool',
   mcp: '/plugins/tool',
@@ -81,7 +82,7 @@ export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationS
   extension: '/plugins/extension',
 }
 
-export const integrationPathBySection: Record<IntegrationSection, string> = {
+const integrationPathBySection: Record<IntegrationSection, string> = {
   provider: '/integrations/model-provider',
   builtin: '/integrations/tools/built-in',
   'custom-tool': '/integrations/tools/api',
@@ -89,6 +90,7 @@ export const integrationPathBySection: Record<IntegrationSection, string> = {
   mcp: '/integrations/tools/mcp',
   'data-source': '/integrations/data-source',
   'custom-endpoint': '/integrations/custom-endpoint',
+  'file-scan': '/integrations/file-scan',
   trigger: '/integrations/trigger',
   'agent-strategy': '/integrations/agent-strategy',
   extension: '/integrations/extension',
@@ -188,6 +190,8 @@ export const getIntegrationRouteTargetBySlug = (
       return { type: 'section', section: 'data-source' }
     case 'custom-endpoint':
       return { type: 'section', section: 'custom-endpoint' }
+    case 'file-scan':
+      return { type: 'section', section: 'file-scan' }
     case 'trigger':
       return { type: 'section', section: 'trigger' }
     case 'agent-strategy':

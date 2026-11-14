@@ -20,22 +20,22 @@ export function PricingDialogContent() {
   return (
     <>
       <DialogBackdrop className="transition-none" />
-      <DialogPopup className="fixed inset-0 size-full max-h-none max-w-none overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none transition-none data-ending-style:scale-100 data-ending-style:opacity-100 data-starting-style:scale-100 data-starting-style:opacity-100">
+      <DialogPopup className="fixed inset-0 size-full overflow-hidden bg-background-default transition-none data-ending-style:scale-100 data-ending-style:opacity-100 data-starting-style:scale-100 data-starting-style:opacity-100">
         <DialogClose
           render={
             <IconButton
               variant="secondary"
               size="xl"
-              className="absolute inset-e-5.5 top-6 z-10 rounded-full"
+              className="absolute end-5 top-6 z-1 rounded-full xl:end-[34px] xl:top-[45px]"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             >
-              <span aria-hidden="true" className="i-ri-close-line size-5" />
+              <span aria-hidden className="i-ri-close-line size-5" />
             </IconButton>
           }
         />
         <ScrollArea className="h-full w-full overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
-            <ScrollAreaContent className="grid min-h-full min-w-300">
+            <ScrollAreaContent className="grid min-h-full" style={{ minWidth: 0 }}>
               <PricingContent />
             </ScrollAreaContent>
           </ScrollAreaViewport>

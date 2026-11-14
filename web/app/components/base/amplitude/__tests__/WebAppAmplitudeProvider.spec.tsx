@@ -4,7 +4,6 @@ import { WebAppAmplitudeProvider } from '../WebAppAmplitudeProvider'
 
 const { mockClient, mockConsent } = vi.hoisted(() => ({
   mockClient: {
-    ensureInitialized: vi.fn(),
     sendEvent: vi.fn(),
     setOptOut: vi.fn(),
   },
@@ -18,16 +17,12 @@ vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
 }))
 
 vi.mock('../web-app-client', () => ({
-  ensureWebAppAmplitudeInitialized: () => mockClient.ensureInitialized(),
   sendWebAppAmplitudeEvent: (...args: unknown[]) => mockClient.sendEvent(...args),
   setWebAppAmplitudeOptOut: (optOut: boolean) => mockClient.setOptOut(optOut),
 }))
 
 describe('WebAppAmplitudeProvider', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockClient.ensureInitialized.mockReset()
-    mockClient.ensureInitialized.mockReturnValue(Promise.resolve())
     mockConsent.value = 'unknown'
   })
 
@@ -35,14 +30,10 @@ describe('WebAppAmplitudeProvider', () => {
     const { rerender } = render(<WebAppAmplitudeProvider />)
 
     trackWebAppEvent('webapp_run', { app_mode: 'agent-v2' })
-    expect(mockClient.ensureInitialized).not.toHaveBeenCalled()
     expect(mockClient.sendEvent).not.toHaveBeenCalled()
 
-    mockClient.ensureInitialized.mockReturnValue(new Promise(() => {}))
     mockConsent.value = 'granted'
     rerender(<WebAppAmplitudeProvider />)
-
-    expect(mockClient.ensureInitialized).not.toHaveBeenCalled()
 
     trackWebAppEvent('webapp_run', { app_mode: 'agent-v2' })
 

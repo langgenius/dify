@@ -1,20 +1,21 @@
 'use client'
-import type { ComponentProps } from 'react'
+import type { DrawerPopupProps } from '@langgenius/dify-ui/drawer'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 
-type IFloatRightContainerProps = {
-  isMobile: boolean
+type IFloatRightContainerProps = Pick<DrawerPopupProps, 'finalFocus'> & {
+  presentation: 'drawer' | 'inline'
   isOpen: boolean
   onClose: () => void
   children?: React.ReactNode
@@ -22,11 +23,10 @@ type IFloatRightContainerProps = {
   panelClassName?: string
   title?: string
   mask?: boolean
-  finalFocus?: ComponentProps<typeof DrawerPopup>['finalFocus']
 }
 
 const FloatRightContainer = ({
-  isMobile,
+  presentation,
   children,
   isOpen,
   onClose,
@@ -40,7 +40,7 @@ const FloatRightContainer = ({
 
   return (
     <>
-      {isMobile && (
+      {presentation === 'drawer' && (
         <Drawer
           open={isOpen}
           modal
@@ -59,7 +59,7 @@ const FloatRightContainer = ({
                   panelClassName,
                 )}
               >
-                <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                <DrawerContent className="p-6">
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
                       {title && (
@@ -68,9 +68,15 @@ const FloatRightContainer = ({
                         </DrawerTitle>
                       )}
                       {showClose && (
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       )}
                     </div>
@@ -82,7 +88,7 @@ const FloatRightContainer = ({
           </DrawerPortal>
         </Drawer>
       )}
-      {!isMobile && isOpen && <>{children}</>}
+      {presentation === 'inline' && isOpen && <>{children}</>}
     </>
   )
 }

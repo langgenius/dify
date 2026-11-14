@@ -94,12 +94,12 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
         <DrawerViewport>
           <DrawerPopup
             className={cn(
-              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl',
             )}
           >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               <div className="relative border-b border-divider-subtle p-4 pb-3">
-                <div className="absolute top-3 right-3">
+                <div className="absolute inset-e-3 top-3">
                   <IconButton
                     aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                     onClick={onClose}
@@ -107,13 +107,14 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                     <RiCloseLine aria-hidden="true" className="size-4" />
                   </IconButton>
                 </div>
-                <div
-                  className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                <button
+                  type="button"
+                  className="mb-2 flex cursor-pointer items-center gap-1 rounded-sm system-xs-semibold-uppercase text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={onClose}
                 >
-                  <RiArrowLeftLine className="size-4" />
+                  <RiArrowLeftLine aria-hidden="true" className="size-4" />
                   {t(($) => $['detailPanel.operation.back'], { ns: 'plugin' })}
-                </div>
+                </button>
                 <div className="flex items-center gap-1">
                   <Icon size="tiny" className="size-6" src={providerInfo.icon!} />
                   <OrgInfo
@@ -168,7 +169,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                   <div className="system-sm-semibold-uppercase text-text-secondary">
                     {t(($) => $['events.output'], { ns: 'pluginTrigger' })}
                   </div>
-                  <div className="relative -left-1.75">
+                  <div className="relative -inset-s-1.75">
                     {outputFields.map((item) => (
                       <Field
                         key={item.name}

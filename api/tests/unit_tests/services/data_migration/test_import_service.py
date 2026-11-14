@@ -28,7 +28,7 @@ from services.data_migration.entities import (
 )
 from services.data_migration.import_service import ImportRequest, ImportTargetResolver, MigrationImportService
 from services.entities.dsl_entities import ImportStatus
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @dataclass(frozen=True)
@@ -602,7 +602,7 @@ def test_workflow_tool_skip_records_id_mapping(database: Database):
 def test_api_tool_existing_provider_records_id_mapping(
     monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy
 ):
-    target_provider = _persist_api_provider(database.session, provider_id="target-api-provider-id")
+    _persist_api_provider(database.session, provider_id="target-api-provider-id")
     _persist_api_provider(database.session, provider_id="other-tenant-provider-id", tenant_id="tenant-2")
     id_mapping = {}
     id_mapping_details = []
@@ -731,7 +731,7 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch: pytest.MonkeyP
 def test_mcp_tool_existing_provider_records_id_mapping(
     monkeypatch: pytest.MonkeyPatch, database: Database, conflict_strategy: ConflictStrategy
 ):
-    provider = _persist_mcp_provider(database.session, provider_id="target-mcp-provider-id")
+    _persist_mcp_provider(database.session, provider_id="target-mcp-provider-id")
     _persist_mcp_provider(
         database.session,
         provider_id="other-mcp-provider-id",

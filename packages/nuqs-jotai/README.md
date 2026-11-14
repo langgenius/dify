@@ -13,8 +13,8 @@ framework adapter. Use a one-field group for a single parameter.
 ```tsx
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { debounce, parseAsInteger, parseAsString } from 'nuqs'
-import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { createQueryGroup, QueryStateProvider } from 'nuqs-jotai'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
 const filters = createQueryGroup(
   {

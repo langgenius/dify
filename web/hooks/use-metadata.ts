@@ -344,7 +344,7 @@ export const useMetadataMap = (): MetadataMap => {
             ns: 'datasetDocuments',
           }),
         },
-        'data_source_info.upload_file.size': {
+        'data_source_detail_dict.upload_file.size': {
           label: t(($) => $[`${fieldPrefix}.originInfo.originalFileSize`], {
             ns: 'datasetDocuments',
           }),
@@ -358,7 +358,7 @@ export const useMetadataMap = (): MetadataMap => {
               t(($) => $['metadata.dateTimeFormat'], { ns: 'datasetDocuments' }) as string,
             ),
         },
-        completed_at: {
+        updated_at: {
           label: t(($) => $[`${fieldPrefix}.originInfo.lastUpdateDate`], {
             ns: 'datasetDocuments',
           }),

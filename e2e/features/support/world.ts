@@ -1,4 +1,5 @@
 import type { IWorldOptions } from '@cucumber/cucumber'
+import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { APIRequestContext, Browser, BrowserContext, Download, Page } from '@playwright/test'
 import type { AuthSessionMetadata } from '../../fixtures/auth.ts'
 import type { ConsoleClient } from '../../support/api/console-client.ts'
@@ -49,8 +50,13 @@ export type WorkflowPreviewFixture = {
 }
 
 export const createAgentBuilderWorldState = () => ({
+  lifecycle: {
+    sourceAgent: undefined as { id: string; name: string } | undefined,
+    deletedAgent: undefined as { id: string; name: string } | undefined,
+  },
   fixtures: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
+    defaultChatModel: undefined as DefaultModelResponse | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
     speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,
@@ -106,6 +112,7 @@ export class DifyWorld extends World {
   shareURL: string | undefined
   sharedAppPage: Page | undefined
   workflowPreview: WorkflowPreviewFixture | undefined
+  appPackage: { sourceAppId: string; importedAppId?: string } | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -113,6 +120,7 @@ export class DifyWorld extends World {
   }
 
   resetScenarioState() {
+    this.appPackage = undefined
     this.workflowPreview = undefined
     this.consoleErrors = []
     this.pageErrors = []

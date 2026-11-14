@@ -1,240 +1,173 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ComponentProps } from 'react'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useState } from 'react'
+import { describe, expect, it } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import SummaryIndexSetting from '../summary-index-setting'
 
-// Mock the model list query.
-
-// Mock ModelSelector (external component from header module)
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({
-    onValueChange,
-    disabled,
-    value,
-  }: {
-    onValueChange?: (val: Record<string, string>) => void
-    disabled?: boolean
-    value?: { model?: string }
-  }) => (
-    <div data-testid="model-selector" data-disabled={disabled}>
-      <span data-testid="current-model">{value?.model || 'none'}</span>
-      <button
-        data-testid="select-model-btn"
-        onClick={() => onValueChange?.({ provider: 'openai', model: 'gpt-4' })}
-      >
-        Select
-      </button>
-    </div>
-  ),
-}))
-
-const ns = 'datasetSettings'
-
-describe('SummaryIndexSetting', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('knowledge-base entry', () => {
-    it('should render auto gen label and switch', () => {
-      render(<SummaryIndexSetting entry="knowledge-base" />)
-      expect(screen.getByText(`${ns}.form.summaryAutoGen`)).toBeInTheDocument()
-    })
-
-    it('should render switch with defaultValue false when no setting', () => {
-      render(<SummaryIndexSetting entry="knowledge-base" />)
-      // Switch is rendered; no model selector without enable
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
-    })
-
-    it('should show model selector and textarea when enabled', () => {
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{
-            enable: true,
-            model_provider_name: 'openai',
-            model_name: 'gpt-4',
-          }}
-        />,
-      )
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.form.summaryModel`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.form.summaryInstructions`)).toBeInTheDocument()
-    })
-
-    it('should call onSummaryIndexSettingChange with enable toggle', () => {
-      const onChange = vi.fn()
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: false }}
-          onSummaryIndexSettingChange={onChange}
-        />,
-      )
-      // Find and click the switch
-      const switchEl = screen.getByRole('switch', { name: `${ns}.form.summaryAutoGen` })
-      fireEvent.click(switchEl)
-      expect(onChange).toHaveBeenCalledWith({ enable: true })
-    })
-
-    it('should call onSummaryIndexSettingChange when model selected', () => {
-      const onChange = vi.fn()
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: true, model_provider_name: 'openai', model_name: 'gpt-4' }}
-          onSummaryIndexSettingChange={onChange}
-        />,
-      )
-      fireEvent.click(screen.getByTestId('select-model-btn'))
-      expect(onChange).toHaveBeenCalledWith({ model_provider_name: 'openai', model_name: 'gpt-4' })
-    })
-
-    it('should call onSummaryIndexSettingChange when prompt changed', () => {
-      const onChange = vi.fn()
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: true, summary_prompt: '' }}
-          onSummaryIndexSettingChange={onChange}
-        />,
-      )
-      const textarea = screen.getByPlaceholderText(`${ns}.form.summaryInstructionsPlaceholder`)
-      fireEvent.change(textarea, { target: { value: 'Summarize this' } })
-      expect(onChange).toHaveBeenCalledWith({ summary_prompt: 'Summarize this' })
-    })
-  })
-
-  describe('dataset-settings entry', () => {
-    it('should render auto gen label with switch', () => {
-      render(<SummaryIndexSetting entry="dataset-settings" />)
-      expect(screen.getByText(`${ns}.form.summaryAutoGen`)).toBeInTheDocument()
-    })
-
-    it('should show disabled text when not enabled', () => {
-      render(
-        <SummaryIndexSetting entry="dataset-settings" summaryIndexSetting={{ enable: false }} />,
-      )
-      expect(screen.getByText(`${ns}.form.summaryAutoGenEnableTip`)).toBeInTheDocument()
-    })
-
-    it('should show enabled tip when enabled', () => {
-      render(
-        <SummaryIndexSetting entry="dataset-settings" summaryIndexSetting={{ enable: true }} />,
-      )
-      expect(screen.getByText(`${ns}.form.summaryAutoGenTip`)).toBeInTheDocument()
-    })
-
-    it('should show model selector and textarea when enabled', () => {
-      render(
-        <SummaryIndexSetting
-          entry="dataset-settings"
-          summaryIndexSetting={{ enable: true, model_provider_name: 'openai', model_name: 'gpt-4' }}
-        />,
-      )
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.form.summaryModel`)).toBeInTheDocument()
-    })
-  })
-
-  describe('create-document entry', () => {
-    it('should render auto gen label with switch', () => {
-      render(<SummaryIndexSetting entry="create-document" />)
-      expect(screen.getByText(`${ns}.form.summaryAutoGen`)).toBeInTheDocument()
-    })
-
-    it('should show model selector and textarea when enabled', () => {
-      render(
-        <SummaryIndexSetting
-          entry="create-document"
-          summaryIndexSetting={{ enable: true, model_provider_name: 'openai', model_name: 'gpt-4' }}
-        />,
-      )
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.form.summaryModel`)).toBeInTheDocument()
-      expect(screen.getByText(`${ns}.form.summaryInstructions`)).toBeInTheDocument()
-    })
-
-    it('should not show model selector when disabled', () => {
-      render(
-        <SummaryIndexSetting entry="create-document" summaryIndexSetting={{ enable: false }} />,
-      )
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('readonly mode', () => {
-    it('should disable model selector in knowledge-base entry', () => {
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: true, model_provider_name: 'openai', model_name: 'gpt-4' }}
-          readonly
-        />,
-      )
-      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-disabled', 'true')
-    })
-
-    it('should disable textarea in readonly mode', () => {
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: true, summary_prompt: 'test' }}
-          readonly
-        />,
-      )
-      const textarea = screen.getByPlaceholderText(`${ns}.form.summaryInstructionsPlaceholder`)
-      expect(textarea).toBeDisabled()
-    })
-  })
-
-  describe('model config derivation', () => {
-    it('should pass the selected value when provider and model are set', () => {
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{
-            enable: true,
-            model_provider_name: 'anthropic',
-            model_name: 'claude-3',
-          }}
-        />,
-      )
-      expect(screen.getByTestId('current-model')).toHaveTextContent('claude-3')
-    })
-
-    it('should pass an undefined value when provider is missing', () => {
-      render(<SummaryIndexSetting entry="knowledge-base" summaryIndexSetting={{ enable: true }} />)
-      expect(screen.getByTestId('current-model')).toHaveTextContent('none')
-    })
-  })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return {
-        data: [
-          {
-            tenant_id: 'test-workspace',
-            provider: 'openai',
-            label: { en_US: 'OpenAI' },
-            models: [
-              { model: 'gpt-4', label: { en_US: 'GPT-4' }, model_type: 'llm', status: 'active' },
-            ],
-          },
-        ],
-      }
+const modelProvider = {
+  tenant_id: 'test-workspace',
+  provider: 'openai',
+  icon_small: { en_US: '', zh_Hans: '' },
+  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  status: 'active',
+  models: [
+    {
+      model: 'gpt-4',
+      label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+      model_type: 'llm',
+      fetch_from: 'predefined-model',
+      status: 'active',
+      model_properties: {},
+      deprecated: false,
+      has_invalid_load_balancing_configs: false,
+      load_balancing_enabled: false,
     },
+  ],
+} satisfies ProviderWithModelsResponse
+
+type Props = ComponentProps<typeof SummaryIndexSetting>
+const renderSettings = (props: Props) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions().queryKey,
+    {
+      data: [
+        {
+          provider: 'openai',
+          plugin_id: 'langgenius/openai',
+          label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+          supported_model_types: ['llm'],
+          configurate_methods: ['predefined-model'],
+          preferred_provider_type: 'custom',
+          is_configured: true,
+          custom_configuration: {
+            status: 'active',
+            has_custom_models: false,
+            available_credentials: [],
+            current_credential_usable: true,
+          },
+          system_configuration: { enabled: false },
+        },
+      ],
+      plugins: {},
+    },
+  )
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryOptions().queryKey,
+    {
+      remaining_credits: 0,
+      is_unlimited: false,
+      is_exhausted: true,
+      exhausted_at: null,
+      next_credit_reset_date: null,
+      pool_type: null,
+      quota_limit: 0,
+      quota_used: 0,
+    },
+  )
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: 'llm' } },
+    }).queryKey,
+    { data: [modelProvider] },
+  )
+  for (const model_type of ['text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: [] },
+    )
   }
-})
+  const onChange = vi.fn()
+  const Harness = () => {
+    const [setting, setSetting] = useState(props.summaryIndexSetting)
+    return (
+      <SummaryIndexSetting
+        {...props}
+        summaryIndexSetting={setting}
+        onSummaryIndexSettingChange={(update) => {
+          onChange(update)
+          setSetting((current) => ({ ...current, ...update }))
+        }}
+      />
+    )
+  }
+  return {
+    onChange,
+    ...renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <Harness />
+      </NuqsTestingAdapter>,
+      { queryClient },
+    ),
+  }
+}
+
+describe.each(['knowledge-base', 'dataset-settings', 'create-document'] as const)(
+  'summary settings: %s',
+  (entry) => {
+    it('enables summaries and saves the chosen model and instructions', async () => {
+      const user = userEvent.setup()
+      const { onChange } = renderSettings({ entry, summaryIndexSetting: { enable: false } })
+      const toggle = screen.getByRole('switch', { name: 'datasetSettings.form.summaryAutoGen' })
+      expect(
+        screen.queryByRole('textbox', { name: 'datasetSettings.form.summaryInstructions' }),
+      ).not.toBeInTheDocument()
+      await user.click(toggle)
+      expect(onChange).toHaveBeenLastCalledWith({ enable: true })
+      await user.click(
+        screen.getByRole('button', {
+          name: 'datasetSettings.form.summaryModel plugin.detailPanel.configureModel',
+        }),
+      )
+      const picker = await screen.findByRole('dialog', {
+        name: 'plugin.detailPanel.configureModel',
+      })
+      await user.click(within(picker).getByText('GPT-4'))
+      expect(onChange).toHaveBeenLastCalledWith({
+        model_provider_name: 'openai',
+        model_name: 'gpt-4',
+      })
+      expect(
+        screen.getByRole('button', { name: 'datasetSettings.form.summaryModel GPT-4' }),
+      ).toBeInTheDocument()
+      await user.type(
+        screen.getByRole('textbox', { name: 'datasetSettings.form.summaryInstructions' }),
+        'Summary',
+      )
+      expect(onChange).toHaveBeenLastCalledWith({ summary_prompt: 'Summary' })
+    })
+
+    it('prevents editing summary settings without permission', async () => {
+      const user = userEvent.setup()
+      const { onChange } = renderSettings({
+        entry,
+        readonly: true,
+        summaryIndexSetting: {
+          enable: true,
+          model_provider_name: 'openai',
+          model_name: 'gpt-4',
+          summary_prompt: 'Keep this',
+        },
+      })
+      const toggle = screen.getByRole('switch', { name: 'datasetSettings.form.summaryAutoGen' })
+      const model = screen.getByRole('button', { name: 'datasetSettings.form.summaryModel GPT-4' })
+      const prompt = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.summaryInstructions',
+      })
+      expect(toggle).toHaveAttribute('aria-disabled', 'true')
+      expect(model).toBeDisabled()
+      expect(prompt).toBeDisabled()
+      await user.click(toggle)
+      await user.click(model)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(onChange).not.toHaveBeenCalled()
+    })
+  },
+)

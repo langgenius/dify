@@ -1,11 +1,10 @@
 import type { AppRedirectionTarget } from '@/utils/app-redirection'
 import { consoleClient } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 export const resolveImportedAppRedirectionTarget = async (
   app: AppRedirectionTarget,
 ): Promise<AppRedirectionTarget> => {
-  if (app.mode !== AppModeEnum.AGENT) return app
+  if (app.mode !== 'agent') return app
 
   try {
     const importedApp = await consoleClient.apps.byAppId.get({

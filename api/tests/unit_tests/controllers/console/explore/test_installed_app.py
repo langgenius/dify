@@ -19,7 +19,7 @@ from models.account import TenantAccountRole
 from models.model import AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_service import InstalledAppService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
@@ -35,8 +35,13 @@ _USED_AT = datetime(2024, 1, 1)
 
 
 @dataclass
+class _InstalledAppServices:
+    management: InstalledAppService
+
+
+@dataclass
 class _Services:
-    installed_apps: InstalledAppService
+    installed_apps: _InstalledAppServices
 
 
 @dataclass
@@ -110,10 +115,12 @@ def management(
         sessions.append(session)
 
     services = _Services(
-        installed_apps=InstalledAppService(
-            installed_apps=SQLAlchemyInstalledAppRepository(session_factory=factory),
-            get_workspace_role=WorkspaceQueryRepository(factory).get_account_role,
-            get_visible_app_ids=None,
+        installed_apps=_InstalledAppServices(
+            management=InstalledAppService(
+                installed_apps=SQLAlchemyInstalledAppRepository(session_factory=factory),
+                get_workspace_role=WorkspaceRepository(factory).get_account_role,
+                get_visible_app_ids=None,
+            )
         )
     )
     management = _Management(harness, factory, services, sessions)
@@ -139,11 +146,11 @@ def _publish(session: Session, app: App) -> None:
             kind=WorkflowKind.STANDARD,
             version="1",
             graph='{"nodes":[],"edges":[]}',
-            features="{}",
+            _features="{}",
             created_by=str(uuid4()),
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         session.flush()
@@ -213,9 +220,9 @@ def _enable_visibility(management: _Management) -> None:
         get_access_modes=management.get_access_modes,
         get_user_permissions=management.get_user_permissions,
     )
-    management.services.installed_apps = InstalledAppService(
+    management.services.installed_apps.management = InstalledAppService(
         installed_apps=repository,
-        get_workspace_role=WorkspaceQueryRepository(management.session_factory).get_account_role,
+        get_workspace_role=WorkspaceRepository(management.session_factory).get_account_role,
         get_visible_app_ids=access.get_visible_app_ids,
     )
 
@@ -732,6 +739,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     method: str,
     item: bool,
 ) -> None:
+    """Given a failed management dependency, retain its exception and log the request identifiers."""
     failure = WebAppAccessUnavailableError("private upstream response containing credentials")
     if item:
         management.harness.state.permission_error = failure
@@ -765,7 +773,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     management.assert_sessions_closed()
     records = [record for record in caplog.records if record.name.startswith("controllers.console.explore.")]
     assert len(records) == 1
-    assert records[0].exc_info is not None
+    assert isinstance(records[0].exc_info, tuple)
     assert records[0].exc_info[1] is failure
     assert management.harness.installed_app.tenant_id in records[0].getMessage()
     assert management.harness.account.id in records[0].getMessage()

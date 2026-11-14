@@ -28,6 +28,8 @@
   "menus.plugins": "Integracije",
   "menus.status": "beta",
   "menus.tools": "Orodja",
+  "settings.accessToken": "Žetoni za dostop",
+  "settings.accessTokenDescription": "Ustvari žetone Service API, ki omogočajo dostop samo do izbranih aplikacij in baz znanja.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Zaračunavanje",
   "settings.customEndpoint": "Končna točka po meri",

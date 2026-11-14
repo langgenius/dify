@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import override
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult
@@ -34,8 +34,8 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
 
     @override
     def _run(self) -> NodeRunResult:
-        node_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
-        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+        node_inputs = dict(self.runtime_state.variable_pool.get_by_prefix(self.id))
+        system_inputs = self.runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
         for variable_name, value in system_inputs.items():
             node_inputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value

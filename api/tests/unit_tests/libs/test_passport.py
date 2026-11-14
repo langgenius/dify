@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -12,19 +13,19 @@ class TestPassportService:
     """Test PassportService JWT operations"""
 
     @pytest.fixture
-    def passport_service(self, config_overrides):
+    def passport_service(self, config_overrides: Callable[..., None]) -> PassportService:
         """Create PassportService instance with test secret key"""
         config_overrides(SECRET_KEY="test-secret-key-for-testing")
         return PassportService()
 
     @pytest.fixture
-    def another_passport_service(self, config_overrides):
+    def another_passport_service(self, config_overrides: Callable[..., None]) -> PassportService:
         """Create another PassportService instance with different secret key"""
         config_overrides(SECRET_KEY="another-secret-key-for-testing")
         return PassportService()
 
     # Core functionality tests
-    def test_should_issue_and_verify_token(self, passport_service):
+    def test_should_issue_and_verify_token(self, passport_service: PassportService) -> None:
         """Test complete JWT lifecycle: issue and verify"""
         payload = {"user_id": "123", "app_code": "test-app"}
         token = passport_service.issue(payload)
@@ -37,12 +38,12 @@ class TestPassportService:
         decoded = passport_service.verify(token)
         assert decoded == payload
 
-    def test_should_handle_different_payload_types(self, passport_service):
+    def test_should_handle_different_payload_types(self, passport_service: PassportService) -> None:
         """Test issuing and verifying tokens with different payload types"""
-        test_cases = [
+        test_cases: list[dict[str, object]] = [
             {"string": "value"},
             {"number": 42},
-            {"float": 3.14},
+            {"float": float("3.14")},
             {"boolean": True},
             {"null": None},
             {"array": [1, 2, 3]},
@@ -58,7 +59,7 @@ class TestPassportService:
             assert decoded == payload
 
     # Security tests
-    def test_should_reject_modified_token(self, passport_service):
+    def test_should_reject_modified_token(self, passport_service: PassportService) -> None:
         """Test that any modification to token invalidates it"""
         token = passport_service.issue({"user": "test"})
 
@@ -72,7 +73,9 @@ class TestPassportService:
                 with pytest.raises(Unauthorized):
                     passport_service.verify(tampered)
 
-    def test_should_reject_token_with_different_secret_key(self, passport_service, another_passport_service):
+    def test_should_reject_token_with_different_secret_key(
+        self, passport_service: PassportService, another_passport_service: PassportService
+    ) -> None:
         """Test key isolation - token from one service should not work with another"""
         payload = {"user_id": "123", "app_code": "test-app"}
         token = passport_service.issue(payload)
@@ -81,7 +84,7 @@ class TestPassportService:
             another_passport_service.verify(token)
         assert str(exc_info.value) == "401 Unauthorized: Invalid token signature."
 
-    def test_should_use_hs256_algorithm(self, passport_service):
+    def test_should_use_hs256_algorithm(self, passport_service: PassportService) -> None:
         """Test that HS256 algorithm is used for signing"""
         payload = {"test": "data"}
         token = passport_service.issue(payload)
@@ -91,7 +94,7 @@ class TestPassportService:
         header = jwt.get_unverified_header(token)
         assert header["alg"] == "HS256"
 
-    def test_should_reject_token_with_wrong_algorithm(self, passport_service):
+    def test_should_reject_token_with_wrong_algorithm(self, passport_service: PassportService) -> None:
         """Test rejection of token signed with different algorithm"""
         payload = {"user_id": "123"}
 
@@ -106,7 +109,7 @@ class TestPassportService:
         assert str(exc_info.value) == "401 Unauthorized: Invalid token."
 
     # Exception handling tests
-    def test_should_handle_invalid_tokens(self, passport_service):
+    def test_should_handle_invalid_tokens(self, passport_service: PassportService) -> None:
         """Test handling of various invalid token formats"""
         invalid_tokens = [
             ("not.a.token", "Invalid token."),
@@ -125,7 +128,7 @@ class TestPassportService:
                 passport_service.verify(invalid_token)
             assert expected_message in str(exc_info.value)
 
-    def test_should_reject_expired_token(self, passport_service):
+    def test_should_reject_expired_token(self, passport_service: PassportService) -> None:
         """Test rejection of expired token"""
         past_time = datetime.now(UTC) - timedelta(hours=1)
         payload = {"user_id": "123", "exp": past_time.timestamp()}
@@ -137,7 +140,9 @@ class TestPassportService:
         assert str(exc_info.value) == "401 Unauthorized: Token has expired."
 
     # Configuration tests
-    def test_should_use_configured_secret_key_without_policy_validation(self, config_overrides):
+    def test_should_use_configured_secret_key_without_policy_validation(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
         """Test that policy decisions are owned by config, not PassportService."""
         config_overrides(SECRET_KEY="configured")
         service = PassportService()
@@ -145,7 +150,7 @@ class TestPassportService:
         assert service.sk == "configured"
 
     # Boundary condition tests
-    def test_should_handle_large_payload(self, passport_service):
+    def test_should_handle_large_payload(self, passport_service: PassportService) -> None:
         """Test handling of large payload"""
         # Test with 100KB instead of 1MB for faster tests
         large_data = "x" * (100 * 1024)
@@ -156,7 +161,7 @@ class TestPassportService:
 
         assert decoded["data"] == large_data
 
-    def test_should_handle_special_characters_in_payload(self, passport_service):
+    def test_should_handle_special_characters_in_payload(self, passport_service: PassportService) -> None:
         """Test handling of special characters in payload"""
         special_payloads = [
             {"special": "!@#$%^&*()"},
@@ -172,7 +177,7 @@ class TestPassportService:
             decoded = passport_service.verify(token)
             assert decoded == payload
 
-    def test_should_catch_generic_pyjwt_errors(self, passport_service):
+    def test_should_catch_generic_pyjwt_errors(self, passport_service: PassportService) -> None:
         """Test that generic PyJWTError exceptions are caught and converted to Unauthorized"""
         # Mock jwt.decode to raise a generic PyJWTError
         with patch("libs.passport.jwt.decode") as mock_decode:

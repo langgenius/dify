@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "5 ເວລາດຳເນີນການຖັດໄປ",
   "nodes.triggerSchedule.onMinute": "ໃນນາທີທີ",
   "nodes.triggerSchedule.selectFrequency": "ເລືອກຄວາມຖີ່",
-  "nodes.triggerSchedule.selectTime": "ເລືອກເວລາ",
   "nodes.triggerSchedule.title": "ກຳນົດເວລາ",
   "nodes.triggerSchedule.useCronExpression": "ໃຊ້ Cron expression",
   "nodes.triggerSchedule.useVisualPicker": "ໃຊ້ Visual picker",

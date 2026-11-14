@@ -12,9 +12,6 @@ from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
-from agenton.layers import LifecycleState
-from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
     AgentRunUsage,
     CancelRunRequest,
@@ -30,6 +27,7 @@ from dify_agent.protocol import (
     RunSucceededEvent,
     RunSucceededEventData,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -53,23 +51,37 @@ from clients.agent_backend import (
 )
 from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
-from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext, AgentAppRuntimeRequestBuilder
-from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
+from core.app.apps.agent_app.runtime_request_builder import (
+    AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequest,
+    AgentAppRuntimeRequestBuilder,
+)
+from core.app.apps.agent_app.session_store import (
+    AgentAppSessionScope,
+    AgentAppWorkspaceStore,
+    StoredAgentAppSession,
+)
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
+    AppQueueEvent,
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
-from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import (
+    AgentKnowledgeSpaceConfig,
+    AgentSoulConfig,
+    AgentSoulToolsConfig,
+)
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, Message, MessageAgentThought
 
 
@@ -89,21 +101,38 @@ def _thought_rows(session: Session) -> list[MessageAgentThought]:
 
 
 class _NoToolsBuilder:
-    def build_layers(self, **kwargs: Any) -> WorkflowAgentToolLayers:
-        del kwargs
+    def build_layers(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None,
+        tools: AgentSoulToolsConfig,
+        invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
+    ) -> WorkflowAgentToolLayers:
+        del tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces
         return WorkflowAgentToolLayers()
 
 
-class _FakeQueueManager:
+class _FakeQueueManager(AppQueueManager):
     def __init__(self) -> None:
+        super().__init__(task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.WEB_APP)
         self.events: list[Any] = []
         self._stop_requested = False
 
-    def publish(self, event: Any, _from: Any) -> None:
+    @override
+    def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        del pub_from
         self.events.append(event)
 
+    @override
     def is_stopped(self) -> bool:
         return self._stop_requested
+
+    @override
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        del event, pub_from
 
     def request_stop(self) -> None:
         self._stop_requested = True
@@ -197,27 +226,6 @@ class _UsageFailedClient(FakeAgentBackendRunClient):
         )
 
 
-class _UsagePausedClient(FakeAgentBackendRunClient):
-    def __init__(self) -> None:
-        super().__init__(scenario=FakeAgentBackendScenario.PAUSED)
-
-    @override
-    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
-        events = super()._events(run_id)
-        terminal = events[-1]
-        assert isinstance(terminal, RunSucceededEvent)
-        return (
-            *events[:-1],
-            terminal.model_copy(
-                update={
-                    "data": terminal.data.model_copy(
-                        update={"usage": AgentRunUsage(prompt_tokens=5, completion_tokens=3)}
-                    )
-                }
-            ),
-        )
-
-
 class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
     def stream_events(
@@ -306,7 +314,7 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             created_at=created_at,
             data=RunSucceededEventData(
                 output={"text": "hello agent"},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
                 usage=AgentRunUsage(
                     prompt_tokens=3,
                     prompt_unit_price=Decimal(5),
@@ -382,7 +390,7 @@ class _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient(FakeAgentBacken
             created_at=created_at,
             data=RunSucceededEventData(
                 output={"text": "hello agent"},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
 
@@ -405,7 +413,7 @@ class _NullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             created_at=created_at,
             data=RunSucceededEventData(
                 output=None,
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
 
@@ -435,7 +443,7 @@ class _StreamingTextNullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClien
             created_at=created_at,
             data=RunSucceededEventData(
                 output=None,
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
 
@@ -472,7 +480,7 @@ class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             created_at=created_at,
             data=RunSucceededEventData(
                 output={"text": "final answer"},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
 
@@ -520,15 +528,15 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             created_at=created_at,
             data=RunSucceededEventData(
                 output={"text": "final answer"},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
 
 
-class _FakeSessionStore:
+class _FakeSessionStore(AgentAppWorkspaceStore):
     def __init__(
         self,
-        loaded: CompositorSessionSnapshot | None = None,
+        loaded: SessionSnapshot | None = None,
         loaded_session: StoredAgentAppSession | None = None,
         binding_id: str = "binding-1",
         workspace_id: str = "workspace-1",
@@ -540,16 +548,9 @@ class _FakeSessionStore:
         self.workspace_id = workspace_id
         self.backend_binding_ref = backend_binding_ref
         self.resolved_scopes: list[AgentAppSessionScope] = []
-        self.saved: list[
-            tuple[
-                AgentAppSessionScope,
-                str,
-                CompositorSessionSnapshot | None,
-                str | None,
-                str | None,
-            ]
-        ] = []
+        self.saved: list[tuple[AgentAppSessionScope, str, SessionSnapshot | None]] = []
 
+    @override
     def load_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
         self.resolved_scopes.append(scope)
         if self._loaded_session is not None:
@@ -562,22 +563,21 @@ class _FakeSessionStore:
             session_snapshot=self.loaded,
         )
 
+    @override
     def save_active_snapshot(
         self,
         *,
         scope: AgentAppSessionScope,
         binding_id: str,
-        snapshot: CompositorSessionSnapshot | None,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        snapshot: SessionSnapshot | None,
     ) -> None:
-        self.saved.append((scope, binding_id, snapshot, pending_form_id, pending_tool_call_id))
+        self.saved.append((scope, binding_id, snapshot))
 
 
 class _ExplodingSessionStore(_FakeSessionStore):
-    def __init__(self, loaded: CompositorSessionSnapshot | None = None) -> None:
+    def __init__(self, loaded: SessionSnapshot | None = None) -> None:
         super().__init__(loaded=loaded)
-        self.save_attempts: list[CompositorSessionSnapshot | None] = []
+        self.save_attempts: list[SessionSnapshot | None] = []
 
     @override
     def save_active_snapshot(
@@ -585,11 +585,9 @@ class _ExplodingSessionStore(_FakeSessionStore):
         *,
         scope: AgentAppSessionScope,
         binding_id: str,
-        snapshot: CompositorSessionSnapshot | None,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        snapshot: SessionSnapshot | None,
     ) -> None:
-        del scope, binding_id, pending_form_id, pending_tool_call_id
+        del scope, binding_id
         self.save_attempts.append(snapshot)
         raise RuntimeError("session save failed")
 
@@ -630,10 +628,10 @@ def _dify_ctx() -> DifyRunContext:
     )
 
 
-def _compatible_session_snapshot() -> CompositorSessionSnapshot:
+def _compatible_session_snapshot() -> SessionSnapshot:
     request = (
         AgentAppRuntimeRequestBuilder(
-            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),
         )
         .build(
             AgentAppRuntimeBuildContext(
@@ -650,12 +648,7 @@ def _compatible_session_snapshot() -> CompositorSessionSnapshot:
         )
         .request
     )
-    return CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(name=layer.name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
-            for layer in request.composition.layers
-        ]
-    )
+    return SessionSnapshot(layers={layer.name: {} for layer in request.composition.layers})
 
 
 def _runner(
@@ -666,11 +659,11 @@ def _runner(
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
-            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
-        session_store=store,  # type: ignore[arg-type]
+        session_store=store,
         text_delta_debounce_seconds=text_delta_debounce_seconds,
     )
 
@@ -686,7 +679,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         query="hello",
         message_id="msg-1",
         model_name="gpt-4o-mini",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
 
@@ -694,20 +687,20 @@ def _message_record() -> Message:
     message = Message(
         app_id="app-1",
         conversation_id="conv-1",
-        inputs={},
+        _inputs={},
         query="hello",
         message={},
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.WEB_APP,
+        invoke_from=ModelInvokeFrom.WEB_APP,
         from_source=ConversationFromSource.API,
         from_end_user_id="user-1",
         from_account_id=None,
@@ -744,7 +737,6 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session() -> 
     _run(_runner(client, store), qm)
 
     assert client.request is not None
-    assert client.request.on_exit.default.value == "suspend"
     # One LLM chunk + one message-end, carrying the backend's answer text.
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
@@ -756,14 +748,11 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session() -> 
     assert _saved_user_query(qm) == "hello"
     # The conversation session snapshot is persisted for multi-turn continuity.
     assert store.saved
-    saved_scope, saved_binding_id, saved_snapshot, pending_form_id, pending_tool_call_id = store.saved[0]
+    saved_scope, saved_binding_id, saved_snapshot = store.saved[0]
     assert saved_scope.conversation_id == "conv-1"
     assert saved_scope.agent_config_snapshot_id == "snap-1"
     assert saved_binding_id == "binding-1"
     assert saved_snapshot is not None
-    # A successful turn carries no ask_human pause correlation.
-    assert pending_form_id is None
-    assert pending_tool_call_id is None
 
 
 def test_turn_uses_resolved_backend_binding_before_backend_invocation() -> None:
@@ -1007,7 +996,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1044,12 +1033,49 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     assert rows[1].observation == "Knowledge base search results: browser skill"
 
 
+def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,
+    )
+    receipt = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+        "document_title": "manual.pdf",
+        "document_version": 2,
+    }
+    part = ToolReturnPart(
+        tool_name="shell_run",
+        tool_call_id="shell-call-1",
+        content={"knowledge_results": [{"data": {"receipt_id": receipt["id"], "text": "evidence"}}]},
+        metadata={"knowledge_fs_citations": [receipt]},
+    )
+    event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+    internal = AgentBackendStreamInternalEvent(run_id="run-1", data=event.model_dump(mode="json")["data"])
+    recorder.handle_stream_event(internal)
+    recorder.handle_stream_event(internal)
+    sources = [event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent)]
+    assert len(sources) == 1
+    assert sources[0].retriever_resources[0].document_name == "manual.pdf"
+    citation = sources[0].retriever_resources[0].knowledge_fs_citation
+    assert citation is not None
+    assert citation.id == receipt["id"]
+    assert sources[0].retriever_resources[0].content == "evidence"
+    assert _thought_rows(sqlite_session)[0].tool == "shell_run"
+
+
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.append_answer_text("intermediate final answer")
@@ -1065,7 +1091,7 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1124,7 +1150,7 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1182,7 +1208,7 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1226,7 +1252,7 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     recorder.handle_stream_event(
@@ -1299,7 +1325,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
     )
 
     for script, output in (("lookup find", "find output"), ("lookup out", "out output")):
@@ -1355,19 +1381,17 @@ def test_prior_session_snapshot_is_threaded_into_request() -> None:
     assert client.request.session_snapshot is prior
 
 
-def test_incompatible_session_snapshot_is_rejected_before_backend_invocation() -> None:
+def test_snapshot_with_removed_optional_prompt_is_forwarded_to_runtime() -> None:
     compatible = _compatible_session_snapshot()
-    stale = CompositorSessionSnapshot(
-        layers=[layer for layer in compatible.layers if layer.name != "agent_soul_prompt"]
+    snapshot = SessionSnapshot(
+        layers={name: state for name, state in compatible.layers.items() if name != "agent_soul_prompt"}
     )
     client = FakeAgentBackendRunClient()
-    store = _FakeSessionStore(loaded=stale)
-
-    with pytest.raises(AgentSessionSnapshotIncompatibleError, match="Start a new conversation"):
-        _run(_runner(client, store), _FakeQueueManager())
-
-    assert client.request is None
-    assert store.saved == []
+    store = _FakeSessionStore(loaded=snapshot)
+    _run(_runner(client, store), _FakeQueueManager())
+    assert client.request is not None
+    assert client.request.session_snapshot is snapshot
+    assert len(store.saved) == 1
 
 
 def test_debug_session_scope_can_reuse_conversation_across_config_snapshots() -> None:
@@ -1386,7 +1410,7 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots() ->
         query="hello",
         message_id="msg-1",
         model_name="gpt-4o-mini",
-        queue_manager=qm,  # type: ignore[arg-type]
+        queue_manager=qm,
         session_scope_snapshot_id=None,
     )
 
@@ -1405,7 +1429,7 @@ def test_failed_run_raises_agent_backend_error() -> None:
         _run(_runner(client, store), qm)
     # No message-end on failure; post-exit session state is still saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
+    assert store.saved[0][2] == SessionSnapshot(layers={})
 
 
 def test_failed_run_persists_partial_usage(sqlite_session: Session) -> None:
@@ -1477,7 +1501,7 @@ def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str) -> N
     with pytest.raises(expected_error, match="fake failure" if outcome == "failed" else None):
         _run(_runner(client, store), queue_manager)
 
-    assert store.save_attempts == [CompositorSessionSnapshot(layers=[])]
+    assert store.save_attempts == [SessionSnapshot(layers={})]
 
 
 @pytest.mark.parametrize(
@@ -1573,7 +1597,7 @@ def test_stopped_task_waits_for_cancelled_snapshot_and_saves_session() -> None:
 
     assert client.cancelled_run_ids == ["fake-run-1"]
     assert len(store.saved) == 1
-    assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
+    assert store.saved[0][2] == SessionSnapshot(layers={})
 
 
 def test_stopped_task_persists_partial_usage(sqlite_session: Session) -> None:
@@ -1612,71 +1636,33 @@ def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer({"a": 1}) == '{"a": 1}'
 
 
-def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
-    # ENG-635/637: the PAUSED scenario emits a dify.ask_human deferred call, so
-    # the chat turn ends by creating a conversation-owned HITL form + saving the
-    # pause correlation, instead of crashing. Stub the form repo (DB-free).
-    client = _UsagePausedClient()
-    store = _FakeSessionStore()
-    qm = _FakeQueueManager()
-    runner = _runner(client, store)
+def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    contexts: list[AgentAppRuntimeBuildContext] = []
+    build = AgentAppRuntimeRequestBuilder.build
 
-    fake_repo = MagicMock()
-    fake_repo.create_form.return_value = MagicMock(id="form-1")
-    runner._build_form_repository = lambda dify_context: fake_repo  # type: ignore[assignment]
+    def record_build(
+        self: AgentAppRuntimeRequestBuilder,
+        context: AgentAppRuntimeBuildContext,
+    ) -> AgentAppRuntimeRequest:
+        contexts.append(context)
+        return build(self, context)
 
-    _run(runner, qm)
-
-    # The conversation-owned form was created and the agent's question surfaced.
-    fake_repo.create_form.assert_called_once()
-    created_params = fake_repo.create_form.call_args.args[0]
-    assert created_params.conversation_id == "conv-1"
-    assert created_params.workflow_execution_id is None
-    assert [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert _saved_user_query(qm) == "hello"
-    assert _llm_result(qm).usage.total_tokens == 8
-    # The pause correlation is persisted so a form submission can resume the run.
-    assert store.saved
-    assert store.saved[0][3] == "form-1"
-    assert store.saved[0][4] == "fake-ask-human-1"
-
-
-def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pytest.MonkeyPatch) -> None:
-    # ENG-638: a turn that runs while a pending form is answered threads the
-    # human's reply into the request as deferred_tool_results.
-    snapshot = _compatible_session_snapshot()
-    stored = StoredAgentAppSession(
-        scope=AgentAppSessionScope(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            conversation_id="conv-1",
-            agent_id="agent-1",
-            agent_config_snapshot_id="snap-1",
-            home_snapshot_id="home-1",
-        ),
-        binding_id="binding-1",
-        workspace_id="workspace-1",
-        backend_binding_ref="backend-binding-1",
-        session_snapshot=snapshot,
-        pending_form_id="form-1",
-        pending_tool_call_id="call-1",
+    monkeypatch.setattr(AgentAppRuntimeRequestBuilder, "build", record_build)
+    runner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore())
+    inputs = {"name": "世界", "count": 0}
+    runner.run(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-1",
+        agent_soul=_soul(),
+        home_snapshot_id="home-1",
+        conversation_id="conv-1",
+        query="hello",
+        inputs=inputs,
+        message_id="msg-1",
+        model_name="gpt-4o-mini",
+        queue_manager=_FakeQueueManager(),
     )
-    store = _FakeSessionStore(loaded_session=stored)
-    submitted = AskHumanResumeOutcome(deferred_result=AskHumanToolResult(status="submitted", values={"ok": True}))
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.app_runner.resolve_ask_human_form",
-        lambda **_kwargs: submitted,
-    )
-
-    client = FakeAgentBackendRunClient()  # SUCCESS -> the resumed run completes
-    qm = _FakeQueueManager()
-    _run(_runner(client, store), qm)
-
-    assert client.request is not None
-    assert client.request.deferred_tool_results is not None
-    assert set(client.request.deferred_tool_results.calls) == {"call-1"}
-    # ENG-638: the resume composition must keep the user-prompt layer so it
-    # matches the suspended snapshot's layer names (the agent backend rejects a
-    # mismatch). A resume therefore re-sends a non-blank query, never blank.
-    layer_names = [layer.name for layer in client.request.composition.layers]
-    assert "agent_app_user_prompt" in layer_names
+    assert len(contexts) == 1
+    assert contexts[0].inputs == inputs
+    assert contexts[0].user_query == "hello"

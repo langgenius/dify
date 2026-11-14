@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class BaseBackwardsInvocation:
     @classmethod
-    def convert_to_event_stream(cls, response: Generator[BaseModel | Mapping | str, None, None] | BaseModel | Mapping):
+    def convert_to_event_stream(cls, response: Generator[BaseModel | Mapping | str] | BaseModel | Mapping):
         if isinstance(response, Generator):
             try:
                 for chunk in response:

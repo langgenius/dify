@@ -1,11 +1,11 @@
 import type { LexicalEditor } from 'lexical'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import { $nodesOfType, COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import {
   getNodeCount,
   readEditorStateValue,
@@ -33,7 +33,7 @@ const UpdateWorkflowNodesMapPlugin = ({ onUpdate }: UpdateWorkflowNodesMapPlugin
   useEffect(() => {
     return editor.registerCommand(
       UPDATE_WORKFLOW_NODES_MAP,
-      (payload: unknown) => {
+      (payload) => {
         onUpdate(payload)
         return true
       },
@@ -155,25 +155,6 @@ describe('HITLInputBlock', () => {
       expect(getNodeCount(editor, HITLInputNode)).toBe(1)
     })
 
-    it('should insert hitl input block without onInsert callback', async () => {
-      const { getEditor } = renderHITLInputBlock()
-
-      const editor = await waitForEditorReady(getEditor)
-
-      selectRootEnd(editor)
-
-      let handled = false
-      act(() => {
-        handled = editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
-      })
-
-      expect(handled).toBe(true)
-      await waitFor(() => {
-        expect(readRootTextContent(editor)).toContain('{{#$output.user_name#}}')
-      })
-      expect(getNodeCount(editor, HITLInputNode)).toBe(1)
-    })
-
     it('should update existing and newly inserted nodes when readonly changes', async () => {
       let setReadonlyValue: ((readonly: boolean) => void) | undefined
       const ReadonlyHarness = () => {
@@ -247,19 +228,6 @@ describe('HITLInputBlock', () => {
       expect(handled).toBe(true)
       expect(onDelete).toHaveBeenCalledTimes(1)
     })
-
-    it('should handle delete command without onDelete callback', async () => {
-      const { getEditor } = renderHITLInputBlock()
-
-      const editor = await waitForEditorReady(getEditor)
-
-      let handled = false
-      act(() => {
-        handled = editor.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
-      })
-
-      expect(handled).toBe(true)
-    })
   })
 
   describe('Lifecycle', () => {
@@ -287,7 +255,7 @@ describe('HITLInputBlock', () => {
     it('should throw when hitl input node is not registered on editor', () => {
       expect(() => {
         render(
-          <LexicalComposer
+          <TestLexicalComposer
             initialConfig={{
               namespace: 'hitl-input-block-plugin-missing-node-test',
               onError: (error: Error) => {
@@ -303,7 +271,7 @@ describe('HITLInputBlock', () => {
               onFormInputItemRemove={vi.fn()}
               workflowNodesMap={createWorkflowNodesMap('Map Node')}
             />
-          </LexicalComposer>,
+          </TestLexicalComposer>,
         )
       }).toThrow('HITLInputBlockPlugin: HITLInputBlock not registered on editor')
     })

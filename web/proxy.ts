@@ -4,6 +4,7 @@ import { Buffer } from 'node:buffer'
 // oxlint-disable-next-line no-restricted-imports
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
+import { getWebAppDocumentResponse } from '@/features/app-access-error/document-response'
 
 const NECESSARY_DOMAIN =
   '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://cdn-cookieyes.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
@@ -20,7 +21,6 @@ const EMBEDDABLE_PATH_SEGMENTS = [
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
 const FRAME_ANCESTORS_NONE = "'none'"
-const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
 
 const getHttpOrigin = (value: string | undefined) => {
   if (!value) return ''
@@ -61,20 +61,8 @@ const wrapResponseWithFrameProtection = (response: NextResponse, pathname: strin
 
   return response
 }
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
-
-  // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
-  if (pathname === '/' && request.nextUrl.searchParams.get('action') === LEGACY_EDUCATION_ACTION) {
-    const destination = request.nextUrl.clone()
-    destination.pathname = '/education/verify'
-    destination.searchParams.delete('action')
-
-    return wrapResponseWithFrameProtection(
-      NextResponse.redirect(destination, { status: 308 }),
-      pathname,
-    )
-  }
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(CURRENT_PATHNAME_HEADER, pathname)
@@ -83,11 +71,13 @@ export function proxy(request: NextRequest) {
   const isWhiteListEnabled =
     !!env.NEXT_PUBLIC_CSP_WHITELIST && process.env.NODE_ENV === 'production'
   if (!isWhiteListEnabled) {
-    const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    })
+    const response =
+      (await getWebAppDocumentResponse(request, requestHeaders)) ??
+      NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      })
     return wrapResponseWithFrameProtection(response, pathname)
   }
 
@@ -124,11 +114,13 @@ export function proxy(request: NextRequest) {
 
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicyHeaderValue)
 
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  })
+  const response =
+    (await getWebAppDocumentResponse(request, requestHeaders)) ??
+    NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
 
   response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue)
 

@@ -28,6 +28,8 @@
   "menus.plugins": "Integrations",
   "menus.status": "beta",
   "menus.tools": "Tools",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "Create service API tokens for selected apps and knowledge bases.",
   "settings.agentStrategy": "Agent Strategy",
   "settings.billing": "Billing",
   "settings.customEndpoint": "Custom Endpoint",

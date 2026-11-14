@@ -30,7 +30,7 @@ describe('workflow preview custom node', () => {
         title: 'Classifier node',
         desc: '',
         classes: [{ id: 'class-a', name: 'Billing' }],
-      } as never,
+      },
     }
 
     const { container, getByText } = render(<CustomNode {...props} />, {
@@ -64,7 +64,7 @@ describe('workflow preview custom node', () => {
         ],
         timeout: 1,
         timeout_unit: 'hour',
-      } as never,
+      },
     }
 
     const { container, getByText } = render(<CustomNode {...props} />, {

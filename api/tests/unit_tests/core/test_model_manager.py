@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -17,15 +17,20 @@ from core.entities.provider_entities import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError
 from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.provider import ProviderType
 
 
 @pytest.fixture
-def lb_model_manager():
+def lb_model_manager(monkeypatch: pytest.MonkeyPatch) -> LBModelManager:
     load_balancing_configs = [
         ModelLoadBalancingConfiguration(id="id1", name="__inherit__", credentials={}),
         ModelLoadBalancingConfiguration(id="id2", name="first", credentials={"openai_api_key": "fake_key"}),
@@ -41,26 +46,23 @@ def lb_model_manager():
         managed_credentials={"openai_api_key": "fake_key"},
     )
 
-    lb_model_manager.cooldown = MagicMock(return_value=None)
+    monkeypatch.setattr(lb_model_manager, "cooldown", MagicMock(return_value=None))
 
-    def is_cooldown(config: ModelLoadBalancingConfiguration):
-        if config.id == "id1":
-            return True
+    def is_cooldown(config: ModelLoadBalancingConfiguration) -> bool:
+        return config.id == "id1"
 
-        return False
-
-    lb_model_manager.in_cooldown = MagicMock(side_effect=is_cooldown)
+    monkeypatch.setattr(lb_model_manager, "in_cooldown", MagicMock(side_effect=is_cooldown))
 
     return lb_model_manager
 
 
-def test_model_manager_with_cache_enabled_reuses_stored_credentials():
+def test_model_manager_with_cache_enabled_reuses_stored_credentials() -> None:
     """With ``enable_credentials_cache=True``, later calls for the same key return cached creds."""
     provider_manager = MagicMock()
     bundle = MagicMock()
     bundle.configuration.provider.provider = "openai"
     bundle.configuration.tenant_id = "tenant-1"
-    bundle.configuration.model_settings = []
+    bundle.configuration.model_settings = list[object]()
     bundle.model_type_instance.model_type = ModelType.LLM
     get_creds = MagicMock(return_value={"api_key": "first"})
     bundle.configuration.get_current_credentials = get_creds
@@ -87,7 +89,7 @@ def _build_model_manager_bundle(
     bundle = MagicMock()
     bundle.configuration.provider.provider = "openai"
     bundle.configuration.tenant_id = "tenant-1"
-    bundle.configuration.model_settings = []
+    bundle.configuration.model_settings = list[object]()
     bundle.configuration.using_provider_type = provider_type
     bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
     bundle.configuration.system_configuration.quota_configurations = [
@@ -174,7 +176,7 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     )
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
     usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": 12})
-    result = MagicMock(spec=LLMResult, usage=usage)
+    result = LLMResult(model="gpt-4", prompt_messages=[], message=AssistantPromptMessage(content="answer"), usage=usage)
     reservation = MagicMock(commit_before_delivery=True)
 
     invocation_id = str(uuid4())
@@ -241,7 +243,7 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
     reservation = MagicMock(commit_before_delivery=True)
 
-    def failing_stream():
+    def failing_stream() -> Iterator[LLMResultChunk]:
         raise RuntimeError("provider failed")
         yield
 
@@ -279,7 +281,7 @@ def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() 
     events: list[str] = []
     reservation.commit.side_effect = lambda _usage: events.append("commit")
 
-    def provider_stream():
+    def provider_stream() -> Iterator[LLMResultChunk]:
         for index, chunk in enumerate(chunks):
             events.append(f"provider-{index}")
             yield chunk
@@ -416,7 +418,7 @@ def test_quota_managed_tts_commits_before_first_chunk() -> None:
     events: list[str] = []
     reservation.commit.side_effect = lambda: events.append("commit")
 
-    def provider_stream():
+    def provider_stream() -> Iterator[bytes]:
         events.append("provider")
         yield b"audio"
 
@@ -435,6 +437,30 @@ def test_quota_managed_tts_commits_before_first_chunk() -> None:
     reservation.release.assert_called_once_with()
 
 
+def test_model_instance_adapts_tts_chunks_to_audio_bytes() -> None:
+    manager, bundle = _build_model_manager_bundle(
+        provider_type=ProviderType.CUSTOM,
+        restrict_models=[],
+        model_type=ModelType.TTS,
+    )
+    tts_model = TTSModel(
+        provider_schema=ProviderEntity(
+            provider="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.TTS],
+            configurate_methods=[],
+        ),
+        model_runtime=create_plugin_model_runtime(tenant_id="tenant-1"),
+    )
+    bundle.model_type_instance = tts_model
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+
+    with patch.object(
+        tts_model.model_runtime, "invoke_tts", return_value=iter([TTSChunk(data=b"audio", mime_type="audio/wav")])
+    ):
+        assert list(model_instance.invoke_tts(content_text="hello", voice="voice")) == [b"audio"]
+
+
 def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,
@@ -444,7 +470,7 @@ def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
     reservation = MagicMock()
 
-    def failing_stream():
+    def failing_stream() -> Iterator[bytes]:
         raise RuntimeError("provider failed")
         yield b""
 
@@ -478,7 +504,7 @@ def test_quota_managed_non_inference_helper_does_not_reserve_quota() -> None:
     reserve.assert_not_called()
 
 
-def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager):
+def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager) -> None:
     # initialize redis client
     redis_client.initialize(redis.Redis())
 
@@ -494,7 +520,7 @@ def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LB
 
     start_index = 0
 
-    def incr(key):
+    def incr(key: str) -> int:
         nonlocal start_index
         start_index += 1
         return start_index

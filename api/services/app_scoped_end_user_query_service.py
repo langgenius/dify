@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from machinery.context import ServiceApiRequestContext
+from machinery.context import AppRequestContext
 from services.entities.app_scoped_end_user_entities import AppScopedEndUserRecord
 
 
@@ -18,7 +18,7 @@ class AppScopedEndUserQueryService:
     def __init__(self, *, end_users: AppScopedEndUserQuery) -> None:
         self._app_scoped_end_users = end_users
 
-    def get_by_id(self, context: ServiceApiRequestContext, end_user_id: str) -> AppScopedEndUserRecord:
+    def get_by_id(self, context: AppRequestContext, end_user_id: str) -> AppScopedEndUserRecord:
         end_user = self._app_scoped_end_users.find_by_id(
             tenant_id=context.tenant_id,
             app_id=context.app_id,

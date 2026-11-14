@@ -34,12 +34,14 @@
   "sidebar.action.rename": "Rename",
   "sidebar.action.unpin": "Unpin",
   "sidebar.webApps": "Web apps",
+  "tryApp.agentConfiguration": "Agentconfiguratie",
   "tryApp.category": "Category",
-  "tryApp.createFromSampleApp": "Create from this sample app",
+  "tryApp.createFromSampleApp": "Maken op basis van deze voorbeeldapp",
+  "tryApp.included": "Inbegrepen",
   "tryApp.loadError": "We konden deze sjabloon niet laden",
   "tryApp.requirements": "Requirements",
   "tryApp.retrying": "Opnieuw proberen…",
   "tryApp.tabHeader.detail": "Orchestration Details",
   "tryApp.tabHeader.try": "Try it",
-  "tryApp.tryInfo": "This is a sample app. You can try up to 5 messages. To keep using it, click \"Create from this sample app\" and set it up!"
+  "tryApp.tryInfo": "Dit is een voorbeeldapp met een beperkt aantal proefberichten. Klik op \"Maken op basis van deze voorbeeldapp\" en stel de app in om deze te blijven gebruiken!"
 }

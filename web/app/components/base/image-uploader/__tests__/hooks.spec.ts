@@ -1,9 +1,20 @@
 import type { ImageFile } from '@/types/app'
 import { act, renderHook } from '@testing-library/react'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { TransferMethod } from '@/types/app'
 import { useImageFiles, useLocalFileUploader } from '../hooks'
 
 const mockNotify = vi.fn()
+
+const createUploadError = (ipDenied: boolean | 'cancelled') => {
+  if (ipDenied === 'cancelled') return new DOMException('Upload cancelled', 'AbortError')
+  const error = new Error('Upload failed')
+  if (ipDenied) {
+    window.history.replaceState({}, '', '/chat/restricted-app')
+    handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), error)
+  }
+  return error
+}
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -14,13 +25,12 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
-const { mockImageUpload, mockGetImageUploadErrorMessage } = vi.hoisted(() => ({
+const { mockImageUpload } = vi.hoisted(() => ({
   mockImageUpload: vi.fn(),
-  mockGetImageUploadErrorMessage: vi.fn(() => 'Upload error'),
 }))
-vi.mock('../utils', () => ({
+vi.mock('../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils')>()),
   imageUpload: mockImageUpload,
-  getImageUploadErrorMessage: mockGetImageUploadErrorMessage,
 }))
 
 let fileCounter = 0
@@ -40,23 +50,6 @@ describe('useImageFiles', () => {
     fileCounter = 0
   })
 
-  it('should return empty files initially', () => {
-    const { result } = renderHook(() => useImageFiles())
-    expect(result.current.files).toEqual([])
-  })
-
-  it('should add a new file via onUpload', () => {
-    const { result } = renderHook(() => useImageFiles())
-    const imageFile = createImageFile({ _id: 'file-1' })
-
-    act(() => {
-      result.current.onUpload(imageFile)
-    })
-
-    expect(result.current.files).toHaveLength(1)
-    expect(result.current.files[0]!._id).toBe('file-1')
-  })
-
   it('should update an existing file via onUpload when _id matches', () => {
     const { result } = renderHook(() => useImageFiles())
     const imageFile = createImageFile({ _id: 'file-1', progress: 0 })
@@ -71,23 +64,6 @@ describe('useImageFiles', () => {
 
     expect(result.current.files).toHaveLength(1)
     expect(result.current.files[0]!.progress).toBe(50)
-  })
-
-  it('should mark a file as deleted via onRemove', () => {
-    const { result } = renderHook(() => useImageFiles())
-    const imageFile = createImageFile({ _id: 'file-1' })
-
-    act(() => {
-      result.current.onUpload(imageFile)
-    })
-    expect(result.current.files).toHaveLength(1)
-
-    act(() => {
-      result.current.onRemove('file-1')
-    })
-
-    // filteredFiles excludes deleted files
-    expect(result.current.files).toHaveLength(0)
   })
 
   it('should not modify files when onRemove is called with non-existent id', () => {
@@ -183,31 +159,6 @@ describe('useImageFiles', () => {
   })
 
   describe('onReUpload', () => {
-    it('should call imageUpload when re-uploading an existing file', () => {
-      const { result } = renderHook(() => useImageFiles())
-      const file = new File(['test'], 'test.png', { type: 'image/png' })
-      const imageFile = createImageFile({ _id: 'file-1', file, progress: -1 })
-
-      act(() => {
-        result.current.onUpload(imageFile)
-      })
-
-      act(() => {
-        result.current.onReUpload('file-1')
-      })
-
-      expect(mockImageUpload).toHaveBeenCalledTimes(1)
-      expect(mockImageUpload).toHaveBeenCalledWith(
-        expect.objectContaining({
-          file,
-          onProgressCallback: expect.any(Function),
-          onSuccessCallback: expect.any(Function),
-          onErrorCallback: expect.any(Function),
-        }),
-        false,
-      )
-    })
-
     it('should not call imageUpload when file id does not exist', () => {
       const { result } = renderHook(() => useImageFiles())
 
@@ -216,28 +167,6 @@ describe('useImageFiles', () => {
       })
 
       expect(mockImageUpload).not.toHaveBeenCalled()
-    })
-
-    it('should update progress via onProgressCallback during re-upload', () => {
-      const { result } = renderHook(() => useImageFiles())
-      const file = new File(['test'], 'test.png', { type: 'image/png' })
-      const imageFile = createImageFile({ _id: 'file-1', file, progress: -1 })
-
-      act(() => {
-        result.current.onUpload(imageFile)
-      })
-
-      act(() => {
-        result.current.onReUpload('file-1')
-      })
-
-      const uploadCall = mockImageUpload.mock.calls[0]![0]
-
-      act(() => {
-        uploadCall.onProgressCallback(50)
-      })
-
-      expect(result.current.files[0]!.progress).toBe(50)
     })
 
     it('should update fileId and progress on success callback during re-upload', () => {
@@ -253,7 +182,10 @@ describe('useImageFiles', () => {
         result.current.onReUpload('file-1')
       })
 
+      expect(mockImageUpload).toHaveBeenCalledWith(expect.objectContaining({ file }), false)
       const uploadCall = mockImageUpload.mock.calls[0]![0]
+      act(() => uploadCall.onProgressCallback(50))
+      expect(result.current.files[0]!.progress).toBe(50)
 
       act(() => {
         uploadCall.onSuccessCallback({ id: 'server-file-123' })
@@ -263,28 +195,61 @@ describe('useImageFiles', () => {
       expect(result.current.files[0]!.progress).toBe(100)
     })
 
-    it('should set progress to -1 and notify on error callback during re-upload', () => {
-      const { result } = renderHook(() => useImageFiles())
-      const file = new File(['test'], 'test.png', { type: 'image/png' })
-      const imageFile = createImageFile({ _id: 'file-1', file, progress: -1 })
+    it.each([false, true, 'cancelled'] as const)(
+      'sets failed re-upload progress and suppresses IP denial or cancellation (%s)',
+      (ipDenied) => {
+        const { result } = renderHook(() => useImageFiles())
+        const file = new File(['test'], 'test.png', { type: 'image/png' })
+        const imageFile = createImageFile({ _id: 'file-1', file, progress: -1 })
 
-      act(() => {
-        result.current.onUpload(imageFile)
-      })
+        act(() => {
+          result.current.onUpload(imageFile)
+        })
 
-      act(() => {
-        result.current.onReUpload('file-1')
-      })
+        act(() => {
+          result.current.onReUpload('file-1')
+        })
 
-      const uploadCall = mockImageUpload.mock.calls[0]![0]
+        const uploadCall = mockImageUpload.mock.calls[0]![0]
 
-      act(() => {
-        uploadCall.onErrorCallback(new Error('Network error'))
-      })
+        act(() => {
+          uploadCall.onErrorCallback(createUploadError(ipDenied))
+        })
 
-      expect(result.current.files[0]!.progress).toBe(-1)
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'Upload error' })
+        expect(result.current.files[0]!.progress).toBe(-1)
+        if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+        else
+          expect(mockNotify).toHaveBeenCalledWith({
+            type: 'error',
+            message: 'common.imageUploader.uploadFromComputerUploadError',
+          })
+      },
+    )
+  })
+
+  it('preserves concurrent uploads and ignores retry callbacks after removal or clearing', () => {
+    const { result } = renderHook(() => useImageFiles())
+    const retry = createImageFile({
+      _id: 'retry',
+      file: new File(['test'], 'test.png'),
+      progress: -1,
     })
+    const added = createImageFile({ _id: 'added' })
+    act(() => result.current.onUpload(retry))
+    act(() => result.current.onReUpload('retry'))
+    const callbacks = mockImageUpload.mock.calls[0]![0]
+
+    act(() => result.current.onUpload(added))
+    act(() => callbacks.onProgressCallback(50))
+    expect(result.current.files).toEqual([{ ...retry, progress: 50 }, added])
+
+    act(() => result.current.onRemove('retry'))
+    act(() => callbacks.onSuccessCallback({ id: 'uploaded' }))
+    expect(result.current.files).toEqual([added])
+
+    act(() => result.current.onClear())
+    act(() => callbacks.onProgressCallback(90))
+    expect(result.current.files).toEqual([])
   })
 
   it('should filter out deleted files in returned files', () => {
@@ -308,14 +273,6 @@ describe('useImageFiles', () => {
 describe('useLocalFileUploader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should return disabled status and handleLocalFileUpload function', () => {
-    const onUpload = vi.fn()
-    const { result } = renderHook(() => useLocalFileUploader({ onUpload, limit: 10 }))
-
-    expect(result.current.disabled).toBe(false)
-    expect(result.current.handleLocalFileUpload).toBeInstanceOf(Function)
   })
 
   it('should not upload when disabled', () => {
@@ -362,56 +319,6 @@ describe('useLocalFileUploader', () => {
     expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
   })
 
-  it('should read file and call onUpload on successful FileReader load', async () => {
-    const onUpload = vi.fn()
-    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
-
-    const file = new File(['test'], 'test.png', { type: 'image/png' })
-
-    act(() => {
-      result.current.handleLocalFileUpload(file)
-    })
-
-    // Wait for FileReader to complete
-    await vi.waitFor(() => {
-      expect(onUpload).toHaveBeenCalled()
-    })
-
-    expect(onUpload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: TransferMethod.local_file,
-        file,
-        progress: 0,
-      }),
-    )
-
-    // imageUpload should be called after FileReader load
-    expect(mockImageUpload).toHaveBeenCalledTimes(1)
-  })
-
-  it('should call onUpload with progress during imageUpload', async () => {
-    const onUpload = vi.fn()
-    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
-
-    const file = new File(['test'], 'test.png', { type: 'image/png' })
-
-    act(() => {
-      result.current.handleLocalFileUpload(file)
-    })
-
-    await vi.waitFor(() => {
-      expect(mockImageUpload).toHaveBeenCalled()
-    })
-
-    const uploadCall = mockImageUpload.mock.calls[0]![0]
-
-    act(() => {
-      uploadCall.onProgressCallback(75)
-    })
-
-    expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: 75 }))
-  })
-
   it('should call onUpload with fileId and progress 100 on upload success', async () => {
     const onUpload = vi.fn()
     const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
@@ -426,7 +333,12 @@ describe('useLocalFileUploader', () => {
       expect(mockImageUpload).toHaveBeenCalled()
     })
 
+    expect(onUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ file, progress: 0, type: TransferMethod.local_file }),
+    )
     const uploadCall = mockImageUpload.mock.calls[0]![0]
+    act(() => uploadCall.onProgressCallback(75))
+    expect(onUpload).toHaveBeenLastCalledWith(expect.objectContaining({ progress: 75 }))
 
     act(() => {
       uploadCall.onSuccessCallback({ id: 'uploaded-id' })
@@ -437,27 +349,31 @@ describe('useLocalFileUploader', () => {
     )
   })
 
-  it('should notify error and call onUpload with progress -1 on upload failure', async () => {
-    const onUpload = vi.fn()
-    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
+  it.each([false, true, 'cancelled'] as const)(
+    'sets failed local upload progress and suppresses IP denial or cancellation (%s)',
+    async (ipDenied) => {
+      const onUpload = vi.fn()
+      const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
-    const file = new File(['test'], 'test.png', { type: 'image/png' })
+      const file = new File(['test'], 'test.png', { type: 'image/png' })
 
-    act(() => {
-      result.current.handleLocalFileUpload(file)
-    })
+      act(() => {
+        result.current.handleLocalFileUpload(file)
+      })
 
-    await vi.waitFor(() => {
-      expect(mockImageUpload).toHaveBeenCalled()
-    })
+      await vi.waitFor(() => {
+        expect(mockImageUpload).toHaveBeenCalled()
+      })
 
-    const uploadCall = mockImageUpload.mock.calls[0]![0]
+      const uploadCall = mockImageUpload.mock.calls[0]![0]
 
-    act(() => {
-      uploadCall.onErrorCallback(new Error('fail'))
-    })
+      act(() => {
+        uploadCall.onErrorCallback(createUploadError(ipDenied))
+      })
 
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: -1 }))
-  })
+      if (ipDenied) expect(mockNotify).not.toHaveBeenCalled()
+      else expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: -1 }))
+    },
+  )
 })

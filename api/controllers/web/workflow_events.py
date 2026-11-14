@@ -18,7 +18,9 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
+from libs.external_api import error_responses
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
@@ -30,6 +32,7 @@ register_response_schema_model(web_ns, EventStreamResponse)
 class WorkflowEventsApi(WebApiResource):
     """API for getting workflow execution events after resume."""
 
+    @error_responses(InvalidArgumentError)
     @web_ns.response(200, "SSE event stream", web_ns.models[EventStreamResponse.__name__])
     def get(self, app_model: App, end_user: EndUser, task_id: str):
         """
@@ -38,6 +41,9 @@ class WorkflowEventsApi(WebApiResource):
         GET /api/workflow/<task_id>/events
 
         Returns Server-Sent Events stream.
+
+        Requires a run owned by the current app and end user. Pending V1 forms
+        expose only Web App recipient tokens; invalid ownership returns 404.
         """
         workflow_run_id = task_id
         session_maker = sessionmaker(db.engine)
@@ -69,19 +75,19 @@ class WorkflowEventsApi(WebApiResource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def _generate_finished_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str]:
                 yield f"data: {json.dumps(payload)}\n\n"
 
             event_generator = _generate_finished_events
         else:
             app_mode = AppMode.value_of(app_model.mode)
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             match app_mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
+                    generator = AdvancedChatAppGenerator
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
+                    generator = WorkflowAppGenerator
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
@@ -97,6 +103,7 @@ class WorkflowEventsApi(WebApiResource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            human_input_surface=HumanInputSurface.WEB_APP,
                             close_on_pause=not continue_on_pause,
                         )
                     )

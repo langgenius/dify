@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "۵ زمان اجرای بعدی",
   "nodes.triggerSchedule.onMinute": "در دقیقه",
   "nodes.triggerSchedule.selectFrequency": "انتخاب تکرار",
-  "nodes.triggerSchedule.selectTime": "انتخاب زمان",
   "nodes.triggerSchedule.title": "زمان‌بندی",
   "nodes.triggerSchedule.useCronExpression": "استفاده از عبارت Cron",
   "nodes.triggerSchedule.useVisualPicker": "استفاده از انتخابگر بصری",

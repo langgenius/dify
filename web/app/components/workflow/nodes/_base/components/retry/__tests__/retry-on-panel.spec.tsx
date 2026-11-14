@@ -1,88 +1,48 @@
-import type { Node } from '@/app/components/workflow/types'
-import { render, screen, within } from '@testing-library/react'
+import type { CommonNodeType } from '@/app/components/workflow/types'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import RetryOnPanel from '../retry-on-panel'
 
-const { mockHandleRetryConfigChange } = vi.hoisted(() => ({
-  mockHandleRetryConfigChange: vi.fn(),
-}))
+function Panel() {
+  const nodes = useNodes<CommonNodeType>()
+  const node = nodes.find((item) => item.id === 'node-1')
+  if (!node) return null
+  return <RetryOnPanel id={node.id} data={node.data} />
+}
 
-vi.mock('../hooks', () => ({
-  useRetryConfig: () => ({
-    handleRetryConfigChange: mockHandleRetryConfigChange,
-  }),
-}))
-
-const data = {
-  retry_config: {
-    retry_enabled: true,
-    max_retries: 3,
-    retry_interval: 1000,
-  },
-} as Node['data']
-
-describe('RetryOnPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('persists retry edits and restores them after disabling and enabling retry', async () => {
+  const user = userEvent.setup()
+  renderWorkflowFlowComponent(<Panel />, {
+    nodes: [
+      createNode({
+        id: 'node-1',
+        data: { retry_config: { retry_enabled: true, max_retries: 3, retry_interval: 1000 } },
+      }),
+    ],
+    hooksStoreProps: { doSyncWorkflowDraft: vi.fn() },
   })
+  const maxRetriesLabel = 'workflow.nodes.common.retry.maxRetries'
+  const retryIntervalLabel = 'workflow.nodes.common.retry.retryInterval'
+  const input = await screen.findByRole('textbox', { name: maxRetriesLabel })
+  await user.click(input)
+  await user.keyboard('{ArrowUp}')
+  expect(input).toHaveValue('4')
+  expect(screen.getByRole('slider', { name: maxRetriesLabel })).toHaveAttribute(
+    'aria-valuetext',
+    '4 workflow.nodes.common.retry.times',
+  )
+  expect(screen.getByRole('slider', { name: retryIntervalLabel })).toHaveAttribute(
+    'aria-valuetext',
+    '1000 workflow.nodes.common.retry.ms',
+  )
 
-  it('should label the retry switch and grouped value controls', () => {
-    render(<RetryOnPanel id="node-1" data={data} />)
-
-    expect(
-      screen.getByRole('switch', { name: 'workflow.nodes.common.retry.retryOnFailure' }),
-    ).toBeChecked()
-
-    const maxRetriesLabel = 'workflow.nodes.common.retry.maxRetries'
-    const maxRetriesSlider = screen.getByRole('slider', { name: maxRetriesLabel })
-    const maxRetriesGroup = maxRetriesSlider.closest('fieldset')!
-    expect(maxRetriesSlider).toHaveAttribute(
-      'aria-valuetext',
-      '3 workflow.nodes.common.retry.times',
-    )
-    const maxRetriesInput = within(maxRetriesGroup).getByRole('textbox', {
-      name: maxRetriesLabel,
-    })
-    expect(maxRetriesInput).toHaveAttribute('aria-roledescription', 'Number field')
-    expect(maxRetriesInput).toHaveValue('3')
-    expect(within(maxRetriesGroup).getByText('workflow.nodes.common.retry.times')).toBeVisible()
-
-    const retryIntervalLabel = 'workflow.nodes.common.retry.retryInterval'
-    const retryIntervalSlider = screen.getByRole('slider', { name: retryIntervalLabel })
-    const retryIntervalGroup = retryIntervalSlider.closest('fieldset')!
-    expect(retryIntervalSlider).toHaveAttribute(
-      'aria-valuetext',
-      '1000 workflow.nodes.common.retry.ms',
-    )
-    expect(
-      within(retryIntervalGroup).getByRole('textbox', { name: retryIntervalLabel }),
-    ).toHaveValue('1000')
-    expect(within(retryIntervalGroup).getByText('workflow.nodes.common.retry.ms')).toBeVisible()
-  })
-
-  it('should update retry configuration through native control interactions', async () => {
-    const user = userEvent.setup()
-    render(<RetryOnPanel id="node-1" data={data} />)
-
-    await user.click(
-      screen.getByRole('switch', { name: 'workflow.nodes.common.retry.retryOnFailure' }),
-    )
-    expect(mockHandleRetryConfigChange).toHaveBeenLastCalledWith({
-      retry_enabled: false,
-      max_retries: 3,
-      retry_interval: 1000,
-    })
-
-    const maxRetriesInput = screen.getByRole('textbox', {
-      name: 'workflow.nodes.common.retry.maxRetries',
-    })
-    await user.click(maxRetriesInput)
-    await user.keyboard('{ArrowUp}')
-
-    expect(mockHandleRetryConfigChange).toHaveBeenLastCalledWith({
-      retry_enabled: true,
-      max_retries: 4,
-      retry_interval: 1000,
-    })
-  })
+  const toggle = screen.getByRole('switch', { name: 'workflow.nodes.common.retry.retryOnFailure' })
+  await user.click(toggle)
+  expect(screen.queryByRole('textbox', { name: maxRetriesLabel })).not.toBeInTheDocument()
+  await user.click(toggle)
+  expect(screen.getByRole('textbox', { name: maxRetriesLabel })).toHaveValue('4')
+  expect(screen.getByRole('textbox', { name: retryIntervalLabel })).toHaveValue('1000')
 })

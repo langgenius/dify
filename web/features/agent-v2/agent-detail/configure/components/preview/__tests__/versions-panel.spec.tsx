@@ -1,8 +1,12 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithAccountProfile as renderAccountProfile } from '@/test/console/account-profile'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery as renderAccountProfile,
+} from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentPreviewVersionsPanel } from '../versions-panel'
 
@@ -11,8 +15,8 @@ const exportState = vi.hoisted(() => ({
   canRestore: true,
   restoreVersion: vi.fn(async (_input: unknown) => ({ result: 'success' })),
   isExporting: false,
-  edition: 'CLOUD',
-  plan: 'professional' as string | undefined,
+  edition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+  plan: 'professional' as 'professional' | 'sandbox' | undefined,
   exportAppDsl: vi.fn(),
   onUrlUpdate: vi.fn(),
 }))
@@ -31,16 +35,6 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
     isExporting: exportState.isExporting,
   }),
 }))
-
-vi.mock('jotai', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('jotai')>()),
-  useAtomValue: () => exportState.edition,
-}))
-
-function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfile>[1]) {
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
-  return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, options)
-}
 
 const versions: AgentConfigSnapshotSummaryResponse[] = [
   {
@@ -66,17 +60,22 @@ const versions: AgentConfigSnapshotSummaryResponse[] = [
   },
 ]
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useQuery: (options: { queryKey: string[] }) =>
-      options.queryKey[0] === 'features'
-        ? { data: exportState.plan }
-        : { data: { data: versions }, isPending: false },
-  }
-})
+function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfile>[1]) {
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: exportState.edition },
+    features: exportState.plan
+      ? { billing: { subscription: { plan: exportState.plan } } }
+      : undefined,
+  })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.versions.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    }),
+    { data: versions },
+  )
+  return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, { ...options, queryClient })
+}
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -84,47 +83,18 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    features: { get: { queryOptions: () => ({ queryKey: ['features'] }) } },
-    account: {
-      profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
-      },
-    },
-    agent: {
-      byAgentId: {
-        get: { queryKey: () => ['agent'] },
-        composer: { get: { queryKey: () => ['composer'] } },
-        versions: {
-          byVersionId: {
-            restore: {
-              post: {
-                mutationOptions: (options: Record<string, unknown>) => ({
-                  ...options,
-                  mutationFn: exportState.restoreVersion,
-                }),
-              },
-            },
-          },
-          get: {
-            queryOptions: () => ({ queryKey: ['agent-versions'] }),
-            key: () => ['agent-versions'],
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => new Promise(() => {}),
+      'agent.byAgentId.versions.get': async () => ({ data: versions }),
+      'agent.byAgentId.versions.byVersionId.restore.post': exportState.restoreVersion,
+    }),
+  }
+})
 
 describe('AgentPreviewVersionsPanel', () => {
   beforeEach(() => {
@@ -155,7 +125,7 @@ describe('AgentPreviewVersionsPanel', () => {
       const user = userEvent.setup()
       const onSelectVersion = renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-      await user.click(screen.getByRole('menuitem', { name: /export/i }))
+      await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
       expect(exportState.exportAppDsl).toHaveBeenCalledWith({
         appId: 'app-1',
         appName: 'My agent',
@@ -176,14 +146,14 @@ describe('AgentPreviewVersionsPanel', () => {
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-      await user.click(screen.getByRole('menuitem', { name: /export/i }))
+      await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
       expect(exportState.onUrlUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ queryString: '?pricing=open' }),
       )
       expect(exportState.exportAppDsl).not.toHaveBeenCalled()
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE'])(
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
       'allows export on %s without a Cloud plan',
       async (edition) => {
         exportState.edition = edition
@@ -191,7 +161,7 @@ describe('AgentPreviewVersionsPanel', () => {
         const user = userEvent.setup()
         renderPanel()
         await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-        await user.click(screen.getByRole('menuitem', { name: /export/i }))
+        await user.click(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ }))
         expect(exportState.exportAppDsl).toHaveBeenCalledWith(
           expect.objectContaining({ versionId: 'version-0' }),
         )
@@ -204,7 +174,7 @@ describe('AgentPreviewVersionsPanel', () => {
       const user = userEvent.setup()
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
-      const action = screen.getByRole('menuitem', { name: /export/i })
+      const action = screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ })
       expect(action).toHaveAttribute('aria-disabled', 'true')
       await user.click(action)
       expect(exportState.exportAppDsl).not.toHaveBeenCalled()
@@ -242,7 +212,7 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(onSelectVersion).not.toHaveBeenCalled()
       await user.click(within(dialog).getByRole('button', { name: /restore/i }))
       await waitFor(() => expect(onSelectVersion).toHaveBeenCalledWith(null))
-      expect(exportState.restoreVersion.mock.calls[0]?.[0]).toEqual({
+      expect(exportState.restoreVersion).toHaveBeenCalledExactlyOnceWith({
         params: { agent_id: 'agent-1', version_id: 'version-0' },
       })
       expect(onVersionRestored.mock.invocationCallOrder[0]).toBeLessThan(
@@ -296,7 +266,7 @@ describe('AgentPreviewVersionsPanel', () => {
       expect(exportState.restoreVersion).not.toHaveBeenCalled()
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE'])(
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
       'allows restoration on %s without a Cloud plan',
       async (edition) => {
         exportState.edition = edition
@@ -330,7 +300,9 @@ describe('AgentPreviewVersionsPanel', () => {
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
       expect(screen.getByRole('menuitem', { name: /restore/i })).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: /export/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: /agentV2\.exportAgent/ }),
+      ).not.toBeInTheDocument()
     })
 
     it('hides restore without release permission while allowing export', async () => {
@@ -339,12 +311,13 @@ describe('AgentPreviewVersionsPanel', () => {
       renderPanel()
       await user.click(screen.getByRole('button', { name: /moreActions.*Initial release/ }))
       expect(screen.queryByRole('menuitem', { name: /restore/i })).not.toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: /export/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /agentV2\.exportAgent/ })).toBeInTheDocument()
     })
   })
 
   describe('Version selection', () => {
-    it('should notify the selected version when a version row is clicked', () => {
+    it('should notify the selected version when a version row is clicked', async () => {
+      const user = userEvent.setup()
       const handleSelectVersion = vi.fn()
 
       render(
@@ -357,12 +330,13 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /^Initial release/i }))
+      await user.click(screen.getByRole('button', { name: /^Initial release/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith('version-0')
     })
 
-    it('should notify null when the current draft row is clicked', () => {
+    it('should notify null when the current draft row is clicked', async () => {
+      const user = userEvent.setup()
       const handleSelectVersion = vi.fn()
 
       render(
@@ -375,14 +349,15 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /currentDraft/i }))
+      await user.click(screen.getByRole('button', { name: /currentDraft/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith(null)
     })
   })
 
   describe('Version filter', () => {
-    it('should show filter options when the filter trigger is clicked', () => {
+    it('should only show current user versions when only yours is selected', async () => {
+      const user = userEvent.setup()
       render(
         <AgentPreviewVersionsPanel
           agentId="agent-1"
@@ -393,26 +368,14 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /filter/i }))
+      await user.click(screen.getByRole('button', { name: /filter/i }))
+      await user.click(screen.getByRole('button', { name: /onlyYours/i }))
 
-      expect(screen.getByRole('button', { name: /all/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /onlyYours/i })).toBeInTheDocument()
-      expect(screen.queryByText(/onlyShowNamedVersions/i)).not.toBeInTheDocument()
-    })
-
-    it('should only show current user versions when only yours is selected', () => {
-      render(
-        <AgentPreviewVersionsPanel
-          agentId="agent-1"
-          activeVersionId="version-2"
-          onSelectVersion={vi.fn()}
-          onClose={vi.fn()}
-        />,
-        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
+      expect(screen.getByRole('button', { name: /all/i })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: /onlyYours/i })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
-
-      fireEvent.click(screen.getByRole('button', { name: /filter/i }))
-      fireEvent.click(screen.getByRole('button', { name: /onlyYours/i }))
 
       expect(screen.getByRole('button', { name: /^Published update/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /^Initial release/i })).toBeInTheDocument()

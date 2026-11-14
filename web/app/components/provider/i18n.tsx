@@ -4,13 +4,17 @@ import type { Resource } from 'i18next'
 import type { Locale } from '@/i18n'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
 import { loadI18nResource } from '@/i18n/load-resource'
 import { supportedLocales } from '@/i18n/locale'
 import { getInitOptions } from '@/i18n/settings'
 import { getStreamedResources, mergeResources } from '@/i18n/streamed-resources'
+import { I18nDirectionProvider } from './i18n-direction'
 import { I18nResourceStream } from './i18n-stream'
+
+// The root translation stream belongs to the document and survives React remounts.
+const streamId = 'root'
 
 export function I18nClientProvider({
   locale,
@@ -23,7 +27,6 @@ export function I18nClientProvider({
   resource: Resource
   children: React.ReactNode
 }) {
-  const streamId = useId()
   // Server resources bootstrap this session. Client preferences and share-app
   // overrides own later language changes, even when the root layout rerenders.
   const [initial] = useState(() => {
@@ -46,8 +49,13 @@ export function I18nClientProvider({
   })
   return (
     <I18nextProvider i18n={initial.i18n}>
-      <I18nResourceStream id={streamId} initial={initial.resources} nonce={nonce} />
-      {children}
+      <I18nResourceStream
+        i18n={initial.i18n}
+        id={streamId}
+        initial={initial.resources}
+        nonce={nonce}
+      />
+      <I18nDirectionProvider syncDocument>{children}</I18nDirectionProvider>
     </I18nextProvider>
   )
 }

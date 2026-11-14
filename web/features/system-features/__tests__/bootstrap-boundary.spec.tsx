@@ -7,27 +7,24 @@ import {
 } from '@tanstack/react-query'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderToString } from 'react-dom/server'
 import { consoleQuery } from '@/service/console'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createDeferred } from '@/test/deferred'
 import { SystemFeaturesBootstrapBoundary } from '../bootstrap-boundary'
-
-type Deferred<T> = {
-  promise: Promise<T>
-  resolve: (value: T) => void
-}
-
-function createDeferred<T>(): Deferred<T> {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((nextResolve) => {
-    resolve = nextResolve
-  })
-
-  return { promise, resolve }
-}
 
 const mocks = vi.hoisted(() => ({
   isClient: true,
   query: vi.fn(),
+}))
+
+vi.mock('@/utils/client', () => ({
+  get isServer() {
+    return !mocks.isClient
+  },
+  get isClient() {
+    return mocks.isClient
+  },
 }))
 
 vi.mock('server-only', () => ({}))
@@ -46,21 +43,6 @@ vi.mock('../client', async (importOriginal) => {
       queryFn: mocks.query,
       retryDelay: 0,
     }),
-  }
-})
-
-vi.mock('@/app/components/full-screen-loading', () => ({
-  FullScreenLoading: () => <div role="status">Loading system features</div>,
-}))
-
-vi.mock('@/utils/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/client')>()
-
-  return {
-    ...actual,
-    get isClient() {
-      return mocks.isClient
-    },
   }
 })
 
@@ -103,7 +85,7 @@ describe('SystemFeaturesBootstrapBoundary', () => {
     )
 
     expect(screen.getByText('Application')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
     expect(mocks.query).not.toHaveBeenCalled()
   })
 
@@ -113,7 +95,7 @@ describe('SystemFeaturesBootstrapBoundary', () => {
 
     renderBoundary(<div>Application</div>)
 
-    expect(screen.getByRole('status')).toHaveTextContent('Loading system features')
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('Application')).not.toBeInTheDocument()
 
     await act(async () => {
@@ -121,15 +103,20 @@ describe('SystemFeaturesBootstrapBoundary', () => {
     })
 
     expect(await screen.findByText('Application')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
   })
 
   it('does not duplicate the request during server rendering when prefetched data is missing', () => {
     mocks.isClient = false
-
-    renderBoundary(<div>Application</div>)
-
-    expect(screen.getByRole('status')).toHaveTextContent('Loading system features')
+    const markup = renderToString(
+      <QueryClientProvider client={createQueryClient()}>
+        <SystemFeaturesBootstrapBoundary>
+          <div>Application</div>
+        </SystemFeaturesBootstrapBoundary>
+      </QueryClientProvider>,
+    )
+    expect(markup).toContain('role="progressbar"')
+    expect(markup).not.toContain('Application')
     expect(mocks.query).not.toHaveBeenCalled()
   })
 

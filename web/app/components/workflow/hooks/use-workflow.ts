@@ -1,14 +1,12 @@
 import type { Connection } from 'reactflow'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
-import type { BlockEnum, Edge, Node, ValueSelector } from '../types'
+import type { Edge, Node, ValueSelector } from '../types'
 import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { getIncomers, getOutgoers } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { AppModeEnum } from '@/types/app'
 import { SUPPORT_OUTPUT_VARS_NODE } from '../constants'
 import { useHooksStore } from '../hooks-store'
 import {
@@ -18,18 +16,18 @@ import {
 } from '../nodes/_base/components/variable/utils'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { useStore, useWorkflowStore } from '../store'
-import { WorkflowRunningStatus } from '../types'
+import { BlockEnum, WorkflowRunningStatus } from '../types'
 import { getNodeCatalogType } from '../utils'
 import { getWorkflowEntryNode, isWorkflowEntryNode } from '../utils/workflow-entry'
 import { useAvailableBlocks } from './use-available-blocks'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesMetaData } from './use-nodes-meta-data'
 
-export const useIsChatMode = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
-
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-}
+const includesConnectionBlock = (blocks: readonly BlockEnum[], type: BlockEnum) =>
+  blocks.includes(type) ||
+  // The add-node catalog hides legacy Human Input when V2 is enabled.
+  // Existing legacy nodes still use the same connection rules as V2.
+  (type === BlockEnum.HumanInput && blocks.includes(BlockEnum.HumanInputV2))
 
 export const useWorkflow = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
@@ -288,8 +286,8 @@ export const useWorkflow = () => {
   )
 
   const isNodeVarsUsedInNodes = useCallback(
-    (node: Node, isChatMode: boolean) => {
-      const outputVars = getNodeOutputVars(node, isChatMode)
+    (node: Node, isChatflow: boolean) => {
+      const outputVars = getNodeOutputVars(node, isChatflow)
       const isUsed = outputVars.some((varSelector) => {
         return isVarUsedInNodes(varSelector)
       })
@@ -388,9 +386,11 @@ export const useWorkflow = () => {
           !!targetNode.parentId,
         ).availablePrevBlocks
 
-        if (!sourceNodeAvailableNextNodes.includes(targetNodeCatalogType)) return false
+        if (!includesConnectionBlock(sourceNodeAvailableNextNodes, targetNodeCatalogType))
+          return false
 
-        if (!targetNodeAvailablePrevNodes.includes(sourceNodeCatalogType)) return false
+        if (!includesConnectionBlock(targetNodeAvailablePrevNodes, sourceNodeCatalogType))
+          return false
       }
 
       const hasCycle = (node: Node, visited = new Set()) => {

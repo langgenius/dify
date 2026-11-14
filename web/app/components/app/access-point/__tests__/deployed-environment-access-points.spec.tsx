@@ -1,58 +1,23 @@
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { screen, within } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { DeployedEnvironmentAccessPoints } from '../deployed-environment-access-points'
+import { seedAccessPointQueries } from './access-point-query-fixtures'
 
-const mocks = vi.hoisted(() => ({
-  serviceApiCard: vi.fn(),
-  webAppCard: vi.fn(),
-}))
-
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
-vi.mock('../deployed-environment-access-points/environment-service-api-card', () => ({
-  EnvironmentServiceApiCard: (props: Record<string, unknown>) => {
-    mocks.serviceApiCard(props)
-    return null
-  },
-}))
-
-vi.mock('../deployed-environment-access-points/environment-web-app-card', () => ({
-  EnvironmentWebAppCard: (props: Record<string, unknown>) => {
-    mocks.webAppCard(props)
-    return null
-  },
-}))
+function render(ui: React.ReactElement) {
+  const queryClient = createTestQueryClient()
+  seedAccessPointQueries(queryClient, 'app-1', ['staging'])
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow', site: createAppSiteFixture() }),
+  )
+  return renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, { queryClient })
+}
 
 describe('DeployedEnvironmentAccessPoints', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it.each<AccessPoint>(['webApp', 'serviceApi'])(
-    'highlights only the targeted %s card',
-    (highlightedAccessPoint) => {
-      render(
-        <DeployedEnvironmentAccessPoints
-          appId="app-1"
-          environmentId="staging"
-          canManageAccessPoint
-          highlightedAccessPoint={highlightedAccessPoint}
-        />,
-      )
-
-      expect(mocks.webAppCard).toHaveBeenCalledWith(
-        expect.objectContaining({ highlighted: highlightedAccessPoint === 'webApp' }),
-      )
-      expect(mocks.serviceApiCard).toHaveBeenCalledWith(
-        expect.objectContaining({ highlighted: highlightedAccessPoint === 'serviceApi' }),
-      )
-    },
-  )
-
   it('renders MCP and Trigger as unsupported without a permanent loading state', () => {
     render(
       <DeployedEnvironmentAccessPoints
@@ -80,22 +45,26 @@ describe('DeployedEnvironmentAccessPoints', () => {
     }
   })
 
-  it('passes Access Point management to deployed environment cards', () => {
-    render(
-      <DeployedEnvironmentAccessPoints
-        appId="app-1"
-        environmentId="staging"
-        canManageAccessPoint
-      />,
-    )
+  it.each([false, true])(
+    'enforces management permission %s on deployed environment controls',
+    (canManageAccessPoint) => {
+      render(
+        <DeployedEnvironmentAccessPoints
+          appId="app-1"
+          environmentId="staging"
+          canManageAccessPoint={canManageAccessPoint}
+        />,
+      )
 
-    expect(mocks.webAppCard).toHaveBeenCalledWith(
-      expect.objectContaining({
-        canManageAccessPoint: true,
-      }),
-    )
-    expect(mocks.serviceApiCard).toHaveBeenCalledWith(
-      expect.objectContaining({ canManageAccessPoint: true }),
-    )
-  })
+      for (const control of screen.getAllByRole('switch')) {
+        expect(control).toBeChecked()
+        if (canManageAccessPoint) expect(control).not.toHaveAttribute('aria-disabled', 'true')
+        else expect(control).toHaveAttribute('aria-disabled', 'true')
+      }
+      expect(screen.getByText('https://staging.api.example.com/v1')).toBeInTheDocument()
+      const settings = screen.getByRole('button', { name: 'navigation.settings.settings' })
+      if (canManageAccessPoint) expect(settings).toBeEnabled()
+      else expect(settings).toBeDisabled()
+    },
+  )
 })

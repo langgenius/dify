@@ -1,13 +1,14 @@
 {
+  "activateFailed": "نتوانستیم تخفیف آموزشی شما را فعال کنیم. ممکن است تأییدیه آموزشی فعلی شما هنوز فعال باشد یا این ایمیل دیگر واجد شرایط نباشد.",
   "applied.activeSubscription.description": "شما یک اشتراک فعال دارید. پس از انقضای اشتراک می‌توانید از تخفیف آموزشی استفاده کنید. اشتراک خود را در <stripeLink>Stripe</stripeLink> تأیید کنید.",
   "applied.noPaymentPermission.description": "شما در این workspace مجوز پرداخت ندارید. لطفاً به workspace‌ای بروید که بتوانید صورتحساب را مدیریت کنید تا از تخفیف آموزشی استفاده کنید.",
   "applied.noPaymentPermission.returnHome": "بازگشت به Dify",
   "applied.step1.description": "درخواست تخفیف آموزشی شما با موفقیت ثبت شد.",
   "applied.step2.description": "workspace‌ای را که می‌خواهید با تخفیف آموزشی استفاده کنید انتخاب کنید.",
   "currentSigned": "اکنون به عنوان",
-  "educationPricingConfirm.cancel": "حفظ طرح فعلی",
+  "educationPricingConfirm.cancel": "ادامه بدون تخفیف",
   "educationPricingConfirm.continue": "تغییر به Professional سالانه",
-  "educationPricingConfirm.description": "تخفیف آموزشی فقط برای طرح سالانه Professional اعمال می‌شود. با حفظ طرح فعلی، این تخفیف شامل نمی‌شود.",
+  "educationPricingConfirm.description": "شما {{selected_plan_name}} ({{selected_billing_cycle}}) را انتخاب کرده‌اید. برای استفاده از تخفیف آموزشی، Professional سالانه را انتخاب کنید یا با طرح انتخابی بدون تخفیف ادامه دهید.",
   "educationPricingConfirm.title": "طرح انتخاب‌شده شما از تخفیف آموزشی پشتیبانی نمی‌کند",
   "emailLabel": "ایمیل فعلی شما",
   "form.schoolName.noResults": "مدرسه منطبقی یافت نشد. همچنان می‌توانید نام رسمی مدرسه را وارد کنید.",
@@ -42,7 +43,7 @@
   "notice.stillInEducation.expired": "هم‌اکنون دوباره تأیید کنید تا یک کوپن جدید برای سال تحصیلی آینده دریافت کنید. ما آن را به حساب شما اضافه خواهیم کرد و می‌توانید از آن برای ارتقاء بعدی استفاده کنید.",
   "notice.stillInEducation.isAboutToExpire": "در حال حاضر دوباره تأیید کنید تا یک کوپن جدید برای سال تحصیلی آینده دریافت کنید. این کوپن به حساب شما ذخیره خواهد شد و در زمان تمدید بعدی شما آماده استفاده است.",
   "notice.stillInEducation.title": "آیا هنوز در حال تحصیل هستید؟",
-  "planNotSupportEducationDiscount": "واجد شرایط قیمت‌گذاری آموزشی نیست",
+  "planNotSupportEducationDiscount": "این طرح تخفیف آموزشی ندارد",
   "rejectContent": "متاسفانه، شما واجد شرایط وضعیت تأیید شده آموزشی نیستید و به همین دلیل نمی‌توانید کوپن انحصاری ۱۰۰٪ برای طرح حرفه‌ای Dify را در صورت استفاده از این آدرس ایمیل دریافت کنید.",
   "rejectTitle": "تأییدیه آموزشی دیفی شما رد شده است",
   "submit": "ارسال",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "کوپن انحصاری ۱۰۰٪",
   "toVerifiedTip.end": "برای طرح حرفه‌ای دیفی.",
   "toVerifiedTip.front": "شما اکنون برای وضعیت تأیید شده آموزشی واجد شرایط هستید. لطفاً اطلاعات تحصیلی خود را در زیر وارد کنید تا فرآیند را کامل کرده و یک دریافت کنید.",
-  "useEducationDiscount": "استفاده از تخفیف آموزشی"
+  "tooManyAttempts": "تلاش‌های بیش از حد. لطفاً بعداً دوباره تلاش کنید.",
+  "useEducationDiscount": "استفاده از تخفیف آموزشی",
+  "verifyFailed": "نتوانستیم وضعیت آموزشی شما را تأیید کنیم. اگر اخیراً تأیید شده‌اید، ممکن است تأییدیه آموزشی فعلی شما هنوز فعال باشد. در غیر این صورت، لطفاً بعداً دوباره تلاش کنید."
 }

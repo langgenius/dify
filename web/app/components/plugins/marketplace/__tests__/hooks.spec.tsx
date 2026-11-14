@@ -11,8 +11,8 @@ vi.mock('@/service/base', () => ({
   postMarketplace: vi.fn(),
 }))
 
-vi.mock('../utils', () => ({
-  getFormattedPlugin: (plugin: unknown) => plugin,
+vi.mock('../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils')>()),
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePluginsByCollectionId,
 }))
@@ -157,6 +157,8 @@ const createPlugin = (pluginID: string, category: PluginCategoryEnum) =>
     plugin_id: pluginID,
     type: 'plugin',
     category,
+    name: pluginID,
+    org: 'dify',
   }) as Plugin
 
 const createInfiniteData = (plugin: Plugin, pageSize: number) => ({

@@ -1,15 +1,11 @@
 import type { DataSourceNodeType } from '../../types'
 import { act } from '@testing-library/react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
-import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderNodeConfig } from '../../../__tests__/render-node-config'
 import { useConfig } from '../use-config'
 
-const { update } = vi.hoisted(() => ({ update: vi.fn() }))
-vi.mock('../../../../hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: update }),
-}))
 const data: DataSourceNodeType = {
   title: 'Datasource',
   desc: '',
@@ -23,26 +19,19 @@ const data: DataSourceNodeType = {
   datasource_configurations: {},
   _dataSourceStartToAdd: true,
 }
-const nodes = [{ id: 'datasource', position: { x: 0, y: 0 }, data }]
-beforeEach(() => vi.clearAllMocks())
-
-it('clears local-file initialization and saves parameters and extensions through the draft owner', () => {
-  const { result } = renderWorkflowFlowHook(() => useConfig('datasource', data), { nodes })
-  expect(update).toHaveBeenCalledWith({
-    id: 'datasource',
-    data: { ...data, _dataSourceStartToAdd: false },
-  })
-  act(() => result.current.handleFileExtensionsChange(['pdf', 'csv']))
-  expect(update).toHaveBeenLastCalledWith({
-    id: 'datasource',
-    data: { ...data, fileExtensions: ['pdf', 'csv'] },
-  })
+it('persists initialization, extensions and consecutive parameter edits in the datasource graph', () => {
+  const { result } = renderNodeConfig(useConfig, data)
+  expect(result.current.flow.getNode('node')?.data._dataSourceStartToAdd).toBe(false)
+  act(() => result.current.config.handleFileExtensionsChange(['pdf', 'csv']))
   act(() =>
-    result.current.handleParametersChange({ count: { type: VarKindType.constant, value: 0 } }),
+    result.current.config.handleParametersChange({
+      count: { type: VarKindType.constant, value: 0 },
+    }),
   )
-  expect(update).toHaveBeenLastCalledWith({
-    id: 'datasource',
-    data: { ...data, datasource_parameters: { count: { type: VarKindType.constant, value: 0 } } },
+  expect(result.current.flow.getNode('node')?.data).toMatchObject({
+    _dataSourceStartToAdd: false,
+    fileExtensions: ['pdf', 'csv'],
+    datasource_parameters: { count: { type: VarKindType.constant, value: 0 } },
   })
 })
 
@@ -59,11 +48,9 @@ it('reads generated datasource output declarations and safely keeps unknown prop
       nullable: null,
     },
   }
-  const { result } = renderWorkflowFlowHook(() => useConfig('datasource', data, [provider]), {
-    nodes,
-  })
-  expect(result.current.hasObjectOutput).toBe(true)
-  expect(result.current.outputSchema.map(({ name, type }) => ({ name, type }))).toEqual([
+  const { result } = renderNodeConfig((id, payload) => useConfig(id, payload, [provider]), data)
+  expect(result.current.config.hasObjectOutput).toBe(true)
+  expect(result.current.config.outputSchema.map(({ name, type }) => ({ name, type }))).toEqual([
     { name: 'metadata', type: 'object' },
     { name: 'names', type: 'array[string]' },
     { name: 'missingItems', type: 'array[unknown]' },
@@ -74,11 +61,11 @@ it('reads generated datasource output declarations and safely keeps unknown prop
   ])
 })
 
-it('accepts null output schemas and absent catalog data', () => {
-  const { result } = renderWorkflowFlowHook(
-    () => useConfig('datasource', data, [createDatasourceProvider()]),
-    { nodes },
+it('accepts a datasource without declared outputs', () => {
+  const { result } = renderNodeConfig(
+    (id, payload) => useConfig(id, payload, [createDatasourceProvider()]),
+    data,
   )
-  expect(result.current.outputSchema).toEqual([])
-  expect(result.current.hasObjectOutput).toBe(false)
+  expect(result.current.config.outputSchema).toEqual([])
+  expect(result.current.config.hasObjectOutput).toBe(false)
 })

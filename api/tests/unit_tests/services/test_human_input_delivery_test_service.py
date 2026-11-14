@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -37,7 +38,7 @@ from services.human_input_delivery_test_service import (
 )
 
 
-def _make_valid_email_config():
+def _make_valid_email_config() -> EmailDeliveryConfig:
     return EmailDeliveryConfig(
         recipients=EmailRecipients(include_bound_group=False, items=[]),
         subject="Subj",
@@ -45,7 +46,7 @@ def _make_valid_email_config():
     )
 
 
-def test_build_form_link(config_overrides: Callable[..., None]):
+def test_build_form_link(config_overrides: Callable[..., None]) -> None:
     config_overrides(APP_WEB_URL="http://example.com/")
     assert _build_form_link("token123") == "http://example.com/form/token123"
 
@@ -59,7 +60,7 @@ def test_build_form_link(config_overrides: Callable[..., None]):
 
 
 class TestDeliveryTestRegistry:
-    def test_register(self):
+    def test_register(self) -> None:
         registry = DeliveryTestRegistry()
         assert len(registry._handlers) == 0
         handler = MagicMock()
@@ -67,13 +68,15 @@ class TestDeliveryTestRegistry:
         assert len(registry._handlers) == 1
         assert registry._handlers[0] == handler
 
-    def test_register_and_dispatch(self):
+    def test_register_and_dispatch(self) -> None:
         handler = MagicMock()
         handler.supports.return_value = True
         handler.send_test.return_value = DeliveryTestResult(status=DeliveryTestStatus.OK)
 
         registry = DeliveryTestRegistry([handler])
-        context = MagicMock(spec=DeliveryTestContext)
+        context = DeliveryTestContext(
+            tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
+        )
         method = MagicMock()
 
         result = registry.dispatch(context=context, method=method)
@@ -82,12 +85,14 @@ class TestDeliveryTestRegistry:
         handler.supports.assert_called_once_with(method)
         handler.send_test.assert_called_once_with(context=context, method=method)
 
-    def test_dispatch_unsupported(self):
+    def test_dispatch_unsupported(self) -> None:
         handler = MagicMock()
         handler.supports.return_value = False
 
         registry = DeliveryTestRegistry([handler])
-        context = MagicMock(spec=DeliveryTestContext)
+        context = DeliveryTestContext(
+            tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
+        )
         method = MagicMock()
 
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
@@ -105,21 +110,26 @@ class TestDeliveryTestRegistry:
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
 
 
-def test_human_input_delivery_test_service():
-    registry = MagicMock(spec=DeliveryTestRegistry)
+def test_human_input_delivery_test_service(mocker: MockerFixture, sqlite_engine: Engine) -> None:
+    handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
+    send_test = mocker.patch.object(handler, "send_test", return_value=DeliveryTestResult(status=DeliveryTestStatus.OK))
+    registry = DeliveryTestRegistry([handler])
+    dispatch = mocker.spy(registry, "dispatch")
     service = HumanInputDeliveryTestService(registry=registry)
-    context = MagicMock(spec=DeliveryTestContext)
-    method = MagicMock()
+    context = DeliveryTestContext(
+        tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
+    )
+    method = EmailDeliveryMethod(config=_make_valid_email_config())
 
-    service.send_test(context=context, method=method)
-    registry.dispatch.assert_called_once_with(context=context, method=method)
+    assert service.send_test(context=context, method=method).status == DeliveryTestStatus.OK
+    dispatch.assert_called_once_with(context=context, method=method)
+    send_test.assert_called_once_with(context=context, method=method)
 
 
 class TestEmailDeliveryTestHandler:
-    def test_init_with_engine(self):
-        engine = MagicMock(spec=Engine)
-        handler = EmailDeliveryTestHandler(session_factory=engine)
-        assert handler._session_factory.kw["bind"] == engine
+    def test_init_with_engine(self, sqlite_engine: Engine) -> None:
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
+        assert handler._session_factory.kw["bind"] is sqlite_engine
 
     def test_supports(self, sqlite_engine: Engine) -> None:
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
@@ -173,7 +183,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
-        handler._resolve_recipients = MagicMock(return_value=[])
+        monkeypatch.setattr(handler, "_resolve_recipients", MagicMock(return_value=[]))
 
         context = DeliveryTestContext(
             tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
@@ -195,7 +205,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(service_module, "render_email_template", lambda t, s: f"RENDERED_{t}")
 
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
-        handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
+        monkeypatch.setattr(handler, "_resolve_recipients", MagicMock(return_value=["test@example.com"]))
 
         variable_pool = VariablePool()
         context = DeliveryTestContext(
@@ -235,7 +245,7 @@ class TestEmailDeliveryTestHandler:
         )
 
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
-        handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
+        monkeypatch.setattr(handler, "_resolve_recipients", MagicMock(return_value=["test@example.com"]))
 
         context = DeliveryTestContext(
             tenant_id="t1",
@@ -247,7 +257,7 @@ class TestEmailDeliveryTestHandler:
         )
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
-                recipients=EmailRecipients(whole_workspace=False, items=[]),
+                recipients=EmailRecipients(include_bound_group=False, items=[]),
                 subject="<b>Notice</b>\r\nBCC:{{ recipient_email }}",
                 body="Body",
             )
@@ -320,7 +330,7 @@ class TestEmailDeliveryTestHandler:
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         assert handler._query_workspace_member_emails(tenant_id="t1", user_ids=[]) == {}
 
-    def test_build_substitutions(self, config_overrides: Callable[..., None]):
+    def test_build_substitutions(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(APP_WEB_URL="http://example.com")
         context = DeliveryTestContext(
             tenant_id="t1",

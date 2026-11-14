@@ -1,4 +1,8 @@
 {
+  "callback.error": "권한 부여 실패",
+  "callback.errorHint": "이전 페이지로 돌아가 다시 시도해 주세요.",
+  "callback.success": "권한 부여 완료",
+  "callback.successHint": "이제 이 탭을 닫고 이전 페이지로 돌아갈 수 있습니다.",
   "connect": "연결",
   "continue": "계속",
   "error.authAppInfoFetchFailed": "인증을 위한 앱 정보를 가져오지 못했습니다.",

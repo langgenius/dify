@@ -46,7 +46,12 @@ const usePipelineStartRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     await doSyncWorkflowDraft()
     setIsPreparingDataSource?.(true)
     setShowDebugAndPreviewPanel(true)
-  }, [workflowStore, handleCancelDebugAndPreviewPanel, doSyncWorkflowDraft])
+  }, [
+    workflowStore,
+    handleCancelDebugAndPreviewPanel,
+    doSyncWorkflowDraft,
+    closeAllInputFieldPanels,
+  ])
 
   const handleStartWorkflowRun = useCallback(() => {
     handleWorkflowStartRunInWorkflow()

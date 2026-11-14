@@ -1,257 +1,258 @@
-"""Behavior tests for the runtime Dify config layer."""
-
-from __future__ import annotations
+"""Eager config pre-pulls persist state; conditional skill tools return full content or error observations."""
 
 import json
-from typing import Literal
 
+import httpx
 import pytest
+from pydantic import ValidationError
+from pydantic_ai import RunContext
+from pydantic_ai.messages import ToolReturnPart
+from pydantic_ai.models.function import DeltaToolCall
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.usage import RunUsage
 
-from dify_agent.layers.config import DifyConfigLayerConfig
-from dify_agent.layers.config.layer import (
-    DifyConfigLayer,
-    DifyConfigLayerError,
-    _AGENT_FILE_UPLOAD_REPLY_HINT,
-)
-from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
+from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellProviderError
+from dify_agent.layers.config import layer as config_module
+from dify_agent.layers.shell.layer import ShellSession
+from dify_agent.protocol.schemas import RunLayerSpec, RunSucceededEvent
+from dify_agent.runtime.context import Deps, Services
+from dify_agent.runtime_backend import RuntimeBackendProfile
+from tests.local.dify_agent.runtime.test_runner import Backend, Commands, request, run_runner, runtime_specs
 
 
-def _shell_layer() -> DifyShellLayer:
-    return DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(),
-    )
+@pytest.mark.anyio
+async def test_first_pull_failure_retries_then_current_config_refreshes_without_repull(monkeypatch):
+    commands = Commands()
+    backend = Backend(commands)
+    pulls = []
+    fail = True
 
-
-def _build_layer(*, writable: bool = True) -> DifyConfigLayer:
-    layer = DifyConfigLayer.from_config(
-        DifyConfigLayerConfig.model_validate(
-            {
-                "agent_id": "agent-1",
-                "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": writable},
-                "skills": [{"name": "runtime-skill", "description": "Runtime skill."}],
-                "files": [{"name": "runtime-file.txt"}],
-                "env_keys": ["RUNTIME_KEY"],
-                "note": "Runtime note.",
-                "mentioned_skill_names": ["alpha"],
-                "mentioned_file_names": ["guide.txt"],
-            }
+    async def pull(session, script, **kwargs):
+        assert backend.active
+        assert kwargs["inject_agent_stub_env"] is True
+        pulls.append(script)
+        output = (
+            ""
+            if fail
+            else json.dumps(
+                {"items": [{"name": "skill", "directory_path": "/skills/skill", "skill_md": "Instructions from skill"}]}
+            )
         )
+        return CompleteShellCommandResult("pull", "exited", True, 1 if fail else 0, output, True, None, len(output))
+
+    monkeypatch.setattr(ShellSession, "run_remote_script", pull)
+    seen_instructions = []
+
+    async def stream(messages, info):
+        assert "Instructions from skill" in info.instructions
+        seen_instructions.append(info.instructions)
+        yield "done"
+
+    def spec(note, *, writable=False):
+        return RunLayerSpec(
+            name="config",
+            config={
+                "mentioned_skill_names": ["skill"],
+                "note": note,
+                "config_version": {"kind": "build_draft" if writable else "snapshot", "writable": writable},
+            },
+        )
+
+    async with httpx.AsyncClient() as client:
+        services = Services(client, client, runtime_backend_profile=RuntimeBackendProfile(None, backend))
+        # Config precedes both resources in the submitted list; native ordering owns entry.
+        first, _ = run_runner(request(spec("original"), *runtime_specs()), services, monkeypatch, stream)
+        with pytest.raises(config_module.DifyConfigLayerError):
+            await first.run()
+        assert first.terminal_session_snapshot.layers["config"]["initialized"] is False
+        assert backend.released == 1
+        fail = False
+        second, _ = run_runner(
+            request(spec("original"), *runtime_specs(), snapshot=first.terminal_session_snapshot),
+            services,
+            monkeypatch,
+            stream,
+            run_id="second",
+        )
+        await second.run()
+        assert second.terminal_session_snapshot.layers["config"]["initialized"] is True
+        third, _ = run_runner(
+            request(spec("revised", writable=True), *runtime_specs(), snapshot=second.terminal_session_snapshot),
+            services,
+            monkeypatch,
+            stream,
+            run_id="third",
+        )
+        await third.run()
+        assert len(pulls) == 2
+        assert backend.acquired == backend.released == 3
+        state = third.terminal_session_snapshot.layers["config"]
+        assert "original" in seen_instructions[0] and "revised" in seen_instructions[1]
+        assert "dify-agent config env push --help" not in seen_instructions[0]
+        assert "dify-agent config env push --help" in seen_instructions[1]
+        assert "dify-agent config prompt pull --help" in seen_instructions[0]
+        assert "dify-agent config prompt pull --help" in seen_instructions[1]
+        assert "dify-agent config prompt push --help" not in seen_instructions[0]
+        assert "dify-agent config prompt push --help" in seen_instructions[1]
+        assert "already-built run requests keep their prompt" in seen_instructions[1]
+        assert set(state) == {"initialized", "pulled_skill_outputs", "pulled_file_outputs"}
+        assert "Instructions from skill" in state["pulled_skill_outputs"]["skill"]
+
+
+def _skill_spec(*skills):
+    return RunLayerSpec(name="config", config={"skills": [{"name": name} for name in skills]})
+
+
+def _pull_result(output, *, exit_code=0, complete=True):
+    return CompleteShellCommandResult(
+        "pull", "exited", True, exit_code, output, complete, None if complete else "output_limit", len(output)
     )
-    layer.bind_deps({"shell": _shell_layer()})
-    return layer
 
 
-def _remote_result(
-    output: str,
-    *,
-    exit_code: int | None = 0,
-    output_complete: bool = True,
-    incomplete_reason: Literal["output_limit", "timeout"] | None = None,
-) -> CompleteRemoteCommandResult:
-    return CompleteRemoteCommandResult(
-        job_id="remote-config-pull",
-        status="exited",
-        done=True,
-        exit_code=exit_code,
-        output=output,
-        output_complete=output_complete,
-        incomplete_reason=incomplete_reason,
-        offset=len(output),
-        output_path="/tmp/config-pull-output.log",
-    )
+async def _run_skill_reads(monkeypatch, pulls, calls, *skills):
+    """Drive one run whose model issues each read call in turn; return pull scripts and tool results."""
+    backend = Backend(Commands())
+    scripts = []
 
+    async def pull(session, script, **kwargs):
+        assert kwargs["inject_agent_stub_env"] is True
+        scripts.append(script)
+        result = pulls.pop(0)
+        if isinstance(result, RuntimeError):
+            raise result
+        return result
 
-def _skill_pull_output(*names: str, include_skill: bool = True) -> str:
-    items = []
-    if include_skill:
-        items = [
-            {
-                "name": name,
-                "archive_path": f"/workspace/.dify_conf/skills/{name}.zip",
-                "directory_path": f"/workspace/.dify_conf/skills/{name}",
-                "skill_md": "# Alpha\nUse it.\n",
-            }
-            for name in names or ("alpha",)
-        ]
-    return json.dumps({"items": items})
+    monkeypatch.setattr(ShellSession, "run_remote_script", pull)
+    observed = []
 
+    async def stream(messages, info):
+        if len(messages) > 1:
+            observed.append(messages[-1].parts[0])
+        if len(observed) == len(calls):
+            yield "done"
+            return
+        args = json.dumps({"name": calls[len(observed)]})
+        yield {0: DeltaToolCall(name="read_config_skill_md", json_args=args, tool_call_id=f"read-{len(observed)}")}
 
-def _file_pull_output(*names: str, include_file: bool = True) -> str:
-    items = []
-    if include_file:
-        items = [{"name": name, "path": f"/workspace/.dify_conf/files/{name}"} for name in names or ("guide.txt",)]
-    return json.dumps({"items": items})
-
-
-def test_build_shell_pull_scripts_include_targets() -> None:
-    layer = _build_layer()
-
-    skill_script = layer._build_shell_skill_pull_script(["alpha", "skill with space"])
-    file_script = layer._build_shell_file_pull_script(["guide.txt", "file with space.txt"])
-
-    assert skill_script == "set -eu\ndify-agent config skills pull --json alpha 'skill with space'"
-    assert file_script == "set -eu\ndify-agent config files pull --json guide.txt 'file with space.txt'"
-
-
-@pytest.mark.anyio
-async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_assets_in_batches(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    layer = _build_layer()
-    captured_scripts: list[str] = []
-    active_commands = 0
-    max_active_commands = 0
-
-    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        nonlocal active_commands, max_active_commands
-        del self, timeout
-        assert inject_agent_stub_env is True
-        assert "--help" not in script
-        assert "dify-agent config manifest" not in script
-        captured_scripts.append(script)
-        active_commands += 1
-        max_active_commands = max(max_active_commands, active_commands)
-        active_commands -= 1
-        if "skills pull" in script:
-            return _remote_result(_skill_pull_output())
-        if "files pull" in script:
-            return _remote_result(_file_pull_output())
-        raise AssertionError(f"unexpected script: {script}")
-
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
-
-    await layer.on_context_create()
-
-    assert max_active_commands == 1
-    assert len(captured_scripts) == 2
-    assert captured_scripts == [
-        "set -eu\ndify-agent config skills pull --json alpha",
-        "set -eu\ndify-agent config files pull --json guide.txt",
-    ]
-    assert layer.runtime_state.pulled_skill_outputs == {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
-    assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
-    assert "dify-agent config note push --help" in layer.runtime_state.config_cli_help
-    assert "dify-agent file upload --help" in layer.runtime_state.config_cli_help
-    assert "dify-agent file public-url --help" in layer.runtime_state.config_cli_help
-    assert "dify-agent file download --help" in layer.runtime_state.config_cli_help
-    assert layer.runtime_state.push_spec_json_schema == ""
-    suffix_prompt = layer.build_suffix_prompt()
-    assert suffix_prompt.index("Agent config CLI reference for installed `dify-agent`:") < suffix_prompt.index(
-        "Agent file CLI reference for installed `dify-agent`:"
-    )
-    assert "$ dify-agent file upload --help" in suffix_prompt
-    assert "$ dify-agent file public-url --help" in suffix_prompt
-    assert "$ dify-agent file download --help" in suffix_prompt
-    assert suffix_prompt.index("$ dify-agent file upload --help") < suffix_prompt.index(
-        "$ dify-agent file public-url --help"
-    )
-    assert suffix_prompt.index("$ dify-agent file public-url --help") < suffix_prompt.index(
-        "$ dify-agent file download --help"
-    )
-    assert _AGENT_FILE_UPLOAD_REPLY_HINT in suffix_prompt
-
-
-@pytest.mark.anyio
-async def test_on_context_create_batches_all_mentioned_assets_into_two_serial_jobs(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    layer = _build_layer()
-    layer.config = layer.config.model_copy(
-        update={
-            "mentioned_skill_names": [f"skill-{index}" for index in range(4)],
-            "mentioned_file_names": [f"file-{index}.txt" for index in range(4)],
+    async with httpx.AsyncClient() as client:
+        services = Services(client, client, runtime_backend_profile=RuntimeBackendProfile(None, backend))
+        runner, sink = run_runner(request(_skill_spec(*skills), *runtime_specs()), services, monkeypatch, stream)
+        await runner.run()
+        terminal = sink.events["test"][-1]
+        assert isinstance(terminal, RunSucceededEvent) and terminal.data.output == "done"
+        assert terminal.data.session_snapshot.layers["config"] == {
+            "initialized": True,
+            "pulled_skill_outputs": {},
+            "pulled_file_outputs": {},
         }
+        assert not pulls
+    return scripts, observed
+
+
+@pytest.mark.anyio
+async def test_read_config_skill_md_returns_full_large_skill_after_consecutive_unknown_names(monkeypatch):
+    decisive = "VERIFY THE IMPORT ROW COUNT BEFORE COMMITTING"
+    skill_md = "# Alpha\n" + "A" * 5600 + decisive + "B" * 5600
+    payload = json.dumps({"items": [{"name": "alpha", "directory_path": "/skills/alpha", "skill_md": skill_md}]})
+
+    scripts, observed = await _run_skill_reads(
+        monkeypatch, [_pull_result(payload)], ["other", "missing", "alpha"], "alpha"
     )
-    captured_scripts: list[str] = []
 
-    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, timeout
-        assert inject_agent_stub_env is True
-        captured_scripts.append(script)
-        if "skills pull" in script:
-            return _remote_result(_skill_pull_output(*(f"skill-{index}" for index in range(4))))
-        return _remote_result(_file_pull_output(*(f"file-{index}.txt" for index in range(4))))
-
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
-
-    await layer.on_context_create()
-
-    assert captured_scripts == [
-        "set -eu\ndify-agent config skills pull --json skill-0 skill-1 skill-2 skill-3",
-        "set -eu\ndify-agent config files pull --json file-0.txt file-1.txt file-2.txt file-3.txt",
-    ]
-    assert set(layer.runtime_state.pulled_skill_outputs) == {f"skill-{index}" for index in range(4)}
-    assert set(layer.runtime_state.pulled_file_outputs) == {f"file-{index}.txt" for index in range(4)}
+    assert all(isinstance(part, ToolReturnPart) for part in observed)
+    assert [part.content for part in observed[:2]] == ["unknown config skill: other", "unknown config skill: missing"]
+    assert observed[2].content == skill_md
+    assert scripts == ["set -eu\ndify-agent config skills pull --json alpha"]
 
 
 @pytest.mark.anyio
-async def test_on_context_resume_does_not_recompute_or_pull(monkeypatch: pytest.MonkeyPatch) -> None:
-    layer = _build_layer()
-    layer.runtime_state.config_context_json = "cached"
-    layer.runtime_state.config_cli_help = {"cached": "help"}
+@pytest.mark.parametrize(
+    ("failed_pull", "expected_error"),
+    [
+        (_pull_result("pull failed", exit_code=1), "pull failed in shell"),
+        (_pull_result("partial", complete=False), "output was incomplete"),
+        (_pull_result("invalid json"), "invalid JSON pull output"),
+        (_pull_result('{"items": []}'), "missing skill content"),
+        (ShellProviderError("shell provider unavailable"), "shell provider unavailable"),
+        (RuntimeError("missing active Runtime lease"), "missing active Runtime lease"),
+        (RuntimeError("agent stub env unavailable"), "agent stub env unavailable"),
+    ],
+)
+async def test_read_config_skill_md_recovers_after_unknown_name_and_consecutive_pull_errors(
+    monkeypatch, failed_pull, expected_error
+):
+    payload = json.dumps({"items": [{"name": "alpha", "skill_md": "é"}]})
 
-    async def fail_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, script, inject_agent_stub_env, timeout
-        raise AssertionError("resume must not run config shell commands")
+    _, observed = await _run_skill_reads(
+        monkeypatch,
+        [failed_pull, failed_pull, _pull_result(payload)],
+        ["other", "alpha", "alpha", "alpha"],
+        "alpha",
+    )
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fail_run_remote_script)
-
-    await layer.on_context_resume()
-
-    assert layer.runtime_state.config_context_json == "cached"
-    assert layer.runtime_state.config_cli_help == {"cached": "help"}
-
-
-@pytest.mark.anyio
-async def test_on_context_create_raises_when_shell_output_is_truncated(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    layer = _build_layer()
-
-    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, inject_agent_stub_env, timeout
-        if "skills pull" in script:
-            return _remote_result(_skill_pull_output(), output_complete=False, incomplete_reason="output_limit")
-        return _remote_result(_file_pull_output())
-
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
-
-    with pytest.raises(DifyConfigLayerError, match="output was incomplete"):
-        await layer.on_context_create()
+    assert all(isinstance(part, ToolReturnPart) for part in observed)
+    assert observed[0].content == "unknown config skill: other"
+    assert all(expected_error in part.content for part in observed[1:3])
+    assert observed[3].content == "é"
 
 
 @pytest.mark.anyio
-async def test_on_context_create_raises_when_mentioned_skill_is_missing(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    layer = _build_layer()
+@pytest.mark.parametrize(
+    ("field", "payload", "expected_error"),
+    [
+        ("config", {"skills": "invalid"}, "skills"),
+        ("state", {"pulled_skill_outputs": "invalid"}, "pulled_skill_outputs"),
+    ],
+)
+async def test_read_config_skill_md_does_not_mask_invalid_layer_data(field, payload, expected_error):
+    async with httpx.AsyncClient() as client:
+        deps = Deps(
+            layers={"config": {"config": _skill_spec("alpha").config, "state": {}}},
+            services=Services(client, client),
+            run_id="test",
+        )
+        deps.resources.shells["shell"] = ShellSession("shell", deps)
+        ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
+        toolset = config_module.Capability("config").get_toolset()
+        tools = await toolset.get_tools(ctx)
+        # Isolate dispatch validation from the prepare hook's own config validation.
+        deps.layers["config"][field] = payload
 
-    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, inject_agent_stub_env, timeout
-        if "skills pull" in script:
-            return _remote_result(_skill_pull_output(include_skill=False))
-        return _remote_result(_file_pull_output())
-
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
-
-    with pytest.raises(DifyConfigLayerError, match="missing pull output"):
-        await layer.on_context_create()
+        with pytest.raises(ValidationError, match=expected_error):
+            await toolset.call_tool("read_config_skill_md", {"name": "alpha"}, ctx, tools["read_config_skill_md"])
 
 
 @pytest.mark.anyio
-async def test_on_context_create_raises_when_mentioned_file_is_missing(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    layer = _build_layer()
+@pytest.mark.parametrize("skills", [(), ("alpha",)])
+async def test_read_config_skill_md_prepare_only_requires_config(skills):
+    async with httpx.AsyncClient() as client:
+        deps = Deps(
+            layers={"config": {"config": _skill_spec(*skills).config, "state": {"pulled_skill_outputs": "invalid"}}},
+            services=Services(client, client),
+            run_id="test",
+        )
+        ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
 
-    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, inject_agent_stub_env, timeout
-        if "skills pull" in script:
-            return _remote_result(_skill_pull_output())
-        return _remote_result(_file_pull_output(include_file=False))
+        tools = await config_module.Capability("config").get_toolset().get_tools(ctx)
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    assert ("read_config_skill_md" in tools) is bool(skills)
 
-    with pytest.raises(DifyConfigLayerError, match="missing pull output"):
-        await layer.on_context_create()
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("skills", [(), ("alpha",)])
+async def test_read_config_skill_md_is_offered_only_with_configured_skills(monkeypatch, skills):
+    backend = Backend(Commands())
+    seen = []
+
+    async def stream(messages, info):
+        seen.append(({t.name for t in info.function_tools}, info.instructions))
+        yield "done"
+
+    async with httpx.AsyncClient() as client:
+        services = Services(client, client, runtime_backend_profile=RuntimeBackendProfile(None, backend))
+        runner, _ = run_runner(request(_skill_spec(*skills), *runtime_specs()), services, monkeypatch, stream)
+        await runner.run()
+
+    tool_names, instructions = seen[0]
+    assert ("read_config_skill_md" in tool_names) is bool(skills)
+    assert ("read_config_skill_md(name)" in instructions) is bool(skills)

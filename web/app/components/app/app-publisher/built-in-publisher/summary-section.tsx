@@ -1,11 +1,11 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import type { ModelAndParameter } from '../../configuration/debug/types'
 import type { AppPublisherProps } from '../types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -34,6 +34,8 @@ type PublisherSummarySectionProps = Pick<
   handleRestore: () => Promise<void>
   environmentTabs?: ReactNode
   isChatApp: boolean
+  isPublishing: boolean
+  keyboardTarget: RefObject<HTMLDivElement | null>
   isWorkflowApp?: boolean
   onEditVersion?: () => void
   published: boolean
@@ -49,6 +51,8 @@ export function PublisherSummarySection({
   handlePublish,
   handleRestore,
   isChatApp,
+  isPublishing,
+  keyboardTarget,
   isWorkflowApp = false,
   multipleModelConfigs = [],
   onEditVersion,
@@ -72,6 +76,18 @@ export function PublisherSummarySection({
     : hasPublishedVersion
       ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
       : t(($) => $['common.publish'], { ns: 'workflow' })
+
+  function requestPublish(params?: ModelAndParameter | PublishWorkflowParams) {
+    if (publishButtonDisabled || isPublishing) return
+    return handlePublish(params)
+  }
+
+  useHotkey(APP_PUBLISH_HOTKEY, () => void requestPublish(), {
+    target: keyboardTarget,
+    enabled: !publishButtonDisabled && !isPublishing && !debugWithMultipleModel,
+    ignoreInputs: false,
+    requireReset: true,
+  })
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -176,17 +192,18 @@ export function PublisherSummarySection({
       <div className="flex w-full flex-col">
         {debugWithMultipleModel ? (
           <PublishWithMultipleModel
-            disabled={publishButtonDisabled}
+            disabled={publishButtonDisabled || isPublishing}
             multipleModelConfigs={multipleModelConfigs}
-            onSelect={(item) => handlePublish(item)}
+            onSelect={(item) => requestPublish(item)}
           />
         ) : (
           <>
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => handlePublish()}
+              onClick={() => void requestPublish()}
               disabled={publishButtonDisabled}
+              loading={isPublishing}
             >
               {publishDisabled ? (
                 publishButtonLabel
@@ -194,9 +211,9 @@ export function PublisherSummarySection({
                 <span className="flex items-center gap-1">
                   <span>{publishButtonLabel}</span>
                   <KbdGroup aria-hidden>
-                    {APP_PUBLISH_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(APP_PUBLISH_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white" disabled={publishButtonDisabled}>
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

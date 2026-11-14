@@ -6,6 +6,8 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
+from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as clean_document_task_module
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
     Dataset,
     DatasetMetadataBinding,
@@ -20,10 +23,11 @@ from models.dataset import (
     DocumentSegment,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType
+from models.enums import CreatorUserRole, DataSourceType
+from models.knowledge_fs import KnowledgeFSUpgradeFileLease, KnowledgeFSUpgradeJob
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
-from tests.unit_tests.model_factories import make_document
+from tests.helpers.unit.model_factories import make_document
 
 SQLITE_MODELS = (
     Dataset,
@@ -64,27 +68,17 @@ def bind_task_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session)
 
 
 @pytest.fixture
-def mock_storage():
+def mock_storage() -> Generator[MagicMock]:
     with patch("tasks.clean_document_task.storage", autospec=True) as mock:
         mock.delete.return_value = None
         yield mock
 
 
 @pytest.fixture
-def mock_index_processor_factory():
-    """Mock the vector/index boundary so cleanup behavior is deterministic."""
-    with patch("tasks.clean_document_task.IndexProcessorFactory", autospec=True) as factory_cls:
-        processor = MagicMock()
-        processor.clean.return_value = None
-        factory_instance = MagicMock()
-        factory_instance.init_index_processor.return_value = processor
-        factory_cls.return_value = factory_instance
-
-        yield {
-            "factory_cls": factory_cls,
-            "factory_instance": factory_instance,
-            "processor": processor,
-        }
+def mock_index_cleanup(tenant_id: str) -> Generator[MagicMock]:
+    """Keep task resilience tests independent of the external index backend."""
+    with patch("tasks.clean_document_task.clean_document_indexes", return_value=tenant_id) as cleanup:
+        yield cleanup
 
 
 def _document(*, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> Document:
@@ -208,8 +202,8 @@ class TestVectorCleanupResilience:
         tenant_id: str,
         sqlite_session: Session,
         bind_task_sessions: None,
-        mock_storage,
-        mock_index_processor_factory,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
     ) -> None:
         """A transient billing failure leaves only the unrelated document's rows."""
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
@@ -219,7 +213,7 @@ class TestVectorCleanupResilience:
             tenant_id=tenant_id,
             target_segment_ids=["seg-1", "seg-2"],
         )
-        mock_index_processor_factory["processor"].clean.side_effect = ValueError(
+        mock_index_cleanup.side_effect = ValueError(
             "Unable to retrieve billing information. Please try again later or contact support."
         )
 
@@ -232,7 +226,7 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        mock_index_processor_factory["processor"].clean.assert_called_once()
+        mock_index_cleanup.assert_called_once()
         _assert_relational_cleanup(
             sqlite_session,
             document_id=document_id,
@@ -241,6 +235,77 @@ class TestVectorCleanupResilience:
         )
         schedule_refresh.assert_not_called()
 
+
+def test_active_upgrade_lease_keeps_the_legacy_source_file(
+    document_id: str,
+    dataset_id: str,
+    tenant_id: str,
+    sqlite_session: Session,
+    bind_task_sessions: None,
+    mock_storage: MagicMock,
+    mock_index_cleanup: MagicMock,
+) -> None:
+    del bind_task_sessions, mock_index_cleanup
+    _persist_deleted_document_state(
+        sqlite_session,
+        document_id=document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        target_segment_ids=[],
+    )
+    account_id = str(uuid.uuid4())
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/source.txt",
+        name="source.txt",
+        size=12,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+        created_at=datetime(2026, 8, 17, tzinfo=UTC),
+        used=False,
+    )
+    now = datetime.now(UTC).replace(tzinfo=None)
+    job = KnowledgeFSUpgradeJob(
+        tenant_id=tenant_id,
+        old_dataset_id=dataset_id,
+        requested_by_account_id=account_id,
+        owner_account_id=account_id,
+        idempotency_key="cleanup-lease-test",
+        snapshot_at=now,
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+    )
+    sqlite_session.add_all([upload_file, job])
+    sqlite_session.flush()
+    lease = KnowledgeFSUpgradeFileLease(
+        job_id=job.id,
+        old_upload_file_id=upload_file.id,
+        expires_at=now + timedelta(hours=1),
+    )
+    sqlite_session.add(lease)
+    sqlite_session.commit()
+
+    clean_document_task(
+        document_id=document_id,
+        dataset_id=dataset_id,
+        doc_form="paragraph",
+        file_id=upload_file.id,
+    )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, upload_file.id) is not None
+    persisted_lease = sqlite_session.get(KnowledgeFSUpgradeFileLease, lease.id)
+    assert persisted_lease is not None
+    assert persisted_lease.cleanup_requested_at is not None
+    mock_storage.delete.assert_not_called()
+
+
+class TestVectorCleanupSuccessPaths:
     def test_vector_cleanup_success_path_remains_unaffected(
         self,
         document_id: str,
@@ -248,8 +313,8 @@ class TestVectorCleanupResilience:
         tenant_id: str,
         sqlite_session: Session,
         bind_task_sessions: None,
-        mock_storage,
-        mock_index_processor_factory,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
     ) -> None:
         """The happy path calls the index boundary and completes scoped cleanup."""
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
@@ -268,15 +333,15 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        mock_index_processor_factory["processor"].clean.assert_called_once()
-        _, kwargs = mock_index_processor_factory["processor"].clean.call_args
-        cleanup_session = kwargs.pop("session")
-        assert isinstance(cleanup_session, Session)
-        assert cleanup_session.get_bind() is sqlite_session.get_bind()
+        mock_index_cleanup.assert_called_once()
+        _, kwargs = mock_index_cleanup.call_args
+        new_session = kwargs.pop("new_session")
+        with new_session() as cleanup_session:
+            assert cleanup_session.get_bind() is sqlite_session.get_bind()
         assert kwargs == {
-            "with_keywords": True,
-            "delete_child_chunks": True,
-            "delete_summaries": True,
+            "dataset_id": dataset_id,
+            "document_ids": [document_id],
+            "doc_form": "paragraph",
         }
         _assert_relational_cleanup(
             sqlite_session,
@@ -286,17 +351,18 @@ class TestVectorCleanupResilience:
         )
         schedule_refresh.assert_called_once_with(tenant_id)
 
-    def test_no_segments_skips_vector_cleanup(
+    def test_no_index_state_does_not_refresh_billing(
         self,
         document_id: str,
         dataset_id: str,
         tenant_id: str,
         sqlite_session: Session,
         bind_task_sessions: None,
-        mock_storage,
-        mock_index_processor_factory,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
     ) -> None:
-        """A target document without segments skips the vector/index boundary."""
+        """Cleanup checks for orphan summaries even when no segments remain."""
+        mock_index_cleanup.return_value = None
         other_document_id, survivor_segment_id = _persist_deleted_document_state(
             sqlite_session,
             document_id=document_id,
@@ -313,7 +379,7 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        mock_index_processor_factory["factory_cls"].assert_not_called()
+        mock_index_cleanup.assert_called_once()
         _assert_relational_cleanup(
             sqlite_session,
             document_id=document_id,

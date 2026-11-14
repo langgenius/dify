@@ -1,3 +1,4 @@
+import type { ComponentPropsWithRef } from 'react'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -29,6 +30,7 @@ const AddCredentialInLoadBalancing = ({
   provider,
   model,
   configurationMethod,
+  currentCustomConfigurationModelFixedFields,
   modelCredential,
   onSelectCredential,
   onUpdate,
@@ -51,17 +53,19 @@ const AddCredentialInLoadBalancing = ({
   )
 
   const renderTrigger = useCallback(
-    (open?: boolean) => {
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
       const Item = (
-        <div
+        <button
+          {...triggerProps}
+          type="button"
           className={cn(
-            'flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-accent hover:bg-state-base-hover',
+            'flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             open && 'bg-state-base-hover',
           )}
         >
-          <span className="mr-2 i-ri-add-line size-4" />
+          <span className="me-2 i-ri-add-line size-4" />
           {t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
-        </div>
+        </button>
       )
 
       return Item
@@ -95,17 +99,10 @@ const AddCredentialInLoadBalancing = ({
       ]}
       showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={
-        isCustomModel
-          ? {
-              __model_name: model.model,
-              __model_type: model.model_type,
-            }
-          : undefined
-      }
+      currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
-      placement="bottom-start"
+      align="start"
       popupTitle={
         isCustomModel
           ? t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })

@@ -12,7 +12,9 @@ class ImportAccounts(Protocol):
 
 
 class AppDefinitionImports(Protocol):
-    def import_dsl(self, context: RequestContext, params: AppImportParams) -> Import: ...
+    def import_dsl(
+        self, context: RequestContext, params: AppImportParams, *, preserve_agent_bindings: bool = False
+    ) -> Import: ...
 
     def confirm_definition(self, context: RequestContext, import_id: str) -> Import: ...
 
@@ -24,8 +26,10 @@ class AppImportService:
         self._accounts = accounts
         self._definitions = definitions
 
-    def import_app(self, context: RequestContext, params: AppImportParams) -> Import:
-        return self._definitions.import_dsl(context, params)
+    def import_app(
+        self, context: RequestContext, params: AppImportParams, *, preserve_agent_bindings: bool = False
+    ) -> Import:
+        return self._definitions.import_dsl(context, params, preserve_agent_bindings=preserve_agent_bindings)
 
     def import_as_creator(
         self,

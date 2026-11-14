@@ -35,9 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_db_command() -> bool:
-    if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
-        return True
-    return False
+    return bool(len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db")
 
 
 def log_startup_banner(host: str, port: int) -> None:

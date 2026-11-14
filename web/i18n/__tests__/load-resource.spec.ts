@@ -13,4 +13,16 @@ describe('locale resource loading', () => {
 
     expect(resource.default).toMatchObject({ 'operation.save': expected })
   })
+
+  it.each([
+    ['en-US', 'Cancel'],
+    ['zh_Hans', '取消'],
+    ['ja_JP', 'Cancel'],
+    ['fr-FR', 'Cancel'],
+    ['az-AZ', 'Cancel'],
+  ])('loads Contacts translations with a usable fallback for %s', async (locale, expected) => {
+    const resource = await loadI18nResource(locale, 'contacts')
+
+    expect(resource.default).toMatchObject({ 'action.cancel': expected })
+  })
 })

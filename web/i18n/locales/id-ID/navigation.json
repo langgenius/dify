@@ -28,6 +28,8 @@
   "menus.plugins": "Integrasi",
   "menus.status": "beta",
   "menus.tools": "Perkakas",
+  "settings.accessToken": "Token akses",
+  "settings.accessTokenDescription": "Buat token API layanan yang hanya memberi akses ke aplikasi dan basis pengetahuan pilihan.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Penagihan",
   "settings.customEndpoint": "Endpoint Kustom",

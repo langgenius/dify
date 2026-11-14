@@ -8,9 +8,24 @@ export type BillingInvoiceResponse = {
   url: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type BillingOperationFailedErrorResponse = {
   code: 'billing_operation_failed'
   message: string
+  status: 502
+}
+
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
   status: 502
 }
 
@@ -20,16 +35,24 @@ export type BillingUnavailableErrorResponse = {
   status: 503
 }
 
-export type PartnerTenantsPayload = {
-  click_id: string
-}
-
-export type BillingResponse = {
-  [key: string]: unknown
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
 }
 
 export type BillingSubscriptionResponse = {
   url: string
+}
+
+export type AnnualDiscountActiveErrorResponse = {
+  code: 'annual_discount_active'
+  message: string
+  status: 409
+}
+
+export type AnnualDiscountActiveError = ErrorResponse & {
+  code: 'annual_discount_active'
+  status: 409
 }
 
 export type BillingUnprocessableEntityErrorResponse = {
@@ -46,9 +69,10 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesErrors = {
-  403: unknown
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  403: ErrorResponse
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetBillingInvoicesError = GetBillingInvoicesErrors[keyof GetBillingInvoicesErrors]
@@ -59,26 +83,6 @@ export type GetBillingInvoicesResponses = {
 
 export type GetBillingInvoicesResponse =
   GetBillingInvoicesResponses[keyof GetBillingInvoicesResponses]
-
-export type PutBillingPartnersByPartnerKeyTenantsData = {
-  body: PartnerTenantsPayload
-  path: {
-    partner_key: string
-  }
-  query?: never
-  url: '/billing/partners/{partner_key}/tenants'
-}
-
-export type PutBillingPartnersByPartnerKeyTenantsErrors = {
-  400: unknown
-}
-
-export type PutBillingPartnersByPartnerKeyTenantsResponses = {
-  200: BillingResponse
-}
-
-export type PutBillingPartnersByPartnerKeyTenantsResponse =
-  PutBillingPartnersByPartnerKeyTenantsResponses[keyof PutBillingPartnersByPartnerKeyTenantsResponses]
 
 export type GetBillingSubscriptionData = {
   body?: never
@@ -91,10 +95,12 @@ export type GetBillingSubscriptionData = {
 }
 
 export type GetBillingSubscriptionErrors = {
-  403: unknown
-  422: BillingUnprocessableEntityErrorResponse
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  403: ErrorResponse
+  409: AnnualDiscountActiveErrorResponse | AnnualDiscountActiveError | ErrorResponse
+  422: BillingUnprocessableEntityErrorResponse | ErrorResponse
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetBillingSubscriptionError =

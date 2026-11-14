@@ -4,29 +4,30 @@ from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
 
-import sqlalchemy as sa
 from pydantic import JsonValue
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from libs.pagination import PaginatedResult, paginate_query
-from models import Account, AppStar
+from models import Account
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -51,20 +52,15 @@ from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import (
-    AgentAppPublicationCounts,
     AppCreationSettings,
     AppDeletion,
     AppEvent,
-    AppListBaseParams,
-    AppListParams,
-    AppListSortBy,
     CreateAppParams,
 )
-from services.model_provider_service import ModelProviderService
-from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.model_provider.service import ModelProviderService
+from services.rbac import contracts as rbac_contracts
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
-from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -83,7 +79,7 @@ def _initialize_created_app_access(created: _CreatedApp) -> None:
     enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
         created.tenant_id,
         created.creator_account_id,
-        enterprise_rbac_service.RBACResourceType.APP,
+        rbac_contracts.RBACResourceType.APP,
         created.app_id,
     )
 
@@ -199,198 +195,22 @@ class AppResponseView:
 
 class AppService:
     @staticmethod
-    def _agent_app_exists_filter(tenant_id: str, *, is_published: bool | None = None) -> sa.Exists:
-        agent_filters = [
-            Agent.tenant_id == tenant_id,
-            Agent.app_id == App.id,
-            Agent.scope == AgentScope.ROSTER,
-            Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-            Agent.status == AgentStatus.ACTIVE,
-        ]
-        if is_published is not None:
-            has_published_config = sa.and_(
-                Agent.active_config_snapshot_id.is_not(None),
-                Agent.active_config_is_published.is_(True),
-            )
-            agent_filters.append(has_published_config if is_published else sa.not_(has_published_config))
-
-        return sa.exists().where(*agent_filters).correlate(App)
-
-    @staticmethod
-    def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
-    ) -> list[sa.ColumnElement[bool]]:
-        filters = [App.tenant_id == tenant_id, App.is_universal == False]
-
-        if params.mode == "workflow":
-            filters.append(App.mode == AppMode.WORKFLOW)
-        elif params.mode == "completion":
-            filters.append(App.mode == AppMode.COMPLETION)
-        elif params.mode == "chat":
-            filters.append(App.mode == AppMode.CHAT)
-        elif params.mode == "advanced-chat":
-            filters.append(App.mode == AppMode.ADVANCED_CHAT)
-        elif params.mode == "agent-chat":
-            filters.append(App.mode == AppMode.AGENT_CHAT)
-        elif params.mode == "agent":
-            filters.append(App.mode == AppMode.AGENT)
-            publication_filter = params.agent_is_published if isinstance(params, AppListParams) else None
-            filters.append(AppService._agent_app_exists_filter(tenant_id, is_published=publication_filter))
-        elif params.mode == "all":
-            filters.append(App.mode != AppMode.AGENT)
-
-        if isinstance(params, AppListParams):
-            if params.status:
-                filters.append(App.status == params.status)
-            # OpenAPI surface visibility gate. Pushed into the query so
-            # `pagination.total` reflects only apps the openapi caller can
-            # actually reach; post-filtering by enable_api after the page
-            # arrives would make `total` page-dependent.
-            if params.openapi_visible:
-                filters.append(App.enable_api.is_(True))
-
-        if params.is_created_by_me:
-            filters.append(App.created_by == user_id)
-        elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
-        if params.creator_ids:
-            filters.append(App.created_by.in_(params.creator_ids))
-        if params.name:
-            from libs.helper import escape_like_pattern
-
-            name = params.name[:30]
-            escaped_name = escape_like_pattern(name)
-            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-        if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, session, match_all=True)
-            if target_ids and len(target_ids) > 0:
-                filters.append(App.id.in_(target_ids))
-            else:
-                return []
-
-        return filters
-
-    @staticmethod
-    def _build_app_list_order_by(sort_by: AppListSortBy) -> sa.ColumnElement[Any]:
-        return {
-            "last_modified": App.updated_at.desc(),
-            "recently_created": App.created_at.desc(),
-            "earliest_created": App.created_at.asc(),
-        }[sort_by]
-
-    @staticmethod
-    def get_starred_app_ids(
-        session: Session,
-        *,
-        tenant_id: str,
-        account_id: str,
-        app_ids: Sequence[str],
-    ) -> set[str]:
-        """Return app IDs starred by this account within the tenant."""
-        if not app_ids:
-            return set()
-
-        starred_app_ids = session.scalars(
-            select(AppStar.app_id).where(
-                AppStar.tenant_id == tenant_id,
-                AppStar.account_id == account_id,
-                AppStar.app_id.in_(list(app_ids)),
-            )
-        ).all()
-        return set(starred_app_ids)
-
-    @staticmethod
     def get_app_by_id(
-        app_id: str,
+        app_id: str | None,
         session: Session,
     ) -> App | None:
+        if app_id is None:
+            return None
         return session.get(App, app_id)
 
     @staticmethod
-    def get_visible_app_by_id(
-        app_id: str,
-        session: Session,
-    ) -> App | None:
-        app = session.get(App, app_id)
-        if not app or app.status != "normal" or not is_openapi_visible(app):
-            return None
-        return app
+    def get_app_in_workspace(*, tenant_id: str, app_id: str, session: Session) -> App | None:
+        """Return the app within its owner workspace, or None if it is absent.
 
-    @staticmethod
-    def find_visible_apps_by_ids(
-        app_ids: Sequence[str],
-        session: Session,
-    ) -> list[App]:
-        if not app_ids:
-            return []
-        return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
-
-    def get_paginate_apps(
-        self,
-        user_id: str,
-        tenant_id: str,
-        params: AppListParams,
-        session: Session,
-    ) -> PaginatedResult | None:
+        Keep the caller's session and leave status/API availability checks to
+        the caller so each admission surface retains its error contract.
         """
-        Get app list with pagination, filters, and explicit sort order.
-        :param user_id: user id
-        :param tenant_id: tenant id
-        :param params: query parameters
-        :return:
-        """
-        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
-        if not filters:
-            return None
-
-        order_by = self._build_app_list_order_by(params.sort_by)
-
-        app_models = paginate_query(
-            sa.select(App).where(*filters).order_by(order_by),
-            page=params.page,
-            per_page=params.limit,
-            session=session,
-        )
-
-        app_ids = [str(app.id) for app in app_models.items]
-        starred_app_ids = self.get_starred_app_ids(
-            session=session,
-            tenant_id=tenant_id,
-            account_id=user_id,
-            app_ids=app_ids,
-        )
-        for app in app_models.items:
-            app.is_starred = str(app.id) in starred_app_ids
-
-        return app_models
-
-    def get_agent_publication_counts(
-        self,
-        user_id: str,
-        tenant_id: str,
-        params: AppListParams,
-        session: Session,
-    ) -> AgentAppPublicationCounts:
-        unfiltered_params = params.model_copy(update={"agent_is_published": None})
-        filters = self._build_app_list_filters(user_id, tenant_id, unfiltered_params, session)
-        if not filters:
-            return AgentAppPublicationCounts(published=0, drafts=0)
-
-        published_filter = self._agent_app_exists_filter(tenant_id, is_published=True)
-        draft_filter = self._agent_app_exists_filter(tenant_id, is_published=False)
-        published_count, draft_count = session.execute(
-            sa.select(
-                sa.func.coalesce(sa.func.sum(sa.case((published_filter, 1), else_=0)), 0),
-                sa.func.coalesce(sa.func.sum(sa.case((draft_filter, 1), else_=0)), 0),
-            )
-            .select_from(App)
-            .where(*filters)
-        ).one()
-
-        return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
+        return session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
 
     @staticmethod
     def prepare_agent_soul(tenant_id: str, *, session: Session) -> AgentSoulConfig | None:
@@ -432,7 +252,7 @@ class AppService:
 
         # get model config
         default_model_config = app_template.get("model_config")
-        default_model_config = default_model_config.copy() if default_model_config else None
+        default_model_config = deepcopy(default_model_config) if default_model_config else None
         if default_model_config and "model" in default_model_config:
             default_model_dict = default_model_config["model"]
             # get model provider
@@ -705,10 +525,7 @@ class AppService:
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
-        if icon_type is None:
-            resolved_icon_type = app.icon_type
-        else:
-            resolved_icon_type = IconType(icon_type)
+        resolved_icon_type = app.icon_type if icon_type is None else IconType(icon_type)
 
         app.icon_type = resolved_icon_type
         app.icon = args["icon"]
@@ -783,8 +600,10 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App, *, session: Session) -> None:
+    def delete_app(self, app: App, *, session: Session, account_id: str | None | EllipsisType = ...) -> None:
         """Delete an App and commit the passed session.
+
+        Omit account_id to use the logged-in actor; pass None for system cleanup.
 
         The transaction releases all of a Workflow App's binding owners across
         draft and published versions, archives a backing Roster Agent, retires
@@ -837,7 +656,8 @@ class AppService:
                     AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
                 )
             )
-        account_id = current_user.id if current_user else None
+        if account_id is ...:
+            account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
@@ -873,6 +693,9 @@ class AppService:
             session=session,
             tenant_id=app.tenant_id,
             app_id=app.id,
+        )
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=app.tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app.id
         )
         session.delete(app)
         session.commit()
@@ -913,7 +736,7 @@ class AppService:
 
         # get model config
         default_model_config = app_template.get("model_config")
-        default_model_config = default_model_config.copy() if default_model_config else None
+        default_model_config = deepcopy(default_model_config) if default_model_config else None
         if default_model_config and "model" in default_model_config:
             default_model_dict = default_model_config["model"]
             # get model provider

@@ -74,9 +74,9 @@ def test_error_class_attributes(cls: type, expected_code: str, expected_status: 
 def test_error_classes_have_description() -> None:
     """Every error class has a description (string or None for generic errors)."""
     # NotFoundError and InvalidArgumentError use None description by design
-    _NO_DESCRIPTION = {NotFoundError, InvalidArgumentError}
+    _no_description = {NotFoundError, InvalidArgumentError}
     for cls, _, _ in _ERROR_SPECS:
-        if cls in _NO_DESCRIPTION:
+        if cls in _no_description:
             continue
         assert isinstance(cls.description, str), f"{cls.__name__} missing description"
         assert len(cls.description) > 0, f"{cls.__name__} has empty description"

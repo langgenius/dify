@@ -82,6 +82,8 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
+  const [keyboardTarget, setKeyboardTarget] = useState<HTMLElement | null>(null)
+  useEffect(() => editor.registerRootListener(setKeyboardTarget), [editor])
   const triggerMatchRef = useRef<MenuTextMatch | null>(null)
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
@@ -194,18 +196,18 @@ const ComponentPicker = ({
       const isFlat = variables.length === 1
       if (isFlat) {
         const varName = variables[0]
-        if (varName === 'current')
-          editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
+        if (varName === 'current') editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, undefined)
         else if (varName === 'error_message')
-          editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
-        else if (varName === 'last_run') editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+          editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
+        else if (varName === 'last_run')
+          editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
       } else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
       } else {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
       }
     },
-    [editor, currentBlock?.generatorType, checkForTriggerMatch, triggerString],
+    [editor, checkForTriggerMatch, triggerString],
   )
 
   const resetTypeaheadState = useCallback(() => {
@@ -254,7 +256,9 @@ const ComponentPicker = ({
                 {workflowVariableBlock?.show && (
                   <div className="p-1">
                     <VarReferenceVars
-                      hideSearch={triggerString === '/'}
+                      {...(triggerString === '/'
+                        ? { hideSearch: true, keyboardTarget }
+                        : { hideSearch: false })}
                       searchText={triggerString === '/' ? effectiveQueryString || '' : undefined}
                       searchBoxClassName="mt-1"
                       vars={workflowVariableOptions}
@@ -348,6 +352,7 @@ const ComponentPicker = ({
       handleClose,
       currentBlock?.generatorType,
       handleSelectWorkflowVariable,
+      keyboardTarget,
       queryString,
       triggerString,
       workflowVariableBlock?.showManageInputField,
@@ -369,7 +374,7 @@ const ComponentPicker = ({
       //
       // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
       // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName="z-50 translate-y-[calc(-100%-3px)]"
+      anchorClassName="translate-y-[calc(-100%-3px)]"
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

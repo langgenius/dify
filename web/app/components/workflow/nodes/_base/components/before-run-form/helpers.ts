@@ -16,7 +16,7 @@ export function formatValue(value: unknown, type: InputVarType) {
   if (type === InputVarType.multiFiles) return getProcessedFiles(value as FileEntity[])
 
   if (type === InputVarType.singleFile) {
-    if (Array.isArray(value)) return getProcessedFiles(value as FileEntity[])
+    if (Array.isArray(value)) return getProcessedFiles(value)
     if (!value) return undefined
     return getProcessedFiles([value as FileEntity])[0]
   }

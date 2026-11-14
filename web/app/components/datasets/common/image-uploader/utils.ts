@@ -1,5 +1,5 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from './types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import {
   DEFAULT_IMAGE_FILE_BATCH_LIMIT,
   DEFAULT_IMAGE_FILE_SIZE_LIMIT,
@@ -58,9 +58,7 @@ const getNumberValue = (value: number | string | undefined | null): number => {
   return 0
 }
 
-export const getFileUploadConfig = (
-  fileUploadConfigResponse: FileUploadConfigResponse | undefined,
-) => {
+export const getFileUploadConfig = (fileUploadConfigResponse: UploadConfig | undefined) => {
   if (!fileUploadConfigResponse) {
     return {
       imageFileSizeLimit: DEFAULT_IMAGE_FILE_SIZE_LIMIT,

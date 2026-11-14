@@ -6,7 +6,7 @@ import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, resolveModifier } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -149,7 +149,7 @@ const FormContent: FC<FormContentProps> = ({
 
     return [
       {
-        hotkey: ['mod', '/'],
+        hotkey: 'Mod+/' as const,
         displayMode: 'workflow-panel-adjacent-center' as const,
         Popup: AddInputFieldShortcutPopup,
       },
@@ -208,7 +208,9 @@ const FormContent: FC<FormContentProps> = ({
             components={{
               Key: <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>,
               CtrlKey: (
-                <Kbd className="mx-0.5 text-text-placeholder">{formatForDisplay('Mod')}</Kbd>
+                <Kbd className="mx-0.5 text-text-placeholder">
+                  {formatForDisplay(resolveModifier('Mod'))}
+                </Kbd>
               ),
             }}
           />

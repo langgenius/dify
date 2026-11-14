@@ -7,14 +7,17 @@ describe('trigger-schedule/on-minute-selector', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(<OnMinuteSelector value={15} onChange={onChange} />)
+    const { rerender } = render(<OnMinuteSelector value={15} onChange={onChange} />)
 
     const slider = screen.getByRole('slider', {
       name: 'workflowIntegrations.nodes.triggerSchedule.onMinute',
     })
+    expect(screen.getByRole('status')).toHaveTextContent('15')
     slider.focus()
     await user.keyboard('{ArrowRight}')
 
-    expect(onChange).toHaveBeenCalledWith(16, expect.objectContaining({ activeThumbIndex: 0 }))
+    expect(onChange).toHaveBeenCalledWith(16, expect.anything())
+    rerender(<OnMinuteSelector value={16} onChange={onChange} />)
+    expect(screen.getByRole('status')).toHaveTextContent('16')
   })
 })

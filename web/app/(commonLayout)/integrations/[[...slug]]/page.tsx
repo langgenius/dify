@@ -1,7 +1,10 @@
 import type { IntegrationRouteSearchParams } from '@/app/components/integrations/routes'
-import IntegrationsPage from '@/app/components/integrations'
-import { getIntegrationRouteTargetBySlug } from '@/app/components/integrations/routes'
+import {
+  buildIntegrationPath,
+  getIntegrationRouteTargetBySlug,
+} from '@/app/components/integrations/routes'
 import { notFound, redirect } from '@/next/navigation'
+import { consoleClient } from '@/service/console'
 
 type IntegrationsRoutePageProps = {
   params: Promise<{
@@ -18,7 +21,13 @@ const IntegrationsRoutePage = async ({ params, searchParams }: IntegrationsRoute
 
   if (target.type === 'not-found') notFound()
 
-  return <IntegrationsPage section={target.section} syncDocumentTitle />
+  // The malware scanners section only exists in workspaces that have the feature turned on.
+  if (target.section === 'file-scan') {
+    const features = await consoleClient.features.get()
+    if (!features.enable_file_scan) redirect(buildIntegrationPath('provider'))
+  }
+
+  return null
 }
 
 export default IntegrationsRoutePage

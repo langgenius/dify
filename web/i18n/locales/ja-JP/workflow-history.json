@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "IDがクリップボードにコピーされました",
   "versionHistory.action.deleteDeployedVersionError": "このワークフローバージョンは、1つ以上の環境にデプロイ済み、またはデプロイ中です。バージョンを削除する前に、すべての環境からデプロイを解除してください。",
   "versionHistory.action.deleteFailure": "削除に失敗しました",
-  "versionHistory.action.deleteSuccess": "削除が完了しました",
   "versionHistory.action.restoreFailure": "復元に失敗しました",
   "versionHistory.action.restoreInProgress": "{{userName}} がバージョン {{versionName}} に復元中です...",
   "versionHistory.action.restoreSuccess": "復元が完了しました",

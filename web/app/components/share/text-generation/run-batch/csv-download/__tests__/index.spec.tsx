@@ -1,54 +1,24 @@
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
+import userEvent from '@testing-library/user-event'
+import { captureDownloads } from '@/test/download'
 import CSVDownload from '../index'
 
-const mockType = { Link: 'mock-link' }
-let capturedProps: Record<string, unknown> | undefined
+afterEach(() => vi.restoreAllMocks())
 
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: () => {
-    const CSVDownloader = ({
-      children,
-      ...props
-    }: React.PropsWithChildren<Record<string, unknown>>) => {
-      capturedProps = props
-      return (
-        <div data-testid="csv-downloader" className={props.className as string}>
-          {children}
-        </div>
-      )
-    }
-    return {
-      CSVDownloader,
-      Type: mockType,
-    }
-  },
-}))
+it('previews the variables and downloads a CSV template with matching columns', async () => {
+  const user = userEvent.setup()
+  const downloads = captureDownloads()
+  render(<CSVDownload vars={[{ name: 'prompt' }, { name: 'context' }]} />)
 
-describe('CSVDownload', () => {
-  const vars = [{ name: 'prompt' }, { name: 'context' }]
+  expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+    'prompt',
+    'context',
+  ])
+  expect(screen.getByText('prompt share.generation.field')).toBeVisible()
+  expect(screen.getByText('context share.generation.field')).toBeVisible()
+  await user.click(screen.getByText('share.generation.downloadTemplate'))
 
-  beforeEach(() => {
-    capturedProps = undefined
-    vi.clearAllMocks()
-  })
-
-  it('should render table headers and sample row for each variable', () => {
-    render(<CSVDownload vars={vars} />)
-
-    expect(screen.getByText('share.generation.csvStructureTitle'))!.toBeInTheDocument()
-    expect(screen.getAllByRole('row')[0]!.children).toHaveLength(2)
-    expect(screen.getByText('prompt share.generation.field'))!.toBeInTheDocument()
-    expect(screen.getByText('context share.generation.field'))!.toBeInTheDocument()
-  })
-
-  it('should configure CSV downloader with template data', () => {
-    render(<CSVDownload vars={vars} />)
-
-    expect(capturedProps?.filename).toBe('template')
-    expect(capturedProps?.type).toBe(mockType.Link)
-    expect(capturedProps?.bom).toBe(true)
-    expect(capturedProps?.data).toEqual([{ prompt: '', context: '' }])
-    expect(screen.getByText('share.generation.downloadTemplate'))!.toBeInTheDocument()
-  })
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0]!.filename).toBe('template.csv')
+  expect(await downloads[0]!.blob.text()).toBe('\uFEFFprompt,context\r\n,')
 })

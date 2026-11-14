@@ -1,7 +1,7 @@
 'use client'
 
 import type { PanelProps } from '@/app/components/workflow/panel'
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import Panel from '@/app/components/workflow/panel'
@@ -16,7 +16,7 @@ const SnippetRunPanel = dynamic(() => import('./snippet-run-panel'), {
 
 type SnippetWorkflowPanelProps = {
   snippetId: string
-  fields: SnippetInputField[]
+  fields: InputVar[]
 }
 
 const SnippetPanelOnRight = ({ fields }: Pick<SnippetWorkflowPanelProps, 'fields'>) => {
@@ -35,10 +35,6 @@ const SnippetWorkflowPanel = ({ snippetId, fields }: SnippetWorkflowPanelProps) 
   const versionHistoryPanelProps = useMemo(() => {
     return {
       getVersionListUrl: `/snippets/${snippetId}/workflows`,
-      deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) =>
-        `/snippets/${snippetId}/workflows/${versionId}/restore`,
-      updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
       latestVersionId: '',
     }
   }, [snippetId])

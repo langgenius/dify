@@ -11,27 +11,31 @@ from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
     PauseReason,
 )
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
 
 
 class HumanInputSurface(StrEnum):
+    """The access entry receiving a form response, independent of the run's origin."""
+
     SERVICE_API = "service_api"
     CONSOLE = "console"
     OPENAPI = "openapi"
+    WEB_APP = "web_app"
 
 
-# SERVICE_API and OPENAPI are intentionally narrower than CONSOLE: token callers
-# should only be able to act on end-user web forms, not internal console flows.
+# Web App, Service API and OpenAPI responses expose only web-app recipients.
+# The public form endpoint also accepts email links; its admission rules are separate.
 ALLOWED_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
     HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE, RecipientType.BACKSTAGE}),
     HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.WEB_APP: frozenset({RecipientType.STANDALONE_WEB_APP}),
 }
 
 # A single HITL form can have multiple recipient records; this shared priority
-# keeps every API surface consistent about which resume token to expose.
+# chooses a token after the response surface has restricted the recipients.
 _RECIPIENT_TOKEN_PRIORITY: dict[RecipientType, int] = {
     RecipientType.BACKSTAGE: 0,
     RecipientType.CONSOLE: 1,
@@ -78,10 +82,13 @@ class FormDisposition(NamedTuple):
 def disposition_for_surface(
     recipients: Sequence[tuple[RecipientType, str]],
     *,
-    surface: HumanInputSurface | None,
+    surface: HumanInputSurface,
 ) -> FormDisposition:
-    if surface is None:
-        return FormDisposition(form_token=get_preferred_form_token(recipients), approval_channels=[])
+    """Select from existing recipients for an explicit response entry, without I/O.
+
+    Only nonempty tokens allowed by the surface are actionable; an empty allowed
+    subset yields no token. Other recipients contribute approval channels.
+    """
     allowed = ALLOWED_RECIPIENT_TYPES_BY_SURFACE[surface]
     actionable = [(recipient_type, token) for recipient_type, token in recipients if recipient_type in allowed]
     return FormDisposition(
@@ -121,11 +128,8 @@ def resolve_variable_select_input_options(
 ) -> list[FormInputConfig]:
     """Resolve variable-backed select options to runtime values."""
 
-    # This function replace the SelectInputConfig.option_source.value
-    # field with acutial runtime values when option_source.type is VARIABLE.
-    #
-    # This is a dirty hacks. However it does reduces the logic leaked to callers of
-    # the api.
+    # Convert variable-backed options into a self-contained constant source so
+    # downstream callers do not need the runtime variable pool or selector.
     resolved_inputs: list[FormInputConfig] = []
 
     if variable_pool is None:
@@ -148,8 +152,13 @@ def resolve_variable_select_input_options(
         if not isinstance(option_values, ArrayStringSegment):
             raise TypeError(f"expected ArrayStringSegment, got {type(option_values)}")
 
-        updated_option_source = option_source.model_copy(update={"value": option_values.value})
-        # Ensure frontend receives concrete select options instead of unresolved selectors.
+        updated_option_source = option_source.model_copy(
+            update={
+                "type": ValueSourceType.CONSTANT,
+                "selector": (),
+                "value": option_values.value,
+            }
+        )
         resolved_inputs.append(
             form_input.model_copy(
                 update={"option_source": updated_option_source},
@@ -171,7 +180,6 @@ def resolve_human_input_pause_reason_inputs(
         if not isinstance(reason, HumanInputRequired):
             resolved_reasons.append(reason)
             continue
-
         resolved_inputs = resolve_variable_select_input_options(
             reason.inputs,
             variable_pool=variable_pool,

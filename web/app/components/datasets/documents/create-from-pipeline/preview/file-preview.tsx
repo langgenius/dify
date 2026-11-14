@@ -1,10 +1,11 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFilePreview } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
 import DocumentFileIcon from '../../../common/document-file-icon'
 import Loading from './loading'
@@ -16,7 +17,11 @@ type FilePreviewProps = {
 
 const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
   const { t } = useTranslation(['datasetPipeline'])
-  const { data: fileData, isFetching } = useFilePreview(file.id || '')
+  const { data: fileData, isFetching } = useQuery(
+    consoleQuery.files.byFileId.preview.get.queryOptions({
+      input: file.id ? { params: { file_id: file.id } } : skipToken,
+    }),
+  )
 
   const fileName = useMemo(() => {
     if (!file) return ''

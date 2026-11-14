@@ -1,6 +1,6 @@
 'use client'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { FC } from 'react'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
@@ -32,7 +32,7 @@ type Props = Readonly<{
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
-  authedDataSourceList: DataSourceAuth[]
+  authedDataSourceList: DatasourceProviderAuthResponse[]
 }>
 
 const Website: FC<Props> = ({

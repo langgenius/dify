@@ -3,11 +3,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 
 type ModeToggleProps = {
+  disabled?: boolean
   mode: ScheduleMode
   onChange: (mode: ScheduleMode) => void
 }
 
-const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
+const ModeToggle = ({ mode, onChange, disabled }: ModeToggleProps) => {
   const { t } = useTranslation(['workflowIntegrations'])
 
   const handleToggle = () => {
@@ -27,6 +28,7 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
 
   return (
     <button
+      disabled={disabled}
       type="button"
       onClick={handleToggle}
       className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-sm text-text-secondary hover:bg-state-base-hover"

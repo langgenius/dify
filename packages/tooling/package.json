@@ -1,0 +1,56 @@
+{
+  "name": "@dify/tooling",
+  "version": "0.0.0-private",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.ts",
+    "./oxlint": "./lint.config.ts",
+    "./tsslint": "./tsslint.config.ts",
+    "./knip": "./knip.config.ts",
+    "./repository": "./repository.config.ts",
+    "./eslint-plugin": "./plugins/eslint/index.ts",
+    "./i18n-plurals": "./i18n-plurals.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "type-check": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@eslint-react/eslint-plugin": "catalog:",
+    "@eslint/markdown": "catalog:",
+    "@shadcn/lint": "catalog:",
+    "@tanstack/eslint-plugin-query": "catalog:",
+    "@tsslint/compat-eslint": "catalog:",
+    "@tsslint/config": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "eslint-config-flat-gitignore": "catalog:",
+    "eslint-markdown": "catalog:",
+    "eslint-plugin-antfu": "catalog:",
+    "eslint-plugin-better-tailwindcss": "catalog:",
+    "eslint-plugin-jsdoc": "catalog:",
+    "eslint-plugin-jsonc": "catalog:",
+    "eslint-plugin-markdown-preferences": "catalog:",
+    "eslint-plugin-n": "catalog:",
+    "eslint-plugin-no-barrel-files": "catalog:",
+    "eslint-plugin-perfectionist": "catalog:",
+    "eslint-plugin-pnpm": "catalog:",
+    "eslint-plugin-regexp": "catalog:",
+    "eslint-plugin-storybook": "catalog:",
+    "eslint-plugin-yml": "catalog:",
+    "tsrs": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@typescript-eslint/utils": "catalog:",
+    "jsonc-eslint-parser": "catalog:",
+    "vite": "catalog:"
+  },
+  "peerDependencies": {
+    "eslint": "catalog:",
+    "knip": "catalog:"
+  }
+}

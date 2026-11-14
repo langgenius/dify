@@ -2,8 +2,8 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import RunFailureType
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
@@ -49,7 +49,7 @@ def _succeeded(output: object) -> AgentBackendRunSucceededInternalEvent:
         run_id="run-1",
         source_event_id="2-0",
         output=output,
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        session_snapshot=SessionSnapshot(layers={}),
     )
 
 
@@ -130,7 +130,7 @@ def test_success_output_adapter_preserves_dict_output():
             run_id="run-1",
             source_event_id="2-0",
             output={"summary": "ok"},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -152,7 +152,7 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
             source_event_id="2-0",
             error="bad request",
             reason="validation",
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
             usage={
                 "prompt_tokens": 13,
                 "completion_tokens": 8,
@@ -216,7 +216,7 @@ def test_success_output_adapter_normalizes_string_and_scalar_outputs():
             run_id="run-1",
             source_event_id="2-0",
             output="hello",
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -227,7 +227,7 @@ def test_success_output_adapter_normalizes_string_and_scalar_outputs():
             run_id="run-2",
             source_event_id="2-0",
             output=3,
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -264,7 +264,7 @@ def test_success_output_adapter_normalizes_file_output_to_file_segments():
                         }
                     ],
                 },
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -343,7 +343,7 @@ def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file
                 run_id="run-1",
                 source_event_id="2-0",
                 output={"report": {"transfer_method": "tool_file", "reference": tool_reference}},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -371,7 +371,7 @@ def test_success_output_adapter_accepts_canonical_datasource_file_mapping_for_de
                 run_id="run-1",
                 source_event_id="2-0",
                 output={"report": {"transfer_method": "datasource_file", "reference": datasource_reference}},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -393,7 +393,7 @@ def test_success_output_adapter_accepts_canonical_remote_url_mapping_for_declare
             run_id="run-1",
             source_event_id="2-0",
             output={"report": {"transfer_method": "remote_url", "url": remote_url}},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -418,7 +418,7 @@ def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_arra
                 run_id="run-1",
                 source_event_id="2-0",
                 output={"attachments": [{"transfer_method": "tool_file", "reference": tool_reference}]},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -444,7 +444,7 @@ def test_success_output_adapter_does_not_treat_generic_object_with_string_id_as_
             run_id="run-1",
             source_event_id="2-0",
             output={"meta": {"id": "123", "type": "summary"}},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -460,7 +460,7 @@ def test_success_output_adapter_does_not_crash_on_generic_object_with_non_string
             run_id="run-1",
             source_event_id="2-0",
             output={"meta": {"id": 1, "name": "foo"}},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -484,7 +484,7 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_o
                     }
                 }
             },
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -516,7 +516,7 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_g
                     }
                 ]
             },
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -546,7 +546,7 @@ def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():
             run_id="run-1",
             source_event_id="2-0",
             output={"summary": "ok"},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
             usage={
                 "prompt_tokens": 10,
                 "prompt_unit_price": "5",

@@ -110,6 +110,10 @@ def agent_stub_config_note_url(base_url: str) -> str:
     return f"{_require_http_base_url(base_url)}/config/note"
 
 
+def agent_stub_config_prompt_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/prompt"
+
+
 def is_canonical_dify_file_reference(reference: str) -> bool:
     """Return whether one string matches Dify's opaque file reference format."""
     prefix = "dify-file-ref:"
@@ -330,6 +334,20 @@ class AgentStubConfigNoteUpdateRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class AgentStubConfigPromptUpdateRequest(BaseModel):
+    """Full raw prompt replacement. Empty text clears; missing/null is invalid."""
+
+    prompt: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigPromptResponse(BaseModel):
+    """Saved system prompt text, including unexpanded mention markers."""
+
+    prompt: str
+
+
 def _require_http_base_url(base_url: str) -> str:
     return parse_agent_stub_endpoint(base_url).url
 
@@ -348,6 +366,8 @@ __all__ = [
     "AgentStubConfigFileRef",
     "AgentStubConfigManifestResponse",
     "AgentStubConfigNoteUpdateRequest",
+    "AgentStubConfigPromptResponse",
+    "AgentStubConfigPromptUpdateRequest",
     "AgentStubConfigPushFileItem",
     "AgentStubConfigPushRequest",
     "AgentStubConfigPushResponse",
@@ -364,6 +384,7 @@ __all__ = [
     "agent_stub_config_env_url",
     "agent_stub_config_manifest_url",
     "agent_stub_config_note_url",
+    "agent_stub_config_prompt_url",
     "agent_stub_config_push_url",
     "agent_stub_config_skill_inspect_url",
     "agent_stub_connections_url",

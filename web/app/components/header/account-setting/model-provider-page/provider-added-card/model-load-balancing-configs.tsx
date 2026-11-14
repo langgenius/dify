@@ -47,7 +47,7 @@ const ModelLoadBalancingConfigs = ({
   provider,
   model,
   configurationMethod,
-  currentCustomConfigurationModelFixedFields: _currentCustomConfigurationModelFixedFields,
+  currentCustomConfigurationModelFixedFields,
   withSwitch = false,
   className,
   modelCredential,
@@ -330,6 +330,9 @@ const ModelLoadBalancingConfigs = ({
               provider={provider}
               model={model}
               configurationMethod={configurationMethod}
+              currentCustomConfigurationModelFixedFields={
+                currentCustomConfigurationModelFixedFields
+              }
               modelCredential={modelCredential}
               onSelectCredential={addConfigEntry}
               onUpdate={handleUpdate}

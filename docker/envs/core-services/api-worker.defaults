@@ -1,0 +1,583 @@
+# Common API and worker configuration, including Beat. Copy this file to api-worker.env to customize it.
+# Edit the copy; docker/.env takes precedence. Existing shared.env files remain supported.
+# If both override files exist, api-worker.env takes precedence over shared.env.
+# Active assignments preserve Docker defaults and explicit overrides, including empty values.
+# Optional application/provider settings are commented examples: uncomment only what you need.
+# Do not uncomment empty values or placeholders unless you intend to set them.
+# Remove accidental empty overrides (especially CELERY_WORKER_AMOUNT=) to restore defaults.
+# API process settings: api.defaults. Worker process settings: worker.defaults.
+# Sentry mappings: api.defaults and worker.defaults. Web and plugin-daemon settings stay in their files.
+# Shared secrets and token lifetimes: copy ../security.env.example to ../security.env.
+# Set COMPOSE_PROFILES in docker/.env; Compose reads it before service env files.
+# Set EXPOSE_NGINX_PORT in docker/.env; Compose reads published ports before service env files.
+# Set EXPOSE_NGINX_SSL_PORT in docker/.env; Compose reads published ports before service env files.
+# Set EXPOSE_PLUGIN_DEBUGGING_HOST in docker/.env; the API and daemon must use the published address.
+# Set EXPOSE_PLUGIN_DEBUGGING_PORT in docker/.env; the API and daemon must use the published port.
+
+# ------------------------------
+# URLs, deployment and locale
+# ------------------------------
+# CONSOLE_WEB_URL=
+# SERVICE_API_URL=
+TRIGGER_URL=${TRIGGER_URL-http://localhost}
+# APP_WEB_URL=
+# FILES_URL=
+# INTERNAL_FILES_URL=
+ENDPOINT_URL_TEMPLATE=${ENDPOINT_URL_TEMPLATE-http://localhost/e/{hook_id}}
+# DEPLOY_ENV=PRODUCTION
+# DEPLOYMENT_EDITION=COMMUNITY
+MIGRATION_ENABLED=${MIGRATION_ENABLED-true}
+# LANG=C.UTF-8
+# LC_ALL=C.UTF-8
+# PYTHONIOENCODING=utf-8
+# CHECK_UPDATE_URL=https://updates.dify.ai
+# OPENAI_API_BASE=https://api.openai.com/v1
+# Nacos remote settings source HTTP timeouts (seconds).
+# Bound how long requests to the Nacos endpoint wait before failing, so a slow or
+# unresponsive Nacos server cannot stall API startup or token refresh.
+# DIFY_ENV_NACOS_REQUEST_TIMEOUT=10.0
+# DIFY_ENV_NACOS_CONNECT_TIMEOUT=3.0
+
+# ------------------------------
+# System features and account access
+# ------------------------------
+# MARKETPLACE_ENABLED=true
+# ENABLE_EMAIL_CODE_LOGIN=false
+# EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES=5
+# EMAIL_CODE_LOGIN_MAX_ATTEMPTS=5
+# ENABLE_EMAIL_PASSWORD_LOGIN=true
+# ENABLE_SOCIAL_OAUTH_LOGIN=false
+# Remove `collaboration` from COMPOSE_PROFILES to stop the dedicated websocket service.
+# ENABLE_COLLABORATION_MODE=true
+# ALLOW_REGISTER=false
+# ALLOW_CREATE_WORKSPACE=false
+# ENABLE_CHANGE_EMAIL=true
+# ENABLE_TRIAL_APP=false
+# ENABLE_EXPLORE_BANNER=false
+# ENABLE_LEARN_APP=true
+# ENABLE_STEP_BY_STEP_TOUR=false
+# ENABLE_SKILL=true
+# RBAC_ENABLED=false
+# ENABLE_LICENSE_EXPIRY_NOTICE=true
+# ACCESS_TOKEN_EXPIRE_MINUTES=60
+# REFRESH_TOKEN_EXPIRE_DAYS=30
+# INVITE_EXPIRY_HOURS=72
+# WEB_API_CORS_ALLOW_ORIGINS=*
+CONSOLE_CORS_ALLOW_ORIGINS=${CONSOLE_CORS_ALLOW_ORIGINS-*}
+# COOKIE_DOMAIN=
+
+# ------------------------------
+# API and Celery Docker defaults
+# ------------------------------
+# Unset values use these Docker defaults; an explicit empty value remains an override.
+SERVER_WORKER_CLASS=${SERVER_WORKER_CLASS-gevent}
+GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT-360}
+CELERY_WORKER_AMOUNT=${CELERY_WORKER_AMOUNT-4}
+
+# ------------------------------
+# Celery broker and KnowledgeFS dispatch
+# ------------------------------
+# Broker URL defaults/mappings live in api.defaults, worker.defaults and worker-beat.defaults.
+# Set a common CELERY_BROKER_URL override in api-worker.env or docker/.env for every producer/consumer.
+# Optional long-running KnowledgeFS Celery rollout: set identically in every API, worker and Beat
+# process sharing this Redis broker. It must exceed the KnowledgeFS hard task limit (7230s by
+# default). Keep unset to preserve Celery's existing default when this rollout is disabled.
+# CELERY_BROKER_VISIBILITY_TIMEOUT=10800
+# CELERY_TASK_ANNOTATIONS=null
+# CELERY_SENTINEL_PASSWORD=
+# CELERY_BACKEND=redis
+# CELERY_USE_SENTINEL=false
+# CELERY_SENTINEL_MASTER_NAME=
+# CELERY_SENTINEL_SOCKET_TIMEOUT=0.1
+# KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED=true
+# KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS=5
+
+# ------------------------------
+# Database and Redis connections
+# ------------------------------
+DB_HOST=${DB_HOST-db_postgres}
+DB_USERNAME=${DB_USERNAME-postgres}
+DB_PASSWORD=${DB_PASSWORD-difyai123456}
+DB_PORT=${DB_PORT-5432}
+REDIS_HOST=${REDIS_HOST-redis}
+REDIS_PASSWORD=${REDIS_PASSWORD-difyai123456}
+REDIS_PORT=${REDIS_PORT-6379}
+REDIS_KEEPALIVE=${REDIS_KEEPALIVE-true}
+
+# ------------------------------
+# Logging, traces and telemetry
+# ------------------------------
+# LOG_LEVEL=INFO
+# LOG_OUTPUT_FORMAT=text
+LOG_FILE=${LOG_FILE-/app/logs/server.log}
+# LOG_FILE_MAX_SIZE=20
+# LOG_FILE_BACKUP_COUNT=5
+LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
+# LOG_TZ=UTC
+# DEBUG=false
+# FLASK_DEBUG=false
+# ENABLE_REQUEST_LOGGING=False
+# Application-level Agent tracing; also enable the collector in dify-agent.env.
+# OPS_AGENT_TRACE_ENABLED=false
+# ENABLE_APPLICATION_TRACE_RECONCILE_TASK=true
+# Shared by API, workers, and Beat. Keep separate from legacy ops_trace during upgrades.
+# OPS_TRACE_QUEUE=ops_trace_v2
+# Attempts to send one trace while its provider is temporarily unavailable.
+# OPS_TRACE_EXPORT_MAX_ATTEMPTS=6
+# Daily cleanup of trace payloads an interrupted delivery left in storage.
+# ENABLE_TRACE_PAYLOAD_SWEEP_TASK=true
+# ENABLE_OTEL=false
+# OTLP_TRACE_ENDPOINT=
+# OTLP_METRIC_ENDPOINT=
+# OTLP_BASE_ENDPOINT=http://localhost:4318
+# OTEL_EXPORTER_OTLP_PROTOCOL=
+# OTEL_EXPORTER_TYPE=otlp
+# OTEL_SAMPLING_RATE=0.1
+# OTEL_BATCH_EXPORT_SCHEDULE_DELAY=5000
+# OTEL_MAX_QUEUE_SIZE=2048
+# OTEL_MAX_EXPORT_BATCH_SIZE=512
+# OTEL_METRIC_EXPORT_INTERVAL=60000
+# OTEL_BATCH_EXPORT_TIMEOUT=10000
+# OTEL_METRIC_EXPORT_TIMEOUT=30000
+
+# ------------------------------
+# Uploads, parsing and package limits
+# ------------------------------
+# These parser settings are for Dify; knowledge-fs.env configures the separate KnowledgeFS parser client.
+# FILES_ACCESS_TIMEOUT=300
+# UPLOAD_FILE_SIZE_LIMIT=15
+# KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN=15
+# UPLOAD_FILE_BATCH_LIMIT=5
+# UPLOAD_FILE_EXTENSION_BLACKLIST=
+# SINGLE_CHUNK_ATTACHMENT_LIMIT=10
+
+# ------------------------------
+# File malware scanning
+# ------------------------------
+# Expose file malware scanning. Each knowledge base still turns it on in its own settings.
+# FILE_SCAN_ENABLED=false
+# Host of a clamd instance offered to every workspace as the ClamAV scanner. Empty hides ClamAV.
+# FILE_SCAN_CLAMAV_HOST=
+# FILE_SCAN_CLAMAV_PORT=3310
+# Seconds one request to a scanner may take, for every scanner type
+# FILE_SCAN_REQUEST_TIMEOUT_SECONDS=300
+# FILE_SCAN_MAX_ATTEMPTS=3
+# FILE_SCAN_CLEAN_VERDICT_TTL_HOURS=24
+# IMAGE_FILE_BATCH_LIMIT=10
+# ATTACHMENT_IMAGE_FILE_SIZE_LIMIT=2
+# ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT=60
+# ETL_TYPE=dify
+# UNSTRUCTURED_API_URL=
+# MULTIMODAL_SEND_FORMAT=base64
+# UPLOAD_IMAGE_FILE_SIZE_LIMIT=10
+# UPLOAD_VIDEO_FILE_SIZE_LIMIT=100
+# UPLOAD_AUDIO_FILE_SIZE_LIMIT=50
+# UPLOAD_SKILL_FILE_SIZE_LIMIT=50
+# SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=209715200
+# SKILL_PACKAGE_MAX_ENTRIES=5000
+# SKILL_PACKAGE_MAX_SKILL_MD_BYTES=1048576
+# AGENT_PACKAGE_MAX_BYTES=536870912
+# AGENT_PACKAGE_MAX_MANIFEST_BYTES=5242880
+# AGENT_PACKAGE_MAX_ENTRIES=5000
+# APP_PACKAGE_MAX_WORKFLOW_TOOLS=20
+# SCARF_NO_ANALYTICS=true
+# ANNOTATION_IMPORT_FILE_SIZE_LIMIT=2
+# ANNOTATION_IMPORT_MAX_RECORDS=10000
+# ANNOTATION_IMPORT_MIN_RECORDS=1
+# ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE=5
+# ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR=20
+# ANNOTATION_IMPORT_MAX_CONCURRENT=5
+
+# ------------------------------
+# Plugin clients and marketplace
+# ------------------------------
+# Set PLUGIN_DAEMON_KEY in docker/.env; the daemon, API, workers, and Agent must use the same key.
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; the API, daemon, workers, Agent and KnowledgeFS share it.
+# Keep the PLUGIN_DAEMON_KEY expression below unchanged in the copy.
+PLUGIN_DAEMON_URL=${PLUGIN_DAEMON_URL-http://plugin_daemon:5002}
+PLUGIN_DAEMON_KEY=${PLUGIN_DAEMON_KEY-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
+PLUGIN_MAX_PACKAGE_SIZE=${PLUGIN_MAX_PACKAGE_SIZE-52428800}
+# PLUGIN_MAX_FILE_SIZE=52428800
+# PLUGIN_MODEL_SCHEMA_CACHE_TTL=3600
+# PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=true
+# PLUGIN_MODEL_PROVIDERS_CACHE_TTL=86400
+# Comma-separated marketplace plugin IDs whose latest versions are installed for newly registered users.
+# Example: langgenius/openai,langgenius/gemini
+# NEW_USER_DEFAULT_PLUGIN_IDS=
+# Comma-separated model_type:provider:model entries assigned after default plugins finish installing.
+# Example: llm:langgenius/openai/openai:gpt-4o-mini,text-embedding:langgenius/openai/openai:text-embedding-3-small
+# NEW_USER_DEFAULT_MODELS=
+# POSITION_TOOL_PINS=
+# POSITION_TOOL_INCLUDES=
+# POSITION_TOOL_EXCLUDES=
+# POSITION_PROVIDER_PINS=
+# POSITION_PROVIDER_INCLUDES=
+# POSITION_PROVIDER_EXCLUDES=
+# CREATORS_PLATFORM_FEATURES_ENABLED=true
+# CREATORS_PLATFORM_API_URL=https://creators.dify.ai
+# CREATORS_PLATFORM_OAUTH_CLIENT_ID=
+
+# ------------------------------
+# Agent clients and execution
+# ------------------------------
+AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL-http://agent_backend:5050}
+NEXT_PUBLIC_ENABLE_AGENT_V2=${NEXT_PUBLIC_ENABLE_AGENT_V2-true}
+# Agent backend client settings shared by API and worker processes.
+# AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS=30
+# AGENT_BACKEND_STREAM_MAX_RECONNECTS=3
+# Client timeout for Agent backend calls that may carry a Home Snapshot transfer.
+# Must stay above DIFY_AGENT_ENTERPRISE_SANDBOX_SNAPSHOT_TIMEOUT on the Agent backend.
+# AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS=45
+# Independent E2B accounting, collected only by API Celery Beat/workers.
+# Uses OPS_TRACE_QUEUE; business binding operations never call metering.
+# Enable after migrations. START_AT is an immutable, whole-second UTC T0.
+# AGENT_SANDBOX_METERING_ENABLED=false
+# AGENT_SANDBOX_METERING_PROJECT_ID=
+# AGENT_SANDBOX_METERING_START_AT=
+# AGENT_SANDBOX_METERING_INTERVAL_SECONDS=60
+# APP_DEFAULT_ACTIVE_REQUESTS=0
+# APP_MAX_ACTIVE_REQUESTS=0
+# Outer execution limit for Agent Apps. Agent Backend may stop the internal
+# model/tool loop sooner when DIFY_AGENT_RUN_TIMEOUT_SECONDS is lower.
+# APP_MAX_EXECUTION_TIME=3600
+
+# ------------------------------
+# Code execution and template transformation
+# ------------------------------
+# CODE_EXECUTION_ENDPOINT=http://sandbox:8194
+# CODE_EXECUTION_SSL_VERIFY=True
+# CODE_EXECUTION_POOL_MAX_CONNECTIONS=100
+# CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS=20
+# CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY=5.0
+# CODE_MAX_NUMBER=9223372036854775807
+# CODE_MIN_NUMBER=-9223372036854775808
+# CODE_MAX_DEPTH=5
+# CODE_MAX_PRECISION=20
+# CODE_MAX_STRING_LENGTH=400000
+# CODE_MAX_STRING_ARRAY_LENGTH=30
+# CODE_MAX_OBJECT_ARRAY_LENGTH=30
+# CODE_MAX_NUMBER_ARRAY_LENGTH=1000
+# CODE_EXECUTION_CONNECT_TIMEOUT=10
+# CODE_EXECUTION_READ_TIMEOUT=60
+# CODE_EXECUTION_WRITE_TIMEOUT=10
+# TEMPLATE_TRANSFORM_MAX_LENGTH=400000
+
+# ------------------------------
+# Workflow and HTTP request limits
+# ------------------------------
+# WORKFLOW_MAX_EXECUTION_STEPS=500
+# Outer execution limit for Workflow and Chatflow callers. Agent Backend may
+# stop the internal model/tool loop sooner when its run timeout is lower.
+# To allow all Agent call paths to run for one hour, set this value,
+# APP_MAX_EXECUTION_TIME, and DIFY_AGENT_RUN_TIMEOUT_SECONDS to at least 3600.
+# WORKFLOW_MAX_EXECUTION_TIME=3600
+# WORKFLOW_CALL_MAX_DEPTH=5
+# MAX_VARIABLE_SIZE=204800
+# WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS=6
+# WORKFLOW_FILE_UPLOAD_LIMIT=10
+# GRAPH_ENGINE_MAX_WORKERS=10
+# API_TOOL_DEFAULT_CONNECT_TIMEOUT=10
+# API_TOOL_DEFAULT_READ_TIMEOUT=60
+# WEBHOOK_REQUEST_BODY_MAX_SIZE=10485760
+# HTTP_REQUEST_NODE_MAX_BINARY_SIZE=10485760
+# HTTP_REQUEST_NODE_MAX_TEXT_SIZE=1048576
+# HTTP_REQUEST_NODE_SSL_VERIFY=True
+# HTTP_REQUEST_MAX_CONNECT_TIMEOUT=10
+# HTTP_REQUEST_MAX_READ_TIMEOUT=600
+# HTTP_REQUEST_MAX_WRITE_TIMEOUT=600
+# DSL_EXPORT_ENCRYPT_DATASET_ID=true
+# DATASET_MAX_SEGMENTS_PER_REQUEST=0
+
+# ------------------------------
+# Workflow storage and retention
+# ------------------------------
+# WORKFLOW_NODE_EXECUTION_STORAGE=rdbms
+# CORE_WORKFLOW_EXECUTION_REPOSITORY=core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository
+# CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY=core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository
+# API_WORKFLOW_RUN_REPOSITORY=repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository
+# API_WORKFLOW_NODE_EXECUTION_REPOSITORY=repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository
+# WORKFLOW_LOG_CLEANUP_ENABLED=false
+# WORKFLOW_LOG_RETENTION_DAYS=30
+# WORKFLOW_LOG_CLEANUP_BATCH_SIZE=100
+# WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS=
+# ALIYUN_SLS_ENDPOINT=
+# ALIYUN_SLS_REGION=
+# ALIYUN_SLS_PROJECT_NAME=
+# ALIYUN_SLS_LOGSTORE_TTL=365
+# LOGSTORE_DUAL_WRITE_ENABLED=false
+# LOGSTORE_DUAL_READ_ENABLED=true
+# LOGSTORE_ENABLE_PUT_GRAPH_FIELD=true
+
+# ------------------------------
+# Scheduled tasks and queue monitoring (API, workers and Beat)
+# ------------------------------
+# ENABLE_CLEAN_EMBEDDING_CACHE_TASK=false
+# ENABLE_CLEAN_UNUSED_DATASETS_TASK=false
+# ENABLE_CREATE_TIDB_SERVERLESS_TASK=false
+# ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK=false
+# ENABLE_CLEAN_MESSAGES=false
+# ENABLE_WORKFLOW_RUN_CLEANUP_TASK=false
+# ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK=false
+# ENABLE_DATASETS_QUEUE_MONITOR=false
+# ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK=true
+# ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK=true
+# WORKFLOW_SCHEDULE_POLLER_INTERVAL=1
+# WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE=100
+# WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK=0
+# TENANT_ISOLATED_TASK_CONCURRENCY=1
+# QUEUE_MONITOR_THRESHOLD=200
+# QUEUE_MONITOR_ALERT_EMAILS=
+# QUEUE_MONITOR_INTERVAL=30
+# HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE=WEBHOOK
+# ENABLE_HUMAN_INPUT_TIMEOUT_TASK=true
+# HUMAN_INPUT_TIMEOUT_TASK_INTERVAL=1
+# ENABLE_CONVERSATION_CLEANUP_TASK=true
+# CONVERSATION_CLEANUP_TASK_INTERVAL=5
+# CONVERSATION_CLEANUP_BATCH_SIZE=100
+# Expired sandbox records are cleaned by API/Celery, not the sandbox container.
+# SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=21
+# SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE=1000
+# SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL=200
+# SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS=30
+# SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL=90000
+# CREATE_TIDB_SERVICE_JOB_ENABLED=false
+# MAX_SUBMIT_COUNT=100
+
+# ------------------------------
+# Email and Notion integrations
+# ------------------------------
+# NOTION_INTEGRATION_TYPE=public
+# NOTION_CLIENT_ID=
+# MAIL_TYPE=resend
+# MAIL_DEFAULT_SEND_FROM=
+# RESEND_API_URL=https://api.resend.com
+# SMTP_SERVER=
+# SMTP_PORT=465
+# SMTP_USERNAME=
+# SMTP_USE_TLS=true
+# SMTP_OPPORTUNISTIC_TLS=false
+# SMTP_LOCAL_HOSTNAME=
+
+# ------------------------------
+# SSRF proxy clients
+# ------------------------------
+# Client timeouts/pool limits and Squid settings: ../infrastructure/ssrf-proxy.defaults.
+SSRF_PROXY_HTTP_URL=${SSRF_PROXY_HTTP_URL-http://ssrf_proxy:3128}
+SSRF_PROXY_HTTPS_URL=${SSRF_PROXY_HTTPS_URL-http://ssrf_proxy:3128}
+
+# ------------------------------
+# Storage and encryption providers
+# ------------------------------
+# Application storage settings below also serve workers; plugin-daemon.defaults configures plugin storage separately.
+# STORAGE_TYPE=opendal
+# KEY_PROVIDER_TYPE=local
+# OPENDAL_SCHEME=fs
+OPENDAL_FS_ROOT=${OPENDAL_FS_ROOT-storage}
+# AZURE_KEYVAULT_VAULT_URL=
+# AZURE_KEYVAULT_KEY_SIZE=2048
+# AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS=
+
+# ------------------------------
+# Amazon S3 and archive storage
+# ------------------------------
+# S3_ENDPOINT=
+# S3_REGION=us-east-1
+# S3_BUCKET_NAME=difyai
+# S3_ACCESS_KEY=
+# S3_SECRET_KEY=
+# S3_ADDRESS_STYLE=auto
+# S3_USE_AWS_MANAGED_IAM=false
+# ARCHIVE_STORAGE_ENABLED=false
+# ARCHIVE_STORAGE_ENDPOINT=
+# ARCHIVE_STORAGE_ARCHIVE_BUCKET=
+# ARCHIVE_STORAGE_EXPORT_BUCKET=
+# ARCHIVE_STORAGE_REGION=auto
+# ARCHIVE_STORAGE_ACCESS_KEY=
+# ARCHIVE_STORAGE_SECRET_KEY=
+# ARCHIVE_STORAGE_ADDRESS_STYLE=path
+
+# ------------------------------
+# Azure Blob and Google Cloud Storage
+# ------------------------------
+# AZURE_BLOB_ACCOUNT_URL=https://<your_account_name>.blob.core.windows.net
+# AZURE_BLOB_ACCOUNT_NAME=difyai
+# AZURE_BLOB_ACCOUNT_KEY=difyai
+# AZURE_BLOB_CONTAINER_NAME=difyai-container
+# GOOGLE_STORAGE_BUCKET_NAME=your-bucket-name
+# GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64=
+
+# ------------------------------
+# Aliyun OSS, Tencent COS and Volcengine TOS
+# ------------------------------
+# ALIYUN_OSS_BUCKET_NAME=your-bucket-name
+# ALIYUN_OSS_ENDPOINT=https://oss-ap-southeast-1-internal.aliyuncs.com
+# ALIYUN_OSS_REGION=ap-southeast-1
+# ALIYUN_OSS_ACCESS_KEY=your-access-key
+# ALIYUN_OSS_SECRET_KEY=your-secret-key
+# ALIYUN_OSS_AUTH_VERSION=v4
+# ALIYUN_OSS_PATH=your-path
+# ALIYUN_CLOUDBOX_ID=your-cloudbox-id
+# TENCENT_COS_BUCKET_NAME=your-bucket-name
+# TENCENT_COS_REGION=your-region
+# TENCENT_COS_SECRET_KEY=your-secret-key
+# TENCENT_COS_SECRET_ID=your-secret-id
+# TENCENT_COS_SCHEME=your-scheme
+# TENCENT_COS_CUSTOM_DOMAIN=your-custom-domain
+# VOLCENGINE_TOS_BUCKET_NAME=your-bucket-name
+# VOLCENGINE_TOS_ENDPOINT=your-server-url
+# VOLCENGINE_TOS_REGION=your-region
+# VOLCENGINE_TOS_SECRET_KEY=your-secret-key
+# VOLCENGINE_TOS_ACCESS_KEY=your-access-key
+
+# ------------------------------
+# OCI, Huawei OBS, Baidu OBS and Supabase storage
+# ------------------------------
+# OCI_ENDPOINT=https://your-object-storage-namespace.compat.objectstorage.us-ashburn-1.oraclecloud.com
+# OCI_BUCKET_NAME=your-bucket-name
+# OCI_REGION=us-ashburn-1
+# OCI_ACCESS_KEY=your-access-key
+# OCI_SECRET_KEY=your-secret-key
+# HUAWEI_OBS_BUCKET_NAME=your-bucket-name
+# HUAWEI_OBS_SERVER=your-server-url
+# HUAWEI_OBS_SECRET_KEY=your-secret-key
+# HUAWEI_OBS_ACCESS_KEY=your-access-key
+# HUAWEI_OBS_PATH_STYLE=false
+# BAIDU_OBS_BUCKET_NAME=your-bucket-name
+# BAIDU_OBS_ENDPOINT=your-server-url
+# BAIDU_OBS_SECRET_KEY=your-secret-key
+# BAIDU_OBS_ACCESS_KEY=your-access-key
+# SUPABASE_URL=your-server-url
+# SUPABASE_BUCKET_NAME=your-bucket-name
+# SUPABASE_API_KEY=your-access-key
+
+# ------------------------------
+# ClickZetta storage and vector search
+# ------------------------------
+# CLICKZETTA_USERNAME=
+# CLICKZETTA_PASSWORD=
+# CLICKZETTA_INSTANCE=
+# CLICKZETTA_SERVICE=api.clickzetta.com
+# CLICKZETTA_WORKSPACE=quick_start
+# CLICKZETTA_VCLUSTER=default_ap
+# CLICKZETTA_SCHEMA=dify
+# CLICKZETTA_BATCH_SIZE=100
+# CLICKZETTA_ENABLE_INVERTED_INDEX=true
+# CLICKZETTA_ANALYZER_TYPE=chinese
+# CLICKZETTA_ANALYZER_MODE=smart
+# CLICKZETTA_VECTOR_DISTANCE_FUNCTION=cosine_distance
+# CLICKZETTA_VOLUME_TYPE=user
+# CLICKZETTA_VOLUME_NAME=
+# CLICKZETTA_VOLUME_TABLE_PREFIX=dataset_
+# CLICKZETTA_VOLUME_DIFY_PREFIX=dify_km
+
+# ------------------------------
+# Vector store selection and Docker connection defaults
+# ------------------------------
+# Set VECTOR_STORE and COMPOSE_PROFILES in docker/.env to select a bundled provider.
+# Compose loads that provider's ../vectorstores/<VECTOR_STORE>.defaults automatically.
+# Provider .env overrides reach API, workers and Beat; existing shared.env overrides still work.
+# KnowledgeFS uses the API vector bridge, not its own vector provider connection.
+VECTOR_STORE=${VECTOR_STORE-weaviate}
+# Prefix used to create collection names in the vector database.
+# VECTOR_INDEX_NAME_PREFIX=Vector_index
+# Keep legacy Weaviate connections for existing datasets after changing VECTOR_STORE.
+WEAVIATE_ENDPOINT=${WEAVIATE_ENDPOINT-http://weaviate:8080}
+WEAVIATE_API_KEY=${WEAVIATE_API_KEY-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+WEAVIATE_GRPC_ENDPOINT=${WEAVIATE_GRPC_ENDPOINT-grpc://weaviate:50051}
+
+# ------------------------------
+# TiDB and TiDB on Qdrant
+# ------------------------------
+# TIDB_VECTOR_HOST=tidb
+# TIDB_VECTOR_PORT=4000
+# TIDB_VECTOR_USER=
+# TIDB_VECTOR_DATABASE=dify
+# TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH=false
+# TIDB_ON_QDRANT_URL=http://127.0.0.1
+# TIDB_ON_QDRANT_CLIENT_TIMEOUT=20
+# TIDB_ON_QDRANT_GRPC_ENABLED=false
+# TIDB_ON_QDRANT_GRPC_PORT=6334
+# TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB=sandbox:60,professional:6400,team:25600
+# TIDB_API_URL=http://127.0.0.1
+# TIDB_IAM_API_URL=http://127.0.0.1
+# TIDB_REGION=regions/aws-us-east-1
+# TIDB_PROJECT_ID=dify
+# TIDB_SPEND_LIMIT=100
+
+# ------------------------------
+# Tencent and Baidu vector databases
+# ------------------------------
+# TENCENT_VECTOR_DB_URL=http://127.0.0.1
+# TENCENT_VECTOR_DB_TIMEOUT=30
+# TENCENT_VECTOR_DB_USERNAME=dify
+# TENCENT_VECTOR_DB_DATABASE=dify
+# TENCENT_VECTOR_DB_SHARD=1
+# TENCENT_VECTOR_DB_REPLICAS=2
+# TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH=false
+# BAIDU_VECTOR_DB_ENDPOINT=http://127.0.0.1:5287
+# BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS=30000
+# BAIDU_VECTOR_DB_ACCOUNT=root
+# BAIDU_VECTOR_DB_DATABASE=dify
+# BAIDU_VECTOR_DB_SHARD=1
+# BAIDU_VECTOR_DB_REPLICAS=3
+# BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER=DEFAULT_ANALYZER
+# BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE=COARSE_MODE
+# BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT=500
+# BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO=0.05
+# BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS=300
+
+# ------------------------------
+# Lindorm, Huawei Cloud, Upstash and Tablestore
+# ------------------------------
+# LINDORM_URL=http://localhost:30070
+# LINDORM_USERNAME=admin
+# LINDORM_USING_UGC=True
+# LINDORM_QUERY_TIMEOUT=1
+# HUAWEI_CLOUD_HOSTS=https://127.0.0.1:9200
+# HUAWEI_CLOUD_USER=admin
+# UPSTASH_VECTOR_URL=https://xxx-vector.upstash.io
+# TABLESTORE_ENDPOINT=https://instance-name.cn-hangzhou.ots.aliyuncs.com
+# TABLESTORE_INSTANCE_NAME=instance-name
+# TABLESTORE_NORMALIZE_FULLTEXT_BM25_SCORE=false
+
+# ------------------------------
+# AnalyticDB, Alibaba Cloud MySQL and Relyt
+# ------------------------------
+# ANALYTICDB_REGION_ID=cn-hangzhou
+# ANALYTICDB_INSTANCE_ID=gp-ab123456
+# ANALYTICDB_ACCOUNT=testaccount
+# ANALYTICDB_NAMESPACE=dify
+# ANALYTICDB_HOST=gp-test.aliyuncs.com
+# ANALYTICDB_PORT=5432
+# ANALYTICDB_MIN_CONNECTION=1
+# ANALYTICDB_MAX_CONNECTION=5
+# ALIBABACLOUD_MYSQL_HOST=127.0.0.1
+# ALIBABACLOUD_MYSQL_PORT=3306
+# ALIBABACLOUD_MYSQL_USER=root
+# ALIBABACLOUD_MYSQL_DATABASE=dify
+# ALIBABACLOUD_MYSQL_MAX_CONNECTION=5
+# ALIBABACLOUD_MYSQL_HNSW_M=6
+# RELYT_HOST=db
+# RELYT_PORT=5432
+# RELYT_USER=postgres
+# RELYT_DATABASE=postgres
+
+# ------------------------------
+# VikingDB and Hologres
+# ------------------------------
+# VIKINGDB_REGION=cn-shanghai
+# VIKINGDB_HOST=api-vikingdb.xxx.volces.com
+# VIKINGDB_SCHEME=http
+# VIKINGDB_CONNECTION_TIMEOUT=30
+# VIKINGDB_SOCKET_TIMEOUT=30
+# HOLOGRES_HOST=
+# HOLOGRES_PORT=80
+# HOLOGRES_DATABASE=
+# HOLOGRES_ACCESS_KEY_ID=
+# HOLOGRES_ACCESS_KEY_SECRET=
+# HOLOGRES_SCHEMA=public
+# HOLOGRES_TOKENIZER=jieba
+# HOLOGRES_DISTANCE_METHOD=Cosine
+# HOLOGRES_BASE_QUANTIZATION_TYPE=rabitq
+# HOLOGRES_MAX_DEGREE=64
+# HOLOGRES_EF_CONSTRUCTION=400

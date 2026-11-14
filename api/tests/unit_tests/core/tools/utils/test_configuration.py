@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.tool_parameter_cache import ToolParameterCache
@@ -31,16 +32,19 @@ class _DummyTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
 
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         yield self.create_text_message("ok")
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,
@@ -93,7 +97,7 @@ def _build_manager() -> ToolParameterConfigurationManager:
     )
 
 
-def test_merge_and_mask_parameters():
+def test_merge_and_mask_parameters() -> None:
     manager = _build_manager()
 
     masked = manager.mask_tool_parameters({"secret": "abcdefghi", "plain": "x", "runtime_only": "y"})
@@ -102,7 +106,7 @@ def test_merge_and_mask_parameters():
     assert masked["runtime_only"] == "y"
 
 
-def test_encrypt_tool_parameters():
+def test_encrypt_tool_parameters() -> None:
     manager = _build_manager()
 
     with patch("core.tools.utils.configuration.encrypter.encrypt_token", return_value="enc"):
@@ -112,7 +116,7 @@ def test_encrypt_tool_parameters():
     assert encrypted["plain"] == "x"
 
 
-def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPatch):
+def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPatch) -> None:
     manager = _build_manager()
 
     with (
@@ -132,7 +136,7 @@ def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPa
         mock_set.assert_called_once()
 
 
-def test_delete_tool_parameters_cache():
+def test_delete_tool_parameters_cache() -> None:
     manager = _build_manager()
 
     with patch.object(ToolParameterCache, "delete") as mock_delete:
@@ -141,7 +145,7 @@ def test_delete_tool_parameters_cache():
     mock_delete.assert_called_once()
 
 
-def test_configuration_manager_decrypt_suppresses_errors(monkeypatch: pytest.MonkeyPatch):
+def test_configuration_manager_decrypt_suppresses_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     manager = _build_manager()
     with (
         patch.object(ToolParameterCache, "get", return_value=None),

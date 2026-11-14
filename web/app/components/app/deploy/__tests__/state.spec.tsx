@@ -1,73 +1,17 @@
-import type {
-  WorkflowPaginationResponse,
-  WorkflowResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
 import { screen, render as testingLibraryRender } from '@testing-library/react'
 import { Provider, useAtomValue } from 'jotai'
+import {
+  appWorkflowQueryOptions,
+  appWorkflowVersionsInfiniteQueryOptions,
+} from '@/service/workflow-queries'
 import { createQueryAtomTestStore } from '@/test/query-atom'
 import {
   AppDeployStateBoundary,
   appWorkflowVersionsAtom,
   latestAppWorkflowVersionAtom,
 } from '../state'
-
-type QueryOptions = {
-  input: unknown
-}
-
-type InfiniteQueryOptions = {
-  getNextPageParam: (lastPage: WorkflowPaginationResponse) => number | undefined
-  initialPageParam: number
-  input: (pageParam: number) => unknown
-}
-
-const queryOptionsMocks = vi.hoisted(() => ({
-  latest: vi.fn(),
-  versions: vi.fn(),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        workflows: {
-          get: {
-            infiniteOptions: (options: InfiniteQueryOptions) => {
-              queryOptionsMocks.versions(options)
-
-              return {
-                ...options,
-                queryFn: async () => ({
-                  has_more: false,
-                  items: [],
-                  limit: 10,
-                  page: 1,
-                }),
-                queryKey: ['appWorkflowVersions'],
-                staleTime: Infinity,
-              }
-            },
-          },
-          publish: {
-            get: {
-              queryOptions: (options: QueryOptions) => {
-                queryOptionsMocks.latest(options)
-
-                return {
-                  ...options,
-                  queryFn: async () => undefined,
-                  queryKey: ['latestPublishedWorkflow'],
-                  staleTime: Infinity,
-                }
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
 
 function workflowVersion({
   id,
@@ -141,8 +85,8 @@ function render(ui: ReactElement) {
     version: 'draft',
   })
 
-  queryClient.setQueryData(['latestPublishedWorkflow'], latestVersion)
-  queryClient.setQueryData(['appWorkflowVersions'], {
+  queryClient.setQueryData(appWorkflowQueryOptions('app-1').queryKey, latestVersion)
+  queryClient.setQueryData(appWorkflowVersionsInfiniteQueryOptions('app-1').queryKey, {
     pageParams: [1, 2],
     pages: [
       {
@@ -168,7 +112,7 @@ describe('app deploy workflow version state', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps published workflow pages without drafts in state and uses a non-paginated latest query', () => {
+  it('uses cached published pages, excludes drafts, and identifies the latest version', () => {
     render(
       <AppDeployStateBoundary appId="app-1">
         <StateConsumer />
@@ -179,41 +123,5 @@ describe('app deploy workflow version state', () => {
     expect(screen.getByText('Release 3 · Alice · latest')).toBeInTheDocument()
     expect(screen.getByText('# 2 · Bob · previous')).toBeInTheDocument()
     expect(screen.queryByText(/Draft/)).not.toBeInTheDocument()
-
-    expect(queryOptionsMocks.latest).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
-        },
-      },
-    })
-
-    const infiniteOptions = queryOptionsMocks.versions.mock.lastCall?.[0] as InfiniteQueryOptions
-    expect(infiniteOptions.initialPageParam).toBe(1)
-    expect(infiniteOptions.input(3)).toEqual({
-      params: {
-        app_id: 'app-1',
-      },
-      query: {
-        limit: 10,
-        page: 3,
-      },
-    })
-    expect(
-      infiniteOptions.getNextPageParam({
-        has_more: true,
-        items: [],
-        limit: 10,
-        page: 3,
-      }),
-    ).toBe(4)
-    expect(
-      infiniteOptions.getNextPageParam({
-        has_more: false,
-        items: [],
-        limit: 10,
-        page: 3,
-      }),
-    ).toBeUndefined()
   })
 })

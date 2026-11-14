@@ -10,7 +10,7 @@ Dify separates persistent product resources from request-time execution:
 - a **RuntimeLease** is operation-scoped access to the physical Binding.
 
 `AgentWorkspaceBinding.id` is the participant, materialized Home, and persisted
-Agenton session identity. `agent_id` identifies the source Agent. The same
+module session identity. `agent_id` identifies the source Agent. The same
 Agent can therefore have multiple active Bindings in one Workspace:
 each has an independent Home and session, while all may share Workspace files.
 
@@ -19,11 +19,11 @@ physical representation. For example, current E2B maps one Binding and its
 Workspace to one E2B resource, while Local can attach multiple materialized
 Homes to one shared Workspace.
 
-## Runtime layer graph
+## Runtime modules
 
 Agent requests do not expose separate Home, Workspace, or Sandbox layers. Dify
 API resolves the Binding selected by the product flow and sends its opaque
-backend ref to the `dify.runtime` layer:
+backend ref to the `runtime` module:
 
 ```mermaid
 flowchart LR
@@ -35,13 +35,13 @@ flowchart LR
     RT --> SH
 ```
 
-`DifyRuntimeLayer` calls the selected `ExecutionBindingBackend.acquire()` when
-its resource context opens and `release()` when the operation ends. It exposes
-the resulting `RuntimeLease` only while that context is active. The layer does
+`runtime.Capability` calls the selected `ExecutionBindingBackend.acquire()` when
+its native `wrap_run` scope opens and `release()` when the operation ends. It exposes
+the resulting `RuntimeLease` only while that context is active. The module does
 not create, retire, or destroy persistent resources, and it stores no backend
-SDK object in an Agenton session snapshot.
+SDK object in an module session snapshot.
 
-The Shell layer consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
+The Shell module consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
 tracks only request-local shell job ids and offsets.
 Closing a run clears that job state; it does not retire the Binding.
 
@@ -56,7 +56,7 @@ Dify API is the lifecycle ledger. It stores three resource records:
 | `agent_workspace_bindings` | One materialized participant, private Home, and resumable session attached to a Workspace. | `backend_binding_ref` |
 
 Backend refs are opaque strings interpreted only by the selected backend
-adapter. Dify API stores the latest Agenton session snapshot on the Binding, but
+adapter. Dify API stores the latest module session snapshot on the Binding, but
 it does not serialize `RuntimeLease`, SDK clients, credentials, or temporary
 access tokens.
 
@@ -77,10 +77,15 @@ snapshot ref.
 
 Build Draft Apply uses `POST /home-snapshots/from-binding`: Dify Agent acquires
 the exact source Binding, snapshots its materialized Home through the
-backend-native operation, releases the lease, and returns a new opaque snapshot
-ref. Dify API then stores a new immutable `agent_home_snapshots` row and records
-its logical id on the resulting config version. There is no replay or fallback
-when the source Binding is unavailable.
+backend-native operation, releases the lease, and returns an opaque snapshot
+ref — or explicit `snapshot_ref: null` when the selected backend cannot
+snapshot at all. A null result means no snapshot exists: Dify API applies the
+config without persisting an `agent_home_snapshots` row, records no snapshot
+id on the resulting config version, and the next Binding is materialized
+image-fresh. On a snapshot-capable backend, Dify API stores a new immutable
+`agent_home_snapshots` row and records its logical id on the resulting config
+version. There is no replay or fallback when the source Binding is
+unavailable.
 
 Before an Agent request, Dify API loads the specific product context. If it has
 no associated Binding, Dify API materializes one and saves the Binding id in the
@@ -90,8 +95,10 @@ fail fast; Dify API does not search by Agent, Workspace, candidate count, or
 recency, and it does not create a replacement implicitly.
 
 `POST /execution-bindings` accepts either an exact `home_snapshot_ref` or
-`null`. An exact ref must be materialized without fallback; `null` selects the
-backend's deployment-default Home. It returns opaque Binding and Workspace
+`null`. On snapshot-capable backends an exact ref must be materialized without
+fallback; a backend that cannot snapshot ignores the ref and materializes
+image-fresh. `null` selects the backend's deployment-default Home. It returns
+opaque Binding and Workspace
 refs. Every create request represents a new participant, even when the Agent,
 Snapshot, config generation, and Workspace match another Binding. The request
 composition contains:
@@ -99,7 +106,6 @@ composition contains:
 ```json
 {
   "name": "runtime",
-  "type": "dify.runtime",
   "config": {"backend_binding_ref": "opaque-backend-binding-ref"}
 }
 ```
@@ -209,7 +215,7 @@ Home plus the shared Workspace.
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
 | Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
-| OpenShell | Supported via directory copies on an operator-provided shared volume | Supported with image-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name; snapshots live under `home-snapshots/<tenant-digest>/` on the shared volume. Production deployments must use one workspace and one dedicated volume per tenant. |
+| OpenShell | Unsupported: `create_from_runtime` reports `snapshot_ref: null` and `delete` is a no-op; new Bindings ignore `home_snapshot_ref` | Supported with image-fresh default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name. OpenShell has no native snapshot capability, so every new Binding is materialized from the deployment image. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
 the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
@@ -227,7 +233,7 @@ remain independently configurable. Runtime resources pause on timeout, but this
 resource setting does not own the Agent run terminal state. It is not a retention
 TTL and does not delete paused resources or immutable snapshots.
 
-See the [Shell layer](../../user-manual/shell-layer/index.md) for request
+See the [Shell module](../../user-manual/shell-layer/index.md) for request
 composition, the [Operations Guide](../../guide/index.md) for Local and E2B
 validation, and the [OpenShell guide](../../guide/openshell.md) for OpenShell
 configuration and validation.

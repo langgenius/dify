@@ -77,7 +77,7 @@ class Blob(BaseModel):
                 raise ValueError(f"Unable to get bytes for blob {self}")
 
     @contextlib.contextmanager
-    def as_bytes_io(self) -> Generator[BytesIO | BufferedReader, None, None]:
+    def as_bytes_io(self) -> Generator[BytesIO | BufferedReader]:
         """Read data as a byte stream."""
         match self.data:
             case bytes():
@@ -109,10 +109,7 @@ class Blob(BaseModel):
         Returns:
             Blob instance
         """
-        if mime_type is None and guess_type:
-            _mimetype = mimetypes.guess_type(path)[0]
-        else:
-            _mimetype = mime_type
+        _mimetype = mimetypes.guess_type(path)[0] if mime_type is None and guess_type else mime_type
         # We do not load the data immediately, instead we treat the blob as a
         # reference to the underlying data.
         return cls(data=None, mimetype=_mimetype, encoding=encoding, path=path)

@@ -44,7 +44,8 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
             trigger={triggerElement}
             standalonePanel={TabType.Sources}
             popupClassName="w-[320px]"
-            placement="bottom-start"
+            side="bottom"
+            align="start"
             sideOffset={4}
           />
         </div>

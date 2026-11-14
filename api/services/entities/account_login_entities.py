@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from services.entities.account_entities import AccountPasswordDigest
+from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens
 
 
 class EmailCodeChallengeStatus(StrEnum):
@@ -55,13 +55,6 @@ class AccountSessionPreparation:
 
 
 @dataclass(frozen=True, slots=True)
-class AuthTokenPair:
-    access_token: str
-    refresh_token: str
-    csrf_token: str
-
-
-@dataclass(frozen=True, slots=True)
 class PasswordLoginCommand:
     email: str
     password: str
@@ -90,5 +83,5 @@ class EmailCodeLoginCommand:
 
 @dataclass(frozen=True, slots=True)
 class PasswordLoginResult:
-    token_pair: AuthTokenPair | None
+    tokens: AccountSessionTokens | None
     workspace_found: bool

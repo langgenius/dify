@@ -5,6 +5,7 @@ from typing import Any, override
 
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -217,7 +218,9 @@ class HuaweiCloudVector(BaseVector):
 
 class HuaweiCloudVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> HuaweiCloudVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> HuaweiCloudVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

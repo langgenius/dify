@@ -1,45 +1,25 @@
 import {
-  buildIntegrationPath,
   buildMarketplaceUrlPathByIntegrationSection,
   getIntegrationRedirectPathByLegacyToolsSearchParams,
   getIntegrationRouteTargetBySlug,
-  integrationPathBySection,
-  marketplaceUrlPathByIntegrationSection,
 } from '../routes'
 
 describe('integration routes', () => {
-  it('maps integration sections to canonical paths', () => {
-    expect(integrationPathBySection).toEqual({
-      provider: '/integrations/model-provider',
-      builtin: '/integrations/tools/built-in',
-      'custom-tool': '/integrations/tools/api',
-      'workflow-tool': '/integrations/tools/workflow',
-      mcp: '/integrations/tools/mcp',
-      'data-source': '/integrations/data-source',
-      'custom-endpoint': '/integrations/custom-endpoint',
-      trigger: '/integrations/trigger',
-      'agent-strategy': '/integrations/agent-strategy',
-      extension: '/integrations/extension',
-    })
-    expect(buildIntegrationPath('custom-tool')).toBe('/integrations/tools/api')
-  })
-
-  it('maps integration sections to marketplace platform paths', () => {
-    expect(marketplaceUrlPathByIntegrationSection).toEqual({
-      provider: '/plugins/model',
-      builtin: '/plugins/tool',
-      mcp: '/plugins/tool',
-      'custom-tool': '/plugins/tool',
-      'workflow-tool': '/plugins/tool',
-      'data-source': '/plugins/datasource',
-      'custom-endpoint': '/plugins/extension',
-      trigger: '/plugins/trigger',
-      'agent-strategy': '/plugins/agent-strategy',
-      extension: '/plugins/extension',
-    })
-    expect(buildMarketplaceUrlPathByIntegrationSection('provider')).toBe('/plugins/model')
-    expect(buildMarketplaceUrlPathByIntegrationSection('custom-tool')).toBe('/plugins/tool')
-    expect(buildMarketplaceUrlPathByIntegrationSection('extension')).toBe('/plugins/extension')
+  it.each([
+    ['provider', '/plugins/model'],
+    ['builtin', '/plugins/tool'],
+    ['mcp', '/plugins/tool'],
+    ['custom-tool', '/plugins/tool'],
+    ['workflow-tool', '/plugins/tool'],
+    ['data-source', '/plugins/datasource'],
+    ['custom-endpoint', '/plugins/extension'],
+    ['trigger', '/plugins/trigger'],
+    ['agent-strategy', '/plugins/agent-strategy'],
+    ['extension', '/plugins/extension'],
+    // Malware scanners are not plugins, so the section has no marketplace category of its own.
+    ['file-scan', '/plugins'],
+  ] as const)('builds the marketplace destination for %s', (section, path) => {
+    expect(buildMarketplaceUrlPathByIntegrationSection(section)).toBe(path)
   })
 
   it.each([
@@ -58,6 +38,7 @@ describe('integration routes', () => {
     [['tools', 'mcp'], { type: 'section', section: 'mcp' }],
     [['data-source'], { type: 'section', section: 'data-source' }],
     [['custom-endpoint'], { type: 'section', section: 'custom-endpoint' }],
+    [['file-scan'], { type: 'section', section: 'file-scan' }],
     [['trigger'], { type: 'section', section: 'trigger' }],
     [['agent-strategy'], { type: 'section', section: 'agent-strategy' }],
     [['extension'], { type: 'section', section: 'extension' }],

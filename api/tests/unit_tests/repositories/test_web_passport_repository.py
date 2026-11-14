@@ -2,11 +2,12 @@ from collections.abc import Callable
 from unittest.mock import MagicMock
 from uuid import NAMESPACE_URL, uuid5
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import CustomizeTokenStrategy, EndUserType
-from models.model import App, AppMode, EndUser, IconType, Site
+from models.model import App, AppMode, AppModelConfig, EndUser, IconType, Site
 from repositories.web_passport_repository import WebPassportRepository
 
 
@@ -20,6 +21,7 @@ def _persist_webapp(
     app_code: str = "code",
     identity: str | None = None,
     enable_site: bool = True,
+    published: bool = True,
 ) -> tuple[App, Site]:
     identity = identity or app_code
     app = App(
@@ -42,6 +44,11 @@ def _persist_webapp(
         code=app_code,
     )
     session.add_all([app, site])
+    if published:
+        config = AppModelConfig(app_id=app.id)
+        config.id = _stable_uuid(f"config:{identity}")
+        app.app_model_config_id = config.id
+        session.add(config)
     session.commit()
     return app, site
 
@@ -83,6 +90,34 @@ def test_get_active_web_app_rejects_disabled_app(
     repository = _repository(sqlite_session_factory)
 
     assert repository.get_active_web_app("code") is None
+
+
+def test_unpublished_app_does_not_resolve_for_passport(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_webapp(sqlite_session, published=False)
+    assert _repository(sqlite_session_factory).get_active_web_app("code") is None
+
+
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_publication_is_rechecked_before_end_user_write(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], authenticated: bool
+) -> None:
+    app, _ = _persist_webapp(sqlite_session)
+    repository = _repository(sqlite_session_factory)
+    record = repository.get_active_web_app("code")
+    assert record is not None
+    app.app_model_config_id = None
+    sqlite_session.commit()
+
+    if authenticated:
+        resolution = repository.resolve_authenticated_end_user(record, session_id="not-created", end_user_id=None)
+    else:
+        resolution = repository.resolve_standard_end_user(record, "not-created")
+
+    assert resolution.app_active is False
+    assert resolution.end_user is None
+    assert sqlite_session.scalar(select(EndUser).where(EndUser.app_id == app.id)) is None
 
 
 def test_get_active_web_app_accepts_duplicate_site_codes(

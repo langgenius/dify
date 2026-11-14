@@ -1,3 +1,4 @@
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -13,6 +14,13 @@ import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { InputVarType } from '@/app/components/workflow/types'
 
+const toAppInputFile = (file: FileEntity): FileEntity => {
+  if (file.progress !== 100 || !file.uploadedId) return file
+  const persistedFile = { ...file }
+  delete persistedFile.originalFile
+  return persistedFile
+}
+
 type Props = Readonly<{
   inputsForms: any[]
   inputs: Record<string, any>
@@ -25,10 +33,10 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
 
   const handleFormChange = useCallback(
     (variable: string, value: any) => {
-      onFormChange({
-        ...inputsRef.current,
-        [variable]: value,
-      })
+      const nextInputs = { ...inputsRef.current }
+      if (value === undefined) delete nextInputs[variable]
+      else nextInputs[variable] = value
+      onFormChange(nextInputs)
     },
     [onFormChange, inputsRef],
   )
@@ -96,7 +104,9 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
       return (
         <FileUploaderInAttachmentWrapper
           value={inputs[variable] ? [inputs[variable]] : []}
-          onChange={(files) => handleFormChange(variable, files[0])}
+          onChange={(files) =>
+            handleFormChange(variable, files[0] ? toAppInputFile(files[0]) : undefined)
+          }
           fileConfig={{
             allowed_file_types: form.allowed_file_types,
             allowed_file_extensions: form.allowed_file_extensions,
@@ -111,7 +121,7 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
       return (
         <FileUploaderInAttachmentWrapper
           value={inputs[variable]}
-          onChange={(files) => handleFormChange(variable, files)}
+          onChange={(files) => handleFormChange(variable, files.map(toAppInputFile))}
           fileConfig={{
             allowed_file_types: form.allowed_file_types,
             allowed_file_extensions: form.allowed_file_extensions,

@@ -1,10 +1,12 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, RunFailureType
+from dify_agent.protocol.schemas import CreateRunRequest, RunStatus
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
-from dify_agent.storage.redis_run_store import RunNotFoundError
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RunNotFoundError
 
 
 class FakeScheduler:
@@ -31,6 +33,8 @@ def test_get_run_status_returns_failure_type() -> None:
                 status="failed",
                 error="run limit reached",
                 error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                idempotency_key_digest="key-digest",
+                idempotency_fingerprint="request-fingerprint",
             )
 
     app = FastAPI()
@@ -42,6 +46,8 @@ def test_get_run_status_returns_failure_type() -> None:
     assert response.status_code == 200
     assert response.json()["error"] == "run limit reached"
     assert response.json()["error_type"] == "agent_run_limit_exceeded"
+    assert "idempotency_key_digest" not in response.json()
+    assert "idempotency_fingerprint" not in response.json()
 
 
 def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:
@@ -57,8 +63,8 @@ def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": ["", "   "]}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": ["", "   "]}}],
             }
         },
     )
@@ -85,14 +91,99 @@ def test_create_run_returns_running_from_scheduler() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
 
     assert response.status_code == 202
     assert response.json() == {"run_id": "run-1", "status": "running"}
+
+
+def test_create_run_maps_idempotency_conflict_to_409() -> None:
+    from fastapi import FastAPI
+
+    class ConflictingScheduler(FakeScheduler):
+        async def create_run(self, request: object) -> object:
+            del request
+            raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: ConflictingScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    response = TestClient(app).post(
+        "/runs",
+        json={
+            "composition": {"schema_version": 2, "layers": [{"name": "prompt", "config": {"user": "hello"}}]},
+            "idempotency_key": "retry-1",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "different create-run request" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("key", ["", "   ", "\t\n"])
+def test_create_run_rejects_blank_idempotency_key_before_scheduling(key: str) -> None:
+    from fastapi import FastAPI
+
+    class UncalledScheduler(FakeScheduler):
+        async def create_run(self, request: object) -> object:
+            pytest.fail("blank idempotency keys must fail validation before scheduling")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: UncalledScheduler())  # pyright: ignore[reportArgumentType]
+    )
+
+    response = TestClient(app).post("/runs", json={"composition": {"layers": []}, "idempotency_key": key})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "idempotency_key"]
+
+
+@pytest.mark.parametrize("key", [None, "retry-1", "  retry-1\t\n"])
+def test_create_run_preserves_nonblank_idempotency_keys(key: str | None) -> None:
+    from fastapi import FastAPI
+
+    received: list[CreateRunRequest] = []
+
+    class CapturingScheduler(FakeScheduler):
+        async def create_run(self, request: CreateRunRequest) -> RunRecord:
+            received.append(request)
+            return RunRecord(run_id="run-1", status="running")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: CapturingScheduler())  # pyright: ignore[reportArgumentType]
+    )
+
+    response = TestClient(app).post("/runs", json={"composition": {"layers": []}, "idempotency_key": key})
+
+    assert response.status_code == 202
+    assert len(received) == 1
+    assert received[0].idempotency_key == key
+
+
+@pytest.mark.parametrize("status", ["succeeded", "failed", "cancelled"])
+def test_create_run_returns_current_terminal_status_for_idempotent_replay(status: RunStatus) -> None:
+    from fastapi import FastAPI
+
+    class ReplayScheduler(FakeScheduler):
+        async def create_run(self, request: object) -> RunRecord:
+            return RunRecord(run_id="original-run", status=status)
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: ReplayScheduler())  # pyright: ignore[reportArgumentType]
+    )
+
+    response = TestClient(app).post("/runs", json={"composition": {"layers": []}, "idempotency_key": "retry-1"})
+
+    assert response.status_code == 202
+    assert response.json() == {"run_id": "original-run", "status": status}
 
 
 def test_cancel_run_endpoint_returns_scheduler_result() -> None:
@@ -168,12 +259,11 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
+                "schema_version": 2,
                 "layers": [
-                    {"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}},
+                    {"name": "prompt", "config": {"user": "hello"}},
                     {
                         "name": "execution-context-renamed",
-                        "type": "dify.execution_context",
                         "config": {
                             "tenant_id": "tenant-1",
                             "user_from": "account",
@@ -183,8 +273,6 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
                     },
                     {
                         "name": DIFY_AGENT_MODEL_LAYER_ID,
-                        "type": "dify.plugin.llm",
-                        "deps": {"execution_context": "execution-context-renamed"},
                         "config": {
                             "plugin_id": "langgenius/openai",
                             "model_provider": "openai",
@@ -202,7 +290,7 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
     assert response.json() == {"run_id": "run-1", "status": "running"}
 
 
-def test_create_run_accepts_unknown_layer_exit_signal_request() -> None:
+def test_create_run_rejects_removed_layer_exit_signal_request() -> None:
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -215,15 +303,14 @@ def test_create_run_accepts_unknown_layer_exit_signal_request() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             },
             "on_exit": {"layers": {"missing": "delete"}},
         },
     )
 
-    assert response.status_code == 202
-    assert response.json() == {"run_id": "run-1", "status": "running"}
+    assert response.status_code == 422
 
 
 def test_create_run_accepts_closed_session_snapshot_request() -> None:
@@ -239,8 +326,8 @@ def test_create_run_accepts_closed_session_snapshot_request() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             },
             "session_snapshot": {
                 "schema_version": 1,
@@ -277,8 +364,8 @@ def test_create_run_returns_503_when_scheduler_is_stopping() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
@@ -305,8 +392,8 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )

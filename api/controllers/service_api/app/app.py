@@ -10,6 +10,7 @@ from controllers.service_api.app.error import AgentNotPublishedError, AppUnavail
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
@@ -42,6 +43,7 @@ register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, App
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
     @service_api_ns.doc(
         summary="Get App Parameters",
         description=(
@@ -81,6 +83,7 @@ class AppParameterApi(Resource):
 
 @service_api_ns.route("/meta")
 class AppMetaApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Get App Meta",
         description="Retrieve metadata about this application, including tool icons and other configuration details.",
@@ -115,6 +118,7 @@ class AppMetaApi(Resource):
 
 @service_api_ns.route("/info")
 class AppInfoApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Get App Info",
         description="Retrieve basic information about this application, including name, description, tags, and mode.",

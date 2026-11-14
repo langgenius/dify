@@ -173,13 +173,16 @@ def _resolve_file_type(
 
     ``custom`` is a configured extension bucket rather than a MIME-derived type,
     so strict validation must leave extension checks to the upload config.
+    Files accepted through that bucket still keep their detected type
+    (image/document/audio/video) so LLM nodes can attach them as prompt content.
+    Unknown files remain ``custom``.
     """
     if not specified_type:
         return detected_file_type
 
     specified_file_type = FileType(specified_type)
     if specified_file_type == FileType.CUSTOM:
-        return FileType.CUSTOM
+        return detected_file_type
 
     if strict_type_validation and detected_file_type != specified_file_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")

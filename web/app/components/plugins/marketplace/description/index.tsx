@@ -2,14 +2,15 @@
 
 import type { MotionValue } from 'motion/react'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
+import { domAnimation, LazyMotion, useMotionValue, useSpring, useTransform } from 'motion/react'
+import * as m from 'motion/react-m'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import { SubmitRequestDropdown } from '@/app/components/plugins/plugin-page/nav-operations'
+import { SubmitRequestMenu } from '@/app/components/plugins/plugin-page/nav-operations'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
-import SearchBoxWrapper from '../search-box/search-box-wrapper'
+import { MarketplaceSearchInput } from '../search-input'
 
 type DescriptionProps = {
   isMarketplacePlatform?: boolean
@@ -183,42 +184,42 @@ const Description = ({
         <h2 className="flex shrink-0 items-center justify-center text-center body-md-regular text-text-tertiary">
           {isZhHans && (
             <>
-              <span className="mr-1">{tCommon(($) => $['operation.in'])}</span>
+              <span className="me-1">{tCommon(($) => $['operation.in'])}</span>
               {t(($) => $['marketplace.difyMarketplace'])}
               {t(($) => $['marketplace.discover'])}
             </>
           )}
           {!isZhHans && <>{t(($) => $['marketplace.discover'])}</>}
-          <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.models'])}
           </span>
           ,
-          <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.tools'])}
           </span>
           ,
-          <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.datasources'])}
           </span>
           ,
-          <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.triggers'])}
           </span>
           ,
-          <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.agents'])}
           </span>
           ,
-          <span className="relative z-1 mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 me-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.extensions'])}
           </span>
           {t(($) => $['marketplace.and'])}
-          <span className="relative z-1 mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+          <span className="relative z-1 ms-1 me-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
             {t(($) => $['category.bundles'])}
           </span>
           {!isZhHans && (
             <>
-              <span className="mr-1">{tCommon(($) => $['operation.in'])}</span>
+              <span className="me-1">{tCommon(($) => $['operation.in'])}</span>
               {t(($) => $['marketplace.difyMarketplace'])}
             </>
           )}
@@ -238,72 +239,66 @@ const Description = ({
             </span>
           </div>
         </div>
-        <SearchBoxWrapper
-          wrapperClassName="z-11 w-64 shrink-0"
-          inputClassName="h-9 w-full rounded-[10px]"
-          inputElementClassName="text-[14px] leading-5 font-normal"
-          searchIconClassName="size-4"
-          placeholder={tCommon(($) => $['placeholder.search'])}
-          showTags={false}
-          usedInMarketplace={false}
-        />
-        <div className="flex h-full shrink-0 items-center justify-end gap-4 pr-3.5 pl-4">
+        <MarketplaceSearchInput className="w-64 shrink-0" />
+        <div className="flex h-full shrink-0 items-center justify-end gap-4 ps-4 pe-3.5">
           <Separator decorative orientation="vertical" className="mx-0 h-4" />
-          <SubmitRequestDropdown dividerAfterFirst />
+          <SubmitRequestMenu dividerAfterFirst />
         </div>
       </div>
     </div>
   )
 
   return (
-    <motion.div
-      ref={headerRef}
-      className="sticky top-0 z-20 w-full shrink-0 overflow-hidden rounded-lg px-3"
-      style={{
-        paddingTop,
-        paddingBottom,
-      }}
-    >
-      <div className="absolute inset-0 bg-[#0033ff]" />
-      <div
-        className="absolute inset-0 bg-no-repeat opacity-80 mix-blend-lighten"
+    <LazyMotion features={domAnimation} strict>
+      <m.div
+        ref={headerRef}
+        className="sticky top-0 z-20 w-full shrink-0 overflow-hidden rounded-lg px-3"
         style={{
-          backgroundImage: 'url(/marketplace/hero-bg.jpg)',
-          backgroundPosition: 'center top',
-          backgroundSize: '110% auto',
+          paddingTop,
+          paddingBottom,
         }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: 'url(/marketplace/hero-gradient-noise.svg)' }}
-      />
-      {marketplaceNav ?? defaultMarketplaceNav}
-      <div className="relative z-10 mx-5">
-        <motion.div
+      >
+        <div className="absolute inset-0 bg-[#0033ff]" />
+        <div
+          className="absolute inset-0 bg-no-repeat opacity-80 mix-blend-lighten"
           style={{
-            opacity: contentOpacity,
-            scale: contentScale,
-            transformOrigin: 'left top',
-            maxHeight: titleMaxHeight,
-            overflow: 'hidden',
-            willChange: 'opacity, transform',
-            marginTop: titleMarginTop,
+            backgroundImage: 'url(/marketplace/hero-bg.jpg)',
+            backgroundPosition: 'center top',
+            backgroundSize: '110% auto',
           }}
-        >
-          <div ref={titleContentRef}>
-            <h1 className="mb-2 shrink-0 text-[30px] leading-9 font-semibold text-text-primary-on-surface">
-              {t(($) => $['marketplace.pluginsHeroTitle'])}
-            </h1>
-            <h2 className="shrink-0 body-md-medium text-text-secondary-on-surface">
-              {t(($) => $['marketplace.pluginsHeroSubtitle'])}
-            </h2>
-          </div>
-        </motion.div>
-        <motion.div style={{ marginTop: tabsMarginTop }}>
-          <PluginTypeSwitch variant="hero" />
-        </motion.div>
-      </div>
-    </motion.div>
+        />
+        <div
+          className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: 'url(/marketplace/hero-gradient-noise.svg)' }}
+        />
+        {marketplaceNav ?? defaultMarketplaceNav}
+        <div className="relative z-10 mx-5">
+          <m.div
+            style={{
+              opacity: contentOpacity,
+              scale: contentScale,
+              transformOrigin: 'left top',
+              maxHeight: titleMaxHeight,
+              overflow: 'hidden',
+              willChange: 'opacity, transform',
+              marginTop: titleMarginTop,
+            }}
+          >
+            <div ref={titleContentRef}>
+              <h1 className="mb-2 shrink-0 text-[30px] leading-9 font-semibold text-text-primary-on-surface">
+                {t(($) => $['marketplace.pluginsHeroTitle'])}
+              </h1>
+              <h2 className="shrink-0 body-md-medium text-text-secondary-on-surface">
+                {t(($) => $['marketplace.pluginsHeroSubtitle'])}
+              </h2>
+            </div>
+          </m.div>
+          <m.div style={{ marginTop: tabsMarginTop }}>
+            <PluginTypeSwitch variant="hero" />
+          </m.div>
+        </div>
+      </m.div>
+    </LazyMotion>
   )
 }
 

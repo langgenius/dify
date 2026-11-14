@@ -10,6 +10,46 @@ export const zComplianceDownloadResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * ComplianceDownloadForbiddenError
+ *
+ * Your current plan does not allow downloading this compliance document.
+ */
+export const zComplianceDownloadForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('compliance_download_forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * ComplianceDocumentNotFoundError
+ *
+ * The compliance document was not found.
+ */
+export const zComplianceDocumentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('compliance_document_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * BillingUnprocessableEntityErrorResponse
  */
 export const zBillingUnprocessableEntityErrorResponse = z.object({
@@ -28,6 +68,30 @@ export const zComplianceRateLimitErrorResponse = z.object({
 })
 
 /**
+ * BillingRequestInProgressError
+ *
+ * A previous request is still being processed. Please try again shortly.
+ */
+export const zBillingRequestInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_request_in_progress'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * ComplianceRateLimitError
+ *
+ * Rate limit exceeded for downloading compliance report.
+ */
+export const zComplianceRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('compliance_rate_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * BillingOperationFailedErrorResponse
  */
 export const zBillingOperationFailedErrorResponse = z.object({
@@ -37,6 +101,18 @@ export const zBillingOperationFailedErrorResponse = z.object({
 })
 
 /**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * BillingUnavailableErrorResponse
  */
 export const zBillingUnavailableErrorResponse = z.object({
@@ -44,6 +120,18 @@ export const zBillingUnavailableErrorResponse = z.object({
   message: z.string(),
   status: z.literal(503),
 })
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 export const zGetComplianceDownloadQuery = z.object({
   doc_name: z.string(),

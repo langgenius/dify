@@ -1,68 +1,59 @@
-import { act } from '@testing-library/react'
-import { createNode } from '../../__tests__/fixtures'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { act, waitFor } from '@testing-library/react'
+import { useState } from 'react'
+import { useReactFlow } from 'reactflow'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { createEdge, createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
+import { WORKFLOW_DATA_UPDATE } from '../../constants'
 import { useWorkflowUpdate } from '../use-workflow-update'
 
-const mockSetViewport = vi.hoisted(() => vi.fn())
-const mockEventEmit = vi.hoisted(() => vi.fn())
-const mockInitialNodes = vi.hoisted(() => vi.fn((nodes: unknown[], _edges: unknown[]) => nodes))
-const mockInitialEdges = vi.hoisted(() => vi.fn((edges: unknown[], _nodes: unknown[]) => edges))
-
-vi.mock('reactflow', () => ({
-  Position: {
-    Left: 'left',
-    Right: 'right',
-    Top: 'top',
-    Bottom: 'bottom',
-  },
-  useReactFlow: () => ({
-    setViewport: mockSetViewport,
-  }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      emit: (...args: unknown[]) => mockEventEmit(...args),
-    },
-  }),
-}))
-
-vi.mock('../../utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../utils')>()),
-  initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
-  initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
-}))
-
-describe('useWorkflowUpdate', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+function useUpdateProbe() {
+  const [graph, setGraph] = useState<unknown>()
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((event) => {
+    if (typeof event === 'object' && event.type === WORKFLOW_DATA_UPDATE) setGraph(event.payload)
   })
+  return { ...useWorkflowUpdate(), flow: useReactFlow(), graph }
+}
 
-  it('emits initialized data and only sets a valid viewport', () => {
-    const { result } = renderWorkflowHook(() => useWorkflowUpdate())
+it('publishes initialized graph data and applies the supplied viewport', async () => {
+  const result = {} as { current: ReturnType<typeof useUpdateProbe> }
+  function Probe() {
+    result.current = useUpdateProbe()
+    return null
+  }
+  renderWorkflowFlowComponent(
+    <EventEmitterContextProvider>
+      <Probe />
+    </EventEmitterContextProvider>,
+    {
+      reactFlowProps: { fitView: false, defaultViewport: { x: 80, y: 40, zoom: 1.5 } },
+    },
+  )
+  await waitFor(() => expect(result.current.flow.viewportInitialized).toBe(true))
 
-    act(() => {
-      result.current.handleUpdateWorkflowCanvas({
-        nodes: [createNode({ id: 'n1' })],
-        edges: [],
-        viewport: { x: 10, y: 20, zoom: 0.5 },
-      } as never)
-      result.current.handleUpdateWorkflowCanvas({
-        nodes: [],
-        edges: [],
-        viewport: { x: 'bad' } as never,
-      })
-    })
-
-    expect(mockInitialNodes).toHaveBeenCalled()
-    expect(mockInitialEdges).toHaveBeenCalled()
-    expect(mockEventEmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'WORKFLOW_DATA_UPDATE',
-      }),
-    )
-    expect(mockSetViewport).toHaveBeenCalledTimes(1)
-    expect(mockSetViewport).toHaveBeenCalledWith({ x: 10, y: 20, zoom: 0.5 })
+  act(() =>
+    result.current.handleUpdateWorkflowCanvas({
+      nodes: [createNode({ id: 'source' }), createNode({ id: 'target' })],
+      edges: [createEdge({ id: 'edge', source: 'source', target: 'target' })],
+      viewport: { x: 10, y: 20, zoom: 0.5 },
+    }),
+  )
+  await waitFor(() =>
+    expect(result.current.flow.getViewport()).toEqual({ x: 10, y: 20, zoom: 0.5 }),
+  )
+  expect(result.current.graph).toMatchObject({
+    nodes: [
+      {
+        id: 'source',
+        data: { _connectedSourceHandleIds: ['source'], _connectedTargetHandleIds: [] },
+      },
+      {
+        id: 'target',
+        data: { _connectedSourceHandleIds: [], _connectedTargetHandleIds: ['target'] },
+      },
+    ],
+    edges: [{ id: 'edge', source: 'source', target: 'target' }],
   })
 })

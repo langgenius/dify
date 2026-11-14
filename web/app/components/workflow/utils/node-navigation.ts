@@ -1,3 +1,5 @@
+import type { Node, ReactFlowInstance } from 'reactflow'
+
 /**
  * Node navigation utilities for workflow
  * This module provides functions for node selection, focusing and scrolling in workflow
@@ -77,7 +79,10 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
  * @param reactflow - The ReactFlow instance
  * @returns Cleanup function
  */
-export function setupScrollToNodeListener(nodes: any[], reactflow: any): () => void {
+export function setupScrollToNodeListener(
+  nodes: Pick<Node, 'id' | 'position'>[],
+  reactflow: Pick<ReactFlowInstance, 'setCenter'>,
+): () => void {
   // Event handler for scrolling to node
   const handleScrollToNode = (event: CustomEvent<NodeSelectionDetail>) => {
     const { nodeId } = event.detail

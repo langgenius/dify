@@ -15,8 +15,7 @@ import {
 type FormArg = Parameters<typeof buildSubmitData>[0][number]
 
 describe('before-run-form helpers', () => {
-  const createValues = (values: Record<string, unknown>) =>
-    values as unknown as Record<string, string>
+  const createValues = (values: Record<string, unknown>) => values as Record<string, string>
   const createInput = (input: Partial<InputVar>): InputVar => ({
     variable: 'field',
     label: 'Field',
@@ -40,10 +39,24 @@ describe('before-run-form helpers', () => {
     expect(formatValue(null, InputVarType.singleFile)).toBeNull()
     expect(
       formatValue(
-        [{ transfer_method: TransferMethod.remote_url, related_id: '3' }],
+        [
+          {
+            transferMethod: TransferMethod.remote_url,
+            supportFileType: 'image',
+            url: 'https://example.com/image.png',
+            progress: 100,
+          },
+        ],
         InputVarType.singleFile,
       ),
-    ).toEqual(expect.any(Array))
+    ).toEqual([
+      {
+        type: 'image',
+        transfer_method: TransferMethod.remote_url,
+        url: 'https://example.com/image.png',
+        upload_file_id: '',
+      },
+    ])
     expect(formatValue('', InputVarType.singleFile)).toBeUndefined()
   })
 
@@ -200,17 +213,39 @@ describe('before-run-form helpers', () => {
             createInput({ variable: 'file', type: InputVarType.singleFile }),
           ],
           values: createValues({
-            files: [{ transfer_method: TransferMethod.remote_url, related_id: '1' }],
-            file: { transfer_method: TransferMethod.remote_url, related_id: '2' },
+            files: [
+              {
+                transferMethod: TransferMethod.remote_url,
+                supportFileType: 'document',
+                url: 'https://example.com/report.pdf',
+                progress: 100,
+              },
+            ],
+            file: {
+              transferMethod: TransferMethod.local_file,
+              supportFileType: 'image',
+              uploadedId: 'upload-2',
+              progress: 100,
+            },
           }),
         }),
       ]).submitData,
-    ).toEqual(
-      expect.objectContaining({
-        files: expect.any(Array),
-        file: expect.any(Object),
-      }),
-    )
+    ).toEqual({
+      files: [
+        {
+          type: 'document',
+          transfer_method: TransferMethod.remote_url,
+          url: 'https://example.com/report.pdf',
+          upload_file_id: '',
+        },
+      ],
+      file: {
+        type: 'image',
+        transfer_method: TransferMethod.local_file,
+        url: '',
+        upload_file_id: 'upload-2',
+      },
+    })
   })
 
   it('should derive the zero-form auto behaviors', () => {

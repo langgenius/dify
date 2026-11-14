@@ -1,33 +1,24 @@
+import type { EventEmitterValue } from '@/context/event-emitter'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import { useReactFlow } from 'reactflow'
+import { EventEmitterContext } from '@/context/event-emitter'
 import { createEdge, createNode } from '../../__tests__/fixtures'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import Record from '../record'
 
-const mockHandleUpdateWorkflowCanvas = vi.fn()
-const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number) =>
-  finishedAt ? ' (Finished)' : ' (Running)',
-)
-
+const WorkflowEventProvider = EventEmitterContext.Provider
 let latestGetResultCallback: ((res: WorkflowRunDetailResponse) => void) | undefined
-
-vi.mock('../../hooks/use-workflow-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow-update')>()
-
-  return {
-    ...actual,
-    useWorkflowUpdate: () => ({
-      handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
-    }),
-  }
-})
 
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({
+    appId,
     runDetailUrl,
     tracingListUrl,
     getResultCallback,
   }: {
+    appId?: string
     runDetailUrl: string
     tracingListUrl: string
     getResultCallback: (res: WorkflowRunDetailResponse) => void
@@ -35,16 +26,13 @@ vi.mock('@/app/components/workflow/run', () => ({
     latestGetResultCallback = getResultCallback
     return (
       <div
+        data-app-id={appId}
         data-run-detail-url={runDetailUrl}
         data-testid="run"
         data-tracing-list-url={tracingListUrl}
       />
     )
   },
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  formatWorkflowRunIdentifier: (finishedAt?: number) => mockFormatWorkflowRunIdentifier(finishedAt),
 }))
 
 const createRunDetail = (
@@ -70,7 +58,6 @@ const createRunDetail = (
 
 describe('Record', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     latestGetResultCallback = undefined
   })
 
@@ -80,12 +67,13 @@ describe('Record', () => {
       traceUrl: `/traces/${runId}`,
     }))
 
-    renderWorkflowComponent(<Record />, {
+    renderWorkflowFlowComponent(<Record />, {
+      resource: { kind: 'app', appId: 'history-app', mode: 'workflow' },
       initialStoreState: {
         historyWorkflowData: {
           id: 'run-1',
           status: 'succeeded',
-          finished_at: 1700000000000,
+          finished_at: 1_700_000_000,
         },
       },
       hooksStoreProps: {
@@ -93,84 +81,78 @@ describe('Record', () => {
       },
     })
 
-    expect(screen.getByText('Test Run (Finished)')).toBeInTheDocument()
+    expect(screen.getByText(/^Test Run/)).toBeInTheDocument()
+    expect(screen.getByTestId('run')).toHaveAttribute('data-app-id', 'history-app')
     expect(screen.getByTestId('run')).toHaveAttribute('data-run-detail-url', '/runs/run-1')
     expect(screen.getByTestId('run')).toHaveAttribute('data-tracing-list-url', '/traces/run-1')
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenCalledTimes(2)
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenNthCalledWith(1, 'run-1')
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenNthCalledWith(2, 'run-1')
-    expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(1700000000000)
   })
 
-  it('updates the workflow canvas with a fallback viewport when the response omits one', () => {
-    const nodes = [createNode({ id: 'node-1' })]
-    const edges = [createEdge({ id: 'edge-1' })]
-
-    renderWorkflowComponent(<Record />, {
+  it('renders paused history without a finished timestamp', () => {
+    renderWorkflowFlowComponent(<Record />, {
       initialStoreState: {
         historyWorkflowData: {
           id: 'run-1',
-          status: 'succeeded',
+          status: 'paused',
         },
       },
-      hooksStoreProps: {
-        getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
-      },
     })
 
-    expect(latestGetResultCallback).toBeDefined()
-
-    act(() => {
-      latestGetResultCallback?.(
-        createRunDetail({
-          graph: {
-            nodes,
-            edges,
-          },
-        }),
-      )
-    })
-
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-      nodes,
-      edges,
-      viewport: { x: 0, y: 0, zoom: 1 },
-    })
+    expect(screen.getByText('Test Run (Paused)')).toBeInTheDocument()
   })
 
-  it('uses the response viewport when one is available', () => {
-    const nodes = [createNode({ id: 'node-1' })]
-    const edges = [createEdge({ id: 'edge-1' })]
-    const viewport = { x: 12, y: 24, zoom: 0.75 }
-
-    renderWorkflowComponent(<Record />, {
-      initialStoreState: {
-        historyWorkflowData: {
-          id: 'run-1',
-          status: 'succeeded',
+  it.each([
+    {
+      name: 'the default viewport when omitted',
+      viewport: undefined,
+      expected: { x: 0, y: 0, zoom: 1 },
+    },
+    {
+      name: 'the recorded viewport when supplied',
+      viewport: { x: 12, y: 24, zoom: 0.75 },
+      expected: { x: 12, y: 24, zoom: 0.75 },
+    },
+  ])('publishes the initialized run graph and restores $name', async ({ viewport, expected }) => {
+    const nodes = [createNode({ id: 'source' }), createNode({ id: 'target' })]
+    const edges = [createEdge({ id: 'edge', source: 'source', target: 'target' })]
+    const events: EventEmitterValue[] = []
+    const eventEmitter = new EventEmitter<EventEmitterValue>()
+    let flow: ReturnType<typeof useReactFlow>
+    function RunRecord() {
+      flow = useReactFlow()
+      eventEmitter.useSubscription((event) => events.push(event))
+      return <Record />
+    }
+    renderWorkflowFlowComponent(
+      <WorkflowEventProvider value={{ eventEmitter }}>
+        <RunRecord />
+      </WorkflowEventProvider>,
+      {
+        initialStoreState: { historyWorkflowData: { id: 'run-1', status: 'succeeded' } },
+        reactFlowProps: { fitView: false, defaultViewport: { x: 40, y: 50, zoom: 0.5 } },
+        hooksStoreProps: {
+          getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
         },
       },
-      hooksStoreProps: {
-        getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
-      },
-    })
-
-    act(() => {
-      latestGetResultCallback?.(
-        createRunDetail({
-          graph: {
-            nodes,
-            edges,
-            viewport,
-          },
-        }),
-      )
-    })
-
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-      nodes,
-      edges,
-      viewport,
-    })
+    )
+    act(() => latestGetResultCallback?.(createRunDetail({ graph: { nodes, edges, viewport } })))
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: 'WORKFLOW_DATA_UPDATE',
+        payload: {
+          nodes: [
+            expect.objectContaining({
+              id: 'source',
+              data: expect.objectContaining({ _connectedSourceHandleIds: ['source'] }),
+            }),
+            expect.objectContaining({
+              id: 'target',
+              data: expect.objectContaining({ _connectedTargetHandleIds: ['target'] }),
+            }),
+          ],
+          edges: [expect.objectContaining({ id: 'edge', source: 'source', target: 'target' })],
+        },
+      }),
+    ])
+    await waitFor(() => expect(flow!.getViewport()).toEqual(expected))
   })
 })
