@@ -1,7 +1,7 @@
 """BillingService delegates to the generated billing and saas clients; HTTP behavior is covered in billing_client."""
 
-from collections.abc import Callable
-from unittest.mock import patch
+from collections.abc import Callable, Iterator
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -17,10 +17,20 @@ TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
+def _freeze_reply(data: bool, freeze_type: str) -> saas.CheckAccountInFreezeReply:
+    """Build a freeze reply carrying an arbitrary upstream freeze type.
+
+    Billing versions predating the enum send values outside the declared literal set,
+    so the reply is built without validation: the subject only reads `data` and `freeze_type`.
+    """
+    reply = saas.CheckAccountInFreezeReply.model_construct(data=data, freeze_type="")
+    return reply.model_copy(update={"freeze_type": freeze_type})
+
+
 class TestBillingServiceSubscriptionInfo:
     """Subscription and usage reads delegate to the generated billing client."""
 
-    def test_get_info_returns_the_generated_reply(self):
+    def test_get_info_returns_the_generated_reply(self) -> None:
         reply = builders.subscription_info("team", vector_space=builders.vector_space(size=1.5, limit=50))
 
         with patch.object(billing, "subscription_get_subscription_info", return_value=reply) as get_info:
@@ -30,7 +40,7 @@ class TestBillingServiceSubscriptionInfo:
         get_info.assert_called_once_with(tenant_id=TENANT_ID, exclude_vector_space=True)
 
     @pytest.mark.parametrize("bypass_cache", [False, True])
-    def test_get_vector_space_forwards_bypass_cache(self, bypass_cache: bool):
+    def test_get_vector_space_forwards_bypass_cache(self, bypass_cache: bool) -> None:
         reply = builders.vector_space(size=12.5, limit=50, usage_unknown=True)
 
         with patch.object(billing, "subscription_get_subscription_vector_space", return_value=reply) as get:
@@ -39,7 +49,7 @@ class TestBillingServiceSubscriptionInfo:
         assert result is reply
         get.assert_called_once_with(tenant_id=TENANT_ID, bypass_cache=bypass_cache)
 
-    def test_get_knowledge_rate_limit_returns_the_generated_reply(self):
+    def test_get_knowledge_rate_limit_returns_the_generated_reply(self) -> None:
         reply = billing.GetKnowledgeRateLimitReply(subscription_plan="professional", limit=100)
 
         with patch.object(billing, "subscription_get_knowledge_rate_limit", return_value=reply) as get:
@@ -48,7 +58,7 @@ class TestBillingServiceSubscriptionInfo:
         assert result is reply
         get.assert_called_once_with(tenant_id=TENANT_ID)
 
-    def test_get_subscription_returns_the_portal_link(self):
+    def test_get_subscription_returns_the_portal_link(self) -> None:
         reply = billing.GetSubscriptionPaymentLinkReply(url="https://payment.example.com/checkout")
 
         with patch.object(billing, "subscription_get_subscription_payment_link", return_value=reply) as get:
@@ -59,7 +69,7 @@ class TestBillingServiceSubscriptionInfo:
             plan="professional", interval="month", prefilled_email="user@example.com", tenant_id=TENANT_ID
         )
 
-    def test_get_invoices_returns_the_portal_link(self):
+    def test_get_invoices_returns_the_portal_link(self) -> None:
         reply = billing.GetInvoicesReply(url="https://billing.example.com/invoices")
 
         with patch.object(billing, "invoice_get_invoices", return_value=reply) as get:
@@ -68,7 +78,7 @@ class TestBillingServiceSubscriptionInfo:
         assert result is reply
         get.assert_called_once_with(prefilled_email="user@example.com", tenant_id=TENANT_ID)
 
-    def test_get_model_provider_payment_link_returns_the_generated_reply(self):
+    def test_get_model_provider_payment_link_returns_the_generated_reply(self) -> None:
         reply = billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider")
 
         with patch.object(billing, "model_provider_get_model_provider_payment_link", return_value=reply) as get:
@@ -80,7 +90,7 @@ class TestBillingServiceSubscriptionInfo:
             provider_name="anthropic", tenant_id=TENANT_ID, account_id=ACCOUNT_ID, prefilled_email="a@b.com"
         )
 
-    def test_get_plan_bulk_chunks_requests_and_skips_failed_batches(self):
+    def test_get_plan_bulk_chunks_requests_and_skips_failed_batches(self) -> None:
         tenant_ids = [f"tenant-{i}" for i in range(450)]
 
         def batch(*, body: billing.BatchGetSubscriptionPlanReq) -> billing.BatchGetSubscriptionPlanReply:
@@ -118,7 +128,7 @@ class TestBillingServiceSubscriptionInfo:
 
         assert plans == {"valid": builders.plan_item("sandbox", -1)}
 
-    def test_get_expired_subscription_cleanup_whitelist_returns_tenant_ids(self):
+    def test_get_expired_subscription_cleanup_whitelist_returns_tenant_ids(self) -> None:
         reply = billing.ListSubscriptionCleanupWhitelistReply(
             data=[
                 billing.SubscriptionCleanupWhitelist(
@@ -136,7 +146,7 @@ class TestBillingServiceSubscriptionInfo:
         with patch.object(billing, "subscription_list_subscription_cleanup_whitelist", return_value=reply):
             assert BillingService.get_expired_subscription_cleanup_whitelist() == ["tenant-a", "tenant-b"]
 
-    def test_invalidate_vector_space_cache_bypasses_cache(self):
+    def test_invalidate_vector_space_cache_bypasses_cache(self) -> None:
         tenant_id = "tenant-123"
 
         with patch.object(BillingService, "get_vector_space") as get_vector_space:
@@ -148,7 +158,7 @@ class TestBillingServiceSubscriptionInfo:
 class TestBillingServiceQuotaOperations:
     """Quota calls build the generated request bodies and return the generated replies."""
 
-    def test_get_quota_info_returns_the_generated_reply(self):
+    def test_get_quota_info_returns_the_generated_reply(self) -> None:
         reply = billing.QuotaGetInfoReply(
             trigger_event=billing.QuotaFeatureInfo(usage=30, limit=100, reset_date=1767225600),
             api_rate_limit=billing.QuotaFeatureInfo(usage=0, limit=-1, reset_date=0),
@@ -159,7 +169,7 @@ class TestBillingServiceQuotaOperations:
 
         get.assert_called_once_with(tenant_id=TENANT_ID)
 
-    def test_quota_reserve_sends_bucket_and_string_meta(self):
+    def test_quota_reserve_sends_bucket_and_string_meta(self) -> None:
         reply = billing.QuotaReserveReply(reservation_id="rid-1", available=99, reserved=1)
 
         with patch.object(billing, "quota_reserve", return_value=reply) as reserve:
@@ -184,7 +194,7 @@ class TestBillingServiceQuotaOperations:
             )
         )
 
-    def test_quota_reserve_defaults_to_empty_bucket_and_meta(self):
+    def test_quota_reserve_defaults_to_empty_bucket_and_meta(self) -> None:
         reply = billing.QuotaReserveReply(reservation_id="rid-1", available=99, reserved=1)
 
         with patch.object(billing, "quota_reserve", return_value=reply) as reserve:
@@ -194,7 +204,7 @@ class TestBillingServiceQuotaOperations:
             tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1, meta={}, bucket=""
         )
 
-    def test_quota_commit_builds_the_request(self):
+    def test_quota_commit_builds_the_request(self) -> None:
         reply = billing.QuotaCommitReply(available=98, reserved=0, refunded=0)
 
         with patch.object(billing, "quota_commit", return_value=reply) as commit:
@@ -219,7 +229,7 @@ class TestBillingServiceQuotaOperations:
             )
         )
 
-    def test_quota_release_builds_the_request(self):
+    def test_quota_release_builds_the_request(self) -> None:
         reply = billing.QuotaReleaseReply(available=100, reserved=0, released=1)
 
         with patch.object(billing, "quota_release", return_value=reply) as release:
@@ -234,7 +244,7 @@ class TestBillingServiceQuotaOperations:
             )
         )
 
-    def test_quota_get_balance_forwards_the_bucket(self):
+    def test_quota_get_balance_forwards_the_bucket(self) -> None:
         reply = billing.QuotaGetBalanceReply(available=194, reserved=0, quota=200, usage=6, exhausted_at=0)
 
         with patch.object(billing, "quota_get_balance", return_value=reply) as get:
@@ -242,7 +252,7 @@ class TestBillingServiceQuotaOperations:
 
         get.assert_called_once_with(tenant_id="t1", feature_key="credit_pool", bucket="trial")
 
-    def test_quota_consume_capped_builds_the_request(self):
+    def test_quota_consume_capped_builds_the_request(self) -> None:
         reply = billing.QuotaConsumeCappedReply(deducted=3, available=0, reserved=0, quota=10, usage=10)
 
         with patch.object(billing, "quota_consume_capped", return_value=reply) as consume:
@@ -267,12 +277,12 @@ class TestBillingServiceCacheManagement:
     """
 
     @pytest.fixture
-    def mock_redis_client(self):
-        """Mock Redis client."""
+    def mock_redis_client(self) -> Iterator[MagicMock]:
+        """Patch the Redis client used by the billing cache helpers."""
         with patch("services.billing_service.redis_client") as mock_redis:
             yield mock_redis
 
-    def test_clean_billing_info_cache(self, mock_redis_client):
+    def test_clean_billing_info_cache(self, mock_redis_client: MagicMock) -> None:
         """Test cleaning billing info cache."""
         # Arrange
         tenant_id = "tenant-123"
@@ -288,7 +298,7 @@ class TestBillingServiceCacheManagement:
 class TestBillingServiceAccountAndEducation:
     """Education, compliance, account and notification calls delegate to the generated clients."""
 
-    def test_compliance_download_returns_the_link(self):
+    def test_compliance_download_returns_the_link(self) -> None:
         reply = billing.DownloadComplianceDocumentReply(url="https://billing.example.com/compliance")
 
         with patch.object(billing, "compliance_download_compliance_document", return_value=reply) as download:
@@ -301,7 +311,7 @@ class TestBillingServiceAccountAndEducation:
             )
         )
 
-    def test_education_activate_sends_account_context_in_the_body(self):
+    def test_education_activate_sends_account_context_in_the_body(self) -> None:
         reply = billing.CreateEducationIdentityReply(message="success")
 
         with patch.object(billing, "education_create_education_identity", return_value=reply) as create:
@@ -320,7 +330,7 @@ class TestBillingServiceAccountAndEducation:
             )
         )
 
-    def test_education_reads_return_the_generated_replies(self):
+    def test_education_reads_return_the_generated_replies(self) -> None:
         verify = billing.VerifyEducationIdentityReply(token="token", status="eligible")
         status = billing.GetEducationIdentityStatusReply(
             result=True,
@@ -344,7 +354,7 @@ class TestBillingServiceAccountAndEducation:
 
         search.assert_called_once_with(keywords="Dify", page=0, limit=20)
 
-    def test_delete_account_and_feedback_call_saas(self):
+    def test_delete_account_and_feedback_call_saas(self) -> None:
         with (
             patch.object(saas, "account_delete_account", return_value=saas.DeleteAccountReply(message="ok")) as delete,
             patch.object(
@@ -369,8 +379,8 @@ class TestBillingServiceAccountAndEducation:
             (True, "unexpected", "freeze"),
         ],
     )
-    def test_get_email_freeze_type(self, data: bool, freeze_type: str, expected: str | None):
-        reply = saas.CheckAccountInFreezeReply.model_construct(data=data, freeze_type=freeze_type)
+    def test_get_email_freeze_type(self, data: bool, freeze_type: str, expected: str | None) -> None:
+        reply = _freeze_reply(data, freeze_type)
 
         with patch.object(saas, "account_check_account_in_freeze", return_value=reply) as check:
             assert BillingService.get_email_freeze_type("user@example.com") == expected
@@ -378,11 +388,11 @@ class TestBillingServiceAccountAndEducation:
 
         check.assert_called_with(email="user@example.com")
 
-    def test_get_email_freeze_type_swallows_billing_errors(self):
+    def test_get_email_freeze_type_swallows_billing_errors(self) -> None:
         with patch.object(saas, "account_check_account_in_freeze", side_effect=BillingUpstreamUnavailableError("down")):
             assert BillingService.get_email_freeze_type("user@example.com") is None
 
-    def test_notifications_call_saas(self):
+    def test_notifications_call_saas(self) -> None:
         active = saas.GetAccountNotificationReply(should_show=False, notifications=[])
         dismissed = saas.DismissNotificationReply(success=True)
 
