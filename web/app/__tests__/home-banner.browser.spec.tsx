@@ -4,12 +4,9 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Banner } from '@/features/home/banner/banner'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
-
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
-}))
 
 const banners: BannerResponse[] = [
   {
@@ -62,6 +59,7 @@ function getSlidesContainer(carousel: Element) {
 }
 
 describe('Home banner browser interactions', () => {
+  beforeEach(() => onTestFinished(guardUnexpectedFetch()))
   afterEach(() => {
     vi.restoreAllMocks()
   })

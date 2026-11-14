@@ -1,28 +1,6 @@
 import type { Locale } from '@daypicker/react'
-import { arTN } from '@daypicker/react/locale/ar-TN'
-import { az } from '@daypicker/react/locale/az'
-import { de } from '@daypicker/react/locale/de'
 import { enUS } from '@daypicker/react/locale/en-US'
-import { es } from '@daypicker/react/locale/es'
-import { faIR } from '@daypicker/react/locale/fa-IR'
-import { fr } from '@daypicker/react/locale/fr'
-import { hi } from '@daypicker/react/locale/hi'
-import { id } from '@daypicker/react/locale/id'
-import { it } from '@daypicker/react/locale/it'
-import { ja } from '@daypicker/react/locale/ja'
-import { ko } from '@daypicker/react/locale/ko'
-import { nl } from '@daypicker/react/locale/nl'
-import { pl } from '@daypicker/react/locale/pl'
-import { ptBR } from '@daypicker/react/locale/pt-BR'
-import { ro } from '@daypicker/react/locale/ro'
-import { ru } from '@daypicker/react/locale/ru'
-import { sl } from '@daypicker/react/locale/sl'
-import { th } from '@daypicker/react/locale/th'
-import { tr } from '@daypicker/react/locale/tr'
-import { uk } from '@daypicker/react/locale/uk'
-import { vi } from '@daypicker/react/locale/vi'
-import { zhCN } from '@daypicker/react/locale/zh-CN'
-import { zhTW } from '@daypicker/react/locale/zh-TW'
+import { useEffect, useState } from 'react'
 
 // DayPicker has no Lao locale. Keep the application fallback here.
 const lo: Locale = {
@@ -51,36 +29,64 @@ const lo: Locale = {
   },
 }
 
-const calendarLocales: Record<string, Locale> = {
-  'en-US': enUS,
-  'zh-Hans': zhCN,
-  'zh-Hant': zhTW,
-  'ja-JP': ja,
-  'ko-KR': ko,
-  'de-DE': de,
-  'fr-FR': fr,
-  'es-ES': es,
-  'it-IT': it,
-  'pt-BR': ptBR,
-  'ru-RU': ru,
-  'uk-UA': uk,
-  'pl-PL': pl,
-  'nl-NL': nl,
-  'tr-TR': tr,
-  'vi-VN': vi,
-  'id-ID': id,
-  'th-TH': th,
-  'hi-IN': hi,
-  'ar-TN': arTN,
-  'fa-IR': faIR,
-  'ro-RO': ro,
-  'sl-SI': sl,
-  'az-AZ': az,
-  'lo-LA': lo,
+const localeLoaders: Record<string, () => Promise<Locale>> = {
+  'zh-Hans': () => import('@daypicker/react/locale/zh-CN').then((module) => module.zhCN),
+  'zh-Hant': () => import('@daypicker/react/locale/zh-TW').then((module) => module.zhTW),
+  'ja-JP': () => import('@daypicker/react/locale/ja').then((module) => module.ja),
+  'ko-KR': () => import('@daypicker/react/locale/ko').then((module) => module.ko),
+  'de-DE': () => import('@daypicker/react/locale/de').then((module) => module.de),
+  'fr-FR': () => import('@daypicker/react/locale/fr').then((module) => module.fr),
+  'es-ES': () => import('@daypicker/react/locale/es').then((module) => module.es),
+  'it-IT': () => import('@daypicker/react/locale/it').then((module) => module.it),
+  'pt-BR': () => import('@daypicker/react/locale/pt-BR').then((module) => module.ptBR),
+  'ru-RU': () => import('@daypicker/react/locale/ru').then((module) => module.ru),
+  'uk-UA': () => import('@daypicker/react/locale/uk').then((module) => module.uk),
+  'pl-PL': () => import('@daypicker/react/locale/pl').then((module) => module.pl),
+  'nl-NL': () => import('@daypicker/react/locale/nl').then((module) => module.nl),
+  'tr-TR': () => import('@daypicker/react/locale/tr').then((module) => module.tr),
+  'vi-VN': () => import('@daypicker/react/locale/vi').then((module) => module.vi),
+  'id-ID': () => import('@daypicker/react/locale/id').then((module) => module.id),
+  'th-TH': () => import('@daypicker/react/locale/th').then((module) => module.th),
+  'hi-IN': () => import('@daypicker/react/locale/hi').then((module) => module.hi),
+  'ar-TN': () => import('@daypicker/react/locale/ar-TN').then((module) => module.arTN),
+  'fa-IR': () => import('@daypicker/react/locale/fa-IR').then((module) => module.faIR),
+  'ro-RO': () => import('@daypicker/react/locale/ro').then((module) => module.ro),
+  'sl-SI': () => import('@daypicker/react/locale/sl').then((module) => module.sl),
+  'az-AZ': () => import('@daypicker/react/locale/az').then((module) => module.az),
 }
 
-export function getCalendarLocale(language: string, overrides?: Partial<Locale>): Locale {
-  const locale = calendarLocales[language] ?? enUS
+const loadedLocales = new Map<string, Locale>([
+  ['en-US', enUS],
+  ['lo-LA', lo],
+])
+
+export function useCalendarLocale(language: string, overrides?: Partial<Locale>): Locale {
+  const key = Object.hasOwn(localeLoaders, language) || language === 'lo-LA' ? language : 'en-US'
+  const [loaded, setLoaded] = useState<{ language: string; locale: Locale }>()
+  const cachedLocale = loadedLocales.get(key)
+  const locale =
+    cachedLocale ?? (loaded?.language === key ? loaded.locale : { ...enUS, code: language })
+
+  // Locale modules are shared resources; keep picker values and open state mounted while they load.
+  useEffect(() => {
+    if (cachedLocale) return
+    let active = true
+    const cached = loadedLocales.get(key)
+    const request = cached ? Promise.resolve(cached) : localeLoaders[key]!()
+    void request.then(
+      (locale) => {
+        loadedLocales.set(key, locale)
+        if (active) setLoaded({ language: key, locale })
+      },
+      () => {
+        if (active) setLoaded({ language: key, locale: enUS })
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [key, cachedLocale])
+
   return overrides
     ? { ...locale, ...overrides, labels: { ...locale.labels, ...overrides.labels } }
     : locale

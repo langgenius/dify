@@ -2,6 +2,7 @@
 
 import type { KnowledgeFsUploadPhase } from '../upload/knowledge-fs-upload'
 import type { DocumentUploadIssue } from '../upload/policy'
+import type { FileScanFailure } from '@/features/file-scan/scan-failure'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,6 +49,7 @@ export function CreateUploadQueue({
   disabled,
   fileSizeLimitMb,
   supportBatchUpload,
+  uploadFailures,
   uploadPhases = new Map(),
   uploading,
   uploads,
@@ -56,6 +58,7 @@ export function CreateUploadQueue({
   disabled: boolean
   fileSizeLimitMb: number
   supportBatchUpload: boolean
+  uploadFailures?: ReadonlyMap<File, FileScanFailure>
   uploadPhases?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
   uploads: QueuedUpload[]
@@ -146,8 +149,8 @@ export function CreateUploadQueue({
             className="mt-2"
             disabled={disabled}
             fileSizeLimitMb={fileSizeLimitMb}
-            idleStatus={t(($) => $.uploadCharactersUnavailable, { ns: 'knowledgeCreate' })}
             items={uploads}
+            uploadFailures={uploadFailures}
             uploadProgress={uploadPhases}
             variant="compact"
             onRemove={(upload) =>

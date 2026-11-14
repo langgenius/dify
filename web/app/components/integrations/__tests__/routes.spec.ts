@@ -16,6 +16,8 @@ describe('integration routes', () => {
     ['trigger', '/plugins/trigger'],
     ['agent-strategy', '/plugins/agent-strategy'],
     ['extension', '/plugins/extension'],
+    // Malware scanners are not plugins, so the section has no marketplace category of its own.
+    ['file-scan', '/plugins'],
   ] as const)('builds the marketplace destination for %s', (section, path) => {
     expect(buildMarketplaceUrlPathByIntegrationSection(section)).toBe(path)
   })
@@ -36,6 +38,7 @@ describe('integration routes', () => {
     [['tools', 'mcp'], { type: 'section', section: 'mcp' }],
     [['data-source'], { type: 'section', section: 'data-source' }],
     [['custom-endpoint'], { type: 'section', section: 'custom-endpoint' }],
+    [['file-scan'], { type: 'section', section: 'file-scan' }],
     [['trigger'], { type: 'section', section: 'trigger' }],
     [['agent-strategy'], { type: 'section', section: 'agent-strategy' }],
     [['extension'], { type: 'section', section: 'extension' }],

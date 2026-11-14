@@ -63,6 +63,26 @@ class KnowledgeFSControlPlaneService:
         self._members = members
         self._revocations = revocations or KnowledgeFSRevocationCommandProducer()
 
+    def authorize_space(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        permission: KnowledgeFSProductPermission,
+    ) -> None:
+        """Check one product permission for features that keep their own per-Space settings.
+
+        Raises ``KnowledgeFSProductNotFoundError`` when the Space is not visible to the account and
+        ``PermissionError`` when it is visible but the permission is missing.
+        """
+        self._product.authorize_control_space(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            permission=permission,
+        )
+
     def list_permissions(
         self,
         *,

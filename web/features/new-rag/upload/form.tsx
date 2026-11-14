@@ -2,6 +2,7 @@
 
 import type { Ref } from 'react'
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
+import type { FileScanFailure } from '@/features/file-scan/scan-failure'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   useCallback,
@@ -36,6 +37,8 @@ type DocumentUploadFormProps = {
   onFilesAdded: (files: File[]) => Promise<void>
   onFileRemoved: (file: File) => void
   onSubmit: (files: File[]) => Promise<boolean>
+  /** Malware-scan rejections of the last upload attempt. */
+  uploadFailures?: ReadonlyMap<File, FileScanFailure>
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
   ref?: Ref<DocumentUploadFormHandle>
@@ -49,6 +52,7 @@ export function DocumentUploadForm({
   onFilesAdded,
   onFileRemoved,
   onSubmit,
+  uploadFailures = new Map(),
   uploadProgress = new Map(),
   uploading,
   ref,
@@ -68,7 +72,12 @@ export function DocumentUploadForm({
     () => files.filter((file) => !documentUploadIssue(file, fileSizeLimitMb)),
     [fileSizeLimitMb, files],
   )
-  const remainingFiles = validFiles.filter((file) => uploadProgress.get(file) !== 'completed')
+  // A file the malware scan rejected for good cannot be claimed again.
+  const remainingFiles = validFiles.filter(
+    (file) =>
+      uploadProgress.get(file) !== 'completed' && uploadFailures.get(file)?.retryable !== false,
+  )
+  const hasCompletedFiles = validFiles.some((file) => uploadProgress.get(file) === 'completed')
   const canRetryRemainingFiles = !uploading && remainingFiles.length < validFiles.length
   const effectiveUploadProgress = useMemo(() => {
     const progress = new Map(uploadProgress)
@@ -202,7 +211,11 @@ export function DocumentUploadForm({
               file,
               id: documentUploadFingerprint(file),
             }))}
+            uploadFailures={uploadFailures}
             uploadProgress={effectiveUploadProgress}
+            onRetry={(item) => {
+              if (!uploading) void onSubmit([item.file])
+            }}
             onRemove={(item) => {
               filesRef.current = filesRef.current.filter((file) => file !== item.file)
               setFiles(filesRef.current)
@@ -229,7 +242,12 @@ export function DocumentUploadForm({
 
       <div className="flex justify-end gap-3 pt-5">
         <Button disabled={uploading} type="button" onClick={onCancel}>
-          {tCommon(($) => $['operation.cancel'])}
+          {/* Nothing is left to cancel once every remaining file is uploaded or rejected. */}
+          {tCommon(($) =>
+            hasCompletedFiles && !remainingFiles.length
+              ? $['operation.close']
+              : $['operation.cancel'],
+          )}
         </Button>
         <Button
           disabled={!remainingFiles.length}

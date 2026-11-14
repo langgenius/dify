@@ -4,7 +4,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.base_app_generator import BaseAppGenerator, noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -40,7 +41,6 @@ from core.helper.trace_id_helper import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope
@@ -300,9 +300,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
+
+        ``restore_file_access`` restores host-owned grants inside the new
+        execution scope before worker contexts are copied. The default callback
+        leaves existing access rules unchanged.
 
         ``trace_scope`` is transient and excluded from generate-entity serialization,
         so resumed executions create it again before persistence layers receive the entity.
@@ -334,6 +339,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=restore_file_access,
         )
 
     def _generate(
@@ -353,9 +359,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_runtime_state: RuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
+
+        On resume, HITL submissions must already be committed. Restore their
+        EndUser file grants before capturing worker and response contexts.
 
         :param app_model: App
         :param workflow: Workflow
@@ -372,6 +382,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from,
         ):
             grant_file_default_access(application_generate_entity.app_config.variables)
+            # Restore grants before copying contexts for both workers and responses.
+            restore_file_access()
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
