@@ -27,10 +27,13 @@ from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.tool_manager import ToolManager
+from extensions.application_services.mcp import mcp_credential_service
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
+from services.credentials.mcp_runtime import MCPCredentialUnavailableError
+from services.credentials.refresh import CredentialRefreshUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,8 @@ class InnerRuntimeCredentialResolveItem(BaseModel):
 
     credential_id: str = Field(description="Credential id")
     provider: str = Field(description="Runtime provider identifier, for example langgenius/openai/openai")
-    kind: str = Field(description="Credential kind, either 'model' or 'tool'")
+    kind: str = Field(description="Credential kind: 'model', 'tool' or 'mcp'")
+    failed_credential_digest: str = Field(default="", pattern=r"^(?:[0-9a-f]{64})?$")
 
 
 class InnerRuntimeCredentialsResolvePayload(BaseModel):
@@ -102,6 +106,22 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
                 values, error = _resolve_model(args.tenant_id, model_configurations, item)
             elif item.kind == _KIND_TOOL:
                 values, error = _resolve_tool(args.tenant_id, item)
+            elif item.kind == "mcp":
+                try:
+                    values = mcp_credential_service().resolve(
+                        workspace_id=args.tenant_id,
+                        provider=item.provider,
+                        credential_id=item.credential_id,
+                        failed_credential_digest=item.failed_credential_digest,
+                    )
+                    error = None
+                except MCPCredentialUnavailableError:
+                    return {
+                        "message": "Authorize the MCP provider in the Dify console.",
+                        "cause": "reauthorization_required",
+                    }, 404
+                except CredentialRefreshUnavailableError:
+                    return {"message": "MCP credential refresh is temporarily unavailable."}, 503
             else:
                 return {"message": f"unsupported credential kind '{item.kind}'"}, 400
 

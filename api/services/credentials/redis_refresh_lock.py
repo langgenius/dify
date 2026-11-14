@@ -40,7 +40,7 @@ class RedisCredentialRefreshLock:
 
     @contextmanager
     def acquire(
-        self, *, credential_type: Literal["tool", "datasource"], workspace_id: str, credential_id: str
+        self, *, credential_type: Literal["tool", "datasource", "mcp"], workspace_id: str, credential_id: str
     ) -> Generator[CredentialRefreshLease]:
         name = f"oauth:credential-refresh:{credential_type}:{workspace_id}:{credential_id}"
         lock = self._client.lock(name, timeout=_LEASE_SECONDS, blocking_timeout=_WAIT_SECONDS, thread_local=False)

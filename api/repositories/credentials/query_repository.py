@@ -8,14 +8,16 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
+from core.entities.mcp_provider import MCPProviderEntity
 from libs.datetime_utils import naive_utc_now
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceProvider
 from models.provider import ProviderCredential
 from models.provider_ids import ModelProviderID
-from models.tools import BuiltinToolProvider
+from models.tools import BuiltinToolProvider, MCPToolProvider
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from services.credentials.mcp_runtime import MCPCredentialRecord
 from services.credentials.query import (
     CredentialQuery,
     DatasourceCredentialListItem,
@@ -70,6 +72,53 @@ class CredentialQueryRepository(CredentialQuery):
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_mcp_credential(self, *, workspace_id: str, provider: str, credential_id: str) -> MCPCredentialRecord | None:
+        """Load a detached MCP snapshot with the complete tenant/provider owner scope."""
+        with self._session_factory() as session:
+            row = session.scalar(
+                select(MCPToolProvider).where(
+                    MCPToolProvider.id == credential_id,
+                    MCPToolProvider.tenant_id == workspace_id,
+                    MCPToolProvider.server_identifier == provider,
+                )
+            )
+            if row is None:
+                return None
+            return MCPCredentialRecord(
+                id=row.id,
+                workspace_id=workspace_id,
+                provider=provider,
+                encrypted_credentials=row.encrypted_credentials,
+                data=MCPProviderEntity.from_db_model(row).model_dump(),
+                authed=row.authed,
+                encrypted_headers=row.encrypted_headers,
+            )
+
+    def update_mcp_credential_if_unchanged(
+        self, *, record: MCPCredentialRecord, encrypted_credentials: str | None, authed: bool
+    ) -> bool:
+        """Commit only while the credential, URL, headers, identity and authorization are unchanged."""
+        with self._session_factory.begin() as session:
+            result = session.execute(
+                update(MCPToolProvider)
+                .where(
+                    MCPToolProvider.id == record.id,
+                    MCPToolProvider.tenant_id == record.workspace_id,
+                    MCPToolProvider.server_identifier == record.provider,
+                    MCPToolProvider.encrypted_credentials == record.encrypted_credentials,
+                    MCPToolProvider.server_url == record.data["server_url"],
+                    MCPToolProvider.encrypted_headers == record.encrypted_headers,
+                    MCPToolProvider.authed == record.authed,
+                    MCPToolProvider.identity_mode == record.data["identity_mode"],
+                    MCPToolProvider.user_id == record.data["user_id"],
+                    MCPToolProvider.timeout == record.data["timeout"],
+                    MCPToolProvider.sse_read_timeout == record.data["sse_read_timeout"],
+                )
+                .values(encrypted_credentials=encrypted_credentials, authed=authed, updated_at=naive_utc_now())
+            )
+            assert isinstance(result, CursorResult)
+            return result.rowcount == 1
 
     def get_tool_credential(
         self, *, workspace_id: str, providers: tuple[str, ...], credential_id: str | None

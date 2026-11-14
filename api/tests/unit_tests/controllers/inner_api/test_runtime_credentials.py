@@ -244,3 +244,60 @@ def test_invalid_body_is_rejected_before_the_handler_runs(app: Flask) -> None:
         pytest.raises(UnprocessableEntity),
     ):
         handler.post()
+
+
+@pytest.mark.parametrize(("failure", "status"), [(None, 200), ("permanent", 404), ("temporary", 503)])
+def test_mcp_inner_api_boundary(app: Flask, failure: str | None, status: int) -> None:
+    from services.credentials.mcp_runtime import MCPCredentialUnavailableError
+    from services.credentials.refresh import CredentialRefreshUnavailableError
+
+    payload = {
+        "tenant_id": "tenant-1",
+        "credentials": [
+            {"credential_id": "mcp-id", "provider": "mcp-server", "kind": "mcp", "failed_credential_digest": "a" * 64}
+        ],
+    }
+    handler = EnterpriseRuntimeCredentialsResolve()
+    with (
+        patch("controllers.console.wraps._is_setup_completed", return_value=True),
+        config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
+        patch("controllers.inner_api.runtime_credentials.mcp_credential_service") as factory,
+        app.test_request_context(method="POST", json=payload, headers={"X-Inner-Api-Key": "inner-api-key"}),
+    ):
+        service = factory.return_value
+        service.resolve.return_value = {"server_url": "https://mcp.example", "headers": {"Authorization": "Bearer new"}}
+        if failure == "permanent":
+            service.resolve.side_effect = MCPCredentialUnavailableError("sensitive upstream details")
+        elif failure == "temporary":
+            service.resolve.side_effect = CredentialRefreshUnavailableError()
+        body, actual_status = handler.post()
+        service.resolve.assert_called_once_with(
+            workspace_id="tenant-1", provider="mcp-server", credential_id="mcp-id", failed_credential_digest="a" * 64
+        )
+    assert actual_status == status
+    assert "sensitive" not in json.dumps(body)
+    if status == 200:
+        assert body["credentials"][0]["values"]["headers"] == {"Authorization": "Bearer new"}
+    elif status == 404:
+        assert body["cause"] == "reauthorization_required"
+
+
+def test_mcp_invalid_digest_is_rejected_before_resolution(app: Flask) -> None:
+    with (
+        patch("controllers.console.wraps._is_setup_completed", return_value=True),
+        config_overrides_context(INNER_API=True, INNER_API_KEY="inner-api-key"),
+        patch("controllers.inner_api.runtime_credentials.mcp_credential_service") as factory,
+        app.test_request_context(
+            method="POST",
+            json={
+                "tenant_id": "tenant-1",
+                "credentials": [
+                    {"credential_id": "id", "provider": "server", "kind": "mcp", "failed_credential_digest": "bad"}
+                ],
+            },
+            headers={"X-Inner-Api-Key": "inner-api-key"},
+        ),
+        pytest.raises(UnprocessableEntity),
+    ):
+        EnterpriseRuntimeCredentialsResolve().post()
+    factory.assert_not_called()

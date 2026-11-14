@@ -94,7 +94,7 @@ ignore_imports =
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
-    core.mcp.auth_client -> services
+    core.mcp.auth_client -> extensions.application_services.mcp
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.knowledge.external.service
@@ -340,6 +340,7 @@ type = forbidden
 source_modules =
     services.credentials.tool_runtime
     services.credentials.refresh
+    services.credentials.mcp_runtime
 forbidden_modules =
     configs
     controllers
@@ -360,6 +361,19 @@ source_modules =
 forbidden_modules =
     repositories
     services.credentials.tool_runtime_adapters
+    services.credentials.redis_refresh_lock
+allow_indirect_imports = True
+
+[importlinter:contract:mcp-credential-adapter-boundary]
+name = MCP auth retry reaches credential adapters only through composition
+type = forbidden
+source_modules =
+    core.mcp.auth_client
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+    services.credentials.mcp_runtime_adapters
     services.credentials.redis_refresh_lock
 allow_indirect_imports = True
 

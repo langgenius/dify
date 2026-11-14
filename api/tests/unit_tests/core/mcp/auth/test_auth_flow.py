@@ -1202,7 +1202,7 @@ class TestAuthOrchestration:
         # Failure: HTTP error
         mock_post.side_effect = None
         mock_post.return_value = httpx.Response(400, text="error_msg")
-        with pytest.raises(MCPRefreshTokenError, match="error_msg"):
+        with pytest.raises(MCPRefreshTokenError, match="OAuth token refresh was rejected"):
             refresh_authorization("https://api", None, client_info, "rt")
 
         # Failure: Incompatible metadata
@@ -1246,7 +1246,7 @@ class TestAuthOrchestration:
 
         # Failure: HTTP error
         mock_post.return_value = httpx.Response(401, text="Unauthorized")
-        with pytest.raises(ValueError, match="Client credentials token request failed"):
+        with pytest.raises(MCPRefreshTokenError, match="OAuth client credentials request was rejected"):
             client_credentials_flow("https://api", None, client_info)
 
     @patch("core.helper.ssrf_proxy.post")

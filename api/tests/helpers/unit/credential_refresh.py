@@ -25,7 +25,7 @@ class ThreadCredentialRefreshLock:
 
     @contextmanager
     def acquire(
-        self, *, credential_type: Literal["tool", "datasource"], workspace_id: str, credential_id: str
+        self, *, credential_type: Literal["tool", "datasource", "mcp"], workspace_id: str, credential_id: str
     ) -> Generator[CredentialRefreshLease]:
         key = (credential_type, workspace_id, credential_id)
         with self._condition:

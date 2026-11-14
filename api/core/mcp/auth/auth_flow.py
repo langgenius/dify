@@ -468,9 +468,17 @@ def refresh_authorization(
     try:
         response = ssrf_proxy.post(token_url, data=params)
     except ssrf_proxy.MaxRetriesExceededError as e:
-        raise MCPRefreshTokenError(e) from e
+        raise MCPRefreshTokenError("OAuth token endpoint is unavailable") from e
     if not response.is_success:
-        raise MCPRefreshTokenError(response.text)
+        try:
+            oauth_error = response.json().get("error")
+        except (ValueError, AttributeError):
+            oauth_error = None
+        raise MCPRefreshTokenError(
+            "OAuth token refresh was rejected",
+            permanent=response.status_code in (400, 401)
+            and oauth_error in ("invalid_grant", "invalid_client", "unauthorized_client"),
+        )
     return _parse_token_response(response)
 
 
@@ -510,8 +518,14 @@ def client_credentials_flow(
 
     response = ssrf_proxy.post(token_url, headers=headers, data=data)
     if not response.is_success:
-        raise ValueError(
-            f"Client credentials token request failed: HTTP {response.status_code}, Response: {response.text}"
+        try:
+            oauth_error = response.json().get("error")
+        except (ValueError, AttributeError):
+            oauth_error = None
+        raise MCPRefreshTokenError(
+            "OAuth client credentials request was rejected",
+            permanent=response.status_code in (400, 401)
+            and oauth_error in ("invalid_grant", "invalid_client", "unauthorized_client"),
         )
 
     return _parse_token_response(response)
@@ -650,6 +664,8 @@ def auth(
             )
 
             return AuthResult(actions=actions, response={"result": "success"})
+        except MCPRefreshTokenError:
+            raise
         except (RequestError, ValueError, KeyError) as e:
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
@@ -715,6 +731,8 @@ def auth(
             )
 
             return AuthResult(actions=actions, response={"result": "success"})
+        except MCPRefreshTokenError:
+            raise
         except (RequestError, ValueError, KeyError) as e:
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
