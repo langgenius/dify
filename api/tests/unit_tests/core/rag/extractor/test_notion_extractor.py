@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections.abc import Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest import mock
 
@@ -8,7 +9,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor import notion_extractor
@@ -19,6 +20,31 @@ from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 
 """Unit tests for Notion extraction, HTTP parsing, and persisted metadata updates."""
+
+
+@dataclass
+class _OwnedSessions:
+    """Counts the short-lived sessions the extractor opens from the session factory."""
+
+    opened: int = 0
+    commits: int = 0
+
+
+@pytest.fixture
+def owned_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> _OwnedSessions:
+    tracker = _OwnedSessions()
+
+    def _record_commit(_session: Session) -> None:
+        tracker.commits += 1
+
+    def create_session() -> Session:
+        tracker.opened += 1
+        session = sqlite_session_factory()
+        event.listen(session, "after_commit", _record_commit)
+        return session
+
+    monkeypatch.setattr(notion_extractor.session_factory, "create_session", create_session)
+    return tracker
 
 
 def _notion_extractor_mock_response(data: object, status_code: int = 200, text: str = "") -> mock.Mock:
@@ -33,10 +59,9 @@ class TestNotionExtractorCases:
     @staticmethod
     @pytest.fixture
     def persisted_document(
-        monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> Iterator[tuple[sessionmaker[Session], DocumentModel]]:
-        """Persist a Notion document and bind the extractor's ``db.session`` to SQLite."""
+        """Persist a Notion document in the SQLite database the session factory is bound to."""
         TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         document = DocumentModel(
@@ -56,7 +81,6 @@ class TestNotionExtractorCases:
         with session_maker() as sqlite_session:
             sqlite_session.add(document)
             sqlite_session.commit()
-            monkeypatch.setattr(notion_extractor, "db", SimpleNamespace(session=sqlite_session))
             yield session_maker, document
 
     class TestNotionExtractorInitAndPublicMethods:
@@ -665,6 +689,7 @@ class TestNotionExtractorCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
             persisted_document: tuple[sessionmaker[Session], DocumentModel],
+            owned_sessions: _OwnedSessions,
         ) -> None:
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
@@ -674,14 +699,20 @@ class TestNotionExtractorCases:
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
             )
-            monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
             session_maker, document = persisted_document
+
+            def last_edited_time() -> str:
+                # The Notion API call happens before any database session is opened.
+                assert owned_sessions.opened == 0
+                return "2026-01-01T00:00:00.000Z"
+
+            monkeypatch.setattr(extractor, "get_notion_last_edited_time", last_edited_time)
 
             snapshot = StoredDocumentExtractionInput.model_validate(document)
             extractor.update_last_edited_time(snapshot)
 
-            # Closing the writer session rolls back an uncommitted update before the independent read below.
-            notion_extractor.db.session.close()
+            assert owned_sessions.opened == 1
+            assert owned_sessions.commits == 1
             with session_maker() as verification_session:
                 stored_document = verification_session.get(DocumentModel, document.id)
                 assert stored_document is not None
