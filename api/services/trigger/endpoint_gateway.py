@@ -85,6 +85,11 @@ class PluginTriggerEndpointGateway:
 
 
 def enqueue_triggered_workflows(data: PluginTriggerDispatchData) -> None:
+    from configs import dify_config
+    from enums import DeploymentEdition
+    from services.trigger.app_deploy_dispatch import dispatch_deployed_triggers
     from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 
     dispatch_triggered_workflows_async.delay(data.model_dump(mode="json"))
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+        dispatch_deployed_triggers.delay(data.model_dump(mode="json"))
