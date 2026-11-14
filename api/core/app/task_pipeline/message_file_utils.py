@@ -1,4 +1,5 @@
 from typing import TypedDict
+from urllib.parse import unquote
 
 from core.tools.signature import sign_tool_file
 from graphon.file import FileTransferMethod
@@ -43,7 +44,8 @@ def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, Upl
         case FileTransferMethod.REMOTE_URL:
             url = message_file.url
             if message_file.url:
-                filename = message_file.url.split("/")[-1].split("?")[0]
+                clean_url = message_file.url.split("?", 1)[0].split("#", 1)[0]
+                filename = unquote(clean_url.rsplit("/", 1)[-1])
                 if "." in filename:
                     extension = "." + filename.rsplit(".", 1)[1]
         case FileTransferMethod.LOCAL_FILE:
@@ -58,7 +60,8 @@ def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, Upl
         case FileTransferMethod.TOOL_FILE if message_file.url:
             if message_file.url.startswith(("http://", "https://")):
                 url = message_file.url
-                filename = message_file.url.split("/")[-1].split("?")[0]
+                clean_url = message_file.url.split("?", 1)[0].split("#", 1)[0]
+                filename = unquote(clean_url.rsplit("/", 1)[-1])
                 if "." in filename:
                     extension = "." + filename.rsplit(".", 1)[1]
             else:
