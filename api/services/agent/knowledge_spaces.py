@@ -23,6 +23,7 @@ from models.knowledge_fs import (
 )
 from models.workflow import Workflow
 from services.agent.errors import InvalidComposerConfigError
+from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 from services.knowledge_fs.product_authorization import (
     DifyKnowledgeFSProductRBACPort,
     effective_product_permissions,
@@ -48,14 +49,36 @@ def validate_agent_knowledge_spaces(
 
 
 def authorize_composer_knowledge(
-    *, session_factory: sessionmaker[Session], tenant_id: str, account_id: str, soul: AgentSoulConfig
+    *,
+    session_factory: sessionmaker[Session],
+    tenant_id: str,
+    account_id: str,
+    soul: AgentSoulConfig,
+    check_datasets: bool = False,
 ) -> None:
-    """Read local roles before requesting Enterprise permissions, without overlapping either operation."""
+    """Authorize a Soul's spaces after the read session closes.
+
+    Apply checks that Classic Knowledge datasets exist first. Draft saves allow incomplete dataset selections.
+    """
     ids = [binding.control_space_id for binding in soul.knowledge.spaces if not binding.is_missing]
-    if ids:
+    if check_datasets or ids:
         with session_factory() as session:
-            roles = read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
-        require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
+            if check_datasets:
+                missing = list_missing_tenant_knowledge_dataset_ids(
+                    session=session, tenant_id=tenant_id, agent_soul=soul
+                )
+                if missing:
+                    raise InvalidComposerConfigError(
+                        "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
+                        + ", ".join(missing)
+                    )
+            roles = (
+                read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
+                if ids
+                else {}
+            )
+        if ids:
+            require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
 
 
 def read_agent_knowledge_space_roles(

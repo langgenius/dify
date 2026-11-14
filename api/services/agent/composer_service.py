@@ -571,37 +571,6 @@ class AgentComposerService:
         )
 
     @classmethod
-    def save_agent_composer(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
-    ) -> dict[str, Any]:
-        # Read and lock the latest draft before any ORM autoflush can write a cached snapshot.
-        with session.no_autoflush:
-            if payload.variant != ComposerVariant.AGENT_APP:
-                raise ValueError("Agent composer endpoint only accepts agent_app variant")
-            if payload.save_strategy != ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
-                raise InvalidComposerConfigError(
-                    "Agent composer only saves the normal draft. Use the publish endpoint to create a version."
-                )
-            if payload.agent_soul is None:
-                raise ValueError("agent_soul is required")
-            backfill_cli_tool_ids(payload.agent_soul)
-            _validate_composer_payload_for_strategy(payload)
-            validate_agent_knowledge_spaces(
-                session=session,
-                tenant_id=tenant_id,
-                account_id=account_id,
-                agent_soul=payload.agent_soul,
-            )
-            agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-            return cls._save_agent_composer_for_agent(
-                session=session,
-                tenant_id=tenant_id,
-                agent=agent,
-                account_id=account_id,
-                payload=payload,
-            )
-
-    @classmethod
     def _save_agent_composer_for_agent(
         cls, *, session: Session, tenant_id: str, agent: Agent, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:

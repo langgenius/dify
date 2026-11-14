@@ -353,7 +353,7 @@ def test_rbac_agent_owner_can_change_access_as_a_member(harness: Harness) -> Non
 
 
 def test_agent_composer_reads_snapshot_and_commits_only_the_shared_draft(harness: Harness) -> None:
-    """Use the live Console route to prove read-only GET and a tenant-scoped draft save."""
+    """Read state and candidates without creating a draft, then save only the shared draft."""
     agent_id, _ = harness.create_agent()
     snapshot_id = str(uuid4())
     with harness.sessions.begin() as session:
@@ -374,6 +374,13 @@ def test_agent_composer_reads_snapshot_and_commits_only_the_shared_draft(harness
     assert initial.status_code == HTTPStatus.OK
     assert initial.get_json()["draft"] is None
     assert initial.get_json()["agent_soul"]["prompt"]["system_prompt"] == "published"
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id)) is None
+
+    candidates = harness.client.get(f"{path}/candidates", headers=harness.headers)
+    assert candidates.status_code == HTTPStatus.OK
+    assert candidates.get_json()["variant"] == "agent_app"
+    assert candidates.get_json()["allowed_soul_candidates"]["knowledge_sets"] == []
     with harness.sessions() as session:
         assert session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id)) is None
 
@@ -399,11 +406,6 @@ def test_agent_composer_reads_snapshot_and_commits_only_the_shared_draft(harness
             == "published"
         )
 
-    candidates = harness.client.get(f"{path}/candidates", headers=harness.headers)
-    assert candidates.status_code == HTTPStatus.OK
-    assert candidates.get_json()["variant"] == "agent_app"
-    assert candidates.get_json()["allowed_soul_candidates"]["knowledge_sets"] == []
-
     validated = harness.client.post(f"{path}/validate", headers=harness.headers, json=payload)
     assert validated.status_code == HTTPStatus.OK
     assert validated.get_json() == {
@@ -420,3 +422,76 @@ def test_agent_composer_rejects_a_foreign_agent(harness: Harness) -> None:
     response = harness.client.get(f"/console/api/agent/{agent_id}/composer", headers=harness.headers)
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.get_json()["code"] == "agent_not_found_error"
+
+
+@pytest.mark.parametrize("foreign_agent", [False, True], ids=["unknown", "foreign"])
+def test_agent_composer_candidates_have_no_soul_data_for_an_unavailable_agent(
+    harness: Harness, foreign_agent: bool
+) -> None:
+    """Keep the candidate response usable without exposing an unavailable Agent's configuration."""
+    agent_id = str(uuid4())
+    if foreign_agent:
+        tenant_id = str(uuid4())
+        agent_id, _ = harness.create_agent(tenant_id=tenant_id)
+        with harness.sessions.begin() as session:
+            snapshot = AgentConfigSnapshot(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                version=1,
+                config_snapshot=AgentSoulConfig.model_validate(
+                    {"tools": {"cli_tools": [{"id": "foreign-tool", "name": "private"}]}}
+                ),
+            )
+            session.add(snapshot)
+            session.flush()
+            session.get_one(Agent, agent_id).active_config_snapshot_id = snapshot.id
+
+    response = harness.client.get(f"/console/api/agent/{agent_id}/composer/candidates", headers=harness.headers)
+
+    assert response.status_code == HTTPStatus.OK
+    candidates = response.get_json()["allowed_soul_candidates"]
+    assert candidates["cli_tools"] == []
+    assert candidates["knowledge_sets"] == []
+    assert candidates["human_contacts"] == []
+
+
+def test_agent_composer_can_save_incomplete_knowledge_configuration(harness: Harness) -> None:
+    """Draft saves accept incomplete retrieval settings that fail Composer validation."""
+    agent_id, _ = harness.create_agent()
+    with harness.sessions.begin() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id, agent_id=agent_id, version=1, config_snapshot=AgentSoulConfig()
+        )
+        session.add(snapshot)
+        session.flush()
+        session.get_one(Agent, agent_id).active_config_snapshot_id = snapshot.id
+
+    path = f"/console/api/agent/{agent_id}/composer"
+    knowledge_set = {
+        "id": "support",
+        "name": "Support KB",
+        "datasets": [{"id": "not-a-uuid"}],
+        "query": {"mode": "generated_query"},
+        "retrieval": {"mode": "single"},
+        "metadata_filtering": {"mode": "automatic"},
+    }
+    payload = {
+        "variant": "agent_app",
+        "save_strategy": "save_to_current_version",
+        "agent_soul": {"knowledge": {"sets": [knowledge_set]}},
+    }
+
+    saved = harness.client.put(path, headers=harness.headers, json=payload)
+    assert saved.status_code == HTTPStatus.OK
+    with harness.sessions() as session:
+        draft = session.get_one(AgentConfigDraft, saved.get_json()["draft"]["id"])
+        [saved_set] = draft.config_snapshot.knowledge.sets
+        assert saved_set.id == "support"
+        assert saved_set.retrieval.mode == "single"
+        assert saved_set.retrieval.model is None
+        assert saved_set.metadata_filtering.mode == "automatic"
+        assert saved_set.metadata_filtering.metadata_model_config is None
+
+    validated = harness.client.post(f"{path}/validate", headers=harness.headers, json=payload)
+    assert validated.status_code == HTTPStatus.BAD_REQUEST
+    assert validated.get_json()["code"] == "invalid_composer_config_error"

@@ -1749,6 +1749,7 @@ type = forbidden
 source_modules =
     services.agent.app_composer
     services.agent.app_composer_store
+# Agent Soul schemas and pure configuration helpers are shared from models.
 forbidden_modules =
     celery
     configs
@@ -1756,6 +1757,8 @@ forbidden_modules =
     core
     extensions
     flask
+    models.agent
+    models.dataset
     repositories
     sqlalchemy
     tasks
