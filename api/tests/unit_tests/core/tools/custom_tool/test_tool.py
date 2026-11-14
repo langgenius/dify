@@ -429,6 +429,82 @@ class TestCustomToolCases:
             invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
     @staticmethod
+    def test_do_http_request_omits_unset_query_header_and_cookie_parameters(monkeypatch: pytest.MonkeyPatch) -> None:
+        openapi = {
+            "parameters": [
+                {"name": "q", "in": "query", "required": False, "schema": {"type": "string", "default": None}},
+                {"name": "X-Request-Id", "in": "header", "required": False, "schema": {"type": "string"}},
+                {"name": "X-Tenant", "in": "header", "required": False, "schema": {"type": "string", "default": None}},
+                {"name": "session", "in": "cookie", "required": False, "schema": {"type": "string"}},
+            ]
+        }
+        tool = _build_tool(openapi=openapi)
+        captured: dict[str, object] = {}
+
+        def _fake_get(url: str, **kwargs: object) -> Response:
+            captured.update(kwargs)
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
+        tool.do_http_request("https://api.example.com/items", "GET", headers={}, parameters={})
+
+        assert captured["params"] == {}
+        assert captured["headers"] == {}
+        assert captured["cookies"] == {}
+
+    @staticmethod
+    @pytest.mark.parametrize("location", ["query", "header", "cookie"])
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_do_http_request_rejects_unset_required_parameters(
+        monkeypatch: pytest.MonkeyPatch, location: str, value: str | None
+    ) -> None:
+        openapi = {
+            "parameters": [{"name": "X-Request-Id", "in": location, "required": True, "schema": {"type": "string"}}]
+        }
+        tool = _build_tool(openapi=openapi)
+        dispatched: list[str] = []
+
+        def _fake_get(url: str, **kwargs: object) -> Response:
+            dispatched.append(url)
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
+
+        with pytest.raises(ToolParameterValidationError, match="Missing required parameter X-Request-Id"):
+            tool.do_http_request("https://api.example.com/items", "GET", headers={}, parameters={"X-Request-Id": value})
+
+        assert dispatched == []
+
+    @staticmethod
+    def test_do_http_request_serializes_header_and_cookie_values(monkeypatch: pytest.MonkeyPatch) -> None:
+        openapi = {
+            "parameters": [
+                {"name": "X-Dry-Run", "in": "header", "required": False, "schema": {"type": "boolean"}},
+                {"name": "X-Verbose", "in": "header", "required": False, "schema": {"type": "boolean"}},
+                {"name": "X-Page", "in": "header", "required": False, "schema": {"type": "integer"}},
+                {"name": "X-Offset", "in": "header", "required": False, "schema": {"type": "integer"}},
+                {"name": "beta", "in": "cookie", "required": False, "schema": {"type": "boolean"}},
+            ]
+        }
+        tool = _build_tool(openapi=openapi)
+        captured: dict[str, object] = {}
+
+        def _fake_get(url: str, **kwargs: object) -> Response:
+            captured.update(kwargs)
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
+        tool.do_http_request(
+            "https://api.example.com/items",
+            "GET",
+            headers={},
+            parameters={"X-Dry-Run": True, "X-Verbose": False, "X-Page": 2, "X-Offset": 0, "beta": True},
+        )
+
+        assert captured["headers"] == {"X-Dry-Run": "true", "X-Verbose": "false", "X-Page": "2", "X-Offset": "0"}
+        assert captured["cookies"] == {"beta": "true"}
+
+    @staticmethod
     def test_do_http_request_handles_file_upload_and_invoke_paths(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
