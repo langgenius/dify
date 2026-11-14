@@ -20,6 +20,8 @@ from models.knowledge_fs import (
 )
 from models.model import Account, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from services.file_scan import FileScanService, ScanOutcome, ScanScope
+from services.file_scan.entities import SCOPE_KNOWLEDGE_FS_SPACE
 from services.file_service import FileService
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.object_storage import KnowledgeFSObjectStorageService
@@ -81,6 +83,14 @@ class KnowledgeFSStagedUploadTooLargeError(KnowledgeFSStagedUploadInvalidError):
     pass
 
 
+class KnowledgeFSStagedUploadScanBlockedError(KnowledgeFSStagedUploadError):
+    """The Space's malware scan does not allow this file to enter KnowledgeFS."""
+
+    def __init__(self, outcome: ScanOutcome) -> None:
+        super().__init__(outcome.describe())
+        self.outcome = outcome
+
+
 class KnowledgeFSStagedUploadService:
     def __init__(
         self,
@@ -88,10 +98,12 @@ class KnowledgeFSStagedUploadService:
         *,
         facade: KnowledgeFSDataFacade,
         object_storage: KnowledgeFSObjectStorageService | None = None,
+        file_scan: FileScanService | None = None,
     ) -> None:
         self._session_maker = session_maker
         self._facade = facade
         self._object_storage = object_storage or KnowledgeFSObjectStorageService()
+        self._file_scan = file_scan or FileScanService(session_maker)
 
     def stage(
         self,
@@ -169,6 +181,18 @@ class KnowledgeFSStagedUploadService:
             return _claim_response(staged)
 
         try:
+            # Scan before KnowledgeFS learns about the file: rejected bytes never leave Dify.
+            # One attempt only, because this runs inside the upload request; a scan that is still
+            # running is reported as retryable and the next claim resumes it.
+            outcome = self._file_scan.scan_upload_file(
+                tenant_id=tenant_id,
+                upload_file_id=upload_file.id,
+                scope=ScanScope(SCOPE_KNOWLEDGE_FS_SPACE, control_space_id),
+                wait_for_result=False,
+            )
+            if not outcome.allowed:
+                raise KnowledgeFSStagedUploadScanBlockedError(outcome)
+
             upload_session_id = staged.upload_session_id
             knowledge_space_id = staged.knowledge_space_id
             if upload_session_id is None:
@@ -242,7 +266,11 @@ class KnowledgeFSStagedUploadService:
                 tenant_id=tenant_id,
                 account_id=account_id,
                 upload_id=staged.id,
-                error_code=type(exc).__name__,
+                error_code=(
+                    exc.outcome.code.value
+                    if isinstance(exc, KnowledgeFSStagedUploadScanBlockedError) and exc.outcome.code
+                    else type(exc).__name__
+                ),
             )
             raise
 

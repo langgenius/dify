@@ -1,39 +1,23 @@
-import { cn } from '@langgenius/dify-ui/cn'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { DifyLogo } from '../../base/logo/dify-logo'
-import styles from './header.module.css'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 
-const Header = () => {
+export default function Header() {
   const { t } = useTranslation(['billing'])
 
   return (
-    <div className="flex min-h-26.25 w-full justify-center px-3 xl:px-10">
-      <div className="relative flex max-w-[1680px] min-w-0 grow flex-col justify-end gap-y-1 border-x border-divider-accent p-3 pt-8 xl:p-6 xl:pt-8">
-        <div className="flex flex-wrap items-end pr-14">
-          <div aria-hidden="true" className="py-1.25">
-            <DifyLogo alt="" className="h-6.75 w-15" />
-          </div>
-          <DialogTitle
-            className={cn(
-              // oxlint-disable-next-line shadcn/no-restyle -- Pricing hero keeps its serif display title.
-              'min-w-0 bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] font-normal wrap-anywhere text-transparent',
-              styles.instrumentSerif,
-            )}
-          >
-            {t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
-          </DialogTitle>
-        </div>
-        <DialogDescription
-          // oxlint-disable-next-line shadcn/no-restyle -- Pricing hero keeps its 13px subtitle.
-          className="text-[13px]/4 text-text-tertiary"
-        >
-          {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
-        </DialogDescription>
-      </div>
+    <div className="min-h-16 pe-11">
+      <DialogTitle>
+        <span className="flex items-center gap-2 text-2xl leading-[37px] font-normal">
+          <DifyLogo alt="Dify" className="h-[27px] w-15" />
+          <span>Cloud</span>
+        </span>
+      </DialogTitle>
+      <DialogDescription>
+        <span className="mt-[3px] block font-[PricingInter,sans-serif] text-base leading-6 text-text-tertiary">
+          {t(($) => $['plansCommon.title.description'])}
+        </span>
+      </DialogDescription>
     </div>
   )
 }
-
-export default React.memo(Header)

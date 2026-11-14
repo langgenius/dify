@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -43,6 +43,7 @@ from core.repositories.factory import (
     WorkflowExecutionRepository,
     WorkflowNodeExecutionRepository,
 )
+from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
@@ -61,6 +62,23 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Mirrors the ``documents.name`` column length (``String(255)``).
+DOCUMENT_NAME_MAX_LENGTH = 255
+DEFAULT_DOCUMENT_NAME = "untitled"
+
+
+class PipelineFileAdmission(Protocol):
+    """Decides whether an uploaded file may enter a pipeline run (for example, a malware scan).
+
+    Returns ``None`` to admit the file, otherwise the reason to record on the document.
+    """
+
+    def __call__(self, *, tenant_id: str, dataset_id: str, upload_file_id: str) -> str | None: ...
+
+
+class PipelineFileRejectedError(ValueError):
+    """The uploaded file of this pipeline run was not admitted; the message is the stored document error."""
+
 
 class PipelineGenerator(BaseAppGenerator):
     def __init__(
@@ -69,10 +87,12 @@ class PipelineGenerator(BaseAppGenerator):
         execution_driver: "WorkflowRunDriver",
         documents: PipelineDocumentStore,
         datasource_providers: DatasourceProviderService,
+        file_admission: PipelineFileAdmission,
     ) -> None:
         self._execution_driver = execution_driver
         self._documents = documents
         self._datasource_providers = datasource_providers
+        self._file_admission = file_admission
 
     @overload
     def generate(
@@ -136,6 +156,12 @@ class PipelineGenerator(BaseAppGenerator):
         workflow_thread_pool_id: str | None = None,
         is_retry: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping | str] | None:
+        """Run a pipeline with a dataset and datasource arguments for its workflow.
+
+        Input validation errors propagate before document or execution-log rows are
+        added. Valid inputs are prepared once and shared by every datasource item.
+        The caller owns committing any rows added to its session.
+        """
         # Add null check for dataset
 
         dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
@@ -151,6 +177,13 @@ class PipelineGenerator(BaseAppGenerator):
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
             pipeline=pipeline, workflow=workflow, start_node_id=start_node_id
+        )
+        # Validate once before staging document rows; every datasource item shares the result.
+        prepared_inputs = self._prepare_user_inputs(
+            user_inputs=inputs,
+            variables=pipeline_config.rag_pipeline_variables,
+            tenant_id=pipeline.tenant_id,
+            strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
         )
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
@@ -208,12 +241,7 @@ class PipelineGenerator(BaseAppGenerator):
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
-                inputs=self._prepare_user_inputs(
-                    user_inputs=inputs,
-                    variables=pipeline_config.rag_pipeline_variables,
-                    tenant_id=pipeline.tenant_id,
-                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
-                ),
+                inputs=prepared_inputs,
                 files=[],
                 user_id=user.id,
                 stream=streaming,
@@ -333,6 +361,7 @@ class PipelineGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
+            self._scan_local_file(pipeline=pipeline, application_generate_entity=application_generate_entity)
             # init queue manager
             workflow = session.get(Workflow, workflow_id)
             if not workflow:
@@ -715,6 +744,33 @@ class PipelineGenerator(BaseAppGenerator):
                 )
                 raise e
 
+    def _scan_local_file(self, *, pipeline: Pipeline, application_generate_entity: RagPipelineGenerateEntity) -> None:
+        """Reject an uploaded file the dataset's malware scan does not allow, before any node reads it.
+
+        Each pipeline run handles one datasource item, so a rejected file fails only its own document.
+        """
+        if application_generate_entity.datasource_type != DatasourceProviderType.LOCAL_FILE:
+            return
+        datasource_info = application_generate_entity.datasource_info
+        upload_file_id = resolve_file_record_id(datasource_info.get("reference") or datasource_info.get("related_id"))
+        if not upload_file_id:
+            return
+        rejection = self._file_admission(
+            tenant_id=pipeline.tenant_id,
+            dataset_id=application_generate_entity.dataset_id,
+            upload_file_id=upload_file_id,
+        )
+        if rejection is None:
+            return
+        if application_generate_entity.document_id:
+            self._documents.mark_failed(
+                workspace_id=pipeline.tenant_id,
+                dataset_id=application_generate_entity.dataset_id,
+                document_id=application_generate_entity.document_id,
+                error=rejection,
+            )
+        raise PipelineFileRejectedError(rejection)
+
     def _build_document(
         self,
         tenant_id: str,
@@ -728,18 +784,26 @@ class PipelineGenerator(BaseAppGenerator):
         batch: str,
         document_form: IndexStructureType,
     ):
+        """Build an unpersisted document for a supported datasource and account.
+
+        Its name is nonempty, fits the name column, and matches enabled built-in
+        metadata. Unsupported datasource types raise ValueError before construction.
+        """
+        raw_name: Any
         match datasource_type:
             case DatasourceProviderType.LOCAL_FILE:
-                name = datasource_info.get("name", "untitled")
+                raw_name = datasource_info.get("name")
             case DatasourceProviderType.ONLINE_DOCUMENT:
-                name = datasource_info.get("page", {}).get("page_name", "untitled")
+                raw_name = (datasource_info.get("page") or {}).get("page_name")
             case DatasourceProviderType.WEBSITE_CRAWL:
-                name = datasource_info.get("title", "untitled")
+                # Crawlers may return an empty title, fall back to the page URL before "untitled".
+                raw_name = datasource_info.get("title") or datasource_info.get("source_url")
             case DatasourceProviderType.ONLINE_DRIVE:
-                name = datasource_info.get("name", "untitled")
+                raw_name = datasource_info.get("name")
             case _:
                 raise ValueError(f"Unsupported datasource type: {datasource_type}")
         document_data_source_type: DataSourceType = DataSourceType(datasource_type)
+        name = self._normalize_document_name(raw_name)
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -762,6 +826,22 @@ class PipelineGenerator(BaseAppGenerator):
                 data_source_type=datasource_type,
             )
         return document
+
+    @staticmethod
+    def _normalize_document_name(raw_name: Any) -> str:
+        """Return a document name that fits the ``documents.name`` column.
+
+        Datasource plugins control this value and can return anything: a crawler may put the
+        whole page body into ``title``. Surrounding whitespace is stripped and the result is
+        truncated to ``DOCUMENT_NAME_MAX_LENGTH``; the name is otherwise kept verbatim. A missing,
+        non-string or blank value becomes ``"untitled"``.
+        """
+        if not isinstance(raw_name, str):
+            return DEFAULT_DOCUMENT_NAME
+        name = raw_name.strip()
+        if not name:
+            return DEFAULT_DOCUMENT_NAME
+        return name[:DOCUMENT_NAME_MAX_LENGTH]
 
     def _format_datasource_info_list(
         self,

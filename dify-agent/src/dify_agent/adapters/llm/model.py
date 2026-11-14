@@ -133,7 +133,10 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
     @property
     def accumulated_usage(self) -> LLMUsage | None:
-        """Return complete Dify usage accumulated across successful model requests."""
+        """Return complete Dify usage reported by the gateway across this run's requests.
+
+        Includes usage received before cancellation, failure, or early exit.
+        """
         return self._accumulated_usage
 
     @override
@@ -143,17 +146,15 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        response = self._build_streamed_response(
+        async with self._open_streamed_response(
             messages,
             model_settings,
             model_request_parameters,
             stream=False,
-        )
-        async for _event in response:
-            pass
-        model_response = response.get()
-        self._record_usage(response.dify_usage)
-        return model_response
+        ) as response:
+            async for _event in response:
+                pass
+            return response.get()
 
     @asynccontextmanager
     @override
@@ -165,17 +166,19 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         run_context: object | None = None,
     ) -> AsyncGenerator[StreamedResponse, None]:
         del run_context
-        response = self._build_streamed_response(
+        async with self._open_streamed_response(
             messages,
             model_settings,
             model_request_parameters,
             stream=True,
-        )
-        yield response
-        self._record_usage(response.dify_usage)
+        ) as response:
+            yield response
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
-        """Add one completed Dify request to this run's usage total."""
+        """Add one request's gateway-reported complete Dify usage to this run's total.
+
+        Includes usage received before cancellation, failure, or early exit; missing usage is a no-op.
+        """
         if usage is None:
             return
         if self._accumulated_usage is None:
@@ -183,30 +186,54 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             return
         self._accumulated_usage = self._accumulated_usage.plus(usage)
 
-    def _build_streamed_response(
+    @asynccontextmanager
+    async def _open_streamed_response(
         self,
         messages: Sequence[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
         *,
         stream: bool,
-    ) -> DifyStreamedResponse:
+    ) -> AsyncGenerator[DifyStreamedResponse, None]:
+        """Own chunk cleanup and usage accounting for one request scope.
+
+        Close chunks here: ``StreamedResponse.close_stream()`` is a concurrent cancellation
+        hook that may run during ``__anext__()``, when generator ``aclose()`` is unsafe.
+        Preserve primary failures, attaching secondary cleanup Exceptions with ``add_note``.
+        Record gateway-reported complete Dify usage once before awaiting cleanup, retaining
+        usage received before cancellation, failure, or early exit even if cleanup fails or is cancelled.
+        """
         prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
-        return DifyStreamedResponse(
+        chunks = self.dify_provider.client.iter_llm_result_chunks(
+            provider=self.model_provider,
+            model=self.model_name,
+            prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params),
+            model_parameters=_map_model_settings_to_parameters(prepared_settings),
+            tools=_map_tool_definitions_to_prompt_tools(prepared_params),
+            stop=_get_stop_sequences(prepared_settings),
+            stream=stream,
+        )
+        response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.dify_provider.client.iter_llm_result_chunks(
-                provider=self.model_provider,
-                model=self.model_name,
-                prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params),
-                model_parameters=_map_model_settings_to_parameters(prepared_settings),
-                tools=_map_tool_definitions_to_prompt_tools(prepared_params),
-                stop=_get_stop_sequences(prepared_settings),
-                stream=stream,
-            ),
+            chunks=chunks,
             response_model_name=self.model_name,
             provider_name_value=self.system,
             _reserved_tool_call_ids=_history_tool_call_ids(messages),
         )
+        primary_error: BaseException | None = None
+        try:
+            yield response
+        except BaseException as exc:
+            primary_error = exc
+            raise
+        finally:
+            self._record_usage(response.dify_usage)
+            try:
+                await chunks.aclose()
+            except Exception as close_error:
+                if primary_error is None:
+                    raise
+                primary_error.add_note(f"Closing the Dify LLM stream also failed: {close_error!r}")
 
 
 @dataclass

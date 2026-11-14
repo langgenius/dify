@@ -118,6 +118,8 @@
   "console GET /enterprise/sso/saml/login": ["no-input-schema", "compatible"],
   "console GET /features": ["no-input-schema", "compatible"],
   "console GET /features/vector-space": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /file-scan/provider-types": ["no-input-schema", "compatible"],
+  "console GET /file-scan/providers": ["no-input-schema", "compatible"],
   "console GET /files/support-type": ["no-input-schema", "compatible"],
   "console GET /files/upload": ["no-input-schema", "compatible"],
   "console GET /form/human-input/v2/{form_token}": ["compatible", "parsed-vs-wire-output"],
@@ -208,19 +210,6 @@
   "console GET /trial-models": ["no-input-schema", "compatible"],
   "console GET /workflow-run-archives": ["no-input-schema", "compatible"],
   "console GET /workflow/{workflow_run_id}/pause-details": ["compatible", "parsed-vs-wire-output"],
-  "console GET /workspaces/current/human-input/v2/channel-providers": [
-    "no-input-schema",
-    "parsed-vs-wire-output"
-  ],
-  "console GET /workspaces/current/human-input/v2/channels": ["no-input-schema", "compatible"],
-  "console GET /workspaces/current/human-input/v2/channels/email/{channel_id}": [
-    "compatible",
-    "parsed-vs-wire-output"
-  ],
-  "console GET /workspaces/current/human-input/v2/channels/im/{channel_id}": [
-    "compatible",
-    "parsed-vs-wire-output"
-  ],
   "console GET /workspaces": ["no-input-schema", "compatible"],
   "console GET /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}": [
     "compatible",
@@ -235,6 +224,19 @@
   "console GET /workspaces/current/default-model": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list/plugin": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/human-input/v2/channel-providers": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/channels": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/human-input/v2/channels/email/{channel_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/human-input/v2/channels/im/{channel_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console GET /workspaces/current/human-input/v2/contacts": [
     "compatible",
     "parsed-vs-wire-output"

@@ -9,6 +9,7 @@ import appDebug from '@/i18n/locales/en-US/app-debug.json'
 import appLog from '@/i18n/locales/en-US/app-log.json'
 import common from '@/i18n/locales/en-US/common.json'
 import share from '@/i18n/locales/en-US/share.json'
+import tools from '@/i18n/locales/en-US/tools.json'
 import workflowHumanInput from '@/i18n/locales/en-US/workflow-human-input.json'
 import workflow from '@/i18n/locales/en-US/workflow.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -37,6 +38,7 @@ export async function renderChatOwner(ui: ReactNode) {
         workflow,
         workflowHumanInput,
         share,
+        tools,
       },
     },
   })

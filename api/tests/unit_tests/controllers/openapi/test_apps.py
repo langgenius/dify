@@ -23,8 +23,7 @@ from controllers.openapi.apps_permitted_external import PermittedExternalAppDesc
 from machinery.context import AppRequestContext
 from models.model import AppMode
 from services.app.query_service import AppDescription
-from services.app_service import AppListParams
-from services.entities.app_entities import AppSummary
+from services.entities.app_entities import AppListParams, AppSummary
 from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
 from tests.helpers.unit.controllers.openapi._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
 from tests.unit_tests.controllers.conftest import ControllerTestServices

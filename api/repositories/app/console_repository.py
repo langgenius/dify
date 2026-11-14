@@ -53,6 +53,7 @@ from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     SUPPORTED_APP_TYPES,
+    AgentAppPublicationCounts,
     AppAgentBinding,
     AppChange,
     AppCreationSettings,
@@ -566,6 +567,33 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    @classmethod
+    def get_agent_publication_counts(
+        cls,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> AgentAppPublicationCounts:
+        """Count visible Agent Apps by publication state before the publication filter."""
+        unfiltered_params = params.model_copy(update={"agent_is_published": None})
+        filters = cls._build_app_list_filters(user_id, tenant_id, unfiltered_params, session)
+        if not filters:
+            return AgentAppPublicationCounts(published=0, drafts=0)
+
+        published_filter = cls._agent_app_exists_filter(tenant_id, is_published=True)
+        draft_filter = cls._agent_app_exists_filter(tenant_id, is_published=False)
+        published_count, draft_count = session.execute(
+            sa.select(
+                sa.func.coalesce(sa.func.sum(sa.case((published_filter, 1), else_=0)), 0),
+                sa.func.coalesce(sa.func.sum(sa.case((draft_filter, 1), else_=0)), 0),
+            )
+            .select_from(App)
+            .where(*filters)
+        ).one()
+
+        return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
 
     @classmethod
     def get_recent_apps(

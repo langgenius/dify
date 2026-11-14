@@ -51,8 +51,8 @@ from core.db.session_factory import session_factory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl, HumanInputFormSubmissionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
 from core.workflow.node_runtime import DifyFileReferenceFactory
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import (
