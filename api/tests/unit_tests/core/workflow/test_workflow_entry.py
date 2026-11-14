@@ -1,5 +1,6 @@
 import json
 from collections import UserString
+from collections.abc import Generator
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
@@ -32,9 +33,12 @@ from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel, RedisChannel
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine_events import (
+    EngineEvent,
+    GraphEdgeTakenEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPausedEvent,
+    GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
@@ -58,6 +62,7 @@ from graphon.nodes.if_else.if_else_node import IfElseNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.utils.condition.entities import Condition
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
@@ -148,6 +153,163 @@ class TestResponseStreamFilterIssue170Cases:
         assert isinstance(final_answer, str)
         assert final_answer.strip() == expected_answer
         assert actual_answer.strip() == final_answer.strip()
+
+
+"""In-memory regression test: non-streamed tool variables.
+
+Reproduces https://github.com/langgenius/dify/issues/46034 at the
+iter_dify_graph_engine_events layer: a Workflow-as-Tool node whose child
+workflow returns a non-streamed variable emits only an empty final marker
+(chunk="", is_final=True) for that variable. The upstream response filter
+treats the marker as the segment's complete content and never reads the
+value from the variable pool, so the Answer node streams nothing for it.
+
+The graph below mirrors that shape with a container node standing in for
+the Workflow-as-Tool node: its edge blocks the Answer session until the
+node completes, so the marker arrives before the session activates.
+"""
+
+
+class _BlockingToolNode(IfElseNode):
+    """If-else node standing in for a Workflow-as-Tool node.
+
+    Only the blocking behavior matters here: like the Workflow-as-Tool
+    node's CONTAINER execution type, a BRANCH source blocks the response
+    session until its outgoing edge is taken, so the empty final marker
+    arrives before the Answer session activates.
+    """
+
+
+class _ScriptedEngine(Engine):
+    """Engine replaying a fixed event sequence instead of executing nodes."""
+
+    def __init__(self, *, graph: Graph, runtime_state: RuntimeState, events: list[EngineEvent]) -> None:
+        super().__init__(graph=graph, runtime_state=runtime_state, command_channel=InMemoryChannel())
+        self._scripted_events = events
+
+    def run(self) -> Generator[EngineEvent]:
+        yield from self._scripted_events
+
+
+class TestResponseStreamFilterIssue46034Cases:
+    @staticmethod
+    def _build_graph_and_state(*, pool_value: str) -> tuple[Graph, RuntimeState]:
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
+                workflow_execution_id="wf-exec-46034",
+                app_id="app",
+                workflow_id="wf",
+                user_id="user",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        variable_pool.add(("tool", "answer1"), pool_value)
+        runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
+
+        params = build_test_graph_init_params(
+            workflow_id="wf",
+            graph_config={"nodes": [], "edges": []},
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        start_node = StartNode(
+            node_id="start",
+            data=StartNodeData(title="start", variables=[]),
+            init_params=params,
+            runtime_state=runtime_state,
+        )
+        tool_node = _BlockingToolNode(
+            node_id="tool",
+            data=IfElseNodeData(
+                title="tool",
+                cases=[
+                    IfElseNodeData.Case(
+                        case_id="true",
+                        logical_operator="and",
+                        conditions=[
+                            Condition(
+                                variable_selector=["start", "category"],
+                                comparison_operator="is",
+                                value="fruit",
+                            )
+                        ],
+                    )
+                ],
+            ),
+            init_params=params,
+            runtime_state=runtime_state,
+        )
+        answer_node = AnswerNode(
+            node_id="answer",
+            data=AnswerNodeData(title="answer", answer="{{#tool.answer1#}}"),
+            init_params=params,
+            runtime_state=runtime_state,
+        )
+        graph = (
+            Graph.new()
+            .add_root(start_node)
+            .add_node(tool_node, from_node_id="start")
+            .add_node(answer_node, from_node_id="tool", source_handle="true")
+            .build()
+        )
+        return graph, runtime_state
+
+    @staticmethod
+    def _run_scripted_events(graph: Graph, runtime_state: RuntimeState) -> list[NodeRunStreamChunkEvent]:
+        start_edge_id = graph.get_outgoing_edges("start")[0].id
+        tool_edge_id = graph.get_outgoing_edges("tool")[0].id
+        now = naive_utc_now()
+        events: list[EngineEvent] = [
+            GraphRunStartedEvent(),
+            GraphEdgeTakenEvent(
+                frame_id=ROOT_FRAME_ID,
+                edge_id=start_edge_id,
+                source_node_id="start",
+                target_node_id="tool",
+            ),
+            NodeRunStreamChunkEvent(
+                id="tool-exec-1",
+                node_id="tool",
+                node_type=BuiltinNodeTypes.TOOL,
+                selector=["tool", "answer1"],
+                chunk="",
+                is_final=True,
+            ),
+            NodeRunSucceededEvent(
+                id="tool-exec-1",
+                node_id="tool",
+                node_type=BuiltinNodeTypes.TOOL,
+                start_at=now,
+                finished_at=now,
+            ),
+            GraphEdgeTakenEvent(
+                frame_id=ROOT_FRAME_ID,
+                edge_id=tool_edge_id,
+                source_node_id="tool",
+                target_node_id="answer",
+            ),
+            GraphRunSucceededEvent(outputs={}),
+        ]
+        engine = _ScriptedEngine(graph=graph, runtime_state=runtime_state, events=events)
+        streamed = list(iter_dify_graph_engine_events(engine))
+        return [event for event in streamed if isinstance(event, NodeRunStreamChunkEvent)]
+
+    def test_non_streamed_tool_variable_falls_back_to_variable_pool(self) -> None:
+        graph, runtime_state = self._build_graph_and_state(pool_value="The child workflow says hello")
+        stream_chunk_events = self._run_scripted_events(graph, runtime_state)
+
+        assert stream_chunk_events
+        actual_answer = "".join(event.chunk for event in stream_chunk_events)
+        assert actual_answer == "The child workflow says hello"
+        assert stream_chunk_events[-1].is_final is True
+
+    def test_genuinely_empty_tool_variable_streams_nothing_extra(self) -> None:
+        graph, runtime_state = self._build_graph_and_state(pool_value="")
+        stream_chunk_events = self._run_scripted_events(graph, runtime_state)
+
+        assert "".join(event.chunk for event in stream_chunk_events) == ""
+        assert len(stream_chunk_events) == 1
 
 
 """In-memory regression test: if-else branch + human_input pause + downstream answer nodes.
@@ -1099,7 +1261,7 @@ class TestWorkflowEntryHelpersCases:
                 ) as from_engine,
                 patch.object(
                     workflow_entry,
-                    "ResponseStreamFilter",
+                    "DifyResponseStreamFilter",
                     return_value=sentinel.response_stream_filter,
                 ) as response_stream_filter_cls,
                 patch.object(
