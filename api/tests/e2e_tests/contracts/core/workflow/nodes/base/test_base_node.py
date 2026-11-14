@@ -15,9 +15,16 @@ class _TestNodeData(BaseNodeData):
     pass
 
 
-def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:
-    subclasses = []
-    queue = [root]
+# Unparameterized `Node` used as a base class or as an annotation cannot express
+# "any NodeDataT", so alias it once with an explicit argument. The alias is the
+# same class object, so runtime behaviour (including the rejection paths exercised
+# below) is unchanged.
+_BareNode: type[Node[BaseNodeData]] = Node
+
+
+def _get_all_subclasses(root: type[Node[BaseNodeData]]) -> list[type[Node[BaseNodeData]]]:
+    subclasses: list[type[Node[BaseNodeData]]] = []
+    queue: list[type[Node[BaseNodeData]]] = [root]
     while queue:
         cls = queue.pop()
 
@@ -27,8 +34,8 @@ def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:
     return subclasses
 
 
-def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined():
-    classes = _get_all_subclasses(Node)  # type: ignore
+def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined() -> None:
+    classes = _get_all_subclasses(Node)
     type_version_set: set[tuple[NodeType, str]] = set()
 
     for cls in classes:
@@ -50,7 +57,7 @@ def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined
         type_version_set.add(node_type_and_version)
 
 
-def test_extract_node_data_type_from_generic_extracts_type():
+def test_extract_node_data_type_from_generic_extracts_type() -> None:
     """When a class inherits from Node[T], it should extract T."""
 
     class _ConcreteNode(Node[_TestNodeData]):
@@ -65,14 +72,14 @@ def test_extract_node_data_type_from_generic_extracts_type():
     assert result is _TestNodeData
 
 
-def test_extract_node_data_type_from_generic_returns_none_for_base_node():
+def test_extract_node_data_type_from_generic_returns_none_for_base_node() -> None:
     """The base Node class itself should return None (no generic parameter)."""
     result = Node._extract_node_data_type_from_generic()
 
     assert result is None
 
 
-def test_extract_node_data_type_from_generic_raises_for_non_base_node_data():
+def test_extract_node_data_type_from_generic_raises_for_non_base_node_data() -> None:
     """When generic parameter is not a BaseNodeData subtype, should raise TypeError."""
     with pytest.raises(TypeError, match="must parameterize Node with a BaseNodeData subtype"):
 
@@ -80,7 +87,7 @@ def test_extract_node_data_type_from_generic_raises_for_non_base_node_data():
             pass
 
 
-def test_extract_node_data_type_from_generic_raises_for_non_type():
+def test_extract_node_data_type_from_generic_raises_for_non_type() -> None:
     """When generic parameter is not a concrete type, should raise TypeError."""
     from typing import TypeVar
 
@@ -92,19 +99,19 @@ def test_extract_node_data_type_from_generic_raises_for_non_type():
             pass
 
 
-def test_init_subclass_raises_without_generic_or_explicit_type():
+def test_init_subclass_raises_without_generic_or_explicit_type() -> None:
     """A subclass must either use Node[T] or explicitly set _node_data_type."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
 
-        class _InvalidNode(Node):
+        class _InvalidNode(_BareNode):
             pass
 
 
-def test_init_subclass_rejects_explicit_node_data_type_without_generic():
+def test_init_subclass_rejects_explicit_node_data_type_without_generic() -> None:
     """Setting _node_data_type explicitly cannot bypass the Node[T] requirement."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
 
-        class _ExplicitNode(Node):
+        class _ExplicitNode(_BareNode):
             _node_data_type = _TestNodeData
             node_type = BuiltinNodeTypes.CODE
 
@@ -113,7 +120,7 @@ def test_init_subclass_rejects_explicit_node_data_type_without_generic():
                 return "1"
 
 
-def test_init_subclass_sets_node_data_type_from_generic():
+def test_init_subclass_sets_node_data_type_from_generic() -> None:
     """Verify that __init_subclass__ sets _node_data_type from the generic parameter."""
 
     class _AutoNode(Node[_TestNodeData]):
@@ -126,7 +133,7 @@ def test_init_subclass_sets_node_data_type_from_generic():
     assert _AutoNode._node_data_type is _TestNodeData
 
 
-def test_validate_node_data_uses_declared_node_data_type():
+def test_validate_node_data_uses_declared_node_data_type() -> None:
     """Public validation should hydrate the subclass-declared node data model."""
 
     class _AutoNode(Node[_TestNodeData]):
