@@ -78,7 +78,6 @@
 /api/tests/**/controllers/console/app/test_workflow_trigger.py @FFXN
 /api/tests/**/controllers/console/workspace/test_trigger_providers.py @FFXN
 /api/tests/**/core/trigger/ @FFXN
-/api/tests/**/core/app/layers/test_trigger_post_layer.py @FFXN
 /api/tests/**/services/trigger/ @FFXN
 /api/tests/**/models/test_trigger.py @FFXN
 /api/tests/**/repositories/test_workflow_trigger_log_repository.py @FFXN
@@ -165,7 +164,6 @@
 /api/controllers/console/app/workflow_trigger.py @FFXN
 /api/controllers/console/workspace/trigger_providers.py @FFXN
 /api/core/trigger/ @FFXN
-/api/core/app/layers/trigger_post_layer.py @FFXN
 /api/services/trigger/ @FFXN
 /api/models/trigger.py @FFXN
 /api/repositories/workflow_trigger_log_repository.py @FFXN
