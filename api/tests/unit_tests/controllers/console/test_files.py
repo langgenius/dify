@@ -1,9 +1,11 @@
 import builtins
 import io
-from unittest.mock import patch
+from collections.abc import Callable, Iterator
+from typing import overload
+from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
@@ -30,7 +32,15 @@ from models.model import UploadFile
 from tests.helpers.unit.model_factories import make_upload_file
 
 
-def unwrap(func):
+@overload
+def unwrap[ReturnT: tuple[object, ...]](func: Callable[..., ReturnT | Response]) -> Callable[..., ReturnT]: ...
+
+
+@overload
+def unwrap[ReturnT](func: Callable[..., ReturnT]) -> Callable[..., ReturnT]: ...
+
+
+def unwrap(func: Callable[..., object]) -> Callable[..., object]:
     """
     Recursively unwrap decorated functions.
     """
@@ -61,14 +71,14 @@ def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
 class TestFilesCases:
     @staticmethod
     @pytest.fixture
-    def app():
+    def app() -> Flask:
         app = Flask(__name__)
         app.testing = True
         return app
 
     @staticmethod
     @pytest.fixture(autouse=True)
-    def mock_decorators():
+    def mock_decorators() -> Iterator[None]:
         """
         Make decorators no-ops so logic is directly testable
         """
@@ -82,7 +92,7 @@ class TestFilesCases:
 
     @staticmethod
     @pytest.fixture
-    def mock_current_user():
+    def mock_current_user() -> Account:
         user = Account(name="Test User", email="user-1@example.com", status=AccountStatus.ACTIVE)
         user.id = "user-1"
         user.role = TenantAccountRole.OWNER
@@ -90,17 +100,17 @@ class TestFilesCases:
 
     @staticmethod
     @pytest.fixture
-    def mock_account_context(mock_current_user):
+    def mock_account_context(mock_current_user: Account) -> Account:
         return mock_current_user
 
     @staticmethod
     @pytest.fixture
-    def mock_file_service():
+    def mock_file_service() -> Iterator[MagicMock]:
         with patch("controllers.console.files.application_services") as services:
             yield services.return_value.files
 
     class TestFileApiGet:
-        def test_get_upload_config(self, app: Flask):
+        def test_get_upload_config(self, app: Flask) -> None:
             api = FileApi()
             get_method = unwrap(api.get)
 
@@ -121,7 +131,7 @@ class TestFilesCases:
             assert data["skill_file_size_limit"] == dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT
 
     class TestFileApiPost:
-        def test_no_file_uploaded(self, app: Flask, mock_account_context):
+        def test_no_file_uploaded(self, app: Flask, mock_account_context: Account) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -129,7 +139,7 @@ class TestFilesCases:
                 with pytest.raises(NoFileUploadedError):
                     post_method(api, mock_account_context)
 
-        def test_too_many_files(self, app: Flask, mock_account_context):
+        def test_too_many_files(self, app: Flask, mock_account_context: Account) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -146,7 +156,7 @@ class TestFilesCases:
                     with pytest.raises(TooManyFilesError):
                         post_method(api, mock_account_context)
 
-        def test_filename_missing(self, app: Flask, mock_account_context):
+        def test_filename_missing(self, app: Flask, mock_account_context: Account) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -158,7 +168,7 @@ class TestFilesCases:
                 with pytest.raises(FilenameNotExistsError):
                     post_method(api, mock_account_context)
 
-        def test_dataset_upload_without_permission(self, app: Flask, mock_current_user):
+        def test_dataset_upload_without_permission(self, app: Flask, mock_current_user: Account) -> None:
             mock_current_user.role = TenantAccountRole.NORMAL
 
             api = FileApi()
@@ -173,7 +183,9 @@ class TestFilesCases:
                 with pytest.raises(Forbidden):
                     post_method(api, mock_current_user)
 
-        def test_successful_upload(self, app: Flask, mock_account_context, mock_file_service):
+        def test_successful_upload(
+            self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
+        ) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -199,7 +211,9 @@ class TestFilesCases:
                 default_file_size_limit=None,
             )
 
-        def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_service):
+        def test_upload_with_resource_tenant(
+            self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
+        ) -> None:
             upload_file = _upload_file()
             mock_file_service.upload_file.return_value = upload_file
 
@@ -218,9 +232,9 @@ class TestFilesCases:
         def test_dataset_source_from_query_uses_knowledge_limit(
             self,
             app: Flask,
-            mock_account_context,
-            mock_file_service,
-        ):
+            mock_account_context: Account,
+            mock_file_service: MagicMock,
+        ) -> None:
             upload_file = _upload_file()
             mock_file_service.upload_file.return_value = upload_file
 
@@ -242,7 +256,9 @@ class TestFilesCases:
             assert mock_file_service.upload_file.call_args.kwargs["default_file_size_limit"] == 50
             get_knowledge_file_size_limit.assert_called_once_with(mock_account_context.current_tenant_id)
 
-        def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
+        def test_upload_with_invalid_source(
+            self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
+        ) -> None:
             """Test that invalid source parameter gets normalized to None"""
             api = FileApi()
             post_method = unwrap(api.post)
@@ -264,7 +280,9 @@ class TestFilesCases:
             call_kwargs = mock_file_service.upload_file.call_args[1]
             assert call_kwargs["source"] is None
 
-        def test_file_too_large_error(self, app: Flask, mock_account_context, mock_file_service):
+        def test_file_too_large_error(
+            self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
+        ) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -283,7 +301,9 @@ class TestFilesCases:
 
             assert error_info.value.__cause__ is error
 
-        def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_service):
+        def test_unsupported_file_type(
+            self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
+        ) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -302,7 +322,9 @@ class TestFilesCases:
 
             assert error_info.value.__cause__ is error
 
-        def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_service):
+        def test_blocked_extension(
+            self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
+        ) -> None:
             api = FileApi()
             post_method = unwrap(api.post)
 
@@ -323,7 +345,7 @@ class TestFilesCases:
             assert error_info.value.__cause__ is error
 
     class TestFilePreviewApi:
-        def test_get_preview(self, app: Flask, mock_account_context, mock_file_service):
+        def test_get_preview(self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock) -> None:
             api = FilePreviewApi()
             get_method = unwrap(api.get)
             mock_file_service.get_file_preview.return_value = "preview text"
@@ -335,7 +357,7 @@ class TestFilesCases:
             mock_file_service.get_file_preview.assert_called_once_with(file_id="1234", tenant_id="tenant-123")
 
     class TestFileSupportTypeApi:
-        def test_get_supported_types(self, app: Flask):
+        def test_get_supported_types(self, app: Flask) -> None:
             api = FileSupportTypeApi()
             get_method = unwrap(api.get)
 
