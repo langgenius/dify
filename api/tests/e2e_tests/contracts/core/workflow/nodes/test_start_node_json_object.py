@@ -1,5 +1,6 @@
 import json
 import time
+from collections.abc import Mapping
 
 import pytest
 from pydantic import ValidationError as PydanticValidationError
@@ -15,7 +16,7 @@ from graphon.variables.variables import Variable
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
-def make_start_node(user_inputs, variables):
+def make_start_node(user_inputs: Mapping[str, object], variables: list[VariableEntity]) -> StartNode:
     variable_pool = build_test_variable_pool(
         variables=build_system_variables(),
         node_id="start",
@@ -47,7 +48,7 @@ def make_start_node(user_inputs, variables):
     )
 
 
-def test_json_object_valid_schema():
+def test_json_object_valid_schema() -> None:
     schema = json.dumps(
         {
             "type": "object",
@@ -79,7 +80,7 @@ def test_json_object_valid_schema():
     assert result.outputs["profile"] == {"age": 20, "name": "Tom"}
 
 
-def test_json_object_invalid_json_string():
+def test_json_object_invalid_json_string() -> None:
     schema = json.dumps(
         {
             "type": "object",
@@ -111,7 +112,7 @@ def test_json_object_invalid_json_string():
         node._run()
 
 
-def test_json_object_does_not_match_schema():
+def test_json_object_does_not_match_schema() -> None:
     schema = json.dumps(
         {
             "type": "object",
@@ -144,7 +145,7 @@ def test_json_object_does_not_match_schema():
         node._run()
 
 
-def test_json_object_missing_required_schema_field():
+def test_json_object_missing_required_schema_field() -> None:
     schema = json.dumps(
         {
             "type": "object",
@@ -179,7 +180,7 @@ def test_json_object_missing_required_schema_field():
         node._run()
 
 
-def test_json_object_required_variable_missing_from_inputs():
+def test_json_object_required_variable_missing_from_inputs() -> None:
     variables = [
         VariableEntity(
             variable="profile",
@@ -189,7 +190,7 @@ def test_json_object_required_variable_missing_from_inputs():
         )
     ]
 
-    user_inputs = {}
+    user_inputs = dict[str, object]()
 
     node = make_start_node(user_inputs, variables)
 
@@ -197,7 +198,7 @@ def test_json_object_required_variable_missing_from_inputs():
         node._run()
 
 
-def test_json_object_invalid_json_schema_string():
+def test_json_object_invalid_json_schema_string() -> None:
     variable = VariableEntity(
         variable="profile",
         label="profile",
@@ -206,7 +207,7 @@ def test_json_object_invalid_json_schema_string():
     )
 
     # Bypass pydantic type validation on assignment to simulate an invalid JSON schema string
-    variable.json_schema = "{invalid-json-schema"
+    object.__setattr__(variable, "json_schema", "{invalid-json-schema")
 
     variables = [variable]
     user_inputs = {"profile": '{"age": 20}'}
@@ -216,7 +217,7 @@ def test_json_object_invalid_json_schema_string():
         make_start_node(user_inputs, variables)
 
 
-def test_json_object_optional_variable_not_provided():
+def test_json_object_optional_variable_not_provided() -> None:
     variables = [
         VariableEntity(
             variable="profile",
@@ -226,7 +227,7 @@ def test_json_object_optional_variable_not_provided():
         )
     ]
 
-    user_inputs = {}
+    user_inputs = dict[str, object]()
 
     node = make_start_node(user_inputs, variables)
 
@@ -235,7 +236,7 @@ def test_json_object_optional_variable_not_provided():
         node._run()
 
 
-def test_start_node_outputs_full_variable_pool_snapshot():
+def test_start_node_outputs_full_variable_pool_snapshot() -> None:
     variable_pool = build_test_variable_pool(
         variables=[
             *build_system_variables(query="hello", workflow_run_id="run-123"),
