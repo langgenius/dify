@@ -29,7 +29,8 @@ def calculate_next_run_at(
         - Standard 5-field format only (minute hour day month dayOfWeek)
     """
     # Validate cron expression format to match frontend behavior
-    parts = cron_expression.strip().split()
+    cron_expression = cron_expression.strip()
+    parts = cron_expression.split()
 
     # Support both 5-field format and predefined expressions (matching frontend)
     if len(parts) != 5 and not cron_expression.startswith("@"):
