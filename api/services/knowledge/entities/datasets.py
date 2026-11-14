@@ -6,9 +6,18 @@ objects retain their stored keys; this boundary does not apply response defaults
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from enum import StrEnum
 from typing import NamedTuple, NotRequired, TypedDict
 
 from pydantic import JsonValue
+
+
+class DatasetAvailabilityFilter(StrEnum):
+    """Availability status a dataset list request filters on."""
+
+    ALL = "all"
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
 
 
 class DatasetTagRecord(TypedDict):

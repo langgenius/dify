@@ -1,15 +1,23 @@
+import type { DatasetAvailabilityFilter } from './availability'
 import { keepPreviousData, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { consoleQuery } from '@/service/console'
 
 type DatasetListQuery = {
+  availability: DatasetAvailabilityFilter
   creatorIds: string[]
   includeAll: boolean
   keyword: string
   tagIds: string[]
 }
 
-export const useDatasetList = ({ creatorIds, includeAll, keyword, tagIds }: DatasetListQuery) => {
+export const useDatasetList = ({
+  availability,
+  creatorIds,
+  includeAll,
+  keyword,
+  tagIds,
+}: DatasetListQuery) => {
   return useInfiniteQuery(
     consoleQuery.datasets.get.infiniteOptions({
       input: (pageParam) => ({
@@ -17,6 +25,7 @@ export const useDatasetList = ({ creatorIds, includeAll, keyword, tagIds }: Data
           page: Number(pageParam),
           limit: 30,
           include_all: includeAll,
+          ...(availability !== 'all' ? { availability } : {}),
           ...(tagIds.length > 0 ? { tag_ids: tagIds } : {}),
           ...(creatorIds.length > 0 ? { creator_ids: creatorIds } : {}),
           ...(keyword ? { keyword } : {}),

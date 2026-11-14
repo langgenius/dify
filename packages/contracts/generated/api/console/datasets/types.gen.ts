@@ -1435,6 +1435,7 @@ export type GetDatasetsData = {
   body?: never
   path?: never
   query?: {
+    availability?: 'all' | 'available' | 'unavailable'
     creator_ids?: Array<string>
     ids?: Array<string>
     include_all?: boolean
