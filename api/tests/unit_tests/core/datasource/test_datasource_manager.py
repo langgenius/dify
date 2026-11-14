@@ -1,3 +1,4 @@
+from base64 import b64encode
 from collections.abc import Callable, Generator
 from datetime import UTC, datetime
 
@@ -17,6 +18,7 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
 )
 from core.datasource.errors import DatasourceProviderNotFoundError
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
@@ -402,10 +404,29 @@ def test_stream_online_results_yields_messages_and_returns_empty_dict_online_dri
     runtime = controller.get_datasource("ds")
 
     received: list[OnlineDriveDownloadFileRequest] = []
+    metadata = {"file_name": "example.png", "mime_type": "image/png", "remote_metadata": {"etag": '"v1"'}}
+    content = bytes(range(256)) * (7 * 1024 * 1024 // 256)
 
     def download_file(*, request: OnlineDriveDownloadFileRequest, **_kwargs: object) -> Generator[DatasourceMessage]:
         received.append(request)
         yield from _gen_messages_text_only("drive")
+        yield OnlineDriveDownloadMessage.model_validate(
+            {"type": "blob", "message": {"blob": "bGVnYWN5"}, "meta": metadata}
+        )
+        for sequence, offset in enumerate(range(0, len(content) + 1, 8192)):
+            yield OnlineDriveDownloadMessage.model_validate(
+                {
+                    "type": "blob_chunk",
+                    "message": {
+                        "id": "chunked-file",
+                        "sequence": sequence,
+                        "total_length": len(content),
+                        "blob": b64encode(content[offset : offset + 8192]).decode(),
+                        "end": offset == len(content),
+                    },
+                    "meta": metadata,
+                }
+            )
 
     monkeypatch.setattr(runtime, "online_drive_download_file", download_file)
     mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=runtime)
@@ -424,7 +445,14 @@ def test_stream_online_results_yields_messages_and_returns_empty_dict_online_dri
 
     assert runtime.runtime.credentials == {"token": "t"}
     assert received == [OnlineDriveDownloadFileRequest(id="fid", bucket="b")]
-    assert [_text(m) for m in messages] == ["drive"]
+    text, legacy, chunked = messages
+    assert _text(text) == "drive"
+    assert isinstance(legacy.message, DatasourceMessage.BlobMessage)
+    assert legacy.message.blob == b"legacy"
+    assert isinstance(chunked, OnlineDriveDownloadMessage)
+    assert isinstance(chunked.message, DatasourceMessage.BlobMessage)
+    assert chunked.message.blob == content
+    assert legacy.meta == chunked.meta == metadata
     assert final_value == {}
 
 

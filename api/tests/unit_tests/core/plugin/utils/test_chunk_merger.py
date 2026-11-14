@@ -9,6 +9,30 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, 
 from graphon.file import File, FileTransferMethod, FileType
 
 
+@pytest.mark.parametrize(
+    ("sequence", "total_length", "end", "error"),
+    [
+        (0, 5, False, "ended before the final chunk"),
+        (0, 6, True, "invalid sequence or length"),
+        (1, 5, True, "invalid sequence or length"),
+        (0, 4, True, "invalid sequence or length"),
+    ],
+)
+def test_merge_blob_chunks_rejects_incomplete_or_invalid_streams_when_required(
+    sequence: int, total_length: int, end: bool, error: str
+) -> None:
+    def response() -> Generator[ToolInvokeMessage]:
+        yield ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
+            message=ToolInvokeMessage.BlobChunkMessage(
+                id="file", sequence=sequence, total_length=total_length, blob=b"hello", end=end
+            ),
+        )
+
+    with pytest.raises(ValueError, match=error):
+        next(merge_blob_chunks(response(), require_complete=True))
+
+
 class TestChunkMerger:
     def test_file_chunk_initialization(self) -> None:
         """Test FileChunk initialization."""
