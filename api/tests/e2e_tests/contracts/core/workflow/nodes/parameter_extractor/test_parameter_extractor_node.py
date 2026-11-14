@@ -310,7 +310,7 @@ class TestValidateResult:
         ]
 
     @pytest.mark.parametrize("test_case", get_valid_test_cases(), ids=ValidTestCase.get_name)
-    def test_validate_result_valid_cases(self, test_case):
+    def test_validate_result_valid_cases(self, test_case: ValidTestCase) -> None:
         """Test _validate_result with valid inputs."""
         helper = TestParameterExtractorNodeMethods()
 
@@ -327,7 +327,7 @@ class TestValidateResult:
         assert result == test_case.result, f"Failed for case: {test_case.name}"
 
     @pytest.mark.parametrize("test_case", get_error_test_cases(), ids=ErrorTestCase.get_name)
-    def test_validate_result_error_cases(self, test_case):
+    def test_validate_result_error_cases(self, test_case: ErrorTestCase) -> None:
         """Test _validate_result with invalid inputs that should raise exceptions."""
         helper = TestParameterExtractorNodeMethods()
 
@@ -548,7 +548,7 @@ class TestTransformResult:
         ]
 
     @pytest.mark.parametrize("test_case", get_transform_test_cases(), ids=TransformTestCase.get_name)
-    def test_transform_result_cases(self, test_case):
+    def test_transform_result_cases(self, test_case: TransformTestCase) -> None:
         """Test _transform_result with various inputs."""
         helper = TestParameterExtractorNodeMethods()
 
