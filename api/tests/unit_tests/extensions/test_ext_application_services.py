@@ -18,6 +18,7 @@ from sqlalchemy import Connection, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.db.session_factory import session_factory
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.plugin.impl import base as plugin_http
@@ -1993,7 +1994,10 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     )
     assert admitted_app.app_mode == "chat"
     previous_metadata = get_credit_usage_metadata()
-    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    # Model preparation may open a session through the scoped registry or the shared factory.
+    naming_session_makers = (db.session.session_factory, session_factory.get_session_maker())
+    for session_maker in naming_session_makers:
+        event.listen(session_maker, "after_begin", observe_naming_session)
     plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
     try:
         with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
@@ -2016,7 +2020,8 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             )
     finally:
         plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
-        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+        for session_maker in naming_session_makers:
+            event.remove(session_maker, "after_begin", observe_naming_session)
     assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]

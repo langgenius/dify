@@ -861,7 +861,10 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
+        # A lookup of its own, closed before returning: callers go on to invoke the model, and a read
+        # through the scoped ``db.session`` would keep a pooled connection checked out for that call.
+        with session_factory.create_session() as session:
+            default_model = session.scalar(stmt)
 
         if not default_model:
             return None
