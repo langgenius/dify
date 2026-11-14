@@ -61,33 +61,36 @@ class _FakeClock:
 class _RecordingSession:
     """Context manager collecting RateLimitLog rows the limiter persists."""
 
-    def __init__(self, recorded: list) -> None:
+    def __init__(self, recorded: list[svc.RateLimitLog]) -> None:
         self._recorded = recorded
 
-    def add(self, obj) -> None:
+    def add(self, obj: svc.RateLimitLog) -> None:
         self._recorded.append(obj)
 
     def __enter__(self) -> _RecordingSession:
         return self
 
-    def __exit__(self, *args) -> bool:
+    def __exit__(self, *args: object) -> bool:
         return False
 
 
 class _SessionFactory:
-    def __init__(self, recorded: list) -> None:
+    def __init__(self, recorded: list[svc.RateLimitLog]) -> None:
         self._recorded = recorded
 
     def begin(self) -> _RecordingSession:
         return _RecordingSession(self._recorded)
 
 
+LimiterEnv = tuple[_InMemoryZSetRedis, _FakeClock, list[svc.RateLimitLog]]
+
+
 @pytest.fixture
-def limiter_env(monkeypatch: pytest.MonkeyPatch) -> tuple[_InMemoryZSetRedis, _FakeClock, list]:
+def limiter_env(monkeypatch: pytest.MonkeyPatch) -> LimiterEnv:
     """Swap the service's collaborators for in-memory fakes and return them."""
     redis_stub = _InMemoryZSetRedis()
     clock = _FakeClock()
-    recorded_logs: list = []
+    recorded_logs: list[svc.RateLimitLog] = []
     monkeypatch.setattr(svc, "redis_client", redis_stub)
     monkeypatch.setattr(svc, "time", clock)
     monkeypatch.setattr(svc, "sessionmaker", lambda **_kwargs: _SessionFactory(recorded_logs))
@@ -99,7 +102,7 @@ def limiter_env(monkeypatch: pytest.MonkeyPatch) -> tuple[_InMemoryZSetRedis, _F
             (),
             {
                 "get_knowledge_rate_limit": staticmethod(
-                    lambda tenant_id: _KnowledgeRateLimit(enabled=True, limit=1, subscription_plan="sandbox")
+                    lambda _tenant_id: _KnowledgeRateLimit(enabled=True, limit=1, subscription_plan="sandbox")
                 )
             },
         ),
@@ -107,7 +110,7 @@ def limiter_env(monkeypatch: pytest.MonkeyPatch) -> tuple[_InMemoryZSetRedis, _F
     return redis_stub, clock, recorded_logs
 
 
-def test_same_millisecond_requests_are_counted_separately(limiter_env) -> None:
+def test_same_millisecond_requests_are_counted_separately(limiter_env: LimiterEnv) -> None:
     """Two calls pinned to one millisecond must both land in the zset."""
     redis_stub, clock, _ = limiter_env
     svc.enforce_knowledge_rate_limit("tenant-1")
@@ -116,7 +119,7 @@ def test_same_millisecond_requests_are_counted_separately(limiter_env) -> None:
     assert redis_stub.zcard("rate_limit_tenant-1") == 2
 
 
-def test_members_keep_timestamp_score_for_window_cleanup(limiter_env, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_members_keep_timestamp_score_for_window_cleanup(limiter_env: LimiterEnv, monkeypatch: pytest.MonkeyPatch) -> None:
     """Scores stay millisecond timestamps so the 60s purge logic is untouched."""
     redis_stub, clock, _ = limiter_env
     monkeypatch.setattr(
@@ -127,7 +130,7 @@ def test_members_keep_timestamp_score_for_window_cleanup(limiter_env, monkeypatc
             (),
             {
                 "get_knowledge_rate_limit": staticmethod(
-                    lambda tenant_id: _KnowledgeRateLimit(enabled=True, limit=2, subscription_plan="pro")
+                    lambda _tenant_id: _KnowledgeRateLimit(enabled=True, limit=2, subscription_plan="pro")
                 )
             },
         ),
@@ -139,7 +142,7 @@ def test_members_keep_timestamp_score_for_window_cleanup(limiter_env, monkeypatc
     assert scores == [clock.current_ms - 5, clock.current_ms]
 
 
-def test_burst_over_limit_is_rejected_and_logged(limiter_env, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_burst_over_limit_is_rejected_and_logged(limiter_env: LimiterEnv, monkeypatch: pytest.MonkeyPatch) -> None:
     """A third request beyond limit=2 in the same window raises and is audited."""
     redis_stub, clock, recorded_logs = limiter_env
     monkeypatch.setattr(
@@ -150,7 +153,7 @@ def test_burst_over_limit_is_rejected_and_logged(limiter_env, monkeypatch: pytes
             (),
             {
                 "get_knowledge_rate_limit": staticmethod(
-                    lambda tenant_id: _KnowledgeRateLimit(enabled=True, limit=2, subscription_plan="pro")
+                    lambda _tenant_id: _KnowledgeRateLimit(enabled=True, limit=2, subscription_plan="pro")
                 )
             },
         ),
@@ -167,7 +170,7 @@ def test_burst_over_limit_is_rejected_and_logged(limiter_env, monkeypatch: pytes
     assert recorded_logs[0].operation == "knowledge"
 
 
-def test_window_cleanup_removes_expired_entries(limiter_env) -> None:
+def test_window_cleanup_removes_expired_entries(limiter_env: LimiterEnv) -> None:
     """Entries older than 60s are purged, so the next request is allowed again."""
     redis_stub, clock, _ = limiter_env
     svc.enforce_knowledge_rate_limit("tenant-1")
