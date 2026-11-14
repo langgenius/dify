@@ -14,6 +14,7 @@ from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.observability_contracts import AgentObservability
 from services.agent.version_service import AgentVersionService
@@ -27,7 +28,9 @@ from services.app.agent_app_service import (
     AgentAppDetailService,
     AgentAppFeatureConfigService,
 )
+from services.app.agent_build_config_gateway import AgentBuildConfigGateway
 from services.app.agent_build_session_service import AgentBuildSessionService
+from services.app.agent_build_snapshot_gateway import AgentBuildSnapshotGateway
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
@@ -90,7 +93,12 @@ def build_agent_app_services(
             detail=detail,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
-        build_session=AgentBuildSessionService(store=apps, collect_resources=enqueue_agent_resource_collection),
+        build_session=AgentBuildSessionService(
+            store=apps,
+            collect_resources=enqueue_agent_resource_collection,
+            config=AgentBuildConfigGateway(session_factory=database_client),
+            snapshots=AgentBuildSnapshotGateway(create_home_snapshot_client),
+        ),
         sandbox=AgentAppSandboxService(
             bindings=AgentSandboxRepository(session_factory=database_client, apps=apps),
             files=AgentSandboxFileGateway(

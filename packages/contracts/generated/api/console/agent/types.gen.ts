@@ -251,6 +251,11 @@ export type AgentSoulLockedError = ErrorResponse & {
   status: 400
 }
 
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status: 400
+}
+
 export type AgentBuildDraftApplyResponse = {
   draft: {
     [key: string]: unknown
@@ -258,14 +263,14 @@ export type AgentBuildDraftApplyResponse = {
   result: string
 }
 
-export type InvalidComposerConfigError = ErrorResponse & {
-  code: 'invalid_composer_config_error'
-  status: 400
-}
-
 export type PlaintextSecretNotAllowedError = ErrorResponse & {
   code: 'plaintext_secret_not_allowed_error'
   status: 400
+}
+
+export type AgentVersionConflictError = ErrorResponse & {
+  code: 'agent_version_conflict_error'
+  status: 409
 }
 
 export type AgentHomeSnapshotTooLargeError = ErrorResponse & {
@@ -3065,7 +3070,7 @@ export type PutAgentByAgentIdBuildDraftData = {
 }
 
 export type PutAgentByAgentIdBuildDraftErrors = {
-  400: AgentSoulLockedError | ErrorResponse
+  400: AgentSoulLockedError | InvalidComposerConfigError | ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -3096,6 +3101,7 @@ export type PostAgentByAgentIdBuildDraftApplyErrors = {
     | AgentNotFoundError
     | AgentVersionNotFoundError
     | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
   413: AgentHomeSnapshotTooLargeError | ErrorResponse
   502: AgentHomeSnapshotCreateFailedError | ErrorResponse
   default: ErrorResponse
