@@ -169,6 +169,11 @@ def init_app(app: DifyApp) -> Celery:
     if dify_config.CELERY_BACKEND == "redis":
         celery_app.conf.update(
             result_backend_transport_options=broker_transport_options,
+            # Celery keeps the result backend per thread unless it is declared thread safe. The
+            # gevent pool runs every task in a new greenlet, so each task would build a new
+            # backend, and building one scans the entry points of every installed package.
+            # The Redis backend works through a connection pool and can be shared.
+            result_backend_thread_safe=True,
         )
 
     if "visibility_timeout" in broker_transport_options:
