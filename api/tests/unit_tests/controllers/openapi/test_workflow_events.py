@@ -11,12 +11,13 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
@@ -110,6 +111,35 @@ def _make_end_user() -> EndUser:
     )
 
 
+def _handler(api: OpenApiWorkflowEventsApi) -> Callable[..., Response]:
+    """Return the bare view the contract decorator attaches as ``__handler__``.
+
+    ``__handler__`` is injected at decoration time, so it is absent from the
+    static type of the decorated view; narrow it once here instead of at every
+    call site.
+    """
+    handler = getattr(api.get, "__handler__", None)
+    assert callable(handler)
+    return handler
+
+
+def _sse_body(response: Response) -> str:
+    """Read the streamed SSE body as text, decoding any byte chunks.
+
+    Flask types ``Response.response`` as ``Iterable[bytes] | Iterable[str]``
+    because a view may yield either; the SSE view under test yields ``str``.
+    Iterating chunk by chunk keeps the two arms separate, so no union has to be
+    handed to ``str.join`` or ``bytes.join``.
+    """
+    parts: list[str] = []
+    for chunk in response.response:
+        if isinstance(chunk, bytes):
+            parts.append(chunk.decode())
+        else:
+            parts.append(chunk)
+    return "".join(parts)
+
+
 class TestOpenApiWorkflowEventsApi:
     def _bind_repo(self, monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
         module = sys.modules["controllers.openapi.workflow_events"]
@@ -132,7 +162,7 @@ class TestOpenApiWorkflowEventsApi:
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
             with pytest.raises(NotFound):
-                api.get.__handler__(
+                _handler(api)(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
@@ -151,7 +181,7 @@ class TestOpenApiWorkflowEventsApi:
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
             with pytest.raises(NotFound):
-                api.get.__handler__(
+                _handler(api)(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
@@ -165,7 +195,7 @@ class TestOpenApiWorkflowEventsApi:
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
             with pytest.raises(NotFound):
-                api.get.__handler__(
+                _handler(api)(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
@@ -180,7 +210,7 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(
+            resp = _handler(api)(
                 api,
                 _context(_make_end_user(), CreatorUserRole.END_USER),
                 app_id="app-1",
@@ -222,9 +252,9 @@ class TestOpenApiWorkflowEventsApi:
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id=_RUN_ID, query=WorkflowEventsQuery())
+            resp = _handler(api)(api, ctx, app_id="app-1", run_id=_RUN_ID, query=WorkflowEventsQuery())
             ctx.seal()
-            body = "".join(resp.response)
+            body = _sse_body(resp)
 
         assert resp.mimetype == "text/event-stream"
         assert "workflow_finished" in body
@@ -252,9 +282,9 @@ class TestOpenApiWorkflowEventsApi:
         api = OpenApiWorkflowEventsApi()
         query = WorkflowEventsQuery(include_state_snapshot=include_state_snapshot)
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id=_RUN_ID, query=query)
+            resp = _handler(api)(api, ctx, app_id="app-1", run_id=_RUN_ID, query=query)
             ctx.seal()
-            body = "".join(resp.response)
+            body = _sse_body(resp)
 
         assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"
@@ -271,14 +301,14 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            resp = api.get.__handler__(
+            resp = _handler(api)(
                 api,
                 _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 run_id=_RUN_ID,
                 query=WorkflowEventsQuery(continue_on_pause=continue_on_pause),
             )
-            "".join(resp.response)
+            _sse_body(resp)
 
         terminal_events = msg_gen_mock.retrieve_events.call_args.kwargs["terminal_events"]
         assert terminal_events == ([] if continue_on_pause else None)
