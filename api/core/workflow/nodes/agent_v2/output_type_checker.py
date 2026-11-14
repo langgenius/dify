@@ -18,6 +18,7 @@ can stub tenant resolution without DB access.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -196,6 +197,8 @@ class PerOutputTypeChecker:
             # strictly numeric so we reject bools here.
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 return f"expected number, got {type(value).__name__}"
+            if isinstance(value, float) and not math.isfinite(value):
+                return "expected a finite number"
             return None
         if declared_type == DeclaredOutputType.BOOLEAN:
             if not isinstance(value, bool):
