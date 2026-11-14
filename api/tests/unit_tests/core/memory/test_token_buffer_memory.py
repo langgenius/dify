@@ -35,9 +35,8 @@ from models.agent import (
     AgentWorkspaceBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
+from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import (
     Workflow,
     WorkflowExecutionStatus,
@@ -57,37 +56,22 @@ class Database:
 
     engine: Engine
     session: Session
-    statements: list[tuple[str, object]]
+    statements: list[tuple[str, Sequence[object] | Mapping[str, object]]]
 
 
 @pytest.fixture
-def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
-    TypeBase.metadata.create_all(
-        sqlite_engine,
-        tables=[
-            App.__table__,
-            Conversation.__table__,
-            Message.__table__,
-            MessageFile.__table__,
-            Workflow.__table__,
-            AppModelConfig.__table__,
-            AppAnnotationSetting.__table__,
-            AgentConfigDraft.__table__,
-            AgentConfigSnapshot.__table__,
-            AgentDebugConversation.__table__,
-            AgentWorkspaceBinding.__table__,
-        ],
-    )
-    statements: list[tuple[str, object]] = []
+def database(sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
+    statements: list[tuple[str, Sequence[object] | Mapping[str, object]]] = []
 
-    def record_statement(_connection, _cursor, statement, parameters, _context, _executemany) -> None:
+    def record_statement(
+        statement: str, parameters: Sequence[object] | Mapping[str, object], **_kwargs: object
+    ) -> None:
         statements.append((statement, parameters))
 
-    event.listen(sqlite_engine, "before_cursor_execute", record_statement)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        database = Database(engine=sqlite_engine, session=session, statements=statements)
-        monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: session))
-        yield database
+    event.listen(sqlite_engine, "before_cursor_execute", record_statement, named=True)
+    database = Database(engine=sqlite_engine, session=sqlite_session, statements=statements)
+    monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: sqlite_session))
+    yield database
     event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
 
@@ -437,7 +421,9 @@ class TestGetHistoryPromptMessages:
         expected_length: int,
     ) -> None:
         mem = self._make_memory(database)
-        mem.model_instance.get_llm_num_tokens.side_effect = token_values
+        model_instance = mem.model_instance
+        assert isinstance(model_instance, MagicMock)
+        model_instance.get_llm_num_tokens.side_effect = token_values
         _persist_message(database, mem.conversation.id)
 
         result = mem.get_history_prompt_messages(max_token_limit=max_token_limit)
@@ -457,13 +443,13 @@ class TestGetHistoryPromptText:
         conv = _make_conversation()
         return TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
-    def test_empty_messages_returns_empty_string(self):
+    def test_empty_messages_returns_empty_string(self) -> None:
         mem = self._make_memory()
         with patch.object(mem, "get_history_prompt_messages", return_value=[]):
             result = mem.get_history_prompt_text()
         assert result == ""
 
-    def test_user_and_assistant_messages_formatted(self):
+    def test_user_and_assistant_messages_formatted(self) -> None:
         mem = self._make_memory()
         messages = [
             UserPromptMessage(content="Hello"),
@@ -473,7 +459,7 @@ class TestGetHistoryPromptText:
             result = mem.get_history_prompt_text(human_prefix="H", ai_prefix="A")
         assert result == "H: Hello\nA: World"
 
-    def test_custom_prefixes_applied(self):
+    def test_custom_prefixes_applied(self) -> None:
         mem = self._make_memory()
         messages = [
             UserPromptMessage(content="Hi"),
@@ -484,7 +470,7 @@ class TestGetHistoryPromptText:
         assert "Human: Hi" in result
         assert "Bot: Bye" in result
 
-    def test_list_content_with_text_and_image(self):
+    def test_list_content_with_text_and_image(self) -> None:
         """List content: TextPromptMessageContent → text; ImagePromptMessageContent → [image]."""
         mem = self._make_memory()
         messages = [
@@ -500,7 +486,7 @@ class TestGetHistoryPromptText:
         assert "caption" in result
         assert "[image]" in result
 
-    def test_list_content_text_only(self):
+    def test_list_content_text_only(self) -> None:
         mem = self._make_memory()
         messages = [
             UserPromptMessage(content=[TextPromptMessageContent(data="just text")]),
@@ -509,7 +495,7 @@ class TestGetHistoryPromptText:
             result = mem.get_history_prompt_text()
         assert "just text" in result
 
-    def test_list_content_image_only(self):
+    def test_list_content_image_only(self) -> None:
         mem = self._make_memory()
         messages = [
             UserPromptMessage(
@@ -522,7 +508,7 @@ class TestGetHistoryPromptText:
             result = mem.get_history_prompt_text()
         assert "[image]" in result
 
-    def test_unknown_role_skipped(self):
+    def test_unknown_role_skipped(self) -> None:
         """Messages with a role that is not USER or ASSISTANT are skipped."""
         mem = self._make_memory()
 
@@ -539,14 +525,14 @@ class TestGetHistoryPromptText:
         assert "system instruction" not in result
         assert "Human: hi" in result
 
-    def test_passes_max_token_limit_and_message_limit(self):
+    def test_passes_max_token_limit_and_message_limit(self) -> None:
         """Parameters are forwarded to get_history_prompt_messages."""
         mem = self._make_memory()
         with patch.object(mem, "get_history_prompt_messages", return_value=[]) as mock_get:
             mem.get_history_prompt_text(max_token_limit=500, message_limit=10)
         mock_get.assert_called_once_with(max_token_limit=500, message_limit=10)
 
-    def test_multiple_messages_joined_by_newline(self):
+    def test_multiple_messages_joined_by_newline(self) -> None:
         mem = self._make_memory()
         messages = [
             UserPromptMessage(content="Q1"),
@@ -563,7 +549,7 @@ class TestGetHistoryPromptText:
         assert lines[2] == "Human: Q2"
         assert lines[3] == "Assistant: A2"
 
-    def test_assistant_list_content_formatted(self):
+    def test_assistant_list_content_formatted(self) -> None:
         """AssistantPromptMessage with list content is also handled."""
         mem = self._make_memory()
         messages = [
