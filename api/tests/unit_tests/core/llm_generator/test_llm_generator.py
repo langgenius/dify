@@ -1,5 +1,4 @@
 import json
-from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, Mock, patch
@@ -10,9 +9,8 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ConversationNamed, TraceCorrelation, TraceEvent
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
-import core.llm_generator.llm_generator as generator_module
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
@@ -164,15 +162,10 @@ def _persist_node_execution(
 class TestLlmGeneratorCases:
     @staticmethod
     @pytest.fixture
-    def database(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-        """Bind the shared SQLite session to the generator's scoped-session interface."""
+    def database(sqlite_session: Session) -> Session:
+        """Expose the shared SQLite session; the generator only uses sessions it is handed or opens itself."""
 
-        registry = scoped_session(lambda: sqlite_session)
-        monkeypatch.setattr(llm_generator_module.db, "session", registry)
-        try:
-            yield sqlite_session
-        finally:
-            registry.remove()
+        return sqlite_session
 
     @staticmethod
     @pytest.fixture
@@ -901,10 +894,9 @@ def _dataset(*, dataset_id: str, tenant_id: str, name: str, created_at: datetime
 class TestLlmGeneratorMissingCases:
     @staticmethod
     @pytest.fixture
-    def dataset_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-        """Bind the real SQLite session to the production database extension."""
+    def dataset_session(sqlite_session: Session) -> Session:
+        """Seed datasets through the SQLite database the generator's own short-lived session reads."""
 
-        monkeypatch.setattr(generator_module.db, "session", sqlite_session)
         return sqlite_session
 
     class TestParseStringList:
@@ -1026,20 +1018,21 @@ class TestLlmGeneratorMissingCases:
                 '- provider/tool2 [provider_id="provider"; tool_name="tool2"] — Second tool'
             ) in result
 
-        def test_both_fail(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+        def test_both_fail(self, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch):
             def fail_query(_orm_execute_state: object) -> None:
                 raise SQLAlchemyError("DB error")
 
             def fail_tool_catalogue(_tenant_id: str) -> list[ToolCatalogueEntry]:
                 raise RuntimeError("Tool error")
 
-            event.listen(dataset_session, "do_orm_execute", fail_query)
+            # The generator opens its own session, so fail every session the factory creates.
+            event.listen(sqlite_session_factory, "do_orm_execute", fail_query)
             monkeypatch.setattr(tool_catalogue_module, "build_tool_catalogue", fail_tool_catalogue)
 
             try:
                 assert LLMGenerator._build_suggestion_context("tenant") == ""
             finally:
-                event.remove(dataset_session, "do_orm_execute", fail_query)
+                event.remove(sqlite_session_factory, "do_orm_execute", fail_query)
 
     class TestWorkflowServiceInterface:
         def test_real_workflow_service_exposes_protocol_methods(self):
