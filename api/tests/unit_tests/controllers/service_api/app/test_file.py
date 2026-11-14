@@ -22,7 +22,7 @@ import uuid
 # unwrapped method directly to bypass the decorator.
 # =============================================================================
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -36,13 +36,14 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from fields.file_fields import FileResponse
+from models import App, EndUser
 from services.file_service import FileService
 
 
 class TestFileResponse:
     """Test suite for FileResponse Pydantic model."""
 
-    def test_file_response_has_required_fields(self):
+    def test_file_response_has_required_fields(self) -> None:
         """Test FileResponse model includes required fields."""
         # Verify the model exists and can be imported
         assert FileResponse is not None
@@ -52,27 +53,27 @@ class TestFileResponse:
 class TestFileUploadErrors:
     """Test file upload error types."""
 
-    def test_no_file_uploaded_error_can_be_raised(self):
+    def test_no_file_uploaded_error_can_be_raised(self) -> None:
         """Test NoFileUploadedError can be raised."""
         error = NoFileUploadedError()
         assert error is not None
 
-    def test_too_many_files_error_can_be_raised(self):
+    def test_too_many_files_error_can_be_raised(self) -> None:
         """Test TooManyFilesError can be raised."""
         error = TooManyFilesError()
         assert error is not None
 
-    def test_unsupported_file_type_error_can_be_raised(self):
+    def test_unsupported_file_type_error_can_be_raised(self) -> None:
         """Test UnsupportedFileTypeError can be raised."""
         error = UnsupportedFileTypeError()
         assert error is not None
 
-    def test_filename_not_exists_error_can_be_raised(self):
+    def test_filename_not_exists_error_can_be_raised(self) -> None:
         """Test FilenameNotExistsError can be raised."""
         error = FilenameNotExistsError()
         assert error is not None
 
-    def test_file_too_large_error_can_be_raised(self):
+    def test_file_too_large_error_can_be_raised(self) -> None:
         """Test FileTooLargeError can be raised."""
         error = FileTooLargeError("File exceeds maximum size")
         assert "File exceeds maximum size" in str(error) or error is not None
@@ -81,14 +82,14 @@ class TestFileUploadErrors:
 class TestFileServiceErrors:
     """Test FileService error types."""
 
-    def test_file_service_file_too_large_error_exists(self):
+    def test_file_service_file_too_large_error_exists(self) -> None:
         """Test FileTooLargeError from services exists."""
         import services.errors.file
 
         error = services.errors.file.FileTooLargeError("File too large")
         assert isinstance(error, services.errors.file.FileTooLargeError)
 
-    def test_file_service_unsupported_file_type_error_exists(self):
+    def test_file_service_unsupported_file_type_error_exists(self) -> None:
         """Test UnsupportedFileTypeError from services exists."""
         import services.errors.file
 
@@ -99,13 +100,13 @@ class TestFileServiceErrors:
 class TestFileService:
     """Test FileService interface and methods."""
 
-    def test_upload_file_method_exists(self):
+    def test_upload_file_method_exists(self) -> None:
         """Test FileService.upload_file method exists."""
         assert hasattr(FileService, "upload_file")
         assert callable(FileService.upload_file)
 
     @patch.object(FileService, "upload_file")
-    def test_upload_file_returns_upload_file_object(self, mock_upload):
+    def test_upload_file_returns_upload_file_object(self, mock_upload: MagicMock) -> None:
         """Test upload_file returns an upload file object."""
         mock_file = Mock()
         mock_file.id = str(uuid.uuid4())
@@ -120,7 +121,7 @@ class TestFileService:
         assert mock_file.extension == "pdf"
 
     @patch.object(FileService, "upload_file")
-    def test_upload_file_raises_file_too_large_error(self, mock_upload):
+    def test_upload_file_raises_file_too_large_error(self, mock_upload: MagicMock) -> None:
         """Test upload_file raises FileTooLargeError."""
         import services.errors.file
 
@@ -131,7 +132,7 @@ class TestFileService:
             mock_upload(Mock(), Mock(), "user_id")
 
     @patch.object(FileService, "upload_file")
-    def test_upload_file_raises_unsupported_file_type_error(self, mock_upload):
+    def test_upload_file_raises_unsupported_file_type_error(self, mock_upload: MagicMock) -> None:
         """Test upload_file raises UnsupportedFileTypeError."""
         import services.errors.file
 
@@ -145,13 +146,13 @@ class TestFileService:
 class TestFileValidation:
     """Test file validation patterns."""
 
-    def test_valid_image_mimetype(self):
+    def test_valid_image_mimetype(self) -> None:
         """Test common image MIME types."""
         valid_mimetypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"]
         for mimetype in valid_mimetypes:
             assert mimetype.startswith("image/")
 
-    def test_valid_document_mimetype(self):
+    def test_valid_document_mimetype(self) -> None:
         """Test common document MIME types."""
         valid_mimetypes = [
             "application/pdf",
@@ -164,7 +165,7 @@ class TestFileValidation:
             assert mimetype is not None
             assert len(mimetype) > 0
 
-    def test_filename_has_extension(self):
+    def test_filename_has_extension(self) -> None:
         """Test filename validation for extension presence."""
         valid_filenames = ["document.pdf", "image.png", "data.csv", "report.docx"]
         for filename in valid_filenames:
@@ -173,7 +174,7 @@ class TestFileValidation:
             assert len(parts) == 2
             assert len(parts[1]) > 0  # Extension exists
 
-    def test_filename_without_extension_is_invalid(self):
+    def test_filename_without_extension_is_invalid(self) -> None:
         """Test that filename without extension can be detected."""
         filename = "noextension"
         assert "." not in filename
@@ -183,7 +184,7 @@ class TestFileUploadResponse:
     """Test file upload response structure."""
 
     @patch.object(FileService, "upload_file")
-    def test_upload_response_structure(self, mock_upload):
+    def test_upload_response_structure(self, mock_upload: MagicMock) -> None:
         """Test upload response has expected structure."""
         mock_file = Mock()
         mock_file.id = str(uuid.uuid4())
@@ -206,9 +207,7 @@ class TestFileUploadResponse:
 
 
 @pytest.fixture
-def mock_app_model():
-    from models import App
-
+def mock_app_model() -> App:
     app = App(
         id=str(uuid.uuid4()),
         tenant_id=str(uuid.uuid4()),
@@ -217,9 +216,7 @@ def mock_app_model():
 
 
 @pytest.fixture
-def mock_end_user(mock_app_model):
-    from models import EndUser
-
+def mock_end_user(mock_app_model: App) -> EndUser:
     user = EndUser(
         id=str(uuid.uuid4()),
         tenant_id=mock_app_model.tenant_id,
@@ -238,11 +235,11 @@ class TestFileApiPost:
     @patch("controllers.service_api.app.file.application_services")
     def test_upload_file_success(
         self,
-        mock_application_services,
+        mock_application_services: MagicMock,
         app: Flask,
-        mock_app_model,
-        mock_end_user,
-    ):
+        mock_app_model: App,
+        mock_end_user: EndUser,
+    ) -> None:
         """Test successful file upload."""
         from io import BytesIO
 
@@ -254,7 +251,7 @@ class TestFileApiPost:
         mock_upload.size = 1024
         mock_upload.extension = "pdf"
         mock_upload.mime_type = "application/pdf"
-        mock_upload.created_by = str(mock_end_user.id)
+        mock_upload.created_by = mock_end_user.id
         mock_upload.created_by_role = "end_user"
         mock_upload.created_at = 1700000000
         mock_upload.preview_url = None
@@ -294,7 +291,7 @@ class TestFileApiPost:
             user=mock_end_user,
         )
 
-    def test_upload_no_file(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_no_file(self, app: Flask, mock_app_model: App, mock_end_user: EndUser) -> None:
         """Test NoFileUploadedError when no file in request."""
         from controllers.service_api.app.file import FileApi
 
@@ -308,7 +305,7 @@ class TestFileApiPost:
             with pytest.raises(NoFileUploadedError):
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_too_many_files(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_too_many_files(self, app: Flask, mock_app_model: App, mock_end_user: EndUser) -> None:
         """Test TooManyFilesError when multiple files uploaded."""
         from io import BytesIO
 
@@ -329,7 +326,7 @@ class TestFileApiPost:
             with pytest.raises(TooManyFilesError):
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_no_mimetype(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_no_mimetype(self, app: Flask, mock_app_model: App, mock_end_user: EndUser) -> None:
         """Test UnsupportedFileTypeError when file has no mimetype."""
         from io import BytesIO
 
@@ -347,7 +344,7 @@ class TestFileApiPost:
             with pytest.raises(UnsupportedFileTypeError):
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_no_filename(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_no_filename(self, app: Flask, mock_app_model: App, mock_end_user: EndUser) -> None:
         """Test FilenameNotExistsError when the uploaded file has no filename."""
         from io import BytesIO
 
@@ -368,11 +365,11 @@ class TestFileApiPost:
     @patch("controllers.service_api.app.file.application_services")
     def test_upload_file_too_large(
         self,
-        mock_application_services,
+        mock_application_services: MagicMock,
         app: Flask,
-        mock_app_model,
-        mock_end_user,
-    ):
+        mock_app_model: App,
+        mock_end_user: EndUser,
+    ) -> None:
         """Test FileTooLargeError when file exceeds size limit."""
         from io import BytesIO
 
@@ -399,11 +396,11 @@ class TestFileApiPost:
     @patch("controllers.service_api.app.file.application_services")
     def test_upload_unsupported_file_type(
         self,
-        mock_application_services,
+        mock_application_services: MagicMock,
         app: Flask,
-        mock_app_model,
-        mock_end_user,
-    ):
+        mock_app_model: App,
+        mock_end_user: EndUser,
+    ) -> None:
         """Test UnsupportedFileTypeError from FileService."""
         from io import BytesIO
 
@@ -430,11 +427,11 @@ class TestFileApiPost:
     @patch("controllers.service_api.app.file.application_services")
     def test_upload_blocked_file_extension(
         self,
-        mock_application_services,
+        mock_application_services: MagicMock,
         app: Flask,
-        mock_app_model,
-        mock_end_user,
-    ):
+        mock_app_model: App,
+        mock_end_user: EndUser,
+    ) -> None:
         """Test BlockedFileExtensionError from FileService."""
         from io import BytesIO
 
