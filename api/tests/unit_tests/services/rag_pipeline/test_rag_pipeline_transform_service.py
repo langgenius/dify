@@ -17,34 +17,68 @@ from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
 
 
-def _dataset(**overrides: object) -> Dataset:
-    values = {
-        "id": "dataset-1",
-        "tenant_id": "tenant-1",
-        "name": "Dataset",
-        "description": "desc",
-        "created_by": "user-1",
-        "provider": "vendor",
-    }
-    values.update(overrides)
-    return Dataset(**values)
+def _dataset(
+    *,
+    id: str = "dataset-1",
+    tenant_id: str = "tenant-1",
+    name: str = "Dataset",
+    description: str | None = "desc",
+    created_by: str = "user-1",
+    provider: str = "vendor",
+    data_source_type: DataSourceType | str | None = None,
+    indexing_technique: str | None = None,
+    chunk_structure: str | None = None,
+    pipeline_id: str | None = None,
+    runtime_mode: str | None = None,
+    retrieval_model: dict[str, object] | None = None,
+    summary_index_setting: dict[str, object] | None = None,
+    embedding_model: str | None = None,
+    embedding_model_provider: str | None = None,
+) -> Dataset:
+    return Dataset(
+        id=id,
+        tenant_id=tenant_id,
+        name=name,
+        description=description,
+        created_by=created_by,
+        provider=provider,
+        data_source_type=data_source_type,
+        indexing_technique=indexing_technique,
+        chunk_structure=chunk_structure,
+        pipeline_id=pipeline_id,
+        runtime_mode=runtime_mode,
+        retrieval_model=retrieval_model,
+        summary_index_setting=summary_index_setting,
+        embedding_model=embedding_model,
+        embedding_model_provider=embedding_model_provider,
+    )
 
 
-def _document(**overrides: object) -> Document:
-    values = {
-        "id": "document-1",
-        "tenant_id": "tenant-1",
-        "dataset_id": "dataset-1",
-        "position": 1,
-        "data_source_type": DataSourceType.UPLOAD_FILE,
-        "data_source_info": None,
-        "batch": "batch-1",
-        "name": "Document",
-        "created_from": DocumentCreatedFrom.WEB,
-        "created_by": "user-1",
-    }
-    values.update(overrides)
-    return Document(**values)
+def _document(
+    *,
+    id: str = "document-1",
+    tenant_id: str = "tenant-1",
+    dataset_id: str = "dataset-1",
+    position: int = 1,
+    data_source_type: str = DataSourceType.UPLOAD_FILE.value,
+    data_source_info: str | None = None,
+    batch: str = "batch-1",
+    name: str = "Document",
+    created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
+    created_by: str = "user-1",
+) -> Document:
+    return Document(
+        id=id,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=position,
+        data_source_type=DataSourceType(data_source_type),
+        data_source_info=data_source_info,
+        batch=batch,
+        name=name,
+        created_from=created_from,
+        created_by=created_by,
+    )
 
 
 def _pipeline(*, pipeline_id: str = "p-new", tenant_id: str = "t1") -> Pipeline:
@@ -84,7 +118,9 @@ def _upload_file(*, file_id: str = "file-1", tenant_id: str = "tenant-1") -> Upl
         ("hierarchical_model", "website_crawl", None),
     ],
 )
-def test_get_transform_yaml_returns_workflow(doc_form: str, datasource_type: str, indexing_technique: str | None):
+def test_get_transform_yaml_returns_workflow(
+    doc_form: str, datasource_type: str, indexing_technique: str | None
+) -> None:
     service = RagPipelineTransformService()
 
     result = service._get_transform_yaml(doc_form, datasource_type, indexing_technique)
@@ -119,7 +155,7 @@ def test_deal_file_extensions_filters_and_normalizes_extensions() -> None:
 
 def test_deal_file_extensions_returns_original_when_empty() -> None:
     service = RagPipelineTransformService()
-    node = {"data": {"fileExtensions": []}}
+    node = {"data": {"fileExtensions": list[object]()}}
 
     result = service._deal_file_extensions(node)
 
@@ -330,6 +366,7 @@ def test_deal_document_data_notion(sqlite_session: Session) -> None:
     sqlite_session.flush()
 
     assert doc.data_source_type == "online_document"
+    assert doc.data_source_info is not None
     assert "page1" in doc.data_source_info
     log = sqlite_session.scalar(select(DocumentPipelineExecutionLog))
     assert log is not None
@@ -355,6 +392,7 @@ def test_deal_document_data_website(sqlite_session: Session, provider: str, node
     sqlite_session.flush()
 
     assert doc.data_source_type == "website_crawl"
+    assert doc.data_source_info is not None
     assert "example.com" in doc.data_source_info
     log = sqlite_session.scalar(select(DocumentPipelineExecutionLog))
     assert log is not None
@@ -491,6 +529,7 @@ def test_deal_document_data_upload_file_with_existing_file(sqlite_session: Sessi
     sqlite_session.flush()
 
     assert document.data_source_type == "local_file"
+    assert document.data_source_info is not None
     assert "real_file_id" in document.data_source_info
     log = sqlite_session.scalar(select(DocumentPipelineExecutionLog))
     assert log is not None
@@ -526,7 +565,7 @@ def test_deal_document_data_scopes_documents_and_upload_files_to_dataset_tenant(
     assert sqlite_session.scalar(select(DocumentPipelineExecutionLog)) is None
 
 
-def _make_service():
+def _make_service() -> RagPipelineTransformService:
     return RagPipelineTransformService.__new__(RagPipelineTransformService)
 
 
@@ -535,7 +574,7 @@ def test_deal_dependencies_skips_marketplace_when_disabled(
 ) -> None:
     apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=False)
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
-    installer.list_plugins.return_value = []
+    installer.list_plugins.return_value = list[object]()
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
     install_call = mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
@@ -561,7 +600,7 @@ def test_deal_dependencies_skips_marketplace_when_disabled(
 def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=True)
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
-    installer.list_plugins.return_value = []
+    installer.list_plugins.return_value = list[object]()
     migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value
     migration._fetch_latest_package_identifier.return_value = "langgenius/openai:1.0.0@abc"
     install_call = mocker.patch(

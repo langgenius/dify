@@ -14,7 +14,7 @@ from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
     WorkflowCollaborationNotEntitledError,
@@ -49,7 +49,7 @@ def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[App.__tablename__]])
     with Session(sqlite_engine, expire_on_commit=False) as session:
         yield session
 
@@ -193,7 +193,7 @@ class TestWorkflowCollaborationService:
     ) -> None:
         # Arrange
         collaboration_service, _repository, socketio = real_service
-        socketio.get_session.return_value = {}
+        socketio.get_session.return_value = dict[str, object]()
 
         # Act
         result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
@@ -1437,7 +1437,7 @@ class TestWorkflowCollaborationService:
         assert collaboration_service.is_session_active("wf-1", "sid-remote") is False
 
     @staticmethod
-    def _session(sid: str, connected_at: int, graph_active: bool) -> dict:
+    def _session(sid: str, connected_at: int, graph_active: bool) -> WorkflowSessionInfo:
         return {
             "user_id": f"u-{sid}",
             "username": sid,
