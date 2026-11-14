@@ -760,7 +760,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     assert agent.active_config_is_published is False
 
 
-def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_load_agent_app_composer_exposes_draft_save_only(sqlite_session: Session) -> None:
     session = sqlite_session
     agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
     agent.active_config_snapshot_id = "version-1"
@@ -773,12 +773,8 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
         config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "x"}}),
     )
 
-    monkeypatch.setattr(AgentComposerService, "_require_agent_app_agent", lambda **kwargs: agent)
-    monkeypatch.setattr(composer_service, "find_agent_draft", lambda **kwargs: draft)
-    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: None)
-    monkeypatch.setattr(AgentComposerService, "_serialize_agent", lambda _agent: {"id": _agent.id})
-    monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda _version: None)
-    monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda _draft: {"id": "draft-1"})
+    session.add_all([agent, draft])
+    session.commit()
 
     result = AgentComposerService.load_agent_app_composer(session=session, tenant_id="tenant-1", app_id="app-1")
 
@@ -1319,7 +1315,7 @@ def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session:
         )
 
 
-def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
     bindings = [
         WorkflowAgentNodeBinding(
@@ -1344,7 +1340,6 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatc
         raise ValueError("draft workflow not found")
 
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
-    monkeypatch.setattr(AgentComposerService, "_load_agent_soul", lambda **kwargs: None)
     monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
 
     workflow_candidates = AgentComposerService.get_workflow_candidates(
@@ -1354,9 +1349,6 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatc
         node_id="node-1",
         user_id="account-1",
     )
-    agent_app_candidates = AgentComposerService.get_agent_app_candidates(
-        session=session, tenant_id="tenant-1", agent_id="agent-1", user_id="account-1"
-    )
     impact = AgentComposerService.calculate_impact(
         session=session, tenant_id="tenant-1", current_snapshot_id="version-1"
     )
@@ -1364,8 +1356,6 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatc
     assert workflow_candidates["variant"] == "workflow"
     assert workflow_candidates["allowed_node_job_candidates"]["previous_node_outputs"] == []
     assert workflow_candidates["truncated"] is False
-    assert agent_app_candidates["variant"] == "agent_app"
-    assert agent_app_candidates["allowed_soul_candidates"]["dify_tools"] == []
     assert impact["workflow_node_count"] == 2
     assert impact["bindings"][1]["node_id"] == "node-2"
 

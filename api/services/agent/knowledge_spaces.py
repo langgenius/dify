@@ -9,7 +9,7 @@ the command gateway additionally checks one Agent's immutable configuration.
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -45,6 +45,17 @@ def validate_agent_knowledge_spaces(
     ids = [binding.control_space_id for binding in bindings]
     roles = read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
     require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
+
+
+def authorize_composer_knowledge(
+    *, session_factory: sessionmaker[Session], tenant_id: str, account_id: str, soul: AgentSoulConfig
+) -> None:
+    """Read local roles before requesting Enterprise permissions, without overlapping either operation."""
+    ids = [binding.control_space_id for binding in soul.knowledge.spaces if not binding.is_missing]
+    if ids:
+        with session_factory() as session:
+            roles = read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
+        require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
 
 
 def read_agent_knowledge_space_roles(

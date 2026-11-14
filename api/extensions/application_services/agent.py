@@ -14,8 +14,11 @@ from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from services.agent.app_composer import AgentAppComposer
+from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.knowledge_spaces import authorize_composer_knowledge
 from services.agent.observability_contracts import AgentObservability
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
@@ -57,6 +60,7 @@ class AgentAppServices:
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
     build_session: AgentBuildSessionService
+    composer: AgentAppComposer
 
 
 def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
@@ -93,6 +97,11 @@ def build_agent_app_services(
             detail=detail,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        composer=AgentAppComposer(
+            store=apps,
+            authorize_knowledge=partial(authorize_composer_knowledge, session_factory=database_client),
+            workspace_tools=list_workspace_dify_tools,
+        ),
         build_session=AgentBuildSessionService(
             store=apps,
             collect_resources=enqueue_agent_resource_collection,
