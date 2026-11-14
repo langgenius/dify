@@ -11,7 +11,7 @@ import { ExportImage } from '../export-image'
 const mockToPng = vi.fn()
 const mockToJpeg = vi.fn()
 const mockToSvg = vi.fn()
-const mockDownloadUrl = vi.fn()
+const mockDownloadBlob = vi.fn()
 const { mockWorkflowState } = vi.hoisted(() => ({
   mockWorkflowState: {
     appName: 'Demo App',
@@ -19,14 +19,24 @@ const { mockWorkflowState } = vi.hoisted(() => ({
 }))
 
 vi.mock('html-to-image', () => ({
+  getFontEmbedCSS: async () => '',
   toPng: (...args: unknown[]) => mockToPng(...args),
   toJpeg: (...args: unknown[]) => mockToJpeg(...args),
   toSvg: (...args: unknown[]) => mockToSvg(...args),
 }))
 
+// boundary: a real download leaves the page; the downloaded Blob is the export contract.
 vi.mock('@/utils/download', () => ({
-  downloadUrl: (...args: unknown[]) => mockDownloadUrl(...args),
+  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
+
+async function readDownload(call = 0) {
+  const { data, fileName } = mockDownloadBlob.mock.calls[call]![0] as {
+    data: Blob
+    fileName: string
+  }
+  return { fileName, type: data.type, content: await data.text() }
+}
 
 function createExportQueryClient() {
   const queryClient = createConsoleQueryClient()
@@ -78,10 +88,14 @@ function renderExport(options: Parameters<typeof render>[1] = {}) {
 
 describe('ExportImage', () => {
   beforeEach(() => {
-    mockToPng.mockReset().mockResolvedValue('data:image/png;base64,current')
-    mockToJpeg.mockReset().mockResolvedValue('data:image/jpeg;base64,current')
-    mockToSvg.mockReset().mockResolvedValue('data:image/svg+xml;base64,current')
-    mockDownloadUrl.mockReset()
+    mockToPng.mockReset().mockResolvedValue(`data:image/png;base64,${btoa('png image')}`)
+    mockToJpeg.mockReset().mockResolvedValue(`data:image/jpeg;base64,${btoa('jpeg image')}`)
+    mockToSvg
+      .mockReset()
+      .mockResolvedValue(
+        `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg viewBox="0 0 1 1">#</svg>')}`,
+      )
+    mockDownloadBlob.mockReset()
     mockWorkflowState.appName = 'Demo App'
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(960)
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(720)
@@ -114,12 +128,12 @@ describe('ExportImage', () => {
       ),
     )
 
-    await waitFor(() =>
-      expect(mockDownloadUrl).toHaveBeenCalledWith({
-        url: 'data:image/png;base64,current',
-        fileName: 'Demo App.png',
-      }),
-    )
+    await waitFor(() => expect(mockDownloadBlob).toHaveBeenCalledTimes(1))
+    expect(await readDownload()).toEqual({
+      fileName: 'Demo App.png',
+      type: 'image/png',
+      content: 'png image',
+    })
     expect(mockToPng).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
@@ -136,6 +150,30 @@ describe('ExportImage', () => {
     await user.keyboard('{Enter}')
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('declares design tokens once on the image root instead of copying them per element', async () => {
+    const user = userEvent.setup()
+    renderExport()
+    const viewport = document.querySelector<HTMLElement>('.react-flow__viewport')!
+    viewport.style.setProperty('--export-token', '#123456')
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'workflow.common.currentView' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportSVG' },
+      ),
+    )
+
+    await waitFor(() => expect(mockToSvg).toHaveBeenCalledTimes(1))
+    const options = mockToSvg.mock.calls[0]![1] as {
+      includeStyleProperties: string[]
+      fontEmbedCSS: string
+    }
+    expect(options.fontEmbedCSS).toContain('--export-token:#123456;')
+    expect(options.includeStyleProperties.length).toBeGreaterThan(0)
+    expect(options.includeStyleProperties.some((name) => name.startsWith('--'))).toBe(false)
   })
 
   it('shows a preview when exporting the whole workflow', async () => {
@@ -177,16 +215,22 @@ describe('ExportImage', () => {
     )
     expect(flow.getViewport()).toEqual(originalViewport)
     expect(screen.getByRole('dialog', { name: 'Demo App-whole-workflow.png' })).toBeInTheDocument()
-    expect(mockDownloadUrl).toHaveBeenCalledWith({
-      url: 'data:image/png;base64,current',
+    expect(mockDownloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
       fileName: 'Demo App-whole-workflow.png',
     })
   })
 
   it.each([
-    ['workflow.common.exportJPEG', mockToJpeg, 'Demo App.jpeg'],
-    ['workflow.common.exportSVG', mockToSvg, 'Demo App.svg'],
-  ])('exports the current view with %s', async (label, exporter, fileName) => {
+    ['workflow.common.exportJPEG', mockToJpeg, 'Demo App.jpeg', 'image/jpeg', 'jpeg image'],
+    [
+      'workflow.common.exportSVG',
+      mockToSvg,
+      'Demo App.svg',
+      'image/svg+xml',
+      '<svg viewBox="0 0 1 1">#</svg>',
+    ],
+  ])('exports the current view with %s', async (label, exporter, fileName, type, content) => {
     const user = userEvent.setup()
 
     renderExport()
@@ -199,12 +243,8 @@ describe('ExportImage', () => {
       ),
     )
 
-    await waitFor(() =>
-      expect(mockDownloadUrl).toHaveBeenCalledWith({
-        url: expect.any(String),
-        fileName,
-      }),
-    )
+    await waitFor(() => expect(mockDownloadBlob).toHaveBeenCalledTimes(1))
+    expect(await readDownload()).toEqual({ fileName, type, content })
     expect(exporter).toHaveBeenCalledTimes(1)
   })
 
@@ -250,8 +290,8 @@ describe('ExportImage', () => {
     const group = screen.getByRole('group', { name: 'workflow.common.currentView' })
     await user.click(within(group).getByRole('menuitem', { name: 'workflow.common.exportPNG' }))
     await waitFor(() =>
-      expect(mockDownloadUrl).toHaveBeenCalledWith({
-        url: 'data:image/png;base64,current',
+      expect(mockDownloadBlob).toHaveBeenCalledWith({
+        data: expect.any(Blob),
         fileName: 'Renamed App.png',
       }),
     )
@@ -272,7 +312,7 @@ describe('ExportImage', () => {
     )
 
     expect(mockToPng).not.toHaveBeenCalled()
-    expect(mockDownloadUrl).not.toHaveBeenCalled()
+    expect(mockDownloadBlob).not.toHaveBeenCalled()
   })
 
   it('restores the viewport when rendering the whole workflow fails', async () => {
@@ -299,7 +339,7 @@ describe('ExportImage', () => {
     expect(mockToPng).toHaveBeenCalledTimes(1)
     expect(captureViewport).toEqual(fittedViewport)
     expect(flow.getViewport()).toEqual(originalViewport)
-    expect(mockDownloadUrl).not.toHaveBeenCalled()
+    expect(mockDownloadBlob).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 

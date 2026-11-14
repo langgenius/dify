@@ -9,7 +9,7 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { toJpeg, toPng, toSvg } from 'html-to-image'
+import { getFontEmbedCSS, toJpeg, toPng, toSvg } from 'html-to-image'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,9 +18,41 @@ import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import { downloadUrl } from '@/utils/download'
+import { downloadBlob } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from './tip-popup'
+
+// html-to-image inlines every computed property on every cloned element, including around 900
+// design-token custom properties. That repetition pushes large workflows past the 2^26-character
+// data URL WebKit can load, so only regular properties are copied per element. html-to-image
+// caches the first list it receives, so this list must not depend on the exported content.
+const getRegularStyleProperties = () =>
+  Array.from(window.getComputedStyle(document.documentElement)).filter(
+    (name) => !name.startsWith('--'),
+  )
+
+// SVG content such as edges is cloned as-is, so its inline var() references must still resolve.
+// Declaring the custom properties once on the image root keeps them inherited everywhere.
+const getCustomPropertiesCSS = (element: HTMLElement) => {
+  const style = window.getComputedStyle(element)
+  const declarations = Array.from(style)
+    .filter((name) => name.startsWith('--'))
+    .map((name) => `${name}:${style.getPropertyValue(name)};`)
+    .join('')
+  return `:root{${declarations}}`
+}
+
+// WebKit cannot download a data URL longer than 2^26 characters either; a Blob has no such limit.
+const dataUrlToBlob = (dataUrl: string) => {
+  const separator = dataUrl.indexOf(',')
+  const header = dataUrl.slice(0, separator)
+  const data = dataUrl.slice(separator + 1)
+  const type = header.slice('data:'.length).split(';')[0]
+  if (header.endsWith(';base64'))
+    return new Blob([Uint8Array.from(atob(data), (char) => char.charCodeAt(0))], { type })
+
+  return new Blob([decodeURIComponent(data)], { type })
+}
 
 const ExportImage = memo(() => {
   const { t } = useTranslation(['workflow'] as const)
@@ -54,6 +86,13 @@ const ExportImage = memo(() => {
           if (node instanceof HTMLImageElement) return node.complete && node.naturalHeight !== 0
 
           return true
+        }
+        // html-to-image embeds this CSS once in the image, alongside the webfonts it normally embeds.
+        const embeddedCSS = `${await getFontEmbedCSS(flowElement)}\n${getCustomPropertiesCSS(flowElement)}`
+        const baseOptions = {
+          filter,
+          includeStyleProperties: getRegularStyleProperties(),
+          fontEmbedCSS: embeddedCSS,
         }
 
         let dataUrl
@@ -89,7 +128,7 @@ const ExportImage = memo(() => {
             const contentHeight = nodesBounds.height + padding * 2
 
             const exportOptions = {
-              filter,
+              ...baseOptions,
               backgroundColor: '#1a1a1a',
               pixelRatio: 2,
               width: contentWidth,
@@ -110,10 +149,8 @@ const ExportImage = memo(() => {
                 dataUrl = await toJpeg(flowElement, exportOptions)
                 break
               case 'svg':
-                dataUrl = await toSvg(flowElement, { filter })
+                dataUrl = await toSvg(flowElement, baseOptions)
                 break
-              default:
-                dataUrl = await toPng(flowElement, exportOptions)
             }
 
             filename += '-whole-workflow'
@@ -124,16 +161,14 @@ const ExportImage = memo(() => {
           // Current viewport export (existing functionality)
           switch (type) {
             case 'png':
-              dataUrl = await toPng(flowElement, { filter })
+              dataUrl = await toPng(flowElement, baseOptions)
               break
             case 'jpeg':
-              dataUrl = await toJpeg(flowElement, { filter })
+              dataUrl = await toJpeg(flowElement, baseOptions)
               break
             case 'svg':
-              dataUrl = await toSvg(flowElement, { filter })
+              dataUrl = await toSvg(flowElement, baseOptions)
               break
-            default:
-              dataUrl = await toPng(flowElement, { filter })
           }
         }
 
@@ -144,7 +179,7 @@ const ExportImage = memo(() => {
           setPreviewTitle(fileName)
         }
 
-        downloadUrl({ url: dataUrl, fileName })
+        downloadBlob({ data: dataUrlToBlob(dataUrl), fileName })
       } catch (error) {
         console.error('Export image failed:', error)
       }
