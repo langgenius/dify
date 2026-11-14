@@ -193,6 +193,7 @@ def init_app(app: DifyApp) -> Celery:
     setup_workflow_warm_shutdown_handler()
 
     imports = [
+        "tasks.app_deletion_outbox_task",
         "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
@@ -221,6 +222,12 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_APP_DELETION_OUTBOX_TASK:
+        beat_schedule["app_deletion_outbox_dispatch"] = {
+            "task": "tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox",
+            "schedule": timedelta(seconds=30),
+            "options": {"queue": "app_deletion", "expires": 30},
+        }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 

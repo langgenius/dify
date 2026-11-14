@@ -25,6 +25,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
+from models.app_deletion_outbox import AppDeletionOutbox, AppDeletionOutboxStatus
 from models.model import App, AppMode
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
 from services.app.agent_app_service import AgentAppDeletionService
@@ -114,6 +115,16 @@ def test_delete_archives_agent_and_removes_access_grants_before_cleanup(
     assert published.app.id == app_id
     assert published.app.tenant_id == harness.tenant_id
     assert published.backing_agent_id == agent_id
+
+
+@dataclass
+class RecordedCall:
+    """Capture one task publication boundary without replacing it with a mock."""
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def __call__(self, **kwargs: object) -> None:
+        self.calls.append(kwargs)
 
 
 def test_delete_retires_resources_and_preserves_shared_tokens(harness: Harness, cleanup: RecordedCleanup) -> None:
@@ -209,14 +220,120 @@ def test_real_cleanup_publishes_tasks_after_commit(harness: Harness) -> None:
     app_was_deleted.connect(on_deleted, weak=False)
     try:
         response = harness.client.delete(f"/console/api/agent/{agent_id}", headers=harness.headers)
+        from tasks.app_deletion_outbox_task import _dispatch
+
+        assert _dispatch(harness.sessions, worker_id="test-worker") == 1
     finally:
         app_was_deleted.disconnect(on_deleted)
         broker.close()
         restore_app()
     assert response.status_code == HTTPStatus.NO_CONTENT
     assert [event.id for event in events] == [app_id]
+    assert any("dispatch_app_deletion_outbox" in name for name in published)
     assert any("remove_app_and_related_data" in name for name in published)
     assert any("collect_agent_resources" in name for name in published)
+
+
+def test_cleanup_publish_failure_keeps_durable_retry_after_delete(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent_id, app_id = harness.create_agent()
+
+    def fail_to_wake_dispatcher() -> None:
+        raise RuntimeError("broker unavailable")
+
+    monkeypatch.setattr("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", fail_to_wake_dispatcher)
+
+    response = harness.client.delete(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    with harness.sessions() as session:
+        assert session.get(App, app_id) is None
+        agent = session.get(Agent, agent_id)
+        assert agent is not None
+        assert agent.status == AgentStatus.ARCHIVED
+        outbox = session.scalar(select(AppDeletionOutbox).where(AppDeletionOutbox.app_id == app_id))
+        assert outbox is not None
+        assert outbox.status == AppDeletionOutboxStatus.PENDING
+        retry_at = outbox.created_at
+
+    retry = harness.client.delete(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert retry.status_code == HTTPStatus.NOT_FOUND
+
+    def fail_to_publish(**_kwargs: object) -> None:
+        raise RuntimeError("broker unavailable")
+
+    monkeypatch.setattr("services.app_service.remove_app_and_related_data_task.delay", fail_to_publish)
+    from tasks.app_deletion_outbox_task import _dispatch
+
+    assert _dispatch(harness.sessions, now=retry_at, worker_id="test-worker") == 0
+    with harness.sessions() as session:
+        outbox = session.scalar(select(AppDeletionOutbox).where(AppDeletionOutbox.app_id == app_id))
+        assert outbox is not None
+        assert outbox.status == AppDeletionOutboxStatus.RETRY
+        assert outbox.attempt_count == 1
+        assert outbox.last_error_message is not None
+        assert "broker unavailable" in outbox.last_error_message
+
+    publish_cleanup = RecordedCall()
+    collect_resources = RecordedCall()
+    monkeypatch.setattr("services.app_service.remove_app_and_related_data_task.delay", publish_cleanup)
+    monkeypatch.setattr("services.app_service.enqueue_agent_resource_collection", collect_resources)
+    from datetime import timedelta
+
+    from libs.datetime_utils import naive_utc_now
+
+    assert _dispatch(harness.sessions, now=naive_utc_now() + timedelta(days=1), worker_id="test-worker") == 1
+    with harness.sessions() as session:
+        outbox = session.scalar(select(AppDeletionOutbox).where(AppDeletionOutbox.app_id == app_id))
+        assert outbox is not None
+        assert outbox.status == AppDeletionOutboxStatus.SUCCEEDED
+        assert outbox.attempt_count == 2
+    assert publish_cleanup.calls == [{"tenant_id": harness.tenant_id, "app_id": app_id}]
+    assert collect_resources.calls == [
+        {
+            "tenant_id": harness.tenant_id,
+            "workspace_ids": [],
+            "binding_ids": [],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": [agent_id],
+        }
+    ]
+
+
+def test_regular_app_delete_records_outbox_before_committing(harness: Harness, monkeypatch: pytest.MonkeyPatch) -> None:
+    app = App(
+        tenant_id=harness.tenant_id,
+        name="Regular App",
+        mode=AppMode.CHAT,
+        created_by=harness.account_id,
+        maintainer=harness.account_id,
+        enable_api=False,
+        enable_site=False,
+    )
+    with harness.sessions.begin() as session:
+        session.add(app)
+        session.flush()
+        app_id = app.id
+
+    context = RequestContext("test-request", None, harness.account_id, harness.tenant_id)
+
+    def fail_to_wake_dispatcher() -> None:
+        raise RuntimeError("broker unavailable")
+
+    monkeypatch.setattr("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", fail_to_wake_dispatcher)
+    gateway = AppLifecycleGateway(session_factory=harness.sessions)
+    deleted = gateway.delete(context, app_id)
+    gateway.deleted(context, deleted)
+
+    with harness.sessions() as session:
+        assert session.get(App, app_id) is None
+        outbox = session.scalar(select(AppDeletionOutbox).where(AppDeletionOutbox.app_id == app_id))
+        assert outbox is not None
+        assert outbox.status == AppDeletionOutboxStatus.PENDING
+        app_payload = outbox.deletion_payload.get("app")
+        assert isinstance(app_payload, dict)
+        assert app_payload["mode"] == AppMode.CHAT.value
 
 
 def test_delete_rejects_cross_tenant_and_wrong_app_mode(harness: Harness, cleanup: RecordedCleanup) -> None:

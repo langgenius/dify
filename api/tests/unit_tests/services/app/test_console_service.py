@@ -33,6 +33,7 @@ from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentConfigSnapshot, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
+from models.app_deletion_outbox import AppDeletionOutbox, AppDeletionOutboxStatus
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, Site
 from models.provider import TenantDefaultModel
 from models.provider_ids import GenericProviderID
@@ -91,7 +92,6 @@ from services.model_provider.service import ModelProviderService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.workflow_tool_references import WorkflowToolTarget
-from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 from tests.helpers.unit.model_factories import make_account, make_tenant
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -1455,7 +1455,7 @@ def test_failed_import_deletes_the_workflows_it_created(
         if not broker_available:
             raise ConnectionError("The message broker is unavailable")
 
-    monkeypatch.setattr(remove_app_and_related_data_task, "delay", enqueue_cleanup)
+    monkeypatch.setattr("tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", enqueue_cleanup)
     monkeypatch.setattr("services.app_service.app_was_deleted", Signal())
     target_id = workspaces.target.active_workspace_id
 
@@ -1464,11 +1464,12 @@ def test_failed_import_deletes_the_workflows_it_created(
     )
 
     assert result.status == ImportStatus.FAILED
-    [cleanup] = cleanups
-    assert cleanup["tenant_id"] == target_id
-    assert ("left by a failed package import" in caplog.text) is not broker_available
+    assert cleanups == [{}]
+    assert ("Failed to wake App deletion outbox dispatcher" in caplog.text) is not broker_available
     with sqlite_session_factory() as session:
         assert list(session.scalars(select(App.id).where(App.tenant_id == target_id))) == []
+        [outbox] = session.scalars(select(AppDeletionOutbox).where(AppDeletionOutbox.tenant_id == target_id)).all()
+        assert outbox.status == AppDeletionOutboxStatus.PENDING
 
 
 def test_import_recreates_workflows_that_call_each_other(
@@ -1550,7 +1551,9 @@ def test_import_deletes_created_workflows_when_a_called_workflow_fails(
     }
     _call_ranker_from_summarizer(sqlite_session_factory, workspaces, [knowledge])
     cleanups: list[dict[str, str]] = []
-    monkeypatch.setattr(remove_app_and_related_data_task, "delay", lambda **kwargs: cleanups.append(kwargs))
+    monkeypatch.setattr(
+        "tasks.app_deletion_outbox_task.dispatch_app_deletion_outbox.delay", lambda **kwargs: cleanups.append(kwargs)
+    )
     monkeypatch.setattr("services.app_service.app_was_deleted", Signal())
 
     with pytest.raises(InvalidRosterAgentPackageError, match=error):
