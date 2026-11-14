@@ -69,7 +69,6 @@ project-excludes = [
   "core/app/apps/completion/test_app_generator.py",
   "core/app/apps/completion/test_generate_response_converter.py",
   "core/app/apps/pipeline/test_pipeline_generator.py",
-  "core/app/apps/pipeline/test_pipeline_runner.py",
   "core/app/apps/test_base_app_generator.py",
   "core/app/apps/test_message_based_app_generator.py",
   "core/app/apps/test_streaming_utils.py",
