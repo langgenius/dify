@@ -215,6 +215,44 @@ def test_invalid_segment_owner_chain_grants_no_access(
         assert current_scope.granted_retriever_segment_ids == frozenset()
 
 
+def test_workflow_retrieval_leaves_out_a_segment_of_an_archived_document(
+    graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A retrieved segment whose owner chain is no longer valid is not cited and grants nothing."""
+    dataset, document, segment, _ = graph
+    document.archived = True
+    sqlite_session.commit()
+    retrieved = RagDocument(
+        page_content=segment.content,
+        provider="dify",
+        metadata={"doc_id": segment.index_node_id, "document_id": document.id, "dataset_id": dataset.id},
+    )
+    retrieval = DatasetRetrieval()
+    monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(retrieval, "_get_available_datasets", lambda *_args, **_kwargs: [dataset])
+    monkeypatch.setattr(retrieval, "multiple_retrieve", lambda *_args, **_kwargs: [retrieved])
+    request = KnowledgeRetrievalRequest(
+        tenant_id=dataset.tenant_id,
+        user_id="visitor",
+        app_id=str(uuid4()),
+        user_from=UserFrom.END_USER.value,
+        dataset_ids=[dataset.id],
+        query="picture",
+        retrieval_mode="multiple",
+    )
+
+    with bind_file_access_scope(_visitor_scope(dataset.tenant_id)):
+        sources = retrieval.knowledge_retrieval(sqlite_session, request)
+
+        assert sources == []
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        assert current_scope.granted_retriever_segment_ids == frozenset()
+        assert current_scope.granted_upload_file_ids == frozenset()
+
+
 def _segment(dataset: Dataset, document: Document, *, position: int, enabled: bool = True) -> DocumentSegment:
     segment = DocumentSegment(
         tenant_id=dataset.tenant_id,
