@@ -1409,3 +1409,71 @@ class TestWorkflowToolAgentStatisticsCases:
             app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source="workflow:source-app")
         )
         assert foreign["summary"]["total_end_users"] == 0
+
+    @staticmethod
+    def test_nested_agent_end_users_honour_an_invoke_from_alias(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries
+    ) -> None:
+        """An invoke-from alias narrows the webapp scope. The range count must
+        use the same narrowed population the daily charts do."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.CHAT)
+        message = sqlite_session.get(Message, "message-1")
+        assert message is not None
+        message.app_id = app.id
+        sqlite_session.commit()
+
+        for source, expected in (("web", 1), ("debugger", 0)):
+            payload = statistics_service.get_statistics_summary(
+                app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source=source)
+            )
+            assert payload["summary"]["total_messages"] == expected
+            assert payload["summary"]["total_end_users"] == expected
+
+    @staticmethod
+    def test_nested_agent_end_users_honour_an_exact_workflow_source(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries
+    ) -> None:
+        """An exact app/workflow/version/node source binds all four filters."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.WORKFLOW)
+
+        for source, expected in (
+            ("workflow:source-app:source-workflow:source-v1:agent-node", 1),
+            ("workflow:source-app:source-workflow:source-v2:agent-node", 0),
+        ):
+            payload = statistics_service.get_statistics_summary(
+                app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source=source)
+            )
+            assert payload["summary"]["total_messages"] == expected
+            assert payload["summary"]["total_end_users"] == expected
+
+    @staticmethod
+    def test_nested_agent_end_users_honour_the_message_window(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries
+    ) -> None:
+        """The Chatflow message side has its own date bounds. A window that keeps
+        the seeded run but excludes its message must still count the run's user,
+        and a window that excludes both must count nobody."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.CHAT)
+
+        # The seeded Chatflow message is dated 2026-07-22; the run is 2026-07-21.
+        before_message = statistics_service.get_statistics_summary(
+            app=app,
+            agent_id="agent-1",
+            params=AgentStatisticsQueryParams(
+                source="workflow:source-app",
+                end=datetime(2026, 7, 22),
+            ),
+        )
+        assert before_message["summary"]["total_messages"] == 0
+        assert before_message["summary"]["total_end_users"] == 0
+
+        after_message = statistics_service.get_statistics_summary(
+            app=app,
+            agent_id="agent-1",
+            params=AgentStatisticsQueryParams(
+                source="workflow:source-app",
+                start=datetime(2026, 7, 22),
+            ),
+        )
+        assert after_message["summary"]["total_messages"] == 1
+        assert after_message["summary"]["total_end_users"] == 1
