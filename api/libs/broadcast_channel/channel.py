@@ -7,7 +7,7 @@ from __future__ import annotations
 import abc
 import types
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import AbstractContextManager
 from typing import Protocol, Self, override
 
@@ -85,6 +85,15 @@ class Producer(Protocol):
     @abstractmethod
     def publish(self, payload: bytes) -> None:
         """Publish a message to the bounded topic."""
+        ...
+
+    @abstractmethod
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        """Publish messages to the bounded topic in the given order.
+
+        Subscribers receive them as separate messages, exactly as if each had been passed to `publish`.
+        An implementation may send them to the broker in one round trip.
+        """
         ...
 
 
