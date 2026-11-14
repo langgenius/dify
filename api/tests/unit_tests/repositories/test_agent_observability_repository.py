@@ -33,10 +33,10 @@ from models.workflow import (
     WorkflowRunTriggeredFrom,
     WorkflowType,
 )
-from services.agent import observability_service as observability_service_module
-from services.agent.observability_service import (
+from repositories import agent_observability_repository as observability_repository_module
+from repositories.agent_observability_repository import (
     AgentLogQueryParams,
-    AgentObservabilityService,
+    AgentObservabilityQueries,
     AgentStatisticsQueryParams,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -207,85 +207,85 @@ def _agent_observability_service_workflow_binding(
     )
 
 
-class TestAgentObservabilityServiceCases:
+class TestAgentObservabilityQueriesCases:
     @staticmethod
     def test_resolve_source_accepts_frontend_aliases() -> None:
-        assert AgentObservabilityService.resolve_source(None) is None
-        assert AgentObservabilityService.resolve_source("all") is None
-        assert AgentObservabilityService.resolve_source("console") == _agent_observability_service_InvokeFrom.EXPLORE
-        assert AgentObservabilityService.resolve_source("api") == _agent_observability_service_InvokeFrom.SERVICE_API
-        assert AgentObservabilityService.resolve_source("web_app") == _agent_observability_service_InvokeFrom.WEB_APP
+        assert AgentObservabilityQueries.resolve_source(None) is None
+        assert AgentObservabilityQueries.resolve_source("all") is None
+        assert AgentObservabilityQueries.resolve_source("console") == _agent_observability_service_InvokeFrom.EXPLORE
+        assert AgentObservabilityQueries.resolve_source("api") == _agent_observability_service_InvokeFrom.SERVICE_API
+        assert AgentObservabilityQueries.resolve_source("web_app") == _agent_observability_service_InvokeFrom.WEB_APP
 
         with pytest.raises(ValueError, match="Unsupported source"):
-            AgentObservabilityService.resolve_source("unknown")
+            AgentObservabilityQueries.resolve_source("unknown")
 
     @staticmethod
     def test_resolve_source_filter_accepts_structured_sources() -> None:
-        assert AgentObservabilityService.resolve_source_filter(None).kind == "all"
-        assert AgentObservabilityService.resolve_source_filter("webapp").kind == "webapp"
-        assert AgentObservabilityService.resolve_source_filter("webapp:app-1").app_id == "app-1"
+        assert AgentObservabilityQueries.resolve_source_filter(None).kind == "all"
+        assert AgentObservabilityQueries.resolve_source_filter("webapp").kind == "webapp"
+        assert AgentObservabilityQueries.resolve_source_filter("webapp:app-1").app_id == "app-1"
 
-        workflow_app_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2")
+        workflow_app_filter = AgentObservabilityQueries.resolve_source_filter("workflow:app-2")
         assert workflow_app_filter.kind == "workflow"
         assert workflow_app_filter.app_id == "app-2"
         assert workflow_app_filter.workflow_id is None
 
-        workflow_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2:workflow-1:v1:node-1")
+        workflow_filter = AgentObservabilityQueries.resolve_source_filter("workflow:app-2:workflow-1:v1:node-1")
         assert workflow_filter.kind == "workflow"
         assert workflow_filter.app_id == "app-2"
         assert workflow_filter.workflow_id == "workflow-1"
         assert workflow_filter.workflow_version == "v1"
         assert workflow_filter.node_id == "node-1"
 
-        timestamp_version_filter = AgentObservabilityService.resolve_source_filter(
+        timestamp_version_filter = AgentObservabilityQueries.resolve_source_filter(
             "workflow:app-2:workflow-1:2026-07-06 02:17:12.910515:node-1"
         )
         assert timestamp_version_filter.workflow_version == "2026-07-06 02:17:12.910515"
         assert timestamp_version_filter.node_id == "node-1"
 
-        legacy_filter = AgentObservabilityService.resolve_source_filter("console")
+        legacy_filter = AgentObservabilityQueries.resolve_source_filter("console")
         assert legacy_filter.kind == "webapp"
         assert legacy_filter.invoke_from == _agent_observability_service_InvokeFrom.EXPLORE
 
         with pytest.raises(ValueError, match="Unsupported source"):
-            AgentObservabilityService.resolve_source_filter("workflow:")
+            AgentObservabilityQueries.resolve_source_filter("workflow:")
         with pytest.raises(ValueError, match="Unsupported source"):
-            AgentObservabilityService.resolve_source_filter("workflow:app-2:incomplete")
+            AgentObservabilityQueries.resolve_source_filter("workflow:app-2:incomplete")
 
     @staticmethod
     def test_resolve_source_filters_accepts_multiple_structured_sources() -> None:
-        filters = AgentObservabilityService.resolve_source_filters(
+        filters = AgentObservabilityQueries.resolve_source_filters(
             ("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1")
         )
 
         assert [source_filter.kind for source_filter in filters] == ["webapp", "workflow"]
         assert filters[0].app_id == "app-1"
         assert filters[1].node_id == "node-1"
-        assert AgentObservabilityService.resolve_source_filters(())[0].kind == "all"
-        assert AgentObservabilityService.resolve_source_filters(("all", "webapp:app-1"))[0].kind == "all"
+        assert AgentObservabilityQueries.resolve_source_filters(())[0].kind == "all"
+        assert AgentObservabilityQueries.resolve_source_filters(("all", "webapp:app-1"))[0].kind == "all"
 
     @staticmethod
     def test_statistics_all_source_includes_debugger_messages() -> None:
-        source_filter = AgentObservabilityService.resolve_source_filter("all")
+        source_filter = AgentObservabilityQueries.resolve_source_filter("all")
 
-        scope_sql = AgentObservabilityService._statistics_webapp_message_scope_sql(source_filter)
+        scope_sql = AgentObservabilityQueries._statistics_webapp_message_scope_sql(source_filter)
 
         assert "m.app_id = :app_id" in scope_sql
         assert "m.invoke_from != :debugger" not in scope_sql
 
     @staticmethod
     def test_statistics_explicit_source_filters_invoke_from() -> None:
-        source_filter = AgentObservabilityService.resolve_source_filter("debugger")
+        source_filter = AgentObservabilityQueries.resolve_source_filter("debugger")
 
-        scope_sql = AgentObservabilityService._statistics_webapp_message_scope_sql(source_filter)
+        scope_sql = AgentObservabilityQueries._statistics_webapp_message_scope_sql(source_filter)
 
         assert "m.invoke_from = :source" in scope_sql
 
     @staticmethod
     def test_statistics_workflow_app_source_covers_all_versions_and_nodes() -> None:
-        source_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2")
+        source_filter = AgentObservabilityQueries.resolve_source_filter("workflow:app-2")
 
-        scope_sql = AgentObservabilityService._statistics_workflow_binding_filters_sql(source_filter)
+        scope_sql = AgentObservabilityQueries._statistics_workflow_binding_filters_sql(source_filter)
 
         assert "wanb.app_id = :source_app_id" in scope_sql
         assert "wanb.workflow_id = :workflow_id" not in scope_sql
@@ -296,7 +296,7 @@ class TestAgentObservabilityServiceCases:
     def test_workflow_metadata_numeric_sql_supports_postgresql_and_mysql(monkeypatch: pytest.MonkeyPatch) -> None:
         apply_config_overrides(monkeypatch, DB_TYPE="postgresql")
 
-        postgres_sql = AgentObservabilityService._workflow_execution_metadata_numeric_sql(
+        postgres_sql = AgentObservabilityQueries._workflow_execution_metadata_numeric_sql(
             ("agent_log", "agent_backend", "usage", "total_tokens"), "BIGINT"
         )
 
@@ -305,7 +305,7 @@ class TestAgentObservabilityServiceCases:
 
         apply_config_overrides(monkeypatch, DB_TYPE="mysql")
 
-        mysql_sql = AgentObservabilityService._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
+        mysql_sql = AgentObservabilityQueries._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
 
         assert "JSON_EXTRACT(wne.execution_metadata, '$.total_tokens')" in mysql_sql
         assert " AS UNSIGNED)" in mysql_sql
@@ -328,9 +328,9 @@ class TestAgentObservabilityServiceCases:
         sqlite_session.commit()
 
         apply_config_overrides(monkeypatch, DB_TYPE="mysql")
-        monkeypatch.setattr(observability_service_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
+        monkeypatch.setattr(observability_repository_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
         monkeypatch.setattr(
-            AgentObservabilityService,
+            AgentObservabilityQueries,
             "_workflow_execution_metadata_numeric_sql",
             staticmethod(
                 lambda path, numeric_type: (
@@ -338,12 +338,12 @@ class TestAgentObservabilityServiceCases:
                 )
             ),
         )
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
 
         payload = service.get_statistics_summary(
             app=_agent_observability_service_app(app_id="agent-app"),
             agent_id="agent-1",
-            params=observability_service_module.AgentStatisticsQueryParams(source="workflow:workflow-app-1"),
+            params=observability_repository_module.AgentStatisticsQueryParams(source="workflow:workflow-app-1"),
         )
 
         assert payload["summary"]["total_messages"] == 1
@@ -381,7 +381,7 @@ class TestAgentObservabilityServiceCases:
             },
         ]
 
-        merged = AgentObservabilityService._merge_daily_statistics(rows)
+        merged = AgentObservabilityQueries._merge_daily_statistics(rows)
 
         assert merged == [
             {
@@ -402,16 +402,16 @@ class TestAgentObservabilityServiceCases:
     def test_apply_status_filter_accepts_multiple_statuses() -> None:
         stmt = select(Message)
 
-        result = AgentObservabilityService._apply_status_filter(stmt, ("success", "failed", "paused"))
+        result = AgentObservabilityQueries._apply_status_filter(stmt, ("success", "failed", "paused"))
 
         assert isinstance(result, Select)
         assert len(result._where_criteria) == 1
         with pytest.raises(ValueError, match="Unsupported status"):
-            AgentObservabilityService._apply_status_filter(select(Message), ("unknown",))
+            AgentObservabilityQueries._apply_status_filter(select(Message), ("unknown",))
 
     @staticmethod
-    def test_list_logs_sorts_by_requested_field(monkeypatch: pytest.MonkeyPatch) -> None:
-        service = AgentObservabilityService(session=None)
+    def test_list_logs_sorts_by_requested_field(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+        service = AgentObservabilityQueries(sqlite_session)
         app = _agent_observability_service_app()
         rows = [
             {"id": "old", "source": {"id": "webapp:app-1"}, "created_at": 10, "updated_at": 100},
@@ -429,8 +429,10 @@ class TestAgentObservabilityServiceCases:
         assert [item["id"] for item in payload["data"]] == ["old", "new"]
 
     @staticmethod
-    def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: pytest.MonkeyPatch) -> None:
-        service = AgentObservabilityService(session=None)
+    def test_list_log_messages_merges_deduplicates_and_sorts_sources(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        service = AgentObservabilityQueries(sqlite_session)
         webapp_message = _agent_observability_service_message(message_id="shared")
         webapp_row = {"id": "shared", "created_at": 10, "updated_at": 30}
         workflow_rows = [
@@ -481,12 +483,12 @@ class TestAgentObservabilityServiceCases:
             ]
         )
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
 
         rows = service._list_webapp_conversation_logs(
             app=app,
             params=AgentLogQueryParams(),
-            source_filter=AgentObservabilityService.resolve_source_filter("webapp"),
+            source_filter=AgentObservabilityQueries.resolve_source_filter("webapp"),
         )
 
         assert rows[0]["user_rate"] == 0.5
@@ -506,13 +508,13 @@ class TestAgentObservabilityServiceCases:
             ]
         )
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
 
         rows = service._list_workflow_conversation_logs(
             app=_agent_observability_service_app(app_id="agent-app"),
             agent_id="agent-1",
             params=AgentLogQueryParams(),
-            source_filter=AgentObservabilityService.resolve_source_filter("workflow:workflow-app-1"),
+            source_filter=AgentObservabilityQueries.resolve_source_filter("workflow:workflow-app-1"),
         )
 
         assert rows[0]["id"] == "node-execution-1"
@@ -547,7 +549,7 @@ class TestAgentObservabilityServiceCases:
         if source_identity != "unique-legacy-binding":
             sqlite_session.add_all([source, unused_binding])
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
         params = AgentLogQueryParams(sources=("workflow:workflow-app-1",))
 
         logs = service.list_logs(
@@ -625,7 +627,7 @@ class TestAgentObservabilityServiceCases:
             run.app_id, run.workflow_id = "unrelated-app", "unrelated-workflow"
         sqlite_session.add_all([source_app, run, execution, binding])
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
         params = AgentLogQueryParams(sources=("workflow",))
 
         assert (
@@ -658,7 +660,7 @@ class TestAgentObservabilityServiceCases:
             ]
         )
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
         serialized = {"id": "node-execution-1", "conversation_id": "node-execution-1"}
         monkeypatch.setattr(service, "serialize_workflow_node_message", lambda execution: serialized)
 
@@ -667,7 +669,7 @@ class TestAgentObservabilityServiceCases:
             agent_id="agent-1",
             conversation_id="node-execution-1",
             params=AgentLogQueryParams(),
-            source_filter=AgentObservabilityService.resolve_source_filter("workflow:workflow-app-1"),
+            source_filter=AgentObservabilityQueries.resolve_source_filter("workflow:workflow-app-1"),
         )
 
         assert rows == [serialized]
@@ -682,10 +684,10 @@ class TestAgentObservabilityServiceCases:
             statuses=("success",),
         )
 
-        result = AgentObservabilityService._apply_workflow_node_filters(
+        result = AgentObservabilityQueries._apply_workflow_node_filters(
             stmt,
             params=params,
-            workflow_app=observability_service_module.App,
+            workflow_app=observability_repository_module.App,
         )
 
         assert isinstance(result, Select)
@@ -695,15 +697,15 @@ class TestAgentObservabilityServiceCases:
     def test_apply_workflow_node_status_filter_supports_all_status_groups() -> None:
         stmt = select(WorkflowNodeExecutionModel)
 
-        result = AgentObservabilityService._apply_workflow_node_status_filter(stmt, ("normal", "error", "paused"))
+        result = AgentObservabilityQueries._apply_workflow_node_status_filter(stmt, ("normal", "error", "paused"))
 
         assert isinstance(result, Select)
         assert len(result._where_criteria) == 1
         empty_stmt = select(WorkflowNodeExecutionModel)
-        assert AgentObservabilityService._apply_workflow_node_status_filter(empty_stmt, ()) is empty_stmt
+        assert AgentObservabilityQueries._apply_workflow_node_status_filter(empty_stmt, ()) is empty_stmt
         assert empty_stmt._where_criteria == ()
         with pytest.raises(ValueError, match="Unsupported status"):
-            AgentObservabilityService._apply_workflow_node_status_filter(
+            AgentObservabilityQueries._apply_workflow_node_status_filter(
                 select(WorkflowNodeExecutionModel), ("unknown",)
             )
 
@@ -711,9 +713,9 @@ class TestAgentObservabilityServiceCases:
     def test_source_serializers_return_structured_frontend_shape() -> None:
         app = _agent_observability_service_app()
 
-        webapp_source = AgentObservabilityService._serialize_webapp_source(app)
-        workflow_app_source = AgentObservabilityService._serialize_workflow_app_source(app=app)
-        workflow_source = AgentObservabilityService._serialize_workflow_source(
+        webapp_source = AgentObservabilityQueries._serialize_webapp_source(app)
+        workflow_app_source = AgentObservabilityQueries._serialize_workflow_app_source(app=app)
+        workflow_source = AgentObservabilityQueries._serialize_workflow_source(
             app=app,
             workflow_id="workflow-1",
             workflow_version="v1",
@@ -762,7 +764,7 @@ class TestAgentObservabilityServiceCases:
             ]
         )
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
 
         sources = service._list_workflow_sources(
             app=_agent_observability_service_app(app_id="agent-app"),
@@ -787,7 +789,7 @@ class TestAgentObservabilityServiceCases:
             ),
         ]
 
-        payload = AgentObservabilityService.serialize_log_message(message, conversation, feedbacks)
+        payload = AgentObservabilityQueries.serialize_log_message(message, conversation, feedbacks)
 
         assert payload == {
             "id": "message-1",
@@ -856,7 +858,7 @@ class TestAgentObservabilityServiceCases:
         node_execution.created_at = created_at
         node_execution.finished_at = finished_at
 
-        payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
+        payload = AgentObservabilityQueries.serialize_workflow_node_message(node_execution)
 
         assert payload == {
             "id": "node-execution-1",
@@ -919,7 +921,7 @@ class TestAgentObservabilityServiceCases:
         node_execution.created_at = created_at
         node_execution.finished_at = None
 
-        payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
+        payload = AgentObservabilityQueries.serialize_workflow_node_message(node_execution)
 
         assert payload["query"] == "Fallback prompt"
         assert payload["answer"] == '{"output": {"structured": true}}'
@@ -934,9 +936,9 @@ class TestAgentObservabilityServiceCases:
 
     @staticmethod
     def test_positive_feedback_rate_uses_rated_messages_as_denominator() -> None:
-        assert AgentObservabilityService._positive_feedback_rate(like_count=2, total_count=4) == 0.5
-        assert AgentObservabilityService._positive_feedback_rate(like_count=0, total_count=1) == 0
-        assert AgentObservabilityService._positive_feedback_rate(like_count=None, total_count=0) is None
+        assert AgentObservabilityQueries._positive_feedback_rate(like_count=2, total_count=4) == 0.5
+        assert AgentObservabilityQueries._positive_feedback_rate(like_count=0, total_count=1) == 0
+        assert AgentObservabilityQueries._positive_feedback_rate(like_count=None, total_count=0) is None
 
     @staticmethod
     def test_list_message_feedbacks_groups_feedbacks_by_message(sqlite_session: Session) -> None:
@@ -957,7 +959,7 @@ class TestAgentObservabilityServiceCases:
             ]
         )
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
 
         grouped_feedbacks = service._list_message_feedbacks(
             app=_agent_observability_service_app(),
@@ -985,7 +987,7 @@ class TestAgentObservabilityServiceCases:
             [_agent_observability_service_app(), _agent_observability_service_conversation(), *messages, *feedbacks]
         )
         sqlite_session.commit()
-        service = AgentObservabilityService(sqlite_session)
+        service = AgentObservabilityQueries(sqlite_session)
 
         rates = service._list_conversation_feedback_rates(
             app=_agent_observability_service_app(),
@@ -1003,22 +1005,22 @@ class TestAgentObservabilityServiceCases:
 
     @staticmethod
     def test_workflow_node_serialization_helpers_handle_invalid_values() -> None:
-        assert AgentObservabilityService._json_mapping(None) == {}
-        assert AgentObservabilityService._json_mapping("not-json") == {}
-        assert AgentObservabilityService._json_mapping("[]") == {}
-        assert AgentObservabilityService._mapping_value({"value": []}, "value") == {}
-        assert AgentObservabilityService._int_value(None) == 0
-        assert AgentObservabilityService._int_value("not-a-number") == 0
+        assert AgentObservabilityQueries._json_mapping(None) == {}
+        assert AgentObservabilityQueries._json_mapping("not-json") == {}
+        assert AgentObservabilityQueries._json_mapping("[]") == {}
+        assert AgentObservabilityQueries._mapping_value({"value": []}, "value") == {}
+        assert AgentObservabilityQueries._int_value(None) == 0
+        assert AgentObservabilityQueries._int_value("not-a-number") == 0
         assert (
-            AgentObservabilityService._workflow_node_query(
+            AgentObservabilityQueries._workflow_node_query(
                 {"agent_backend_request": {"composition": {"layers": "invalid"}}}, fallback="fallback"
             )
             == "fallback"
         )
         assert (
-            AgentObservabilityService._workflow_node_answer({"output": 1, "text": "fallback text"}) == "fallback text"
+            AgentObservabilityQueries._workflow_node_answer({"output": 1, "text": "fallback text"}) == "fallback text"
         )
-        assert AgentObservabilityService._workflow_node_answer({}) == ""
+        assert AgentObservabilityQueries._workflow_node_answer({}) == ""
 
     @staticmethod
     def test_serialize_workflow_execution_log_uses_node_execution_identity() -> None:
@@ -1028,7 +1030,7 @@ class TestAgentObservabilityServiceCases:
         node_execution.created_by = "account-1"
         node_execution.created_at = created_at
 
-        payload = AgentObservabilityService._serialize_workflow_execution_log(
+        payload = AgentObservabilityQueries._serialize_workflow_execution_log(
             node_execution_id=node_execution.id,
             title=node_execution.title,
             status=node_execution.status,
@@ -1075,8 +1077,8 @@ class TestAgentObservabilityServiceCases:
             },
         ]
 
-        charts = AgentObservabilityService._build_charts(rows)
-        summary = AgentObservabilityService._build_summary(rows)
+        charts = AgentObservabilityQueries._build_charts(rows)
+        summary = AgentObservabilityQueries._build_summary(rows)
 
         assert charts["token_usage"] == [
             {"date": "2026-06-16", "token_count": 30, "total_price": "0.003", "currency": "USD"},
@@ -1187,19 +1189,19 @@ def _seed_nested_agent(sqlite_session: Session, *, workflow_type: WorkflowType) 
 class TestWorkflowToolAgentStatisticsCases:
     @staticmethod
     @pytest.fixture
-    def statistics_service(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> AgentObservabilityService:
+    def statistics_service(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> AgentObservabilityQueries:
         # Keep the production joins/aggregation; adapt only MySQL functions to SQLite.
         apply_config_overrides(monkeypatch, DB_TYPE="mysql")
-        monkeypatch.setattr(observability_service_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
+        monkeypatch.setattr(observability_repository_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
         connection = sqlite_session.connection().connection.dbapi_connection
         assert isinstance(connection, Connection)
         connection.create_function("JSON_UNQUOTE", 1, lambda value: value)
-        return AgentObservabilityService(sqlite_session)
+        return AgentObservabilityQueries(sqlite_session)
 
     @staticmethod
     @pytest.mark.parametrize("workflow_type", [WorkflowType.WORKFLOW, WorkflowType.CHAT])
     def test_nested_agent_daily_statistics_preserve_source_usage_and_date(
-        sqlite_session: Session, statistics_service: AgentObservabilityService, workflow_type: WorkflowType
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries, workflow_type: WorkflowType
     ) -> None:
         app = _seed_nested_agent(sqlite_session, workflow_type=workflow_type)
         # Workflow metrics remain grouped by the outer run's date; Chatflow metrics
@@ -1252,7 +1254,7 @@ class TestWorkflowToolAgentStatisticsCases:
     )
     def test_nested_agent_statistics_reject_mismatched_ownership(
         sqlite_session: Session,
-        statistics_service: AgentObservabilityService,
+        statistics_service: AgentObservabilityQueries,
         workflow_type: WorkflowType,
         invalid_owner: str,
     ) -> None:
@@ -1293,7 +1295,7 @@ class TestWorkflowToolAgentStatisticsCases:
 
     @staticmethod
     def test_nested_agent_chat_statistics_reject_message_from_another_app(
-        sqlite_session: Session, statistics_service: AgentObservabilityService
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries
     ) -> None:
         app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.CHAT)
         message = sqlite_session.get(Message, "message-1")
