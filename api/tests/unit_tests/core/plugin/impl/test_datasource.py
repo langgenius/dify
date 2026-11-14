@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from types import SimpleNamespace
+from typing import NotRequired, TypedDict, Unpack
 
 from pytest_mock import MockerFixture
 
@@ -9,6 +11,44 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadMessage,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
+
+
+class _ProviderIdentity(TypedDict):
+    provider: str
+
+
+class _DeclarationIdentity(TypedDict):
+    name: str
+
+
+class _DatasourceEntry(TypedDict):
+    identity: _ProviderIdentity
+    output_schema: dict[str, object]
+
+
+class _Declaration(TypedDict):
+    identity: NotRequired[_DeclarationIdentity]
+    datasources: list[_DatasourceEntry]
+
+
+class _ProviderEntry(TypedDict):
+    declaration: _Declaration
+
+
+class _ListPayload(TypedDict):
+    data: list[_ProviderEntry]
+
+
+class _SinglePayload(TypedDict):
+    data: _ProviderEntry
+
+
+class _ListRequestKwargs(TypedDict):
+    transformer: Callable[[_ListPayload], _ListPayload]
+
+
+class _SingleRequestKwargs(TypedDict):
+    transformer: Callable[[_SinglePayload], _SinglePayload]
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -22,15 +62,17 @@ def _datasource_provider(name: str = "provider") -> SimpleNamespace:
 
 
 class TestPluginDatasourceManager:
-    def test_fetch_datasource_providers(self, mocker: MockerFixture):
+    def test_fetch_datasource_providers(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         provider = _datasource_provider("remote")
         repack = mocker.patch("core.plugin.impl.datasource.ToolTransformService.repack_provider")
         mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
-        def fake_request(method, path, type_, **kwargs):
+        def fake_request(
+            method: str, path: str, type_: object, **kwargs: Unpack[_ListRequestKwargs]
+        ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload = {
+            payload: _ListPayload = {
                 "data": [
                     {
                         "declaration": {
@@ -55,15 +97,17 @@ class TestPluginDatasourceManager:
         assert result[1].declaration.datasources[0].identity.provider == "org/plugin/remote"
         repack.assert_called_once_with(tenant_id="tenant-1", provider=provider)
 
-    def test_fetch_installed_datasource_providers(self, mocker: MockerFixture):
+    def test_fetch_installed_datasource_providers(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         provider = _datasource_provider("remote")
         repack = mocker.patch("core.plugin.impl.datasource.ToolTransformService.repack_provider")
         mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
-        def fake_request(method, path, type_, **kwargs):
+        def fake_request(
+            method: str, path: str, type_: object, **kwargs: Unpack[_ListRequestKwargs]
+        ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload = {
+            payload: _ListPayload = {
                 "data": [
                     {
                         "declaration": {
@@ -86,7 +130,7 @@ class TestPluginDatasourceManager:
         assert result[0].declaration.datasources[0].identity.provider == "org/plugin/remote"
         repack.assert_called_once_with(tenant_id="tenant-1", provider=provider)
 
-    def test_fetch_datasource_provider_local_and_remote(self, mocker: MockerFixture):
+    def test_fetch_datasource_provider_local_and_remote(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
 
         local = manager.fetch_datasource_provider("tenant-1", "langgenius/file/file")
@@ -95,9 +139,11 @@ class TestPluginDatasourceManager:
         remote = _datasource_provider("provider")
         mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
-        def fake_request(method, path, type_, **kwargs):
+        def fake_request(
+            method: str, path: str, type_: object, **kwargs: Unpack[_SingleRequestKwargs]
+        ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            payload = {
+            payload: _SinglePayload = {
                 "data": {
                     "declaration": {
                         "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]
@@ -116,7 +162,7 @@ class TestPluginDatasourceManager:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
 
-    def test_get_website_crawl_streaming(self, mocker: MockerFixture):
+    def test_get_website_crawl_streaming(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["crawl"])
@@ -135,7 +181,7 @@ class TestPluginDatasourceManager:
 
         assert stream_mock.call_count == 1
 
-    def test_get_online_document_pages_streaming(self, mocker: MockerFixture):
+    def test_get_online_document_pages_streaming(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["pages"])
@@ -154,7 +200,7 @@ class TestPluginDatasourceManager:
 
         assert stream_mock.call_count == 1
 
-    def test_get_online_document_page_content_streaming(self, mocker: MockerFixture):
+    def test_get_online_document_page_content_streaming(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["content"])
@@ -173,7 +219,7 @@ class TestPluginDatasourceManager:
 
         assert stream_mock.call_count == 1
 
-    def test_online_drive_browse_files_streaming(self, mocker: MockerFixture):
+    def test_online_drive_browse_files_streaming(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["browse"])
@@ -192,7 +238,7 @@ class TestPluginDatasourceManager:
 
         assert stream_mock.call_count == 1
 
-    def test_online_drive_download_file_streaming(self, mocker: MockerFixture):
+    def test_online_drive_download_file_streaming(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["download"])
@@ -212,14 +258,14 @@ class TestPluginDatasourceManager:
         stream_mock.assert_called_once()
         assert stream_mock.call_args.args[2] is OnlineDriveDownloadMessage
 
-    def test_validate_provider_credentials_returns_true_when_stream_yields_result(self, mocker: MockerFixture):
+    def test_validate_provider_credentials_returns_true_when_stream_yields_result(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter([SimpleNamespace(result=True)])
 
         assert manager.validate_provider_credentials("tenant-1", "user-1", "provider", "org/plugin", {"k": "v"}) is True
 
-    def test_validate_provider_credentials_returns_false_when_stream_empty(self, mocker: MockerFixture):
+    def test_validate_provider_credentials_returns_false_when_stream_empty(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter([])
@@ -228,7 +274,7 @@ class TestPluginDatasourceManager:
             manager.validate_provider_credentials("tenant-1", "user-1", "provider", "org/plugin", {"k": "v"}) is False
         )
 
-    def test_local_file_provider_template(self):
+    def test_local_file_provider_template(self) -> None:
         manager = PluginDatasourceManager()
 
         payload = manager._get_local_file_datasource_provider()

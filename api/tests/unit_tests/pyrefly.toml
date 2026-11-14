@@ -102,7 +102,6 @@ project-excludes = [
   "core/mcp/test_mcp_client.py",
   "core/memory/test_token_buffer_memory.py",
   "core/plugin/impl/test_base.py",
-  "core/plugin/impl/test_datasource.py",
   "core/plugin/impl/test_endpoint.py",
   "core/plugin/impl/test_model.py",
   "core/plugin/impl/test_trigger.py",
