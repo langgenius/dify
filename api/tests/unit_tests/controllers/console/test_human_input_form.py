@@ -155,7 +155,11 @@ def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
-    definition = _definition(expiration)
+    definition = FormDefinition(
+        form_content="# Pick one",
+        rendered_content="# Rendered prompt",
+        expiration_time=expiration,
+    )
     form = _form(definition=definition, tenant_id="tenant-1")
     resolved_input = SelectInputConfig(
         output_variable_name="choice",
@@ -182,7 +186,8 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         response = handler(api, "tenant-1", form_token="token")
 
     payload = json.loads(response.get_data(as_text=True))
-    assert payload["fields"] == ["a"]
+    assert payload["form_content"] == definition.form_content
+    assert payload["rendered_content"] == definition.rendered_content
     assert payload["inputs"] == [resolved_input.model_dump(mode="json")]
 
 
