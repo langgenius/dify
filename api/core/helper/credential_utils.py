@@ -75,9 +75,8 @@ def check_credential_policy_compliance(
         return
 
     # Check if credential exists in database first (if requested)
-    if check_existence:
-        if not is_credential_exists(credential_id, credential_type):
-            raise ValueError(f"Credential with id {credential_id} for provider {provider} not found.")
+    if check_existence and not is_credential_exists(credential_id, credential_type):
+        raise ValueError(f"Credential with id {credential_id} for provider {provider} not found.")
 
     # Check policy compliance
     PluginManagerService.check_credential_policy_compliance(

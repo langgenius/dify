@@ -66,8 +66,7 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[s
     datasets = dataset_configs.get("datasets", {}) or {}
     for dataset in datasets.get("datasets", []) or []:
         keys = list(dataset.keys())
-        if len(keys) == 1 and keys[0] == "dataset":
-            if dataset["dataset"].get("id"):
-                dataset_ids.add(dataset["dataset"].get("id"))
+        if len(keys) == 1 and keys[0] == "dataset" and dataset["dataset"].get("id"):
+            dataset_ids.add(dataset["dataset"].get("id"))
 
     return dataset_ids
