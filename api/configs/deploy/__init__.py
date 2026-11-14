@@ -28,6 +28,12 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
+    GC_FREEZE_ENABLED: bool = Field(
+        description="Freeze startup objects after Gunicorn worker initialization and Celery worker_ready. "
+        "Reduces full GC pauses; reference cycles among frozen objects are retained until process exit.",
+        default=True,
+    )
+
     # Request logging configuration
     ENABLE_REQUEST_LOGGING: bool = Field(
         description="Enable request and response body logging",

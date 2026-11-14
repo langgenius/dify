@@ -43,3 +43,18 @@ def post_patch(event):
 
 
 gevent_events.subscribers.append(post_patch)
+
+
+def post_worker_init(worker):
+    """After application loading, collect startup garbage and freeze surviving objects.
+
+    Gunicorn calls this once per worker before serving requests. When disabled,
+    leave GC unchanged; otherwise later request cycles remain collectable.
+    """
+    import gc
+
+    from configs import dify_config
+
+    if dify_config.GC_FREEZE_ENABLED:
+        gc.collect()
+        gc.freeze()

@@ -591,3 +591,18 @@ class TestKnowledgeFsCeleryCases:
             config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS = 7200
             with pytest.raises(ValueError, match="VISIBILITY_TIMEOUT"):
                 get_celery_broker_transport_options()
+
+
+@pytest.mark.parametrize("enabled", [True, False], ids=["enabled", "disabled"])
+def test_worker_ready_freezes_only_startup_objects(enabled: bool) -> None:
+    from tests.helpers.unit.gc_probe import assert_startup_gc_behavior
+
+    assert_startup_gc_behavior(
+        "from celery.signals import worker_ready\n"
+        "from extensions import ext_celery\n"
+        "def start():\n"
+        "    for receiver, result in worker_ready.send(sender=None):\n"
+        "        if isinstance(result, Exception):\n"
+        "            raise result\n",
+        enabled,
+    )

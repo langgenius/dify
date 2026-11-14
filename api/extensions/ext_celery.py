@@ -1,3 +1,4 @@
+import gc
 import logging
 import ssl
 from datetime import timedelta
@@ -6,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from celery import Celery, Task
 from celery.schedules import crontab
-from celery.signals import beat_init
+from celery.signals import beat_init, worker_ready
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -55,6 +56,19 @@ def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> Non
 
 
 beat_init.connect(_enqueue_initial_community_telemetry_heartbeat, weak=False)
+
+
+@worker_ready.connect
+def _freeze_startup_objects(sender: Any, **kwargs: Any) -> None:
+    """After task imports, collect startup garbage and freeze survivors before work.
+
+    Called once in the ready worker process; prefork pool children are not covered
+    by this signal. When disabled, leave GC unchanged. New task cycles remain
+    collectable after freezing; cycles among startup survivors remain permanent.
+    """
+    if dify_config.GC_FREEZE_ENABLED:
+        gc.collect()
+        gc.freeze()
 
 
 def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
