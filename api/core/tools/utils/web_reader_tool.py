@@ -43,7 +43,9 @@ def get_url(url: str, user_agent: str | None = None) -> str:
         # check content-type
         content_type = response.headers.get("Content-Type")
         if content_type:
-            main_content_type = response.headers.get("Content-Type").split(";")[0].strip()
+            # Media types are case-insensitive (RFC 9110); normalize so a server
+            # returning e.g. `TEXT/HTML` is treated exactly like `text/html`.
+            main_content_type = response.headers.get("Content-Type").split(";")[0].strip().lower()
         else:
             content_disposition = response.headers.get("Content-Disposition", "")
             filename_match = re.search(r'filename="([^"]+)"', content_disposition)
