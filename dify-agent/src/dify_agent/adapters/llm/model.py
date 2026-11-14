@@ -12,7 +12,6 @@ from __future__ import annotations
 import base64
 import logging
 import math
-import re
 import time
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
@@ -52,7 +51,6 @@ from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
-    ModelResponsePart,
     ModelResponseStreamEvent,
     MultiModalContent,
     RetryPromptPart,
@@ -77,11 +75,8 @@ from pydantic_ai.usage import RequestUsage
 
 from .provider import DifyLLMClient
 
-_THINK_START = "<think>\n"
-_THINK_END = "\n</think>"
 _THINK_OPEN_TAG = "<think>"
 _THINK_CLOSE_TAG = "</think>"
-_THINK_TAG_PATTERN = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 _DETAIL_HIGH = "high"
 # ToolCallPart.provider_details key holding the plugin's own id when the adapter renamed a call.
 _PROVIDER_TOOL_CALL_ID_DETAIL = "dify_provider_tool_call_id"
@@ -284,6 +279,7 @@ class DifyStreamedResponse(StreamedResponse):
             raise
 
     async def _iterate_gateway_events(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        """Retain delivered usage before mapping content; flush pending tag prefixes only at natural EOF."""
         chunk_sequence = 0
         async for chunk in self.chunks:
             self._observe_trace_usage(chunk)
@@ -632,6 +628,10 @@ def _map_model_response_to_prompt_message(
 ) -> AssistantPromptMessage | None:
     """Map prior assistant output into daemon prompt history.
 
+    Graphon's assistant schema has no reasoning field. Exclude ``ThinkingPart``
+    instead of replaying reasoning as literal ``<think>`` markup in assistant
+    content; the original parts remain in native session history.
+
     The plugin daemon requires ``PromptMessage.content`` to be present even when
     an assistant turn contains only tool calls. Tool-call-only assistant history
     therefore uses the empty string instead of ``null`` so the second request in
@@ -645,8 +645,7 @@ def _map_model_response_to_prompt_message(
             if part.content:
                 content_parts.append(TextPromptMessageContent(data=part.content))
         elif isinstance(part, ThinkingPart):
-            if part.content:
-                content_parts.append(TextPromptMessageContent(data=f"{_THINK_START}{part.content}{_THINK_END}"))
+            continue
         elif isinstance(part, FilePart):
             content_parts.append(_map_binary_content_to_prompt_content(part.content))
         elif isinstance(part, ToolCallPart):
@@ -881,11 +880,14 @@ def _chunk_to_stream_events(
         if message.content:
             events.extend(embedded_thinking_parser.parse(parts_manager, message.content, provider_name))
     elif isinstance(message.content, list):
-        for part in _map_assistant_content_to_response_parts(message.content):
-            if isinstance(part, TextPart):
-                events.extend(embedded_thinking_parser.parse(parts_manager, part.content, provider_name))
+        for item in message.content:
+            if isinstance(item, TextPromptMessageContent):
+                if item.data:
+                    events.extend(embedded_thinking_parser.parse(parts_manager, item.data, provider_name))
             else:
-                events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
+                file_part = _map_assistant_multimodal_content_to_file_part(item)
+                if file_part is not None:
+                    events.append(parts_manager.handle_part(vendor_part_id=None, part=file_part))
 
     for tool_call, (tool_call_id, provider_tool_call_id) in zip(message.tool_calls, tool_call_ids, strict=True):
         events.append(
@@ -906,41 +908,24 @@ def _chunk_to_stream_events(
     return events
 
 
-def _map_assistant_content_to_response_parts(
-    content: Sequence[PromptMessageContentUnionTypes],
-) -> list[ModelResponsePart]:
-    response_parts: list[ModelResponsePart] = []
-
-    for item in content:
-        if isinstance(item, TextPromptMessageContent):
-            if item.data:
-                response_parts.extend(_parse_assistant_text_parts(item.data))
-        elif isinstance(
-            item,
-            ImagePromptMessageContent
-            | AudioPromptMessageContent
-            | VideoPromptMessageContent
-            | DocumentPromptMessageContent,
-        ):
-            if item.url:
-                raise UnexpectedModelBehavior(
-                    "URL-based assistant multimodal output is not supported by the daemon adapter"
-                )
-            if not item.base64_data:
-                continue
-            response_parts.append(
-                FilePart(
-                    content=BinaryContent(
-                        data=base64.b64decode(item.base64_data),
-                        media_type=item.mime_type,
-                    ),
-                    provider_name=None,
-                )
-            )
-        else:
-            assert_never(item)
-
-    return response_parts
+def _map_assistant_multimodal_content_to_file_part(
+    item: ImagePromptMessageContent
+    | AudioPromptMessageContent
+    | VideoPromptMessageContent
+    | DocumentPromptMessageContent,
+) -> FilePart | None:
+    """Map inline assistant media, rejecting URLs and skipping empty file payloads."""
+    if item.url:
+        raise UnexpectedModelBehavior("URL-based assistant multimodal output is not supported by the daemon adapter")
+    if not item.base64_data:
+        return None
+    return FilePart(
+        content=BinaryContent(
+            data=base64.b64decode(item.base64_data),
+            media_type=item.mime_type,
+        ),
+        provider_name=None,
+    )
 
 
 def _get_detail(item: ImageUrl | BinaryContent) -> str | None:
@@ -949,29 +934,15 @@ def _get_detail(item: ImageUrl | BinaryContent) -> str | None:
     return detail if isinstance(detail, str) else None
 
 
-def _parse_assistant_text_parts(content: str) -> list[ModelResponsePart]:
-    response_parts: list[ModelResponsePart] = []
-    cursor = 0
-
-    for match in _THINK_TAG_PATTERN.finditer(content):
-        if match.start() > cursor:
-            response_parts.append(TextPart(content=content[cursor : match.start()], provider_name=None))
-
-        thinking_content = match.group(1).strip("\n")
-        if thinking_content:
-            response_parts.append(ThinkingPart(content=thinking_content, provider_name=None))
-        cursor = match.end()
-
-    if cursor < len(content):
-        response_parts.append(TextPart(content=content[cursor:], provider_name=None))
-
-    if response_parts:
-        return response_parts
-    return [TextPart(content=content, provider_name=None)]
-
-
 @dataclass(slots=True)
 class _EmbeddedThinkingParser:
+    """Separate streamed thinking from text, discarding stray ``</think>`` tags.
+
+    ``parse`` tracks open thinking blocks and buffers incomplete tag prefixes in
+    ``_pending``. The owning response calls ``flush`` only after natural EOF to
+    emit unfinished prefixes in the active channel; early exits leave buffered prefixes unflushed.
+    """
+
     _pending: str = ""
     _inside_thinking: bool = False
 
@@ -1012,21 +983,34 @@ class _EmbeddedThinkingParser:
                     )
                 break
 
-            start_index = buffer.find(_THINK_OPEN_TAG)
-            if start_index >= 0:
-                if start_index > 0:
+            open_index = buffer.find(_THINK_OPEN_TAG)
+            close_index = buffer.find(_THINK_CLOSE_TAG)
+            if open_index >= 0 and (close_index < 0 or open_index < close_index):
+                if open_index > 0:
                     events.extend(
                         parts_manager.handle_text_delta(
                             vendor_part_id=None,
-                            content=buffer[:start_index],
+                            content=buffer[:open_index],
                             provider_name=provider_name,
                         )
                     )
-                buffer = buffer[start_index + len(_THINK_OPEN_TAG) :]
+                buffer = buffer[open_index + len(_THINK_OPEN_TAG) :]
                 self._inside_thinking = True
                 continue
 
-            safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_OPEN_TAG)
+            if close_index >= 0:
+                if close_index > 0:
+                    events.extend(
+                        parts_manager.handle_text_delta(
+                            vendor_part_id=None,
+                            content=buffer[:close_index],
+                            provider_name=provider_name,
+                        )
+                    )
+                buffer = buffer[close_index + len(_THINK_CLOSE_TAG) :]
+                continue
+
+            safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_OPEN_TAG, _THINK_CLOSE_TAG)
             if safe_content:
                 events.extend(
                     parts_manager.handle_text_delta(
@@ -1066,8 +1050,10 @@ class _EmbeddedThinkingParser:
         )
 
 
-def _split_incomplete_tag_suffix(content: str, tag: str) -> tuple[str, str]:
-    for suffix_length in range(len(tag) - 1, 0, -1):
-        if content.endswith(tag[:suffix_length]):
-            return content[:-suffix_length], content[-suffix_length:]
+def _split_incomplete_tag_suffix(content: str, *tags: str) -> tuple[str, str]:
+    tag_start = content.rfind("<")
+    if tag_start >= 0:
+        suffix = content[tag_start:]
+        if any(tag.startswith(suffix) and suffix != tag for tag in tags):
+            return content[:tag_start], suffix
     return content, ""
