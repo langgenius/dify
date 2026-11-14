@@ -68,7 +68,11 @@ from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from tests.helpers.unit.core.model_fixtures import make_model_config
@@ -283,6 +287,29 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
                 answer="Hello, world!", message_id="test-message-id", event_type=StreamEvent.MESSAGE
             )
+            assert task_state.llm_result.message.content == "Hello, world!"
+
+        def test_llm_chunk_prompt_is_taken_from_the_chunk_that_carries_it(
+            self, pipeline: EasyUIBasedGenerateTaskPipeline, queue_manager: _QueueManager, task_state: EasyUITaskState
+        ) -> None:
+            """The prompt comes once, on the first chunk, even when that chunk has no text."""
+            prompt = [UserPromptMessage(content="question")]
+            first = LLMResultChunk(
+                model="test-model",
+                prompt_messages=prompt,
+                delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=None)),
+            )
+            queue_manager.messages = [
+                queue_message(QueueLLMChunkEvent(chunk=first)),
+                queue_message(QueueLLMChunkEvent(chunk=llm_chunk("Hello"))),
+                queue_message(QueueLLMChunkEvent(chunk=llm_chunk(", world!"))),
+            ]
+
+            responses = list(pipeline._process_stream_response(publisher=None))
+
+            assert len(responses) == 2
+            # Later chunks carry no prompt and do not clear the one already taken.
+            assert list(task_state.llm_result.prompt_messages) == prompt
             assert task_state.llm_result.message.content == "Hello, world!"
 
         def test_llm_chunk_event_with_list_content(self, pipeline, mock_message_cycle_manager, task_state):
