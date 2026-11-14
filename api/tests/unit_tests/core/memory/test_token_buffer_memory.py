@@ -439,7 +439,9 @@ class TestGetHistoryPromptMessages:
         expected_length: int,
     ) -> None:
         mem = self._make_memory(database)
-        mem.model_instance.get_llm_num_tokens.side_effect = token_values
+        model_instance = mem.model_instance
+        assert isinstance(model_instance, MagicMock)
+        model_instance.get_llm_num_tokens.side_effect = token_values
         _persist_message(database, mem.conversation.id)
 
         result = mem.get_history_prompt_messages(max_token_limit=max_token_limit)
