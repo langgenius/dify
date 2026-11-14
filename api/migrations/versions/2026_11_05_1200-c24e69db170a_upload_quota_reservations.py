@@ -1,7 +1,7 @@
 """Durable workspace upload reservations and a covering usage index.
 
 Revision ID: c24e69db170a
-Revises: 53c10126d551
+Revises: 8c2f5d7a1e30
 Create Date: 2026-11-05 12:00:00
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 from models.types import LongText, StringUUID
 
 revision = "c24e69db170a"
-down_revision = "53c10126d551"
+down_revision = "8c2f5d7a1e30"
 branch_labels = None
 depends_on = None
 
