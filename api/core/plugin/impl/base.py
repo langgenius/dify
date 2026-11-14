@@ -313,6 +313,23 @@ class BasePluginClient:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
         """
+        response = self._request_plugin_daemon(method, path, headers, data, params, files)
+        return self._parse_plugin_daemon_response(response, path, type_, transformer)
+
+    def _request_plugin_daemon(
+        self,
+        method: str,
+        path: str,
+        headers: dict[str, str] | None = None,
+        data: bytes | dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """Send a request to the plugin daemon inner API and return its successful HTTP response.
+
+        Callers that can recognize an unchanged response body use this to skip
+        ``_parse_plugin_daemon_response``. Transport and HTTP status failures are raised here.
+        """
         try:
             response = self._request(method, path, headers, data, params, files)
             response.raise_for_status()
@@ -327,6 +344,16 @@ class BasePluginClient:
             logger.exception("Failed to request plugin daemon, url: %s", path)
             raise ValueError(msg) from e
 
+        return response
+
+    def _parse_plugin_daemon_response[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
+        self,
+        response: httpx.Response,
+        path: str,
+        type_: type[T],
+        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+    ) -> T:
+        """Validate a successful plugin daemon response as ``type_`` and raise the daemon's own errors."""
         try:
             json_response = response.json()
             if transformer:

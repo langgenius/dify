@@ -14,6 +14,7 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstallationSourceRecord,
     PluginInstalledIdsDaemonResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
@@ -264,6 +265,23 @@ class PluginInstaller(BasePluginClient):
             "POST",
             f"plugin/{tenant_id}/management/installation/fetch/batch",
             list[PluginInstallation],
+            data={"plugin_ids": plugin_ids},
+            headers={"Content-Type": "application/json"},
+        )
+
+    def fetch_plugin_installation_sources_by_ids(
+        self, tenant_id: str, plugin_ids: Sequence[str]
+    ) -> Sequence[PluginInstallationSourceRecord]:
+        """
+        Fetch only the installation source of each installation of ``plugin_ids``.
+
+        Same daemon request as ``fetch_plugin_installation_by_ids``; the plugin declarations in the
+        response are not validated.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/installation/fetch/batch",
+            list[PluginInstallationSourceRecord],
             data={"plugin_ids": plugin_ids},
             headers={"Content-Type": "application/json"},
         )

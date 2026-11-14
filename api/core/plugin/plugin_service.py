@@ -47,6 +47,7 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstallationSourceRecord,
     PluginInstallTask,
     PluginInstallTaskStatus,
     PluginListResponse,
@@ -60,7 +61,7 @@ from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model import PluginModelClient, PluginModelProviderListing
 from core.plugin.impl.plugin import PluginInstaller
 from enums import DeploymentEdition
 from extensions.ext_database import db
@@ -122,6 +123,13 @@ class PluginService:
         OrderedDict()
     )
     _parsed_plugin_model_providers_cache_lock = Lock()
+    # Declarations built from a daemon listing are a function of that listing and of the
+    # installation sources resolved for it. With the Redis cache disabled the daemon is still
+    # asked on every call; this only avoids rebuilding declarations from unchanged inputs.
+    _daemon_listing_declarations_cache: OrderedDict[
+        tuple[tuple[int, bytes], tuple[tuple[str, str], ...]], tuple[PluginModelProviderDeclaration, ...]
+    ] = OrderedDict()
+    _daemon_listing_declarations_cache_lock = Lock()
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
     # the visible endpoint drawer exercise the same daemon pagination path.
@@ -198,7 +206,7 @@ class PluginService:
             return {}
 
         try:
-            installations = cls.list_installations_from_ids(tenant_id, unresolved_plugin_ids)
+            installations = cls.list_installation_sources_from_ids(tenant_id, unresolved_plugin_ids)
         except Exception:
             logger.warning(
                 "Failed to resolve model provider installation sources for tenant %s.",
@@ -543,16 +551,43 @@ class PluginService:
     def _fetch_plugin_model_providers_uncached(
         cls, tenant_id: str, client: PluginModelClient | None
     ) -> tuple[PluginModelProviderDeclaration, ...]:
+        """Read the tenant's providers through to the daemon and build their declarations.
+
+        The daemon request and the installation-source lookup happen on every call. Declarations
+        are rebuilt only when the listing or the resolved sources differ from recent calls.
+        Postcondition: the result equals the declarations built from this call's daemon answers.
+        """
         model_client = client or PluginModelClient()
         providers = model_client.fetch_model_providers(tenant_id)
         installation_sources = cls._resolve_model_provider_installation_sources(tenant_id, providers)
-        return tuple(
+
+        cache = cls._daemon_listing_declarations_cache
+        cache_key = None
+        if isinstance(providers, PluginModelProviderListing):
+            cache_key = (
+                providers.payload_key,
+                tuple(sorted((identifier, source.value) for identifier, source in installation_sources.items())),
+            )
+            with cls._daemon_listing_declarations_cache_lock:
+                declarations = cache.get(cache_key)
+                if declarations is not None:
+                    cache.move_to_end(cache_key)
+                    return declarations
+
+        declarations = tuple(
             cls._to_provider_entity(
                 provider,
                 provider.installation_source or installation_sources.get(provider.plugin_unique_identifier),
             )
             for provider in providers
         )
+        if cache_key is not None:
+            with cls._daemon_listing_declarations_cache_lock:
+                cache[cache_key] = declarations
+                cache.move_to_end(cache_key)
+                while len(cache) > cls.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES:
+                    cache.popitem(last=False)
+        return declarations
 
     @classmethod
     def _fetch_and_cache_plugin_model_providers(
@@ -953,6 +988,14 @@ class PluginService:
         """
         manager = PluginInstaller()
         return manager.fetch_plugin_installation_by_ids(tenant_id, ids)
+
+    @staticmethod
+    def list_installation_sources_from_ids(
+        tenant_id: str, ids: Sequence[str]
+    ) -> Sequence[PluginInstallationSourceRecord]:
+        """List where the installations of ``ids`` were installed from, without their declarations."""
+        manager = PluginInstaller()
+        return manager.fetch_plugin_installation_sources_by_ids(tenant_id, ids)
 
     @classmethod
     def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:

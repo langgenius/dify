@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import io
 import json
 from types import SimpleNamespace
@@ -12,11 +13,12 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import (
     PluginDaemonInnerError,
     PluginModelProviderDeclaration,
+    PluginModelProviderEntity,
     PluginStringResultResponse,
 )
 from core.plugin.impl import base as client_module
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
-from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model import PluginModelClient, PluginModelProviderListing
 from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -31,26 +33,119 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from tests.helpers.unit.model_provider_daemon_fixtures import ModelProviderDaemon
+
+
+def _model_provider(provider: str) -> PluginModelProviderEntity:
+    return PluginModelProviderEntity(
+        id=f"record-{provider}",
+        created_at=datetime.datetime(2026, 11, 13, 12, 0, 0),
+        updated_at=datetime.datetime(2026, 11, 13, 12, 0, 0),
+        provider=provider,
+        tenant_id="tenant-1",
+        plugin_unique_identifier=f"langgenius/{provider}:1.0.0@checksum",
+        plugin_id=f"langgenius/{provider}",
+        declaration=ProviderEntity(
+            provider=provider,
+            label=I18nObject(en_US=provider.title()),
+            supported_model_types=[],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        ),
+    )
+
 
 PLUGIN_IDENTIFIER = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
 class TestModelClientCases:
     class TestPluginModelClient:
-        def test_fetch_model_providers(self, mocker: MockerFixture):
+        def test_fetch_model_providers(self, model_provider_daemon: ModelProviderDaemon) -> None:
+            provider = _model_provider("openai")
+            model_provider_daemon.serve_providers(provider)
+
+            result = PluginModelClient().fetch_model_providers("tenant-1")
+
+            assert list(result) == [provider]
+            assert model_provider_daemon.listing_requests == [("tenant-1", {"page": "1", "page_size": "256"})]
+
+        def test_fetch_model_providers_validates_an_unchanged_listing_once(
+            self, model_provider_daemon: ModelProviderDaemon
+        ) -> None:
+            model_provider_daemon.serve_providers(_model_provider("openai"), _model_provider("anthropic"))
             client = PluginModelClient()
-            request_mock = mocker.patch.object(
-                client, "_request_with_plugin_daemon_response", return_value=["provider-a"]
-            )
 
-            result = client.fetch_model_providers("tenant-1")
+            first = client.fetch_model_providers("tenant-1")
+            second = client.fetch_model_providers("tenant-1")
+            from_another_client = PluginModelClient().fetch_model_providers("tenant-1")
 
-            assert result == ["provider-a"]
-            assert request_mock.call_args.args[:2] == (
-                "GET",
-                "plugin/tenant-1/management/models",
-            )
-            assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
+            assert isinstance(first, PluginModelProviderListing)
+            assert [provider.provider for provider in first] == ["openai", "anthropic"]
+            assert second is first
+            assert from_another_client is first
+            assert len(model_provider_daemon.listing_requests) == 3
+
+        def test_fetch_model_providers_validates_a_changed_listing_again(
+            self, model_provider_daemon: ModelProviderDaemon
+        ) -> None:
+            client = PluginModelClient()
+            model_provider_daemon.serve_providers(_model_provider("openai"))
+            before = client.fetch_model_providers("tenant-1")
+            unchanged_body = model_provider_daemon.listing_body
+
+            model_provider_daemon.serve_providers(_model_provider("openai"), _model_provider("anthropic"))
+            after = client.fetch_model_providers("tenant-1")
+
+            assert isinstance(before, PluginModelProviderListing)
+            assert isinstance(after, PluginModelProviderListing)
+            assert [provider.provider for provider in after] == ["openai", "anthropic"]
+            assert after.payload_key != before.payload_key
+
+            model_provider_daemon.listing_body = unchanged_body
+            assert client.fetch_model_providers("tenant-1") is before
+
+        def test_fetch_model_providers_does_not_keep_an_invalid_listing(
+            self, model_provider_daemon: ModelProviderDaemon
+        ) -> None:
+            client = PluginModelClient()
+            model_provider_daemon.listing_body = model_provider_daemon.envelope([{"provider": "incomplete"}])
+
+            with pytest.raises(ValueError, match="Failed to parse response from plugin daemon"):
+                client.fetch_model_providers("tenant-1")
+            with pytest.raises(ValueError, match="Failed to parse response from plugin daemon"):
+                client.fetch_model_providers("tenant-1")
+
+            model_provider_daemon.serve_providers(_model_provider("openai"))
+            assert [provider.provider for provider in client.fetch_model_providers("tenant-1")] == ["openai"]
+
+        def test_fetch_model_providers_keeps_only_the_most_recent_listings(
+            self, model_provider_daemon: ModelProviderDaemon
+        ) -> None:
+            client = PluginModelClient()
+            model_provider_daemon.serve_providers(_model_provider("provider-0"))
+            oldest_body = model_provider_daemon.listing_body
+            oldest = client.fetch_model_providers("tenant-1")
+            model_provider_daemon.serve_providers(_model_provider("provider-1"))
+            second_oldest_body = model_provider_daemon.listing_body
+            second_oldest = client.fetch_model_providers("tenant-1")
+            later_names = [
+                f"provider-{index}" for index in range(2, PluginModelClient.MODEL_PROVIDER_LISTING_CACHE_MAX_ENTRIES)
+            ]
+            for name in later_names:
+                model_provider_daemon.serve_providers(_model_provider(name))
+                client.fetch_model_providers("tenant-1")
+
+            # Reading the oldest listing again makes the second oldest the next one to be dropped.
+            model_provider_daemon.listing_body = oldest_body
+            assert client.fetch_model_providers("tenant-1") is oldest
+            model_provider_daemon.serve_providers(_model_provider("one-more"))
+            client.fetch_model_providers("tenant-1")
+
+            model_provider_daemon.listing_body = oldest_body
+            assert client.fetch_model_providers("tenant-1") is oldest
+            model_provider_daemon.listing_body = second_oldest_body
+            reparsed = client.fetch_model_providers("tenant-1")
+            assert reparsed is not second_oldest
+            assert list(reparsed) == list(second_oldest)
 
         def test_fetch_model_provider_bindings(self, mocker: MockerFixture):
             client = PluginModelClient()
