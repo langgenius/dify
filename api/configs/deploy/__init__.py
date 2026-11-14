@@ -53,3 +53,9 @@ class DeploymentConfig(BaseSettings):
         description="Deployment environment (e.g., 'PRODUCTION', 'DEVELOPMENT'), default to PRODUCTION",
         default="PRODUCTION",
     )
+
+    GC_FREEZE_AFTER_STARTUP: bool = Field(
+        description="Freeze the objects alive once an API or worker process has started, so that full garbage "
+        "collections scan request state instead of the whole process",
+        default=True,
+    )
