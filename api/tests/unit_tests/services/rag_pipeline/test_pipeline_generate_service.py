@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -16,7 +17,7 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 
 
 @pytest.fixture
-def pipeline_generator(mocker: MockerFixture):
+def pipeline_generator(mocker: MockerFixture) -> MagicMock:
     return mocker.create_autospec(PipelineGenerator, instance=True, spec_set=True)
 
 
@@ -116,7 +117,13 @@ def test_get_max_active_requests_returns_zero_when_all_unlimited(
         (InvokeFrom.DEBUGGER, _make_workflow(), None),
     ],
 )
-def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_error, sqlite_session: Session) -> None:
+def test_get_workflow(
+    mocker: MockerFixture,
+    invoke_from: InvokeFrom,
+    workflow: Workflow | None,
+    expected_error: str | None,
+    sqlite_session: Session,
+) -> None:
     rag_pipeline_service_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.RagPipelineService")
     rag_pipeline_service = rag_pipeline_service_cls.return_value
     rag_pipeline_service.get_draft_workflow.return_value = workflow
@@ -134,7 +141,7 @@ def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_err
 
 
 def test_generate_updates_document_status_and_returns_event_stream(
-    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator: MagicMock
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline()
@@ -171,7 +178,7 @@ def test_generate_updates_document_status_and_returns_event_stream(
 
 
 def test_generate_rejects_pipeline_dataset_from_another_tenant(
-    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator: MagicMock
 ) -> None:
     dataset = _make_dataset(tenant_id="tenant-2")
     pipeline = _make_pipeline()
@@ -196,7 +203,7 @@ def test_generate_rejects_pipeline_dataset_from_another_tenant(
 def test_generate_rejects_original_document_outside_pipeline_dataset_before_dispatch(
     mocker: MockerFixture,
     sqlite_session: Session,
-    pipeline_generator,
+    pipeline_generator: MagicMock,
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline()
@@ -264,7 +271,7 @@ def test_update_document_status_rejects_document_outside_owner(
 
 
 def test_generate_single_iteration_delegates(
-    mocker: MockerFixture, sqlite_session: Session, pipeline_generator
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator: MagicMock
 ) -> None:
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=_make_workflow())
 
@@ -290,7 +297,9 @@ def test_generate_single_iteration_delegates(
 # --- generate_single_loop ---
 
 
-def test_generate_single_loop_delegates(mocker: MockerFixture, sqlite_session: Session, pipeline_generator) -> None:
+def test_generate_single_loop_delegates(
+    mocker: MockerFixture, sqlite_session: Session, pipeline_generator: MagicMock
+) -> None:
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=_make_workflow())
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
