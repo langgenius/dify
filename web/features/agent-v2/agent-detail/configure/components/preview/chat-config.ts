@@ -8,6 +8,7 @@ import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
+import type { UserInputFormItem } from '@/types/app'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -101,6 +102,7 @@ const toInputType = (type: string): InputVarType => {
   if (type === InputVarType.paragraph) return InputVarType.paragraph
   if (type === InputVarType.select) return InputVarType.select
   if (type === InputVarType.number) return InputVarType.number
+  if (type === InputVarType.checkbox) return InputVarType.checkbox
   if (type === InputVarType.json || type === InputVarType.jsonObject) return InputVarType.json
 
   return InputVarType.textInput
@@ -116,7 +118,8 @@ const toInputForm = (variable: NonNullable<AgentSoulConfig['app_variables']>[num
     variable: variableKey,
     type: toInputType(variable.type),
     required: variable.required ?? true,
-    hide: false,
+    hide: variable.hide ?? false,
+    options: variable.options,
   }
 }
 
@@ -184,6 +187,66 @@ const toLegacyPreviewDatasetConfigs = (
   }
 }
 
+const toLegacyDefaultValue = (defaultValue: unknown): string => {
+  if (defaultValue === undefined || defaultValue === null) return ''
+
+  if (typeof defaultValue === 'string') return defaultValue
+
+  return JSON.stringify(defaultValue)
+}
+
+const toLegacyUserInputFormItem = (
+  variable: NonNullable<AgentSoulConfig['app_variables']>[number],
+): UserInputFormItem => {
+  const formType = toInputType(variable.type)
+  const defaultValue = toLegacyDefaultValue(variable.default)
+  const baseItem = {
+    label: variable.name,
+    variable: variable.name,
+    required: variable.required ?? true,
+    hide: variable.hide ?? false,
+  }
+
+  if (formType === InputVarType.textInput) {
+    return { 'text-input': { ...baseItem, default: defaultValue, max_length: 48 } }
+  }
+  if (formType === InputVarType.paragraph) {
+    return { paragraph: { ...baseItem, default: defaultValue } }
+  }
+  if (formType === InputVarType.select) {
+    return {
+      select: {
+        ...baseItem,
+        default: defaultValue,
+        ...(variable.options?.length ? { options: variable.options } : {}),
+      },
+    }
+  }
+  if (formType === InputVarType.number) {
+    const numericDefault =
+      typeof variable.default === 'number'
+        ? variable.default
+        : defaultValue === ''
+          ? undefined
+          : Number(defaultValue)
+
+    return {
+      number: {
+        ...baseItem,
+        default: Number.isFinite(numericDefault) ? numericDefault : defaultValue,
+      },
+    }
+  }
+  if (formType === InputVarType.checkbox) {
+    return { checkbox: { ...baseItem, default: variable.default === true } }
+  }
+  if (formType === InputVarType.json) {
+    return { json_object: { ...baseItem, default: defaultValue } }
+  }
+
+  return { 'text-input': { ...baseItem, default: defaultValue, max_length: 48 } }
+}
+
 export const buildChatConfig = ({
   agentSoulConfig,
   currentModel,
@@ -203,16 +266,7 @@ export const buildChatConfig = ({
     prompt_type: PromptMode.simple,
     chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
     completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
-    user_input_form: (agentSoulConfig?.app_variables ?? []).map((variable) => ({
-      'text-input': {
-        default: String(variable.default ?? ''),
-        label: variable.name,
-        variable: variable.name,
-        required: variable.required ?? true,
-        max_length: 48,
-        hide: false,
-      },
-    })),
+    user_input_form: (agentSoulConfig?.app_variables ?? []).map(toLegacyUserInputFormItem),
     dataset_query_variable: '',
     opening_statement: appFeatures.opening_statement ?? '',
     suggested_questions: appFeatures.suggested_questions ?? [],

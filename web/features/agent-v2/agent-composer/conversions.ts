@@ -16,6 +16,8 @@ import type {
   AgentSkill,
   AgentSoulConfigFormState,
   AgentTool,
+  AppVariable,
+  AppVariableType,
   EnvVariable,
 } from './form-state'
 import type {
@@ -483,6 +485,71 @@ const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
   })),
 })
 
+const toAppVariableType = (type: string): AppVariableType => {
+  const normalized = type.trim().toLowerCase()
+  if (normalized === 'paragraph' || normalized === 'long_text' || normalized === 'multiline')
+    return 'paragraph'
+  if (normalized === 'select') return 'select'
+  if (normalized === 'number' || normalized === 'integer' || normalized === 'float') return 'number'
+  if (normalized === 'checkbox' || normalized === 'boolean' || normalized === 'bool')
+    return 'checkbox'
+
+  return 'text-input'
+}
+
+const toAppVariableDefault = (variable: AppVariable) => {
+  if (variable.type === 'number') {
+    const trimmed = variable.default.trim()
+    if (!trimmed) return undefined
+
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  if (variable.type === 'checkbox') {
+    if (variable.default === 'true') return true
+    if (variable.default === 'false') return false
+    return undefined
+  }
+
+  return variable.default || undefined
+}
+
+const toAppVariableConfigs = (variables: AppVariable[]): AgentSoulConfig['app_variables'] =>
+  variables
+    .filter((variable) => variable.name.trim())
+    .map((variable) => ({
+      name: variable.name.trim(),
+      type: variable.type,
+      required: variable.required,
+      hide: variable.hide,
+      default: toAppVariableDefault(variable),
+      ...(variable.type === 'select' && variable.options?.length
+        ? { options: variable.options }
+        : {}),
+    }))
+
+// Ids are derived from the saved names so that two conversions of the same config
+// compare equal. Build-draft change tracking relies on this to report only real edits.
+const toAppVariableFormState = (config?: AgentSoulConfig): AppVariable[] =>
+  (config?.app_variables ?? []).map((variable, index, variables) => ({
+    id:
+      variables.findIndex((candidate) => candidate.name === variable.name) === index
+        ? variable.name
+        : `${variable.name}-${index}`,
+    name: variable.name,
+    type: toAppVariableType(variable.type),
+    required: variable.required ?? false,
+    hide: Boolean(variable.hide),
+    default:
+      variable.default === undefined || variable.default === null
+        ? ''
+        : typeof variable.default === 'string'
+          ? variable.default
+          : JSON.stringify(variable.default),
+    options: variable.options ?? undefined,
+  }))
+
 const toConfigSkillConfigs = (
   skills: AgentSkill[],
   baseConfig?: AgentSoulConfig,
@@ -631,6 +698,7 @@ export const formStateToAgentSoulConfig = ({
     app_features: formState.appFeatures ?? baseConfig?.app_features,
     knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
     env: toEnvConfig(formState.envVariables),
+    app_variables: toAppVariableConfigs(formState.appVariables),
     config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
     config_files: toConfigFileConfigs(formState.files, baseConfig),
     config_note: formState.configNote,
@@ -654,6 +722,7 @@ export const agentSoulConfigToFormState = (
     tools: [...providerToolState.tools, ...toCliToolFormState(config)],
     knowledgeRetrievals: toKnowledgeRetrievalFormState(config),
     envVariables: toEnvVariableFormState(config),
+    appVariables: toAppVariableFormState(config),
     toolSettings: providerToolState.toolSettings,
   }
 }
