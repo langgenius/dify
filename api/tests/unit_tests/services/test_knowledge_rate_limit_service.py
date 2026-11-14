@@ -119,7 +119,9 @@ def test_same_millisecond_requests_are_counted_separately(limiter_env: LimiterEn
     assert redis_stub.zcard("rate_limit_tenant-1") == 2
 
 
-def test_members_keep_timestamp_score_for_window_cleanup(limiter_env: LimiterEnv, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_members_keep_timestamp_score_for_window_cleanup(
+    limiter_env: LimiterEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Scores stay millisecond timestamps so the 60s purge logic is untouched."""
     redis_stub, clock, _ = limiter_env
     monkeypatch.setattr(
