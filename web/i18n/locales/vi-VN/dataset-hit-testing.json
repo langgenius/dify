@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Số lượng phụ kiện khối đơn không được vượt quá {{limit}}",
   "imageUploader.tip": "Tải lên hoặc thả hình ảnh (Tối đa {{batchCount}}, {{size}}MB mỗi ảnh)",
   "imageUploader.tooltip": "Tải hình ảnh lên (Tối đa {{batchCount}}, {{size}}MB mỗi ảnh)",
-  "input.countWarning": "Tối đa 200 ký tự.",
+  "input.countWarning": "Tối đa 16000 ký tự.",
   "input.placeholder": "Vui lòng nhập một văn bản, khuyến nghị sử dụng một câu khẳng định ngắn.",
   "input.testing": "Đang kiểm tra",
   "input.title": "Văn bản nguồn",

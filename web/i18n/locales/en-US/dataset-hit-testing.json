@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "The number of single chunk attachments cannot exceed {{limit}}",
   "imageUploader.tip": "Upload or drop images (Max {{batchCount}}, {{size}}MB each)",
   "imageUploader.tooltip": "Upload images (Max {{batchCount}}, {{size}}MB each)",
-  "input.countWarning": "Up to 200 characters.",
+  "input.countWarning": "Up to 16000 characters.",
   "input.placeholder": "Please enter a text, a short declarative sentence is recommended.",
   "input.testing": "Test",
   "input.title": "Source text",

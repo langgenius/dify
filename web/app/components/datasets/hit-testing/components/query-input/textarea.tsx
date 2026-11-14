@@ -22,7 +22,7 @@ const Textarea = ({
   onBlur,
 }: TextareaProps) => {
   const { t } = useTranslation(['datasetHitTesting'])
-  const isOverLimit = text.length > 200
+  const isOverLimit = text.length > 16000
   const errorId = `${id}-error`
 
   return (
@@ -61,7 +61,7 @@ const Textarea = ({
             <TooltipTrigger
               render={
                 <div className="bg-util-colors-red-red-100 py-1 pe-2 system-2xs-medium-uppercase text-util-colors-red-red-600">
-                  {`${text.length}/200`}
+                  {`${text.length}/16000`}
                 </div>
               }
             />
@@ -71,7 +71,7 @@ const Textarea = ({
           </Tooltip>
         ) : (
           <div className="bg-background-section-burn py-1 pe-2 system-2xs-medium-uppercase text-text-tertiary">
-            {`${text.length}/200`}
+            {`${text.length}/16000`}
           </div>
         )}
       </div>

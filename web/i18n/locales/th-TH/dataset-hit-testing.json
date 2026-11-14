@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "จำนวนของไฟล์แนบแบบชิ้นเดียวไม่สามารถเกิน {{limit}}",
   "imageUploader.tip": "อัปโหลดหรือลากภาพลง (สูงสุด {{batchCount}} รูป, {{size}}MB ต่อรูป)",
   "imageUploader.tooltip": "อัปโหลดรูปภาพ (สูงสุด {{batchCount}} รูป, {{size}}MB ต่อรูป)",
-  "input.countWarning": "สูงสุด 200 อักขระ",
+  "input.countWarning": "สูงสุด 16000 อักขระ",
   "input.placeholder": "กรุณาป้อนข้อความแนะนําให้ใช้ประโยคประกาศสั้น ๆ",
   "input.testing": "การทดสอบ",
   "input.title": "ข้อความต้นฉบับ",
