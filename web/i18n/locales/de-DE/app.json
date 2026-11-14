@@ -336,5 +336,6 @@
   "types.all": "Alle",
   "types.chatbot": "Chatbot",
   "types.completion": "Vervollständigung",
+  "types.evaluationWorkflow": "Evaluierungs-Workflow",
   "types.workflow": "Arbeitsablauf"
 }

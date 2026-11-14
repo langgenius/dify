@@ -43,6 +43,7 @@ function EditableSnippetInputs() {
         snippet={snippet}
         fields={fields}
         readonly={false}
+        evaluationEnabled={false}
         onFieldsChange={setFields}
       />
     </aside>

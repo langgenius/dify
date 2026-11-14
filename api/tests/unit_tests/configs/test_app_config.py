@@ -11,7 +11,7 @@ from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.deploy import IMEventTransportMode
-from configs.feature import OpsTraceConfig
+from configs.feature import EvaluationConfig, OpsTraceConfig
 from enums import DeploymentEdition
 
 
@@ -50,6 +50,24 @@ def test_im_event_transport_mode_defaults_to_webhook() -> None:
 def test_im_event_transport_mode_rejects_invalid_values() -> None:
     with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
         _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE="SOCKET")
+
+
+def test_evaluation_config_rejects_heartbeat_interval_not_shorter_than_lease() -> None:
+    with pytest.raises(ValidationError, match="heartbeat interval must be shorter than the lease timeout"):
+        EvaluationConfig(
+            EVALUATION_RUN_HEARTBEAT_INTERVAL=60,
+            EVALUATION_RUN_LEASE_TIMEOUT=60,
+        )
+
+
+def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> None:
+    config = EvaluationConfig(
+        EVALUATION_RUN_HEARTBEAT_INTERVAL=30,
+        EVALUATION_RUN_LEASE_TIMEOUT=180,
+    )
+
+    assert config.EVALUATION_RUN_MAX_RETRIES == 3
+    assert config.EVALUATION_RUN_RETRY_DELAY == 30
 
 
 class _IsolatedDifyConfig(DifyConfig):

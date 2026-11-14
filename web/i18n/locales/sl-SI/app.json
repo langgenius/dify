@@ -336,5 +336,6 @@
   "types.all": "Vse",
   "types.chatbot": "Klepetalnik",
   "types.completion": "Dopolnjevanje",
+  "types.evaluationWorkflow": "Delovni tok za vrednotenje",
   "types.workflow": "Potek dela"
 }

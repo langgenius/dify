@@ -52,11 +52,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/chart-view.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -135,11 +130,6 @@
   "web/app/components/app-sidebar/dataset-info/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/app-sidebar/nav-link/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 10
     }
   },
   "web/app/components/app/access-config/index.tsx": {
@@ -750,11 +740,6 @@
   "web/app/components/app/workflow-log/list.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 2
-    }
-  },
-  "web/app/components/apps/app-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
     }
   },
   "web/app/components/apps/app-list-header.tsx": {
@@ -3496,11 +3481,6 @@
   "web/app/components/snippets/components/__tests__/snippet-main.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 1
-    }
-  },
-  "web/app/components/snippets/components/snippet-collapsed-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/snippets/components/snippet-header/run-mode.tsx": {

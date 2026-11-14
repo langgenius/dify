@@ -43,6 +43,18 @@ export type InvalidRequestError = ErrorResponse & {
   status: 400
 }
 
+export type AvailableEvaluationWorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<AvailableEvaluationWorkflowResponse>
+  limit: number
+  page: number
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type SnippetPaginationResponse = {
   data: Array<SnippetListItemResponse>
   has_more: boolean
@@ -171,6 +183,10 @@ export type EndpointUpdatePayload = {
   settings: {
     [key: string]: unknown
   }
+}
+
+export type EvaluationAssociatedTargetListResponse = {
+  items: Array<EvaluationAssociatedTargetResponse>
 }
 
 export type ListChannelProvidersResponse = {
@@ -714,11 +730,6 @@ export type NetworkAccessGroupMutationResponse = {
 export type NetworkAccessInvalidInputError = ErrorResponse & {
   code: 'network_access_invalid_input'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNameConflictError = ErrorResponse & {
@@ -1801,6 +1812,22 @@ export type AgentSkillBindingItemResponse = {
   updated_at: number
 }
 
+export type AvailableEvaluationWorkflowResponse = {
+  app_id: string
+  app_name: string
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  hash: string
+  id: string
+  kind: string
+  marked_comment: string
+  marked_name: string
+  type: string
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
+}
+
 export type SnippetListItemResponse = {
   author_name: string | null
   created_at: number
@@ -1910,6 +1937,12 @@ export type EndpointListItemResponse = {
   tenant_id: string
   updated_at: string
   url: string
+}
+
+export type EvaluationAssociatedTargetResponse = {
+  target_id: string
+  target_name: string
+  target_type: string
 }
 
 export type ChannelProvider = {
@@ -4409,6 +4442,34 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponse =
   PutWorkspacesCurrentAgentsByAgentIdSkillsResponses[keyof PutWorkspacesCurrentAgentsByAgentIdSkillsResponses]
 
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    named_only?: boolean
+    page?: number
+    user_id?: string
+  }
+  url: '/workspaces/current/available-evaluation-workflows'
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsError =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors]
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses = {
+  200: AvailableEvaluationWorkflowPaginationResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses]
+
 export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
   path?: never
@@ -4947,6 +5008,30 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsData = {
+  body?: never
+  path: {
+    workflow_id: string
+  }
+  query?: never
+  url: '/workspaces/current/evaluation-workflows/{workflow_id}/associated-targets'
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsError =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses = {
+  200: EvaluationAssociatedTargetListResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses]
 
 export type GetWorkspacesCurrentHumanInputV2ChannelProvidersData = {
   body?: never

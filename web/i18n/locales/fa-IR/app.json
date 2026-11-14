@@ -336,5 +336,6 @@
   "types.all": "همه",
   "types.chatbot": "چت‌بات",
   "types.completion": "تکمیل",
+  "types.evaluationWorkflow": "گردش‌کار ارزیابی",
   "types.workflow": "گردش کار"
 }

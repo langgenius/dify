@@ -40,6 +40,13 @@ def test_workflow_app_log_pagination_response_normalizes_nested_fields() -> None
                         "finished_at": created_at,
                     },
                     "details": {"trigger_metadata": {}},
+                    "evaluation": [
+                        {
+                            "name": "faithfulness",
+                            "value": 0.9,
+                            "node_info": {"node_id": "llm-1", "type": "llm", "title": "Answer"},
+                        }
+                    ],
                     "created_by_account": {"id": "acc-1", "name": "acc", "email": "acc@example.com"},
                     "created_at": created_at,
                 }
@@ -50,3 +57,8 @@ def test_workflow_app_log_pagination_response_normalizes_nested_fields() -> None
     assert response["data"][0]["workflow_run"]["status"] == "succeeded"
     assert response["data"][0]["workflow_run"]["created_at"] == int(created_at.timestamp())
     assert response["data"][0]["created_at"] == int(created_at.timestamp())
+    assert response["data"][0]["evaluation"][0]["nodeInfo"] == {
+        "node_id": "llm-1",
+        "type": "llm",
+        "title": "Answer",
+    }

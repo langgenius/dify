@@ -1,4 +1,5 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
@@ -12,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
+  deploymentEdition: 'ENTERPRISE' as DeploymentEdition,
+  cloudPlan: 'professional' as 'sandbox' | 'professional',
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -34,6 +37,11 @@ vi.mock('@/next/navigation', () => ({
     back: vi.fn(),
     replace: mocks.replace,
   }),
+}))
+
+vi.mock('@/app/components/app-sidebar/nav-link', () => ({
+  default: ({ disabled, href, name }: { disabled?: boolean; href: string; name: string }) =>
+    disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -68,7 +76,8 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: { rbac_enabled: true },
+    systemFeatures: { deployment_edition: mocks.deploymentEdition, rbac_enabled: true },
+    features: { billing: { subscription: { plan: mocks.cloudPlan } } },
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -86,6 +95,8 @@ describe('AgentDetailSection', () => {
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
+    mocks.deploymentEdition = 'ENTERPRISE'
+    mocks.cloudPlan = 'professional'
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -220,6 +231,52 @@ describe('AgentDetailSection', () => {
     expect(
       screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('links published Agents with test-and-run access to evaluation', () => {
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
+  })
+
+  it('disables evaluation until the Agent has a published snapshot', () => {
+    mocks.queryData = createAgent({ access_ready: false })
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides evaluation without test-and-run permission', () => {
+    mocks.queryData = createAgent({ permission_keys: [AgentPermission.Preview] })
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
+  })
+
+  it('disables evaluation on a Cloud plan without evaluation instead of redirecting', async () => {
+    mocks.deploymentEdition = 'CLOUD'
+    mocks.cloudPlan = 'sandbox'
+
+    renderAgentDetailSection()
+
+    expect(
+      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+  })
+
+  it('hides evaluation in the community edition', () => {
+    mocks.deploymentEdition = 'COMMUNITY'
+
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 })
 

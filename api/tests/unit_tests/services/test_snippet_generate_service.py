@@ -1,8 +1,8 @@
 import json
-import unittest.mock
 from copy import deepcopy
 
 import pytest
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app.workflow import LoopNodeRunPayload
@@ -17,7 +17,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
-from services.snippet_generate_service import SnippetGenerateService
+from services.snippet_generate_service import SnippetGenerateService, _SnippetAsApp
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_workflow
@@ -62,6 +62,14 @@ def _set_published_workflow(
     monkeypatch.setattr(SnippetService, "get_published_workflow", lambda _self, _snippet: workflow)
 
 
+def test_snippet_as_app_has_no_app_tracing() -> None:
+    # WorkflowAppGenerator reads app_model.tracing to build the trace scope.
+    app = _SnippetAsApp(_snippet())
+
+    assert app.id == "snippet-1"
+    assert app.tracing is None
+
+
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():
     response = {"data": {"outputs": {"text": "ok"}}}
 
@@ -104,7 +112,7 @@ def test_ensure_start_node_returns_workflow_when_start_already_exists():
     assert result is workflow
 
 
-def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch: pytest.MonkeyPatch):
+def test_ensure_start_node_injects_virtual_start_for_root_candidates(sqlite_session: Session):
     graph = {
         "nodes": [
             {"id": "llm-1", "data": {"type": "llm"}},
@@ -124,8 +132,9 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
             }
         ]
     )
-    make_transient = unittest.mock.Mock()
-    monkeypatch.setattr("services.snippet_generate_service.make_transient", make_transient)
+    sqlite_session.add(workflow)
+    sqlite_session.flush()
+    assert inspect(workflow).persistent
 
     result = SnippetGenerateService._ensure_start_node(workflow, snippet)
 
@@ -135,7 +144,7 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
     assert updated_graph["nodes"][0]["data"]["variables"][0]["max_length"] == 128
     assert updated_graph["edges"][-1]["source"] == SNIPPET_VIRTUAL_START_NODE_ID
     assert updated_graph["edges"][-1]["target"] == "llm-1"
-    make_transient.assert_called_once_with(workflow)
+    assert inspect(workflow).transient
 
 
 def _nested_snippet_graph(ownership: str, outer_type: str) -> dict:
@@ -402,6 +411,50 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(
     assert kwargs["app_model"].id == "snippet-1"
     assert kwargs["streaming"] is False
     assert kwargs["call_depth"] == 0
+    assert kwargs["capture_agent_evaluation_trace"] is False
+
+
+def test_run_published_loads_requested_workflow_snapshot(
+    monkeypatch: pytest.MonkeyPatch, unbound_session_factory: sessionmaker[Session]
+):
+    workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
+    snippet = _snippet()
+    user = _account()
+    snapshot_calls: list[tuple[CustomizedSnippet, str]] = []
+    generate_kwargs: dict[str, object] = {}
+
+    def get_published_workflow_by_id(_self: SnippetService, current_snippet: CustomizedSnippet, workflow_id: str):
+        snapshot_calls.append((current_snippet, workflow_id))
+        return workflow
+
+    def unexpected_published_workflow(_self: SnippetService, _snippet: CustomizedSnippet):
+        raise AssertionError("A pinned run must not load the latest published workflow")
+
+    def generate(_self: WorkflowAppGenerator, **kwargs: object):
+        generate_kwargs.update(kwargs)
+        return {"data": {"outputs": {"answer": "ok"}}}
+
+    monkeypatch.setattr(SnippetService, "get_published_workflow_by_id", get_published_workflow_by_id)
+    monkeypatch.setattr(SnippetService, "get_published_workflow", unexpected_published_workflow)
+    monkeypatch.setattr(
+        SnippetGenerateService, "_ensure_start_node", classmethod(lambda _cls, current, _snippet: current)
+    )
+    monkeypatch.setattr(WorkflowAppGenerator, "generate", generate)
+
+    SnippetGenerateService.run_published(
+        snippet=snippet,
+        user=user,
+        args={"inputs": {"query": "hello"}},
+        invoke_from="service-api",
+        workflow_id="workflow-version-7",
+        task_id="evaluation-task-1",
+        capture_agent_evaluation_trace=True,
+        session_maker=unbound_session_factory,
+    )
+
+    assert snapshot_calls == [(snippet, "workflow-version-7")]
+    assert generate_kwargs["task_id"] == "evaluation-task-1"
+    assert generate_kwargs["capture_agent_evaluation_trace"] is True
 
 
 def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):

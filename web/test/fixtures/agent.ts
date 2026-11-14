@@ -6,6 +6,7 @@ import { createAppDetailFixture } from './app'
 export function createAgentFixture(overrides: Partial<AgentAppDetailWithSite> = {}) {
   return zAgentAppDetailWithSite.parse({
     ...createAppDetailFixture(),
+    access_ready: true,
     id: 'agent-1',
     app_id: 'app-1',
     name: 'Agent',

@@ -1,5 +1,8 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
+import type { WorkflowKind } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import SuggestedAction from '../suggested-action'
@@ -7,8 +10,14 @@ import WorkflowToolAction from '../workflow-tool-action'
 
 type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
-  'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
+  | 'hasTriggerNode'
+  | 'onPublishEvaluation'
+  | 'publishedAt'
+  | 'toolPublished'
+  | 'workflowKindChangePending'
+  | 'workflowToolAvailable'
 > & {
+  appDetail?: Pick<AppDetailWithSite, 'mode' | 'workflow_kind'>
   appId: string
   appURL: string
   canViewAccessPoint: boolean
@@ -17,6 +26,8 @@ type PublisherActionsSectionProps = Pick<
   handleOpenRunConfig?: (url: string) => void
   marketplaceActionDisabled?: boolean
   publishingToMarketplace?: boolean
+  published?: boolean
+  isPublishing?: boolean
   showDeployAction?: boolean
   showMarketplaceAction?: boolean
   showRunConfig?: boolean
@@ -26,9 +37,12 @@ type PublisherActionsSectionProps = Pick<
   workflowToolOutdated?: boolean
   onConfigureWorkflowTool: () => void
   onPublishToMarketplace?: () => void
+  /** Asks to switch a published workflow's kind; the caller confirms it outside the popover. */
+  onRequestKindChange?: (targetKind: WorkflowKind) => void
 }
 
 export function PublisherActionsSection({
+  appDetail,
   appId,
   appURL,
   canViewAccessPoint,
@@ -37,7 +51,10 @@ export function PublisherActionsSection({
   handleOpenRunConfig,
   hasTriggerNode = false,
   marketplaceActionDisabled = false,
+  onPublishEvaluation,
   publishedAt,
+  published = false,
+  isPublishing = false,
   publishingToMarketplace = false,
   showDeployAction = false,
   showMarketplaceAction = false,
@@ -48,8 +65,10 @@ export function PublisherActionsSection({
   workflowToolIsLoading,
   workflowToolMessage,
   workflowToolOutdated = false,
+  workflowKindChangePending = false,
   onConfigureWorkflowTool,
   onPublishToMarketplace,
+  onRequestKindChange,
 }: PublisherActionsSectionProps) {
   const { t } = useTranslation(['common', 'workflow'])
 
@@ -58,9 +77,75 @@ export function PublisherActionsSection({
   const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
+  const isEvaluationWorkflow = appDetail?.workflow_kind === 'evaluation'
+  const evaluationTargetKind: WorkflowKind = isEvaluationWorkflow ? 'standard' : 'evaluation'
+  const showEvaluationWorkflowAction =
+    appDetail?.mode === 'workflow' &&
+    (hasPublishedVersion ? Boolean(onRequestKindChange) : Boolean(onPublishEvaluation))
+  const evaluationWorkflowActionLabel = !hasPublishedVersion
+    ? t(($) => $['common.publishAsEvaluationWorkflow'], { ns: 'workflow' })
+    : isEvaluationWorkflow
+      ? t(($) => $['common.switchToStandardWorkflow'], { ns: 'workflow' })
+      : t(($) => $['common.switchToEvaluationWorkflow'], { ns: 'workflow' })
+  const evaluationWorkflowInfoLabel = `${t(($) => $['operation.viewDetails'])}: ${evaluationWorkflowActionLabel}`
+  const handleEvaluationWorkflowAction = () => {
+    if (workflowKindChangePending || isPublishing || published) return
+    // Switching changes how a published workflow can be used, so confirm it first.
+    if (hasPublishedVersion) {
+      onRequestKindChange?.(evaluationTargetKind)
+      return
+    }
+    void Promise.resolve(onPublishEvaluation?.()).catch(() => undefined)
+  }
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
+      {showEvaluationWorkflowAction && (
+        <>
+          <div className="relative">
+            <SuggestedAction
+              disabled={workflowKindChangePending || isPublishing || published}
+              endIcon={
+                <span className="flex items-center gap-1">
+                  <span aria-hidden className="size-4" />
+                  {workflowKindChangePending && (
+                    <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
+                  )}
+                </span>
+              }
+              icon={
+                <span
+                  className={
+                    isEvaluationWorkflow ? 'i-ri-node-tree size-4' : 'i-ri-flask-line size-4'
+                  }
+                />
+              }
+              onClick={handleEvaluationWorkflowAction}
+            >
+              {evaluationWorkflowActionLabel}
+            </SuggestedAction>
+            <Infotip>
+              <InfotipTrigger
+                aria-label={evaluationWorkflowInfoLabel}
+                className={cn(
+                  'absolute top-1/2 -translate-y-1/2',
+                  workflowKindChangePending ? 'end-7' : 'end-3',
+                )}
+              />
+              {/* Open below so the explanation covers neither the Publish button nor this label. */}
+              <InfotipContent
+                side="bottom"
+                align="end"
+                aria-label={evaluationWorkflowInfoLabel}
+                className="max-w-72"
+              >
+                {t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
+              </InfotipContent>
+            </Infotip>
+          </div>
+          <div aria-hidden className="m-1 h-px bg-divider-subtle" />
+        </>
+      )}
       {showOpenWebApp && (
         <Tooltip disabled={!disabledFunctionTooltip}>
           <TooltipTrigger

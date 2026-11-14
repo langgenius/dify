@@ -15,6 +15,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -1525,6 +1526,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
         default=True,
     )
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,
@@ -1803,6 +1808,45 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class EvaluationConfig(BaseSettings):
+    """Configuration for the evaluation runtime."""
+
+    EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
+        description="Maximum active evaluation runs per tenant.",
+        default=3,
+    )
+    EVALUATION_MAX_DATASET_ROWS: PositiveInt = Field(
+        description="Maximum number of rows in an evaluation dataset.",
+        default=500,
+    )
+    EVALUATION_RUN_HEARTBEAT_INTERVAL: PositiveInt = Field(
+        description="Interval in seconds between evaluation run heartbeat renewals.",
+        default=30,
+    )
+    EVALUATION_RUN_LEASE_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds without an evaluation run heartbeat before recovery.",
+        default=180,
+    )
+    EVALUATION_RUN_MAX_RETRIES: NonNegativeInt = Field(
+        description="Maximum retries after an evaluation task fails with a retryable error.",
+        default=3,
+    )
+    EVALUATION_RUN_RETRY_DELAY: PositiveInt = Field(
+        description="Base delay in seconds for exponential evaluation task retries.",
+        default=30,
+    )
+    EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
+        description="Maximum target executions performed in parallel by one evaluation task.",
+        default=5,
+    )
+
+    @model_validator(mode="after")
+    def validate_heartbeat_lease(self) -> "EvaluationConfig":
+        if self.EVALUATION_RUN_HEARTBEAT_INTERVAL >= self.EVALUATION_RUN_LEASE_TIMEOUT:
+            raise ValueError("Evaluation heartbeat interval must be shorter than the lease timeout")
+        return self
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1815,6 +1859,7 @@ class FeatureConfig(
     MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
+    EvaluationConfig,
     FileAccessConfig,
     FileUploadConfig,
     HomepageConfig,

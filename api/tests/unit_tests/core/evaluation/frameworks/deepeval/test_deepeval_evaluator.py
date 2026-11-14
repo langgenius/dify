@@ -1,0 +1,373 @@
+from collections.abc import Generator
+from contextlib import contextmanager
+
+import pytest
+
+from core.evaluation.agent.agent_judge_evaluator import AgentLLMJudgeEvaluator
+from core.evaluation.entities.config_entity import DeepEvalConfig
+from core.evaluation.entities.evaluation_entity import (
+    AgentEvaluationItem,
+    AgentToolCall,
+    EvaluationCategory,
+    EvaluationItemInput,
+    EvaluationItemResult,
+    EvaluationMetric,
+)
+from core.evaluation.frameworks.deepeval.deepeval_evaluator import (
+    DeepEvalComponents,
+    DeepEvalEvaluator,
+    _build_deepeval_metrics,
+    _build_test_case,
+    _load_deepeval_components,
+)
+from core.evaluation.frameworks.deepeval.deepeval_model_wrapper import DifyDeepEvalModel
+
+
+class _FakeParam:
+    INPUT = "input"
+    ACTUAL_OUTPUT = "actual_output"
+    EXPECTED_OUTPUT = "expected_output"
+
+
+class _FakeTestCase:
+    actual_output: str
+
+    def __init__(self, **kwargs: object) -> None:
+        self.__dict__.update(kwargs)
+
+
+class _FakeToolCall(_FakeTestCase):
+    pass
+
+
+class _FakeMetric:
+    def __init__(self, **kwargs: object) -> None:
+        self.kwargs = kwargs
+        self.score: float | None = None
+        self.reason: str | None = None
+
+    def measure(self, test_case: _FakeTestCase, *, _show_indicator: bool) -> float:
+        assert _show_indicator is False
+        assert test_case.actual_output == "Paris"
+        self.score = 0.875
+        self.reason = "The response matches the supplied evidence."
+        return self.score
+
+
+def _fake_components() -> DeepEvalComponents:
+    return DeepEvalComponents(
+        AnswerRelevancyMetric=_FakeMetric,
+        ArgumentCorrectnessMetric=_FakeMetric,
+        ContextualPrecisionMetric=_FakeMetric,
+        ContextualRecallMetric=_FakeMetric,
+        ContextualRelevancyMetric=_FakeMetric,
+        FaithfulnessMetric=_FakeMetric,
+        GEval=_FakeMetric,
+        LLMTestCase=_FakeTestCase,
+        SingleTurnParams=_FakeParam,
+        ToolCall=_FakeToolCall,
+    )
+
+
+def test_supported_metrics_use_native_deepeval_coverage() -> None:
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+
+    assert evaluator.get_supported_metrics(EvaluationCategory.LLM) == [
+        "faithfulness",
+        "answer_relevancy",
+        "answer_correctness",
+    ]
+    assert evaluator.get_supported_metrics(EvaluationCategory.RETRIEVAL) == [
+        "context_precision",
+        "context_recall",
+        "context_relevance",
+    ]
+    assert evaluator.get_supported_metrics(EvaluationCategory.AGENT) == [
+        "task_completion",
+        "trajectory_quality",
+        "tool_selection_correctness",
+        "tool_argument_correctness",
+        "argument_correctness",
+    ]
+    assert evaluator.metric_requires_embeddings("answer_relevancy") is False
+    assert evaluator.metric_requires_expected_output("answer_correctness") is True
+    assert evaluator.metric_requires_expected_output("context_relevance") is False
+    assert evaluator.get_supported_metrics(EvaluationCategory.WORKFLOW) == [
+        "faithfulness",
+        "answer_relevancy",
+        "answer_correctness",
+    ]
+    assert evaluator.get_supported_metrics(EvaluationCategory.SNIPPET) == evaluator.get_supported_metrics(
+        EvaluationCategory.WORKFLOW
+    )
+    assert evaluator.get_supported_metrics(EvaluationCategory.KNOWLEDGE_BASE) == []
+
+
+def test_metric_factory_always_injects_dify_model_and_score_only_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(DifyDeepEvalModel, "load_model", lambda _self: object())
+    model = DifyDeepEvalModel("provider", "judge-model", "tenant")
+    components = _fake_components()
+
+    metrics = _build_deepeval_metrics(
+        ["faithfulness", "answer_correctness", "context_relevance", "argument_correctness"],
+        model,
+        components,
+    )
+
+    assert [name for name, _ in metrics] == [
+        "faithfulness",
+        "answer_correctness",
+        "context_relevance",
+        "argument_correctness",
+    ]
+    for _, metric in metrics:
+        assert metric.kwargs["model"] is model
+        assert metric.kwargs["threshold"] is None
+        assert metric.kwargs["async_mode"] is False
+        assert metric.kwargs["verbose_mode"] is False
+    assert metrics[1][1].kwargs["evaluation_params"] == ["input", "actual_output", "expected_output"]
+    assert metrics[1][1].kwargs["evaluation_steps"]
+
+
+def test_metric_factory_matches_pinned_deepeval_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(DifyDeepEvalModel, "load_model", lambda _self: object())
+    model = DifyDeepEvalModel("provider", "judge-model", "tenant")
+
+    metrics = _build_deepeval_metrics(
+        [
+            "faithfulness",
+            "answer_relevancy",
+            "answer_correctness",
+            "context_precision",
+            "context_recall",
+            "context_relevance",
+            "argument_correctness",
+        ],
+        model,
+        _load_deepeval_components(),
+    )
+
+    assert [name for name, _ in metrics] == [
+        "faithfulness",
+        "answer_relevancy",
+        "answer_correctness",
+        "context_precision",
+        "context_recall",
+        "context_relevance",
+        "argument_correctness",
+    ]
+    assert all(metric.model is model for _, metric in metrics)
+    assert all(metric.threshold is None for _, metric in metrics)
+    assert all(metric.async_mode is False for _, metric in metrics)
+
+
+def test_evaluation_records_deepeval_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+    model = object()
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: model,
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+
+    results = evaluator.evaluate_llm(
+        [
+            EvaluationItemInput(
+                index=7,
+                inputs={"prompt": "What is the capital of France?"},
+                output="Paris",
+                expected_output="Paris",
+                context=["Paris is the capital of France."],
+            )
+        ],
+        ["faithfulness"],
+        "provider",
+        "model",
+        "tenant",
+    )
+
+    assert len(results) == 1
+    assert results[0].index == 7
+    assert results[0].actual_output == "Paris"
+    assert results[0].error is None
+    assert results[0].metrics[0].name == "faithfulness"
+    assert results[0].metrics[0].value == 0.875
+    assert results[0].metrics[0].details == {"reason": "The response matches the supplied evidence."}
+
+
+def test_evaluation_limits_metric_plugin_requests_to_180_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+    observed_timeouts: list[int] = []
+
+    @contextmanager
+    def record_timeout(timeout_seconds: int) -> Generator[None]:
+        observed_timeouts.append(timeout_seconds)
+        yield
+
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.use_plugin_daemon_request_timeout",
+        record_timeout,
+    )
+
+    results = evaluator.evaluate_llm(
+        [
+            EvaluationItemInput(
+                index=7,
+                inputs={"prompt": "What is the capital of France?"},
+                output="Paris",
+                expected_output="Paris",
+                context=["Paris is the capital of France."],
+            )
+        ],
+        ["faithfulness"],
+        "provider",
+        "model",
+        "tenant",
+    )
+
+    assert observed_timeouts == [180]
+    assert results[0].error is None
+    assert results[0].metrics[0].value == 0.875
+
+
+def test_semantic_similarity_is_explicitly_unsupported() -> None:
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+
+    with pytest.raises(ValueError, match="does not support any requested metrics"):
+        evaluator.evaluate_llm([], ["semantic_similarity"], "provider", "model", "tenant")
+
+
+def test_agent_test_case_maps_framework_neutral_tool_calls() -> None:
+    test_case = _build_test_case(
+        AgentEvaluationItem(
+            index=0,
+            inputs={"task": "Find the current time in Shanghai"},
+            output="It is 18:00.",
+            tool_calls=[
+                AgentToolCall(
+                    name="current_time",
+                    arguments={"timezone": "Asia/Shanghai"},
+                    output="18:00",
+                )
+            ],
+        ),
+        EvaluationCategory.AGENT,
+        _fake_components(),
+    )
+
+    assert test_case.input == "Find the current time in Shanghai"
+    assert test_case.actual_output == "It is 18:00."
+    assert test_case.tools_called[0].name == "current_time"
+    assert test_case.tools_called[0].input_parameters == {"timezone": "Asia/Shanghai"}
+    assert test_case.tools_called[0].output == "18:00"
+
+
+def test_argument_correctness_without_tool_calls_is_not_applicable(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+
+    results = evaluator.evaluate_agent(
+        [
+            AgentEvaluationItem(
+                index=4,
+                inputs={"task": "Answer without tools"},
+                output="Paris",
+                tool_calls=[],
+            )
+        ],
+        ["argument_correctness"],
+        "provider",
+        "model",
+        "tenant",
+    )
+
+    assert results[0].error is None
+    assert results[0].metrics[0].name == "argument_correctness"
+    assert results[0].metrics[0].value is None
+    assert results[0].metrics[0].details["status"] == "not_applicable"
+
+
+def test_agent_evaluation_merges_native_judge_and_deepeval_metric(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        AgentLLMJudgeEvaluator,
+        "evaluate",
+        lambda *_args: [EvaluationItemResult(index=4, metrics=[EvaluationMetric(name="task_completion", value=0.8)])],
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components", _fake_components
+    )
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+
+    result = evaluator.evaluate_agent(
+        [
+            AgentEvaluationItem(
+                index=4,
+                inputs={"task": "Find Paris"},
+                output="Paris",
+                tool_calls=[AgentToolCall(name="search", arguments={"query": "Paris"})],
+            )
+        ],
+        ["task_completion", "argument_correctness"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert [(metric.name, metric.value) for metric in result.metrics] == [
+        ("task_completion", 0.8),
+        ("argument_correctness", 0.875),
+    ]
+
+
+def test_non_finite_deepeval_score_is_a_row_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components", _fake_components
+    )
+    monkeypatch.setattr(_FakeMetric, "measure", lambda *_args, **_kwargs: float("nan"))
+
+    result = DeepEvalEvaluator(DeepEvalConfig()).evaluate_retrieval(
+        [EvaluationItemInput(index=2, inputs={"query": "What?"}, output="Paris")],
+        ["context_relevance", "unsupported_metric"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.metrics == []
+    assert "non-finite score" in (result.error or "")
+    assert "unsupported_metric" in (result.error or "")
+
+
+def test_agent_test_case_requires_agent_input() -> None:
+    with pytest.raises(TypeError, match="AgentEvaluationItem"):
+        _build_test_case(
+            EvaluationItemInput(index=1, inputs={"task": "hello"}, output="Paris"),
+            EvaluationCategory.AGENT,
+            _fake_components(),
+        )

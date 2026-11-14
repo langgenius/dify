@@ -8,10 +8,11 @@ from http import HTTPStatus
 from typing import Any, Final
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from constants import HIDDEN_VALUE
 from constants.oauth_bearer import Scope
+from controllers.common.errors import PaidPlanRequiredError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
@@ -23,6 +24,7 @@ from controllers.openapi._errors import (
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
+    ServiceApiDisabled,
     VersionNotFound,
     VersionNotRestorable,
     require_uuid,
@@ -63,10 +65,12 @@ from fields.workflow_run_fields import (
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
 from libs.datetime_utils import naive_utc_now
+from libs.external_api import error_responses
 from libs.helper import to_timestamp
 from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
@@ -174,6 +178,7 @@ class AppRunNodeListApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>:publish")
 class AppPublishApi(Resource):
+    @error_responses(PaidPlanRequiredError, ServiceApiDisabled)
     @endpoint(
         op="publish.console_app",
         kind=Kind.OBJECT,
@@ -200,6 +205,10 @@ class AppPublishApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationPlanRequiredError as exc:
+            raise PaidPlanRequiredError() from exc
+        except EvaluationEntitlementUnavailableError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
         app_in_session = ctx.session.get(App, ctx.app.id)
         if app_in_session:
             app_in_session.workflow_id = workflow.id

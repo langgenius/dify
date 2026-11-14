@@ -1,1 +1,7 @@
-export type AgentDetailSectionKey = 'configure' | 'access' | 'logs' | 'monitoring' | 'access-config'
+export type AgentDetailSectionKey =
+  | 'configure'
+  | 'evaluation'
+  | 'access'
+  | 'logs'
+  | 'monitoring'
+  | 'access-config'

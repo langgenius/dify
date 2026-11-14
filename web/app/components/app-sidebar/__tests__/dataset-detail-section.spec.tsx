@@ -2,6 +2,7 @@ import type {
   DatasetDetailWithPartialMembersResponse,
   RelatedAppListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -12,6 +13,7 @@ let mockPathname = '/datasets/dataset-1/documents'
 let mockDataset: DatasetDetailWithPartialMembersResponse | undefined
 let mockRelatedApps: RelatedAppListResponse | undefined
 let mockIsRbacEnabled = true
+let mockDeploymentEdition: DeploymentEdition = 'ENTERPRISE'
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
@@ -29,7 +31,10 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   )
   return renderWithConsoleQuery(ui, {
     queryClient,
-    systemFeatures: { rbac_enabled: mockIsRbacEnabled },
+    systemFeatures: {
+      deployment_edition: mockDeploymentEdition,
+      rbac_enabled: mockIsRbacEnabled,
+    },
   })
 }
 
@@ -90,6 +95,7 @@ describe('DatasetDetailSection', () => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
     mockIsRbacEnabled = true
+    mockDeploymentEdition = 'ENTERPRISE'
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -160,5 +166,58 @@ describe('DatasetDetailSection', () => {
     expect(
       screen.queryByRole('link', { name: 'common.datasetMenus.hitTesting' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should render evaluation for an internal dataset with pipeline-test permission', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('link', { name: 'evaluation.title' })).toHaveAttribute(
+      'href',
+      '/datasets/dataset-1/evaluation',
+    )
+  })
+
+  it('should disable evaluation without pipeline-test permission', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+  })
+
+  it('should disable evaluation while a RAG pipeline is unpublished', () => {
+    mockDataset = createDataset({
+      runtime_mode: 'rag_pipeline',
+      is_published: false,
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+  })
+
+  it('should hide evaluation for external datasets', () => {
+    mockDataset = createDataset({
+      provider: 'external',
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
+  })
+
+  it('should hide evaluation in the community edition', () => {
+    mockDeploymentEdition = 'COMMUNITY'
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
   })
 })

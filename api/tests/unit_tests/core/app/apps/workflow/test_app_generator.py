@@ -1496,6 +1496,28 @@ class TestAppGeneratorExtraCases:
             monkeypatch.setattr(generator, "_generate", execute)
             return generator, app, workflow, user, execute
 
+        def test_generate_marks_agent_evaluation_trace(self, generation):
+            generator, app, workflow, user, execute = generation
+            workflow.graph = json.dumps(
+                {"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
+            )
+
+            result = generator.generate(
+                app_model=app,
+                workflow=workflow,
+                user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+                capture_agent_evaluation_trace=True,
+            )
+
+            assert result == {"ok": True}
+            generated = execute.call_args.kwargs["application_generate_entity"]
+            assert isinstance(generated, WorkflowAppGenerateEntity)
+            assert generated.extras["capture_agent_evaluation_trace"] is True
+
         @pytest.mark.parametrize("node_type", ["trigger-webhook", "trigger-schedule", "trigger-plugin"])
         @pytest.mark.parametrize("root_node_id", [None, "selected-trigger"])
         @pytest.mark.parametrize("invoke_from", [InvokeFrom.SERVICE_API, InvokeFrom.DEBUGGER])
