@@ -198,7 +198,6 @@ project-excludes = [
   "services/data_source/test_provider_service.py",
   "services/knowledge/external/test_service.py",
   "services/test_file_service.py",
-  "services/test_snippet_dsl_service.py",
   "services/test_snippet_generate_service.py",
   "services/test_snippet_service.py",
   "services/test_workflow_collaboration_service.py",
