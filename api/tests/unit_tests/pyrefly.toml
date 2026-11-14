@@ -129,7 +129,6 @@ project-excludes = [
   "core/repositories/test_factory.py",
   "core/repositories/test_human_input_repository.py",
   "core/repositories/test_sqlalchemy_workflow_execution_repository.py",
-  "core/test_model_manager.py",
   "core/test_provider_manager.py",
   "core/tools/__base/test_tool.py",
   "core/tools/builtin_tool/test_tool.py",
