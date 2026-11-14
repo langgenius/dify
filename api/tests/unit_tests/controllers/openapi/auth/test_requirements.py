@@ -702,6 +702,20 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
+    Route(
+        "models.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+        query="model=llama3&model_type=llm",
+    ),
+    Route(
+        "models.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+        query="model=llama3&model_type=llm",
+    ),
     Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "app_dsl.import",
@@ -1676,6 +1690,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
     "app_dsl.check": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
@@ -2221,6 +2237,10 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
         {"201", "422", "default"}
     ),
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
     ("get", "/_health"): frozenset({"200", "default"}),
