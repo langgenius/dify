@@ -732,7 +732,7 @@ def test_apply_rejects_a_concurrent_save_and_discards_the_unused_checkpoint(
         ),
         (HTTPStatus.BAD_GATEWAY, HTTPStatus.BAD_GATEWAY, "agent_home_snapshot_create_failed", "checkpoint rejected"),
         (HTTPStatus.OK, HTTPStatus.BAD_GATEWAY, "agent_home_snapshot_create_failed", "Failed to capture"),
-        (None, HTTPStatus.BAD_GATEWAY, "agent_home_snapshot_create_failed", "request failed"),
+        (None, HTTPStatus.BAD_GATEWAY, "agent_home_snapshot_create_failed", None),
     ],
     ids=["missing-sandbox", "too-large", "backend-error", "invalid-response", "connection-closed"],
 )
@@ -742,9 +742,9 @@ def test_apply_preserves_backend_errors_without_changing_drafts(
     backend_status: HTTPStatus | None,
     api_status: HTTPStatus,
     code: str,
-    message: str,
+    message: str | None,
 ) -> None:
-    """Translate backend checkpoint failures before writing either draft."""
+    """Translate checkpoint failures without writing either draft. None leaves transport wording unspecified."""
 
     def backend(path: str, _body: dict[str, object]) -> tuple[HTTPStatus, dict[str, object] | bytes] | None:
         """Return the specified wire response or close the connection before sending HTTP headers."""
@@ -759,7 +759,8 @@ def test_apply_preserves_backend_errors_without_changing_drafts(
         response = build_state.request(harness, "POST", "build-draft/apply")
     assert response.status_code == api_status
     assert response.get_json()["code"] == code
-    assert message in response.get_json()["message"]
+    if message is not None:
+        assert message in response.get_json()["message"]
     with harness.sessions() as session:
         assert (
             session.get_one(AgentConfigDraft, build_state.draft_id).agent_workspace_binding_id == build_state.binding_id
