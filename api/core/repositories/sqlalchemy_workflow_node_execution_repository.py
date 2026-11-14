@@ -297,6 +297,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         execution_id: str,
         type_: ExecutionOffLoadType,
     ) -> _InputsOutputsTruncationResult | None:
+        """Offload oversized values in this admitted tenant/app scope.
+
+        Persist internal payloads with a stable workflow-offload purpose so user
+        upload quotas cannot block runtime logging. Return None without storage
+        effects for absent/small values. Storage/DB failures propagate; callers
+        own persistence of the returned offload reference.
+        """
         if values is None:
             return None
 
@@ -317,6 +324,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             mimetype="application/json",
             user=self._user,
             tenant_id=self._tenant_id,
+            source="workflow_offload",
         )
         assert self._app_id
         offload = WorkflowNodeExecutionOffload(

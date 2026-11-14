@@ -720,37 +720,6 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         assert domain.get_truncated_process_data() == {"truncated": "process_data"}
 
     @staticmethod
-    def test_truncate_and_upload_keeps_file_boundary_mocked(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
-        uploaded = _upload_file(key="file-key")
-        uploaded.id = "file-1"
-        repo = _repository(monkeypatch, sqlite_session_factory)
-        upload_file = Mock(return_value=uploaded)
-        monkeypatch.setattr(repo._file_service, "upload_file", upload_file)
-
-        class Truncator:
-            def truncate_variable_mapping(self, _value: Any) -> tuple[dict[str, bool], bool]:
-                return {"truncated": True}, True
-
-        monkeypatch.setattr(repo, "_create_truncator", lambda: Truncator())
-        result = repo._truncate_and_upload({"value": 1}, "execution-1", ExecutionOffLoadType.INPUTS)
-        assert result is not None
-        assert result.truncated_value == {"truncated": True}
-        upload_file.assert_called_once_with(
-            filename="node_execution_execution-1_inputs.json",
-            content=b'{"value": 1}',
-            mimetype="application/json",
-            user=repo._user,
-            tenant_id="tenant-1",
-        )
-        assert result.offload.file_id == "file-1"
-        assert result.offload.type_ == ExecutionOffLoadType.INPUTS
-        assert result.offload.tenant_id == "tenant-1"
-        assert result.offload.app_id == "app-1"
-        assert result.offload.node_execution_id == "execution-1"
-
-    @staticmethod
     def test_truncate_and_upload_returns_none_for_missing_or_small_values(
         monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
@@ -1247,3 +1216,48 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.inputs_truncated is False
             assert model.outputs_truncated is False
             assert model.process_data_truncated is False
+
+
+@pytest.mark.parametrize("quota_files", [0, 1])
+def test_end_user_execution_offload_preserves_runtime_compatibility(
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    quota_files: int,
+) -> None:
+    """Real EndUser offloads stay available with quota off/on and retain a stable internal purpose."""
+    import json
+
+    from models.enums import UploadFilePurpose
+    from tests.helpers.unit.model_factories import make_end_user
+
+    config_overrides(
+        WORKSPACE_UPLOAD_QUOTA_FILES=quota_files,
+        WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=64,
+    )
+    objects: dict[str, bytes] = {}
+
+    def save(filename: str, data: bytes) -> None:
+        """Substitute only the external object write; persistence remains real."""
+        objects[filename] = data
+
+    monkeypatch.setattr("services.file_service.storage.save", save)
+    user = make_end_user(end_user_id="runtime-user", tenant_id="tenant-1", app_id="app-1")
+    repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=sqlite_session_factory,
+        tenant_id="tenant-1",
+        user=user,
+        app_id="app-1",
+        triggered_from=_RepositoryTriggeredFrom.WORKFLOW_RUN,
+    )
+    execution = _sqlalchemy_workflow_node_execution_repository_execution(inputs={"large": "x" * 4096})
+    repository.save(execution)
+    repository.save_execution_data(execution)
+    assert execution.get_truncated_inputs() != {"large": "x" * 4096}
+    with sqlite_session_factory() as session:
+        stored = session.scalars(select(UploadFile)).one()
+        assert stored.created_by_role == CreatorUserRole.END_USER
+        assert stored.created_by == user.id
+        assert stored.purpose == UploadFilePurpose.WORKFLOW_OFFLOAD
+        assert json.loads(objects[stored.key]) == {"large": "x" * 4096}
+        assert session.scalar(select(WorkflowNodeExecutionOffload.file_id)) == stored.id

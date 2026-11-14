@@ -504,6 +504,15 @@ class FileUploadConfig(BaseSettings):
     Configuration for file upload limitations
     """
 
+    WORKSPACE_UPLOAD_QUOTA_BYTES: NonNegativeInt = Field(
+        default=0,
+        description="Self-hosted cumulative end-user upload bytes per workspace; zero disables this dimension",
+    )
+    WORKSPACE_UPLOAD_QUOTA_FILES: NonNegativeInt = Field(
+        default=0,
+        description="Self-hosted cumulative end-user upload count per workspace; zero disables this dimension",
+    )
+
     UPLOAD_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="Maximum allowed file size for uploads in megabytes",
         default=15,

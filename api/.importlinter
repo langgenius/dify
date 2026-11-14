@@ -1596,6 +1596,35 @@ forbidden_modules =
     services.trigger.execution_layer
 allow_indirect_imports = True
 
+[importlinter:contract:end-user-upload-service-boundary]
+name = End-user upload lifecycle depends only on its application contracts
+type = forbidden
+source_modules =
+    services.end_user_upload_service
+forbidden_modules =
+    flask
+    werkzeug
+    sqlalchemy
+    models
+    repositories
+    configs
+    extensions
+    controllers
+    tasks
+    core
+
+[importlinter:contract:end-user-upload-transport-boundary]
+name = End-user file upload transport reaches persistence through the composition root
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    controllers.service_api.app.file
+    controllers.web.files
+forbidden_modules =
+    sqlalchemy
+    repositories
+    extensions.ext_database
+
 [importlinter:contract:trigger-builder-repository-boundary]
 name = Trigger builder persistence depends on contracts rather than its service
 type = forbidden

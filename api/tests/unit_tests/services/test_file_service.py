@@ -19,7 +19,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
 from models.base import TypeBase
 from models.enums import CreatorUserRole
-from models.model import Account, EndUser, UploadFile
+from models.model import Account, UploadFile
 from services.errors.file import (
     BlockedFileExtensionError,
     FileNotExistsError,
@@ -206,23 +206,6 @@ class TestFileServiceCases:
             config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=15)
             with pytest.raises(FileTooLargeError):
                 file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=_account())
-
-        def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
-            user = EndUser(
-                id="end_user_id",
-            )
-
-            with (
-                patch("services.file_service.storage"),
-                patch("services.file_service.extract_tenant_id") as mock_tenant,
-                patch("services.file_service.file_helpers.get_signed_file_url"),
-            ):
-                mock_tenant.return_value = "tenant"
-                result = file_service.upload_file(
-                    filename="test.txt", content=b"test", mimetype="text/plain", user=user
-                )
-                assert result.created_by_role == CreatorUserRole.END_USER
-                assert db_session.get(UploadFile, result.id) is not None
 
         def test_is_file_size_within_limit(self, config_overrides: Callable[..., None]):
             config_overrides(
@@ -604,7 +587,7 @@ class TestFileUploadActorCases:
             event.remove(sqlite_engine, "rollback", end)
 
     @staticmethod
-    @pytest.mark.parametrize("role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
+    @pytest.mark.parametrize("role", [CreatorUserRole.ACCOUNT])
     @pytest.mark.parametrize("source_url", ["", _REMOTE_URL])
     def test_actor_upload_preserves_owner_creator_and_source_url_without_extra_queries(
         upload_harness: _UploadHarness,

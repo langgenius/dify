@@ -5,6 +5,8 @@ from flask import Flask
 from sqlalchemy.orm import sessionmaker
 
 from controllers.web import human_input_form_access_request as controller
+from enums import DeploymentEdition
+from extensions.application_services.files import build_file_upload_services
 from libs.external_api import ExternalApi
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputUploadToken
@@ -14,7 +16,11 @@ from services.remote_file_service import RemoteFileService
 
 def test_public_v2_upload_token_uses_independent_route(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     sessions = sessionmaker()
-    files = FileService(sessions)
+    files = build_file_upload_services(
+        database_client=sessions,
+        staff=FileService(sessions),
+        deployment_edition=DeploymentEdition.COMMUNITY,
+    ).gateway
     service = HumanInputV2FileUploadService(
         session_factory=sessions, files=files, remote_files=RemoteFileService(files=files)
     )
