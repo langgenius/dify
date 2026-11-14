@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
+from core.db.session_factory import session_factory
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -130,17 +131,20 @@ class HitTestingService:
 
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions_raw)
 
-            metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-                session=session,
-                dataset_ids=[dataset.id],
-                query=query,
-                metadata_filtering_mode="manual",
-                metadata_filtering_conditions=metadata_filtering_conditions,
-                inputs={},
-                tenant_id="",
-                user_id="",
-                metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
-            )
+            # A lookup of its own, closed before retrieval: reading through the caller's session would
+            # leave that session holding a pooled connection for as long as retrieval takes.
+            with session_factory.create_session() as filter_session:
+                metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+                    session=filter_session,
+                    dataset_ids=[dataset.id],
+                    query=query,
+                    metadata_filtering_mode="manual",
+                    metadata_filtering_conditions=metadata_filtering_conditions,
+                    inputs={},
+                    tenant_id="",
+                    user_id="",
+                    metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
+                )
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
             if metadata_condition and not document_ids_filter:
