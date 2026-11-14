@@ -9,13 +9,17 @@ def parse_json_markdown(json_string: str):
     parsed: dict = {}
 
     # Anchor on the JSON brackets themselves: from the first "{" or "[" to the
-    # last "}" or "]". This works whether or not the JSON is wrapped in code
-    # fences, and - unlike marker-priority search - is not confused by
-    # backticks inside JSON string values or in surrounding prose.
+    # last closing bracket that matches it. This works whether or not the JSON is
+    # wrapped in code fences, and - unlike marker-priority search - is not
+    # confused by backticks inside JSON string values or in surrounding prose.
     start_candidates = [i for i in (json_string.find("{"), json_string.find("[")) if i != -1]
     if start_candidates:
         start_index = min(start_candidates)
-        end_index = max(json_string.rfind("}"), json_string.rfind("]"))
+        # Pair the closing bracket with the opening one. Taking the last of
+        # either kind misreads trailing prose (e.g. a "[docs]" link after an
+        # object) as part of the JSON value and makes json.loads fail.
+        closing: str = "}" if json_string[start_index] == "{" else "]"
+        end_index = json_string.rfind(closing)
         if end_index != -1 and start_index < end_index:
             end_index += 1
             extracted_content = json_string[start_index:end_index].strip()
