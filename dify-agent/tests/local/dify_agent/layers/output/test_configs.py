@@ -5,6 +5,7 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.output import ToolOutput
+
 import dify_agent.layers.output as output_exports
 from dify_agent.layers.output import DifyOutputLayerConfig
 from dify_agent.layers.output.output_layer import Capability
@@ -184,6 +185,43 @@ def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> 
         "title": "final_output",
     }
     assert output_adapter.validate_python({"items": ["a", "b"]}) == {"items": ["a", "b"]}
+
+
+@pytest.mark.parametrize(
+    ("definition_name", "reference_token"),
+    [
+        ("Widget/Info", "Widget~1Info"),
+        ("Widget Info", "Widget%20Info"),
+        ("Widget/Info", "Widget%7E1Info"),
+        ("Widget~Info", "Widget~0Info"),
+        ("Widget~1Info", "Widget~01Info"),
+    ],
+)
+def test_output_layer_resolves_json_pointer_escaped_defs_names(
+    definition_name: str,
+    reference_token: str,
+) -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "properties": {"widget": {"$ref": f"#/$defs/{reference_token}"}},
+        "required": ["widget"],
+        "$defs": {
+            definition_name: {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+
+    assert output_adapter.json_schema()["properties"]["widget"] == {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"],
+    }
+    assert output_adapter.validate_python({"widget": {"id": "widget-1"}}) == {"widget": {"id": "widget-1"}}
 
 
 @pytest.mark.parametrize("property_name", ["const", "default", "enum", "example", "examples"])
