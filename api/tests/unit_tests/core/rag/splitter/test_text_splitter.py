@@ -662,7 +662,6 @@ class TestTextSplitterBasePaths:
 class TestTokenTextSplitter:
     """Test TokenTextSplitter functionality."""
 
-    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_initialization_with_encoding(self):
         """Test TokenTextSplitter initialization with encoding name."""
         try:
@@ -672,7 +671,6 @@ class TestTokenTextSplitter:
         except ImportError:
             pytest.skip("tiktoken not installed")
 
-    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_initialization_with_model(self):
         """Test TokenTextSplitter initialization with model name."""
         try:
@@ -688,7 +686,6 @@ class TestTokenTextSplitter:
             with pytest.raises(ImportError, match="tiktoken"):
                 TokenTextSplitter(chunk_size=100)
 
-    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_split_text_by_tokens(self, sample_text):
         """Test splitting text by token count."""
         try:
@@ -700,7 +697,6 @@ class TestTokenTextSplitter:
         except ImportError:
             pytest.skip("tiktoken not installed")
 
-    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_token_overlap(self):
         """Test that token overlap works correctly."""
         try:
