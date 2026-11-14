@@ -438,7 +438,7 @@ def handle_form_timeouts(
     app_id: str,
     workflow_run_id: str,
 ) -> None:
-    """Choose one expiration path for this run and publish at most one resume.
+    """Choose one expiration path and persist its resume request with the timeout.
 
     Lock the run to serialize with submission, then reload its waiting
     forms and evaluate deadlines using the current database time.
@@ -467,8 +467,10 @@ def handle_form_timeouts(
         else:
             node_timeouts = tuple(form for form in batch.forms if form.expiration_time <= batch.now)
             resume = _handle_node_timeouts(repository, run, node_timeouts)
-    if resume:
-        _enqueue_resume(workflow_run_id)
+            if resume and not workflow_run_repository.request_workflow_pause_resume(
+                session, workflow_run_id=workflow_run_id
+            ):
+                logger.error("Timed-out Human Input run has no active pause: workflow_run_id=%s", workflow_run_id)
 
 
 def _handle_global_expiration(
@@ -494,15 +496,6 @@ def _handle_node_timeouts(repository: SQLAlchemyFormRepository, run: WorkflowRun
         if settled.status == HumanInputFormStatus.TIMEOUT:
             timed_out = True
     return timed_out and run.status in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED)
-
-
-def _enqueue_resume(workflow_run_id: str) -> None:
-    # Import at the task boundary to keep task bootstrap out of service imports.
-
-    # FIX(QuantumGhost): fix the import loop
-    from tasks.app_generate.workflow_execute_task import resume_app_execution
-
-    resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": workflow_run_id}})
 
 
 class _InitiatorFormToken(NamedTuple):

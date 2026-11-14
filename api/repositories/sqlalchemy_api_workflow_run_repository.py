@@ -72,6 +72,7 @@ from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
     AppWorkflowRunStats,
     RunsWithRelatedCountsDict,
+    WorkflowResumeDispatch,
     WorkflowRunCleanupRef,
 )
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -354,6 +355,64 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id).with_for_update())
         if pause is not None and pause.resumed_at is None:
             pause.resumed_at = finished_at
+
+    @override
+    def request_workflow_pause_resume(self, session: Session, *, workflow_run_id: str) -> bool:
+        pause = session.scalar(
+            select(WorkflowPause)
+            .where(WorkflowPause.workflow_run_id == workflow_run_id, WorkflowPause.resumed_at.is_(None))
+            .with_for_update()
+        )
+        if pause is None:
+            return False
+        pause.resume_requested_at = pause.resume_requested_at or naive_utc_now()
+        session.add(pause)
+        return True
+
+    @override
+    def claim_pending_workflow_resume_dispatches(
+        self, *, now: datetime, lease_expires_at: datetime, limit: int, workflow_run_id: str | None = None
+    ) -> Sequence[WorkflowResumeDispatch]:
+        if limit <= 0:
+            return ()
+        stmt = (
+            select(WorkflowPause)
+            .join(WorkflowRun, WorkflowRun.id == WorkflowPause.workflow_run_id)
+            .where(
+                WorkflowRun.status == WorkflowExecutionStatus.PAUSED,
+                WorkflowPause.resume_requested_at.is_not(None),
+                WorkflowPause.resumed_at.is_(None),
+                or_(
+                    WorkflowPause.resume_dispatch_lease_expires_at.is_(None),
+                    WorkflowPause.resume_dispatch_lease_expires_at <= now,
+                ),
+            )
+            .order_by(WorkflowPause.resume_requested_at, WorkflowPause.id)
+            .limit(limit)
+            .with_for_update(of=WorkflowPause, skip_locked=True)
+        )
+        if workflow_run_id is not None:
+            stmt = stmt.where(WorkflowPause.workflow_run_id == workflow_run_id)
+        with self._session_maker() as session, session.begin():
+            pauses = session.scalars(stmt).all()
+            dispatches = tuple(WorkflowResumeDispatch(pause.id, pause.workflow_run_id) for pause in pauses)
+            for pause in pauses:
+                pause.resume_dispatch_lease_expires_at = lease_expires_at
+                session.add(pause)
+            return dispatches
+
+    @override
+    def release_workflow_resume_dispatch_claim(self, *, pause_id: str, lease_expires_at: datetime) -> None:
+        with self._session_maker() as session, session.begin():
+            session.execute(
+                update(WorkflowPause)
+                .where(
+                    WorkflowPause.id == pause_id,
+                    WorkflowPause.resumed_at.is_(None),
+                    WorkflowPause.resume_dispatch_lease_expires_at == lease_expires_at,
+                )
+                .values(resume_dispatch_lease_expires_at=None)
+            )
 
     @override
     def get_workflow_run_by_id_without_tenant(
@@ -1571,6 +1630,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             # Mark as resumed
             pause_model.resumed_at = naive_utc_now()
+            pause_model.resume_dispatch_lease_expires_at = None
             workflow_run.status = WorkflowExecutionStatus.RUNNING
 
             session.add(pause_model)

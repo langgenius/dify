@@ -17,10 +17,10 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowPause, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormExpirationRepository
-from services.human_input_service import HumanInputService
 from services.human_input_v2.form_service import handle_form_timeouts
-from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE
+from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE, resume_app_execution
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     """Keep legacy expiration handling and fan out independent v2 timeout tasks."""
     _handle_legacy_human_input_timeouts(limit)
     _enqueue_human_input_v2_timeouts(limit)
+    _dispatch_pending_human_input_resumes(limit)
 
 
 def _enqueue_human_input_v2_timeouts(limit: int) -> None:
@@ -62,6 +63,33 @@ def handle_human_input_v2_timeout(tenant_id: str, app_id: str, workflow_run_id: 
         app_id=app_id,
         workflow_run_id=workflow_run_id,
     )
+    _dispatch_pending_human_input_resumes(limit=1, workflow_run_id=workflow_run_id)
+
+
+def _dispatch_pending_human_input_resumes(limit: int, workflow_run_id: str | None = None) -> None:
+    """Publish claimed resume intents, leaving failed claims retryable after a lease."""
+    now = naive_utc_now()
+    lease_expires_at = now + timedelta(minutes=5)
+    session_maker = v2_session_factory.get_session_maker()
+    repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    dispatches = repository.claim_pending_workflow_resume_dispatches(
+        now=now,
+        lease_expires_at=lease_expires_at,
+        limit=limit,
+        workflow_run_id=workflow_run_id,
+    )
+    for dispatch in dispatches:
+        try:
+            resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": dispatch.workflow_run_id}})
+        except Exception:
+            logger.exception("Failed to publish workflow resume for workflow_run_id=%s", dispatch.workflow_run_id)
+            try:
+                repository.release_workflow_resume_dispatch_claim(
+                    pause_id=dispatch.pause_id,
+                    lease_expires_at=lease_expires_at,
+                )
+            except Exception:
+                logger.exception("Failed to release workflow resume dispatch claim pause_id=%s", dispatch.pause_id)
 
 
 def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int, *, now) -> bool:
@@ -103,7 +131,6 @@ def _handle_legacy_human_input_timeouts(limit: int) -> None:
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
     form_repo = HumanInputFormSubmissionRepository()
-    service = HumanInputService(session_factory, form_repository=form_repo)
     now = naive_utc_now()
     global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
 
@@ -138,6 +165,7 @@ def _handle_legacy_human_input_timeouts(limit: int) -> None:
                 form_id=form_model.id,
                 timeout_status=HumanInputFormStatus.EXPIRED if is_global else HumanInputFormStatus.TIMEOUT,
                 reason="global_timeout" if is_global else "node_timeout",
+                request_resume=not is_global and form_model.workflow_run_id is not None,
             )
             if is_global:
                 # Global timeout applies only to workflow-owned forms
@@ -149,10 +177,7 @@ def _handle_legacy_human_input_timeouts(limit: int) -> None:
                     node_id=record.node_id,
                     session_factory=session_factory,
                 )
-            elif record.workflow_run_id is not None:
-                # Human Input node form: resume the workflow.
-                service.enqueue_resume(record.workflow_run_id)
-            else:
+            elif record.workflow_run_id is None:
                 logger.warning(
                     "Timed-out form %s has no workflow_run_id; skipping resume",
                     record.form_id,
