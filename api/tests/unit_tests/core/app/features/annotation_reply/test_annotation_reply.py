@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.annotation_reply import annotation_reply as annotation_reply_module
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
@@ -238,6 +239,30 @@ class TestAnnotationReplyFeature:
         history = sqlite_session.scalar(select(AppAnnotationHitHistory))
         assert history is not None
         assert history.source == ConversationFromSource.CONSOLE
+
+    def test_query_logs_and_returns_none_when_the_vector_store_is_not_configured(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A failure while the settings are looked up is logged, and the caller's session is left alone."""
+        binding = _persist_binding(sqlite_session)
+        _persist_setting(sqlite_session, collection_binding_id=binding.id)
+        sqlite_session.commit()
+        monkeypatch.setattr(dify_config, "VECTOR_STORE", None)
+
+        with caplog.at_level(logging.WARNING):
+            result = AnnotationReplyFeature().query(
+                app_record=_app(),
+                message=_message(),
+                query="hi",
+                user_id="user-1",
+                invoke_from=InvokeFrom.SERVICE_API,
+                session=sqlite_session,
+            )
+
+        assert result is None
+        assert "Query annotation failed" in caplog.text
+        assert "Vector store must be specified." in caplog.text
+        assert not sqlite_session.in_transaction()
 
     def test_query_logs_and_returns_none_on_exception(
         self, sqlite_session: Session, caplog: pytest.LogCaptureFixture
