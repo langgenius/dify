@@ -147,7 +147,6 @@ project-excludes = [
   "core/workflow/nodes/agent_v2/test_runtime_request_builder.py",
   "core/workflow/nodes/agent_v2/test_validators.py",
   "../helpers/unit/core/workflow/nodes/code/code_node_spec.py",
-  "../e2e_tests/contracts/core/workflow/nodes/http_request/test_http_request_executor.py",
   "../e2e_tests/contracts/core/workflow/nodes/http_request/test_http_request_node.py",
   "core/workflow/nodes/human_input/test_entities.py",
   "core/workflow/nodes/knowledge_index/test_knowledge_index_node.py",
