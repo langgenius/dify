@@ -237,6 +237,7 @@ After(
     const diagnosticPages = uniqueDiagnosticPages([
       { label: 'main-page', page: this.page },
       { label: 'shared-app', page: this.sharedAppPage },
+      { label: 'workflow-collaborator', page: this.workflowDraft?.replacement?.collaborator.page },
       { label: 'agent-v2-web-app', page: this.agentBuilder.accessPoint.webAppPage },
       { label: 'agent-v2-api-reference', page: this.agentBuilder.accessPoint.apiReferencePage },
       {

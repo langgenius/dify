@@ -3,23 +3,45 @@ from collections.abc import Callable
 from typing import cast
 
 from flask import Request as FlaskRequest
+from pydantic import BaseModel, Field
 
+from configs import dify_config
 from core.db.session_factory import session_factory
+from events.app_event import app_draft_loro_epoch_was_replaced
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
 from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
+from services.workflow_loro_document import LoroDraftEmptyGraphError, LoroDraftEpochChangedError
+from services.workflow_service import WorkflowService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
 
 
+class LoroDraftSyncPayload(BaseModel):
+    epoch: str = Field(min_length=36, max_length=36)
+    version: bytes | None = Field(default=None, strict=True, max_length=1024 * 1024)
+    update: bytes | None = Field(default=None, strict=True, max_length=dify_config.WEBSOCKET_MAX_HTTP_BUFFER_SIZE)
+    allow_empty: bool = Field(default=False, strict=True)
+
+
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
     return cast(Callable[[Callable[..., object]], Callable[..., object]], sio.on(event))
+
+
+@app_draft_loro_epoch_was_replaced.connect
+def notify_draft_replacement(app_id: str, *, epoch: str) -> None:
+    """Ask all editors to reconcile after the replacement transaction has committed."""
+    try:
+        sio.emit("loro_draft_changed", {"epoch": epoch}, room=app_id)
+    except Exception:
+        logging.exception("Failed to notify collaborators about replaced Loro draft %s", app_id)
 
 
 @_sio_on("connect")
@@ -126,3 +148,51 @@ def handle_graph_event(sid, data):
     Handle graph events - simple broadcast relay.
     """
     return collaboration_service.relay_graph_event(sid, data)
+
+
+@_sio_on("loro_draft_sync")
+@observe_workflow_event("loro_draft_sync", sio)
+def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], int]:
+    """Confirm only versions that were applied and committed; notify peers to pull their delta."""
+    try:
+        payload = LoroDraftSyncPayload.model_validate(data)
+        with sio.app.app_context(), session_factory.create_session() as session:
+            admitted = collaboration_service.authorize_loro_draft_sync(sid, session=session)
+            if admitted is None:
+                return {"msg": "unauthorized"}, 401
+            app, account_id = admitted
+            app_id = app.id
+            result = WorkflowService().sync_loro_draft(
+                app_model=app,
+                account_id=account_id,
+                epoch=payload.epoch,
+                version=payload.version,
+                update=payload.update,
+                allow_empty=payload.allow_empty,
+                session=session,
+            )
+    except LoroDraftEpochChangedError:
+        return {"msg": "epoch_changed"}, 409
+    except WorkflowNotFoundError:
+        return {"msg": "draft_workflow_not_exist"}, 404
+    except LoroDraftEmptyGraphError:
+        return {"msg": "empty_graph_confirmation_required"}, 409
+    except ValueError:
+        return {"msg": "invalid_loro_update"}, 400
+    except WorkflowCollaborationNotEntitledError:
+        return {"msg": "not_entitled"}, 403
+    except BillingUpstreamError:
+        return {"msg": "collaboration_unavailable"}, 503
+
+    if result.changed:
+        try:
+            sio.emit("loro_draft_changed", {"epoch": result.epoch}, room=app_id, skip_sid=sid)
+        except Exception:
+            logging.exception("Failed to notify collaborators about committed Loro draft %s", app_id)
+    return {
+        "epoch": result.epoch,
+        "version": result.version,
+        "update": result.update,
+        "hash": result.hash,
+        "updatedAt": result.updated_at,
+    }, 200

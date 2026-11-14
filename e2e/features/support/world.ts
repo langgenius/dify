@@ -3,6 +3,7 @@ import type { DefaultModelResponse } from '@dify/contracts/api/console/workspace
 import type { APIRequestContext, Browser, BrowserContext, Download, Page } from '@playwright/test'
 import type { AuthSessionMetadata } from '../../fixtures/auth.ts'
 import type { ConsoleClient } from '../../support/api/console-client.ts'
+import type { WorkflowDraftNetwork } from '../../support/workflow-draft-network.ts'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { request } from '@playwright/test'
 import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth.ts'
@@ -47,6 +48,17 @@ export type WorkflowPreviewFixture = {
   agentNodeId: string
   failureEdgeId: string
   routes: { edgeId: string; label: string }[]
+}
+export type WorkflowDraftFixture = {
+  appId: string
+  collaboration: boolean
+  network: WorkflowDraftNetwork
+  savedRevision?: { hash: string; updatedAt: number }
+  replacement?: {
+    oldEpoch: string
+    dsl: string
+    collaborator: { page: Page; network: WorkflowDraftNetwork; accountId: string }
+  }
 }
 
 export const createAgentBuilderWorldState = () => ({
@@ -112,6 +124,7 @@ export class DifyWorld extends World {
   shareURL: string | undefined
   sharedAppPage: Page | undefined
   workflowPreview: WorkflowPreviewFixture | undefined
+  workflowDraft: WorkflowDraftFixture | undefined
   appPackage: { sourceAppId: string; importedAppId?: string } | undefined
 
   constructor(options: IWorldOptions) {
@@ -122,6 +135,7 @@ export class DifyWorld extends World {
   resetScenarioState() {
     this.appPackage = undefined
     this.workflowPreview = undefined
+    this.workflowDraft = undefined
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined

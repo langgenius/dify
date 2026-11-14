@@ -4739,7 +4739,7 @@ Get draft workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| 200 | Draft workflow retrieved successfully | **application/json**: [DraftWorkflowResponse](#draftworkflowresponse)<br> |
 | 404 | Draft workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -25754,6 +25754,30 @@ Workflow graph might have been modified, please refresh and resubmit.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DraftWorkflowNotSyncError |  | Workflow graph might have been modified, please refresh and resubmit. |  |
+
+#### DraftWorkflowResponse
+
+The epoch is present only when the existing collaboration policy enables Loro.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
+| features | object |  | Yes |
+| graph | object |  | Yes |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| loro_draft_epoch | string |  | No |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+| tool_published | boolean |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| version | string |  | Yes |
+| version_number | integer |  | No |
 
 #### DraftWorkflowRunPayload
 

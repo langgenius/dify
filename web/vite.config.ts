@@ -143,6 +143,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
           define: {
             'process.env': '{}',
           },
+          resolve: {
+            alias: [{ find: /^loro-crdt$/, replacement: 'loro-crdt/browser' }],
+          },
           plugins: lazyPlugins(async () => {
             const { default: tailwindcss } = await import('@tailwindcss/vite')
             return [tailwindcss()]
@@ -160,6 +163,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
               'es-toolkit/function',
+              'loro-crdt/browser',
               'next/script',
               'react-textarea-autosize',
             ],
