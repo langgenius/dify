@@ -7,7 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { ReactFlowProvider } from 'reactflow'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -590,6 +590,89 @@ describe('shared knowledge binding dialog', () => {
     dialog = await open(user)
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual(saved)
+  })
+
+  describe('without crypto.randomUUID on a non-secure page', () => {
+    const uuidPattern = /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i
+
+    beforeEach(() => {
+      vi.stubGlobal('crypto', {
+        getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+      })
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('adds Classic knowledge and an Agent Knowledge Base', async () => {
+      const user = userEvent.setup()
+      setup()
+      const dialog = await open(user)
+      await user.click(
+        await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+      )
+      await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+
+      const { sets, spaces } = snapshot().knowledge
+      expect(sets).toHaveLength(1)
+      expect(spaces).toHaveLength(1)
+      expect(sets[0].id).toMatch(uuidPattern)
+      expect(spaces[0].id).toMatch(uuidPattern)
+    })
+
+    it('assigns IDs to imported and newly added metadata conditions', async () => {
+      const user = userEvent.setup()
+      getDataset.mockResolvedValue(
+        createDatasetFixture({
+          doc_metadata: ['topic', 'author'].map((name) => ({ id: name, name, type: 'string' })),
+        }),
+      )
+      const config = formStateToAgentSoulConfig({
+        formState: {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            { id: 'classic', name: 'Imported search', datasetRefs: [{ id: 'dataset-1' }] },
+          ],
+        },
+      })
+      config.knowledge!.sets![0]!.metadata_filtering = {
+        mode: 'manual',
+        conditions: {
+          logical_operator: 'and',
+          conditions: [{ name: 'topic', comparison_operator: 'is', value: 'agents' }],
+        },
+      }
+      setup(agentSoulConfigToFormState(config).knowledgeRetrievals, { enabled: false })
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      const conditionsButton = await within(dialog).findByRole('button', {
+        name: /metadata.panel.conditions/,
+      })
+      await user.click(conditionsButton)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.add',
+        }),
+      )
+      await user.click(
+        within(await screen.findByRole('menu')).getByRole('menuitem', { name: /author/ }),
+      )
+      await user.type(
+        within(screen.getByRole('group', { name: 'author' })).getByRole('textbox'),
+        'Ada',
+      )
+      await user.click(conditionsButton)
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+
+      const saved = snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions
+      expect(saved).toEqual([
+        expect.objectContaining({ name: 'topic', value: 'agents' }),
+        expect.objectContaining({ name: 'author', value: 'Ada' }),
+      ])
+      for (const condition of saved) expect(condition.id).toMatch(uuidPattern)
+      expect(saved[0].id).not.toBe(saved[1].id)
+    })
   })
 
   it('blocks a mixed-index group without a required reranker and allows correcting the dataset selection', async () => {

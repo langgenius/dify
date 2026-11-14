@@ -649,6 +649,31 @@ describe('QualityEvaluationPanel', () => {
     expect(third.headers['Idempotency-Key']).not.toBe(second.headers['Idempotency-Key'])
   })
 
+  it('starts an evaluation without crypto.randomUUID on a non-secure page', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      renderPanel()
+
+      await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.start' }),
+      )
+
+      await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+      expect(serviceMock.createReplay.mock.calls[0]![0].headers['Idempotency-Key']).toMatch(
+        /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i,
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('exposes evaluation runs and report items as tables with column headers', async () => {
     serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
     const user = userEvent.setup()
