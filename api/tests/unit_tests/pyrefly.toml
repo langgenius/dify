@@ -120,7 +120,6 @@ project-excludes = [
   "core/rag/rerank/test_rerank_model.py",
   "core/rag/retrieval/test_dataset_retrieval.py",
   "core/rag/splitter/test_text_splitter.py",
-  "core/repositories/test_celery_workflow_execution_repository.py",
   "core/repositories/test_celery_workflow_node_execution_repository.py",
   "core/repositories/test_factory.py",
   "core/repositories/test_human_input_repository.py",

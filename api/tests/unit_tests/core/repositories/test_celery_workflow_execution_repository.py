@@ -5,10 +5,11 @@ These tests verify the Celery-based asynchronous storage functionality
 for workflow execution data.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
@@ -21,7 +22,7 @@ RESOURCE_TENANT_ID = "resource-tenant-id"
 
 
 @pytest.fixture
-def account():
+def account() -> Account:
     """Create an Account user."""
     account = Account(name="Test Account", email="test@example.com")
     account.id = str(uuid4())
@@ -31,7 +32,7 @@ def account():
 
 
 @pytest.fixture
-def end_user():
+def end_user() -> EndUser:
     """Create an EndUser."""
     user = EndUser(
         id=str(uuid4()),
@@ -41,7 +42,7 @@ def end_user():
 
 
 @pytest.fixture
-def sample_workflow_execution():
+def sample_workflow_execution() -> WorkflowExecution:
     """Sample WorkflowExecution for testing."""
     return WorkflowExecution.new(
         id_=str(uuid4()),
@@ -57,7 +58,7 @@ def sample_workflow_execution():
 class TestCeleryWorkflowExecutionRepository:
     """Test cases for CeleryWorkflowExecutionRepository."""
 
-    def test_init_with_sessionmaker(self, sqlite_session_factory, account):
+    def test_init_with_sessionmaker(self, sqlite_session_factory: sessionmaker[Session], account: Account) -> None:
         """Test repository initialization with sessionmaker."""
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
@@ -76,7 +77,7 @@ class TestCeleryWorkflowExecutionRepository:
         assert repo._creator_user_id == account.id
         assert repo._creator_user_role is not None
 
-    def test_init_basic_functionality(self, sqlite_session_factory, account):
+    def test_init_basic_functionality(self, sqlite_session_factory: sessionmaker[Session], account: Account) -> None:
         """Test repository initialization basic functionality."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
@@ -91,7 +92,7 @@ class TestCeleryWorkflowExecutionRepository:
         assert repo._app_id == "test-app"
         assert repo._triggered_from == WorkflowRunTriggeredFrom.DEBUGGING
 
-    def test_init_with_end_user(self, sqlite_session_factory, end_user):
+    def test_init_with_end_user(self, sqlite_session_factory: sessionmaker[Session], end_user: EndUser) -> None:
         """Test repository initialization with EndUser."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
@@ -103,7 +104,7 @@ class TestCeleryWorkflowExecutionRepository:
 
         assert repo._tenant_id == RESOURCE_TENANT_ID
 
-    def test_init_without_tenant_id_raises_error(self, sqlite_session_factory):
+    def test_init_without_tenant_id_raises_error(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test that initialization fails without tenant_id."""
         # Create an Account with no tenant_id.
         user = Account(name="Test Account", email="test@example.com")
@@ -118,7 +119,9 @@ class TestCeleryWorkflowExecutionRepository:
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             )
 
-    def test_init_uses_resource_tenant_when_account_has_no_current_tenant(self, sqlite_session_factory):
+    def test_init_uses_resource_tenant_when_account_has_no_current_tenant(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         user = Account(name="Test Account", email="test@example.com")
         user.id = str(uuid4())
 
@@ -134,7 +137,13 @@ class TestCeleryWorkflowExecutionRepository:
         assert repo._creator_user_id == user.id
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
-    def test_save_queues_celery_task(self, mock_task, sqlite_session_factory, account, sample_workflow_execution):
+    def test_save_queues_celery_task(
+        self,
+        mock_task: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ) -> None:
         """Test that save operation queues a Celery task without tracking."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
@@ -160,7 +169,13 @@ class TestCeleryWorkflowExecutionRepository:
         assert not hasattr(repo, "_pending_saves")
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
-    def test_save_handles_celery_failure(self, mock_task, sqlite_session_factory, account, sample_workflow_execution):
+    def test_save_handles_celery_failure(
+        self,
+        mock_task: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ) -> None:
         """Test that save operation handles Celery task failures."""
         mock_task.delay.side_effect = Exception("Celery is down")
 
@@ -177,8 +192,12 @@ class TestCeleryWorkflowExecutionRepository:
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
     def test_save_operation_fire_and_forget(
-        self, mock_task, sqlite_session_factory, account, sample_workflow_execution
-    ):
+        self,
+        mock_task: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+        sample_workflow_execution: WorkflowExecution,
+    ) -> None:
         """Test that save operation works in fire-and-forget mode."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
@@ -195,7 +214,12 @@ class TestCeleryWorkflowExecutionRepository:
         assert not hasattr(repo, "_pending_saves")
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
-    def test_multiple_save_operations(self, mock_task, sqlite_session_factory, account):
+    def test_multiple_save_operations(
+        self,
+        mock_task: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        account: Account,
+    ) -> None:
         """Test multiple save operations work correctly."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
@@ -233,7 +257,12 @@ class TestCeleryWorkflowExecutionRepository:
         assert not hasattr(repo, "_pending_saves")
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
-    def test_save_with_different_user_types(self, mock_task, sqlite_session_factory, end_user):
+    def test_save_with_different_user_types(
+        self,
+        mock_task: MagicMock,
+        sqlite_session_factory: sessionmaker[Session],
+        end_user: EndUser,
+    ) -> None:
         """Test save operation with different user types."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
