@@ -587,6 +587,8 @@ class AgentAppListApi(Resource):
             detail = application_services().agent_apps.collection.create(context, params)
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError from exc
+        except AgentAppNameConflictError as exc:
+            raise AgentNameConflictError from exc
         return _agent_app_detail_response(detail), HTTPStatus.CREATED
 
 

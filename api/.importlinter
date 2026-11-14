@@ -1667,6 +1667,19 @@ forbidden_modules =
     repositories.agent_roster_repository
 allow_indirect_imports = True
 
+[importlinter:contract:agent-app-repository-boundary]
+name = Agent App persistence adds no dependencies on Agent services
+type = forbidden
+source_modules =
+    repositories.app.agent_app_repository
+    repositories.app.agent_runtime_app
+forbidden_modules =
+    services.agent
+allow_indirect_imports = True
+ignore_imports =
+    repositories.app.agent_app_repository -> services.agent.errors
+    repositories.app.agent_app_repository -> services.agent.roster_service
+
 [importlinter:contract:agent-observability-query-boundary]
 name = Agent observability query contracts are framework and persistence neutral
 type = forbidden

@@ -12,7 +12,7 @@ import logging
 
 from dify_agent.client import Client
 from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
-from sqlalchemy import ColumnElement, delete, or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.factory import create_agent_backend_client
@@ -24,7 +24,6 @@ from core.agent.workspace import (
     WorkspaceOwnerScope,
 )
 from core.db.session_factory import session_factory
-from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.agent import (
     AgentConfigVersionKind,
@@ -34,8 +33,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.workflow import WorkflowNodeExecutionModel
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent_workspace_repository import AgentWorkspaceRepository, workflow_tool_workspace_owned_by_app
 
 logger = logging.getLogger(__name__)
 
@@ -207,43 +205,8 @@ class AgentWorkspaceService:
 
     @classmethod
     def retire_binding(cls, *, session: Session, tenant_id: str, binding_id: str) -> str | None:
-        binding = session.scalar(
-            select(AgentWorkspaceBinding)
-            .where(
-                AgentWorkspaceBinding.id == binding_id,
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-            .with_for_update()
-        )
-        if binding is None:
-            return None
-        workspace = session.scalar(
-            select(AgentWorkspace)
-            .where(
-                AgentWorkspace.id == binding.workspace_id,
-                AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-            .with_for_update()
-        )
-        now = naive_utc_now()
-        binding.status = AgentWorkingResourceStatus.RETIRED
-        binding.retired_at = now
-        if workspace is not None:
-            other_binding = session.scalar(
-                select(AgentWorkspaceBinding.id).where(
-                    AgentWorkspaceBinding.tenant_id == tenant_id,
-                    AgentWorkspaceBinding.workspace_id == workspace.id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-                    AgentWorkspaceBinding.id != binding.id,
-                )
-            )
-            if other_binding is None:
-                workspace.status = AgentWorkingResourceStatus.RETIRED
-                workspace.active_guard = None
-                workspace.retired_at = now
-        return binding.id
+        """Stage retirement of an active binding in the caller's transaction."""
+        return AgentWorkspaceRepository(session=session).retire_binding(tenant_id=tenant_id, binding_id=binding_id)
 
     @classmethod
     def retire_workspace(cls, *, session: Session, tenant_id: str, workspace_id: str) -> str | None:
@@ -253,46 +216,8 @@ class AgentWorkspaceService:
 
     @classmethod
     def retire_all_for_app(cls, *, session: Session, tenant_id: str, app_id: str) -> list[str]:
-        """Retire active app Workspaces, including source-app participants in its Workflow runs."""
-
-        workspaces = session.scalars(
-            select(AgentWorkspace).where(
-                AgentWorkspace.tenant_id == tenant_id,
-                or_(AgentWorkspace.app_id == app_id, cls._workflow_tool_owned_by_app(tenant_id, app_id)),
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        ).all()
-        retired: list[str] = []
-        for workspace in workspaces:
-            workspace_id = cls.retire_workspace(
-                session=session,
-                tenant_id=tenant_id,
-                workspace_id=workspace.id,
-            )
-            if workspace_id is not None:
-                retired.append(workspace_id)
-        return retired
-
-    @staticmethod
-    def _workflow_tool_owned_by_app(tenant_id: str, app_id: str) -> ColumnElement[bool]:
-        """Follow the persisted caller and Binding, independently of optional run-log storage."""
-        return (
-            select(WorkflowNodeExecutionModel.id)
-            .join(
-                AgentWorkspaceBinding,
-                AgentWorkspaceBinding.id == WorkflowNodeExecutionModel.agent_workspace_binding_id,
-            )
-            .where(
-                WorkflowNodeExecutionModel.workflow_tool_owned_by_app(tenant_id=tenant_id, app_id=app_id),
-                WorkflowNodeExecutionModel.workflow_run_id == AgentWorkspace.owner_id,
-                WorkflowNodeExecutionModel.app_id == AgentWorkspace.app_id,
-                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.app_id == AgentWorkspace.app_id,
-                AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
-            )
-            .exists()
-        )
+        """Stage retirement of the active tenant workspaces owned by the App."""
+        return AgentWorkspaceRepository(session=session).retire_all_for_app(tenant_id=tenant_id, app_id=app_id)
 
     @classmethod
     def retire_workflow_run(cls, *, session: Session, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
@@ -300,7 +225,7 @@ class AgentWorkspaceService:
         workspaces = session.scalars(
             select(AgentWorkspace).where(
                 AgentWorkspace.tenant_id == tenant_id,
-                or_(AgentWorkspace.app_id == app_id, cls._workflow_tool_owned_by_app(tenant_id, app_id)),
+                or_(AgentWorkspace.app_id == app_id, workflow_tool_workspace_owned_by_app(tenant_id, app_id)),
                 AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
                 AgentWorkspace.owner_id == workflow_run_id,
                 AgentWorkspace.status.in_((AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)),

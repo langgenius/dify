@@ -7,11 +7,14 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from machinery.context import RequestContext
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
-from models.model import App, AppModelConfig
+from models.model import App, AppMode, AppModelConfig
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.entities.app_entities import AppListParams
+from tests.helpers.unit.model_factories import make_app
 
 type Resolver = Literal["repository", "roster"]
 
@@ -138,3 +141,51 @@ def test_existing_runtime_app_resolution_does_not_commit_the_callers_transaction
         app = session.get(App, app_id)
         assert app is not None
         assert app.name == "Inline Agent"
+
+
+def test_list_apps_does_not_create_build_conversation_for_empty_agent_id(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Historical empty Agent ids must not become owners of Build conversations."""
+    valid_agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Valid",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id="app-1",
+        status=AgentStatus.ACTIVE,
+    )
+    empty_id_agent = Agent(
+        id="",
+        tenant_id="tenant-1",
+        name="Broken",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id="app-2",
+        status=AgentStatus.ACTIVE,
+    )
+
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                make_app(app_id="app-1", mode=AppMode.AGENT),
+                make_app(app_id="app-2", mode=AppMode.AGENT),
+                valid_agent,
+                empty_id_agent,
+            ]
+        )
+
+    repository = AgentAppRepository(session_factory=sqlite_session_factory)
+    context = RequestContext("test", None, "account-1", "tenant-1")
+    result = repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids=None)
+
+    by_app_id = {item.app.id: item for item in result.data}
+    assert by_app_id["app-1"].agent_id == "agent-1"
+    assert by_app_id["app-1"].debug_conversation_id is not None
+    assert by_app_id["app-2"].agent_id is None
+    assert by_app_id["app-2"].debug_conversation_id is None

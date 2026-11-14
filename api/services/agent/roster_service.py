@@ -22,8 +22,9 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
+from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource
-from models.model import App, Conversation, IconType, Message
+from models.model import App, Conversation, IconType
 from repositories.agent_roster_queries import (
     build_roster_agents_stmt,
     load_published_workflows_by_agent_id,
@@ -32,17 +33,18 @@ from repositories.agent_roster_queries import (
 from repositories.agent_version_queries import visible_version_ids, visible_version_operations
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from repositories.app.agent_debug_conversations import (
+    count_agent_debug_conversation_messages,
     create_agent_debug_conversation,
     get_or_create_agent_debug_conversation,
 )
 from repositories.app.agent_runtime_app import (
+    create_backing_agent_for_app,
     create_hidden_backing_app,
     ensure_workflow_agent_backing_app,
     find_runtime_app,
     find_runtime_resolvable_agent,
     resolve_agent_runtime_app,
 )
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -296,65 +298,22 @@ class AgentRosterService:
         initial_soul: AgentSoulConfig | None = None,
         revision_operation: AgentConfigRevisionOperation = AgentConfigRevisionOperation.CREATE_VERSION,
     ) -> Agent:
-        """Create the roster Agent that backs an Agent App, linked via ``app_id``.
-
-        Unlike :meth:`create_roster_agent`, this does not commit: the caller
-        (``AppService.create_app``) owns the surrounding transaction so the App
-        row and its backing Agent are persisted atomically. The caller supplies
-        the initial Agent Soul, or an empty one is seeded. Importers may provide
-        a portable Soul and provenance while retaining the same transaction boundary.
-        """
-        soul = initial_soul or AgentSoulConfig()
-        agent = Agent(
+        """Stage a backing Agent and its initial configuration in the caller's transaction."""
+        return create_backing_agent_for_app(
+            self._session,
             tenant_id=tenant_id,
+            account_id=account_id,
+            app_id=app_id,
             name=name,
             description=description,
             role=role,
             icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
-            agent_kind=AgentKind.DIFY_AGENT,
-            scope=AgentScope.ROSTER,
             source=source,
-            status=AgentStatus.ACTIVE,
-            app_id=app_id,
-            backing_app_id=app_id,
-            created_by=account_id,
-            updated_by=account_id,
+            initial_soul=initial_soul,
+            revision_operation=revision_operation,
         )
-        self._session.add(agent)
-        self._session.flush()
-
-        version = AgentConfigSnapshot(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            version=1,
-            config_snapshot=soul,
-            home_snapshot_id=None,
-            created_by=account_id,
-        )
-        self._session.add(version)
-        self._session.flush()
-
-        revision = AgentConfigRevision(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            current_snapshot_id=version.id,
-            revision=1,
-            operation=revision_operation,
-            created_by=account_id,
-        )
-        self._session.add(revision)
-        agent.active_config_snapshot_id = version.id
-        agent.active_config_has_model = agent_soul_has_model(soul)
-        agent.active_config_is_published = False
-        self._session.flush()
-        self._get_or_create_agent_app_debug_conversation(
-            agent=agent,
-            account_id=account_id,
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-        )
-        return agent
 
     def create_hidden_backing_app_for_workflow_agent(
         self,
@@ -459,14 +418,7 @@ class AgentRosterService:
     def count_agent_app_debug_conversation_messages(self, *, conversation_id: str) -> int:
         """Return the number of visible messages in an Agent App debug conversation."""
 
-        return (
-            self._session.scalar(
-                select(func.count(Message.id)).where(
-                    Message.conversation_id == conversation_id,
-                )
-            )
-            or 0
-        )
+        return count_agent_debug_conversation_messages(self._session, conversation_id=conversation_id)
 
     def rotate_preview_conversation(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
         """Rotate Preview and retire its exact Conversation-owned Binding.

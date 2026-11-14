@@ -39,9 +39,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
+from models.agent_config_entities import AgentSoulConfig
+from models.agent_soul_state import build_initial_agent_soul
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
-from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
@@ -216,21 +216,7 @@ class AppService:
     def prepare_agent_soul(tenant_id: str, *, session: Session) -> AgentSoulConfig | None:
         """Build the initial Agent Soul from the workspace default model, when available."""
         default_model = ModelProviderService().get_default_model_selection(tenant_id, ModelType.LLM, session=session)
-        if default_model is None:
-            return None
-        agent_provider, agent_model = default_model
-        try:
-            provider_id = ModelProviderID(agent_provider)
-        except ValueError:
-            logger.warning("Invalid Agent default model, tenant_id: %s", tenant_id, exc_info=True)
-            return None
-        return AgentSoulConfig(
-            model=AgentSoulModelConfig(
-                plugin_id=provider_id.plugin_id,
-                model_provider=str(provider_id),
-                model=agent_model,
-            )
-        )
+        return build_initial_agent_soul(tenant_id, default_model)
 
     def create_app(
         self,
