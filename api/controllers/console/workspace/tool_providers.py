@@ -884,9 +884,9 @@ class ToolApiProviderPreviousTestApi(Resource):
     @with_current_tenant_id
     @model_validate(ApiToolTestPayload)
     def post(self, req_data: ApiToolTestPayload, current_tenant_id: str):
-        return dump_response(
-            ApiToolPreviewResponse,
-            ApiToolManageService.test_api_tool_preview(
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            result = ApiToolManageService.test_api_tool_preview(
+                session,
                 current_tenant_id,
                 req_data.provider_name or "",
                 req_data.tool_name,
@@ -894,8 +894,8 @@ class ToolApiProviderPreviousTestApi(Resource):
                 req_data.parameters,
                 req_data.schema_type,
                 req_data.schema_,
-            ),
-        )
+            )
+        return dump_response(ApiToolPreviewResponse, result)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
