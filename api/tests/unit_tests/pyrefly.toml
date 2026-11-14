@@ -143,7 +143,6 @@ project-excludes = [
   "../helpers/workflow/table_runner.py",
   "core/workflow/nodes/agent_v2/test_agent_node.py",
   "core/workflow/nodes/agent_v2/test_dify_tools_builder.py",
-  "core/workflow/nodes/agent_v2/test_output_adapter.py",
   "core/workflow/nodes/agent_v2/test_runtime_request_builder.py",
   "core/workflow/nodes/agent_v2/test_validators.py",
   "../helpers/unit/core/workflow/nodes/code/code_node_spec.py",
