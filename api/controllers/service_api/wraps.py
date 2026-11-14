@@ -157,6 +157,9 @@ def validate_app_token[**P, R](
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
+                # End-user provisioning and the handler open their own sessions; the
+                # request-scoped session must not keep a pooled connection across them.
+                _release_request_session_connection()
                 kwargs["end_user"] = resolve_service_api_end_user(
                     tenant_id=app_model.tenant_id, app_id=app_model.id, fetch_user_arg=fetch_user_arg
                 )
@@ -181,6 +184,7 @@ def validate_app_token[**P, R](
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account not found or tenant is not active.")
+                _release_request_session_connection()
 
             return view_func(*args, **kwargs)
 
@@ -191,6 +195,29 @@ def validate_app_token[**P, R](
         return decorator
     else:
         return decorator(view)
+
+
+def _release_request_session_connection() -> None:
+    """Return the request-scoped session's pooled connection while keeping its loaded rows usable.
+
+    Invariant: legacy app-token admission must not hold a pooled connection while another
+    session is opened for the same request. Each in-flight request would otherwise need two
+    connections at once, and once concurrent requests reach the pool capacity every
+    connection is held by a request waiting for a second one, so all of them time out.
+
+    Precondition: the request-scoped session holds only admission reads and no pending writes.
+    Postcondition: the session is outside a transaction and its connection is back in the
+    pool; ``App``, ``Tenant`` and ``Account`` rows loaded during admission stay attached and
+    unexpired, so handlers read them without a new query. The session's ``expire_on_commit``
+    setting is restored on success and on failure.
+    """
+    session = db.session()
+    expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = expire_on_commit
 
 
 def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg: FetchUserArg) -> EndUser:
@@ -428,6 +455,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
         if accepts_dataset_grant:
             kwargs["dataset_grant"] = dataset_grant
+
+        # Dataset handlers open their own sessions; see _release_request_session_connection.
+        _release_request_session_connection()
 
         if expects_bound_instance:
             if not args:
