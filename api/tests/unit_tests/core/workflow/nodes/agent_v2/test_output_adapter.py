@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from dify_agent.protocol import RunFailureType
 from dify_agent.protocol.snapshot import SessionSnapshot
+from pydantic import JsonValue
 
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
@@ -44,7 +45,7 @@ def _rebacked_tool_file(tool_file_id: str) -> File:
     )
 
 
-def _succeeded(output: object) -> AgentBackendRunSucceededInternalEvent:
+def _succeeded(output: JsonValue) -> AgentBackendRunSucceededInternalEvent:
     return AgentBackendRunSucceededInternalEvent(
         run_id="run-1",
         source_event_id="2-0",
@@ -53,7 +54,7 @@ def _succeeded(output: object) -> AgentBackendRunSucceededInternalEvent:
     )
 
 
-def test_minimal_id_file_output_is_rebacked_from_tool_file():
+def test_minimal_id_file_output_is_rebacked_from_tool_file() -> None:
     """Agent Files §4.6: a bare {"id": ...} output is rebacked from the ToolFile row."""
     calls: list[tuple[str, str]] = []
 
@@ -78,7 +79,7 @@ def test_minimal_id_file_output_is_rebacked_from_tool_file():
     assert calls == [("tenant-1", "tool-file-1")]
 
 
-def test_unresolved_minimal_id_stays_a_plain_object():
+def test_unresolved_minimal_id_stays_a_plain_object() -> None:
     adapter = WorkflowAgentOutputAdapter(tool_file_rebacker=lambda **_: None)
     result = adapter.build_success_result(
         event=_succeeded({"thing": {"id": "not-a-file"}}),
@@ -90,7 +91,7 @@ def test_unresolved_minimal_id_stays_a_plain_object():
     assert result.outputs["thing"] == {"id": "not-a-file"}
 
 
-def test_invalid_minimal_id_stays_a_plain_object_without_reback():
+def test_invalid_minimal_id_stays_a_plain_object_without_reback() -> None:
     adapter = WorkflowAgentOutputAdapter(tool_file_rebacker=lambda **_: _rebacked_tool_file("unexpected"))
     result = adapter.build_success_result(
         event=_succeeded({"thing": {"id": 123}}),
@@ -102,13 +103,13 @@ def test_invalid_minimal_id_stays_a_plain_object_without_reback():
     assert result.outputs["thing"] == {"id": 123}
 
 
-def test_success_output_adapter_preserves_existing_file_segment():
+def test_success_output_adapter_preserves_existing_file_segment() -> None:
     file = _rebacked_tool_file("tool-file-1")
     segment = FileSegment(value=file)
     assert WorkflowAgentOutputAdapter()._normalize_output_value(segment) is segment
 
 
-def test_array_of_minimal_id_file_outputs_rebacked():
+def test_array_of_minimal_id_file_outputs_rebacked() -> None:
     adapter = WorkflowAgentOutputAdapter(
         tool_file_rebacker=lambda *, tenant_id, tool_file_id: _rebacked_tool_file(tool_file_id)
     )
@@ -124,7 +125,7 @@ def test_array_of_minimal_id_file_outputs_rebacked():
     assert [f.reference for f in files.value] == ["tool-file-1", "tool-file-2"]
 
 
-def test_success_output_adapter_preserves_dict_output():
+def test_success_output_adapter_preserves_dict_output() -> None:
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
             run_id="run-1",
@@ -145,7 +146,7 @@ def test_success_output_adapter_preserves_dict_output():
     }
 
 
-def test_failure_output_adapter_preserves_backend_failed_reason():
+def test_failure_output_adapter_preserves_backend_failed_reason() -> None:
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(
             run_id="run-1",
@@ -177,7 +178,7 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     }
 
 
-def test_failure_output_adapter_prefers_run_failure_type_over_reason():
+def test_failure_output_adapter_prefers_run_failure_type_over_reason() -> None:
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(
             run_id="run-1",
@@ -193,7 +194,7 @@ def test_failure_output_adapter_prefers_run_failure_type_over_reason():
     assert result.error_type == "agent_run_limit_exceeded"
 
 
-def test_failure_output_adapter_uses_default_error_type_without_backend_classification():
+def test_failure_output_adapter_uses_default_error_type_without_backend_classification() -> None:
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(
             run_id="run-1",
@@ -209,7 +210,7 @@ def test_failure_output_adapter_uses_default_error_type_without_backend_classifi
     assert result.error_type == "agent_backend_run_failed"
 
 
-def test_success_output_adapter_normalizes_string_and_scalar_outputs():
+def test_success_output_adapter_normalizes_string_and_scalar_outputs() -> None:
     adapter = WorkflowAgentOutputAdapter()
     string_result = adapter.build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
@@ -238,7 +239,7 @@ def test_success_output_adapter_normalizes_string_and_scalar_outputs():
     assert scalar_result.outputs == {"result": 3}
 
 
-def test_success_output_adapter_normalizes_file_output_to_file_segments():
+def test_success_output_adapter_normalizes_file_output_to_file_segments() -> None:
     upload_reference = build_file_reference(record_id="upload-file-1")
     tool_reference = build_file_reference(record_id="tool-file-1")
     with patch(
@@ -307,7 +308,7 @@ def test_success_output_adapter_normalizes_file_output_to_file_segments():
     ],
 )
 def test_success_output_adapter_rejects_invalid_declared_file_mappings(
-    payload: dict[str, object],
+    payload: dict[str, JsonValue],
     expected_error: str,
 ) -> None:
     with pytest.raises(ValueError, match=expected_error):
@@ -320,7 +321,7 @@ def test_success_output_adapter_rejects_invalid_declared_file_mappings(
         )
 
 
-def test_success_output_adapter_requires_tenant_for_canonical_file_mapping():
+def test_success_output_adapter_requires_tenant_for_canonical_file_mapping() -> None:
     reference = build_file_reference(record_id="tool-file-1")
     with pytest.raises(ValueError, match="tenant_id is required"):
         WorkflowAgentOutputAdapter().build_success_result(
@@ -332,7 +333,7 @@ def test_success_output_adapter_requires_tenant_for_canonical_file_mapping():
         )
 
 
-def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file_output():
+def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file_output() -> None:
     tool_reference = build_file_reference(record_id="tool-file-1")
     with patch(
         "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
@@ -357,7 +358,7 @@ def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file
     assert report.value.reference == tool_reference
 
 
-def test_success_output_adapter_accepts_canonical_datasource_file_mapping_for_declared_file_output():
+def test_success_output_adapter_accepts_canonical_datasource_file_mapping_for_declared_file_output() -> None:
     datasource_reference = build_file_reference(record_id="datasource-file-1")
     with patch(
         "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
@@ -385,7 +386,7 @@ def test_success_output_adapter_accepts_canonical_datasource_file_mapping_for_de
     assert report.value.reference == datasource_reference
 
 
-def test_success_output_adapter_accepts_canonical_remote_url_mapping_for_declared_file_output():
+def test_success_output_adapter_accepts_canonical_remote_url_mapping_for_declared_file_output() -> None:
     remote_url = "https://example.com/report.pdf"
 
     result = WorkflowAgentOutputAdapter().build_success_result(
@@ -407,7 +408,7 @@ def test_success_output_adapter_accepts_canonical_remote_url_mapping_for_declare
     assert report.value.remote_url == remote_url
 
 
-def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_array_file_output():
+def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_array_file_output() -> None:
     tool_reference = build_file_reference(record_id="tool-file-1")
     with patch(
         "core.workflow.nodes.agent_v2.output_adapter.build_from_mapping",
@@ -438,7 +439,7 @@ def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_arra
     assert attachments.value[0].reference == tool_reference
 
 
-def test_success_output_adapter_does_not_treat_generic_object_with_string_id_as_file():
+def test_success_output_adapter_does_not_treat_generic_object_with_string_id_as_file() -> None:
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
             run_id="run-1",
@@ -454,7 +455,7 @@ def test_success_output_adapter_does_not_treat_generic_object_with_string_id_as_
     assert result.outputs["meta"] == {"id": "123", "type": "summary"}
 
 
-def test_success_output_adapter_does_not_crash_on_generic_object_with_non_string_id():
+def test_success_output_adapter_does_not_crash_on_generic_object_with_non_string_id() -> None:
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
             run_id="run-1",
@@ -470,7 +471,7 @@ def test_success_output_adapter_does_not_crash_on_generic_object_with_non_string
     assert result.outputs["meta"] == {"id": 1, "name": "foo"}
 
 
-def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_object_output():
+def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_object_output() -> None:
     tool_reference = build_file_reference(record_id="tool-file-1")
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
@@ -500,7 +501,7 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_o
     }
 
 
-def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_generic_array_output():
+def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_generic_array_output() -> None:
     tool_reference = build_file_reference(record_id="tool-file-1")
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
@@ -540,7 +541,7 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_g
     ]
 
 
-def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():
+def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata() -> None:
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
             run_id="run-1",
@@ -579,7 +580,7 @@ def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():
     assert result.metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] == "USD"
 
 
-def test_failure_output_adapter_maps_cancelled_to_failure_code():
+def test_failure_output_adapter_maps_cancelled_to_failure_code() -> None:
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunCancelledInternalEvent(
             run_id="run-1",
@@ -599,7 +600,7 @@ def test_failure_output_adapter_maps_cancelled_to_failure_code():
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 8
 
 
-def test_stream_exhausted_result_is_failed_with_stream_error():
+def test_stream_exhausted_result_is_failed_with_stream_error() -> None:
     result = WorkflowAgentOutputAdapter().build_stream_exhausted_result(
         inputs={},
         process_data={},
