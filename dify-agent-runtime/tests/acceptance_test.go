@@ -271,14 +271,14 @@ func TestRunWithCwd(t *testing.T) {
 		t.Run(tgt.name, func(t *testing.T) {
 			result := runJob(t, tgt, map[string]any{
 				"script":  "pwd",
-				"cwd":     "/tmp",
+				"cwd":     "/workspace",
 				"timeout": 10,
 			})
 			assertJobDone(t, result)
 			assertExitCode(t, result, 0)
 			output := result["output"].(string)
-			if !strings.Contains(output, "/tmp") {
-				t.Errorf("expected output to contain '/tmp', got %q", output)
+			if !strings.Contains(output, "/workspace") {
+				t.Errorf("expected output to contain '/workspace', got %q", output)
 			}
 		})
 	}
@@ -560,19 +560,24 @@ func TestMultilineOutput(t *testing.T) {
 
 func TestInvalidCwd(t *testing.T) {
 	for _, tgt := range targets() {
-		t.Run(tgt.name, func(t *testing.T) {
-			resp := doPost(t, tgt, "/v1/jobs/run", map[string]any{
-				"script":  "echo x",
-				"cwd":     "/nonexistent-dir-xyz",
-				"timeout": 5,
-			}, true)
-			if resp.StatusCode != 400 {
+		for _, cwd := range []string{"/nonexistent-dir-xyz", "/tmp"} {
+			t.Run(tgt.name+cwd, func(t *testing.T) {
+				resp := doPost(t, tgt, "/v1/jobs/run", map[string]any{
+					"script":  "echo x",
+					"cwd":     cwd,
+					"timeout": 5,
+				}, true)
+				assertStatus(t, resp, http.StatusBadRequest)
 				body := readBody(t, resp)
-				t.Errorf("expected 400, got %d: %s", resp.StatusCode, string(body))
-			} else {
-				resp.Body.Close()
-			}
-		})
+				var failure map[string]map[string]string
+				if err := json.Unmarshal(body, &failure); err != nil {
+					t.Fatal(err)
+				}
+				if code := failure["error"]["code"]; code != "invalid_cwd" {
+					t.Errorf("error code = %q, want invalid_cwd", code)
+				}
+			})
+		}
 	}
 }
 
