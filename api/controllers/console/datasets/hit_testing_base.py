@@ -124,6 +124,10 @@ class DatasetsHitTestingBase:
         current_user: Account | None = None,
         current_tenant_id: str | None = None,
     ) -> dict[str, Any]:
+        # The dataset and its permissions are read and nothing is pending. End that transaction here:
+        # retrieval waits on the embedding model and the vector store, and its worker threads open
+        # sessions of their own, so a request that kept its connection would need a second one.
+        session.commit()
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
