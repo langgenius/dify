@@ -145,3 +145,23 @@ class TestCSVExtractor:
 
         with pytest.raises(csv.Error, match="bad csv"):
             extractor._read_from_file(io.StringIO("x"))
+
+    @pytest.mark.parametrize("value", ["  spaced  ", "\tindented", "trailing "])
+    def test_extract_preserves_surrounding_cell_whitespace(self, tmp_path: Path, value: str) -> None:
+        file_path = tmp_path / "data.csv"
+        file_path.write_text(f'value,body\n"{value}",reference\n', encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", source_column="value").extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == f"value: {value};body: reference"
+        assert docs[0].metadata["source"] == value
+
+    def test_extract_keeps_plain_cell_text(self, tmp_path: Path) -> None:
+        """Regression: cells without surrounding whitespace keep their original output."""
+        file_path = tmp_path / "data.csv"
+        file_path.write_text("value,body\nplain,reference\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", source_column="value").extract()
+
+        assert docs[0].page_content == "value: plain;body: reference"

@@ -69,7 +69,9 @@ class CSVExtractor(BaseExtractor):
             # create document objects
 
             for i, row in df.iterrows():
-                content = ";".join(f"{str(col).strip()}: {str(row[col]).strip()}" for col in df.columns)
+                # dtype=str / keep_default_na=False already preserve the source text;
+                # stripping cell values here silently rewrites indexed content.
+                content = ";".join(f"{str(col).strip()}: {str(row[col])}" for col in df.columns)
                 source = row[self.source_column] if self.source_column else ""
                 metadata = {"source": source, "row": i}
                 doc = Document(page_content=content, metadata=metadata)
