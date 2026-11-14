@@ -18,7 +18,7 @@ _OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 _USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
-def test_export_config_parser_accepts_new_scripted_shape():
+def test_export_config_parser_accepts_new_scripted_shape() -> None:
     selection = ExportConfigParser().parse(
         {
             "source_tenant": {"mode": "single", "name": "admin's Workspace"},
@@ -50,7 +50,7 @@ def test_export_config_parser_accepts_new_scripted_shape():
     assert selection.import_options.conflict_strategy == ConflictStrategy.FAIL
 
 
-def test_export_config_parser_defaults_to_secret_free_all_apps():
+def test_export_config_parser_defaults_to_secret_free_all_apps() -> None:
     selection = ExportConfigParser().parse(
         {
             "source_tenant": {"name": "source"},
@@ -63,12 +63,12 @@ def test_export_config_parser_defaults_to_secret_free_all_apps():
     assert selection.include_secrets is False
 
 
-def test_export_config_parser_requires_explicit_source_tenant_name_for_new_shape():
+def test_export_config_parser_requires_explicit_source_tenant_name_for_new_shape() -> None:
     with pytest.raises(MigrationDataError, match="source_tenant.name"):
         ExportConfigParser().parse({"source_tenant": {"mode": "single"}, "apps": {"all": True}})
 
 
-def test_export_config_parser_accepts_limited_backwards_draft_shape():
+def test_export_config_parser_accepts_limited_backwards_draft_shape() -> None:
     selection = ExportConfigParser().parse(
         {
             "tenant_name": "legacy-source",
@@ -88,7 +88,7 @@ def test_export_config_parser_accepts_limited_backwards_draft_shape():
     assert selection.include_secrets is False
 
 
-def test_export_config_parser_rejects_unsupported_app_modes():
+def test_export_config_parser_rejects_unsupported_app_modes() -> None:
     with pytest.raises(MigrationDataError, match="Unsupported app modes"):
         ExportConfigParser().parse(
             {
@@ -98,10 +98,10 @@ def test_export_config_parser_rejects_unsupported_app_modes():
         )
 
 
-def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypatch: pytest.MonkeyPatch):
+def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 
-    def fake_get_api_provider(provider: str, tenant_id: str, mask: bool = True):
+    def fake_get_api_provider(provider: str, tenant_id: str, mask: bool = True) -> dict[str, object]:
         calls.append((provider, tenant_id, mask))
         return {"credentials": {"api_key": "masked"}, "schema": {"openapi": "3.0.0"}, "tools": ["unused"]}
 
@@ -110,7 +110,7 @@ def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypa
         fake_get_api_provider,
     )
     service = MigrationExportService()
-    tools: list[dict] = []
+    tools: list[dict[str, object]] = []
     report_items = []
 
     service._export_api_tools(
@@ -127,10 +127,10 @@ def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypa
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Session):
+def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Session) -> None:
     service = MigrationExportService()
-    dependencies: list[dict] = []
-    mcp_tools: list[dict] = []
+    dependencies: list[dict[str, object]] = []
+    mcp_tools: list[dict[str, object]] = []
     report_items = []
 
     service._export_mcp_tools(
@@ -158,7 +158,7 @@ def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Sessio
 
 
 @pytest.mark.parametrize("sqlite_session", [(MCPToolProvider,)], indirect=True)
-def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite_session: Session):
+def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite_session: Session) -> None:
     sqlite_session.add(
         MCPToolProvider(
             name="Other tenant provider",
@@ -176,7 +176,7 @@ def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite
 
     statements = []
 
-    def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
+    def capture_statement(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     bind = sqlite_session.get_bind()
@@ -193,7 +193,7 @@ def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite
     assert "tool_mcp_providers.server_identifier =" in statements[0]
 
 
-def test_dependency_ids_are_deduplicated_with_manual_selection_first():
+def test_dependency_ids_are_deduplicated_with_manual_selection_first() -> None:
     service = MigrationExportService()
     provider_ids = service._provider_ids(
         manual_provider_ids=["weather", "weather", "manual"],
@@ -208,7 +208,7 @@ def test_dependency_ids_are_deduplicated_with_manual_selection_first():
     assert provider_ids == ["weather", "manual", "forecast"]
 
 
-def test_api_provider_ids_use_provider_name_from_discovered_dependencies():
+def test_api_provider_ids_use_provider_name_from_discovered_dependencies() -> None:
     service = MigrationExportService()
     provider_ids = service._provider_ids(
         manual_provider_ids=[],
@@ -221,7 +221,7 @@ def test_api_provider_ids_use_provider_name_from_discovered_dependencies():
     assert provider_ids == ["weather"]
 
 
-def test_mcp_authentication_export_omits_runtime_header_shape():
+def test_mcp_authentication_export_omits_runtime_header_shape() -> None:
     service = MigrationExportService()
 
     assert service._serialize_mcp_authentication({"Authorization": "Bearer token"}) is None
