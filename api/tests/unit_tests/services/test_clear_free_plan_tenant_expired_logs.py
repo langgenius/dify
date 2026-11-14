@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -330,7 +330,11 @@ class TestClearFreePlanTenantExpiredLogs:
         records = _create_related_records("msg-1")
         sqlite_session.add_all(records)
         sqlite_session.commit()
-        record_keys = [(type(record), record.id) for record in records]
+        record_keys: list[tuple[type[object], object]] = []
+        for record in records:
+            record_id = getattr(record, "id", None)
+            assert record_id is not None
+            record_keys.append((type(record), record_id))
         storage = MagicMock()
         monkeypatch.setattr(service_module, "storage", storage)
 
@@ -737,14 +741,14 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         list[object](),
     ]
     run_repo.delete_runs_by_ids.return_value = 2
-    node_session_makers: list[object] = []
-    run_session_makers: list[object] = []
+    node_session_makers: list[sessionmaker[Session]] = []
+    run_session_makers: list[sessionmaker[Session]] = []
 
-    def create_node_repo(session_maker: object) -> MagicMock:
+    def create_node_repo(session_maker: sessionmaker[Session]) -> MagicMock:
         node_session_makers.append(session_maker)
         return node_repo
 
-    def create_run_repo(session_maker: object) -> MagicMock:
+    def create_run_repo(session_maker: sessionmaker[Session]) -> MagicMock:
         run_session_makers.append(session_maker)
         return run_repo
 
