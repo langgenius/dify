@@ -70,7 +70,7 @@
   "members.transferModal.verifyContent": "Mevcut e-posta adresiniz <email>{{email}}</email>.",
   "members.transferModal.verifyContent2": "Bu e-postaya yeniden kimlik doğrulama için geçici bir doğrulama kodu göndereceğiz.",
   "members.transferModal.verifyEmail": "Mevcut e-posta adresinizi doğrulayın",
-  "members.transferModal.warning": "“{{workspace}}” sahipliğini devretmek üzere olduğunuz için. Bu, hemen yürürlüğe girecek ve geri alınamaz.",
+  "members.transferModal.warning": "“{{workspace}}” sahipliğini devretmek üzeresiniz. Bu işlem hemen geçerli olur ve geri alınamaz.",
   "members.transferModal.warningTip": "Yönetici üyesi olacaksın ve yeni sahibi tam kontrole sahip olacak.",
   "members.transferOwnership": "Sahipliği Devret",
   "members.you": "(Siz)"
