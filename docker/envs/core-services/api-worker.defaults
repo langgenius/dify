@@ -73,6 +73,9 @@ CONSOLE_CORS_ALLOW_ORIGINS=${CONSOLE_CORS_ALLOW_ORIGINS-*}
 SERVER_WORKER_CLASS=${SERVER_WORKER_CLASS-gevent}
 GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT-360}
 CELERY_WORKER_AMOUNT=${CELERY_WORKER_AMOUNT-4}
+# Freeze the objects alive once an API or worker process has started, so that full garbage
+# collections scan request state instead of the whole process. Set to false to turn it off.
+# GC_FREEZE_AFTER_STARTUP=true
 
 # ------------------------------
 # Celery broker and KnowledgeFS dispatch
