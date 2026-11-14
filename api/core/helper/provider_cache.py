@@ -1,9 +1,12 @@
 import json
 from abc import ABC, abstractmethod
-from json import JSONDecodeError
 from typing import Any, override
 
+from pydantic import TypeAdapter, ValidationError
+
 from extensions.ext_redis import redis_client
+
+_credentials_adapter = TypeAdapter(dict[str, Any])
 
 
 class ProviderCredentialsCache(ABC):
@@ -18,13 +21,17 @@ class ProviderCredentialsCache(ABC):
         pass
 
     def get(self) -> dict[str, Any] | None:
-        """Get cached provider credentials"""
+        """Read provider credentials from the initialized Redis client.
+
+        Return a JSON object with arbitrary values, or None for a missing,
+        malformed, non-UTF-8, or non-object entry. Never mutate cached data;
+        Redis failures propagate so callers can distinguish an outage from a miss.
+        """
         cached_credentials = redis_client.get(self.cache_key)
         if cached_credentials:
             try:
-                cached_credentials = cached_credentials.decode("utf-8")
-                return dict(json.loads(cached_credentials))
-            except (JSONDecodeError, UnicodeDecodeError):
+                return _credentials_adapter.validate_json(cached_credentials.decode("utf-8"))
+            except (ValidationError, UnicodeDecodeError):
                 return None
         return None
 
