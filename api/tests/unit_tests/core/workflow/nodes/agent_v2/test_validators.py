@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import TypedDict
 from unittest.mock import Mock
 
 import pytest
@@ -19,13 +20,29 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
+from models.dataset import Dataset
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow
 from tests.helpers.unit.model_factories import make_workflow
 
 
-def _workflow(graph: dict) -> Workflow:
+class _GraphEdge(TypedDict):
+    source: str
+    target: str
+
+
+class _GraphNode(TypedDict):
+    id: str
+    data: dict[str, object]
+
+
+class _WorkflowGraph(TypedDict):
+    nodes: list[_GraphNode]
+    edges: list[_GraphEdge]
+
+
+def _workflow(graph: _WorkflowGraph) -> Workflow:
     return make_workflow(workflow_id="workflow-1", graph=graph)
 
 
@@ -98,7 +115,7 @@ def _snapshot_with_knowledge_dataset(dataset_id: str) -> AgentConfigSnapshot:
     )
 
 
-def _graph(edges: list[dict]) -> dict:
+def _graph(edges: list[_GraphEdge]) -> _WorkflowGraph:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
@@ -113,7 +130,7 @@ def _graph(edges: list[dict]) -> dict:
     }
 
 
-def _tool_graph(tool_data: dict) -> dict:
+def _tool_graph(tool_data: dict[str, object]) -> _WorkflowGraph:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
@@ -138,9 +155,9 @@ def _tool_graph(tool_data: dict) -> dict:
 
 
 def test_historical_agent_version_two_is_not_validated_as_dify_agent(unbound_session: Session) -> None:
-    graph = {
+    graph: _WorkflowGraph = {
         "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
-        "edges": [],
+        "edges": list[_GraphEdge](),
     }
 
     WorkflowAgentNodeValidator.validate_published_workflow(session=unbound_session, workflow=_workflow(graph))
@@ -181,7 +198,7 @@ def _upload_file(*, file_id: str = "file-1", tenant_id: str = "tenant-1") -> Upl
     return upload_file
 
 
-def test_publish_validation_accepts_upstream_previous_output_ref(sqlite_session: Session):
+def test_publish_validation_accepts_upstream_previous_output_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "previous-node", "output": "text"}]}
     )
@@ -200,7 +217,7 @@ def test_publish_validation_accepts_upstream_previous_output_ref(sqlite_session:
     )
 
 
-def test_publish_validation_uses_active_snapshot_for_roster_agent(sqlite_session: Session):
+def test_publish_validation_uses_active_snapshot_for_roster_agent(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig()
     binding = _binding(node_job)
     binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
@@ -221,7 +238,7 @@ def test_publish_validation_uses_active_snapshot_for_roster_agent(sqlite_session
     )
 
 
-def test_publish_validation_rejects_unpublished_roster_agent(sqlite_session: Session):
+def test_publish_validation_rejects_unpublished_roster_agent(sqlite_session: Session) -> None:
     binding = _binding(WorkflowNodeJobConfig())
     binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
     sqlite_session.add(binding)
@@ -234,7 +251,7 @@ def test_publish_validation_rejects_unpublished_roster_agent(sqlite_session: Ses
         )
 
 
-def test_publish_validation_rejects_non_upstream_previous_output_ref(sqlite_session: Session):
+def test_publish_validation_rejects_non_upstream_previous_output_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
     )
@@ -254,14 +271,14 @@ def test_publish_validation_rejects_non_upstream_previous_output_ref(sqlite_sess
         )
 
 
-def test_draft_validation_allows_unbound_agent_node(sqlite_session: Session):
+def test_draft_validation_allows_unbound_agent_node(sqlite_session: Session) -> None:
     WorkflowAgentNodeValidator.validate_draft_workflow(
         session=sqlite_session,
         workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
     )
 
 
-def test_draft_validation_allows_missing_previous_node(sqlite_session: Session):
+def test_draft_validation_allows_missing_previous_node(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}]}
     )
@@ -273,7 +290,7 @@ def test_draft_validation_allows_missing_previous_node(sqlite_session: Session):
     )
 
 
-def test_draft_validation_allows_non_upstream_previous_output_ref(sqlite_session: Session):
+def test_draft_validation_allows_non_upstream_previous_output_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
     )
@@ -292,7 +309,7 @@ def test_draft_validation_allows_non_upstream_previous_output_ref(sqlite_session
     )
 
 
-def test_draft_validation_allows_missing_agent_soul_model():
+def test_draft_validation_allows_missing_agent_soul_model() -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -310,7 +327,7 @@ def test_draft_validation_allows_missing_agent_soul_model():
     )
 
 
-def test_draft_validation_rejects_incomplete_previous_output_ref(sqlite_session: Session):
+def test_draft_validation_rejects_incomplete_previous_output_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({"previous_node_output_refs": [{"selector": ["previous-node"]}]})
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
@@ -321,7 +338,7 @@ def test_draft_validation_rejects_incomplete_previous_output_ref(sqlite_session:
         )
 
 
-def test_publish_validation_requires_binding(sqlite_session: Session):
+def test_publish_validation_requires_binding(sqlite_session: Session) -> None:
     with pytest.raises(WorkflowAgentNodeValidationError, match="requires a binding"):
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=sqlite_session,
@@ -329,7 +346,7 @@ def test_publish_validation_requires_binding(sqlite_session: Session):
         )
 
 
-def test_publish_validation_rejects_duplicate_output_names(sqlite_session: Session):
+def test_publish_validation_rejects_duplicate_output_names(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {
             "declared_outputs": [
@@ -347,7 +364,7 @@ def test_publish_validation_rejects_duplicate_output_names(sqlite_session: Sessi
         )
 
 
-def test_publish_validation_rejects_missing_agent_soul_model(sqlite_session: Session):
+def test_publish_validation_rejects_missing_agent_soul_model(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -365,7 +382,7 @@ def test_publish_validation_rejects_missing_agent_soul_model(sqlite_session: Ses
         )
 
 
-def test_publish_validation_dedupes_provider_level_tool_entries(sqlite_session: Session):
+def test_publish_validation_dedupes_provider_level_tool_entries(sqlite_session: Session) -> None:
     """Provider-level entries (tool_name omitted = all tools of the provider)
     dedupe per provider; one provider-level + one explicit tool entry for the
     same provider is fine (the runtime builder reconciles those)."""
@@ -401,7 +418,7 @@ def test_publish_validation_dedupes_provider_level_tool_entries(sqlite_session: 
         )
 
 
-def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry(sqlite_session: Session):
+def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()
     snapshot.config_snapshot = AgentSoulConfig(
@@ -434,7 +451,7 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry(sqli
     )
 
 
-def test_publish_validation_rejects_duplicate_cli_tool_names(sqlite_session: Session):
+def test_publish_validation_rejects_duplicate_cli_tool_names(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()
     snapshot.config_snapshot = AgentSoulConfig(
@@ -454,7 +471,7 @@ def test_publish_validation_rejects_duplicate_cli_tool_names(sqlite_session: Ses
         )
 
 
-def test_publish_validation_rejects_unauthorized_cli_tool(sqlite_session: Session):
+def test_publish_validation_rejects_unauthorized_cli_tool(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()
     snapshot.config_snapshot = AgentSoulConfig(
@@ -474,7 +491,7 @@ def test_publish_validation_rejects_unauthorized_cli_tool(sqlite_session: Sessio
         )
 
 
-def test_publish_validation_rejects_unacknowledged_dangerous_cli_tool(sqlite_session: Session):
+def test_publish_validation_rejects_unacknowledged_dangerous_cli_tool(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()
     snapshot.config_snapshot = AgentSoulConfig(
@@ -496,7 +513,7 @@ def test_publish_validation_rejects_unacknowledged_dangerous_cli_tool(sqlite_ses
         )
 
 
-def test_publish_validation_rejects_unauthorized_secret_ref(sqlite_session: Session):
+def test_publish_validation_rejects_unauthorized_secret_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()
     snapshot.config_snapshot = AgentSoulConfig(
@@ -518,7 +535,7 @@ def test_publish_validation_rejects_unauthorized_secret_ref(sqlite_session: Sess
 
 def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthorized_secret_refs(
     sqlite_session: Session,
-):
+) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()
     snapshot.config_snapshot = AgentSoulConfig(
@@ -572,7 +589,7 @@ def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthoriz
         )
 
 
-def test_publish_validation_rejects_missing_previous_node(sqlite_session: Session):
+def test_publish_validation_rejects_missing_previous_node(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}]}
     )
@@ -585,7 +602,7 @@ def test_publish_validation_rejects_missing_previous_node(sqlite_session: Sessio
         )
 
 
-def test_publish_validation_rejects_self_previous_output_ref(sqlite_session: Session):
+def test_publish_validation_rejects_self_previous_output_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "agent-node", "output": "text"}]}
     )
@@ -598,7 +615,7 @@ def test_publish_validation_rejects_self_previous_output_ref(sqlite_session: Ses
         )
 
 
-def test_publish_validation_rejects_locked_agent_soul_override_in_metadata(sqlite_session: Session):
+def test_publish_validation_rejects_locked_agent_soul_override_in_metadata(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({"metadata": {"agent_soul": {"tools": []}}})
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
@@ -609,7 +626,7 @@ def test_publish_validation_rejects_locked_agent_soul_override_in_metadata(sqlit
         )
 
 
-def test_publish_validation_rejects_invalid_human_contact_ref(sqlite_session: Session):
+def test_publish_validation_rejects_invalid_human_contact_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({"human_contacts": [{"channel": "slack"}]})
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
@@ -620,7 +637,7 @@ def test_publish_validation_rejects_invalid_human_contact_ref(sqlite_session: Se
         )
 
 
-def test_publish_validation_rejects_out_of_scope_human_contact_ref(sqlite_session: Session):
+def test_publish_validation_rejects_out_of_scope_human_contact_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"human_contacts": [{"contact_id": "human-1", "tenant_id": "other-tenant", "channel": "slack"}]}
     )
@@ -633,7 +650,7 @@ def test_publish_validation_rejects_out_of_scope_human_contact_ref(sqlite_sessio
         )
 
 
-def test_publish_validation_accepts_tenant_scoped_file_ref(sqlite_session: Session):
+def test_publish_validation_accepts_tenant_scoped_file_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {
             "declared_outputs": [
@@ -657,7 +674,7 @@ def test_publish_validation_accepts_tenant_scoped_file_ref(sqlite_session: Sessi
     )
 
 
-def test_publish_validation_rejects_missing_file_ref(sqlite_session: Session):
+def test_publish_validation_rejects_missing_file_ref(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({"metadata": {"file_refs": [{"upload_file_id": "missing-file"}]}})
     _persist_validation_scope(sqlite_session, node_job=node_job)
 
@@ -671,18 +688,20 @@ def test_publish_validation_rejects_missing_file_ref(sqlite_session: Session):
 def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     dataset_id = "550e8400-e29b-41d4-a716-446655440000"
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot_with_knowledge_dataset(dataset_id)
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
-    captured = {}
+    captured: dict[str, object] = {}
 
-    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
+    def fake_get_datasets_by_ids(
+        ids: list[str] | None, tenant_id: str, *, session: Session
+    ) -> tuple[list[Dataset], int]:
         captured["ids"] = ids
         captured["tenant_id"] = tenant_id
-        return [], 0
+        return list[Dataset](), 0
 
     import services.knowledge.dataset_service as dataset_service_module
 
@@ -697,21 +716,21 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
     assert captured == {"ids": [dataset_id], "tenant_id": "tenant-1"}
 
 
-def test_publish_validation_accepts_tool_node_agentic_manual_mode(unbound_session: Session):
+def test_publish_validation_accepts_tool_node_agentic_manual_mode(unbound_session: Session) -> None:
     WorkflowAgentNodeValidator.validate_published_workflow(
         session=unbound_session,
         workflow=_workflow(_tool_graph({"agentic_mode": {"state": "manual"}})),
     )
 
 
-def test_publish_validation_accepts_tool_node_agentic_parameter_draft(unbound_session: Session):
+def test_publish_validation_accepts_tool_node_agentic_parameter_draft(unbound_session: Session) -> None:
     WorkflowAgentNodeValidator.validate_published_workflow(
         session=unbound_session,
         workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "parameter_draft": {"query": "x"}}})),
     )
 
 
-def test_publish_validation_rejects_incomplete_tool_node_agentic_config(unbound_session: Session):
+def test_publish_validation_rejects_incomplete_tool_node_agentic_config(unbound_session: Session) -> None:
     with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete agentic mode config"):
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=unbound_session,
@@ -725,7 +744,7 @@ def test_publish_validation_rejects_incomplete_tool_node_agentic_config(unbound_
         )
 
 
-def test_publish_validation_rejects_unauthorized_tool_node_agentic_config(unbound_session: Session):
+def test_publish_validation_rejects_unauthorized_tool_node_agentic_config(unbound_session: Session) -> None:
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized agentic mode config"):
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=unbound_session,
@@ -733,7 +752,7 @@ def test_publish_validation_rejects_unauthorized_tool_node_agentic_config(unboun
         )
 
 
-def test_incomplete_route_conditions_can_be_saved_but_not_published(sqlite_session: Session):
+def test_incomplete_route_conditions_can_be_saved_but_not_published(sqlite_session: Session) -> None:
     routes = [{"id": "a", "name": ""}, {"id": "b", "name": ""}]
     job = WorkflowNodeJobConfig.model_validate({"output_routes": {"enabled": True, "routes": routes}})
     _persist_validation_scope(sqlite_session, node_job=job)
@@ -743,7 +762,7 @@ def test_incomplete_route_conditions_can_be_saved_but_not_published(sqlite_sessi
         WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=workflow)
 
 
-def test_route_conditions_must_reference_upstream_nodes(sqlite_session: Session):
+def test_route_conditions_must_reference_upstream_nodes(sqlite_session: Session) -> None:
     job = WorkflowNodeJobConfig.model_validate(
         {
             "output_routes": {
@@ -770,7 +789,7 @@ def test_route_conditions_must_reference_upstream_nodes(sqlite_session: Session)
         )
 
 
-def test_publishing_routes_rejects_node_level_default_values(sqlite_session: Session):
+def test_publishing_routes_rejects_node_level_default_values(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {
             "output_routes": {
