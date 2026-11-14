@@ -5,7 +5,8 @@ saved, using the deterministic fake backend client (no live stack)."""
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
@@ -87,8 +88,17 @@ from models.model import AppMode, Message, MessageAgentThought
 
 @pytest.fixture(autouse=True)
 def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind local runner dependencies without reaching external services."""
-    monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    """Reuse the test SQLite session for Agent App writes."""
+
+    @contextmanager
+    def reuse_session():
+        try:
+            yield sqlite_session
+        except Exception:
+            sqlite_session.rollback()
+            raise
+
+    monkeypatch.setattr(app_runner_module, "create_session", reuse_session)
     monkeypatch.setattr(
         "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
         lambda **_kwargs: None,
@@ -1477,15 +1487,122 @@ def test_partial_usage_persistence_recovers_invalid_metadata(metadata: str, sqli
 
 
 def test_partial_usage_persistence_rolls_back_database_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Session-context exit must roll back when usage persistence hits a DB error."""
     session = MagicMock()
     session.get.side_effect = RuntimeError("database unavailable")
-    monkeypatch.setattr(app_runner_module.db, "session", session)
+
+    @contextmanager
+    def failing_session() -> Generator[MagicMock]:
+        # Mirror SQLAlchemy Session.__exit__: roll back then re-raise.
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+
+    monkeypatch.setattr(app_runner_module, "create_session", failing_session)
 
     AgentAppRunner._persist_message_usage(
         message_id="msg-1",
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
 
+    session.rollback.assert_called_once()
+    session.commit.assert_not_called()
+
+
+def test_trim_answer_suffix_skips_when_thought_row_missing() -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder._answer_thought_id = "00000000-0000-4000-8000-000000000099"
+
+    recorder.trim_answer_suffix("final answer")
+
+    assert recorder._answer_thought_id == "00000000-0000-4000-8000-000000000099"
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_trim_answer_suffix_skips_when_overlap_is_zero(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder.append_answer_text("prefix only")
+    before = _thought_rows(sqlite_session)[0].answer
+    qm.events.clear()
+
+    recorder.trim_answer_suffix("unrelated suffix")
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    assert rows[0].answer == before
+    # No publish when overlap is zero (early return inside the session block).
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_trim_answer_suffix_deletes_empty_answer_only_thought(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    # Entire answer is the terminal suffix → trim leaves an empty answer-only row → delete.
+    recorder.append_answer_text("final answer")
+    qm.events.clear()
+    recorder.trim_answer_suffix("final answer")
+
+    assert recorder._answer_thought_id is None
+    assert _thought_rows(sqlite_session) == []
+    # Delete path commits inside the session and returns before publish.
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_update_thought_skips_missing_row(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder._update_thought("00000000-0000-4000-8000-000000000099", answer_delta="x")
+
+    assert _thought_rows(sqlite_session) == []
+    # Missing row returns before commit/publish.
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_persist_message_usage_commit_failure_rolls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Commit errors inside the session block must roll back via context exit."""
+    session = MagicMock()
+    message = MagicMock()
+    message.message_metadata = "{}"
+    session.get.return_value = message
+    session.commit.side_effect = RuntimeError("commit failed")
+
+    @contextmanager
+    def failing_commit_session() -> Generator[MagicMock]:
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+
+    monkeypatch.setattr(app_runner_module, "create_session", failing_commit_session)
+
+    AgentAppRunner._persist_message_usage(
+        message_id="msg-1",
+        usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
+    )
+
+    session.commit.assert_called_once()
     session.rollback.assert_called_once()
 
 
