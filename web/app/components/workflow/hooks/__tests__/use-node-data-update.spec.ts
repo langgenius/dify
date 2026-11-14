@@ -50,6 +50,27 @@ it('merges edits into the target node and saves only when draft synchronization 
   })
 })
 
+it('replaces full node snapshots without retaining deleted fields', async () => {
+  const { result } = setup()
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+
+  act(() =>
+    result.current.handleNodeDataUpdate({
+      id: 'node-1',
+      data: { title: 'Renamed' },
+      replace: true,
+    }),
+  )
+
+  expect(result.current.nodes.find((node) => node.id === 'node-1')?.data).toEqual({
+    title: 'Renamed',
+  })
+  expect(result.current.nodes.find((node) => node.id === 'node-2')?.data).toMatchObject({
+    title: 'Node 2',
+    value: 'untouched',
+  })
+})
+
 it('updates the graph and immediately saves with the requested error policy and callback', async () => {
   const { result, sync } = setup()
   const callback = { onSuccess: vi.fn() }
