@@ -35,9 +35,8 @@ from models.agent import (
     AgentWorkspaceBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
+from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import (
     Workflow,
     WorkflowExecutionStatus,
@@ -61,23 +60,7 @@ class Database:
 
 
 @pytest.fixture
-def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
-    TypeBase.metadata.create_all(
-        sqlite_engine,
-        tables=[
-            TypeBase.metadata.tables[App.__tablename__],
-            TypeBase.metadata.tables[Conversation.__tablename__],
-            TypeBase.metadata.tables[Message.__tablename__],
-            TypeBase.metadata.tables[MessageFile.__tablename__],
-            TypeBase.metadata.tables[Workflow.__tablename__],
-            TypeBase.metadata.tables[AppModelConfig.__tablename__],
-            TypeBase.metadata.tables[AppAnnotationSetting.__tablename__],
-            TypeBase.metadata.tables[AgentConfigDraft.__tablename__],
-            TypeBase.metadata.tables[AgentConfigSnapshot.__tablename__],
-            TypeBase.metadata.tables[AgentDebugConversation.__tablename__],
-            TypeBase.metadata.tables[AgentWorkspaceBinding.__tablename__],
-        ],
-    )
+def database(sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
     statements: list[tuple[str, Sequence[object] | Mapping[str, object]]] = []
 
     def record_statement(
@@ -86,10 +69,9 @@ def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
         statements.append((statement, parameters))
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement, named=True)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        database = Database(engine=sqlite_engine, session=session, statements=statements)
-        monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: session))
-        yield database
+    database = Database(engine=sqlite_engine, session=sqlite_session, statements=statements)
+    monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: sqlite_session))
+    yield database
     event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
 
