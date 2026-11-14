@@ -1,7 +1,7 @@
 """Unit tests for the message cycle manager optimization."""
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -504,7 +504,7 @@ class TestMessageCycleManagerOptimization:
         cycle_db: Session,
         sqlite_engine: Engine,
         caplog: pytest.LogCaptureFixture,
-        config_overrides,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Outside debug mode a failed generation is not logged; a short query becomes the name as it is."""
         config_overrides(DEBUG=False)
