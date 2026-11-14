@@ -54,7 +54,6 @@ project-excludes = [
   "core/agent/test_cot_chat_agent_runner.py",
   "core/agent/test_cot_completion_agent_runner.py",
   "core/agent/test_fc_agent_runner.py",
-  "core/app/app_config/easy_ui_based_app/model_config/test_converter.py",
   "core/app/app_config/easy_ui_based_app/variables/test_manager.py",
   "core/app/apps/advanced_chat/test_app_generator.py",
   "core/app/apps/advanced_chat/test_app_runner.py",
