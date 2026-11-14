@@ -777,7 +777,9 @@ def test_agent_node_rejects_nonfinite_number_outputs(value: float) -> None:
         )._run()
     )
 
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    event = events[0]
+    assert isinstance(event, StreamCompletedEvent)
+    result = event.node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "output_type_check_failed"
 
