@@ -12,8 +12,14 @@ from core.app.entities.task_entities import (
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
+def _as_dict(chunk: dict[str, object] | str) -> dict[str, object]:
+    # Stream converters yield either dict chunks or the literal "ping" sentinel.
+    assert isinstance(chunk, dict)
+    return chunk
+
+
 class TestWorkflowGenerateResponseConverter:
-    def test_blocking_full_response(self):
+    def test_blocking_full_response(self) -> None:
         blocking = WorkflowAppBlockingResponse(
             task_id="t1",
             workflow_run_id="r1",
@@ -33,7 +39,7 @@ class TestWorkflowGenerateResponseConverter:
         response = WorkflowAppGenerateResponseConverter.convert_blocking_full_response(blocking)
         assert response["workflow_run_id"] == "r1"
 
-    def test_stream_simple_response_node_events(self):
+    def test_stream_simple_response_node_events(self) -> None:
         node_start = NodeStartStreamResponse(
             task_id="t1",
             workflow_run_id="r1",
@@ -72,12 +78,12 @@ class TestWorkflowGenerateResponseConverter:
 
         converted = list(WorkflowAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
-        assert converted[1]["event"] == "node_started"
-        assert converted[2]["event"] == "node_finished"
-        assert converted[3]["event"] == "error"
+        assert _as_dict(converted[1])["event"] == "node_started"
+        assert _as_dict(converted[2])["event"] == "node_finished"
+        assert _as_dict(converted[3])["event"] == "error"
 
-    def test_convert_stream_simple_response_handles_ping_and_nodes(self):
-        def _gen():
+    def test_convert_stream_simple_response_handles_ping_and_nodes(self) -> None:
+        def _gen() -> Generator[WorkflowAppStreamResponse]:
             yield WorkflowAppStreamResponse(stream_response=PingStreamResponse(task_id="task"))
             yield WorkflowAppStreamResponse(
                 workflow_run_id="run",
@@ -118,11 +124,11 @@ class TestWorkflowGenerateResponseConverter:
         chunks = list(WorkflowAppGenerateResponseConverter.convert_stream_simple_response(_gen()))
 
         assert chunks[0] == "ping"
-        assert chunks[1]["event"] == "node_started"
-        assert chunks[2]["event"] == "node_finished"
+        assert _as_dict(chunks[1])["event"] == "node_started"
+        assert _as_dict(chunks[2])["event"] == "node_finished"
 
-    def test_convert_stream_full_response_handles_error(self):
-        def _gen():
+    def test_convert_stream_full_response_handles_error(self) -> None:
+        def _gen() -> Generator[WorkflowAppStreamResponse]:
             yield WorkflowAppStreamResponse(
                 workflow_run_id="run",
                 stream_response=ErrorStreamResponse(task_id="task", err=ValueError("boom")),
@@ -130,4 +136,4 @@ class TestWorkflowGenerateResponseConverter:
 
         chunks = list(WorkflowAppGenerateResponseConverter.convert_stream_full_response(_gen()))
 
-        assert chunks[0]["event"] == "error"
+        assert _as_dict(chunks[0])["event"] == "error"

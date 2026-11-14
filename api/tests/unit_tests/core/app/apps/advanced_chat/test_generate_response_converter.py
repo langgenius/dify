@@ -17,8 +17,14 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
+def _as_dict(chunk: dict[str, object] | str) -> dict[str, object]:
+    # Stream converters yield either dict chunks or the literal "ping" sentinel.
+    assert isinstance(chunk, dict)
+    return chunk
+
+
 class TestAdvancedChatGenerateResponseConverter:
-    def test_blocking_simple_response_metadata(self):
+    def test_blocking_simple_response_metadata(self) -> None:
         data = ChatbotAppBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -32,7 +38,7 @@ class TestAdvancedChatGenerateResponseConverter:
         response = AdvancedChatAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
         assert "usage" not in response["metadata"]
 
-    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch):
+    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch) -> None:
         data = AdvancedChatPausedBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -51,8 +57,12 @@ class TestAdvancedChatGenerateResponseConverter:
         )
         original_model_dump = type(data).model_dump
 
-        def _model_dump_with_future_field(self, *args, **kwargs):
-            payload = original_model_dump(self, *args, **kwargs)
+        def _model_dump_with_future_field(
+            self: AdvancedChatPausedBlockingResponse.Data, *, mode: str = "python"
+        ) -> dict[str, object]:
+            # The converter only ever calls ``model_dump(mode="json")``; mirror that
+            # narrow surface instead of the full forwarding signature.
+            payload = original_model_dump(self, mode=mode)
             payload["future_field"] = "future-value"
             return payload
 
@@ -63,7 +73,7 @@ class TestAdvancedChatGenerateResponseConverter:
 
         assert response["data"]["future_field"] == "future-value"
 
-    def test_stream_simple_response_includes_node_events(self):
+    def test_stream_simple_response_includes_node_events(self) -> None:
         node_start = NodeStartStreamResponse(
             task_id="t1",
             workflow_run_id="r1",
@@ -126,6 +136,6 @@ class TestAdvancedChatGenerateResponseConverter:
 
         converted = list(AdvancedChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
-        assert converted[1]["event"] == "node_started"
-        assert converted[2]["event"] == "node_finished"
-        assert converted[3]["event"] == "error"
+        assert _as_dict(converted[1])["event"] == "node_started"
+        assert _as_dict(converted[2])["event"] == "node_finished"
+        assert _as_dict(converted[3])["event"] == "error"
