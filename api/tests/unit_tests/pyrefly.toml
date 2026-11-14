@@ -190,7 +190,6 @@ project-excludes = [
   "services/retention/workflow_run/test_restore_archived_workflow_run.py",
   "services/test_agent_config_service.py",
   "services/test_app_generate_service.py",
-  "services/test_app_service.py",
   "services/test_billing_service.py",
   "services/test_clear_free_plan_tenant_expired_logs.py",
   "services/knowledge/test_dataset_service.py",
