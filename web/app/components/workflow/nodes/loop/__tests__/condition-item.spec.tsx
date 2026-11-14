@@ -22,7 +22,10 @@ const renderConditionItem = (condition: Condition, onUpdateCondition = vi.fn()) 
           {
             nodeId: 'source',
             title: 'Source',
-            vars: [{ variable: 'flag', type: VarType.boolean }],
+            vars: [
+              { variable: 'flag', type: VarType.boolean },
+              { variable: 'count', type: VarType.integer },
+            ],
           },
         ]}
       />
@@ -80,5 +83,17 @@ describe('ConditionItem', () => {
         value: false,
       }),
     )
+  })
+
+  it('should edit an integer comparison through the numeric value editor', () => {
+    renderConditionItem({
+      id: 'condition-1',
+      varType: VarType.integer,
+      variable_selector: ['source', 'count'],
+      comparison_operator: ComparisonOperator.largerThan,
+      value: '3',
+    })
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(3)
   })
 })

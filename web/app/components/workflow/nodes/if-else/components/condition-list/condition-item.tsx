@@ -29,7 +29,10 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
-import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  getVarType,
+  isNumberVarType,
+} from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
@@ -414,7 +417,7 @@ const ConditionItem = ({
         </div>
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
-          condition.varType !== VarType.number &&
+          !isNumberVarType(condition.varType) &&
           !showBooleanInput && (
             <div className="max-h-25 overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
@@ -435,7 +438,7 @@ const ConditionItem = ({
           )}
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
-          condition.varType === VarType.number && (
+          isNumberVarType(condition.varType) && (
             <div className="border-t border-t-divider-subtle px-2 py-1 pt-0.75">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
