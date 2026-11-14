@@ -152,6 +152,57 @@ class TestQAIndexProcessor:
         assert result[0].metadata["answer"] == "A1"
         mock_format.assert_called_once()
 
+    def test_transform_preview_empty_document_returns_empty_result(
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
+    ) -> None:
+        session = sqlite_session
+        document = Document(page_content="   ", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.Rule.model_validate", return_value=self._rules()
+            ),
+            patch("core.rag.index_processor.processor.qa_index_processor.CleanProcessor.clean", return_value="   "),
+            patch.object(processor, "_format_qa_document") as mock_format,
+            patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
+        ):
+            mock_current_app._get_current_object.return_value = fake_flask_app
+            result = processor.transform(
+                [document],
+                process_rule=process_rule,
+                preview=True,
+                tenant_id="tenant-1",
+                doc_language="English",
+                session=session,
+            )
+
+        assert result == []
+        mock_format.assert_not_called()
+
+    def test_transform_preview_empty_documents_returns_empty_result(
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
+    ) -> None:
+        session = sqlite_session
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.Rule.model_validate", return_value=self._rules()
+            ),
+            patch.object(processor, "_format_qa_document") as mock_format,
+            patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
+        ):
+            mock_current_app._get_current_object.return_value = fake_flask_app
+            result = processor.transform(
+                [],
+                process_rule=process_rule,
+                preview=True,
+                tenant_id="tenant-1",
+                doc_language="English",
+                session=session,
+            )
+
+        assert result == []
+        mock_format.assert_not_called()
+
     def test_transform_non_preview_uses_thread_batches(
         self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
