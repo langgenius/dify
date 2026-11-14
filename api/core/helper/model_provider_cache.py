@@ -1,9 +1,12 @@
 import json
 from enum import StrEnum
-from json import JSONDecodeError
 from typing import Any
 
+from pydantic import TypeAdapter, ValidationError
+
 from extensions.ext_redis import redis_client
+
+_credentials_adapter = TypeAdapter(dict[str, Any])
 
 
 class ProviderCredentialsCacheType(StrEnum):
@@ -17,22 +20,19 @@ class ProviderCredentialsCache:
         self.cache_key = f"{cache_type}_credentials:v2:tenant_id:{tenant_id}:id:{identity_id}"
 
     def get(self) -> dict[str, Any] | None:
-        """
-        Get cached model provider credentials.
+        """Read model provider credentials from the initialized Redis client.
 
-        :return:
+        Return a JSON object with arbitrary values, or None for a missing,
+        malformed, non-UTF-8, or non-object entry. Never mutate cached data;
+        Redis failures propagate so callers can distinguish an outage from a miss.
         """
         cached_provider_credentials = redis_client.get(self.cache_key)
         if cached_provider_credentials:
             try:
-                cached_provider_credentials = cached_provider_credentials.decode("utf-8")
-                cached_provider_credentials = json.loads(cached_provider_credentials)
-            except (JSONDecodeError, UnicodeDecodeError):
+                return _credentials_adapter.validate_json(cached_provider_credentials.decode("utf-8"))
+            except (ValidationError, UnicodeDecodeError):
                 return None
-
-            return dict(cached_provider_credentials)
-        else:
-            return None
+        return None
 
     def set(self, credentials: dict[str, Any]) -> None:
         """

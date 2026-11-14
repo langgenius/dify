@@ -1,9 +1,12 @@
 import json
 from enum import StrEnum
-from json import JSONDecodeError
 from typing import Any
 
+from pydantic import TypeAdapter, ValidationError
+
 from extensions.ext_redis import redis_client
+
+_parameters_adapter = TypeAdapter(dict[str, Any])
 
 
 class ToolParameterCacheType(StrEnum):
@@ -20,22 +23,19 @@ class ToolParameterCache:
         )
 
     def get(self) -> dict[str, Any] | None:
-        """
-        Get cached model provider credentials.
+        """Read tool parameters from the initialized Redis client.
 
-        :return:
+        Return a JSON object with arbitrary values, or None for a missing,
+        malformed, non-UTF-8, or non-object entry. Never mutate cached data;
+        Redis failures propagate so callers can distinguish an outage from a miss.
         """
         cached_tool_parameter = redis_client.get(self.cache_key)
         if cached_tool_parameter:
             try:
-                cached_tool_parameter = cached_tool_parameter.decode("utf-8")
-                cached_tool_parameter = json.loads(cached_tool_parameter)
-            except (JSONDecodeError, UnicodeDecodeError):
+                return _parameters_adapter.validate_json(cached_tool_parameter.decode("utf-8"))
+            except (ValidationError, UnicodeDecodeError):
                 return None
-
-            return dict(cached_tool_parameter)
-        else:
-            return None
+        return None
 
     def set(self, parameters: dict[str, Any]) -> None:
         """Cache model provider credentials."""
