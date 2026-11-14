@@ -51,8 +51,11 @@ class CSVSanitizer:
         if not str_value:
             return ""
 
-        # Check if first character is a formula initiator
-        if str_value[0] in cls.FORMULA_CHARS:
+        # Check if first character is a formula initiator. Leading whitespace
+        # (including newlines) does not stop spreadsheet apps from evaluating a
+        # formula, so also inspect the first non-whitespace character.
+        stripped_value = str_value.lstrip()
+        if str_value[0] in cls.FORMULA_CHARS or (stripped_value and stripped_value[0] in cls.FORMULA_CHARS):
             # Prefix with single quote to escape
             return f"'{str_value}"
 
