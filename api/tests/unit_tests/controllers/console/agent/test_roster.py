@@ -1,4 +1,3 @@
-from collections.abc import Generator
 from datetime import datetime
 from inspect import getsource, unwrap
 from typing import Any, Self, cast
@@ -1047,7 +1046,7 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     assert cast(Account, finalize_call["current_user"]).id == account_id
 
 
-def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
+def test_build_chat_finalization_helper_uses_synchronous_debug_build_entrypoint(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
 ) -> None:
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
@@ -1057,16 +1056,13 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         captured["resolve_debug_conversation"] = kwargs
         return "debug-conversation-1"
 
-    def generate(**kwargs: object) -> object:
-        captured["generate"] = kwargs
-        return iter(
-            ["event: ping\n\n", 'data: {"event":"message","answer":"working"}\n\n', 'data: {"event":"message_end"}\n\n']
-        )
+    def finalize(**kwargs: object) -> None:
+        captured["finalize"] = kwargs
 
     monkeypatch.setattr(
         completion_controller, "_resolve_current_user_agent_debug_conversation_id", resolve_debug_conversation
     )
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(completion_controller.AppGenerateService, "finalize_agent_build_chat", finalize)
     with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
         result = completion_controller._create_build_chat_finalization_message(
             current_tenant_id="tenant-1",
@@ -1077,7 +1073,8 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         )
     assert result == ({"result": "success"}, 200)
     resolve_call = cast(dict[str, object], captured["resolve_debug_conversation"])
-    assert resolve_call.pop("current_user") is not None
+    resolved_user = resolve_call.pop("current_user")
+    assert resolved_user is not None
     assert resolve_call == {
         "session": unbound_session,
         "current_tenant_id": "tenant-1",
@@ -1085,46 +1082,15 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         "agent_id": "agent-1",
         "draft_type": AgentConfigDraftType.DEBUG_BUILD,
     }
-    generate_call = cast(dict[str, object], captured["generate"])
-    assert generate_call["app_model"] is app_model
-    assert generate_call["streaming"] is True
-    args = cast(dict[str, object], generate_call["args"])
-    assert args["draft_type"] == "debug_build"
-    assert args["response_mode"] == "streaming"
-    assert args["conversation_id"] == "debug-conversation-1"
-    assert args["inputs"] == {}
-    assert args["auto_generate_name"] is False
-    assert "_agent_runtime_exit_intent" not in args
-    assert args["external_trace_id"] == "trace-1"
-
-
-def test_drain_streaming_generate_response_returns_on_message_end() -> None:
-    closed: list[bool] = []
-
-    def generate_response() -> Generator[str]:
-        try:
-            yield "event: ping\n\n"
-            yield 'data: {"event":"message","answer":"working"}\n\n'
-            yield 'data: {"event":"message_end","message_id":"msg-1"}\n\n'
-        finally:
-            closed.append(True)
-
-    # Retain the generator so garbage collection cannot satisfy the cleanup assertion.
-    response = generate_response()
-    assert completion_controller._drain_streaming_generate_response(response) is None
-    assert closed == [True]
-
-
-def test_drain_streaming_generate_response_maps_error_event() -> None:
-    response = (chunk for chunk in ['data: {"event":"error","message":"backend failed"}\n\n'])
-    with pytest.raises(CompletionRequestError, match="backend failed"):
-        completion_controller._drain_streaming_generate_response(response)
-
-
-def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> None:
-    response = (chunk for chunk in ['data: {"event":"message","answer":"working"}\n\n'])
-    with pytest.raises(CompletionRequestError, match="did not complete"):
-        completion_controller._drain_streaming_generate_response(response)
+    finalize_call = captured["finalize"]
+    assert isinstance(finalize_call, dict)
+    assert finalize_call == {
+        "session": unbound_session,
+        "app_model": app_model,
+        "user": resolved_user,
+        "conversation_id": "debug-conversation-1",
+        "external_trace_id": "trace-1",
+    }
 
 
 @pytest.mark.parametrize(

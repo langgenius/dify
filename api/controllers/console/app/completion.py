@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from clients.agent_backend import AgentBackendError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -38,14 +39,13 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import uuid_value
@@ -55,6 +55,7 @@ from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
+from services.agent.workspace_service import AgentWorkspaceError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -115,30 +116,6 @@ class ChatMessagePayload(BaseMessagePayload):
         if value is None:
             return value
         return uuid_value(value)
-
-
-_BUILD_CHAT_FINALIZATION_QUERY = """Finalize this Build chat configuration for the agent.
-
-This step is only for persisting Agent config changes discovered in the current Build chat. Do not install packages,
-edit workspace files, run validation or debugging commands, make exploratory checks, or perform other work.
-
-Use only the current Build chat message history to identify changes that need to be persisted. Do not inspect, test, or
-validate old config unless the message history already shows that the old config is invalid.
-
-Only update the build-draft config note when the current Build chat contains durable context that later runs need.
-Write the config note in the language used by the message history.
-Do not create, update, delete, inspect, or fill gaps in other Agent config resources, including config files, config
-skills, config env, tools, models, knowledge, or prompt settings.
-
-When updating the config note with the Agent config CLI usage provided in the runtime prompt, record only durable
-context needed by later runs, such as:
-
-- what you installed or configured outside the workspace for this agent,
-- where those external updates live, including CLI tools, packages, and persistent $HOME paths,
-- how the agent should use it in later runs,
-- any setup, authentication, or user action still required.
-
-After config persistence completes, respond FINISHED."""
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
@@ -478,6 +455,11 @@ def _create_chat_message(
 def _create_build_chat_finalization_message(
     *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
+    """Finalize the account's build draft and return success after runtime completion.
+
+    Requires an admitted Agent/App pair. Resolves its DEBUG_BUILD conversation
+    mapping without generating messages; runtime errors use the shared Console map.
+    """
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
         session=session,
         current_tenant_id=current_tenant_id,
@@ -486,70 +468,16 @@ def _create_build_chat_finalization_message(
         agent_id=agent_id,
         draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
-    args: dict[str, Any] = {
-        "query": _BUILD_CHAT_FINALIZATION_QUERY,
-        "inputs": {},
-        "response_mode": "streaming",
-        "draft_type": "debug_build",
-        "conversation_id": debug_conversation_id,
-        "auto_generate_name": False,
-    }
-    external_trace_id = get_external_trace_id(request)
-    if external_trace_id:
-        args["external_trace_id"] = external_trace_id
-
-    response = _generate_chat_message(
-        session=session,
-        current_user=current_user,
-        app_model=app_model,
-        args=args,
-        streaming=True,
+    _run_console_chat_action(
+        lambda: AppGenerateService.finalize_agent_build_chat(
+            session=session,
+            user=current_user,
+            app_model=app_model,
+            conversation_id=debug_conversation_id,
+            external_trace_id=get_external_trace_id(request),
+        )
     )
-    _drain_streaming_generate_response(response)
     return {"result": "success"}, 200
-
-
-def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str]) -> None:
-    """Consume a streamed app-generate response until a terminal message event arrives.
-
-    Finalize keeps the normal Agent App streaming path so the existing queue,
-    persistence, and runtime-session behavior stay intact. The console API only
-    changes the HTTP boundary: it drains the SSE stream server-side and returns
-    success after the generated build-chat message reaches ``message_end``.
-    """
-    try:
-        for chunk in response:
-            for raw_event in chunk.split("\n\n"):
-                if not raw_event.strip():
-                    continue
-
-                event_name: str | None = None
-                data_lines: list[str] = []
-                for line in raw_event.splitlines():
-                    if line.startswith("event: "):
-                        event_name = line.removeprefix("event: ").strip()
-                    elif line.startswith("data: "):
-                        data_lines.append(line.removeprefix("data: "))
-
-                if not data_lines:
-                    if event_name == "ping":
-                        continue
-                    continue
-
-                payload = json.loads("\n".join(data_lines))
-                if not isinstance(payload, dict):
-                    continue
-
-                payload_event = payload.get("event")
-                if payload_event == "message_end":
-                    return
-                if payload_event == "error":
-                    raise CompletionRequestError(str(payload.get("message") or "Build chat finalization failed."))
-    finally:
-        if isinstance(response, _ClosableStream):
-            response.close()
-
-    raise CompletionRequestError("Build chat finalization did not complete.")
 
 
 def _generate_chat_message(
@@ -560,8 +488,9 @@ def _generate_chat_message(
     args: dict[str, Any],
     streaming: bool,
 ):
-    try:
-        return AppGenerateService.generate(
+    """Generate an admitted Console chat request using the shared error contract."""
+    return _run_console_chat_action(
+        lambda: AppGenerateService.generate(
             session=session,
             app_model=app_model,
             user=current_user,
@@ -569,6 +498,17 @@ def _generate_chat_message(
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=streaming,
         )
+    )
+
+
+def _run_console_chat_action[T](action: Callable[[], T]) -> T:
+    """Run a synchronous Console chat action and translate its application errors.
+
+    Returns the action's result unchanged. Configuration ValueErrors propagate;
+    provider/workspace/backend errors use the existing Console HTTP contracts.
+    """
+    try:
+        return action()
     except services.errors.conversation.ConversationNotExistsError as caught_error:
         raise NotFound("Conversation Not Exists.") from caught_error
     except services.errors.conversation.ConversationCompletedError as caught_error:
@@ -586,8 +526,12 @@ def _generate_chat_message(
         raise InvokeRateLimitHttpError(ex.description) from ex
     except CompletionRequestError:
         raise
+    except InvokeAuthorizationError as e:
+        raise CompletionRequestError("Incorrect API key provided") from e
     except InvokeError as e:
         raise CompletionRequestError(e.description) from e
+    except (AgentBackendError, AgentWorkspaceError) as e:
+        raise CompletionRequestError(str(e) or "Build chat finalization failed.") from e
     except ValueError as e:
         raise e
     except Exception as e:
