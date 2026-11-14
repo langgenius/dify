@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Sxemi yadda saxlamazdan əvvəl cari sahənin redaktəsini tamamlayın",
   "nodes.llm.model": "Model",
   "nodes.llm.notSetContextInPromptTip": "Kontekst funksiyasını aktivləşdirmək üçün təlimat mətninə kontekst dəyişənini daxil edin.",
+  "nodes.llm.outputVars.finish_reason": "Modelin generasiyanı dayandırma səbəbi",
   "nodes.llm.outputVars.output": "Yaradılmış məzmun",
   "nodes.llm.outputVars.reasoning_content": "Mühakimə məzmunu",
   "nodes.llm.outputVars.usage": "Modeldən istifadə haqqında məlumat",

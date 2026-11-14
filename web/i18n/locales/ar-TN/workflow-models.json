@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "الرجاء إنهاء تحرير الحقل الحالي قبل حفظ المخطط",
   "nodes.llm.model": "النموذج",
   "nodes.llm.notSetContextInPromptTip": "لتمكين ميزة السياق، يرجى ملء متغير السياق في PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "سبب توقف النموذج عن التوليد",
   "nodes.llm.outputVars.output": "إنشاء محتوى",
   "nodes.llm.outputVars.reasoning_content": "محتوى التفكير",
   "nodes.llm.outputVars.usage": "معلومات استخدام النموذج",
