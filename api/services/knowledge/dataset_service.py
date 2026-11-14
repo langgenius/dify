@@ -1275,7 +1275,7 @@ class DatasetService:
 
         DatasetService.check_dataset_permission(dataset, user, session)
 
-        dataset_was_deleted.send(dataset)
+        dataset_was_deleted.send(dataset, session=session)
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
         # silently degrade to unrestricted (access-all) once its last binding is gone.
