@@ -425,6 +425,20 @@ def test_home_snapshot_collection_final_delete_failure_propagates(
         assert session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == "home-1")) is not None
 
 
+def test_home_snapshot_service_delete_delegates_to_backend_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    deleted_refs: list[str] = []
+
+    class _Client:
+        def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
+            deleted_refs.append(snapshot_ref)
+
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(_Client()))
+
+    AgentHomeSnapshotService.delete(snapshot_ref="snapshot-ref-test")
+
+    assert deleted_refs == ["snapshot-ref-test"]
+
+
 def _apply_with_client_error(monkeypatch: pytest.MonkeyPatch, session: Session, error: Exception) -> None:
     _persist_build_binding(session, app_id="app-1", backing_app_id=None)
     client = MagicMock()
