@@ -53,6 +53,7 @@ from graphon.entities.pause_reason import (
     PauseReason as GraphonPauseReason,
 )
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -1106,24 +1107,45 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         }
 
     @override
-    def create_workflow_pause(
+    def pause_workflow_run(
         self,
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
         pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+        *,
+        outputs: Mapping[str, Any] | None = None,
+        total_tokens: int | None = None,
+        total_steps: int | None = None,
+        exceptions_count: int | None = None,
     ) -> WorkflowPauseEntity:
-        """
-        Create a new workflow pause state.
+        """Persist a workflow pause as one atomic transition.
 
-        Creates a pause state for a workflow run, storing the current execution
-        state and marking the workflow as paused. This is used when a workflow
-        needs to be suspended and later resumed.
+        The workflow run row (``PAUSED`` status, outputs, and execution
+        statistics), the pause record, and its reasons are committed in a
+        single transaction, so a run is observably paused only when a readable
+        resumption state exists. The snapshot object is written to storage
+        before its database reference is committed, and the superseded
+        snapshot object is deleted after that commit, on a best-effort basis.
+
+        The workflow run row is locked with ``SELECT ... FOR UPDATE`` for the
+        duration of the transaction, so concurrent pause, stop, and resume
+        calls serialize. A second pause replaces the first and makes the
+        previous pause entity unusable.
+
+        The execution state parameters are optional: passing ``None`` leaves
+        the corresponding run column unchanged, while an explicit value
+        (including ``0``) overwrites it.
 
         Args:
             workflow_run_id: Identifier of the workflow run to pause
             state_owner_user_id: User ID who owns the pause state for file storage
             state: Serialized workflow execution state (JSON string)
+            pause_reasons: Reasons why the workflow is pausing
+            outputs: Workflow run outputs to persist with the paused status
+            total_tokens: Accumulated token usage at pause time
+            total_steps: Accumulated node steps at pause time
+            exceptions_count: Accumulated exceptions at pause time
 
         Returns:
             RepositoryWorkflowPauseEntity representing the created pause state
@@ -1131,11 +1153,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         Raises:
             ValueError: If workflow_run_id is invalid or workflow run doesn't exist
             RuntimeError: If workflow is already paused or in invalid state
+            WorkflowPauseStoppedError: If workflow stopped while persisting pause
         """
         # Do not hold a database transaction during object storage upload.
         # The subsequent run lock checks durable stop intent before publishing pause.
         state_obj_key = f"workflow-state-{uuid.uuid4()}.json"
         storage.save(state_obj_key, state.encode())
+        superseded_state_object_key: str | None = None
         try:
             previous_pause_model_query = select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id)
             with self._session_maker() as session, session.begin():
@@ -1150,17 +1174,18 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     raise WorkflowPauseStoppedError(f"Workflow stopped while persisting pause: {workflow_run_id}")
 
                 # Check if workflow is in RUNNING status
-                # TODO(QuantumGhost): It seems that the persistence of `WorkflowRun.status`
-                # happens before the execution of GraphLayer
                 if workflow_run.status not in {WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED}:
                     raise _WorkflowRunError(
                         f"Only WorkflowRun with RUNNING or PAUSED status can be paused, "
                         f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
                     )
-                #
+
                 previous_pause = session.scalars(previous_pause_model_query).first()
                 if previous_pause:
-                    self._delete_pause_model(session, previous_pause)
+                    # Keep object storage out of the transaction: a rollback must
+                    # restore the superseded pause with a readable snapshot.
+                    superseded_state_object_key = previous_pause.state_object_key
+                    session.delete(previous_pause)
                     # we need to flush here to ensure that the old one is actually deleted.
                     session.flush()
 
@@ -1182,8 +1207,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     )
                 ]
 
-                # Update workflow run status
+                # Update workflow run status and execution statistics in the same transaction
                 workflow_run.status = WorkflowExecutionStatus.PAUSED
+                if outputs is not None:
+                    workflow_run.outputs = json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(outputs))
+                if total_tokens is not None:
+                    workflow_run.total_tokens = total_tokens
+                if total_steps is not None:
+                    workflow_run.total_steps = total_steps
+                if exceptions_count is not None:
+                    workflow_run.exceptions_count = exceptions_count
 
                 # Save everything in a transaction
                 session.add(pause_model)
@@ -1191,7 +1224,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 session.add_all(pause_reason_models)
 
                 logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
-                return _PrivateWorkflowPauseEntity(pause_model=pause_model)
+                pause_entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
         except Exception:
             try:
                 storage.delete(state_obj_key)
@@ -1200,6 +1233,34 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     "Failed to clean up unpublished workflow pause state, workflow_run_id=%s", workflow_run_id
                 )
             raise
+
+        # Storage is external I/O; a cleanup failure must not undo the pause
+        # transition that just committed.
+        if superseded_state_object_key is not None:
+            try:
+                storage.delete(superseded_state_object_key)
+            except Exception:
+                logger.exception(
+                    "Failed to delete superseded workflow state, workflow_run_id=%s, object_key=%s",
+                    workflow_run_id,
+                    superseded_state_object_key,
+                )
+        return pause_entity
+
+    @override
+    def create_workflow_pause(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+    ) -> WorkflowPauseEntity:
+        return self.pause_workflow_run(
+            workflow_run_id,
+            state_owner_user_id,
+            state,
+            pause_reasons,
+        )
 
     @override
     def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> list[DifyPauseReason]:
@@ -1415,6 +1476,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         task_id: str,
         owner: tuple[CreatorUserRole, str] | None,
+        force: bool = False,
     ) -> WorkflowRun | None:
         """Terminate an admitted app's paused task and invalidate its pending forms.
 
@@ -1444,7 +1506,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if workflow_run.status not in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED):
                 return None
             workflow_run.stop_requested_at = naive_utc_now()
-            if workflow_run.status != WorkflowExecutionStatus.PAUSED:
+            if not force and workflow_run.status != WorkflowExecutionStatus.PAUSED:
                 # A resumed attempt may not have recreated its Redis ownership
                 # cache yet. Preserve this durable admission so stop can still
                 # arm its command channel during that handoff.

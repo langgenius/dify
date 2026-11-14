@@ -175,6 +175,30 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     # Pause state and task ownership are transactional control data, independent
     # of the append-only backend used for workflow history.
     @override
+    def pause_workflow_run(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+        *,
+        outputs: Mapping[str, Any] | None = None,
+        total_tokens: int | None = None,
+        total_steps: int | None = None,
+        exceptions_count: int | None = None,
+    ) -> WorkflowPauseEntity:
+        return self._control_repository.pause_workflow_run(
+            workflow_run_id,
+            state_owner_user_id,
+            state,
+            pause_reasons,
+            outputs=outputs,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+            exceptions_count=exceptions_count,
+        )
+
+    @override
     def create_workflow_pause(
         self,
         workflow_run_id: str,
@@ -202,10 +226,16 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
     @override
     def stop_paused_workflow_task(
-        self, *, tenant_id: str, app_id: str, task_id: str, owner: tuple[CreatorUserRole, str] | None
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+        force: bool = False,
     ) -> WorkflowRun | None:
         return self._control_repository.stop_paused_workflow_task(
-            tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner
+            tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner, force=force
         )
 
     @override
