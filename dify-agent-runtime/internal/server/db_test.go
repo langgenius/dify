@@ -404,7 +404,7 @@ func schemaVersion(t *testing.T, db *DB) int {
 func insertTestJob(t *testing.T, db *DB, jobID string, status JobStatusName) {
 	t.Helper()
 	row := &JobRow{
-		JobID:        jobID,
+		JobID:        JobID(jobID),
 		ScriptPath:   "jobs/" + jobID + "/script",
 		OutputPath:   "jobs/" + jobID + "/output.log",
 		Mode:         jobmode.PTY,
