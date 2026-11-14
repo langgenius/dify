@@ -33,7 +33,11 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from repositories.agent_workspace_repository import AgentWorkspaceRepository, workflow_tool_workspace_owned_by_app
+from repositories.agent_workspace_repository import (
+    AgentWorkspaceRepository,
+    validate_binding_generation,
+    workflow_tool_workspace_owned_by_app,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -391,14 +395,13 @@ class AgentWorkspaceService:
         agent_config_version_id: str,
         agent_config_version_kind: AgentConfigVersionKind,
     ) -> None:
-        if (
-            binding.base_home_snapshot_id != base_home_snapshot_id
-            or binding.agent_config_version_id != agent_config_version_id
-            or binding.agent_config_version_kind != agent_config_version_kind
-        ):
-            raise AgentWorkspaceBindingGenerationMismatchError(
-                "ACTIVE Binding belongs to a different Agent config/Home generation"
-            )
+        """Require an owner-checked binding to match the expected Agent config and Home generation."""
+        validate_binding_generation(
+            binding,
+            base_home_snapshot_id=base_home_snapshot_id,
+            agent_config_version_id=agent_config_version_id,
+            agent_config_version_kind=agent_config_version_kind,
+        )
 
     @staticmethod
     def _client() -> Client:

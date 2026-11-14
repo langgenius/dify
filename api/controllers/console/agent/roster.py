@@ -17,6 +17,7 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.agent.build_session import AgentBuildDraftHandlers, AgentBuildDraftResponse
 from controllers.console.apikey import (
     API_KEY_DELETE_ROLES,
     API_KEY_EDIT_ROLES,
@@ -77,7 +78,6 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
-from models.agent_config_entities import AgentSoulConfig
 from models.model import App, IconType
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
@@ -285,12 +285,6 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     access_ready: bool = False
 
 
-class AgentDebugConversationRefreshResponse(BaseModel):
-    debug_conversation_id: str
-    debug_conversation_has_messages: bool = False
-    debug_conversation_message_count: int = 0
-
-
 class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
@@ -313,19 +307,9 @@ class AgentBuildDraftCheckoutPayload(BaseModel):
     force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
 
 
-class AgentBuildDraftResponse(ResponseModel):
-    variant: str
-    draft: AgentConfigDraftSummaryResponse
-    agent_soul: AgentSoulConfig
-
-
 class AgentBuildDraftApplyResponse(BaseModel):
     result: str
     draft: dict[str, object]
-
-
-class AgentSimpleResultResponse(BaseModel):
-    result: str
 
 
 class AgentPublicationCountsResponse(ResponseModel):
@@ -369,11 +353,8 @@ register_response_schema_models(
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
-    AgentDebugConversationRefreshResponse,
     AgentPublishResponse,
-    AgentBuildDraftResponse,
     AgentBuildDraftApplyResponse,
-    AgentSimpleResultResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -661,36 +642,6 @@ class AgentAppApi(Resource):
         return "", HTTPStatus.NO_CONTENT
 
 
-@console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
-class AgentDebugConversationRefreshApi(Resource):
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
-    @console_ns.response(
-        200,
-        "Agent debug conversation refreshed",
-        console_ns.models[AgentDebugConversationRefreshResponse.__name__],
-    )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        debug_conversation_id = _agent_roster_service(session).reset_build_conversation(
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-        return AgentDebugConversationRefreshResponse(
-            debug_conversation_id=debug_conversation_id,
-            debug_conversation_has_messages=False,
-            debug_conversation_message_count=0,
-        ).model_dump(mode="json")
-
-
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
     @error_responses(
@@ -761,26 +712,7 @@ class AgentBuildDraftCheckoutApi(Resource):
 
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft")
-class AgentBuildDraftApi(Resource):
-    @error_responses(AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
-    @console_ns.response(404, "Agent build draft not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.load_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-
+class AgentBuildDraftApi(AgentBuildDraftHandlers, Resource):
     @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
@@ -807,24 +739,6 @@ class AgentBuildDraftApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             payload=req_data,
-        )
-
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
-    @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.discard_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
         )
 
 

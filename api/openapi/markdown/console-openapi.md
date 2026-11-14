@@ -664,6 +664,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
+**Discard the caller's draft and report success even if it was already absent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -679,6 +681,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
+**Return the admitted account's existing Build draft, or 404 when none exists**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1196,6 +1200,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
+**Reset the admitted account's Build conversation and return the new empty conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
