@@ -25,7 +25,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
-from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
+from core.app.entities.queue_entities import QueueErrorEvent, QueueWorkflowSucceededEvent
 from core.app.file_access import DatabaseFileAccessController
 from core.app.layers.pause_state_persist_layer import (
     PauseStateLayerConfig,
@@ -399,6 +399,48 @@ class TestWorkflowAppGeneratorCases:
             WorkflowRunCompleted(workflow_run_id="worker-run", conversation_id=None, total_tokens=0)
         ]
         assert recorder.persisted_statuses == ["succeeded"]
+
+    @staticmethod
+    def test_worker_publishes_a_preparation_failure_to_the_waiting_caller(
+        app: Flask, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        """The caller blocks on the queue, so a failure before the run starts must reach it."""
+        app_model, workflow, end_user = _persist_generator_rows(sqlite_session)
+        recorder = _PersistedRunRecorder(sqlite_session_factory)
+        entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
+            task_id="worker-task",
+            app_config=_app_config(app_model, workflow),
+            inputs={},
+            files=[],
+            user_id=end_user.id,
+            stream=False,
+            invoke_from=InvokeFrom.SERVICE_API,
+            workflow_execution_id="worker-run",
+            trace_scope=_trace_scope(recorder, app=app_model, end_user=end_user),
+        )
+        # The workflow disappears after admission and before the worker loads it.
+        sqlite_session.delete(workflow)
+        sqlite_session.commit()
+        queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
+        execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
+
+        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
+            flask_app=app,
+            application_generate_entity=entity,
+            queue_manager=queue,
+            context=contextvars.copy_context(),
+            variable_loader=DUMMY_VARIABLE_LOADER,
+            workflow_execution_repository=execution_repository,
+            workflow_node_execution_repository=node_repository,
+        )
+
+        events = [message.event for message in queue.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "Workflow not found"
+        assert sqlite_session.get(WorkflowRun, entity.workflow_execution_id) is None
+        assert recorder.events == []
 
     @staticmethod
     def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
