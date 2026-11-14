@@ -131,7 +131,7 @@ def test_initiate_maps_injected_enterprise_failure(config_overrides: Callable[..
 
 def test_settings_adapter_owns_oauth_device_configuration(config_overrides: Callable[..., None]) -> None:
     config_overrides(
-        inner_OPENAPI_KNOWN_CLIENT_IDS="client-a,client-b",
+        inner_openapi_known_client_ids="client-a,client-b",
         CONSOLE_WEB_URL="https://console.example.com",
         CONSOLE_API_URL="https://api.example.com",
     )
