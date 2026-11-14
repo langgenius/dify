@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import inspect
 import json
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import Final, NoReturn, TypeIs
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
@@ -25,7 +27,7 @@ from controllers.console.app.workflow import ConvertToWorkflowApi
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables import SecretVariable, StringVariable
+from graphon.variables import SecretVariable, StringVariable, VariableBase
 from graphon.variables.variables import RAGPipelineVariable
 from libs import login as login_lib
 from models import Account as _workflow_convert_api_Account
@@ -64,12 +66,44 @@ def _workflow_app(*, app_id: str = "app", tenant_id: str = "t1") -> _workflow_Ap
     )
 
 
-def _make_workflow(**overrides) -> Workflow:
-    graph = overrides.pop("graph_dict", {"nodes": [], "edges": []})
-    features = overrides.pop("features_dict", {"file_upload": {"enabled": False}})
-    environment_variables = overrides.pop(
-        "environment_variables",
-        [
+_DEFAULT_CREATED_AT: Final = datetime(2024, 1, 1, 12, 0, 0)
+_DEFAULT_UPDATED_AT: Final = datetime(2024, 1, 1, 12, 1, 0)
+
+# Environment variables reach the model either as validated variable objects or, in tests that
+# exercise raw persisted payloads, as the still-undecoded mappings stored in `_environment_variables`.
+EnvironmentVariables = Sequence[VariableBase] | Sequence[Mapping[str, object]]
+
+
+def _is_raw(value: EnvironmentVariables) -> TypeIs[Sequence[Mapping[str, object]]]:
+    """Report whether stored environment variables are undecoded mappings rather than variable objects."""
+    return bool(value) and isinstance(value[0], Mapping)
+
+
+def _set_timestamp(workflow: Workflow, *, attribute: str, value: datetime | None) -> None:
+    """Assign a timestamp column, deliberately including the NULL `updated_at` states the tests model."""
+    setattr(workflow, attribute, value)
+
+
+def _make_workflow(
+    *,
+    graph_dict: dict[str, object] | None = None,
+    features_dict: dict[str, object] | None = None,
+    environment_variables: EnvironmentVariables | None = None,
+    conversation_variables: Sequence[VariableBase] | None = None,
+    rag_pipeline_variables: Sequence[Mapping[str, object] | RAGPipelineVariable] | None = None,
+    created_at: datetime = _DEFAULT_CREATED_AT,
+    updated_at: datetime | None = _DEFAULT_UPDATED_AT,
+) -> Workflow:
+    """Build a persisted-looking workflow with the values the console controller tests expect.
+
+    Every keyword is optional; omitting one keeps the historical default. `environment_variables`
+    accepts either validated variable objects or raw mappings, which are stored verbatim so tests can
+    assert on deserialization failures.
+    """
+    graph: dict[str, object] = {"nodes": [], "edges": []} if graph_dict is None else graph_dict
+    features: dict[str, object] = {"file_upload": {"enabled": False}} if features_dict is None else features_dict
+    if environment_variables is None:
+        environment_variables = [
             SecretVariable(
                 id="env-1",
                 name="API_KEY",
@@ -77,11 +111,9 @@ def _make_workflow(**overrides) -> Workflow:
                 selector=["env", "API_KEY"],
                 description="API key",
             )
-        ],
-    )
-    conversation_variables = overrides.pop(
-        "conversation_variables",
-        [
+        ]
+    if conversation_variables is None:
+        conversation_variables = [
             StringVariable(
                 id="conv-1",
                 name="topic",
@@ -89,11 +121,9 @@ def _make_workflow(**overrides) -> Workflow:
                 selector=["conversation", "topic"],
                 description="Topic",
             )
-        ],
-    )
-    rag_pipeline_variables = overrides.pop(
-        "rag_pipeline_variables",
-        [
+        ]
+    if rag_pipeline_variables is None:
+        rag_pipeline_variables = [
             RAGPipelineVariable.model_validate(
                 {
                     "variable": "query",
@@ -112,8 +142,7 @@ def _make_workflow(**overrides) -> Workflow:
                     "allowed_file_upload_methods": ["local_file"],
                 }
             )
-        ],
-    )
+        ]
     workflow = Workflow(
         id="workflow-1",
         tenant_id="t1",
@@ -130,9 +159,9 @@ def _make_workflow(**overrides) -> Workflow:
         _conversation_variables=[],
         _rag_pipeline_variables=[],
     )
-    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
-    if environment_variables and isinstance(environment_variables[0], dict):
+    workflow.created_at = created_at
+    _set_timestamp(workflow, attribute="updated_at", value=updated_at)
+    if _is_raw(environment_variables):
         workflow._environment_variables = json.dumps(
             {str(index): value for index, value in enumerate(environment_variables)}
         )
@@ -140,8 +169,6 @@ def _make_workflow(**overrides) -> Workflow:
         workflow.environment_variables = environment_variables
     workflow.conversation_variables = conversation_variables
     workflow.rag_pipeline_variables = rag_pipeline_variables
-    for key, value in overrides.items():
-        setattr(workflow, key, value)
     return workflow
 
 
@@ -280,7 +307,7 @@ class TestWorkflowCases:
         )
 
         @contextmanager
-        def transaction():
+        def transaction() -> Generator[Session]:
             events.append("transaction-enter")
             yield session
             events.append("transaction-exit")
@@ -617,7 +644,7 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
             raise workflow_module.WorkflowHashNotEqualError()
 
         service = SimpleNamespace(sync_draft_workflow=_raise)
@@ -636,7 +663,7 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
             raise workflow_module.VariableError("description too long")
 
         monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
@@ -788,7 +815,7 @@ class TestWorkflowCases:
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
 
-        def get_all_published_workflow(*, session: Session, **_kwargs):
+        def get_all_published_workflow(*, session: Session, **_kwargs: object) -> tuple[list[object], bool]:
             assert session is sqlite_session
             return [workflow], False
 
@@ -1057,7 +1084,7 @@ class TestWorkflowCases:
         )
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
-        projected_graph = {
+        projected_graph: dict[str, object] = {
             "nodes": [
                 {
                     "id": "agent-node",
@@ -1070,7 +1097,7 @@ class TestWorkflowCases:
                     },
                 }
             ],
-            "edges": [],
+            "edges": [],  # the projected graph keeps the same shape as the stored one
         }
 
         monkeypatch.setattr(
@@ -1300,12 +1327,12 @@ class TestWorkflowCases:
         apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
+        batch_size = workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+        empty_entry: dict[str, object] = {}
         first_pipeline = Mock()
-        first_pipeline.execute.return_value = [
-            {} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)
-        ]
+        first_pipeline.execute.return_value = [empty_entry for _ in range(batch_size)]
         second_pipeline = Mock()
-        second_pipeline.execute.return_value = [{}]
+        second_pipeline.execute.return_value = [empty_entry]
         redis_pipeline_factory = Mock(side_effect=[first_pipeline, second_pipeline])
         monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
@@ -1364,7 +1391,7 @@ def _workflow_convert_api_app(app_id: str) -> _workflow_convert_api_App:
 class TestWorkflowConvertApiCases:
     class TestConvertToWorkflowApi:
         @pytest.fixture
-        def api(self):
+        def api(self) -> workflow_module.ConvertToWorkflowApi:
             return workflow_module.ConvertToWorkflowApi()
 
         def test_convert_to_workflow_attaches_permission_keys_when_rbac_enabled(
@@ -1647,13 +1674,18 @@ class TestWorkflowHumanInputDebugApiCases:
         service_instance.test_human_input_delivery.side_effect = ValueError("bad delivery method")
         monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
 
+        # The route decorators rewrite the signature: `app_id` is bound by `get_app_model` and
+        # `node_id` comes from the URL rule, so the runtime call accepts keyword arguments the
+        # declared signature does not name.
+        handler: Callable[..., object] = workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post
+
         with app.test_request_context(
             "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
             method="POST",
             json={"delivery_method_id": "bad"},
         ):
             with pytest.raises(ValueError, match="bad delivery method"):
-                workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+                handler(app_id=app_model.id, node_id="node-1")
 
     @staticmethod
     def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1661,10 +1693,13 @@ class TestWorkflowHumanInputDebugApiCases:
         app_model = _make_app(AppMode.ADVANCED_CHAT)
         _patch_console_guards(monkeypatch, account, app_model)
 
+        # Same decorator-injected signature as the delivery-test route above.
+        handler: Callable[..., object] = workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post
+
         with app.test_request_context(
             "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
             method="POST",
             json={"inputs": ["not-a-dict"]},
         ):
             with pytest.raises(UnprocessableEntity):
-                workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+                handler(app_id=app_model.id, node_id="node-1")
