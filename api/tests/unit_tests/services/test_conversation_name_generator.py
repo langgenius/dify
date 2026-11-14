@@ -30,11 +30,6 @@ from tests.helpers.unit.services.tracing_ports import untraced_scopes
 pytest_plugins = ("tests.helpers.unit.services.conversation_name_fixtures",)
 
 
-def _naming_session_makers() -> tuple[sessionmaker[Session], sessionmaker[Session]]:
-    """Where model preparation may open a session: the scoped registry and the shared factory."""
-    return db.session.session_factory, session_factory.get_session_maker()
-
-
 @pytest.mark.parametrize("fail_invoke", [False, True], ids=["success", "provider-error"])
 def test_real_provider_invocation_releases_preparation_session_and_preserves_caller(
     naming_app: Flask,
@@ -89,7 +84,9 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
         caller_app.name = "Pending caller edit"
         caller_transaction = caller_session.get_transaction()
         original_metadata = get_credit_usage_metadata()
-        for session_maker in _naming_session_makers():
+        # Model preparation may open a session through the scoped registry or the shared factory.
+        naming_session_makers = (db.session.session_factory, session_factory.get_session_maker())
+        for session_maker in naming_session_makers:
             event.listen(session_maker, "after_begin", observe_transaction)
         plugin_http._httpx_client.event_hooks["request"].append(observe_request)
         try:
@@ -116,7 +113,7 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
                 assert get_credit_usage_metadata() == inherited_metadata
         finally:
             plugin_http._httpx_client.event_hooks["request"].remove(observe_request)
-            for session_maker in _naming_session_makers():
+            for session_maker in naming_session_makers:
                 event.remove(session_maker, "after_begin", observe_transaction)
 
         assert invocation_metadata == [
@@ -202,7 +199,9 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
         caller_app.name = "Pending caller edit"
         caller_transaction = caller_session.get_transaction()
         original_metadata = get_credit_usage_metadata()
-        for session_maker in _naming_session_makers():
+        # Model preparation may open a session through the scoped registry or the shared factory.
+        naming_session_makers = (db.session.session_factory, session_factory.get_session_maker())
+        for session_maker in naming_session_makers:
             event.listen(session_maker, "after_begin", observe_provider_transaction)
         try:
             with use_credit_usage_metadata({"request_id": "name-request"}):
@@ -217,7 +216,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
                     )
                 assert get_credit_usage_metadata() == inherited_metadata
         finally:
-            for session_maker in _naming_session_makers():
+            for session_maker in naming_session_makers:
                 event.remove(session_maker, "after_begin", observe_provider_transaction)
         assert get_credit_usage_metadata() == original_metadata
         assert provider_sessions
