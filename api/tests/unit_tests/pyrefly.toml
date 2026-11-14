@@ -157,7 +157,6 @@ project-excludes = [
   "../e2e_tests/contracts/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py",
   "../e2e_tests/contracts/core/workflow/nodes/test_document_extractor_node.py",
   "../e2e_tests/contracts/core/workflow/nodes/test_if_else.py",
-  "../e2e_tests/contracts/core/workflow/nodes/test_list_operator.py",
   "../e2e_tests/contracts/core/workflow/nodes/test_start_node_json_object.py",
   "../e2e_tests/contracts/core/workflow/nodes/tool/test_tool_node.py",
   "core/workflow/test_node_runtime.py",
