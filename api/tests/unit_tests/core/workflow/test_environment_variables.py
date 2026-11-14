@@ -47,8 +47,8 @@ def test_load_environment_variables_preserves_order_types_and_decrypts_only_secr
     assert variables[1].value == "ciphertext"
 
 
-def test_load_environment_variables_propagates_invalid_json() -> None:
-    with pytest.raises(json.JSONDecodeError):
+def test_load_environment_variables_rejects_invalid_json() -> None:
+    with pytest.raises(VariableError, match="Invalid environment variables"):
         load_environment_variables(tenant_id="tenant", serialized_variables="invalid JSON")
 
 
@@ -82,3 +82,49 @@ def test_load_environment_variables_propagates_decryption_failure(monkeypatch: p
     with pytest.raises(RuntimeError) as caught:
         load_environment_variables(tenant_id="tenant", serialized_variables=serialized)
     assert caught.value is failure
+
+
+@pytest.mark.parametrize(
+    "serialized_variables",
+    [
+        "null",
+        "true",
+        "42",
+        '"text"',
+        "[]",
+        '[{"name":"text","value_type":"string","value":"hello"}]',
+        '{"variable":null}',
+        '{"variable":42}',
+        '{"variable":[]}',
+        '{"variable":"text"}',
+    ],
+)
+def test_load_environment_variables_rejects_invalid_mapping_shapes(serialized_variables: str) -> None:
+    """Non-object containers and entries fail at the persisted JSON boundary."""
+    with pytest.raises(VariableError, match="Invalid environment variables"):
+        load_environment_variables(tenant_id="tenant", serialized_variables=serialized_variables)
+
+
+def test_invalid_environment_variable_mapping_is_rejected_before_decryption(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An invalid mapping entry prevents any secret decryption or payload disclosure."""
+    decrypt_calls: list[tuple[str, str]] = []
+
+    def decrypt(*, tenant_id: str, token: str) -> str:
+        decrypt_calls.append((tenant_id, token))
+        return "plaintext"
+
+    monkeypatch.setattr(encrypter, "decrypt_token", decrypt)
+    serialized = json.dumps(
+        {
+            "secret": {"name": "secret", "value_type": "secret", "value": "sensitive-ciphertext"},
+            "invalid": ["sensitive-value"],
+        }
+    )
+
+    with pytest.raises(VariableError, match="Invalid environment variables") as caught:
+        load_environment_variables(tenant_id="tenant", serialized_variables=serialized)
+    assert decrypt_calls == []
+    assert "sensitive" not in str(caught.value)
+    assert caught.value.__suppress_context__
