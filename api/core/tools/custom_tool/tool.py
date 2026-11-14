@@ -26,12 +26,12 @@ API_TOOL_DEFAULT_TIMEOUT = (
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
 
-    content: str | dict
+    content: str | dict | list
     is_json: bool
 
     def to_string(self) -> str:
         """Convert response to string format for credential validation"""
-        if isinstance(self.content, dict):
+        if isinstance(self.content, (dict, list)):
             return json.dumps(self.content, ensure_ascii=False)
         return str(self.content)
 
@@ -207,14 +207,16 @@ class ApiTool(Tool):
                 path_params[parameter["name"]] = value
 
             elif parameter["in"] == "query":
-                if value != "":
+                if value != "" and value is not None:
                     params[parameter["name"]] = value
 
             elif parameter["in"] == "cookie":
-                cookies[parameter["name"]] = value
+                if value != "" and value is not None:
+                    cookies[parameter["name"]] = value
 
             elif parameter["in"] == "header":
-                headers[parameter["name"]] = str(value)
+                if value != "" and value is not None:
+                    headers[parameter["name"]] = str(value)
 
         # check if there is a request body and handle it
         if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:
@@ -270,9 +272,10 @@ class ApiTool(Tool):
 
         # parse http body data if needed
         if "Content-Type" in headers:
-            if headers["Content-Type"] == "application/json":
+            content_type_clean = headers["Content-Type"].split(";")[0].strip().lower()
+            if content_type_clean == "application/json" or content_type_clean.endswith("+json"):
                 body = json.dumps(body)
-            elif headers["Content-Type"] == "application/x-www-form-urlencoded":
+            elif content_type_clean == "application/x-www-form-urlencoded":
                 body = urlencode(
                     [
                         (name, item)

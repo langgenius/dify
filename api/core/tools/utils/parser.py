@@ -52,14 +52,25 @@ class ApiBasedToolSchemaParser:
         # list all interfaces
         interfaces: list[InterfaceDict] = []
         for path, path_item in openapi["paths"].items():
+            if not isinstance(path_item, dict):
+                continue
+            path_parameters = path_item.get("parameters", []) if isinstance(path_item.get("parameters"), list) else []
             methods = ["get", "post", "put", "delete", "patch", "head", "options", "trace"]
             for method in methods:
-                if method in path_item:
+                if method in path_item and isinstance(path_item[method], dict):
+                    operation = dict(path_item[method])
+                    if path_parameters:
+                        op_parameters = operation.get("parameters", [])
+                        if not isinstance(op_parameters, list):
+                            op_parameters = []
+                        operation["parameters"] = ApiBasedToolSchemaParser._merge_path_and_operation_parameters(
+                            path_parameters, op_parameters, openapi
+                        )
                     interfaces.append(
                         {
                             "path": path,
                             "method": method,
-                            "operation": path_item[method],
+                            "operation": operation,
                         }
                     )
 
@@ -70,12 +81,10 @@ class ApiBasedToolSchemaParser:
             parameters = []
             if "parameters" in interface["operation"]:
                 for i, parameter in enumerate(interface["operation"]["parameters"]):
-                    if "$ref" in parameter:
-                        root = openapi
-                        reference = parameter["$ref"].split("/")[1:]
-                        for ref in reference:
-                            root = root[ref]
-                        interface["operation"]["parameters"][i] = root
+                    if isinstance(parameter, dict) and "$ref" in parameter:
+                        interface["operation"]["parameters"][i] = ApiBasedToolSchemaParser._resolve_param_ref(
+                            parameter, openapi
+                        )
                 for parameter in interface["operation"]["parameters"]:
                     # Handle complex type defaults that are not supported by PluginParameter
                     default_value = None
@@ -236,6 +245,62 @@ class ApiBasedToolSchemaParser:
         return value
 
     @staticmethod
+    def _resolve_param_ref(param: Any, openapi: Mapping[str, Any], max_depth: int = 5) -> Any:
+        """Resolve a local $ref in a parameter definition according to RFC 6901."""
+        if not isinstance(param, dict):
+            return param
+        current = param
+        for _ in range(max_depth):
+            ref = current.get("$ref")
+            if not isinstance(ref, str) or not ref.startswith("#/"):
+                return current
+            try:
+                root: Any = openapi
+                # RFC 6901: Each reference token is separated by '/'.
+                # Unescape '~1' to '/' and '~0' to '~' in that order.
+                tokens = ref[2:].split("/")
+                for token in tokens:
+                    unescaped_token = token.replace("~1", "/").replace("~0", "~")
+                    root = root[unescaped_token]
+                if isinstance(root, dict):
+                    current = root
+                else:
+                    return current
+            except (KeyError, TypeError, IndexError):
+                return current
+        return current
+
+    @staticmethod
+    def _merge_path_and_operation_parameters(
+        path_parameters: list[dict[str, Any]],
+        operation_parameters: list[dict[str, Any]],
+        openapi: Mapping[str, Any],
+    ) -> list[dict[str, Any]]:
+        """
+        Merge path-level parameters into operation-level parameters according to OpenAPI spec.
+        Operation-level parameters override path-level parameters with the same (name, in).
+        """
+        op_keys = set()
+        for p in operation_parameters:
+            if isinstance(p, dict):
+                resolved = ApiBasedToolSchemaParser._resolve_param_ref(p, openapi)
+                name = resolved.get("name")
+                loc = resolved.get("in")
+                if name is not None and loc is not None:
+                    op_keys.add((name, loc))
+
+        inherited = []
+        for p in path_parameters:
+            if isinstance(p, dict):
+                resolved = ApiBasedToolSchemaParser._resolve_param_ref(p, openapi)
+                name = resolved.get("name")
+                loc = resolved.get("in")
+                if (name, loc) not in op_keys:
+                    inherited.append(p)
+
+        return inherited + list(operation_parameters)
+
+    @staticmethod
     def _get_tool_parameter_type(parameter: dict[str, Any]) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
         typ: str | list[str] | None = None
@@ -326,12 +391,17 @@ class ApiBasedToolSchemaParser:
         # convert paths
         http_methods = ("get", "post", "put", "delete", "patch", "head", "options", "trace")
         for path, path_item in swagger["paths"].items():
+            if not isinstance(path_item, dict):
+                continue
             converted_openapi["paths"][path] = {}
+            path_parameters = path_item.get("parameters", []) if isinstance(path_item.get("parameters"), list) else []
             for method, operation in path_item.items():
                 # A Path Item Object may carry non-operation keys such as
                 # path-level parameters; only HTTP methods define operations.
                 method = str(method).lower()
                 if method not in http_methods:
+                    continue
+                if not isinstance(operation, dict):
                     continue
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
@@ -340,11 +410,20 @@ class ApiBasedToolSchemaParser:
                     if warning is not None:
                         warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
+                op_parameters = operation.get("parameters", []) if isinstance(operation.get("parameters"), list) else []
+                merged_parameters = (
+                    ApiBasedToolSchemaParser._merge_path_and_operation_parameters(
+                        path_parameters, op_parameters, swagger
+                    )
+                    if path_parameters
+                    else op_parameters
+                )
+
                 converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],
                     "summary": operation.get("summary") or "",
                     "description": operation.get("description") or "",
-                    "parameters": operation.get("parameters", []),
+                    "parameters": merged_parameters,
                     "responses": operation.get("responses", {}),
                 }
 
