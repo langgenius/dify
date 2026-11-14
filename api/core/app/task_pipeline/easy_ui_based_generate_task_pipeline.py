@@ -303,25 +303,23 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                             answer=output_moderation_answer
                         )
 
-                    stopped_agent_message: Message | None = None
+                    stopped = isinstance(event, QueueStopEvent)
                     with session_factory.create_session() as session:
                         # A stopped Agent run may persist provider-reported usage after
                         # cancellation completes. Do not replace it with local token estimates.
-                        if isinstance(event, QueueStopEvent):
+                        if stopped:
                             saved_message = self._save_message(session=session, preserve_existing_usage=True)
-                            if self._app_config.app_mode == AppMode.AGENT:
-                                stopped_agent_message = saved_message
                         else:
-                            self._save_message(session=session)
+                            saved_message = self._save_message(session=session)
                         session.commit()
-                    if stopped_agent_message is not None:
-                        # Provider/billing subscribers may perform external I/O.
-                        # Release the stop-save row lock before notifying them.
-                        message_was_created.send(
-                            stopped_agent_message,
-                            application_generate_entity=self._application_generate_entity,
-                        )
-                    else:
+                    # Provider/billing subscribers may perform external I/O and take connections of
+                    # their own. Notify them once the save is committed, so its connection (and, for a
+                    # stopped Agent run, its row lock) is released first.
+                    message_was_created.send(
+                        saved_message,
+                        application_generate_entity=self._application_generate_entity,
+                    )
+                    if not (stopped and self._app_config.app_mode == AppMode.AGENT):
                         # The Agent worker reports a stopped Agent run's terminal itself.
                         self._emit_message_trace()
                     message_end_resp = self._message_end_to_stream_response()
@@ -418,8 +416,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         preserve_existing_usage: bool = False,
     ) -> Message:
         """
-        Save message.
-        :return:
+        Write the finished message's fields on ``session`` and return it.
+
+        The caller commits and then sends ``message_was_created``; this method does not notify.
         """
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
@@ -477,12 +476,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             # The Agent worker owns the terminal after cancellation/cleanup.
             metadata["agent_stop_requested"] = True
         message.message_metadata = json.dumps(metadata, ensure_ascii=False)
-
-        if not agent_stop_requested:
-            message_was_created.send(
-                message,
-                application_generate_entity=self._application_generate_entity,
-            )
         return message
 
     def _emit_message_trace(self) -> None:
