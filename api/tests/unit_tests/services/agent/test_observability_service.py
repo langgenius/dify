@@ -1,17 +1,23 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from sqlite3 import Connection
+from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
 
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
-from sqlalchemy import Select, select
+from sqlalchemy import Select, event, select
+from sqlalchemy.engine import Connection as SQLAlchemyConnection
+from sqlalchemy.engine import ExecutionContext
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
+from fields.agent_fields import AgentLogMessageListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import FileTransferMethod, FileType
 from libs.datetime_utils import naive_utc_now
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
@@ -20,10 +26,12 @@ from models.enums import (
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    MessageFileBelongsTo,
     MessageStatus,
 )
 from models.enums import InvokeFrom as _workflow_tool_agent_statistics_InvokeFrom
-from models.model import App, AppMode, Conversation, Message, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageFeedback, MessageFile
+from models.tools import ToolFile
 from models.workflow import (
     Workflow,
     WorkflowExecutionStatus,
@@ -40,7 +48,7 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_upload_file
 
 
 def _agent_observability_service_app(
@@ -94,6 +102,145 @@ def _agent_observability_service_message(
     message.created_at = timestamp
     message.updated_at = timestamp
     return message
+
+
+@pytest.mark.parametrize(
+    ("message_count", "remote_url", "remote_filename", "remote_mime_type"),
+    [
+        (1, "https://remote.test/remote.pdf?token=test", "remote.pdf", "application/pdf"),
+        (6, "https://remote.test/remote.pdf?token=test", "remote.pdf", "application/pdf"),
+        (1, "https://files.example/report.pdf#page=2", "report.pdf", "application/pdf"),
+        (1, "https://files.example/my%20file.pdf", "my file.pdf", "application/pdf"),
+        (1, "https://files.example?id=1", "", None),
+    ],
+)
+def test_log_files_are_batch_loaded_tenant_scoped_and_read_only(
+    sqlite_session: Session,
+    message_count: int,
+    remote_url: str,
+    remote_filename: str,
+    remote_mime_type: str | None,
+) -> None:
+    app = _agent_observability_service_app()
+    upload = make_upload_file(name="input.pdf", mime_type="application/pdf", extension="pdf")
+    foreign_upload = make_upload_file(tenant_id="foreign-tenant")
+    tool = ToolFile(
+        tenant_id=app.tenant_id,
+        user_id="account-1",
+        conversation_id=None,
+        file_key="generated/output",
+        name="output",
+        mimetype="application/pdf",
+        size=42,
+    )
+    foreign_tool = ToolFile(
+        tenant_id="foreign-tenant",
+        user_id="account-1",
+        conversation_id=None,
+        file_key="foreign/output",
+        name="secret.pdf",
+        mimetype="application/pdf",
+    )
+    messages = [_agent_observability_service_message(message_id=str(uuid4())) for _ in range(message_count)]
+    attachments = []
+    legacy_attachments = []
+    for message in messages:
+        specs = [
+            (FileTransferMethod.LOCAL_FILE, upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, upload.id, "https://untrusted.test/input.pdf", MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, remote_url, None),
+            (
+                FileTransferMethod.TOOL_FILE,
+                tool.id,
+                f"https://untrusted.test/files/tools/{uuid4()}.exe",
+                MessageFileBelongsTo.ASSISTANT,
+            ),
+            (FileTransferMethod.TOOL_FILE, None, f"/files/tools/{tool.id}.exe", MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.TOOL_FILE, str(uuid4()), None, MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.LOCAL_FILE, str(uuid4()), None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, str(uuid4()), "https://remote.test/missing.pdf", MessageFileBelongsTo.USER),
+            (FileTransferMethod.LOCAL_FILE, foreign_upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.TOOL_FILE, foreign_tool.id, None, MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.TOOL_FILE, None, "/files/tools/invalid.pdf", MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.DATASOURCE_FILE, upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.LOCAL_FILE, None, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, "", MessageFileBelongsTo.USER),
+        ]
+        for index, (method, file_id, url, belongs_to) in enumerate(specs):
+            attachment = MessageFile(
+                message_id=message.id,
+                type=FileType.DOCUMENT,
+                transfer_method=method,
+                upload_file_id=file_id,
+                url=url,
+                belongs_to=belongs_to,
+                created_by="account-1",
+                created_by_role=CreatorUserRole.ACCOUNT,
+            )
+            attachment.created_at = datetime(2026, 11, 1) + timedelta(seconds=index)
+            attachments.append(attachment)
+            if method == FileTransferMethod.TOOL_FILE and file_id is None and url == f"/files/tools/{tool.id}.exe":
+                legacy_attachments.append(attachment)
+    sqlite_session.add_all([*messages, upload, foreign_upload, tool, foreign_tool, *attachments])
+    sqlite_session.commit()
+    queries = []
+
+    def reject_writes(_session: Session, *_args) -> None:
+        raise AssertionError("Log serialization must not flush or commit")
+
+    def capture_sql(
+        _conn: SQLAlchemyConnection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: ExecutionContext | None,
+        _executemany: bool,
+    ) -> None:
+        queries.append(statement)
+
+    bind = sqlite_session.get_bind()
+    event.listen(sqlite_session, "before_commit", reject_writes)
+    event.listen(sqlite_session, "before_flush", reject_writes)
+    event.listen(bind, "before_cursor_execute", capture_sql)
+    try:
+        payload = AgentObservabilityService(sqlite_session).list_log_messages(
+            app=app,
+            agent_id="agent-1",
+            conversation_id="conversation-1",
+            params=AgentLogQueryParams(sources=("webapp",), limit=100),
+        )
+    finally:
+        event.remove(sqlite_session, "before_commit", reject_writes)
+        event.remove(sqlite_session, "before_flush", reject_writes)
+        event.remove(bind, "before_cursor_execute", capture_sql)
+
+    response = AgentLogMessageListResponse.model_validate(payload)
+    assert len(response.data) == message_count
+    for message in response.data:
+        files = message.message_files
+        assert [file.filename for file in files] == ["input.pdf", "input.pdf", remote_filename, "output", "output"]
+        assert [file.belongs_to for file in files] == ["user", "user", None, "assistant", "assistant"]
+        for file in [*files[:2], *files[3:]]:
+            assert file.url
+            assert "untrusted.test" not in file.url
+            assert "sign=" in file.url
+            assert "timestamp=" in file.url
+        assert files[2].url == remote_url
+        assert files[2].mime_type == remote_mime_type
+        for file in files[3:]:
+            assert file.url
+            assert urlsplit(file.url).path == f"/files/tools/{tool.id}.pdf"
+            assert parse_qs(urlsplit(file.url).query)["sign"]
+            assert file.upload_file_id == tool.id
+            assert file.mime_type == "application/pdf"
+            assert file.size == 42
+    for table in ("message_files", "upload_files", "tool_files"):
+        assert sum(f"FROM {table}" in query for query in queries) == 1
+    assert all(query.lstrip().upper().startswith("SELECT") for query in queries)
+    assert not sqlite_session.dirty
+    assert not sqlite_session.new
+    assert all(attachment.upload_file_id is None for attachment in legacy_attachments)
 
 
 def _feedback(
@@ -439,7 +586,9 @@ class TestAgentObservabilityServiceCases:
         ]
         monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
         monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
-        monkeypatch.setattr(service, "serialize_log_message", lambda message, feedbacks=(): webapp_row)
+        monkeypatch.setattr(
+            service, "serialize_log_message", lambda message, feedbacks=(), message_files=(): webapp_row
+        )
         monkeypatch.setattr(service, "_list_workflow_messages", lambda **kwargs: workflow_rows)
 
         payload = service.list_log_messages(
@@ -807,6 +956,7 @@ class TestAgentObservabilityServiceCases:
                 {"rating": "like", "content": "Useful", "from_source": "user"},
                 {"rating": "dislike", "content": "Needs more detail", "from_source": "admin"},
             ],
+            "message_files": [],
             "message_tokens": 3,
             "answer_tokens": 4,
             "total_tokens": 7,
@@ -870,6 +1020,7 @@ class TestAgentObservabilityServiceCases:
             "from_account_id": None,
             "feedback_enabled": False,
             "feedbacks": [],
+            "message_files": [],
             "message_tokens": 10,
             "answer_tokens": 5,
             "total_tokens": 15,

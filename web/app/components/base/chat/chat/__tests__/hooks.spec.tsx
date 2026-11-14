@@ -1,4 +1,5 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
+import type { ThoughtItem } from '../type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -110,6 +111,18 @@ type HookCallbacks = {
     data: { message_id?: string; reasoning: string; node_id?: string; is_final?: boolean }
   }) => void
 }
+
+const createToolThought = (id: string, overrides: Partial<ThoughtItem> = {}): ThoughtItem => ({
+  id,
+  tool: 'create',
+  thought: '',
+  tool_input: '{}',
+  message_id: 'm-1',
+  conversation_id: 'c-1',
+  observation: '',
+  position: 1,
+  ...overrides,
+})
 
 describe('useChat', () => {
   beforeEach(() => {
@@ -1033,6 +1046,174 @@ describe('useChat', () => {
       ])
       expect(lastResponse!.agent_thoughts![0]!.message_files).toEqual([
         expect.objectContaining({ id: 'f-2', url: 'doc.pdf' }),
+      ])
+    })
+
+    it.each([
+      { stream: 'send', isNewAgent: false },
+      { stream: 'send', isNewAgent: true },
+      { stream: 'resume', isNewAgent: false },
+      { stream: 'resume', isNewAgent: true },
+    ])(
+      'routes attachments to their parallel tool owner ($stream, isNewAgent=$isNewAgent)',
+      ({ stream, isNewAgent }) => {
+        let callbacks: HookCallbacks
+        if (stream === 'send') {
+          // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing chat SSE transport boundary.
+          vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+            callbacks = options as HookCallbacks
+          })
+        } else {
+          // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing resumed SSE transport boundary.
+          vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+            callbacks = options as HookCallbacks
+          })
+        }
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(
+            undefined,
+            undefined,
+            stream === 'resume' ? createPausedChatTree() : undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent },
+          ),
+        )
+        const thoughtA = createToolThought('th-a')
+        const thoughtB = createToolThought('th-b', { position: 2 })
+
+        act(() => {
+          if (stream === 'send')
+            result.current.handleSend('test-url', { query: 'parallel files' }, {})
+          else result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        })
+        act(() => {
+          callbacks.onThought(thoughtA)
+          callbacks.onThought(thoughtB)
+          callbacks.onThought({ ...thoughtA, message_files: ['mf-a', 'mf-a'] })
+        })
+
+        expect(result.current.chatList.at(-1)!.agent_thoughts![0]).toMatchObject({
+          files: ['mf-a'],
+          message_files: [],
+        })
+
+        act(() => {
+          callbacks.onFile({ id: 'mf-a', type: 'document', url: 'report-a.pdf' })
+          callbacks.onFile({ id: 'mf-a', type: 'document', url: 'report-a.pdf?sign=new' })
+          // Legacy streams without thought file IDs attach to the latest tool first.
+          callbacks.onFile({ id: 'mf-c', type: 'document', url: 'report-c.pdf' })
+        })
+        expect(result.current.chatList.at(-1)!.agent_thoughts![1]!.message_files).toEqual([
+          expect.objectContaining({ id: 'mf-c' }),
+        ])
+
+        act(() => {
+          // Ownership can arrive after the file, and later snapshots can omit it.
+          callbacks.onThought({
+            ...thoughtA,
+            files: ['mf-c', 'mf-a', 'mf-c'],
+            message_files: ['mf-a'],
+            observation: 'Files saved',
+          })
+          callbacks.onThought({ ...thoughtA, message_files: [], observation: 'Complete' })
+        })
+
+        const response = result.current.chatList.at(-1)!
+        const [savedThoughtA, savedThoughtB] = response.agent_thoughts!
+        expect(savedThoughtA).toMatchObject({
+          files: ['mf-a', 'mf-c'],
+          observation: 'Complete',
+          message_files: [
+            expect.objectContaining({
+              id: 'mf-a',
+              url: 'report-a.pdf?sign=new',
+              supportFileType: 'document',
+            }),
+            expect.objectContaining({
+              id: 'mf-c',
+              url: 'report-c.pdf',
+              supportFileType: 'document',
+            }),
+          ],
+        })
+        expect(savedThoughtB!.message_files).toEqual([])
+        if (isNewAgent) {
+          expect(response.agent_response_parts).toEqual([
+            { type: 'thought', thought: savedThoughtA },
+            { type: 'thought', thought: savedThoughtB },
+          ])
+        }
+      },
+    )
+
+    it('moves an earlier answer attachment to its thought when ownership arrives', () => {
+      let callbacks: HookCallbacks
+      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing chat SSE transport boundary.
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'file before thought' }, {})
+      })
+      act(() => {
+        callbacks.onFile({ id: 'mf-first', type: 'document', url: 'report.pdf' })
+        callbacks.onThought({ ...createToolThought('th-a'), message_files: ['mf-first'] })
+      })
+
+      const response = result.current.chatList.at(-1)!
+      expect(response.message_files).toEqual([])
+      expect(response.agent_thoughts![0]).toMatchObject({
+        files: ['mf-first'],
+        message_files: [expect.objectContaining({ id: 'mf-first', url: 'report.pdf' })],
+      })
+      expect(response.agent_response_parts).toEqual([
+        { type: 'thought', thought: response.agent_thoughts![0] },
+      ])
+    })
+
+    it('updates existing response thought parts when resuming without the new agent option', () => {
+      let callbacks: HookCallbacks
+      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing resumed SSE transport boundary.
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const thoughtA = createToolThought('th-a', { files: ['mf-a'] })
+      const thoughtB = createToolThought('th-b', { position: 2 })
+      const tree = createPausedChatTree()
+      const answer = tree[0]!.children![0]!
+      answer.agent_thoughts = [thoughtA, thoughtB]
+      answer.agent_response_parts = [
+        { type: 'thought', thought: thoughtA },
+        { type: 'message', content: 'Working' },
+        { type: 'thought', thought: thoughtB },
+      ]
+      const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, tree))
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+      act(() => {
+        callbacks.onFile({ id: 'mf-a', type: 'document', url: 'report.pdf' })
+        callbacks.onThought({ ...thoughtA, observation: 'Complete' })
+      })
+
+      const response = result.current.chatList.at(-1)!
+      expect(response.agent_thoughts![0]!.message_files).toEqual([
+        expect.objectContaining({ id: 'mf-a', url: 'report.pdf' }),
+      ])
+      expect(response.agent_response_parts).toEqual([
+        { type: 'thought', thought: response.agent_thoughts![0] },
+        { type: 'message', content: 'Working' },
+        { type: 'thought', thought: response.agent_thoughts![1] },
       ])
     })
 
@@ -3111,6 +3292,7 @@ describe('useChat', () => {
                 id: 'history-thought',
                 thought: 'history thought',
                 answer: 'history agent answer',
+                files: ['history-file', 'deleted-file'],
                 tool: '',
                 tool_input: '',
                 observation: '',
@@ -3121,8 +3303,13 @@ describe('useChat', () => {
               {
                 id: 'history-file',
                 belongs_to: 'assistant',
-                type: 'image',
-                url: 'history.png',
+                filename: 'report.pdf',
+                mime_type: 'application/pdf',
+                size: 42,
+                transfer_method: 'tool_file',
+                upload_file_id: 'tool-file',
+                type: 'document',
+                url: 'https://files.test/report.pdf?sign=report',
               },
             ],
             retriever_resources: [{ id: 'history-citation', content: 'history citation' }],
@@ -3200,6 +3387,18 @@ describe('useChat', () => {
           id: 'history-thought',
           thought: 'history thought',
           answer: 'history agent answer',
+          message_files: [
+            expect.objectContaining({
+              id: 'history-file',
+              name: 'report.pdf',
+              supportFileType: 'document',
+              transferMethod: 'tool_file',
+              type: 'application/pdf',
+              size: 42,
+              url: 'https://files.test/report.pdf?sign=report',
+              uploadedId: 'tool-file',
+            }),
+          ],
         }),
       ])
     })

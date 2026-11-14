@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import base64
 import json
+import posixpath
 import re
 from dataclasses import dataclass
 from typing import ClassVar, Final, Literal
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
@@ -112,6 +113,27 @@ def agent_stub_config_note_url(base_url: str) -> str:
 
 def agent_stub_config_prompt_url(base_url: str) -> str:
     return f"{_require_http_base_url(base_url)}/config/prompt"
+
+
+def is_safe_dify_file_uri(value: str) -> bool:
+    """Check that a URI stays within Dify's signed ``/files/*`` data plane.
+
+    Accept origin-free paths with an optional signed query. Reject origins,
+    fragments, backslashes, and paths escaping ``/files/`` after decoding and
+    normalization. This client-safe check performs no I/O or token validation.
+    """
+
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or parsed.fragment or value.startswith("//"):
+        return False
+
+    decoded_path = parsed.path
+    for _ in range(2):
+        decoded_path = unquote(decoded_path)
+    if "\\" in decoded_path:
+        return False
+    normalized_path = posixpath.normpath(decoded_path)
+    return decoded_path.startswith("/files/") and normalized_path.startswith("/files/")
 
 
 def is_canonical_dify_file_reference(reference: str) -> bool:
@@ -391,6 +413,7 @@ __all__ = [
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",
+    "is_safe_dify_file_uri",
     "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

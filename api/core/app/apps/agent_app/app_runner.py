@@ -11,9 +11,11 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from decimal import Decimal
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import JsonValue
 
@@ -47,11 +49,14 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.tools.tool_file_manager import resolve_extension
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks
-from graphon.file import File
+from graphon.file import File, FileTransferMethod, standardize_file_type
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -69,8 +74,9 @@ from graphon.model_runtime.errors.invoke import (
 )
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
-from models.model import Message, MessageAgentThought
+from models.enums import CreatorUserRole, MessageFileBelongsTo
+from models.model import Message, MessageAgentThought, MessageFile
+from models.tools import ToolFile
 from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 
 logger = logging.getLogger(__name__)
@@ -259,6 +265,10 @@ class _AgentProcessRecorder:
     segments. Tool events close currently open text segments so later model text
     starts a fresh row instead of replaying content that was already streamed
     before the tool.
+
+    Plugin blob attachments are accepted only after database ownership checks.
+    Their metadata and URLs come from ToolFile rows, never from backend payloads.
+    Each ToolFile is attached at most once during this recorder's turn.
     """
 
     def __init__(
@@ -266,10 +276,12 @@ class _AgentProcessRecorder:
         *,
         dify_context: DifyRunContext,
         message_id: str,
+        conversation_id: str,
         queue_manager: AppQueueManager,
     ) -> None:
         self._dify_context = dify_context
         self._message_id = message_id
+        self._conversation_id = conversation_id
         self._queue_manager = queue_manager
         self._next_position = 1
         self._thinking_by_index: dict[int, str] = {}
@@ -278,6 +290,7 @@ class _AgentProcessRecorder:
         self._tool_by_call_id: dict[str, str] = {}
         self._open_tool_by_name: dict[str, set[str]] = {}
         self._knowledge_receipts: set[str] = set()
+        self._persisted_tool_file_ids: set[str] = set()
 
     def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
         data = event.data
@@ -433,6 +446,11 @@ class _AgentProcessRecorder:
         self._remember_tool_thought(index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id)
 
     def _record_tool_return_part(self, part: dict[str, Any]) -> None:
+        """Record a backend return, validating blob file IDs before attachment.
+
+        Accepts untrusted serialized tool parts. Observation and owned files are
+        committed together before thought/file events; invalid files are skipped.
+        """
         self._close_thinking_segments()
         sources = []
         for source in knowledge_sources_from_tool_part(part):
@@ -449,16 +467,66 @@ class _AgentProcessRecorder:
         content = part.get("content")
         if content is None:
             content = part
-        self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
+        self._record_tool_observation(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            observation=content,
+            tool_file_ids=_plugin_blob_tool_file_ids_from_tool_part(part),
+        )
 
-    def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+    def _record_tool_observation(
+        self,
+        *,
+        tool_call_id: str | None,
+        tool_name: str | None,
+        observation: Any,
+        tool_file_ids: Sequence[str] = (),
+    ) -> None:
+        """Save an observation and any owned, not-yet-delivered blob attachments.
+
+        File IDs must be normalized UUIDs. Commit failures propagate without
+        marking files delivered; events are published only after persistence.
+        """
         self._close_thinking_segments()
         thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
         if thought_id is None:
             thought_id = self._create_thought(tool=tool_name)
         else:
             self._mark_tool_observed(thought_id)
-        self._update_thought(thought_id, observation=_json_or_text(observation))
+        message_files = []
+        for tool_file_id in tool_file_ids:
+            if tool_file_id not in self._persisted_tool_file_ids:
+                message_file = self._plugin_blob_message_file(tool_file_id)
+                if message_file is not None:
+                    message_files.append(message_file)
+        self._update_thought(thought_id, observation=_json_or_text(observation), message_files=message_files)
+
+    def _plugin_blob_message_file(self, tool_file_id: str) -> MessageFile | None:
+        """Resolve a UUID to a transient attachment using authoritative file data.
+
+        Requires the file's tenant, user and optional conversation to match this
+        run. Missing/foreign files are warned and skipped without writing rows.
+        """
+        tool_file = db.session.get(ToolFile, tool_file_id)
+        if (
+            tool_file is None
+            or tool_file.tenant_id != self._dify_context.tenant_id
+            or tool_file.user_id != self._dify_context.user_id
+            or tool_file.conversation_id not in {None, self._conversation_id}
+        ):
+            logger.warning("Skipping missing or unowned Agent plugin blob file: tool_file_id=%s", tool_file_id)
+            return None
+        extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
+        return MessageFile(
+            message_id=self._message_id,
+            type=standardize_file_type(extension=extension, mime_type=tool_file.mimetype),
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=ToolFileMessageTransformer.get_tool_file_url(tool_file_id=tool_file.id, extension=extension),
+            upload_file_id=tool_file.id,
+            created_by_role=self._created_by_role(),
+            created_by=self._dify_context.user_id,
+        )
 
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
         if tool_call_id and tool_call_id in self._tool_by_call_id:
@@ -552,7 +620,14 @@ class _AgentProcessRecorder:
         tool_input_delta: str | None = None,
         observation: str | None = None,
         answer_delta: str | None = None,
+        message_files: Sequence[MessageFile] = (),
     ) -> None:
+        """Update an existing thought and commit before publishing its snapshot.
+
+        Optional transient attachments must already be ownership-verified. Their
+        rows and thought references commit atomically; failed commits leave the
+        recorder's delivered-file set unchanged and propagate to the caller.
+        """
         row = db.session.get(MessageAgentThought, thought_id)
         if row is None:
             return
@@ -570,11 +645,21 @@ class _AgentProcessRecorder:
             row.observation = observation
         if answer_delta:
             row.answer = f"{row.answer or ''}{answer_delta}"
+        if message_files:
+            db.session.add_all(message_files)
+            row.message_files = json.dumps([*row.files, *(message_file.id for message_file in message_files)])
 
         db.session.commit()
+        self._persisted_tool_file_ids.update(
+            message_file.upload_file_id for message_file in message_files if message_file.upload_file_id is not None
+        )
         self._queue_manager.publish(
             QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
         )
+        for message_file in message_files:
+            self._queue_manager.publish(
+                QueueMessageFileEvent(message_file_id=message_file.id), PublishFrom.APPLICATION_MANAGER
+            )
 
     def _created_by_role(self) -> CreatorUserRole:
         if self._dify_context.invoke_from.runs_as_account():
@@ -621,8 +706,26 @@ def _suffix_prefix_overlap_length(text: str, prefix_source: str) -> int:
     return 0
 
 
+def _plugin_blob_tool_file_ids_from_tool_part(part: Mapping[str, Any]) -> list[str]:
+    """Extract ordered unique UUIDs from untrusted blob return metadata.
+
+    Non-list metadata and malformed entries yield no IDs and never reach SQL.
+    """
+    metadata = part.get("metadata")
+    raw_ids = metadata.get("dify_plugin_blob_files") if isinstance(metadata, Mapping) else None
+    if not isinstance(raw_ids, list):
+        return []
+    file_ids: dict[str, None] = {}
+    for value in raw_ids:
+        if isinstance(value, str):
+            with suppress(ValueError):
+                file_ids[str(UUID(value))] = None
+    return list(file_ids)
+
+
 def _is_empty_answer_only_thought(row: MessageAgentThought) -> bool:
-    return not any((row.thought, row.answer, row.tool, row.tool_input, row.observation))
+    """A thought is disposable only when it has neither content nor attachments."""
+    return not any((row.thought, row.answer, row.tool, row.tool_input, row.observation, row.files))
 
 
 class AgentAppRunner:
@@ -860,6 +963,7 @@ class AgentAppRunner:
         process_recorder = _AgentProcessRecorder(
             dify_context=dify_context,
             message_id=message_id,
+            conversation_id=session_scope.conversation_id,
             queue_manager=queue_manager,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
