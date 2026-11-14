@@ -13,6 +13,79 @@ const { createSession, connect, transports, setup, cleanup } = createCollaborati
 beforeEach(setup)
 afterEach(cleanup)
 
+it('reports an unresponsive initial join and ignores its late acknowledgement', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, acknowledge } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(failures).toHaveBeenLastCalledWith('unavailable')
+  expect(manager.canPersistLocalGraph()).toBe(false)
+  acknowledge('user_connect', { msg: 'connected' })
+  expect(failures).toHaveBeenLastCalledWith('unavailable')
+})
+
+it('keeps an established canvas blocked when a rejoin does not respond', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, socket } = await createSession({ nodes: [createNode('local')] })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('disconnect', 'transport close')
+  socket.id = 'new-session'
+  receive('connect')
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(failures).toHaveBeenLastCalledWith('session_unavailable')
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('reports a timeout when an established socket cannot rejoin', async () => {
+  vi.useFakeTimers()
+  const { manager, acknowledge } = await createSession({ nodes: [createNode('local')] })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
+  acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(failures).toHaveBeenLastCalledWith('session_unavailable')
+  expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('does not time out a join whose status arrived before its acknowledgement', async () => {
+  vi.useFakeTimers()
+  const { manager, receive } = await createSession({ connected: false, role: 'pending' })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  receive('status', { isLeader: true })
+  expect(manager.canPersistLocalGraph()).toBe(true)
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(failures).toHaveBeenLastCalledWith(null)
+  expect(manager.canPersistLocalGraph()).toBe(true)
+})
+
+it('ignores a previous join timeout after the socket reconnects', async () => {
+  vi.useFakeTimers()
+  const { manager, receive, acknowledge, socket } = await createSession({
+    connected: false,
+    role: 'pending',
+  })
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('connect')
+  await vi.advanceTimersByTimeAsync(10_000)
+  receive('disconnect', 'transport close')
+  socket.id = 'new-session'
+  receive('connect')
+  receive('status', { isLeader: true })
+  acknowledge('user_connect', { msg: 'connected' })
+  await vi.advanceTimersByTimeAsync(5_000)
+  expect(failures).toHaveBeenLastCalledWith(null)
+})
+
 it.each([
   [401, 'unauthorized', 'denied'],
   [403, 'not_entitled', 'denied'],

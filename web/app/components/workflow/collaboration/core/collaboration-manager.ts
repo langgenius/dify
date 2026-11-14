@@ -261,8 +261,23 @@ export class CollaborationManager {
     if (!this.currentAppId || !socket.connected) return
 
     this.joinPending = true
+    this.receivedConnectionStatus = false
     const attempt = ++this.joinAttempt
     const sid = socket.id
+    setTimeout(() => {
+      if (
+        this.joinAttempt !== attempt ||
+        this.getActiveSocket() !== socket ||
+        socket.id !== sid ||
+        !this.joinPending ||
+        this.receivedConnectionStatus
+      )
+        return
+
+      this.joinAttempt += 1
+      this.rejoinInProgress = false
+      this.handleJoinAck({ msg: 'collaboration_unavailable' }, 503)
+    }, 15_000)
     emitWithAuthGuard(
       socket,
       'user_connect',
