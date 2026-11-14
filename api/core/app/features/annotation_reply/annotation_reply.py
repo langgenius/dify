@@ -4,6 +4,7 @@ from typing import cast
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset
@@ -28,39 +29,53 @@ class AnnotationReplyFeature:
     ) -> MessageAnnotation | None:
         """Return the closest annotation reply and record a hit in ``session``.
 
-        The setting lookup, vector access, annotation lookup, and hit-history
-        write share the caller-owned session. Vector-search failures are logged
-        and return ``None``; transaction cleanup remains the caller's responsibility.
+        The setting, collection-binding and vector-type lookups run in a session of their own, closed
+        before the index is opened and searched: that waits on the vector store and the embedding
+        model, and resolving the model opens further sessions. ``session`` is the caller's and is
+        only used after a hit, for the annotation lookup and the hit-history write; its transaction
+        cleanup remains the caller's responsibility. Vector-search failures are logged and return
+        ``None``.
         """
+        with session_factory.create_session() as lookup_session:
+            try:
+                annotation_reply_config = load_annotation_reply_config(lookup_session, app_record.id)
+            except ValueError:
+                return None
+
+            if not annotation_reply_config["enabled"]:
+                return None
+            enabled_config = cast(AnnotationReplyEnabledConfig, annotation_reply_config)
+
+            try:
+                score_threshold = enabled_config["score_threshold"] or 1
+                embedding_provider_name = enabled_config["embedding_model"]["embedding_provider_name"]
+                embedding_model_name = enabled_config["embedding_model"]["embedding_model_name"]
+
+                dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                    embedding_provider_name, embedding_model_name, lookup_session, CollectionBindingType.ANNOTATION
+                )
+
+                dataset = Dataset(
+                    id=app_record.id,
+                    tenant_id=app_record.tenant_id,
+                    indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                    embedding_model_provider=embedding_provider_name,
+                    embedding_model=embedding_model_name,
+                    collection_binding_id=dataset_collection_binding.id,
+                )
+
+                vector_type = Vector.resolve_vector_type(dataset, session=lookup_session)
+                # ``get_dataset_collection_binding`` creates the binding when there is none yet.
+                lookup_session.commit()
+            except Exception:
+                logger.warning("Query annotation failed.", exc_info=True)
+                return None
+
         try:
-            annotation_reply_config = load_annotation_reply_config(session, app_record.id)
-        except ValueError:
-            return None
-
-        if not annotation_reply_config["enabled"]:
-            return None
-        enabled_config = cast(AnnotationReplyEnabledConfig, annotation_reply_config)
-
-        try:
-            score_threshold = enabled_config["score_threshold"] or 1
-            embedding_provider_name = enabled_config["embedding_model"]["embedding_provider_name"]
-            embedding_model_name = enabled_config["embedding_model"]["embedding_model_name"]
-
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
+            # Opening the index connects to the vector store, so it also happens after the lookup session.
+            vector = Vector(
+                dataset, attributes=["doc_id", "annotation_id", "app_id"], session=None, vector_type=vector_type
             )
-
-            dataset = Dataset(
-                id=app_record.id,
-                tenant_id=app_record.tenant_id,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-                embedding_model_provider=embedding_provider_name,
-                embedding_model=embedding_model_name,
-                collection_binding_id=dataset_collection_binding.id,
-            )
-
-            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
-
             documents = vector.search_by_vector(
                 query=query, top_k=1, score_threshold=score_threshold, filter={"group_id": [dataset.id]}
             )
