@@ -46,10 +46,21 @@ class RunFailureType(StrEnum):
     """Stable machine-readable categories for failed Dify Agent runs.
 
     Run-limit failures cover Dify Agent's model-request budget and run wall-clock
-    deadline. Provider and connection timeouts retain their own error categories.
+    deadline; provider and connection timeouts do not use that category.
+    ``BINDING_LOST`` identifies an unavailable retained execution environment.
+    ``MODEL_INVOKE_*`` groups closed model-runtime failures: bad requests include
+    credential validation failures, and rate limits include Agent LLM metering
+    quota exhaustion. Open-ended provider, knowledge retrieval and internal
+    scheduler failures remain unclassified (``None``), with diagnostics in ``error``.
     """
 
     AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
+    BINDING_LOST = "binding_lost"
+    MODEL_INVOKE_AUTHORIZATION_ERROR = "model_invoke_authorization_error"
+    MODEL_INVOKE_BAD_REQUEST_ERROR = "model_invoke_bad_request_error"
+    MODEL_INVOKE_CONNECTION_ERROR = "model_invoke_connection_error"
+    MODEL_INVOKE_RATE_LIMIT_ERROR = "model_invoke_rate_limit_error"
+    MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR = "model_invoke_server_unavailable_error"
 
 
 def utc_now() -> datetime:
@@ -192,11 +203,14 @@ class RunSucceededEventData(BaseModel):
 
 
 class RunFailedEventData(BaseModel):
-    """Terminal failure payload shown to polling and SSE consumers."""
+    """Terminal failure payload shown to polling and SSE consumers.
+
+    ``error_type=None`` leaves a failure unclassified; diagnostic details remain
+    in ``error`` and must not be interpreted as machine-readable categories.
+    """
 
     error: str
     error_type: RunFailureType | None = None
-    reason: str | None = None
     session_snapshot: SessionSnapshot | None = None
     usage: AgentRunUsage | None = None
 

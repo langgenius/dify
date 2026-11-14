@@ -623,17 +623,31 @@ terminal event may contain a `SessionSnapshot` for resumption.
 `run_succeeded` always contains it; `run_failed` and `run_cancelled` contain it
 when the runner produced State after native capability cleanup. A successful run
 contains JSON-safe `output`, which may be null.
-Failed event payloads contain the diagnostic `error`, optional source-specific
-`reason`, optional stable `error_type`, and optional `session_snapshot`.
-Cancelled payloads likewise may contain `session_snapshot`. Pydantic AI request/step budget
-exhaustion enforced by Dify Agent is reported as
-`error_type: "agent_run_limit_exceeded"`; consumers should branch on that value
-rather than parsing the error text. The Dify Agent-owned wall-clock run deadline
-uses the same error type; provider and connection timeouts do not. The matching
-failed run record and terminal event are committed atomically with the same error
-type. For independently deployed Agent backend and API services, deploy consumers
-that accept the optional field before producers begin emitting it because the
-public protocol models reject unknown fields.
+Failed event payloads contain the diagnostic `error`, optional stable
+`error_type: RunFailureType`, optional `session_snapshot`, and optional `usage`.
+Consumers branch on `error_type` rather than parsing diagnostic text. The
+supported categories are:
+
+| `error_type` | Meaning |
+| --- | --- |
+| `agent_run_limit_exceeded` | Dify Agent's Pydantic AI request/step budget or wall-clock run deadline was exceeded. Provider and connection timeouts do not use this category. |
+| `binding_lost` | The retained execution Binding is no longer available. |
+| `model_invoke_authorization_error` | Model invocation authorization failed. |
+| `model_invoke_bad_request_error` | Model invocation rejected the request or credential validation failed. |
+| `model_invoke_connection_error` | The model runtime reported an upstream connection failure. |
+| `model_invoke_rate_limit_error` | Model rate limiting or Agent LLM metering quota was exceeded, including preflight HTTP 429 and mid-stream quota failures. |
+| `model_invoke_server_unavailable_error` | The model runtime reported upstream unavailability. |
+
+Unrecognized model/provider failures, knowledge retrieval errors, scheduler
+shutdown/observer failures, and other runtime exceptions use `error_type: null`;
+their diagnostic details remain in `error`. The matching failed run record and
+terminal event are committed atomically with the same error type.
+
+`run_failed` has no `reason` field. Cancellation remains a separate contract:
+`run_cancelled` retains its optional `reason`, `message`, `session_snapshot`, and
+`usage`. Independently deployed Agent backend and API services must coordinate
+this failed-run schema change: the public protocol rejects removed fields and
+unknown enum values, including when replaying retained events.
 
 ## Examples
 

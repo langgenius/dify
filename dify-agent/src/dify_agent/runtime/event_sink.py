@@ -193,7 +193,6 @@ async def emit_run_failed(
     run_id: str,
     error: str,
     error_type: RunFailureType | None = None,
-    reason: str | None = None,
     session_snapshot: SessionSnapshot | None = None,
     usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
@@ -204,7 +203,6 @@ async def emit_run_failed(
             data=RunFailedEventData(
                 error=error,
                 error_type=error_type,
-                reason=reason,
                 session_snapshot=session_snapshot,
                 usage=usage,
             ),

@@ -84,9 +84,8 @@ class TestBasedGenerateTaskPipeline:
         event = QueueErrorEvent(
             error=AgentBackendRunFailedError(
                 "run-1",
-                {"reason": "knowledge_retrieve_failed"},
+                {"error": "Knowledge retrieval failed", "error_type": None},
                 message="Knowledge retrieval failed",
-                reason="knowledge_retrieve_failed",
             )
         )
 
@@ -140,9 +139,8 @@ class TestBasedGenerateTaskPipeline:
         data = AppGenerateResponseConverter._error_to_stream_response(
             AgentBackendRunFailedError(
                 "run-1",
-                {"reason": "knowledge_retrieve_failed"},
+                {"error": "Knowledge retrieval failed", "error_type": None},
                 message="Knowledge retrieval failed",
-                reason="knowledge_retrieve_failed",
             )
         )
 

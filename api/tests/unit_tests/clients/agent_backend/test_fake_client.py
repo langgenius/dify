@@ -63,6 +63,7 @@ def test_fake_client_failed_scenario_returns_failed_status_and_event() -> None:
     assert status.error == "fake failure"
     assert events[-1].type == "run_failed"
     assert events[-1].data.error == "fake failure"
+    assert events[-1].data.error_type is None
 
 
 def test_fake_client_cancel_run_returns_cancelled_status() -> None:

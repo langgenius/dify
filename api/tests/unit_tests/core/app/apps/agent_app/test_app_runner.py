@@ -44,7 +44,6 @@ from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
-    AgentBackendRunFailedInternalEvent,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
@@ -74,7 +73,13 @@ from core.app.entities.queue_entities import (
 )
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from models.agent_config_entities import (
     AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
@@ -226,7 +231,12 @@ class _UsageFailedClient(FakeAgentBackendRunClient):
         )
 
 
-class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+class _ClassifiedFailureFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, *, error_type: RunFailureType | None, error: str) -> None:
+        super().__init__()
+        self.error_type = error_type
+        self.error = error
+
     @override
     def stream_events(
         self,
@@ -243,9 +253,9 @@ class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=RunFailedEventData(
-                error="run limit reached",
-                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-                reason="binding_lost",
+                error=self.error,
+                error_type=self.error_type,
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
 
@@ -1521,70 +1531,65 @@ def test_terminal_without_snapshot_preserves_prior_app_session_without_write(
     assert store.saved == []
 
 
-def test_failed_run_prefers_run_failure_type_over_binding_lost_reason() -> None:
-    client = _RunLimitBindingLostFakeAgentBackendRunClient()
+@pytest.mark.parametrize(
+    ("error_type", "expected_error"),
+    [
+        (RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, AgentBackendRunFailedError),
+        (RunFailureType.BINDING_LOST, AgentBackendError),
+        (RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR, InvokeAuthorizationError),
+        (RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR, InvokeBadRequestError),
+        (RunFailureType.MODEL_INVOKE_CONNECTION_ERROR, InvokeConnectionError),
+        (RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR, InvokeRateLimitError),
+        (RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR, InvokeServerUnavailableError),
+    ],
+)
+def test_failed_run_maps_structured_failure_type(error_type: RunFailureType, expected_error: type[Exception]) -> None:
+    client = _ClassifiedFailureFakeAgentBackendRunClient(error_type=error_type, error="raw backend diagnostic")
+    store = _FakeSessionStore()
+
+    with pytest.raises(expected_error) as raised:
+        _run(_runner(client, store), _FakeQueueManager())
+
+    err = raised.value
+    assert type(err) is expected_error
+    assert store.saved[0][2] == SessionSnapshot(layers={})
+    if error_type == RunFailureType.BINDING_LOST:
+        assert str(err) == "The retained agent working environment is no longer available."
+    elif isinstance(err, AgentBackendRunFailedError):
+        assert err.run_id == "fake-run-1"
+        assert err.error_type is error_type
+        assert err.source_event_id == "2-0"
+        assert err.detail == {
+            "error": "raw backend diagnostic",
+            "error_type": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            "source_event_id": "2-0",
+        }
+        assert not hasattr(err, "reason")
+        assert str(err) == "raw backend diagnostic (agent_run_id=fake-run-1)"
+    else:
+        assert str(err) == "raw backend diagnostic"
+
+
+@pytest.mark.parametrize("error", ["Knowledge retrieval failed", "InvokeRateLimitError", "binding_lost"])
+def test_failed_run_preserves_unclassified_failure_context(error: str) -> None:
+    client = _ClassifiedFailureFakeAgentBackendRunClient(error_type=None, error=error)
     store = _FakeSessionStore()
 
     with pytest.raises(AgentBackendRunFailedError) as raised:
         _run(_runner(client, store), _FakeQueueManager())
 
-    assert raised.value.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
-    assert raised.value.reason == "binding_lost"
-
-
-def test_agent_backend_failure_to_exception_maps_rate_limit_reason() -> None:
-    err = app_runner_module._agent_backend_failure_to_exception(
-        AgentBackendRunFailedInternalEvent(
-            run_id="run-1",
-            error="quota exceeded",
-            reason="InvokeRateLimitError",
-        )
-    )
-
-    assert isinstance(err, InvokeRateLimitError)
-    assert str(err) == "quota exceeded"
-
-
-def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -> None:
-    err = app_runner_module._agent_backend_failure_to_exception(
-        AgentBackendRunFailedInternalEvent(
-            run_id="run-1",
-            source_event_id="event-1",
-            error="Knowledge retrieval failed",
-            reason="knowledge_retrieve_failed",
-        )
-    )
-
-    assert isinstance(err, AgentBackendRunFailedError)
-    assert err.run_id == "run-1"
-    assert err.reason == "knowledge_retrieve_failed"
-    assert err.source_event_id == "event-1"
+    err = raised.value
+    assert err.run_id == "fake-run-1"
+    assert err.error_type is None
+    assert not hasattr(err, "reason")
+    assert err.source_event_id == "2-0"
     assert err.detail == {
-        "error": "Knowledge retrieval failed",
-        "reason": "knowledge_retrieve_failed",
-        "source_event_id": "event-1",
+        "error": error,
+        "error_type": None,
+        "source_event_id": "2-0",
     }
-    assert str(err) == "Knowledge retrieval failed (agent_run_id=run-1)"
-
-
-def test_agent_backend_failure_to_exception_prefers_run_failure_type_over_known_reason() -> None:
-    err = app_runner_module._agent_backend_failure_to_exception(
-        AgentBackendRunFailedInternalEvent(
-            run_id="run-1",
-            error="run limit reached",
-            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-            reason="InvokeRateLimitError",
-        )
-    )
-
-    assert isinstance(err, AgentBackendRunFailedError)
-    assert err.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
-    assert err.reason == "InvokeRateLimitError"
-    assert err.detail == {
-        "error": "run limit reached",
-        "reason": "InvokeRateLimitError",
-        "source_event_id": None,
-    }
+    assert str(err) == f"{error} (agent_run_id=fake-run-1)"
+    assert store.saved[0][2] == SessionSnapshot(layers={})
 
 
 def test_stopped_task_waits_for_cancelled_snapshot_and_saves_session() -> None:
