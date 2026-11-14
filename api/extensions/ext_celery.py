@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from celery import Celery, Task
 from celery.schedules import crontab
-from celery.signals import beat_init
+from celery.signals import beat_init, worker_ready
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -14,6 +14,7 @@ from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
+from libs.gc_freeze import freeze_startup_objects
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,14 @@ def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> Non
 
 
 beat_init.connect(_enqueue_initial_community_telemetry_heartbeat, weak=False)
+
+
+def _freeze_startup_objects_when_worker_is_ready(**_: Any) -> None:
+    # The task modules are imported by now, so they are frozen with the rest of the process.
+    freeze_startup_objects()
+
+
+worker_ready.connect(_freeze_startup_objects_when_worker_is_ready, weak=False)
 
 
 def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
