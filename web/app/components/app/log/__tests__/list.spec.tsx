@@ -594,7 +594,7 @@ it('loads the selected agent trace using its conversation and message ids', asyn
   })
   const user = userEvent.setup()
   renderConversationList({
-    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' }),
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'agent-chat' }),
     searchParams: '?conversation_id=conversation-1',
   })
   await user.click(await screen.findByRole('button', { name: 'common.operation.log' }))
@@ -606,6 +606,21 @@ it('loads the selected agent trace using its conversation and message ids', asyn
   })
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
+})
+
+it('omits the log action when an agent answer has empty agent_thoughts', async () => {
+  api.messages.mockResolvedValue({
+    data: [createChatMessage('message-1', { agent_thoughts: [] })],
+    has_more: false,
+    limit: 10,
+  })
+  renderConversationList({
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'agent-chat' }),
+    searchParams: '?conversation_id=conversation-1',
+  })
+  await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })
+  await screen.findByText('Assistant reply message-1')
+  expect(screen.queryByRole('button', { name: 'common.operation.log' })).not.toBeInTheDocument()
 })
 
 it('discards a selected log when URL navigation changes or closes the conversation', async () => {
