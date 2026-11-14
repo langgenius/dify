@@ -616,6 +616,15 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(pro
     assert result is not None
     assert result.model == "gpt-4"
     assert result.provider.provider == "openai"
+    # Callers invoke the model next; the lookup must not leave the request session holding a connection.
+    assert not provider_db.in_transaction()
+
+
+def test_get_default_model_without_a_saved_default_leaves_the_request_session_idle(provider_db: Session) -> None:
+    manager = _build_provider_manager()
+
+    assert manager.get_default_model("tenant-id", ModelType.TTS) is None
+    assert not provider_db.in_transaction()
 
 
 def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(provider_db: Session):
