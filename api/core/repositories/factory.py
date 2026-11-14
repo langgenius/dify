@@ -51,6 +51,14 @@ class WorkflowNodeExecutionRepository(Protocol):
 
     def save_execution_data(self, execution: WorkflowNodeExecution): ...
 
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist the execution and its inputs, process data and outputs as one unit.
+
+        Postcondition: the stored record is the one that ``save`` followed by
+        ``save_execution_data`` produces. Implementations may reach it with fewer writes.
+        """
+        ...
+
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
