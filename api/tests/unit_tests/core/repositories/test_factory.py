@@ -5,6 +5,8 @@ This module tests the factory pattern implementation for creating repository ins
 based on configuration, including error handling.
 """
 
+from collections.abc import Callable
+
 import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -36,7 +38,7 @@ class TestRepositoryFactory:
     """Test cases for RepositoryFactory."""
 
     @pytest.fixture(autouse=True)
-    def _repository_config(self, config_overrides) -> None:
+    def _repository_config(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(
             CORE_WORKFLOW_EXECUTION_REPOSITORY=(
                 "core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository"
@@ -46,32 +48,32 @@ class TestRepositoryFactory:
             ),
         )
 
-    def test_import_string_success(self):
+    def test_import_string_success(self) -> None:
         """Test successful class import."""
         # Test importing a real class
         class_path = "core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository"
         result = import_string(class_path)
         assert result is SQLAlchemyWorkflowExecutionRepository
 
-    def test_import_string_invalid_path(self):
+    def test_import_string_invalid_path(self) -> None:
         """Test import with invalid module path."""
         with pytest.raises(ImportError) as exc_info:
             import_string("invalid.module.path")
         assert "No module named" in str(exc_info.value)
 
-    def test_import_string_invalid_class_name(self):
+    def test_import_string_invalid_class_name(self) -> None:
         """Test import with invalid class name."""
         with pytest.raises(ImportError) as exc_info:
             import_string("core.repositories.factory.NonExistentClass")
         assert "does not define" in str(exc_info.value)
 
-    def test_import_string_malformed_path(self):
+    def test_import_string_malformed_path(self) -> None:
         """Test import with malformed path (no dots)."""
         with pytest.raises(ImportError) as exc_info:
             import_string("invalidpath")
         assert "doesn't look like a module path" in str(exc_info.value)
 
-    def test_create_workflow_execution_repository_success(self, sqlite_session_factory):
+    def test_create_workflow_execution_repository_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test successful WorkflowExecutionRepository creation."""
         # Create non-database dependencies
         mock_user = Account(name="Test Account", email="test@example.com")
@@ -95,7 +97,9 @@ class TestRepositoryFactory:
         assert result._app_id == app_id
         assert result._triggered_from == triggered_from
 
-    def test_create_workflow_execution_repository_import_error(self, sqlite_session_factory, config_overrides):
+    def test_create_workflow_execution_repository_import_error(
+        self, sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
+    ) -> None:
         """Test WorkflowExecutionRepository creation with import error."""
         config_overrides(CORE_WORKFLOW_EXECUTION_REPOSITORY="invalid.module.InvalidClass")
 
@@ -111,7 +115,9 @@ class TestRepositoryFactory:
             )
         assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    def test_create_workflow_execution_repository_instantiation_error(self, sqlite_session_factory):
+    def test_create_workflow_execution_repository_instantiation_error(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test WorkflowExecutionRepository creation with instantiation error."""
         mock_user = Account(name="Test Account", email="test@example.com")
 
@@ -127,7 +133,9 @@ class TestRepositoryFactory:
         assert isinstance(exc_info.value.__cause__, ValueError)
         assert str(exc_info.value.__cause__) == "tenant_id is required"
 
-    def test_create_workflow_node_execution_repository_success(self, sqlite_session_factory):
+    def test_create_workflow_node_execution_repository_success(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test successful WorkflowNodeExecutionRepository creation."""
         # Create non-database dependencies
         mock_user = EndUser(id="end-user-id")
@@ -151,7 +159,9 @@ class TestRepositoryFactory:
         assert result._app_id == app_id
         assert result._triggered_from == triggered_from
 
-    def test_create_workflow_node_execution_repository_import_error(self, sqlite_session_factory, config_overrides):
+    def test_create_workflow_node_execution_repository_import_error(
+        self, sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
+    ) -> None:
         """Test WorkflowNodeExecutionRepository creation with import error."""
         config_overrides(CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY="invalid.module.InvalidClass")
 
@@ -167,7 +177,9 @@ class TestRepositoryFactory:
             )
         assert "Failed to create WorkflowNodeExecutionRepository" in str(exc_info.value)
 
-    def test_create_workflow_node_execution_repository_instantiation_error(self, sqlite_session_factory):
+    def test_create_workflow_node_execution_repository_instantiation_error(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test WorkflowNodeExecutionRepository creation with instantiation error."""
         mock_user = EndUser()
 
@@ -183,13 +195,13 @@ class TestRepositoryFactory:
         assert isinstance(exc_info.value.__cause__, ValueError)
         assert str(exc_info.value.__cause__) == "tenant_id is required"
 
-    def test_repository_import_error_exception(self):
+    def test_repository_import_error_exception(self) -> None:
         """Test RepositoryImportError exception handling."""
         error_message = "Custom error message"
         error = RepositoryImportError(error_message)
         assert str(error) == error_message
 
-    def test_create_with_engine_instead_of_sessionmaker(self, sqlite_engine: Engine):
+    def test_create_with_engine_instead_of_sessionmaker(self, sqlite_engine: Engine) -> None:
         """Test repository creation with Engine instead of sessionmaker."""
         # Pass the real Engine directly instead of wrapping it in sessionmaker
         mock_user = Account(name="Test Account", email="test@example.com")

@@ -126,7 +126,6 @@ project-excludes = [
   "core/rag/splitter/test_text_splitter.py",
   "core/repositories/test_celery_workflow_execution_repository.py",
   "core/repositories/test_celery_workflow_node_execution_repository.py",
-  "core/repositories/test_factory.py",
   "core/repositories/test_human_input_repository.py",
   "core/repositories/test_sqlalchemy_workflow_execution_repository.py",
   "core/test_model_manager.py",
