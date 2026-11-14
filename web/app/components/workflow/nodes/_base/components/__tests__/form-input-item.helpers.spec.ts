@@ -89,6 +89,7 @@ describe('form-input-item helpers', () => {
     )
 
     expect(stringFilter?.({ type: VarType.secret } as Var)).toBe(true)
+    expect(stringFilter?.({ type: VarType.integer } as Var)).toBe(true)
     expect(stringFilter?.({ type: VarType.file } as Var)).toBe(false)
     expect(getVarKindType(booleanState)).toBe(VarKindType.constant)
     expect(getFilterVar(booleanState)?.({ type: VarType.boolean } as Var)).toBe(false)
@@ -132,6 +133,7 @@ describe('form-input-item helpers', () => {
     expect(getTargetVarType(dateState)).toBe(VarType.string)
     expect(getVarKindType(dateState)).toBe(VarKindType.constant)
     expect(getFilterVar(dateState)?.({ type: VarType.string } as Var)).toBe(true)
+    expect(getFilterVar(dateState)?.({ type: VarType.integer } as Var)).toBe(true)
 
     const rangeState = getFormInputState(createSchema({ type: FormTypeEnum.dateRange }), {
       type: VarKindType.constant,

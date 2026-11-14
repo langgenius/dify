@@ -7,8 +7,8 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import { VarType } from '../../../types'
 import Selector from '../../_base/components/selector'
+import { isTextVarType } from '../../_base/components/variable/text-var-types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { Method } from '../types'
 
@@ -35,11 +35,7 @@ const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, on
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
-    filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
-
-      return textVariableTypes.includes(varPayload.type)
-    },
+    filterVar: (varPayload: Var) => isTextVarType(varPayload.type),
   })
 
   return (

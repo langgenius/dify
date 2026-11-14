@@ -7,6 +7,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import { isTextVarType } from '@/app/components/workflow/nodes/_base/components/variable/text-var-types'
 import { VarType } from '@/app/components/workflow/types'
 import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
 
@@ -45,10 +46,9 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const supportVarTypes: VarType[] = [VarType.string, VarType.number, VarType.secret]
-      if (isSupportFile) supportVarTypes.push(VarType.file, VarType.arrayFile)
-
-      return supportVarTypes.includes(varPayload.type)
+      if (isTextVarType(varPayload.type)) return true
+      if (!isSupportFile) return false
+      return varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
     },
   })
 

@@ -20,8 +20,8 @@ import { produce } from 'immer'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputSupportSelectVar from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { isTextVarType } from '@/app/components/workflow/nodes/_base/components/variable/text-var-types'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { VarType } from '@/app/components/workflow/types'
 import { APIType, AuthorizationType } from '../../types'
 import RadioGroup from './radio-group'
 
@@ -68,11 +68,7 @@ function AuthorizationForm({
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
-    filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
-
-      return textVariableTypes.includes(varPayload.type)
-    },
+    filterVar: (varPayload: Var) => isTextVarType(varPayload.type),
   })
 
   const [tempPayload, setTempPayload] = useState<AuthorizationPayloadType>(payload)
