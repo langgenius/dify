@@ -107,9 +107,14 @@ class JiebaKeywordTableHandler:
 
     def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
+        # An explicit max_keywords_per_chunk of 0 means "extract no keywords".
+        # jieba's extract_tags treats topK=0 as "return all keywords", so we
+        # short-circuit before calling it. None still falls back to the default.
+        if max_keywords_per_chunk == 0:
+            return set()
         keywords = self._tfidf.extract_tags(
             sentence=text,
-            topK=max_keywords_per_chunk or 10,
+            topK=max_keywords_per_chunk if max_keywords_per_chunk is not None else 10,
         )
         # jieba.analyse.extract_tags returns an untyped list when withFlag is False by default.
         keywords = cast(list[str], keywords)
