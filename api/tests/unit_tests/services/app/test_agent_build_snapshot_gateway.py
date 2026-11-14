@@ -1,5 +1,7 @@
 """Verify how the Build snapshot gateway translates Agent client failures."""
 
+from typing import override
+
 import pytest
 from dify_agent.client import Client, DifyAgentTimeoutError
 from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest, HomeSnapshotResponse
@@ -13,6 +15,7 @@ def test_checkpoint_build_home_translates_client_timeout() -> None:
     timeout = DifyAgentTimeoutError("Checkpoint timed out")
 
     class TimingOutClient(Client):
+        @override
         def create_home_snapshot_from_binding_sync(
             self, request: CreateHomeSnapshotFromBindingRequest
         ) -> HomeSnapshotResponse:
