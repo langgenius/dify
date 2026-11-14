@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import cast
 from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,19 +12,18 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow_node_execution_trace_service import assemble_workflow_node_execution_traces
 
 
 def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
-    values = {
+    values: dict[str, object] = {
         "retry_index": retry_index,
         "inputs": {"attempt": retry_index},
         "process_data": {"request": f"attempt-{retry_index}"},
         "outputs": {"status_code": 500, "body": f"failure-{retry_index}"},
         "error": f"attempt {retry_index} failed",
         "elapsed_time": float(retry_index),
-        "execution_metadata": {},
+        "execution_metadata": dict[str, object](),
         "created_at": 1_700_000_000 + retry_index,
         "finished_at": 1_700_000_010 + retry_index,
     }
@@ -63,14 +61,14 @@ def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
     return execution
 
 
-def _repository(full_process_data: dict[str, object] | None) -> DifyAPIWorkflowNodeExecutionRepository:
+def _repository(full_process_data: dict[str, object] | None) -> MagicMock:
     repository = MagicMock()
     repository.load_full_process_data.return_value = full_process_data
-    return cast(DifyAPIWorkflowNodeExecutionRepository, repository)
+    return repository
 
 
 def test_assemble_expands_retry_history_before_terminal_trace(sqlite_session: Session) -> None:
-    process_data = {
+    process_data: dict[str, object] = {
         "request": "successful-attempt",
         RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(2), _retry_attempt(1)],
     }
@@ -84,7 +82,9 @@ def test_assemble_expands_retry_history_before_terminal_trace(sqlite_session: Se
     assert traces[0].retry_index == 1
     assert traces[0].outputs == {"status_code": 500, "body": "failure-1"}
     assert traces[0].execution_metadata == {"iteration_id": "iteration-1"}
-    assert RETRY_HISTORY_PROCESS_DATA_KEY not in traces[-1].process_data
+    terminal_process_data = traces[-1].process_data
+    assert terminal_process_data is not None
+    assert RETRY_HISTORY_PROCESS_DATA_KEY not in terminal_process_data
     for trace in traces:
         assert trace.tenant_id == "tenant-1"
         assert trace.app_id == "app-1"
@@ -97,7 +97,7 @@ def test_assemble_expands_retry_history_before_terminal_trace(sqlite_session: Se
 
 
 def test_assemble_keeps_old_execution_without_retry_history(sqlite_session: Session) -> None:
-    process_data = {"request": "terminal"}
+    process_data: dict[str, object] = {"request": "terminal"}
     execution = _execution(process_data)
 
     traces = assemble_workflow_node_execution_traces([execution], _repository(process_data), session=sqlite_session)
@@ -108,7 +108,7 @@ def test_assemble_keeps_old_execution_without_retry_history(sqlite_session: Sess
 
 
 def test_assemble_skips_malformed_and_duplicate_retry_attempts(sqlite_session: Session) -> None:
-    process_data = {
+    process_data: dict[str, object] = {
         RETRY_HISTORY_PROCESS_DATA_KEY: [
             _retry_attempt(2),
             {"retry_index": 0},
@@ -126,7 +126,9 @@ def test_assemble_skips_malformed_and_duplicate_retry_attempts(sqlite_session: S
 
 
 def test_assemble_truncates_retry_attempt_fields(sqlite_session: Session) -> None:
-    process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1, outputs={"body": "x" * 2_000_000})]}
+    process_data: dict[str, object] = {
+        RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1, outputs={"body": "x" * 2_000_000})]
+    }
 
     traces = assemble_workflow_node_execution_traces(
         [_execution(process_data)], _repository(process_data), session=sqlite_session
@@ -137,7 +139,7 @@ def test_assemble_truncates_retry_attempt_fields(sqlite_session: Session) -> Non
 
 
 def test_assemble_falls_back_to_inline_process_data_when_loader_fails(sqlite_session: Session) -> None:
-    process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
+    process_data: dict[str, object] = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
     execution = _execution(process_data)
     repository = _repository(None)
     repository.load_full_process_data.side_effect = OSError("storage unavailable")
@@ -148,7 +150,7 @@ def test_assemble_falls_back_to_inline_process_data_when_loader_fails(sqlite_ses
 
 
 def test_virtual_trace_validates_through_node_execution_response(sqlite_session: Session) -> None:
-    process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
+    process_data: dict[str, object] = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
     traces = assemble_workflow_node_execution_traces(
         [_execution(process_data)], _repository(process_data), session=sqlite_session
     )
@@ -166,7 +168,7 @@ def test_traces_serialize_creator_after_the_assembly_session_closes(
     account.id = "account-1"
     with sqlite_session_factory.begin() as session:
         session.add(account)
-    process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
+    process_data: dict[str, object] = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
 
     with sqlite_session_factory() as session:
         traces = assemble_workflow_node_execution_traces(
