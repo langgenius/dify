@@ -491,6 +491,8 @@ const toAppVariableType = (type: string): AppVariableType => {
     return 'paragraph'
   if (normalized === 'select') return 'select'
   if (normalized === 'number' || normalized === 'integer' || normalized === 'float') return 'number'
+  if (normalized === 'checkbox' || normalized === 'boolean' || normalized === 'bool')
+    return 'checkbox'
   if (normalized === 'json' || normalized === 'json_object') return 'json'
 
   return 'text-input'
@@ -498,9 +500,14 @@ const toAppVariableType = (type: string): AppVariableType => {
 
 const toAppVariableDefault = (variable: AppVariable) => {
   if (variable.type === 'number') {
-    const parsed = Number(variable.default)
+    const trimmed = variable.default.trim()
+    if (!trimmed) return undefined
+
+    const parsed = Number(trimmed)
     return Number.isFinite(parsed) ? parsed : undefined
   }
+
+  if (variable.type === 'checkbox') return variable.default === 'true' ? true : undefined
 
   if (variable.type === 'json') {
     const trimmed = variable.default.trim()
@@ -530,9 +537,14 @@ const toAppVariableConfigs = (variables: AppVariable[]): AgentSoulConfig['app_va
         : {}),
     }))
 
+// Ids are derived from the saved names so that two conversions of the same config
+// compare equal. Build-draft change tracking relies on this to report only real edits.
 const toAppVariableFormState = (config?: AgentSoulConfig): AppVariable[] =>
-  (config?.app_variables ?? []).map((variable) => ({
-    id: globalThis.crypto?.randomUUID?.() ?? `${variable.name}-${Math.random()}`,
+  (config?.app_variables ?? []).map((variable, index, variables) => ({
+    id:
+      variables.findIndex((candidate) => candidate.name === variable.name) === index
+        ? variable.name
+        : `${variable.name}-${index}`,
     name: variable.name,
     type: toAppVariableType(variable.type),
     required: variable.required ?? false,
@@ -543,7 +555,7 @@ const toAppVariableFormState = (config?: AgentSoulConfig): AppVariable[] =>
         : typeof variable.default === 'string'
           ? variable.default
           : JSON.stringify(variable.default),
-    options: variable.options,
+    options: variable.options ?? undefined,
   }))
 
 const toConfigSkillConfigs = (

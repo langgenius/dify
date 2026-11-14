@@ -16,6 +16,16 @@ export const agentComposerAppVariablesAtom = atom(
   },
 )
 
+const textDefaultTypes: ReadonlySet<AppVariableType> = new Set([
+  'text-input',
+  'paragraph',
+  'select',
+])
+
+// A default typed for one kind of value is kept only when the next type reads it the same way.
+const getDefaultAfterTypeChange = (variable: AppVariable, nextType: AppVariableType) =>
+  textDefaultTypes.has(variable.type) && textDefaultTypes.has(nextType) ? variable.default : ''
+
 const updateAppVariable = (
   appVariables: AppVariable[],
   starterVariable: AppVariable,
@@ -73,6 +83,8 @@ export const setAppVariableTypeAtom = atom(
       updateAppVariable(appVariables, starterVariable, id, (variable) => ({
         ...variable,
         type,
+        default:
+          variable.type === type ? variable.default : getDefaultAfterTypeChange(variable, type),
         options: type === 'select' ? (variable.options ?? []) : undefined,
       })),
     )

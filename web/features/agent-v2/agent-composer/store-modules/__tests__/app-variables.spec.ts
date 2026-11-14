@@ -8,6 +8,7 @@ import {
   setAppVariableHideAtom,
   setAppVariableNameAtom,
   setAppVariableRequiredAtom,
+  setAppVariableTypeAtom,
 } from '../app-variables'
 
 const starterVariable = {
@@ -103,5 +104,34 @@ describe('agent composer app variables store', () => {
         hide: true,
       },
     ])
+  })
+
+  it('should drop a default the next type would read differently', () => {
+    const store = createStore()
+    store.set(agentComposerDraftAtom, {
+      ...defaultAgentSoulConfigFormState,
+      appVariables: [
+        {
+          id: 'var-1',
+          name: 'topic',
+          type: 'text-input',
+          required: false,
+          default: 'billing',
+          hide: false,
+        },
+      ],
+    })
+
+    store.set(setAppVariableTypeAtom, { id: 'var-1', starterVariable, type: 'paragraph' })
+    expect(store.get(agentComposerDraftAtom).appVariables[0]).toMatchObject({
+      type: 'paragraph',
+      default: 'billing',
+    })
+
+    store.set(setAppVariableTypeAtom, { id: 'var-1', starterVariable, type: 'checkbox' })
+    expect(store.get(agentComposerDraftAtom).appVariables[0]).toMatchObject({
+      type: 'checkbox',
+      default: '',
+    })
   })
 })

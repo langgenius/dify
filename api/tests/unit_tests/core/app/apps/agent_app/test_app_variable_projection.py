@@ -55,3 +55,20 @@ def test_projects_hidden_select_and_json_types():
             }
         },
     ]
+
+
+def test_projects_checkbox_type_written_by_the_composer():
+    user_input_form = agent_app_variables_to_user_input_form(
+        [AppVariableConfig(name="vip", type="checkbox", default=True)]
+    )
+
+    assert user_input_form == [
+        {
+            "checkbox": {
+                "label": "vip",
+                "variable": "vip",
+                "required": False,
+                "default": True,
+            }
+        }
+    ]

@@ -31,7 +31,7 @@ def _form_type_for_agent_variable(variable_type: str) -> str:
     normalized = variable_type.strip().lower()
     if normalized in {"number", "integer", "float"}:
         return "number"
-    if normalized in {"boolean", "bool"}:
+    if normalized in {"boolean", "bool", "checkbox"}:
         return "checkbox"
     if normalized in {"paragraph", "long_text", "multiline"}:
         return "paragraph"

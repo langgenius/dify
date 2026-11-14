@@ -102,6 +102,7 @@ const toInputType = (type: string): InputVarType => {
   if (type === InputVarType.paragraph) return InputVarType.paragraph
   if (type === InputVarType.select) return InputVarType.select
   if (type === InputVarType.number) return InputVarType.number
+  if (type === InputVarType.checkbox) return InputVarType.checkbox
   if (type === InputVarType.json || type === InputVarType.jsonObject) return InputVarType.json
 
   return InputVarType.textInput
@@ -235,6 +236,9 @@ const toLegacyUserInputFormItem = (
         default: Number.isFinite(numericDefault) ? numericDefault : defaultValue,
       },
     }
+  }
+  if (formType === InputVarType.checkbox) {
+    return { checkbox: { ...baseItem, default: variable.default === true } }
   }
   if (formType === InputVarType.json) {
     return { json_object: { ...baseItem, default: defaultValue } }
