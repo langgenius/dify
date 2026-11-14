@@ -75,6 +75,15 @@ from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_upload_file
 
 
+@pytest.fixture
+def no_message_created_subscribers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep ``message_was_created`` away from real subscribers in tests that stub the saved message."""
+    monkeypatch.setattr(
+        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+        lambda *_args, **_kwargs: None,
+    )
+
+
 class _QueueManager(AppQueueManager):
     """Finite in-memory event source for stream dispatch tests."""
 
@@ -333,6 +342,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
                 answer="Agent response", message_id="test-message-id"
             )
 
+        @pytest.mark.usefixtures("no_message_created_subscribers")
         def test_message_end_event(self, pipeline, mock_message_cycle_manager, task_state, committed_sessions):
             """Test handling of message end events."""
             # Setup
@@ -441,6 +451,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             # Assert
             assert publisher.messages == [message]
 
+        @pytest.mark.usefixtures("no_message_created_subscribers")
         def test_message_end_emits_message_trace_after_commit(
             self,
             pipeline: EasyUIBasedGenerateTaskPipeline,
@@ -847,6 +858,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert pipeline._listen_audio_msg(publisher=None, task_id="task") is None
 
+        @pytest.mark.usefixtures("no_message_created_subscribers")
         def test_process_stream_response_handles_chunks_and_end(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
@@ -1624,6 +1636,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert publisher.cancel.called
             publisher.publish.assert_not_called()
 
+        @pytest.mark.usefixtures("no_message_created_subscribers")
         def test_process_stream_response_handles_stop_event_and_output_replacement(
             self, monkeypatch: pytest.MonkeyPatch
         ):
@@ -1858,16 +1871,17 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert message_obj.message == "serialized-prompt"
             assert message_obj.answer == "hello"
             assert message_obj.provider_response_latency == 5.0
-            assert len(sent_payloads) == 1
-            # The caller reports the message only after it commits this session.
+            # The caller notifies subscribers and reports the message only after it commits this session.
+            assert sent_payloads == []
             assert recorder.events == []
 
         @pytest.mark.parametrize(
             ("app_mode", "expected_timeline", "expected_payloads"),
             [
+                # Subscribers may do external I/O, so they are notified once the save is committed.
                 (
                     AppMode.CHAT,
-                    ["message_was_created", "commit", "trace"],
+                    ["commit", "message_was_created", "trace"],
                     [MessageCompleted(message_id="msg", conversation_id="conv")],
                 ),
                 # The Agent worker reports a stopped Agent run's terminal itself.
@@ -1913,6 +1927,47 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1], MessageEndStreamResponse)
             assert timeline == expected_timeline
             assert [event.payload for event in recorder.events] == expected_payloads
+
+        def test_finished_message_notifies_subscribers_after_the_save_is_committed(
+            self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        ) -> None:
+            """Subscribers call billing and open connections of their own; the save must not wait on them."""
+            timeline: list[str] = []
+            notified: list[tuple[str, bool]] = []
+            recorder = _TimelineTraceRecorder(timeline)
+            application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+            application_generate_entity.trace_scope = _trace_scope(recorder)
+            pipeline = EasyUIBasedGenerateTaskPipeline(
+                application_generate_entity=application_generate_entity,
+                queue_manager=_FakeQueueManager(),
+                conversation=_make_conversation(AppMode.CHAT),
+                message=_make_message(),
+                stream=True,
+            )
+            _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+            _set_queue_events(pipeline, [_queue_message(QueueMessageEndEvent(llm_result=None))])
+            sqlite_session.add_all([_make_conversation(AppMode.CHAT), _make_message()])
+            sqlite_session.commit()
+            monkeypatch.setattr(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+                lambda _mode, _prompt_messages: "",
+            )
+
+            def record_notification(sender: Message, **kwargs: object) -> None:
+                timeline.append("message_was_created")
+                notified.append((sender.id, kwargs["application_generate_entity"] is application_generate_entity))
+
+            monkeypatch.setattr(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+                record_notification,
+            )
+
+            with _recording_commits(timeline):
+                responses = list(pipeline._process_stream_response(publisher=None))
+
+            assert isinstance(responses[-1], MessageEndStreamResponse)
+            assert timeline == ["commit", "message_was_created", "trace"]
+            assert notified == [("msg", True)]
 
         def test_save_stopped_message_preserves_backend_reported_usage(
             self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
