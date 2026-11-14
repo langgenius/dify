@@ -1,19 +1,32 @@
-import { page } from 'vite-plus/test/browser'
+import type { consoleClient } from '@/service/console'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { CloudPlanCard } from '../plan-card'
 import { PlanFeatureInfotip } from '../plan-card/features'
 
-// boundary: The education checkout requires a workspace manager with billing access.
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({ isCurrentWorkspaceManager: true }))
+const api = vi.hoisted(() => ({
+  subscription: vi.fn<typeof consoleClient.billing.subscription.get>(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'billing.subscription.get': api.subscription,
+    }),
+  }
 })
+beforeEach(() => api.subscription.mockReset())
 
 it('keeps both education checkout actions inside the dialog on a narrow phone', async () => {
   await page.viewport(320, 700)
-  const { wrapper: Provider } = createConsoleQueryWrapper()
+  const { queryClient, wrapper: Provider } = createConsoleQueryWrapper({
+    currentWorkspace: { role: 'owner' },
+  })
+  onTestFinished(() => queryClient.clear())
   await render(
     <Provider>
       <PlanFeatureInfotip>
@@ -48,7 +61,10 @@ it('keeps both education checkout actions inside the dialog on a narrow phone', 
 it.each(['professional', 'sandbox'] as const)(
   'keeps the Team action legible while a %s workspace requests checkout',
   async (currentPlan) => {
-    const { wrapper: Provider } = createConsoleQueryWrapper()
+    const { queryClient, wrapper: Provider } = createConsoleQueryWrapper({
+      currentWorkspace: { role: 'owner' },
+    })
+    onTestFinished(() => queryClient.clear())
     await render(
       <Provider>
         <PlanFeatureInfotip>
@@ -71,16 +87,18 @@ it.each(['professional', 'sandbox'] as const)(
     }
     const ready = colors()
     // boundary: keep checkout pending to observe the actual loading button.
-    const request = createDeferred<Response>()
-    const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(request.promise)
+    const request =
+      createDeferred<Awaited<ReturnType<typeof consoleClient.billing.subscription.get>>>()
+    api.subscription.mockReturnValue(request.promise)
     try {
       await action.click()
       await expect.element(action).toHaveAttribute('aria-disabled', 'true')
       await expect.element(action).toHaveFocus()
       expect(colors()).toEqual(ready)
+      await userEvent.keyboard('{Enter}')
+      expect(api.subscription).toHaveBeenCalledTimes(1)
     } finally {
-      request.resolve(Response.json({ url: '' }, { status: 503 }))
-      fetch.mockRestore()
+      request.resolve({ url: '' })
     }
   },
 )
