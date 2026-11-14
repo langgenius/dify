@@ -308,7 +308,24 @@ class WordExtractor(BaseExtractor):
         return "".join(paragraph_content).strip()
 
     def parse_docx(self, docx_path: str) -> str:
+        """Parse a readable DOCX's body using the existing text and image rules.
+
+        Content controls contribute only their current display content, in source
+        order. Expansion changes the loaded XML tree, leaving the input file and
+        relationships intact. File, XML and image-persistence errors propagate.
+        """
         doc = DocxDocument(docx_path)
+
+        # Expand inner controls first, preserving order across nested wrappers.
+        for control in reversed(doc.element.body.xpath(".//w:sdt")):
+            display = control.find(qn("w:sdtContent"))
+            parent = control.getparent()
+            if display is not None and parent is not None:
+                position = parent.index(control)
+                for child in list(display):
+                    parent.insert(position, child)
+                    position += 1
+                parent.remove(control)
 
         content: list[str] = []
 
