@@ -5,10 +5,16 @@ import { createElement } from 'react'
 import {
   createEdge,
   createNode,
+  createNodeTracing,
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  InputVarType,
+  NodeRunningStatus,
+  VarType,
+} from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
@@ -125,6 +131,43 @@ describe('useOneStepRun single-run input vars', () => {
       ]),
     )
   })
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'records the completion event in the %s single-run trace',
+    async (type) => {
+      const started = createNodeTracing({ id: 'if-else-node', node_type: type })
+      const completed = {
+        ...started,
+        status: NodeRunningStatus.Succeeded,
+        elapsed_time: 1.25,
+        outputs: { output: ['done'] },
+      }
+      const stream = [
+        { event: `${type}_started`, data: started },
+        { event: `${type}_completed`, data: completed },
+        { event: 'workflow_finished', data: { created_by: { name: 'Tester' } } },
+      ]
+        .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+        .join('')
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(stream))
+      const { result } = renderUseOneStepRun(type)
+
+      await act(async () => result.current.handleRun({}))
+
+      const trace =
+        type === BlockEnum.Iteration
+          ? result.current.iterationRunResult
+          : result.current.loopRunResult
+      expect(trace).toEqual([
+        expect.objectContaining({
+          id: started.id,
+          status: completed.status,
+          elapsed_time: completed.elapsed_time,
+          outputs: completed.outputs,
+        }),
+      ])
+    },
+  )
 
   it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
     'runs %s with the app identity and supports aborting polling requests',

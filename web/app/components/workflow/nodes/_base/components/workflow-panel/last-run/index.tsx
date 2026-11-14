@@ -33,7 +33,7 @@ const LastRun: FC<Props> = ({
   canSingleRun,
   isRunAfterSingleRun,
   updateNodeRunningStatus,
-  nodeInfo: _nodeInfo,
+  nodeInfo,
   runningStatus: oneStepRunRunningStatus,
   onSingleRunClicked,
   singleRunResult,
@@ -75,6 +75,8 @@ const LastRun: FC<Props> = ({
   const noLastRun = isNotFoundError(error)
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
   const lastRunNode = runResult as Partial<NodeTracing>
+  const hasSingleRunDetails =
+    isRunAfterSingleRun && nodeInfo?.node_id === nodeId && !!nodeInfo.details?.length
   const externalTrace =
     resource.kind === 'app' && isBoundAgentV2Execution(lastRunNode) && lastRunNode.id
       ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
@@ -160,7 +162,7 @@ const LastRun: FC<Props> = ({
         created_by={
           (runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by
         }
-        nodeInfo={runResult as NodeTracing}
+        nodeInfo={hasSingleRunDetails ? nodeInfo : (runResult as NodeTracing)}
         showSteps={false}
         externalTrace={externalTrace}
       />
