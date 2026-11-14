@@ -1,9 +1,12 @@
 from flask import Response
 
 from controllers.common.file_response import (
+    INERT_DOCUMENT_CSP,
     _normalize_mime_type,
     enforce_download_for_html,
+    harden_served_file,
     is_html_content,
+    is_scriptable_document,
 )
 
 
@@ -118,3 +121,53 @@ class TestEnforceDownloadForHtml:
         assert updated is False
         assert "Content-Disposition" not in response.headers
         assert "X-Content-Type-Options" not in response.headers
+
+
+class TestIsScriptableDocument:
+    def test_detects_svg_via_mime_type(self):
+        assert is_scriptable_document("image/svg+xml; charset=utf-8", None, None) is True
+
+    def test_detects_svg_via_extension_argument(self):
+        assert is_scriptable_document("application/octet-stream", None, "SVG") is True
+
+    def test_detects_xml_via_filename_extension(self):
+        assert is_scriptable_document("application/octet-stream", "sitemap.xml", None) is True
+
+    def test_ignores_raster_images(self):
+        assert is_scriptable_document("image/png", "logo.png", "png") is False
+
+
+class TestHardenServedFile:
+    def test_keeps_svg_content_type_but_makes_it_inert(self):
+        response = Response("<svg/>", mimetype="image/svg+xml")
+
+        hardened = harden_served_file(response, mime_type="image/svg+xml", filename="logo.svg")
+
+        assert hardened is True
+        # Content-Type is preserved so <img src="..."> keeps rendering the file.
+        assert response.headers["Content-Type"].startswith("image/svg+xml")
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert "logo.svg" in response.headers["Content-Disposition"]
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    def test_svg_without_filename_still_downloads(self):
+        response = Response("<svg/>", mimetype="image/svg+xml")
+
+        assert harden_served_file(response, mime_type="image/svg+xml", filename=None) is True
+        assert response.headers["Content-Disposition"] == "attachment"
+
+    def test_html_keeps_octet_stream_behaviour(self):
+        response = Response("<h1>x</h1>", mimetype="text/html")
+
+        assert harden_served_file(response, mime_type="text/html", filename="page.html") is True
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert "Content-Security-Policy" not in response.headers
+
+    def test_inert_content_only_gets_nosniff(self):
+        response = Response(b"\x89PNG", mimetype="image/png")
+
+        assert harden_served_file(response, mime_type="image/png", filename="logo.png") is False
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert "Content-Disposition" not in response.headers
+        assert "Content-Security-Policy" not in response.headers
