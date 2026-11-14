@@ -35,9 +35,9 @@ def test_get_common_chat_app_prompt_template_with_pcqm() -> None:
     )
     prompt_rules = prompt_template["prompt_rules"]
     assert prompt_template["prompt_template"].template == (
-        prompt_rules["context_prompt"]
-        + pre_prompt
+        pre_prompt
         + "\n"
+        + prompt_rules["context_prompt"]
         + prompt_rules["histories_prompt"]
         + prompt_rules["query_prompt"]
     )
@@ -56,7 +56,7 @@ def test_get_common_completion_app_prompt_template_with_pcq() -> None:
     )
     prompt_rules = prompt_template["prompt_rules"]
     assert prompt_template["prompt_template"].template == (
-        prompt_rules["context_prompt"] + pre_prompt + "\n" + prompt_rules["query_prompt"]
+        pre_prompt + "\n" + prompt_rules["context_prompt"] + prompt_rules["query_prompt"]
     )
     assert prompt_template["special_variable_keys"] == ["#context#", "#query#"]
 
