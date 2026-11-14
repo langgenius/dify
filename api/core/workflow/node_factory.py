@@ -78,6 +78,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
+from machinery.message_history import MessageHistory
 from models.model import Conversation
 from services.human_input_v2.composition import WorkflowHumanInputRuntime
 from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
@@ -277,9 +278,18 @@ def fetch_memory(
     app_id: str,
     node_data_memory: MemoryConfig | None,
     model_instance: ModelInstance,
+    message_history: MessageHistory | None = None,
 ) -> TokenBufferMemory | None:
-    """Build prompt memory for node construction without requiring Flask-local state."""
-    if not node_data_memory or not conversation_id:
+    """Build memory with the admitted history; None retains legacy selection.
+
+    Memory-disabled nodes return None. A selected conversation disappearing
+    fails closed; construction never substitutes another conversation's history.
+    """
+    if not node_data_memory:
+        return None
+    if not conversation_id:
+        if message_history is not None:
+            raise ValueError("Selected conversation ID is missing from workflow state.")
         return None
 
     # Node construction can happen in graph initialization paths where Flask's
@@ -289,9 +299,11 @@ def fetch_memory(
         stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
         conversation = session.scalar(stmt)
         if not conversation:
+            if message_history is not None:
+                raise ValueError("Selected conversation is no longer available.")
             return None
 
-    return TokenBufferMemory(conversation=conversation, model_instance=model_instance)
+    return TokenBufferMemory(conversation=conversation, model_instance=model_instance, message_history=message_history)
 
 
 class DefaultWorkflowCodeExecutor:
@@ -420,7 +432,7 @@ class DifyNodeFactory(NodeFactory):
         self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context)
         self._agent_strategy_resolver = PluginAgentStrategyResolver()
         self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
-        self._agent_runtime_support = AgentRuntimeSupport()
+        self._agent_runtime_support = AgentRuntimeSupport(message_history=self._dify_context.message_history)
         self._agent_message_transformer = AgentMessageTransformer()
 
     @override
@@ -846,4 +858,5 @@ class DifyNodeFactory(NodeFactory):
             app_id=self._dify_context.app_id,
             node_data_memory=node_data.memory,
             model_instance=model_instance,
+            message_history=self._dify_context.message_history,
         )

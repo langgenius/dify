@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -55,6 +55,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
+from machinery.message_history import MessageHistory
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.app.file_input_defaults import grant_file_default_access
@@ -74,9 +75,35 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
     return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
 
 
+class MessageHistoryResolver(Protocol):
+    def __call__(
+        self,
+        *,
+        app: App,
+        workflow: Workflow,
+        end_user_id: str,
+        conversation_id: str | None,
+        parent_message_id: str | None,
+        message_history: object = None,
+    ) -> MessageHistory:
+        """Resolve persisted ownership and history without modifying workflow state."""
+        ...
+
+
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
-    def __init__(self, *, execution_driver: WorkflowRunDriver) -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: WorkflowRunDriver,
+        message_history_resolver: MessageHistoryResolver | None = None,
+    ) -> None:
+        """Inject execution and scoped selection adapters; legacy callers need only execution.
+
+        An explicit Service API branch requires the selection adapter. Missing
+        composition fails before creating generation records, never falls back.
+        """
         self._execution_driver = execution_driver
+        self._message_history_resolver = message_history_resolver
 
     _dialogue_count: int
 
@@ -158,6 +185,18 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         query = query.replace("\x00", "")
         inputs = args["inputs"]
+        message_history = None
+        if invoke_from == InvokeFrom.SERVICE_API and "parent_message_id" in args:
+            if self._message_history_resolver is None:
+                raise ValueError("Message branch selection is not configured.")
+            message_history = self._message_history_resolver(
+                app=app_model,
+                workflow=workflow,
+                end_user_id=user.id,
+                conversation_id=args.get("conversation_id"),
+                parent_message_id=args["parent_message_id"],
+                message_history=args.get("message_history"),
+            )
 
         extras = {
             "auto_generate_conversation_name": args.get("auto_generate_name", False),
@@ -224,9 +263,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
+                message_history=message_history,
                 parent_message_id=(
                     args.get("parent_message_id")
-                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    if message_history is not None or invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
                     else UUID_NIL
                 ),
                 user_id=user.id,
@@ -585,7 +625,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # get conversation dialogue count
             # NOTE: dialogue_count should not start from 0,
             # because during the first conversation, dialogue_count should be 1.
-            self._dialogue_count = get_thread_messages_length(conversation.id, session=session) + 1
+            self._dialogue_count = (
+                len(application_generate_entity.message_history.message_ids) + 1
+                if application_generate_entity.message_history is not None
+                else get_thread_messages_length(conversation.id, session=session) + 1
+            )
 
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(
@@ -737,6 +781,19 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
             try:
+                if application_generate_entity.message_history is not None:
+                    if self._message_history_resolver is None:
+                        raise ValueError("Message branch selection is not configured.")
+                    history = self._message_history_resolver(
+                        app=app,
+                        workflow=workflow,
+                        end_user_id=application_generate_entity.user_id,
+                        conversation_id=conversation_id,
+                        parent_message_id=application_generate_entity.parent_message_id,
+                        message_history=application_generate_entity.message_history,
+                    )
+                    if history != application_generate_entity.message_history:
+                        raise ValueError("Selected message history changed before execution.")
                 with active_workflow_task(application_generate_entity.task_id):
                     self._execution_driver(
                         runner, pause_state_config, workflow_execution_repository, workflow_node_execution_repository

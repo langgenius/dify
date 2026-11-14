@@ -26,6 +26,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
     WorkflowVersionExecutionNotAllowedError,
 )
+from controllers.service_api.app.message_branch_selection import select_message_branch
 from controllers.service_api.schema import (
     SCOPED_TASK_STOP_USER_DESCRIPTION,
     InputFileList,
@@ -44,10 +45,12 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty
+from machinery.context import ServiceApiEndUserContext
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
@@ -127,6 +130,17 @@ class ChatRequestPayload(BaseModel):
         description=(
             "Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new "
             "conversation, then pass the returned `conversation_id` in subsequent requests."
+        ),
+    )
+    parent_message_id: UUID | None = Field(
+        default=None,
+        description=(
+            "Advanced Chat only: continue after this message in the same conversation. Explicit null starts a new "
+            "root in that conversation. Omit to preserve legacy history selection. To edit and regenerate a turn, "
+            "resubmit the edited query and its original predecessor (null for the first turn). Old messages remain. "
+            "Conversation variables and external tool effects are not rolled back. The selected chain is limited "
+            "to 500 ancestors. Legacy nil parent links are normalized on admission; ambiguous legacy timestamps "
+            "and Dify Agent workspace nodes are rejected."
         ),
     )
     retriever_from: SkipJsonSchema[str] = Field(default="dev")
@@ -441,6 +455,19 @@ class ChatApi(Resource):
                     conversation_id=payload.conversation_id,
                     user=end_user,
                     session=session,
+                )
+
+            if "parent_message_id" in payload.model_fields_set:
+                args["parent_message_id"] = select_message_branch(
+                    branches=application_services().message_branches,
+                    context=ServiceApiEndUserContext(
+                        tenant_id=app_model.tenant_id,
+                        app_id=app_model.id,
+                        app_mode=app_model.mode,
+                        end_user_id=end_user.id,
+                    ),
+                    conversation_id=payload.conversation_id,
+                    parent_message_id=payload.parent_message_id,
                 )
 
             response = AppGenerateService.generate(

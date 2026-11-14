@@ -44,6 +44,7 @@ from graphon.nodes.variable_assigner.v2.node import (
 )
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
+from machinery.message_history import MessageHistory
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
 from tests.helpers.unit.core.model_fixtures import make_model_instance
@@ -1498,56 +1499,79 @@ class TestNodeFactoryCasesWorkflow:
 
     class TestDifyNodeFactoryMemory:
         @pytest.fixture
-        def factory(self):
-            factory = object.__new__(node_factory.DifyNodeFactory)
-            factory._dify_context = SimpleNamespace(app_id="app-id")
-            factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
-            return factory
-
-        def test_returns_none_when_memory_is_not_configured(self, factory):
-            result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=None),
-                model_instance=sentinel.model_instance,
+        def factory(self) -> DifyNodeFactory:
+            """Construct the production factory with a real context and variable pool."""
+            return DifyNodeFactory(
+                init_params=build_test_graph_init_params(app_id="app-id"),
+                runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
             )
 
-            assert result is None
-            factory.runtime_state.variable_pool.get.assert_not_called()
-
-        def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
-            memory_config = sentinel.memory_config
-            factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
-            fetch_memory = MagicMock(return_value=sentinel.memory)
-            monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
-
-            result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=memory_config),
-                model_instance=sentinel.model_instance,
+        @staticmethod
+        def node_data(*, memory: bool) -> LLMNodeData:
+            """Build valid LLM data without replacing the node's memory configuration."""
+            return LLMNodeData.model_validate(
+                {
+                    "type": "llm",
+                    "title": "LLM",
+                    "model": {"provider": "recording", "name": "branch-test", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "system", "text": "Answer"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                    "memory": {"window": {"enabled": True, "size": 20}} if memory else None,
+                }
             )
 
-            assert result is sentinel.memory
-            factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
-            fetch_memory.assert_called_once_with(
-                conversation_id="conversation-id",
-                app_id="app-id",
-                node_data_memory=memory_config,
-                model_instance=sentinel.model_instance,
+        def test_returns_none_when_memory_is_not_configured(self, factory: DifyNodeFactory) -> None:
+            """A memory-disabled node keeps its legacy no-history behavior."""
+            assert (
+                factory._build_memory_for_llm_node(
+                    node_data=self.node_data(memory=False),
+                    model_instance=make_model_instance(provider="recording", model="branch-test"),
+                )
+                is None
             )
 
-        def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
-            memory_config = sentinel.memory_config
-            factory.runtime_state.variable_pool.get.return_value = sentinel.segment
-            fetch_memory = MagicMock(return_value=sentinel.memory)
-            monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
+        def test_uses_string_segment_conversation_id(
+            self, factory: DifyNodeFactory, sqlite_session_factory: sessionmaker[Session]
+        ) -> None:
+            """A real string system variable selects the persisted conversation."""
+            with sqlite_session_factory.begin() as session:
+                session.add(
+                    Conversation(
+                        id="conversation-id",
+                        app_id="app-id",
+                        mode=AppMode.ADVANCED_CHAT,
+                        name="Memory",
+                        from_source=ConversationFromSource.API,
+                    )
+                )
+            factory.runtime_state.variable_pool.add(("sys", "conversation_id"), StringSegment(value="conversation-id"))
+            memory = factory._build_memory_for_llm_node(
+                node_data=self.node_data(memory=True),
+                model_instance=make_model_instance(provider="recording", model="branch-test"),
+            )
+            assert memory is not None
+            assert memory.conversation.id == "conversation-id"
+            assert memory.message_history is None
 
-            result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=memory_config),
-                model_instance=sentinel.model_instance,
+        def test_ignores_non_string_segment_conversation_ids(self, factory: DifyNodeFactory) -> None:
+            """Legacy nodes with an invalid conversation variable have no memory."""
+            factory.runtime_state.variable_pool.add(("sys", "conversation_id"), ObjectSegment(value={}))
+            assert (
+                factory._build_memory_for_llm_node(
+                    node_data=self.node_data(memory=True),
+                    model_instance=make_model_instance(provider="recording", model="branch-test"),
+                )
+                is None
             )
 
-            assert result is sentinel.memory
-            fetch_memory.assert_called_once_with(
-                conversation_id=None,
-                app_id="app-id",
-                node_data_memory=memory_config,
-                model_instance=sentinel.model_instance,
+        def test_explicit_selection_requires_its_conversation_variable(self, factory: DifyNodeFactory) -> None:
+            """A resumed selected branch cannot silently drop its conversation scope."""
+            factory._dify_context.message_history = MessageHistory(
+                app_id="app-id", conversation_id="conversation-id", message_ids=()
             )
+            with pytest.raises(ValueError, match="missing from workflow state"):
+                factory._build_memory_for_llm_node(
+                    node_data=self.node_data(memory=True),
+                    model_instance=make_model_instance(provider="recording", model="branch-test"),
+                )

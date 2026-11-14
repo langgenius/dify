@@ -92,6 +92,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
     @override
     def prepare(self) -> PreparedWorkflowRun | None:
+        """Build the graph with admitted transcript history and current conversation variables.
+
+        Fresh and resumed execution carry the same frozen selection. Preparing
+        a branch never restores historical workflow state or external effects.
+        """
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -132,6 +137,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                message_history=self.application_generate_entity.message_history,
                 call_depth=self.application_generate_entity.call_depth,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -216,6 +222,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 root_node_id=root_node_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                message_history=self.application_generate_entity.message_history,
                 call_depth=self.application_generate_entity.call_depth,
             )
 

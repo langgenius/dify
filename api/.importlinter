@@ -18,6 +18,35 @@ root_packages =
     services
 include_external_packages = True
 
+[importlinter:contract:message-branch-application-boundary]
+name = Transcript selection owns policy without framework or persistence dependencies
+type = forbidden
+source_modules =
+    services.message_branch_service
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:message-branch-handler-boundary]
+name = Transcript selection HTTP handler reaches persistence only through its application port
+type = forbidden
+source_modules =
+    controllers.service_api.app.message_branch_selection
+forbidden_modules =
+    core
+    models
+    repositories
+    sqlalchemy
+    extensions.ext_database
+
 [importlinter:contract:domain-boundary]
 name = Domain code depends on no application, persistence, framework, configuration, queue, transport, or legacy kernel code
 type = forbidden
