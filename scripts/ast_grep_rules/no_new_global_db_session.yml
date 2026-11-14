@@ -1,0 +1,6 @@
+id: no-new-global-db-session
+language: python
+rule:
+  pattern: db.session
+message: net-new use of the global db.session outside controllers
+severity: error
