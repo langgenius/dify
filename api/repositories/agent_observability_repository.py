@@ -937,11 +937,128 @@ class AgentObservabilityQueries:
         rows = self._load_daily_statistics(app=app, agent_id=agent_id, params=params, source_filter=source_filter)
         charts = self._build_charts(rows)
         summary = self._build_summary(rows)
+        summary["total_end_users"] = self._count_distinct_end_users(
+            app=app, agent_id=agent_id, params=params, source_filter=source_filter
+        )
         return {
             "source": params.source or "all",
             "summary": summary,
             "charts": charts,
         }
+
+    def _count_distinct_end_users(
+        self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter
+    ) -> int:
+        """Count end users once across the whole requested range.
+
+        Precondition: ``source_filter`` is a resolved filter and ``params`` carries
+        the same UTC bounds the daily queries use. Postcondition: the result is the
+        number of distinct end-user identities that reached this Agent through the
+        selected sources, independent of how many days or sources they appear in.
+        Reads only; no session state changes.
+
+        The daily rows cannot answer this: each carries a per-day, per-source
+        ``COUNT(DISTINCT ...)``, so summing them counts a returning user once per
+        day and once more per source. The monitoring card is documented as unique
+        end users, so the range needs its own distinct count over the same scopes.
+        """
+        identities: set[str] = set()
+        if source_filter.kind in {"all", "webapp"}:
+            identities.update(self._webapp_end_user_ids(app=app, params=params, source_filter=source_filter))
+        if source_filter.kind in {"all", "workflow"}:
+            identities.update(
+                self._workflow_end_user_ids(app=app, agent_id=agent_id, params=params, source_filter=source_filter)
+            )
+        return len(identities)
+
+    def _webapp_end_user_ids(
+        self, *, app: App, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter
+    ) -> set[str]:
+        """Return the end-user ids behind the webapp daily statistics scope."""
+        sql_query = f"""SELECT DISTINCT m.from_end_user_id AS end_user_id
+FROM messages m
+WHERE
+    {self._statistics_webapp_message_scope_sql(source_filter)}
+    AND m.from_end_user_id IS NOT NULL"""
+        args: dict[str, Any] = {"tz": params.timezone, "app_id": app.id}
+        if source_filter.invoke_from is not None:
+            args["source"] = source_filter.invoke_from
+        if params.start:
+            sql_query += " AND m.created_at >= :start"
+            args["start"] = params.start
+        if params.end:
+            sql_query += " AND m.created_at < :end"
+            args["end"] = params.end
+        return {row.end_user_id for row in self._session.execute(sa.text(sql_query), args).all()}
+
+    def _workflow_end_user_ids(
+        self,
+        *,
+        app: App,
+        agent_id: str,
+        params: AgentStatisticsQueryParams,
+        source_filter: AgentSourceFilter,
+    ) -> set[str]:
+        """Return the end-user ids behind both workflow daily statistics scopes.
+
+        Covers the same two populations the daily charts add together: runs without
+        a chat message, and Chatflow messages. Ownership is resolved by the shared
+        binding predicate, so a foreign tenant's rows never enter the set.
+        """
+        binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
+        binding_join = self._statistics_workflow_node_binding_join_sql()
+        args: dict[str, Any] = {
+            "tz": params.timezone,
+            "tenant_id": app.tenant_id,
+            "agent_id": agent_id,
+            "chat_workflow_type": WorkflowType.CHAT,
+            "end_user_role": CreatorUserRole.END_USER,
+        }
+        if source_filter.app_id:
+            args["source_app_id"] = source_filter.app_id
+        if source_filter.workflow_id:
+            args["workflow_id"] = source_filter.workflow_id
+        if source_filter.workflow_version:
+            args["workflow_version"] = source_filter.workflow_version
+        if source_filter.node_id:
+            args["node_id"] = source_filter.node_id
+
+        run_date_filters = ""
+        if params.start:
+            run_date_filters += " AND wr.created_at >= :start"
+            args["start"] = params.start
+        if params.end:
+            run_date_filters += " AND wr.created_at < :end"
+            args["end"] = params.end
+
+        run_query = f"""SELECT DISTINCT wr.created_by AS end_user_id
+FROM workflow_runs wr
+JOIN workflow_node_executions wne
+    ON wne.workflow_run_id = wr.id
+JOIN workflow_agent_node_bindings wanb
+    ON {binding_join}
+    AND wanb.agent_id = :agent_id
+    {binding_filters}
+JOIN apps source_app ON source_app.id = wanb.app_id AND source_app.tenant_id = wr.tenant_id
+WHERE wr.tenant_id = :tenant_id
+    AND wr.type != :chat_workflow_type
+    AND wr.created_by_role = :end_user_role
+    {run_date_filters}"""
+
+        message_date_filters = ""
+        if params.start:
+            message_date_filters += " AND m.created_at >= :start"
+        if params.end:
+            message_date_filters += " AND m.created_at < :end"
+        message_query = f"""SELECT DISTINCT m.from_end_user_id AS end_user_id
+FROM messages m
+WHERE {self._statistics_workflow_message_scope_sql(source_filter)}
+    AND m.from_end_user_id IS NOT NULL
+    {message_date_filters}"""
+
+        runs = self._session.execute(sa.text(run_query), args).all()
+        messages = self._session.execute(sa.text(message_query), args).all()
+        return {row.end_user_id for row in runs} | {row.end_user_id for row in messages}
 
     def _load_daily_statistics(
         self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter

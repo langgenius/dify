@@ -1310,3 +1310,102 @@ class TestWorkflowToolAgentStatisticsCases:
         assert payload["summary"]["total_messages"] == 0
         assert payload["summary"]["total_tokens"] == 0
         assert payload["charts"]["daily_messages"] == []
+
+    @staticmethod
+    def test_nested_agent_end_users_counted_once_across_sources_and_days(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries
+    ) -> None:
+        """The Active Users card is documented as unique end users, so one person
+        reaching the Agent through both a Chatflow message and a Workflow run on
+        two different days must count once, not once per day per source."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.CHAT)
+        message = sqlite_session.get(Message, "message-1")
+        assert message is not None
+        # The seeded run and message already share end-user-1; add a second day
+        # for the same person so a per-day sum would double count as well.
+        repeat = _workflow_tool_agent_statistics_message(
+            message_id="message-2", app_id=message.app_id, created_at=datetime(2026, 7, 23, 8, 0)
+        )
+        repeat.conversation_id = message.conversation_id
+        repeat.workflow_run_id = message.workflow_run_id
+        repeat.from_source = ConversationFromSource.API
+        repeat.invoke_from = _workflow_tool_agent_statistics_InvokeFrom.WEB_APP
+        repeat.from_account_id = None
+        repeat.from_end_user_id = "end-user-1"
+        sqlite_session.add(repeat)
+        sqlite_session.commit()
+
+        payload = statistics_service.get_statistics_summary(
+            app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source="workflow:source-app")
+        )
+
+        assert payload["summary"]["total_messages"] == 2
+        assert payload["summary"]["total_end_users"] == 1
+
+    @staticmethod
+    def test_nested_agent_end_users_stay_distinct_per_person(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries
+    ) -> None:
+        """The distinct count must not collapse genuinely different people.
+
+        Two Workflow runs by two end users on the same day: the per-day count
+        already distinguishes them, and the range total must keep doing so.
+        """
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.WORKFLOW)
+        run = sqlite_session.get(WorkflowRun, "workflow-run-1")
+        assert run is not None
+        second_run = _workflow_tool_agent_statistics_workflow_run(workflow_type=WorkflowType.WORKFLOW)
+        second_run.id = "workflow-run-2"
+        second_run.app_id = run.app_id
+        second_run.workflow_id = run.workflow_id
+        second_run.version = run.version
+        second_run.created_by = "end-user-2"
+        sqlite_session.add(second_run)
+        execution = _workflow_tool_agent_statistics_node_execution(execution_id="tool-agent-execution-2")
+        execution.app_id = "source-app"
+        execution.workflow_id = "source-workflow"
+        execution.node_id = "agent-node"
+        execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+        execution.process_data = json.dumps({WORKFLOW_AGENT_BINDING_ID_KEY: "source-binding-v1"})
+        execution.workflow_run_id = second_run.id
+        execution.created_by = "end-user-2"
+        sqlite_session.add(execution)
+        sqlite_session.commit()
+
+        payload = statistics_service.get_statistics_summary(
+            app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source="workflow:source-app")
+        )
+
+        assert payload["summary"]["total_messages"] == 2
+        assert payload["summary"]["total_end_users"] == 2
+
+    @staticmethod
+    @pytest.mark.parametrize("workflow_type", [WorkflowType.WORKFLOW, WorkflowType.CHAT])
+    def test_nested_agent_end_users_respect_range_and_ownership(
+        sqlite_session: Session,
+        statistics_service: AgentObservabilityQueries,
+        workflow_type: WorkflowType,
+    ) -> None:
+        """The distinct count uses the same bounds and owner chain as the charts."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=workflow_type)
+
+        empty = statistics_service.get_statistics_summary(
+            app=app,
+            agent_id="agent-1",
+            params=AgentStatisticsQueryParams(
+                source="workflow:source-app",
+                start=datetime(2027, 1, 1),
+                end=datetime(2027, 1, 2),
+            ),
+        )
+        assert empty["summary"]["total_end_users"] == 0
+
+        run = sqlite_session.get(WorkflowRun, "workflow-run-1")
+        assert run is not None
+        run.tenant_id = "other-tenant"
+        sqlite_session.commit()
+
+        foreign = statistics_service.get_statistics_summary(
+            app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source="workflow:source-app")
+        )
+        assert foreign["summary"]["total_end_users"] == 0
