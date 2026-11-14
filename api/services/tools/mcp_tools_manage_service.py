@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import time
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
@@ -24,6 +25,7 @@ from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
+from services.credentials.mcp_runtime import mcp_token_expiry
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -408,6 +410,10 @@ class MCPToolManageService:
         """
         Update provider credentials with encryption.
 
+        New access tokens replace the absolute expiry using their supplied
+        lifetime; missing lifetimes clear the previous token's expiry. Existing
+        tokens without expiry are not backdated from provider update timestamps.
+
         Args:
             provider_id: Provider ID
             tenant_id: Tenant ID
@@ -420,6 +426,8 @@ class MCPToolManageService:
         provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
 
         # Encrypt new credentials
+        if "access_token" in credentials:
+            credentials = mcp_token_expiry(credentials, now=time.time())
         provider_controller = MCPToolProviderController.from_db(provider)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=provider.tenant_id,

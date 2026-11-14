@@ -279,6 +279,11 @@ def test_generate_specs_writes_all_openapi_files(generated_specs: list[Path]):
     }
     assert "Bearer" not in inner_payload["components"]["securitySchemes"]
     assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
+    credential = inner_payload["components"]["schemas"]["InnerRuntimeCredentialResponse"]
+    identity = credential["properties"]["identity_mode"]
+    assert identity["anyOf"] == [{"enum": ["idp_token", "off"], "type": "string"}, {"type": "null"}]
+    assert "identity_mode" not in credential["required"]
+    assert "identity_mode" not in credential["properties"]["values"].get("properties", {})
 
 
 def test_console_only_export_matches_the_full_export():

@@ -7,6 +7,7 @@ Reloading under the refresh lease prevents concurrent callers rotating twice.
 
 import hashlib
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -42,11 +43,20 @@ class MCPCredentialStore(Protocol):
 
 
 class MCPCredentialRuntime(Protocol):
+    def needs_refresh(self, record: MCPCredentialRecord, *, now: float) -> bool:
+        """Return whether a known OAuth expiry is within its refresh window.
+
+        Header credentials and legacy tokens without expiry never proactively
+        refresh. Implementations must not mutate the snapshot or perform I/O.
+        """
+        ...
+
     def resolve(self, record: MCPCredentialRecord, *, deployed: bool = True) -> dict[str, Any]:
         """Given a scoped snapshot, return connection secrets without mutating it.
 
-        Deployed requests reject identity forwarding and dynamic headers; debug
-        callers retain their request-specific header and identity behavior.
+        Deployed results also include the validated identity_mode as metadata.
+        Headers remain unexpanded; debug callers own request-specific expansion
+        and identity forwarding. Resolution never issues a forwarded token.
         """
         ...
 
@@ -68,10 +78,27 @@ class MCPCredentialRuntime(Protocol):
 
 
 def mcp_credential_digest(values: dict[str, Any]) -> str:
-    """Hash canonical UTF-8 JSON of connection values; secrets never enter errors."""
+    """Hash raw URL/headers only, excluding runtime identity metadata.
+
+    Accept a resolved connection or its values. Debug and deployed callers use
+    the same digest before per-request expansion or SSO token injection.
+    """
+    connection = {key: values[key] for key in ("server_url", "headers")}
     return hashlib.sha256(
-        json.dumps(values, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        json.dumps(connection, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     ).hexdigest()
+
+
+def mcp_token_expiry(tokens: dict[str, Any], *, now: float) -> dict[str, Any]:
+    """Stamp newly issued tokens with absolute expiry, without guessing legacy ages.
+
+    Accept OAuth token fields. Unknown/nonpositive lifetimes clear any previous
+    expiry so a new token never inherits the old token's expiration deadline.
+    The integer timestamp stays inside Dify's stored credentials.
+    """
+    lifetime = tokens.get("expires_in")
+    expires_at = int(now + lifetime) if type(lifetime) is int and lifetime > 0 else 0
+    return {**tokens, "expires_at": expires_at}
 
 
 class MCPCredentialService:
@@ -94,9 +121,11 @@ class MCPCredentialService:
         resource_metadata_url: str | None = None,
         scope_hint: str | None = None,
     ) -> dict[str, Any]:
-        """Resolve an authorized provider, refreshing once only if its failed values still match.
+        """Resolve an authorized provider, refreshing near expiry or after a matching rejection.
 
         A nonempty digest requests a forced refresh under the distributed lease.
+        Otherwise a known token expiry triggers a lock and a second expiry check
+        before rotation. Legacy tokens without expiry retain the 401 path.
         Permanent authorization failure marks that same snapshot unavailable;
         coordination or transport failure preserves it and remains retryable.
         Owner identifiers must come from the admitted caller's scope. Debug may
@@ -105,14 +134,18 @@ class MCPCredentialService:
         """
         allow_initial_auth = not deployed and authorization_code is not None
         record = self._load(workspace_id, provider, credential_id, allow_initial_auth=allow_initial_auth)
-        if not failed_credential_digest:
+        if not failed_credential_digest and not self._runtime.needs_refresh(record, now=time.time()):
             return self._runtime.resolve(record, deployed=deployed)
         with self._refresh_lock.acquire(
             credential_type="mcp", workspace_id=workspace_id, credential_id=credential_id
         ) as lease:
             record = self._load(workspace_id, provider, credential_id, allow_initial_auth=allow_initial_auth)
             values = self._runtime.resolve(record, deployed=deployed)
-            if mcp_credential_digest(values) != failed_credential_digest:
+            if failed_credential_digest:
+                refresh_needed = mcp_credential_digest(values) == failed_credential_digest
+            else:
+                refresh_needed = self._runtime.needs_refresh(record, now=time.time())
+            if not refresh_needed:
                 return values
             lease.ensure_owned()
             try:

@@ -35,6 +35,9 @@ class Runtime:
         self.refreshes = 0
         self.revoked = False
 
+    def needs_refresh(self, record: MCPCredentialRecord, *, now: float) -> bool:
+        return bool(record.data.get("expired")) and record.encrypted_credentials == "old" and now > 0
+
     def resolve(self, record: MCPCredentialRecord, **_kwargs: object) -> dict[str, object]:
         return {"server_url": "https://mcp.example/秘密", "headers": {"Authorization": record.encrypted_credentials}}
 
@@ -173,3 +176,19 @@ def test_temporary_failures_are_serialized_but_not_deduplicated(monkeypatch: pyt
         list(pool.map(resolve, range(20)))
     assert runtime.refreshes == 20
     assert store.record == original
+
+
+def test_twenty_proactive_resolvers_refresh_once_without_a_401() -> None:
+    store, runtime = Store(), Runtime()
+    store.record = replace(store.record, data={"expired": True})
+    service = MCPCredentialService(credentials=store, runtime=runtime, refresh_lock=ThreadCredentialRefreshLock())
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        results = list(
+            pool.map(
+                lambda _: service.resolve(workspace_id="workspace", provider="provider", credential_id="id"), range(20)
+            )
+        )
+    assert runtime.refreshes == 1
+    assert all(result["headers"] == {"Authorization": "new"} for result in results)
+    assert service.resolve(workspace_id="workspace", provider="provider", credential_id="id") == results[0]
+    assert runtime.refreshes == 1

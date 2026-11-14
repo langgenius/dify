@@ -247,7 +247,8 @@ def test_invalid_body_is_rejected_before_the_handler_runs(app: Flask) -> None:
 
 
 @pytest.mark.parametrize(("failure", "status"), [(None, 200), ("permanent", 404), ("temporary", 503)])
-def test_mcp_inner_api_boundary(app: Flask, failure: str | None, status: int) -> None:
+@pytest.mark.parametrize("identity_mode", ["off", "idp_token"])
+def test_mcp_inner_api_boundary(app: Flask, failure: str | None, status: int, identity_mode: str) -> None:
     from services.credentials.mcp_runtime import MCPCredentialUnavailableError
     from services.credentials.refresh import CredentialRefreshUnavailableError
 
@@ -265,7 +266,11 @@ def test_mcp_inner_api_boundary(app: Flask, failure: str | None, status: int) ->
         app.test_request_context(method="POST", json=payload, headers={"X-Inner-Api-Key": "inner-api-key"}),
     ):
         service = factory.return_value
-        service.resolve.return_value = {"server_url": "https://mcp.example", "headers": {"Authorization": "Bearer new"}}
+        values = {
+            "server_url": "https://mcp.example",
+            "headers": {"Authorization": "Bearer new", "X-User": "{{request.headers.X-User}}"},
+        }
+        service.resolve.return_value = {**values, "identity_mode": identity_mode}
         if failure == "permanent":
             service.resolve.side_effect = MCPCredentialUnavailableError("sensitive upstream details")
         elif failure == "temporary":
@@ -277,7 +282,13 @@ def test_mcp_inner_api_boundary(app: Flask, failure: str | None, status: int) ->
     assert actual_status == status
     assert "sensitive" not in json.dumps(body)
     if status == 200:
-        assert body["credentials"][0]["values"]["headers"] == {"Authorization": "Bearer new"}
+        assert body["credentials"][0] == {
+            "credential_id": "mcp-id",
+            "provider": "mcp-server",
+            "kind": "mcp",
+            "values": values,
+            "identity_mode": identity_mode,
+        }
     elif status == 404:
         assert body["cause"] == "reauthorization_required"
 

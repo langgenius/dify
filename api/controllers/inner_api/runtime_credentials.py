@@ -7,7 +7,7 @@ returns decrypted model and tool credentials for in-memory runtime use only.
 import json
 import logging
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
@@ -65,6 +65,10 @@ class InnerRuntimeCredentialResponse(ResponseModel):
     provider: str
     kind: str
     values: dict[str, Any]
+    identity_mode: Literal["off", "idp_token"] | None = Field(
+        default=None,
+        description="MCP only: run owner expands raw header templates and issues run-scoped identity tokens.",
+    )
 
 
 class InnerRuntimeCredentialsResolveResponse(ResponseModel):
@@ -99,6 +103,7 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
 
         resolved: list[InnerRuntimeCredentialResponse] = []
         for item in args.credentials:
+            identity_mode = None
             if item.kind == _KIND_MODEL:
                 if model_configurations is None:
                     provider_manager = create_plugin_provider_manager(tenant_id=args.tenant_id)
@@ -114,6 +119,8 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
                         credential_id=item.credential_id,
                         failed_credential_digest=item.failed_credential_digest,
                     )
+                    identity_mode = values["identity_mode"]
+                    values = {key: values[key] for key in ("server_url", "headers")}
                     error = None
                 except MCPCredentialUnavailableError:
                     return {
@@ -133,10 +140,13 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
                     kind=item.kind,
                     provider=item.provider,
                     values=values,
+                    identity_mode=identity_mode,
                 )
             )
 
-        return InnerRuntimeCredentialsResolveResponse(credentials=resolved).model_dump(mode="json"), 200
+        return InnerRuntimeCredentialsResolveResponse(credentials=resolved).model_dump(
+            mode="json", exclude_none=True
+        ), 200
 
 
 def _resolve_model(
