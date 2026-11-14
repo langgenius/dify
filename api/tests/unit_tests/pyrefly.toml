@@ -20,7 +20,6 @@ project-excludes = [
   "controllers/console/auth/test_email_register.py",
   "controllers/console/datasets/rag_pipeline/test_datasource_auth.py",
   "controllers/console/datasets/rag_pipeline/test_rag_pipeline_draft_variable.py",
-  "controllers/console/datasets/test_datasets.py",
   "controllers/console/datasets/test_datasets_document.py",
   "controllers/console/datasets/test_hit_testing_base.py",
   "controllers/console/test_files.py",
