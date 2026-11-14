@@ -24,12 +24,14 @@ def test_partition_epub_preserves_spine_order_and_title_chunking(tmp_path: Path)
             '<item id="nav" href="nav.xhtml"/></manifest>'
             '<spine><itemref idref="first"/><itemref idref="second"/></spine></package>',
         )
-        archive.writestr("OPS/nav.xhtml", "<html><body><p>Navigation only</p></body></html>")
+        # Explicit HTML element types avoid downloading an NLP model to classify text.
+        archive.writestr("OPS/nav.xhtml", "<html><body><h1>Navigation only</h1></body></html>")
         archive.writestr(
-            "OPS/Text/second.xhtml", "<html><body><h1>Second chapter</h1><p>Second body.</p></body></html>"
+            "OPS/Text/second.xhtml", "<html><body><h1>Second chapter</h1><ul><li>Second body.</li></ul></body></html>"
         )
         archive.writestr(
-            "OPS/Text/first chapter.xhtml", "<html><body><h1>First chapter</h1><p>First body.</p></body></html>"
+            "OPS/Text/first chapter.xhtml",
+            "<html><body><h1>First chapter</h1><ul><li>First body.</li></ul></body></html>",
         )
 
     elements = partition_epub(str(file_path))

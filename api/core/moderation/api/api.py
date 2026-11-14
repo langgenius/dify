@@ -2,12 +2,11 @@ from typing import Any, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import scoped_session
 
+from core.db.session_factory import session_factory
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
-from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension
 
 
@@ -27,13 +26,11 @@ class ApiModeration(Moderation):
 
     @classmethod
     @override
-    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
-        """
-        Validate the incoming form config data.
+    def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
+        """Validate form settings and require an extension owned by the workspace.
 
-        :param tenant_id: the id of workspace
-        :param config: the form config data
-        :return:
+        Return without external I/O when the settings and tenant-owned extension exist.
+        Invalid settings or a missing extension raise ValueError; lookup errors propagate.
         """
         cls._validate_inputs_and_outputs_config(config, False)
 
@@ -41,8 +38,7 @@ class ApiModeration(Moderation):
         if not api_based_extension_id:
             raise ValueError("api_based_extension_id is required")
 
-        extension = cls._get_api_based_extension(tenant_id, api_based_extension_id, db.session)
-        if not extension:
+        if cls._get_api_based_extension(tenant_id, api_based_extension_id) is None:
             raise ValueError("API-based Extension not found. Please check it again.")
 
     @override
@@ -79,26 +75,39 @@ class ApiModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
-    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict[str, Any]):
+    def _get_config_by_requestor(
+        self, extension_point: APIBasedExtensionPoint, params: dict[str, Any]
+    ) -> dict[str, object]:
+        """Request moderation from the configured extension after releasing the lookup session.
+
+        Return the extension response for the supplied point and parameters.
+        Missing config or a missing tenant-owned extension raises ValueError; lookup,
+        decryption, and request failures propagate unchanged.
+        """
         if self.config is None:
             raise ValueError("The config is not set.")
-        extension = self._get_api_based_extension(
-            self.tenant_id, self.config.get("api_based_extension_id", ""), db.session
-        )
-        if not extension:
+        extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id", ""))
+        if extension is None:
             raise ValueError("API-based Extension not found. Please check it again.")
-        requestor = APIBasedExtensionRequestor(extension.api_endpoint, decrypt_token(self.tenant_id, extension.api_key))
+        endpoint, encrypted_key = extension
+        requestor = APIBasedExtensionRequestor(endpoint, decrypt_token(self.tenant_id, encrypted_key))
 
         result = requestor.request(extension_point, params)
         return result
 
     @staticmethod
-    def _get_api_based_extension(
-        tenant_id: str, api_based_extension_id: str, session: scoped_session
-    ) -> APIBasedExtension | None:
-        stmt = select(APIBasedExtension).where(
+    def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> tuple[str, str] | None:
+        """Read the tenant's endpoint and encrypted key using the configured session factory.
+
+        Return None if the extension is absent. Close the owned session before returning
+        or propagating a lookup error.
+        """
+        stmt = select(APIBasedExtension.api_endpoint, APIBasedExtension.api_key).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        extension = session.scalar(stmt)
-
-        return extension
+        with session_factory.create_session() as session:
+            row = session.execute(stmt).tuples().one_or_none()
+            if row is None:
+                return None
+            endpoint, encrypted_key = row
+            return endpoint, encrypted_key
