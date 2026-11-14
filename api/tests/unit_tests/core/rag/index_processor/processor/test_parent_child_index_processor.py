@@ -224,6 +224,44 @@ class TestParentChildIndexProcessor:
         assert len(result[0].children or []) == 2
         assert result[0].attachments is not None
 
+    def test_transform_full_doc_mode_applies_pre_processing_rules(self, processor: ParentChildIndexProcessor) -> None:
+        # Pre-processing rules are offered for both parent modes, and paragraph mode
+        # cleans each document before splitting; full-doc mode must clean as well.
+        docs = [
+            Document(page_content="Mail a@b.com or   visit", metadata={"dataset_id": "dataset-1"}),
+            Document(page_content="https://example.com/x <|end|>\x00", metadata={"dataset_id": "dataset-1"}),
+        ]
+        process_rule = {
+            "mode": "hierarchical",
+            "rules": {
+                "pre_processing_rules": [
+                    {"id": "remove_extra_spaces", "enabled": True},
+                    {"id": "remove_urls_emails", "enabled": True},
+                ],
+            },
+        }
+        split_child_nodes = Mock(return_value=[])
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.Rule.model_validate",
+                return_value=self._full_doc_rules(),
+            ),
+            patch.object(processor, "_get_content_files", return_value=[]),
+            patch.object(processor, "split_child_nodes", split_child_nodes),
+        ):
+            result = processor.transform(
+                docs,
+                process_rule=process_rule,
+                preview=False,
+                tenant_id="tenant-1",
+                session=self.session,
+            )
+
+        assert len(result) == 1
+        assert result[0].page_content == "Mail  or visit\n <end>"
+        assert split_child_nodes.call_args.args[0].page_content == "Mail  or visit\n <end>"
+
     def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         parent_doc = Document(
             page_content="parent",

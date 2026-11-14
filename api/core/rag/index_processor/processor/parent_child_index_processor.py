@@ -115,7 +115,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             split_documents.append(document_node)
                 all_documents.extend(split_documents)
         elif rules.parent_mode == ParentMode.FULL_DOC:
-            page_content = "\n".join([document.page_content for document in documents])
+            # Apply the same pre-processing rules as paragraph mode before merging.
+            page_content = "\n".join(
+                [CleanProcessor.clean(document.page_content, process_rule) for document in documents]
+            )
             document = Document(page_content=page_content, metadata=documents[0].metadata)
             multimodel_documents = self._get_content_files(
                 document,
