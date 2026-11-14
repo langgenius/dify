@@ -2042,6 +2042,16 @@ class EndUser(UserMixin, TypeBase):
         sa.PrimaryKeyConstraint("id", name="end_user_pkey"),
         sa.Index("end_user_session_id_idx", "session_id", "type"),
         sa.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
+        # Invariant: one row per (tenant, app, session, type). Concurrent first
+        # requests must resolve to the same row instead of inserting duplicates.
+        sa.Index(
+            "uq_end_user_tenant_app_session_type",
+            "tenant_id",
+            "app_id",
+            "session_id",
+            "type",
+            unique=True,
+        ),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)

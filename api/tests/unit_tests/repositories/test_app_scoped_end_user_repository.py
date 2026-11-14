@@ -1,6 +1,11 @@
+from collections.abc import Sequence
 from datetime import datetime
 
+import pytest
+from sqlalchemy import Engine, event, func, insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm.unitofwork import UOWTransaction
 
 from models.enums import EndUserType
 from models.model import EndUser
@@ -144,3 +149,258 @@ def test_get_or_create_batch_reuses_existing_users_and_creates_missing_ones(
     assert result[second_app_id].app_id == second_app_id
     assert result[second_app_id].external_user_id == "session-1"
     assert result[second_app_id]._is_anonymous is False
+
+
+def _persist_end_user_with_type(
+    session: Session,
+    *,
+    end_user_id: str,
+    type: EndUserType,
+    created_at: datetime,
+    session_id: str = "session-1",
+) -> None:
+    end_user = EndUser(
+        id=end_user_id,
+        tenant_id=_TENANT_ID,
+        app_id=_APP_ID,
+        type=type,
+        external_user_id="external-1",
+        name="Alice",
+        _is_anonymous=True,
+        session_id=session_id,
+    )
+    end_user.created_at = created_at
+    end_user.updated_at = created_at
+    session.add(end_user)
+    session.commit()
+
+
+def _count_end_users(
+    session_factory: sessionmaker[Session],
+    *,
+    tenant_id: str,
+    app_id: str,
+    session_id: str,
+) -> int:
+    statement = select(func.count(EndUser.id)).where(
+        EndUser.tenant_id == tenant_id,
+        EndUser.app_id == app_id,
+        EndUser.session_id == session_id,
+    )
+    with session_factory() as session:
+        return session.scalar(statement) or 0
+
+
+def test_create_returns_existing_row_instead_of_creating_a_duplicate(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Concurrent first requests must not create duplicate end_users rows (#46267)."""
+    _persist_end_user(sqlite_session)
+    repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+
+    stored = repository.create(
+        NewAppScopedEndUser(
+            tenant_id=_TENANT_ID,
+            app_id=_APP_ID,
+            type=EndUserType.SERVICE_API.value,
+            is_anonymous=False,
+            session_id="session-1",
+            external_user_id="session-1",
+        )
+    )
+
+    assert stored.id == _END_USER_ID
+    assert _count_end_users(sqlite_session_factory, tenant_id=_TENANT_ID, app_id=_APP_ID, session_id="session-1") == 1
+
+
+def test_find_by_session_returns_oldest_row_first(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Once duplicates exist, the row a request resolves to must be stable (#46267).
+
+    The two rows are inserted newest-first by type order so that only an
+    explicit ORDER BY can return them oldest-first.
+    """
+    _persist_end_user_with_type(
+        sqlite_session,
+        end_user_id="44444444-4444-4444-4444-444444444444",
+        type=EndUserType.SERVICE_API,
+        created_at=datetime(2026, 1, 1),
+    )
+    _persist_end_user_with_type(
+        sqlite_session,
+        end_user_id="55555555-5555-5555-5555-555555555555",
+        type=EndUserType.BROWSER,
+        created_at=datetime(2026, 1, 2),
+    )
+    repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+
+    found = repository.find_by_session(tenant_id=_TENANT_ID, app_id=_APP_ID, user_id="session-1")
+
+    assert [row.id for row in found] == [
+        "44444444-4444-4444-4444-444444444444",
+        "55555555-5555-5555-5555-555555555555",
+    ]
+
+
+def test_create_batch_returns_existing_row_on_conflict(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """A batch racing another first request must reuse the existing row (#46267)."""
+    _persist_end_user(sqlite_session)
+    repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+    second_app_id = "66666666-6666-6666-6666-666666666666"
+
+    created = repository.create_batch(
+        [
+            NewAppScopedEndUser(
+                tenant_id=_TENANT_ID,
+                app_id=_APP_ID,
+                type=EndUserType.SERVICE_API.value,
+                is_anonymous=False,
+                session_id="session-1",
+                external_user_id="session-1",
+            ),
+            NewAppScopedEndUser(
+                tenant_id=_TENANT_ID,
+                app_id=second_app_id,
+                type=EndUserType.SERVICE_API.value,
+                is_anonymous=False,
+                session_id="session-1",
+                external_user_id="session-1",
+            ),
+        ]
+    )
+
+    assert created[0].id == _END_USER_ID
+    assert created[1].app_id == second_app_id
+    assert _count_end_users(sqlite_session_factory, tenant_id=_TENANT_ID, app_id=_APP_ID, session_id="session-1") == 1
+
+
+def test_create_reuses_existing_row_when_insert_conflicts(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """A writer that skipped the app lock must resolve to the existing row (#46267).
+
+    Precondition: no end user row exists for the identity.
+    Postcondition: exactly one row exists for the identity, and the returned
+    metadata describes the row the concurrent writer committed.
+    Failure behavior: the insert conflict resolves to the existing row
+    instead of raising.
+    """
+    conflicting_id = "77777777-7777-7777-7777-777777777777"
+    inserted = False
+
+    def _commit_conflicting_row(
+        _session: Session, _flush_context: UOWTransaction, _instances: Sequence[object] | None
+    ) -> None:
+        """Commit the same identity from a second connection mid-flush."""
+        nonlocal inserted
+        if inserted:
+            return
+        inserted = True
+        conflicting_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+        with conflicting_factory() as conflicting_session:
+            _persist_end_user_with_type(
+                conflicting_session,
+                end_user_id=conflicting_id,
+                type=EndUserType.SERVICE_API,
+                created_at=datetime(2026, 1, 1),
+            )
+
+    event.listen(Session, "before_flush", _commit_conflicting_row)
+    try:
+        repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+        stored = repository.create(
+            NewAppScopedEndUser(
+                tenant_id=_TENANT_ID,
+                app_id=_APP_ID,
+                type=EndUserType.SERVICE_API.value,
+                is_anonymous=False,
+                session_id="session-1",
+                external_user_id="session-1",
+            )
+        )
+    finally:
+        event.remove(Session, "before_flush", _commit_conflicting_row)
+
+    assert inserted
+    assert stored.id == conflicting_id
+    assert _count_end_users(sqlite_session_factory, tenant_id=_TENANT_ID, app_id=_APP_ID, session_id="session-1") == 1
+
+
+def test_create_reraises_conflict_when_no_existing_row_found(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """An insert conflict with no surviving row must surface the error (#46267).
+
+    Precondition: no end user row exists for the identity.
+    Postcondition: no row exists for the identity after the failed create.
+    Failure behavior: the IntegrityError is re-raised when the re-check
+    finds no row to reuse.
+    """
+    inserted = False
+
+    def _insert_conflicting_row_in_transaction(
+        session: Session, _flush_context: UOWTransaction, _instances: Sequence[object] | None
+    ) -> None:
+        """Insert the same identity in the flushing session's own transaction.
+
+        The rollback after the failed flush removes this row too, so the
+        re-check in the IntegrityError handler finds nothing to reuse.
+        """
+        nonlocal inserted
+        if inserted:
+            return
+        inserted = True
+        session.connection().execute(
+            insert(EndUser).values(
+                id="77777777-7777-7777-7777-777777777777",
+                tenant_id=_TENANT_ID,
+                app_id=_APP_ID,
+                type=EndUserType.SERVICE_API,
+                external_user_id="external-1",
+                name="Bob",
+                _is_anonymous=True,
+                session_id="session-1",
+                created_at=datetime(2026, 1, 1),
+                updated_at=datetime(2026, 1, 1),
+            )
+        )
+
+    event.listen(Session, "before_flush", _insert_conflicting_row_in_transaction)
+    try:
+        repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+        with pytest.raises(IntegrityError):
+            repository.create(
+                NewAppScopedEndUser(
+                    tenant_id=_TENANT_ID,
+                    app_id=_APP_ID,
+                    type=EndUserType.SERVICE_API.value,
+                    is_anonymous=False,
+                    session_id="session-1",
+                    external_user_id="session-1",
+                )
+            )
+    finally:
+        event.remove(Session, "before_flush", _insert_conflicting_row_in_transaction)
+
+    assert inserted
+    assert _count_end_users(sqlite_session_factory, tenant_id=_TENANT_ID, app_id=_APP_ID, session_id="session-1") == 0
+
+
+def test_create_batch_with_no_commands_returns_empty_list(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """An empty batch must return an empty list without flushing (#46267).
+
+    Precondition: no commands are given.
+    Postcondition: the returned list is empty and no row exists.
+    """
+    repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+
+    assert repository.create_batch([]) == []
