@@ -7,6 +7,7 @@ import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
 from typing import Any, cast
+from uuid import uuid4
 
 from dify_trace_sdk.events import DatasetRetrieved
 from flask import Flask, current_app
@@ -2132,7 +2133,7 @@ class DatasetRetrieval:
         if knowledge_rate_limit.enabled:
             current_time = int(time.time() * 1000)
             key = f"rate_limit_{tenant_id}"
-            redis_client.zadd(key, {current_time: current_time})
+            redis_client.zadd(key, {uuid4().hex: current_time})
             redis_client.zremrangebyscore(key, 0, current_time - 60000)
             request_count = redis_client.zcard(key)
             if request_count > knowledge_rate_limit.limit:

@@ -1,6 +1,7 @@
 """Cloud knowledge request quota and audit persistence."""
 
 import time
+import uuid
 
 from sqlalchemy.orm import sessionmaker
 
@@ -22,10 +23,9 @@ def enforce_knowledge_rate_limit(tenant_id: str) -> None:
     current_time = int(time.time() * 1000)
     key = f"rate_limit_{tenant_id}"
 
-    redis_client.zadd(key, {current_time: current_time})
-
+    # The timestamp is the score, not the member identity: requests can share a millisecond.
+    redis_client.zadd(key, {uuid.uuid4().hex: current_time})
     redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
     request_count = redis_client.zcard(key)
 
     if request_count > knowledge_rate_limit.limit:

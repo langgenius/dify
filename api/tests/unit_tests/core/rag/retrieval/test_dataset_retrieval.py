@@ -2551,7 +2551,9 @@ class TestDatasetRetrievalCases:
 
             # Verify Redis operations
             expected_key = f"rate_limit_{tenant_id}"
-            mock_redis.zadd.assert_called_once_with(expected_key, {current_time: current_time})
+            mock_redis.zadd.assert_called_once_with(
+                expected_key, {next(iter(mock_redis.zadd.call_args.args[1])): current_time}
+            )
             mock_redis.zremrangebyscore.assert_called_once_with(expected_key, 0, current_time - 60000)
             mock_redis.zcard.assert_called_once_with(expected_key)
 
@@ -6329,7 +6331,9 @@ class TestDatasetRetrievalMethodsCases:
             DatasetRetrieval()._check_knowledge_rate_limit("tenant-1")
 
             current_time = 1234567890000
-            redis.zadd.assert_called_once_with("rate_limit_tenant-1", {current_time: current_time})
+            redis.zadd.assert_called_once_with(
+                "rate_limit_tenant-1", {next(iter(redis.zadd.call_args.args[1])): current_time}
+            )
             redis.zremrangebyscore.assert_called_once_with("rate_limit_tenant-1", 0, current_time - 60000)
             with retrieval_database.session_maker() as session:
                 assert session.scalar(select(RateLimitLog)) is None
