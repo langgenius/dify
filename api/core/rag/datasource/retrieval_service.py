@@ -498,7 +498,7 @@ class RetrievalService:
             }
 
             valid_dataset_documents = {}
-            image_doc_ids: list[Any] = []
+            image_attachment_ids_by_dataset: dict[tuple[str, str], list[str]] = {}
             child_index_node_ids = []
             index_node_ids = []
             doc_to_document_map = {}
@@ -543,18 +543,18 @@ class RetrievalService:
                                 pass
                     continue  # Skip adding to other lists for summary documents
 
-                if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    if document.metadata.get("doc_type") == DocType.IMAGE:
-                        image_doc_ids.append(doc_id)
-                    else:
-                        child_index_node_ids.append(doc_id)
-                else:
-                    if document.metadata.get("doc_type") == DocType.IMAGE:
-                        image_doc_ids.append(doc_id)
-                    else:
-                        index_node_ids.append(doc_id)
+                if document.metadata.get("doc_type") == DocType.IMAGE:
+                    if doc_id:
+                        image_attachment_ids_by_dataset.setdefault(
+                            (dataset_document.tenant_id, dataset_document.dataset_id), []
+                        ).append(doc_id)
+                    continue
 
-            image_doc_ids = [i for i in image_doc_ids if i]
+                if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                    child_index_node_ids.append(doc_id)
+                else:
+                    index_node_ids.append(doc_id)
+
             child_index_node_ids = [i for i in child_index_node_ids if i]
             index_node_ids = [i for i in index_node_ids if i]
 
@@ -566,12 +566,8 @@ class RetrievalService:
             doc_segment_map: dict[str, list[str]] = {}
             segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
 
-            dataset_refs = tuple(
-                {(document.tenant_id, document.dataset_id) for document in valid_dataset_documents.values()}
-            )
             attachments = cls.get_segment_attachment_infos(
-                image_doc_ids,
-                dataset_refs=dataset_refs,
+                image_attachment_ids_by_dataset,
                 session=session,
             )
 
@@ -959,16 +955,21 @@ class RetrievalService:
     @classmethod
     def get_segment_attachment_infos(
         cls,
-        attachment_ids: list[str],
+        attachment_ids_by_dataset: dict[tuple[str, str], list[str]],
         *,
-        dataset_refs: Sequence[tuple[str, str]],
         session: Session,
     ) -> list[SegmentAttachmentInfoResult]:
-        if not attachment_ids or not dataset_refs:
+        requested_bindings = {
+            (tenant_id, dataset_id, attachment_id)
+            for (tenant_id, dataset_id), attachment_ids in attachment_ids_by_dataset.items()
+            for attachment_id in attachment_ids
+        }
+        if not requested_bindings:
             return []
         attachment_infos: list[SegmentAttachmentInfoResult] = []
         granted_upload_file_ids: list[str] = []
-        tenant_ids = tuple({tenant_id for tenant_id, _ in dataset_refs})
+        attachment_ids = {attachment_id for _, _, attachment_id in requested_bindings}
+        tenant_ids = {tenant_id for tenant_id, _, _ in requested_bindings}
         upload_files = session.scalars(
             select(UploadFile).where(
                 UploadFile.id.in_(attachment_ids),
@@ -976,19 +977,34 @@ class RetrievalService:
             )
         ).all()
         if upload_files:
-            upload_file_ids = [upload_file.id for upload_file in upload_files]
+            upload_file_ids = {upload_file.id for upload_file in upload_files}
+            upload_file_by_id = {upload_file.id: upload_file for upload_file in upload_files}
             attachment_bindings = session.scalars(
                 select(SegmentAttachmentBinding).where(
                     SegmentAttachmentBinding.attachment_id.in_(upload_file_ids),
-                    tuple_(SegmentAttachmentBinding.tenant_id, SegmentAttachmentBinding.dataset_id).in_(dataset_refs),
+                    tuple_(
+                        SegmentAttachmentBinding.tenant_id,
+                        SegmentAttachmentBinding.dataset_id,
+                        SegmentAttachmentBinding.attachment_id,
+                    ).in_(requested_bindings),
                 )
             ).all()
-            attachment_binding_map = {binding.attachment_id: binding for binding in attachment_bindings}
-
-            if attachment_bindings:
-                for upload_file in upload_files:
-                    attachment_binding = attachment_binding_map.get(upload_file.id)
-                    info: AttachmentInfoDict = {
+            seen_segment_bindings: set[tuple[str, str, str, str]] = set()
+            attachment_info_by_id: dict[str, AttachmentInfoDict] = {}
+            for attachment_binding in attachment_bindings:
+                binding_key = (
+                    attachment_binding.tenant_id,
+                    attachment_binding.dataset_id,
+                    attachment_binding.attachment_id,
+                    attachment_binding.segment_id,
+                )
+                if binding_key in seen_segment_bindings:
+                    continue
+                seen_segment_bindings.add(binding_key)
+                upload_file = upload_file_by_id[attachment_binding.attachment_id]
+                info: AttachmentInfoDict | None = attachment_info_by_id.get(upload_file.id)
+                if info is None:
+                    info = {
                         "id": upload_file.id,
                         "name": upload_file.name,
                         "extension": "." + upload_file.extension,
@@ -996,14 +1012,14 @@ class RetrievalService:
                         "source_url": sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                         "size": upload_file.size,
                     }
-                    if attachment_binding:
-                        granted_upload_file_ids.append(str(upload_file.id))
-                        attachment_infos.append(
-                            {
-                                "attachment_id": attachment_binding.attachment_id,
-                                "attachment_info": info,
-                                "segment_id": attachment_binding.segment_id,
-                            }
-                        )
+                    attachment_info_by_id[upload_file.id] = info
+                granted_upload_file_ids.append(str(upload_file.id))
+                attachment_infos.append(
+                    {
+                        "attachment_id": attachment_binding.attachment_id,
+                        "attachment_info": info,
+                        "segment_id": attachment_binding.segment_id,
+                    }
+                )
         grant_upload_file_access(granted_upload_file_ids)
         return attachment_infos
