@@ -17,6 +17,7 @@ from models.knowledge_fs import (
     KnowledgeFSProvisionCommandPayload,
     KnowledgeFSRevokeCommandPayload,
 )
+from repositories.file_scan_policy_repository import delete_file_scan_policy
 from repositories.knowledge_fs_control_space_repository import KnowledgeFSControlSpaceCASUpdate
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
@@ -24,6 +25,7 @@ from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
 from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
 )
+from services.file_scan.entities import SCOPE_KNOWLEDGE_FS_SPACE
 from services.knowledge_fs.control_space_lifecycle import KnowledgeFSControlSpaceLifecycleService
 from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSCapabilityGrantRevokeAck,
@@ -267,6 +269,9 @@ class KnowledgeFSLifecycleSagaRunner:
                 new_state=KnowledgeFSControlSpaceState.DELETED,
                 lifecycle_operation_id=claimed.operation_id,
             )
+            _delete_control_space_scan_policy(
+                session, tenant_id=claimed.tenant_id, control_space_id=claimed.control_space_id
+            )
             self._ack(outbox_repository, claimed=claimed, completed_at=completed_at)
             return True
 
@@ -305,6 +310,9 @@ class KnowledgeFSLifecycleSagaRunner:
                 expected_resource_version=control_space.resource_version,
                 new_state=KnowledgeFSControlSpaceState.DELETED,
                 lifecycle_operation_id=claimed.operation_id,
+            )
+            _delete_control_space_scan_policy(
+                session, tenant_id=claimed.tenant_id, control_space_id=claimed.control_space_id
             )
             self._ack(outbox_repository, claimed=claimed, completed_at=observed_at)
             return True
@@ -429,6 +437,9 @@ class KnowledgeFSLifecycleSagaRunner:
             )
             if control_space is None or control_space.state is not KnowledgeFSControlSpaceState.DELETED:
                 return False
+            _delete_control_space_scan_policy(
+                session, tenant_id=claimed.tenant_id, control_space_id=claimed.control_space_id
+            )
             self._ack(
                 SQLAlchemyKnowledgeFSLifecycleOutboxRepository(session),
                 claimed=claimed,
@@ -473,6 +484,9 @@ class KnowledgeFSLifecycleSagaRunner:
                     new_state=KnowledgeFSControlSpaceState.DELETED,
                     lifecycle_operation_id=claimed.operation_id,
                     knowledge_space_revision=max(control_space.knowledge_space_revision, progress.revision),
+                )
+                _delete_control_space_scan_policy(
+                    session, tenant_id=claimed.tenant_id, control_space_id=claimed.control_space_id
                 )
                 self._ack(outbox_repository, claimed=claimed, completed_at=settled_at)
                 return True
@@ -595,6 +609,16 @@ class KnowledgeFSLifecycleSagaRunner:
             completed_at=completed_at,
         ):
             raise KnowledgeFSLifecycleLeaseLostError("Lifecycle command lease was lost before ACK")
+
+
+def _delete_control_space_scan_policy(session: Session, *, tenant_id: str, control_space_id: str) -> None:
+    """Remove scan settings only when the owning Space is terminally deleted."""
+    delete_file_scan_policy(
+        session,
+        tenant_id=tenant_id,
+        scope_type=SCOPE_KNOWLEDGE_FS_SPACE,
+        scope_id=control_space_id,
+    )
 
 
 class _ClaimedCommand(NamedTuple):

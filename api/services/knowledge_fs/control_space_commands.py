@@ -28,6 +28,7 @@ from models.knowledge_fs import (
     KnowledgeFSProvisionCommandPayload,
     KnowledgeFSRetrievalProfileIntentPayload,
 )
+from repositories.file_scan_policy_repository import delete_file_scan_policy
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge_fs_control_space_repository import KnowledgeFSControlSpaceCASUpdate
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
@@ -37,6 +38,7 @@ from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
 )
 from services.api_token_service import ApiTokenCache
+from services.file_scan.entities import SCOPE_KNOWLEDGE_FS_SPACE
 from services.knowledge_fs.control_space_lifecycle import (
     KnowledgeFSControlSpaceLifecycleService,
     KnowledgeFSControlSpaceNotFoundError,
@@ -245,6 +247,13 @@ class KnowledgeFSControlSpaceCommandService:
             if control_space is None:
                 raise KnowledgeFSControlSpaceNotFoundError("KnowledgeFS control-space was not found in this tenant")
             if control_space.state is KnowledgeFSControlSpaceState.DELETED:
+                # Older terminal deletions may predate cleanup of their generic scope policy.
+                delete_file_scan_policy(
+                    session,
+                    tenant_id=tenant_id,
+                    scope_type=SCOPE_KNOWLEDGE_FS_SPACE,
+                    scope_id=control_space_id,
+                )
                 return KnowledgeFSDeletionIntentResult(control_space, None)
 
             replay = outbox_repository.get_by_operation_id(tenant_id=tenant_id, operation_id=operation_id)
