@@ -10,6 +10,7 @@ millisecond timestamp that drives the 60s window cleanup.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 import pytest
 
@@ -93,6 +94,7 @@ def limiter_env(monkeypatch: pytest.MonkeyPatch) -> LimiterEnv:
     recorded_logs: list[svc.RateLimitLog] = []
     monkeypatch.setattr(svc, "redis_client", redis_stub)
     monkeypatch.setattr(svc, "time", clock)
+    monkeypatch.setattr(svc, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(svc, "sessionmaker", lambda **_kwargs: _SessionFactory(recorded_logs))
     monkeypatch.setattr(
         svc,
