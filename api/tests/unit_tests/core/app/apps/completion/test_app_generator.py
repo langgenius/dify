@@ -17,9 +17,21 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 
 TABLES = (AppModelConfig, Conversation, Message)
+
+
+def _generate_entity_mock() -> MagicMock:
+    """Return the patched ``CompletionAppGenerateEntity`` factory as a mock.
+
+    The ``generator`` fixture replaces the module-level factory, so the recorded
+    constructions live on that module attribute rather than on the generator.
+    """
+    entity: object = module.CompletionAppGenerateEntity
+    assert isinstance(entity, MagicMock)
+    return entity
 
 
 class _TraceRecorder:
@@ -43,7 +55,7 @@ def _trace_scope() -> TraceScope:
 
 
 @pytest.fixture
-def generator(mocker: MockerFixture):
+def generator(mocker: MockerFixture) -> CompletionAppGenerator:
     gen = CompletionAppGenerator()
 
     mocker.patch.object(module, "copy_current_request_context", side_effect=lambda fn: fn)
@@ -56,16 +68,13 @@ def generator(mocker: MockerFixture):
     mocker.patch.object(module.threading, "Thread", return_value=thread)
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
-    generate_entity = mocker.patch.object(
-        module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
-    )
-    gen.generate_entity = generate_entity
+    mocker.patch.object(module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
 
     return gen
 
 
 @pytest.fixture(autouse=True)
-def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module.db, "session", sqlite_session)
 
 
@@ -111,7 +120,7 @@ def _persist_message(
         _inputs={},
         introduction="",
         system_instruction="",
-        invoke_from=InvokeFrom.WEB_APP,
+        invoke_from=ModelInvokeFrom.WEB_APP,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="user",
@@ -139,7 +148,7 @@ def _persist_message(
         currency="USD",
         error=None,
         message_metadata=None,
-        invoke_from=InvokeFrom.WEB_APP,
+        invoke_from=ModelInvokeFrom.WEB_APP,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="user",
@@ -153,7 +162,7 @@ def _persist_message(
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 class TestCompletionAppGenerator:
-    def test_generate_invalid_query_type(self, generator, sqlite_session: Session):
+    def test_generate_invalid_query_type(self, generator: CompletionAppGenerator, sqlite_session: Session) -> None:
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 session=sqlite_session,
@@ -164,7 +173,7 @@ class TestCompletionAppGenerator:
                 streaming=True,
             )
 
-    def test_generate_override_not_debugger(self, generator, sqlite_session: Session):
+    def test_generate_override_not_debugger(self, generator: CompletionAppGenerator, sqlite_session: Session) -> None:
         with pytest.raises(ValueError, match="^$"):
             generator.generate(
                 session=sqlite_session,
@@ -176,7 +185,11 @@ class TestCompletionAppGenerator:
             )
 
     def test_generate_success_no_file_config(
-        self, generator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        self,
+        generator: CompletionAppGenerator,
+        mocker: MockerFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
     ) -> None:
         trace_scope = _trace_scope()
         scope_requests: list[dict[str, object]] = []
@@ -196,7 +209,8 @@ class TestCompletionAppGenerator:
             return_value=annotation_reply,
         )
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
-        mocker.patch.object(module.file_factory, "build_from_mappings")
+        build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings")
+        assert isinstance(build_from_mappings, MagicMock)
 
         app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
         get_app_config = mocker.patch.object(
@@ -244,25 +258,29 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
-        extras = generator.generate_entity.call_args.kwargs["extras"]
+        generate_entity = _generate_entity_mock()
+        extras = generate_entity.call_args.kwargs["extras"]
         assert extras == {"trace_session_id": "session-1"}
-        assert generator.generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
         assert scope_requests == [
             {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
         ]
-        module.file_factory.build_from_mappings.assert_not_called()
+        build_from_mappings.assert_not_called()
         load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
-    def test_generate_success_with_files(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_success_with_files(
+        self, generator: CompletionAppGenerator, mocker: MockerFixture, sqlite_session: Session
+    ) -> None:
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
         mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
 
         file_extra_config = MagicMock()
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_extra_config)
-        mocker.patch.object(module.file_factory, "build_from_mappings", return_value=["file1"])
+        build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings", return_value=["file1"])
+        assert isinstance(build_from_mappings, MagicMock)
 
         app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
         mocker.patch.object(module.CompletionAppConfigManager, "get_app_config", return_value=app_config)
@@ -306,9 +324,11 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
-        module.file_factory.build_from_mappings.assert_called_once()
+        build_from_mappings.assert_called_once()
 
-    def test_generate_override_model_config_debugger(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_override_model_config_debugger(
+        self, generator: CompletionAppGenerator, mocker: MockerFixture, sqlite_session: Session
+    ) -> None:
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
 
@@ -373,7 +393,7 @@ class TestCompletionAppGenerator:
             (
                 ValidationError.from_exception_data(
                     "Model",
-                    [{"type": "missing", "loc": ("x",), "msg": "Field required", "input": {}}],
+                    [{"type": "missing", "loc": ("x",), "input": {}}],
                 ),
                 True,
             ),
@@ -383,12 +403,12 @@ class TestCompletionAppGenerator:
     )
     def test_generate_worker_error_handling(
         self,
-        generator,
+        generator: CompletionAppGenerator,
         mocker: MockerFixture,
         sqlite_session: Session,
-        error,
-        should_publish,
-    ):
+        error: Exception,
+        should_publish: bool,
+    ) -> None:
         flask_app = MagicMock()
         flask_app.app_context.return_value = contextlib.nullcontext()
 
