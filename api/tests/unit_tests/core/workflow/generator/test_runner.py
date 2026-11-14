@@ -4619,6 +4619,28 @@ def _stream_builder_json() -> str:
 class TestWorkflowGeneratorStream:
     """``generate_workflow_graph_stream`` yields a ``plan`` event then a ``result`` event."""
 
+    def test_stream_ignores_start_inputs_with_invalid_variable_names(self):
+        planner = json.loads(_stream_planner_json())
+        valid_input = {"variable": "url", "label": "URL", "type": "text-input"}
+        planner["start_inputs"] = [{"variable": 123}, {"variable": " "}, valid_input]
+        model_instance = _GraphFixtureModel(json.dumps(planner), _stream_builder_json())
+
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model_instance,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="workflow",
+                instruction="Summarize a URL",
+            )
+        )
+
+        assert [name for name, _ in events] == ["plan", "result"]
+        assert events[0][1]["start_inputs"] == [valid_input]
+        assert events[1][1]["error"] == ""
+
     def test_stream_emits_plan_then_result(self):
         model_instance = _GraphFixtureModel(_stream_planner_json(), _stream_builder_json())
 

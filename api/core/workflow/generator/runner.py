@@ -608,7 +608,7 @@ class WorkflowGenerator:
         start_inputs: list[dict[str, Any]] = [
             cast(dict[str, Any], item)
             for item in (plan.get("start_inputs") or [])
-            if isinstance(item, dict) and (item.get("variable") or "").strip()
+            if isinstance(item, dict) and isinstance(variable := item.get("variable"), str) and variable.strip()
         ]
 
         # First event the stream sees: the high-level plan, before the slower
