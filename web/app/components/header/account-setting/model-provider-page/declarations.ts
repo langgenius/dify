@@ -129,6 +129,8 @@ export type CredentialFormSchemaBase = {
   default?: string | number | boolean | unknown[] | Record<string, unknown> | null
   tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
+  /** Reset this field when any listed sibling parameter changes. */
+  reset_on_change?: string[]
   url?: string
   scope?: string
   input_schema?: Field | null

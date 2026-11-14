@@ -8,6 +8,7 @@ import {
   getConfiguredValue,
   getPlainValue,
   getStructureValue,
+  resetToolSettingFieldValue,
   toolCredentialToFormSchemas,
   toolParametersToFormSchemas,
   toType,
@@ -106,6 +107,77 @@ describe('to-form-schema utilities', () => {
       expect(result[0]!.options).toHaveLength(2)
       expect(result[0]!.options![0]!.show_on).toEqual([])
       expect(result[0]!.options![1]!.show_on).toEqual([])
+    })
+
+    it('handles parameters without options', () => {
+      const params: ToolParameter[] = [
+        {
+          name: 'flag',
+          label: { en_US: 'Flag', zh_Hans: '标记' },
+          human_description: { en_US: 'Enable', zh_Hans: '启用' },
+          type: 'boolean',
+          form: 'form',
+          llm_description: '',
+          required: false,
+          multiple: false,
+          default: 'false',
+        },
+      ]
+      const result = toolParametersToFormSchemas(params)
+      expect(result[0]!.options).toBeUndefined()
+    })
+
+    it('preserves reset dependencies and defaults missing metadata to an empty list', () => {
+      const params = [
+        {
+          name: 'source',
+          label: { en_US: 'Source' },
+          human_description: { en_US: 'Source' },
+          type: 'string',
+          form: 'form',
+          llm_description: '',
+          required: false,
+          multiple: false,
+          default: '',
+        },
+        {
+          name: 'dependent',
+          label: { en_US: 'Dependent' },
+          human_description: { en_US: 'Dependent' },
+          type: 'select',
+          form: 'form',
+          llm_description: '',
+          required: false,
+          multiple: false,
+          default: 'default-option',
+          reset_on_change: ['source'],
+        },
+      ] as ToolParameter[]
+
+      const result = toolParametersToFormSchemas(params)
+
+      expect(result[0]!.reset_on_change).toEqual([])
+      expect(result[1]!.reset_on_change).toEqual(['source'])
+    })
+  })
+
+  describe('resetToolSettingFieldValue', () => {
+    it('should normalize the schema default using the same conventions as initial values', () => {
+      expect(resetToolSettingFieldValue({ type: 'number-input', default: '12.5' })).toEqual({
+        type: 'constant',
+        value: 12.5,
+      })
+      expect(resetToolSettingFieldValue({ type: 'text-input', default: 'hello' })).toEqual({
+        type: 'mixed',
+        value: 'hello',
+      })
+    })
+
+    it('should clear a field when the schema has no default', () => {
+      expect(resetToolSettingFieldValue({ type: 'select' })).toEqual({
+        type: 'constant',
+        value: undefined,
+      })
     })
   })
 
