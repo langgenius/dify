@@ -9,6 +9,7 @@ from typing import Any, cast
 
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ToolInvoked, json_safe
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
@@ -40,6 +41,20 @@ from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
 logger = logging.getLogger(__name__)
+
+_tool_parameters_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
+
+def _legacy_parameter_text(raw: str) -> Any:
+    """Reproduce the pre-adapter message text, which interpolated the parsed value.
+
+    The old handler parsed the string in place before raising, so the message showed
+    the parsed value for valid JSON and the raw string otherwise. Parsing here is for
+    the message only; the value that reaches the tool is decided by the adapter above.
+    """
+    with contextlib.suppress(Exception):
+        return json.loads(raw)
+    return raw
 
 
 class ToolEngine:
@@ -76,10 +91,13 @@ class ToolEngine:
             if parameters and len(parameters) == 1:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
-                with contextlib.suppress(Exception):
-                    tool_parameters = json.loads(tool_parameters)
+                raw_parameters = tool_parameters
+                with contextlib.suppress(ValidationError):
+                    tool_parameters = _tool_parameters_adapter.validate_json(tool_parameters)
                 if not isinstance(tool_parameters, dict):
-                    raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
+                    raise ValueError(
+                        f"tool_parameters should be a dict, but got a string: {_legacy_parameter_text(raw_parameters)}"
+                    )
 
         try:
             # hit the callback handler
