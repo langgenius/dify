@@ -42,30 +42,6 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/datasets/list/dataset-card/components/__tests__/operations-menu.browser.spec.tsx',
-    specifier: '@/features/tag-management/components/dataset-card-tags',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/datasets/list/dataset-card/components/__tests__/operations-menu.browser.spec.tsx',
-    specifier: '@/context/permission-state',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/datasets/list/dataset-card/components/__tests__/operations-menu.browser.spec.tsx',
-    specifier: '@/features/account-profile/client',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/datasets/list/dataset-card/components/__tests__/operations-menu.browser.spec.tsx',
-    specifier: '@/features/system-features/client',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/datasets/settings/form/components/__tests__/reflow.browser.spec.tsx',
     specifier: 'react-i18next',
     occurrence: 1,
