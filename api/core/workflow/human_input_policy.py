@@ -17,21 +17,25 @@ from models.human_input import ApprovalChannel, RecipientType
 
 
 class HumanInputSurface(StrEnum):
+    """The access entry receiving a form response, independent of the run's origin."""
+
     SERVICE_API = "service_api"
     CONSOLE = "console"
     OPENAPI = "openapi"
+    WEB_APP = "web_app"
 
 
-# SERVICE_API and OPENAPI are intentionally narrower than CONSOLE: token callers
-# should only be able to act on end-user web forms, not internal console flows.
+# Web App, Service API and OpenAPI responses expose only web-app recipients.
+# The public form endpoint also accepts email links; its admission rules are separate.
 ALLOWED_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
     HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE, RecipientType.BACKSTAGE}),
     HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
+    HumanInputSurface.WEB_APP: frozenset({RecipientType.STANDALONE_WEB_APP}),
 }
 
 # A single HITL form can have multiple recipient records; this shared priority
-# keeps every API surface consistent about which resume token to expose.
+# chooses a token after the response surface has restricted the recipients.
 _RECIPIENT_TOKEN_PRIORITY: dict[RecipientType, int] = {
     RecipientType.BACKSTAGE: 0,
     RecipientType.CONSOLE: 1,
@@ -78,10 +82,13 @@ class FormDisposition(NamedTuple):
 def disposition_for_surface(
     recipients: Sequence[tuple[RecipientType, str]],
     *,
-    surface: HumanInputSurface | None,
+    surface: HumanInputSurface,
 ) -> FormDisposition:
-    if surface is None:
-        return FormDisposition(form_token=get_preferred_form_token(recipients), approval_channels=[])
+    """Select from existing recipients for an explicit response entry, without I/O.
+
+    Only nonempty tokens allowed by the surface are actionable; an empty allowed
+    subset yields no token. Other recipients contribute approval channels.
+    """
     allowed = ALLOWED_RECIPIENT_TYPES_BY_SURFACE[surface]
     actionable = [(recipient_type, token) for recipient_type, token in recipients if recipient_type in allowed]
     return FormDisposition(

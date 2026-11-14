@@ -5,6 +5,7 @@ from typing import Any, override
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -19,12 +20,14 @@ class _FakeBuiltinTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
+        del session
         yield self.create_text_message("ok")
 
 
@@ -32,7 +35,7 @@ class _ConcreteBuiltinProvider(BuiltinToolProviderController):
     last_validation: tuple[str, dict[str, Any]] | None = None
 
     @override
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         self.last_validation = (user_id, credentials)
 
 
@@ -80,10 +83,10 @@ def _tool_yaml() -> dict[str, Any]:
     }
 
 
-def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch: pytest.MonkeyPatch):
+def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch: pytest.MonkeyPatch) -> None:
     yaml_payloads = [_provider_yaml(), _tool_yaml()]
 
-    def _load_yaml[**P](*args: P.args, **kwargs: P.kwargs):
+    def _load_yaml[**P](*args: P.args, **kwargs: P.kwargs) -> dict[str, Any]:
         return yaml_payloads.pop(0)
 
     monkeypatch.setattr("core.tools.builtin_tool.provider.load_yaml_file_cached", _load_yaml)
@@ -113,7 +116,7 @@ def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch: 
     assert set(provider.get_supported_credential_types()) == {CredentialType.API_KEY, CredentialType.OAUTH2}
 
 
-def test_builtin_tool_provider_invalid_credential_type_raises():
+def test_builtin_tool_provider_invalid_credential_type_raises() -> None:
     with (
         patch(
             "core.tools.builtin_tool.provider.load_yaml_file_cached",
@@ -131,7 +134,7 @@ def test_builtin_tool_provider_invalid_credential_type_raises():
         provider.get_credentials_schema_by_type("invalid")
 
 
-def test_builtin_tool_provider_validate_credentials_delegates():
+def test_builtin_tool_provider_validate_credentials_delegates() -> None:
     with (
         patch(
             "core.tools.builtin_tool.provider.load_yaml_file_cached",
@@ -149,7 +152,7 @@ def test_builtin_tool_provider_validate_credentials_delegates():
     assert provider.last_validation == ("user-1", {"api_key": "secret"})
 
 
-def test_builtin_tool_provider_unauthorized_schema_is_empty():
+def test_builtin_tool_provider_unauthorized_schema_is_empty() -> None:
     with (
         patch(
             "core.tools.builtin_tool.provider.load_yaml_file_cached",
@@ -166,13 +169,13 @@ def test_builtin_tool_provider_unauthorized_schema_is_empty():
     assert provider.get_credentials_schema_by_type(CredentialType.UNAUTHORIZED) == []
 
 
-def test_builtin_tool_provider_init_raises_when_provider_yaml_missing():
+def test_builtin_tool_provider_init_raises_when_provider_yaml_missing() -> None:
     with patch("core.tools.builtin_tool.provider.load_yaml_file_cached", side_effect=RuntimeError("boom")):
         with pytest.raises(ToolProviderNotFoundError, match="can not load provider yaml"):
             _ConcreteBuiltinProvider()
 
 
-def test_builtin_tool_provider_handles_empty_credentials_and_oauth():
+def test_builtin_tool_provider_handles_empty_credentials_and_oauth() -> None:
     provider = object.__new__(_ConcreteBuiltinProvider)
     provider.tools = []
     provider.entity = ToolProviderEntity.model_validate(
@@ -196,7 +199,7 @@ def test_builtin_tool_provider_handles_empty_credentials_and_oauth():
     assert provider._get_tool_labels() == []
 
 
-def test_builtin_tool_provider_forked_tool_runtime_is_initialized():
+def test_builtin_tool_provider_forked_tool_runtime_is_initialized() -> None:
     with (
         patch(
             "core.tools.builtin_tool.provider.load_yaml_file_cached",

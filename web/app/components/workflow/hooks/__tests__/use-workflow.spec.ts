@@ -173,6 +173,33 @@ describe('useNodesReadOnly', () => {
 })
 
 describe('useWorkflow connection validation', () => {
+  it.each([
+    { source: 'start', sourceHandle: 'source', target: 'approval' },
+    { source: 'approval', sourceHandle: 'approve', target: 'end' },
+  ])(
+    'connects $source to $target when legacy Human Input is absent from the catalog',
+    (connection) => {
+      const { result } = renderWorkflowFlowHook(() => useWorkflow(), {
+        nodes: [
+          createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start', desc: '' } }),
+          createNode({
+            id: 'approval',
+            data: { type: BlockEnum.HumanInput, version: '1', title: 'Approval', desc: '' },
+          }),
+          createNode({ id: 'end', data: { type: BlockEnum.End, title: 'End', desc: '' } }),
+        ],
+        edges: [],
+        hooksStoreProps: {
+          availableNodesMetaData: {
+            nodes: [BlockEnum.Start, BlockEnum.HumanInputV2, BlockEnum.End].map(createNodeDefault),
+          },
+        },
+      })
+
+      expect(result.current.isValidConnection({ ...connection, targetHandle: 'target' })).toBe(true)
+    },
+  )
+
   it('should validate Agent V2 graph nodes against the Agent V2 catalog type', () => {
     const agentNode = createNode({
       id: 'agent-v2',

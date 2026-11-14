@@ -11,15 +11,16 @@ import type { ComponentProps } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape } from '@/app/components/workflow/hooks-store/store'
 import { ORPCError } from '@orpc/client'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store/provider'
-import { VarType } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createDeferred } from '@/test/deferred'
@@ -43,6 +44,19 @@ const mocks = vi.hoisted(() => ({
 }))
 
 const originalBody = 'Original body {{#url#}}'
+const subjectVariableButtonLabel = 'workflow.nodes.humanInputV2.template.insertVariable'
+const loopTemplateVariables = {
+  availableVars: [
+    {
+      nodeId: 'loop',
+      title: 'Contract loop',
+      vars: [{ variable: 'round', type: VarType.number }],
+    },
+  ],
+  availableNodes: [
+    createNode({ id: 'loop', data: { type: BlockEnum.Loop, title: 'Contract loop' } }),
+  ],
+}
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -164,6 +178,21 @@ const getBodyEditor = () =>
 
 const setBody = async (value: string) => replacePromptEditorText(getBodyEditor(), value)
 
+const getSubjectEditor = () =>
+  screen.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.template.subject' })
+
+const setSubject = async (value: string) => replacePromptEditorText(getSubjectEditor(), value)
+
+const openSubjectVariables = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: subjectVariableButtonLabel }))
+  return screen.findByRole('searchbox', { name: 'workflow.common.searchVar' })
+}
+
+const insertSubjectRound = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.type(await openSubjectVariables(user), 'round')
+  await user.click(screen.getByText('round', { exact: true }))
+}
+
 const expectNoTemplateTest = () => {
   expect(mocks.workflowTest).not.toHaveBeenCalled()
   expect(mocks.chatflowTest).not.toHaveBeenCalled()
@@ -186,11 +215,16 @@ describe('Human Input v2 Message Template', () => {
     })
     await openTemplate(user)
 
-    const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
-    expect(subject).toHaveValue('Original subject{{#start.email#}}')
+    const subject = getSubjectEditor()
+    await user.click(
+      screen.getByText('workflow.nodes.humanInputV2.template.subject', { exact: true }),
+    )
+    expect(subject).toHaveFocus()
+    expect(subject).toHaveTextContent('Original subject')
+    expect(within(subject).getByText('email', { exact: true })).toBeInTheDocument()
     expect(screen.getByLabelText('Committed body')).toHaveTextContent(originalBody)
 
-    await user.type(subject, ' updated')
+    await setSubject('Original subject{{#start.email#}} updated')
     await setBody('Updated body {{#url#}}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -203,45 +237,126 @@ describe('Human Input v2 Message Template', () => {
     )
     expect(screen.getByLabelText('Committed body')).toHaveTextContent('Updated body {{#url#}}')
     await openTemplate(user)
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveValue(
-      'Original subject{{#start.email#}} updated',
+    expect(getSubjectEditor()).toHaveTextContent('Original subject')
+    expect(within(getSubjectEditor()).getByText('email', { exact: true })).toBeInTheDocument()
+    expect(getSubjectEditor()).toHaveTextContent('updated')
+  })
+
+  it('inserts a parent loop variable as a visible badge and saves its complete selector', async () => {
+    const user = userEvent.setup()
+    const { props } = renderTemplate(loopTemplateVariables)
+    await openTemplate(user)
+    await setSubject('Review ')
+
+    await insertSubjectRound(user)
+
+    const subject = getSubjectEditor()
+    expect(subject).toHaveTextContent('Review')
+    expect(within(subject).getByText('Contract loop', { exact: true })).toBeInTheDocument()
+    expect(within(subject).getByText('round', { exact: true })).toBeInTheDocument()
+    expect(subject).not.toHaveTextContent('{{#loop.round#}}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(props.onChange).toHaveBeenCalledExactlyOnceWith({
+      subject: 'Review {{#loop.round#}}',
+      body: originalBody,
+    })
+    expectNoTemplateTest()
+  })
+
+  it('closes the subject variable picker on Escape and discards inserted variables on Cancel', async () => {
+    const user = userEvent.setup()
+    const { props } = renderTemplate(loopTemplateVariables)
+    await openTemplate(user)
+    const subject = getSubjectEditor()
+    await user.type(await openSubjectVariables(user), 'round')
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('searchbox', { name: 'workflow.common.searchVar' }),
+      ).not.toBeInTheDocument(),
     )
+    expect(subject).toHaveTextContent('Original subject')
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+
+    await setSubject('Original subject')
+    await insertSubjectRound(user)
+    expect(within(subject).getByText('round', { exact: true })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await openTemplate(user)
+    expect(getSubjectEditor()).toHaveTextContent('Original subject')
+    expect(within(getSubjectEditor()).queryByText('round', { exact: true })).not.toBeInTheDocument()
+    expect(props.onChange).not.toHaveBeenCalled()
+    expectNoTemplateTest()
+  })
+
+  it('collects a variable inserted in the subject before saving and sending a template test', async () => {
+    const user = userEvent.setup()
+    const { props } = renderTemplate(loopTemplateVariables)
+    await openTest(user)
+    await setSubject('Original subject')
+    await insertSubjectRound(user)
+    await sendTest(user)
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.template.testInputsRequired'),
+    ).toBeInTheDocument()
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+    expectNoTemplateTest()
+
+    await user.type(screen.getByLabelText('loop.round'), '3')
+    await sendTest(user)
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+    ).toBeInTheDocument()
+    expect(props.onChange).toHaveBeenCalledWith({
+      subject: 'Original subject{{#loop.round#}}',
+      body: originalBody,
+    })
+    expect(mocks.workflowTest).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-template-test', node_id: 'human-input-v2' },
+      body: { channel: 'email', inputs: { '#loop.round#': 3 } },
+    })
+    expect(mocks.chatflowTest).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByText('workflow.nodes.humanInputV2.template.subject', { exact: true }),
+    )
+    await user.keyboard('{ArrowLeft}')
+    expect(getSubjectEditor()).toHaveFocus()
+    expect(
+      screen.getByText('workflow.nodes.humanInputV2.template.testCompleted'),
+    ).toBeInTheDocument()
+
+    await setSubject('Updated subject{{#loop.round#}}')
+    expect(
+      screen.queryByText('workflow.nodes.humanInputV2.template.testCompleted'),
+    ).not.toBeInTheDocument()
+    expect(mocks.workflowTest).toHaveBeenCalledTimes(1)
   })
 
   it('discards local drafts on Cancel and Escape and restores trigger focus', async () => {
     const user = userEvent.setup()
     renderTemplate()
     await openTemplate(user)
-    const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
-    await user.clear(subject)
-    await user.type(subject, 'Unsaved')
+    await setSubject('Unsaved')
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'workflow.common.configure' })).toHaveFocus(),
     )
     await openTemplate(user)
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveValue(
-      'Original subject',
-    )
+    expect(getSubjectEditor()).toHaveTextContent('Original subject')
 
-    await user.clear(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'))
-    await user.type(
-      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
-      'Discard with Escape',
-    )
+    await setSubject('Discard with Escape')
     await user.keyboard('{Escape}')
     await openTemplate(user)
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveValue(
-      'Original subject',
-    )
+    expect(getSubjectEditor()).toHaveTextContent('Original subject')
   })
 
   it('validates both local fields and does not submit twice', async () => {
     const user = userEvent.setup()
     const { props } = renderTemplate()
     await openTemplate(user)
-    await user.clear(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'))
+    await setSubject('')
     await setBody('')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -255,10 +370,7 @@ describe('Human Input v2 Message Template', () => {
     expect(screen.getByText('workflow.nodes.humanInputV2.error.bodyRequired')).toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
 
-    await user.type(
-      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
-      'Subject',
-    )
+    await setSubject('Subject')
     await setBody('Body {{#url#}}')
     const save = screen.getByRole('button', { name: 'common.operation.save' })
     await user.dblClick(save)
@@ -273,7 +385,9 @@ describe('Human Input v2 Message Template', () => {
     })
     await openTemplate(user)
 
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toBeDisabled()
+    expect(getSubjectEditor()).toHaveAttribute('contenteditable', 'false')
+    expect(getSubjectEditor()).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: subjectVariableButtonLabel })).toBeDisabled()
     expect(getBodyEditor()).toHaveAttribute('contenteditable', 'false')
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
@@ -355,18 +469,12 @@ describe('Human Input v2 Message Template', () => {
     ).toBeInTheDocument()
     expectNoTemplateTest()
     expect(mocks.syncDraft).not.toHaveBeenCalled()
-    await user.clear(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'))
-    await user.type(
-      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
-      'Unsaved test subject',
-    )
+    await setSubject('Unsaved test subject')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(props.onChange).not.toHaveBeenCalled()
     await waitFor(() => expect(testTrigger).toHaveFocus())
     await openTemplate(user)
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveValue(
-      'Original subject',
-    )
+    expect(getSubjectEditor()).toHaveTextContent('Original subject')
   })
 
   it('offers only the workspace configured Email and Slack channels for template tests', async () => {
@@ -522,11 +630,7 @@ describe('Human Input v2 Message Template', () => {
       mode: chat ? 'advanced-chat' : 'workflow',
     })
     await openTest(user)
-    await user.clear(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'))
-    await user.type(
-      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
-      'Updated test subject',
-    )
+    await setSubject('Updated test subject')
     await user.click(
       screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
     )
@@ -575,7 +679,8 @@ describe('Human Input v2 Message Template', () => {
       await openTest(user)
       await sendTest(user)
       expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
-      expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toBeDisabled()
+      expect(getSubjectEditor()).toHaveAttribute('contenteditable', 'false')
+      expect(getSubjectEditor()).toHaveAttribute('aria-disabled', 'true')
 
       if (change === 'app changes') {
         rerenderEnvironment({
@@ -632,9 +737,7 @@ describe('Human Input v2 Message Template', () => {
       expect(
         screen.queryByText('workflow.nodes.humanInputV2.template.testCompleted'),
       ).not.toBeInTheDocument()
-      expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveValue(
-        'Original subject',
-      )
+      expect(getSubjectEditor()).toHaveTextContent('Original subject')
     },
   )
 
@@ -777,7 +880,10 @@ describe('Human Input v2 Message Template', () => {
     await waitFor(() => expect(mocks.workflowTest).toHaveBeenCalledOnce())
     expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
     expect(props.onChange).toHaveBeenCalledTimes(1)
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toBeDisabled()
+    expect(getSubjectEditor()).toHaveAttribute('contenteditable', 'false')
+    expect(getSubjectEditor()).toHaveAttribute('aria-disabled', 'true')
+
+    expect(screen.getByRole('button', { name: subjectVariableButtonLabel })).toBeDisabled()
 
     await act(async () => request.resolve({}))
     expect(

@@ -3995,3 +3995,12 @@ export const zGetWorkspacesByWorkspaceIdToolsQuery = z.object({
  * Tools
  */
 export const zGetWorkspacesByWorkspaceIdToolsResponse = zToolListResponse
+
+export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Workspace detail
+ */
+export const zPostWorkspacesByWorkspaceIdSwitchResponse = zWorkspaceDetailResponse

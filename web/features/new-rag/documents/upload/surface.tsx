@@ -93,6 +93,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
     completedUploadCount,
     discardAllStagedFiles,
     discardStagedFile,
+    failures: stagedUploadFailures,
     progress: stagedUploadProgress,
     resetProgress,
     stageFiles,
@@ -225,7 +226,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         return false
       }
       try {
-        const uploaded = await uploadStagedFiles(uploadableFiles, async () => {
+        const outcome = await uploadStagedFiles(uploadableFiles, async () => {
           if (!(await checkUploadQuota())) return false
           if (
             (await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready'
@@ -234,7 +235,12 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           await stageFiles(uploadableFiles)
           return true
         })
-        if (!uploaded) return false
+        if (outcome === 'canceled') return false
+        if (outcome === 'partial') {
+          // The form stays open and explains each rejected file where it is listed.
+          if (completedUploadCount(uploadableFiles)) refreshDocuments()
+          return false
+        }
         const exclusionDetails = formatExclusionDetails(localExclusions)
         if (localExclusions.length)
           toast.warning(
@@ -367,6 +373,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           fileSizeLimitMb={fileSizeLimitMb}
           supportBatchUpload={supportBatchUpload}
           initialFiles={formInitialFiles}
+          uploadFailures={stagedUploadFailures}
           uploadProgress={stagedUploadProgress}
           uploading={uploading}
           onCancel={cancel}

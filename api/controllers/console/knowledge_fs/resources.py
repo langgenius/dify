@@ -54,6 +54,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.db.session_factory import session_factory
+from libs.exception import RelayedHTTPError
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
@@ -64,6 +65,8 @@ from repositories.sqlalchemy_knowledge_fs_capability_issuance_auditor import (
     SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor,
 )
 from services.feature_service import FeatureService
+from services.file_scan import FileScanService, ScanScope
+from services.file_scan.entities import SCOPE_KNOWLEDGE_FS_SPACE
 from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
 from services.knowledge_fs.buffered_upload_admission import DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION
 from services.knowledge_fs.control_plane_service import (
@@ -279,6 +282,7 @@ from services.knowledge_fs.staged_upload_service import (
     KnowledgeFSStagedUploadConflictError,
     KnowledgeFSStagedUploadInvalidError,
     KnowledgeFSStagedUploadNotFoundError,
+    KnowledgeFSStagedUploadScanBlockedError,
     KnowledgeFSStagedUploadService,
     KnowledgeFSStagedUploadTooLargeError,
 )
@@ -472,6 +476,15 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise Conflict() from exc
         except KnowledgeFSProductResourceNotFoundError as exc:
             raise KnowledgeFSResourceNotFoundHTTPError(exc.failure) from exc
+        except KnowledgeFSStagedUploadScanBlockedError as exc:
+            # The details carry the structured reason so the upload UI can name the file, the
+            # cause and the next step in the user's language.
+            raise RelayedHTTPError(
+                status=HTTPStatus.UNPROCESSABLE_ENTITY,
+                error_code=exc.outcome.code.value if exc.outcome.code else "file_scan_unavailable",
+                message=exc.outcome.describe(),
+                details=exc.outcome.to_error(),
+            ) from exc
         except KnowledgeFSStagedUploadNotFoundError as exc:
             raise NotFound() from exc
         except KnowledgeFSStagedUploadConflictError as exc:
@@ -757,6 +770,27 @@ def _read_document_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
         content_type=upload.mimetype or "application/octet-stream",
         body=body,
     )
+
+
+def _scanned_document_upload_reader(
+    *, tenant_id: str, control_space_id: str
+) -> Callable[[int], KnowledgeFSRemoteMultipartFile]:
+    """Read a direct multipart upload and stop it when the Space's malware scan rejects the file."""
+
+    def read(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
+        upload = _read_document_upload(max_bytes)
+        outcome = FileScanService().scan_content(
+            tenant_id=tenant_id,
+            scope=ScanScope(SCOPE_KNOWLEDGE_FS_SPACE, control_space_id),
+            file_name=upload.filename,
+            mime_type=upload.content_type,
+            content=upload.body,
+        )
+        if not outcome.allowed:
+            raise KnowledgeFSStagedUploadScanBlockedError(outcome)
+        return upload
+
+    return read
 
 
 def _read_staged_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
@@ -1972,7 +2006,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
-            body_reader=_read_document_upload,
+            body_reader=_scanned_document_upload_reader(tenant_id=tenant_id, control_space_id=control_space_id),
         )
         return dump_response(KnowledgeFSDocumentCreateAcceptedResponse, legacy_result), HTTPStatus.ACCEPTED
 
@@ -3149,6 +3183,8 @@ class KnowledgeFSSpaceSourcePagesApi(Resource):
             source_id=source_id,
             cursor=query.cursor,
             limit=query.limit,
+            parent_id=query.parent_id,
+            view=query.view,
         )
         return dump_response(KnowledgeFSSourcePagesResponse, result)
 
