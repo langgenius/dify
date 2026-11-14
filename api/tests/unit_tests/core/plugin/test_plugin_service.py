@@ -484,6 +484,32 @@ class TestPluginModelProviderCache:
         assert without_source[0].installation_source is None
         assert with_source[0].installation_source == PluginInstallationSource.Marketplace
 
+    def test_uncached_fetch_keeps_only_the_most_recent_listings(
+        self, config_overrides: Callable[..., None], model_provider_daemon: ModelProviderDaemon
+    ) -> None:
+        """The process keeps a bounded number of listings, dropping the least recently used one."""
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+
+        from core.plugin.plugin_service import PluginService
+
+        capacity = PluginService.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES
+        listings = [(_build_plugin_model_provider(provider=f"provider-{index}"),) for index in range(capacity + 1)]
+
+        model_provider_daemon.serve_providers(*listings[0])
+        oldest = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+        newest = oldest
+        for listing in listings[1:]:
+            model_provider_daemon.serve_providers(*listing)
+            newest = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+
+        assert PluginService.fetch_plugin_model_providers(tenant_id="tenant-1") is newest
+        model_provider_daemon.serve_providers(*listings[0])
+        rebuilt = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
+
+        assert rebuilt is not oldest
+        assert [declaration.provider for declaration in rebuilt] == [declaration.provider for declaration in oldest]
+        assert len(PluginService._daemon_listing_declarations_cache) == capacity
+
     def test_fetch_plugin_model_providers_refetches_when_cache_read_fails(self) -> None:
         """Redis read failures do not block provider discovery for the tenant."""
         with patch(f"{MODULE}.redis_client") as redis_client:
