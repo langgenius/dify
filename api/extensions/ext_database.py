@@ -1,9 +1,11 @@
 import logging
 
 import gevent
-from sqlalchemy import event
+from sqlalchemy import Engine, event
 from sqlalchemy.pool import Pool
 
+from configs import dify_config
+from core.db.connection_hold_monitor import ConnectionHoldMonitor
 from dify_app import DifyApp
 from models.engine import db
 
@@ -50,6 +52,22 @@ def _setup_gevent_compatibility():
     _gevent_compatibility_setup = True
 
 
+def install_connection_hold_monitor(engine: Engine) -> ConnectionHoldMonitor | None:
+    """Watch ``engine``'s pool for held connections when SQLALCHEMY_POOL_HOLD_WARNING_SECONDS is set."""
+    warn_after_seconds = dify_config.SQLALCHEMY_POOL_HOLD_WARNING_SECONDS
+    if warn_after_seconds <= 0:
+        return None
+    # A pool size of 0 means "no limit" to SQLAlchemy, so there is no point at which the pool is full.
+    capacity = (
+        dify_config.SQLALCHEMY_POOL_SIZE + dify_config.SQLALCHEMY_MAX_OVERFLOW
+        if dify_config.SQLALCHEMY_POOL_SIZE > 0
+        else None
+    )
+    monitor = ConnectionHoldMonitor(warn_after_seconds=warn_after_seconds, capacity=capacity)
+    monitor.install(engine.pool)
+    return monitor
+
+
 def init_app(app: DifyApp):
     db.init_app(app)
     _setup_gevent_compatibility()
@@ -57,6 +75,6 @@ def init_app(app: DifyApp):
     # Eagerly build the engine so pool_size/max_overflow/etc. come from config
     try:
         with app.app_context():
-            _ = db.engine  # triggers engine creation with the configured options
+            install_connection_hold_monitor(db.engine)  # also triggers engine creation with the configured options
     except Exception:
         logger.exception("Failed to initialize SQLAlchemy engine during app startup")
