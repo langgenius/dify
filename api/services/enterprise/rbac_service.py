@@ -1249,7 +1249,7 @@ class RBACService:
             account_id: str | None,
             control_space_ids: list[str],
             *,
-            session: Session,
+            session: Session | None,
         ) -> dict[str, list[str]]:
             if not control_space_ids:
                 return {}

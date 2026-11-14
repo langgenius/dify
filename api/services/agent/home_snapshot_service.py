@@ -3,35 +3,22 @@
 from __future__ import annotations
 
 import logging
-from http import HTTPStatus
 
-from dify_agent.client import Client, DifyAgentClientError, DifyAgentHTTPError, DifyAgentNotFoundError
-from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
+from dify_agent.client import Client
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clients.agent_backend.errors import backend_error_detail, backend_reported_failure
 from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
-from libs.uuid_utils import uuidv7
 from models.agent import (
     Agent,
-    AgentConfigDraft,
-    AgentConfigVersionKind,
     AgentHomeSnapshot,
     AgentStatus,
     AgentWorkingResourceStatus,
-    AgentWorkspaceOwnerType,
 )
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
-from services.agent.errors import (
-    AgentBuildSandboxNotFoundError,
-    AgentHomeSnapshotCreateFailedError,
-    AgentHomeSnapshotTooLargeError,
-)
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 logger = logging.getLogger(__name__)
 
@@ -42,93 +29,6 @@ class AgentHomeSnapshotUnavailableError(RuntimeError):
 
 class AgentHomeSnapshotService:
     """Create, retire, and collect Agent-owned immutable Home Snapshots."""
-
-    @classmethod
-    def create_for_build_apply(
-        cls,
-        *,
-        session: Session,
-        build_draft: AgentConfigDraft,
-    ) -> AgentHomeSnapshot | None:
-        """Checkpoint the exact participant owned by ``build_draft``.
-
-        Returns ``None`` when the runtime backend does not support Home
-        Snapshots (explicit ``snapshot_ref: null`` response): the apply still
-        succeeds and the new Home is materialized image-fresh. No ledger row
-        is persisted in that case — there is no snapshot to track.
-        """
-
-        source_binding_id = build_draft.agent_workspace_binding_id
-        if source_binding_id is None:
-            raise AgentBuildSandboxNotFoundError()
-        agent = session.scalar(
-            select(Agent).where(
-                Agent.id == build_draft.agent_id,
-                Agent.tenant_id == build_draft.tenant_id,
-            )
-        )
-        if agent is None:
-            raise AgentBuildSandboxNotFoundError()
-        from services.agent.roster_service import AgentRosterService
-
-        runtime_app_id = AgentRosterService.runtime_backing_app_id(agent)
-        if runtime_app_id is None:
-            raise AgentBuildSandboxNotFoundError()
-        binding = AgentWorkspaceService.get_active_binding(
-            session=session,
-            tenant_id=build_draft.tenant_id,
-            binding_id=source_binding_id,
-            expected_owner_scope=WorkspaceOwnerScope(
-                tenant_id=build_draft.tenant_id,
-                app_id=runtime_app_id,
-                owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
-                owner_id=build_draft.id,
-            ),
-        )
-        if binding is None or binding.agent_id != build_draft.agent_id:
-            raise AgentBuildSandboxNotFoundError()
-        AgentWorkspaceService.validate_binding_generation(
-            binding,
-            base_home_snapshot_id=build_draft.home_snapshot_id,
-            agent_config_version_id=build_draft.id,
-            agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
-        )
-
-        home_snapshot_id = str(uuidv7())
-        try:
-            with cls._client() as client:
-                response = client.create_home_snapshot_from_binding_sync(
-                    CreateHomeSnapshotFromBindingRequest(
-                        tenant_id=build_draft.tenant_id,
-                        agent_id=build_draft.agent_id,
-                        home_snapshot_id=home_snapshot_id,
-                        backend_binding_ref=binding.backend_binding_ref,
-                    )
-                )
-        except DifyAgentNotFoundError as exc:
-            raise AgentBuildSandboxNotFoundError() from exc
-        except DifyAgentHTTPError as exc:
-            if not backend_reported_failure(exc):
-                logger.exception("Unreadable Home Snapshot response for agent %s", build_draft.agent_id)
-                raise AgentHomeSnapshotCreateFailedError() from exc
-            _, message = backend_error_detail(exc)
-            if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
-                raise AgentHomeSnapshotTooLargeError(message) from exc
-            raise AgentHomeSnapshotCreateFailedError(message) from exc
-        except DifyAgentClientError as exc:
-            raise AgentHomeSnapshotCreateFailedError(str(exc)) from exc
-
-        if response.snapshot_ref is None:
-            return None
-        home_snapshot = AgentHomeSnapshot(
-            id=home_snapshot_id,
-            tenant_id=build_draft.tenant_id,
-            agent_id=build_draft.agent_id,
-            snapshot_ref=response.snapshot_ref,
-            status=AgentWorkingResourceStatus.ACTIVE,
-        )
-        session.add(home_snapshot)
-        return home_snapshot
 
     @classmethod
     def retire_all_for_agent(cls, *, session: Session, tenant_id: str, agent_id: str) -> list[str]:
@@ -185,14 +85,20 @@ class AgentHomeSnapshotService:
 
     @staticmethod
     def _client() -> Client:
-        base_url = dify_config.AGENT_BACKEND_BASE_URL
-        if not base_url:
-            raise AgentHomeSnapshotUnavailableError("Dify Agent backend is required for Home Snapshot operations")
-        return create_agent_backend_client(
-            base_url=base_url,
-            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
-            timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
-        )
+        """Build the configured client for legacy collection and ledger callers."""
+        return create_home_snapshot_client()
+
+
+def create_home_snapshot_client() -> Client:
+    """Use the configured Agent backend and its dedicated Home Snapshot timeout."""
+    base_url = dify_config.AGENT_BACKEND_BASE_URL
+    if not base_url:
+        raise AgentHomeSnapshotUnavailableError("Dify Agent backend is required for Home Snapshot operations")
+    return create_agent_backend_client(
+        base_url=base_url,
+        api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
+    )
 
 
 def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str | None) -> None:

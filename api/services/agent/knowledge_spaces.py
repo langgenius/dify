@@ -18,6 +18,7 @@ from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
+    KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
 )
 from models.workflow import Workflow
@@ -42,6 +43,14 @@ def validate_agent_knowledge_spaces(
     if not bindings:
         return
     ids = [binding.control_space_id for binding in bindings]
+    roles = read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
+    require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
+
+
+def read_agent_knowledge_space_roles(
+    session: Session, *, tenant_id: str, account_id: str, ids: list[str]
+) -> dict[str, KnowledgeFSControlSpacePermissionRole | None]:
+    """Read local roles for active spaces within the tenant, returning no ORM rows."""
     spaces = list(
         session.scalars(
             select(KnowledgeFSControlSpace).where(
@@ -51,23 +60,32 @@ def validate_agent_knowledge_spaces(
             )
         )
     )
-    roles = resolve_local_roles(session, control_spaces=spaces, account_id=account_id)
+    return resolve_local_roles(session, control_spaces=spaces, account_id=account_id)
+
+
+def require_agent_knowledge_space_access(
+    *,
+    tenant_id: str,
+    account_id: str,
+    ids: list[str],
+    roles: dict[str, KnowledgeFSControlSpacePermissionRole | None],
+) -> None:
+    """Require local and enterprise read/query permission for every requested space."""
     permissions = DifyKnowledgeFSProductRBACPort().permission_keys_by_control_space(
-        session=session,
+        session=None,
         tenant_id=tenant_id,
         account_id=account_id,
         control_space_ids=ids,
     )
     allowed = {
-        space.id
-        for space in spaces
+        space_id
+        for space_id, role in roles.items()
         if {KnowledgeFSProductPermission.READ, KnowledgeFSProductPermission.QUERY}.issubset(
-            effective_product_permissions(roles.get(space.id), permissions.get(space.id, frozenset()))
+            effective_product_permissions(role, permissions.get(space_id, frozenset()))
         )
     }
     if set(ids) - allowed:
-        # Missing and forbidden targets deliberately share an error and do not
-        # disclose names/IDs from another principal's space catalog.
+        # Missing and forbidden targets deliberately share an error.
         raise InvalidComposerConfigError(
             "knowledge_fs_space_unavailable: one or more selected Agent Knowledge Bases are unavailable or unauthorized"
         )
