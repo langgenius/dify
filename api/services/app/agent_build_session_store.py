@@ -20,6 +20,10 @@ class AgentBuildApplyChangedError(Exception):
     """The prepared Build draft or Sandbox changed before Apply could commit."""
 
 
+class AgentBuildApplyRolledBackError(Exception):
+    """Apply failed before commit and rolled back, so its checkpoint is unattached."""
+
+
 class AgentBuildBindingUnavailableError(Exception):
     """The draft's retained Sandbox binding is no longer available in its owner scope."""
 
@@ -158,5 +162,9 @@ class AgentBuildSessionStore(Protocol):
         source: AgentBuildApplySource,
         snapshot: AgentBuildHomeSnapshot | None,
     ) -> AgentBuildApplied:
-        """Revalidate the source under lock before applying it. None means an image-fresh Home."""
+        """Revalidate the source under lock and commit Apply. None means an image-fresh Home.
+
+        Known rejections and AgentBuildApplyRolledBackError leave the checkpoint unattached.
+        An exception from commit may leave the checkpoint attached.
+        """
         ...

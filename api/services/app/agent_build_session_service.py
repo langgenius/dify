@@ -1,10 +1,12 @@
 """Manage an account's Agent Build conversation and draft."""
 
+import logging
 from typing import Protocol
 
 from machinery.context import RequestContext
 from services.app.agent_build_session_store import (
     AgentBuildApplyChangedError,
+    AgentBuildApplyRolledBackError,
     AgentBuildBaseUnavailableError,
     AgentBuildBindingUnavailableError,
     AgentBuildDraft,
@@ -14,6 +16,8 @@ from services.app.agent_build_session_store import (
     AgentDraftSummary,
 )
 from services.entities.agent_entities import ComposerSavePayload
+
+logger = logging.getLogger(__name__)
 
 
 class AgentBuildResourceCollector(Protocol):
@@ -99,7 +103,10 @@ class AgentBuildSessionService:
         return result.draft
 
     def apply_draft(self, context: RequestContext, agent_id: str) -> AgentDraftSummary:
-        """Checkpoint a validated Build draft without a DB session, then commit only the prepared state."""
+        """Checkpoint the validated Build draft and collect retired bindings after a successful commit.
+
+        Remove the checkpoint if writeback confirms it was unattached. Otherwise retain it for reconciliation.
+        """
         tenant_id = context.active_workspace_id
         source = self._store.prepare_build_apply(tenant_id=tenant_id, agent_id=agent_id, account_id=context.account_id)
         self._config.validate_apply(context, source.agent_soul)
@@ -114,11 +121,25 @@ class AgentBuildSessionService:
                 source=source,
                 snapshot=snapshot,
             )
-        except (AgentBuildApplyChangedError, AgentBuildBindingUnavailableError, AgentBuildBaseUnavailableError):
+        except (
+            AgentBuildApplyChangedError,
+            AgentBuildBindingUnavailableError,
+            AgentBuildBaseUnavailableError,
+            AgentBuildApplyRolledBackError,
+        ):
             if snapshot is not None:
                 self._snapshots.discard(snapshot)
             raise
-        # An unexpected database failure can leave the commit outcome unknown.
-        # Do not delete a checkpoint that the shared draft might already reference.
+        except Exception:
+            if snapshot is not None:
+                logger.exception(
+                    "Retaining Build Home checkpoint after uncertain writeback: "
+                    "tenant_id=%s agent_id=%s home_snapshot_id=%s snapshot_ref=%r",
+                    tenant_id,
+                    agent_id,
+                    snapshot.id,
+                    snapshot.ref,
+                )
+            raise
         self._collect_resources(tenant_id=tenant_id, binding_ids=result.retired_binding_ids)
         return result.draft

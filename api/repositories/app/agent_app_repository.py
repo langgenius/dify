@@ -71,7 +71,9 @@ from services.app.agent_build_session_store import (
     AgentBuildAgentNotFoundError,
     AgentBuildApplied,
     AgentBuildApplyChangedError,
+    AgentBuildApplyRolledBackError,
     AgentBuildApplySource,
+    AgentBuildBaseUnavailableError,
     AgentBuildBindingUnavailableError,
     AgentBuildCheckout,
     AgentBuildDraft,
@@ -530,50 +532,82 @@ class AgentAppRepository:
         source: AgentBuildApplySource,
         snapshot: AgentBuildHomeSnapshot | None,
     ) -> AgentBuildApplied:
-        """Commit the shared draft, checkpoint ledger and retirements only while the prepared Build state matches."""
-        with self._session_factory.begin() as session:
-            try:
-                agent, draft = self._require_build_apply_draft(
-                    session, tenant_id=tenant_id, agent_id=agent_id, account_id=account_id, for_update=True
-                )
-            except (AgentBuildAgentNotFoundError, AgentBuildDraftNotFoundError) as exc:
-                raise AgentBuildApplyChangedError from exc
-            current = self._build_apply_source(session, agent=agent, draft=draft, for_update=True)
-            if current != source or current.sandbox is None:
-                raise AgentBuildApplyChangedError
+        """Recheck the prepared state and atomically attach the checkpoint and retire the old bindings.
 
-            soul = AgentSoulConfig.model_validate(source.agent_soul)
-            shared = save_agent_draft(
-                session=session,
-                tenant_id=tenant_id,
-                agent=agent,
-                draft_type=AgentConfigDraftType.DRAFT,
-                account_id=None,
-                agent_soul=soul,
-                account_id_for_audit=account_id,
-                base_snapshot_id=source.base_snapshot_id,
-            )
-            retired = self._retire_preview_bindings(session, agent=agent, draft=shared)
-            workspaces = AgentWorkspaceRepository(session=session)
-            binding_id = workspaces.retire_binding(tenant_id=tenant_id, binding_id=current.sandbox.binding_id)
-            if binding_id is None:
-                raise AgentBuildApplyChangedError
-            if snapshot is not None:
-                session.add(
-                    AgentHomeSnapshot(id=snapshot.id, tenant_id=tenant_id, agent_id=agent_id, snapshot_ref=snapshot.ref)
+        Report a rolled-back write only after a staging failure and successful rollback.
+        A failure once commit starts leaves the checkpoint's attachment uncertain.
+        """
+        with self._session_factory() as session:
+            try:
+                result = self._stage_build_apply(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    account_id=account_id,
+                    source=source,
+                    snapshot=snapshot,
                 )
-            shared.home_snapshot_id = snapshot.id if snapshot is not None else None
-            agent.active_config_is_published = agent_soul_matches_active_config(
-                session=session,
-                tenant_id=tenant_id,
-                agent=agent,
-                agent_soul=soul,
-                home_snapshot_id=shared.home_snapshot_id,
+            except (AgentBuildApplyChangedError, AgentBuildBaseUnavailableError, AgentBuildBindingUnavailableError):
+                raise
+            except Exception as exc:
+                session.rollback()
+                raise AgentBuildApplyRolledBackError from exc
+            session.commit()
+            return result
+
+    def _stage_build_apply(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        source: AgentBuildApplySource,
+        snapshot: AgentBuildHomeSnapshot | None,
+    ) -> AgentBuildApplied:
+        """Stage and flush Apply in the caller's transaction if the prepared state still matches."""
+        try:
+            agent, draft = self._require_build_apply_draft(
+                session, tenant_id=tenant_id, agent_id=agent_id, account_id=account_id, for_update=True
             )
-            agent.updated_by = account_id
-            session.delete(draft)
-            session.flush()
-            return AgentBuildApplied(project_agent_draft_summary(shared), (*retired, binding_id))
+        except (AgentBuildAgentNotFoundError, AgentBuildDraftNotFoundError) as exc:
+            raise AgentBuildApplyChangedError from exc
+        current = self._build_apply_source(session, agent=agent, draft=draft, for_update=True)
+        if current != source or current.sandbox is None:
+            raise AgentBuildApplyChangedError
+
+        soul = AgentSoulConfig.model_validate(source.agent_soul)
+        shared = save_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            agent_soul=soul,
+            account_id_for_audit=account_id,
+            base_snapshot_id=source.base_snapshot_id,
+        )
+        retired = self._retire_preview_bindings(session, agent=agent, draft=shared)
+        workspaces = AgentWorkspaceRepository(session=session)
+        binding_id = workspaces.retire_binding(tenant_id=tenant_id, binding_id=current.sandbox.binding_id)
+        if binding_id is None:
+            raise AgentBuildApplyChangedError
+        if snapshot is not None:
+            session.add(
+                AgentHomeSnapshot(id=snapshot.id, tenant_id=tenant_id, agent_id=agent_id, snapshot_ref=snapshot.ref)
+            )
+        shared.home_snapshot_id = snapshot.id if snapshot is not None else None
+        agent.active_config_is_published = agent_soul_matches_active_config(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=soul,
+            home_snapshot_id=shared.home_snapshot_id,
+        )
+        agent.updated_by = account_id
+        session.delete(draft)
+        session.flush()
+        return AgentBuildApplied(project_agent_draft_summary(shared), (*retired, binding_id))
 
     @staticmethod
     def _retire_preview_bindings(session: Session, *, agent: Agent, draft: AgentConfigDraft) -> list[str]:

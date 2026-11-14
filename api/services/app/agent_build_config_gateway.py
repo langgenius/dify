@@ -23,10 +23,10 @@ class AgentBuildConfigGateway:
         self._session_factory = session_factory
 
     def prepare_save(self, context: RequestContext, payload: ComposerSavePayload) -> dict[str, object]:
-        """Normalize and validate the supplied draft Soul, retaining omitted fields for persistence."""
+        """Require and validate a draft Soul, retaining omitted fields for persistence."""
         soul = payload.agent_soul
         if soul is None:
-            raise ValueError("agent_soul is required")
+            raise AgentBuildInvalidConfigError("agent_soul is required")
         backfill_cli_tool_ids(soul)
         try:
             ComposerConfigValidator.validate_draft_save_payload(payload)
