@@ -1,86 +1,30 @@
 import logging
 import time
-from contextlib import ExitStack
 
-import click
 from celery import shared_task
-from sqlalchemy import exists, select
-
-from core.db.session_factory import session_factory
-from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from extensions.ext_redis import redis_client
-from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, MessageAnnotation
-from repositories.annotation_reply_job_repository import (
-    RedisAnnotationReplyJobRepository,
-    annotation_reply_job_owner_key,
-)
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
-    """
-    Async enable annotation reply task
-    """
-    logger.info(click.style(f"Start delete app annotations index: {app_id}", fg="green"))
+def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str) -> None:
+    """Disable reply and publish its terminal job state after the setting is removed."""
+    from extensions.ext_application_services import application_services
+
+    service = application_services().annotation_reply
     start_at = time.perf_counter()
-    jobs = RedisAnnotationReplyJobRepository(redis=redis_client)
-    # get app info
-    with ExitStack() as cleanup:
-        cleanup.callback(jobs.release_processing, app_id=app_id, action="disable", job_id=job_id)
-        session = cleanup.enter_context(session_factory.create_session())
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+    logger.info("Disable annotation reply job %s for app %s in tenant %s", job_id, app_id, tenant_id)
+    try:
+        service.execute_disable(tenant_id=tenant_id, app_id=app_id)
+    except Exception as error:
+        logger.exception("Annotation reply job %s failed for app %s in tenant %s", job_id, app_id, tenant_id)
+        service.complete_job(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id, error=str(error))
+    else:
+        service.complete_job(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id, error=None)
+        logger.info(
+            "Disabled annotation reply job %s for app %s in tenant %s in %.3fs",
+            job_id,
+            app_id,
+            tenant_id,
+            time.perf_counter() - start_at,
         )
-        annotations_exists = session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))
-        if not app:
-            logger.info(click.style(f"App not found: {app_id}", fg="red"))
-            return
-
-        app_annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-        )
-
-        if not app_annotation_setting:
-            logger.info(click.style(f"App annotation setting not found: {app_id}", fg="red"))
-            return
-
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
-
-        try:
-            dataset = Dataset(
-                id=app_id,
-                tenant_id=tenant_id,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-                collection_binding_id=app_annotation_setting.collection_binding_id,
-            )
-
-            try:
-                if annotations_exists:
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
-                    vector.delete()
-            except Exception:
-                logger.exception("Delete annotation index failed when annotation deleted.")
-            redis_client.setex(disable_app_annotation_job_key, 600, "completed")
-            redis_client.expire(annotation_reply_job_owner_key(action="disable", job_id=job_id), 600)
-
-            # delete annotation setting
-            session.delete(app_annotation_setting)
-            session.commit()
-
-            end_at = time.perf_counter()
-            logger.info(
-                click.style(
-                    f"App annotations index deleted : {app_id} latency: {end_at - start_at}",
-                    fg="green",
-                )
-            )
-        except Exception as e:
-            logger.exception("Annotation batch deleted index failed")
-            redis_client.setex(disable_app_annotation_job_key, 600, "error")
-            redis_client.expire(annotation_reply_job_owner_key(action="disable", job_id=job_id), 600)
-            disable_app_annotation_error_key = f"disable_app_annotation_error_{job_id}"
-            redis_client.setex(disable_app_annotation_error_key, 600, str(e))

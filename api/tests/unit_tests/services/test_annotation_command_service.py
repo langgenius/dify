@@ -21,6 +21,7 @@ from models.model import App, AppAnnotationSetting, MessageAnnotation
 from repositories.annotation_repository import AnnotationRepository
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_query import AnnotationNotFoundError, AnnotationRecord
+from services.annotation_reply_index import AnnotationVectorIndex
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
@@ -98,7 +99,11 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]
         celery.task(name=delete_annotation_index_task.name, shared=False)(delete_annotation_index_task.run),
     )
     service = AnnotationCommandService(
-        annotations=repository, add_index=tasks[0].delay, update_index=tasks[1].delay, delete_index=tasks[2].delay
+        annotations=repository,
+        index=AnnotationVectorIndex(session_factory=sqlite_session_factory),
+        add_index=tasks[0].delay,
+        update_index=tasks[1].delay,
+        delete_index=tasks[2].delay,
     )
     sessions: list[Session] = []
     publications: list[tuple[bool, tuple[AnnotationRecord, ...]]] = []
