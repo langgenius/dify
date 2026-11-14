@@ -355,12 +355,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     )
                 case QueueLLMChunkEvent():
                     chunk = event.chunk
+                    # The prompt comes once, on the first chunk of the stream, whether or not that chunk
+                    # has text. It is what a stopped message is saved with.
+                    if chunk.prompt_messages and not self._task_state.llm_result.prompt_messages:
+                        self._task_state.llm_result.prompt_messages = chunk.prompt_messages
+
                     delta_text = self._chunk_delta_text(chunk)
                     if delta_text is None:
                         continue
-
-                    if not self._task_state.llm_result.prompt_messages:
-                        self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
                     # handle output moderation chunk
                     should_direct_answer = self._handle_output_moderation_chunk(delta_text)

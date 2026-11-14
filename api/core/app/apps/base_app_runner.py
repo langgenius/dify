@@ -191,7 +191,8 @@ class AppRunner:
             for index, token in enumerate(text):
                 chunk = LLMResultChunk(
                     model=app_generate_entity.model_conf.model,
-                    prompt_messages=prompt_messages,
+                    # Once per output: see ``QueueLLMChunkEvent``.
+                    prompt_messages=prompt_messages if index == 0 else [],
                     delta=LLMResultChunkDelta(index=index, message=AssistantPromptMessage(content=token)),
                 )
 
@@ -294,12 +295,18 @@ class AppRunner:
         prompt_messages: list[PromptMessage] = []
         text = ""
         usage = None
+        prompt_published = False
         try:
             for result in invoke_result:
+                # The model runtime attaches the prompt of the call to every chunk. Publish it once: each
+                # published event is inspected in full, so repeating it would cost work proportional to
+                # the prompt for every streamed token. ``result`` itself is left as the runtime made it.
+                event_chunk = result.model_copy(update={"prompt_messages": []}) if prompt_published else result
+                prompt_published = True
                 if not agent:
-                    queue_manager.publish(QueueLLMChunkEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
+                    queue_manager.publish(QueueLLMChunkEvent(chunk=event_chunk), PublishFrom.APPLICATION_MANAGER)
                 else:
-                    queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
+                    queue_manager.publish(QueueAgentMessageEvent(chunk=event_chunk), PublishFrom.APPLICATION_MANAGER)
 
                 message = result.delta.message
                 match message.content:
