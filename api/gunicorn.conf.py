@@ -45,7 +45,7 @@ def post_patch(event):
 gevent_events.subscribers.append(post_patch)
 
 
-def post_worker_init(worker):
+def post_worker_init(worker: object) -> None:
     # Gunicorn calls this in the worker once the application is loaded. Imported here for the reason
     # given at the top of this module.
     from libs.gc_freeze import freeze_startup_objects
