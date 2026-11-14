@@ -249,7 +249,10 @@ class AgentStatisticsQuery(BaseModel):
         ),
     )
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
-    end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
+    end: str | None = Field(
+        default=None,
+        description="End date (YYYY-MM-DD HH:MM). The named end minute is included in the results.",
+    )
 
     @field_validator("source", "start", "end", mode="before")
     @classmethod
