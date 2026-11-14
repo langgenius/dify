@@ -4,12 +4,14 @@ import logging
 from collections.abc import Callable
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Self, override
 from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import event
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -17,6 +19,7 @@ from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
 from models.enums import (
     ConversationFromSource,
+    ConversationStatus,
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
@@ -116,7 +119,7 @@ def _create_conversation(
         app_id=app_id,
         mode=AppMode.CHAT,
         name=f"Conversation {conversation_id}",
-        status="normal",
+        status=ConversationStatus.NORMAL,
         from_source=ConversationFromSource.API,
         from_end_user_id="end-user-1",
     )
@@ -328,7 +331,16 @@ class TestClearFreePlanTenantExpiredLogs:
         records = _create_related_records("msg-1")
         sqlite_session.add_all(records)
         sqlite_session.commit()
-        record_keys = [(type(record), record.id) for record in records]
+        record_keys: list[tuple[type[object], object]] = []
+        for record in records:
+            # Every cleaned table maps the same ``id`` primary key, but the shared
+            # declarative base declares no such attribute, so read the persisted
+            # identity SQLAlchemy already tracks instead of naming the column.
+            state = sa_inspect(record)
+            assert state is not None
+            identity = state.identity
+            assert identity is not None
+            record_keys.append((type(record), identity[0]))
         storage = MagicMock()
         monkeypatch.setattr(service_module, "storage", storage)
 
@@ -477,12 +489,12 @@ def test_process_tenant_processes_and_persists_all_batches(
 
     node_execution = _create_workflow_node_execution("node-execution-1")
     node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [[node_execution], []]
+    node_repo.get_expired_executions_batch.side_effect = [[node_execution], list[object]()]
     node_repo.delete_executions_by_ids.return_value = 1
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [
         [_create_workflow_run("workflow-run-1")],
-        [],
+        list[object](),
     ]
     run_repo.delete_runs_by_ids.return_value = 1
     monkeypatch.setattr(
@@ -592,8 +604,11 @@ def test_process_without_tenant_ids_batches_and_scales_interval(
 
     class FixedDateTime(REAL_DATETIME):
         @classmethod
-        def now(cls, tz: datetime.tzinfo | None = None) -> REAL_DATETIME:
-            return fixed_now
+        @override
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            # Return an instance of the subclass, as ``datetime.now`` does; the
+            # value is the frozen instant the test pinned.
+            return cls.fromtimestamp(fixed_now.timestamp(), tz=fixed_now.tzinfo)
 
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
@@ -664,8 +679,11 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
 
     class FixedDateTime(REAL_DATETIME):
         @classmethod
-        def now(cls, tz: datetime.tzinfo | None = None) -> REAL_DATETIME:
-            return fixed_now
+        @override
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            # Return an instance of the subclass, as ``datetime.now`` does; the
+            # value is the frozen instant the test pinned.
+            return cls.fromtimestamp(fixed_now.timestamp(), tz=fixed_now.tzinfo)
 
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
@@ -718,7 +736,7 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         _create_workflow_node_execution("node-2", node_id="node-2"),
     ]
     node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [node_executions, []]
+    node_repo.get_expired_executions_batch.side_effect = [node_executions, list[object]()]
     node_repo.delete_executions_by_ids.return_value = 2
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [
@@ -726,17 +744,17 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
             _create_workflow_run("run-1"),
             _create_workflow_run("run-2"),
         ],
-        [],
+        list[object](),
     ]
     run_repo.delete_runs_by_ids.return_value = 2
-    node_session_makers: list[object] = []
-    run_session_makers: list[object] = []
+    node_session_makers: list[sessionmaker[Session]] = []
+    run_session_makers: list[sessionmaker[Session]] = []
 
-    def create_node_repo(session_maker: object) -> MagicMock:
+    def create_node_repo(session_maker: sessionmaker[Session]) -> MagicMock:
         node_session_makers.append(session_maker)
         return node_repo
 
-    def create_run_repo(session_maker: object) -> MagicMock:
+    def create_run_repo(session_maker: sessionmaker[Session]) -> MagicMock:
         run_session_makers.append(session_maker)
         return run_repo
 
