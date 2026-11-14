@@ -10,8 +10,8 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
-    CombinedCommandChannel,
     StopFlagCommandChannel,
+    create_run_command_channel,
 )
 from core.app.apps.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
 from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner, WorkflowRunDriver
@@ -228,12 +228,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
         )
         attach_stop_aware_ready_queue(graph_runtime_state, task_id=task_id)
-        command_channel = CombinedCommandChannel(
-            (
+        command_channel = create_run_command_channel(
+            remote_channels=(
                 RedisChannel(redis_client, channel_key),
                 StopFlagCommandChannel(task_id=task_id),
-                celery_signal_channel,
-            )
+            ),
+            local_channels=(celery_signal_channel,),
         )
 
         workflow_entry = WorkflowEntry(
