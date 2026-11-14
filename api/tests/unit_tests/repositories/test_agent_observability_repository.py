@@ -1361,7 +1361,7 @@ class TestWorkflowToolAgentStatisticsCases:
         second_run.version = run.version
         second_run.created_by = "end-user-2"
         sqlite_session.add(second_run)
-        execution = _workflow_tool_agent_statistics_node_execution(execution_id="tool-agent-execution-2")
+        execution = _workflow_tool_agent_statistics_node_execution(execution_id="tool-agent-execution-second-user")
         execution.app_id = "source-app"
         execution.workflow_id = "source-workflow"
         execution.node_id = "agent-node"
