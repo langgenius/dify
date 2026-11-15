@@ -80,8 +80,16 @@ def _is_raw(value: EnvironmentVariables) -> TypeIs[Sequence[Mapping[str, object]
 
 
 def _set_timestamp(workflow: Workflow, *, attribute: str, value: datetime | None) -> None:
-    """Assign a timestamp column, deliberately including the NULL `updated_at` states the tests model."""
-    setattr(workflow, attribute, value)
+    """Assign a timestamp column, deliberately including the NULL `updated_at` states the tests model.
+
+    The `updated_at` column is declared non-nullable, but the controllers serialise
+    `workflow.updated_at or workflow.created_at` because a never-persisted draft has no timestamp yet.
+    A `None` therefore has to reach the instance attribute without tripping the column type.
+    """
+    if value is None:
+        vars(workflow)[attribute] = None
+    else:
+        setattr(workflow, attribute, value)
 
 
 def _make_workflow(
@@ -1431,11 +1439,13 @@ def _make_account() -> _workflow_human_input_debug_api_Account:
     account = _workflow_human_input_debug_api_Account(name="tester", email="tester@example.com")
     account.status = AccountStatus.ACTIVE
     account.role = TenantAccountRole.OWNER
-    account.id = "account-123"  # type: ignore[assignment]
+    account.id = "account-123"
     tenant = Tenant(name="Test tenant")
     tenant.id = "tenant-123"
     account._current_tenant = tenant
-    account._get_current_object = lambda: account  # type: ignore[attr-defined]
+    # `current_user` proxies expose `_get_current_object`; a plain Account instance does not,
+    # but `api/libs/login.py` uses it to unwrap the proxy when present.
+    vars(account)["_get_current_object"] = lambda: account
     return account
 
 
